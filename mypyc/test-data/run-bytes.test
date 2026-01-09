@@ -260,6 +260,10 @@ from typing import Any
 from testutil import assertRaises
 
 def test_basics() -> None:
+    brr0 = bytearray()
+    assert brr0 == bytearray(b'')
+    assert brr0 == b''
+    assert len(brr0) == 0
     brr1 = bytearray(3)
     assert brr1 == bytearray(b'\x00\x00\x00')
     assert brr1 == b'\x00\x00\x00'
