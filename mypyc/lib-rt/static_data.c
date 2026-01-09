@@ -46,6 +46,7 @@ intern_strings(void) {
     INTERN_STRING(clear, "clear");
     INTERN_STRING(close_, "close");
     INTERN_STRING(copy, "copy");
+    INTERN_STRING(endswith, "endswith");
     INTERN_STRING(keys, "keys");
     INTERN_STRING(items, "items");
     INTERN_STRING(join, "join");
