@@ -1237,7 +1237,6 @@ def translate_getitem_with_bounds_check(
         adjust_index_op: Primitive op to adjust negative indices
         range_check_op: Primitive op to check if index is in valid range
         get_item_unsafe_op: Primitive op to get item (no bounds checking)
-        require_i64_index: If True, only use optimization for i64 indices
 
     Returns:
         The result value, or None if optimization doesn't apply
