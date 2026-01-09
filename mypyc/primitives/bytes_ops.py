@@ -17,7 +17,6 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    uint8_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
