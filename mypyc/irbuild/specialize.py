@@ -1212,30 +1212,56 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
     return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
 
 
-@specialize_dunder("__getitem__", bytes_writer_rprimitive)
-def translate_bytes_writer_get_item(
-    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+def translate_getitem_with_bounds_check(
+    builder: IRBuilder,
+    base_expr: Expression,
+    args: list[Expression],
+    ctx_expr: Expression,
+    adjust_index_op: PrimitiveDescription,
+    range_check_op: PrimitiveDescription,
+    get_item_unsafe_op: PrimitiveDescription,
+    require_i64_index: bool = False,
 ) -> Value | None:
-    """Optimized BytesWriter.__getitem__ implementation with bounds checking."""
+    """Shared helper for optimized __getitem__ with bounds checking.
+
+    This implements the common pattern of:
+    1. Adjusting negative indices
+    2. Checking if index is in valid range
+    3. Raising IndexError if out of range
+    4. Getting the item if in range
+
+    Args:
+        builder: The IR builder
+        base_expr: The base object expression
+        args: The arguments to __getitem__ (should be length 1)
+        ctx_expr: The context expression for line numbers
+        adjust_index_op: Primitive op to adjust negative indices
+        range_check_op: Primitive op to check if index is in valid range
+        get_item_unsafe_op: Primitive op to get item (no bounds checking)
+        require_i64_index: If True, only use optimization for i64 indices
+
+    Returns:
+        The result value, or None if optimization doesn't apply
+    """
     # Check that we have exactly one argument
     if len(args) != 1:
         return None
 
-    # Get the BytesWriter object
+    # Get the object
     obj = builder.accept(base_expr)
 
     # Get the index argument
     index = builder.accept(args[0])
 
+    # If required, check that index is i64 (for experimental mode)
+    if require_i64_index and not is_int64_rprimitive(index.type):
+        return None
+
     # Adjust the index (handle negative indices)
-    adjusted_index = builder.primitive_op(
-        bytes_writer_adjust_index_op, [obj, index], ctx_expr.line
-    )
+    adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
 
     # Check if the adjusted index is in valid range
-    range_check = builder.primitive_op(
-        bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line
-    )
+    range_check = builder.primitive_op(range_check_op, [obj, adjusted_index], ctx_expr.line)
 
     # Create blocks for branching
     valid_block = BasicBlock()
@@ -1252,11 +1278,25 @@ def translate_bytes_writer_get_item(
 
     # Handle valid index - get the item
     builder.activate_block(valid_block)
-    result = builder.primitive_op(
-        bytes_writer_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line
-    )
+    result = builder.primitive_op(get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line)
 
     return result
+
+
+@specialize_dunder("__getitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized BytesWriter.__getitem__ implementation with bounds checking."""
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        bytes_writer_adjust_index_op,
+        bytes_writer_range_check_op,
+        bytes_writer_get_item_unsafe_op,
+    )
 
 
 @specialize_dunder("__setitem__", bytes_writer_rprimitive)
@@ -1312,47 +1352,13 @@ def translate_bytes_get_item(
     builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
 ) -> Value | None:
     """Optimized bytes.__getitem__ implementation with bounds checking."""
-    # Check that we have exactly one argument
-    if len(args) != 1:
-        return None
-
-    # Get the bytes object
-    obj = builder.accept(base_expr)
-
-    # Get the index argument
-    index = builder.accept(args[0])
-
-    # Only use the optimized version for i64 index (requires experimental mode)
-    if not is_int64_rprimitive(index.type):
-        return None
-
-    # Adjust the index (handle negative indices)
-    adjusted_index = builder.primitive_op(
-        bytes_adjust_index_op, [obj, index], ctx_expr.line
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        bytes_adjust_index_op,
+        bytes_range_check_op,
+        bytes_get_item_unsafe_op,
+        require_i64_index=True,
     )
-
-    # Check if the adjusted index is in valid range
-    range_check = builder.primitive_op(
-        bytes_range_check_op, [obj, adjusted_index], ctx_expr.line
-    )
-
-    # Create blocks for branching
-    valid_block = BasicBlock()
-    invalid_block = BasicBlock()
-
-    builder.add_bool_branch(range_check, valid_block, invalid_block)
-
-    # Handle invalid index - raise IndexError
-    builder.activate_block(invalid_block)
-    builder.add(
-        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
-    )
-    builder.add(Unreachable())
-
-    # Handle valid index - get the item
-    builder.activate_block(valid_block)
-    result = builder.primitive_op(
-        bytes_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line
-    )
-
-    return result
