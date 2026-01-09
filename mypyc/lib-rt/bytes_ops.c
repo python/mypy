@@ -205,12 +205,7 @@ int CPyBytes_Endswith(PyObject *self, PyObject *subobj) {
 
         return memcmp(self_buf + (self_len - subobj_len), subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
     }
-    _Py_IDENTIFIER(endswith);
-    PyObject *name = _PyUnicode_FromId(&PyId_endswith);
-    if (name == NULL) {
-        return 2;
-    }
-    PyObject *result = PyObject_CallMethodOneArg(self, name, subobj);
+    PyObject *result = PyObject_CallMethodOneArg(self, mypyc_interned_str.endswith, subobj);
     if (result == NULL) {
         return 2;
     }
