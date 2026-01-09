@@ -1220,7 +1220,6 @@ def translate_getitem_with_bounds_check(
     adjust_index_op: PrimitiveDescription,
     range_check_op: PrimitiveDescription,
     get_item_unsafe_op: PrimitiveDescription,
-    require_i64_index: bool = False,
 ) -> Value | None:
     """Shared helper for optimized __getitem__ with bounds checking.
 
@@ -1252,10 +1251,6 @@ def translate_getitem_with_bounds_check(
 
     # Get the index argument
     index = builder.accept(args[0])
-
-    # If required, check that index is i64 (for experimental mode)
-    if require_i64_index and not is_int64_rprimitive(index.type):
-        return None
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
@@ -1360,5 +1355,4 @@ def translate_bytes_get_item(
         bytes_adjust_index_op,
         bytes_range_check_op,
         bytes_get_item_unsafe_op,
-        require_i64_index=True,
     )
