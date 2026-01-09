@@ -6,7 +6,7 @@ import pprint
 import sys
 import textwrap
 from collections.abc import Callable
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
@@ -58,6 +58,9 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -210,7 +213,8 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
-        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        formatted = pformat_deterministic(obj, max(90 - line_width, 20))
+
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
 
@@ -1271,3 +1275,62 @@ def native_function_doc_initializer(func: FuncIR) -> str:
         return "NULL"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def pformat_deterministic(obj: object, width: int) -> str:
+    """Pretty-print `obj` with deterministic sorting for mypyc literal types."""
+    # Temporarily override pprint._safe_key to get deterministic ordering of containers.
+    default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
+    pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
+
+    try:
+        printer = _DeterministicPrettyPrinter(width=width, compact=True, sort_dicts=True)
+        return printer.pformat(obj)
+    finally:
+        # Always restore the original key to avoid affecting other pprint users.
+        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
+
+
+def _mypyc_safe_key(obj: object) -> str:
+    """A custom sort key implementation for pprint that makes the output deterministic
+    for all literal types supported by mypyc.
+
+    This is NOT safe for use as a sort key for other types, so we MUST replace the
+    original pprint._safe_key once we've pprinted our object.
+
+    Since this is a bit hacky, see for context https://github.com/python/mypy/pull/20012
+    """
+    return str(type(obj)) + pprint.pformat(obj, compact=True, sort_dicts=True)
+
+
+class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
+    """PrettyPrinter that sorts set/frozenset elements deterministically."""
+
+    _dispatch = pprint.PrettyPrinter._dispatch.copy()
+
+    def _pprint_set(
+        self,
+        object: set[object] | frozenset[object],
+        stream: SupportsWrite[str],
+        indent: int,
+        allowance: int,
+        context: dict[int, int],
+        level: int,
+    ) -> None:
+        if not object:
+            stream.write(repr(object))
+            return
+        typ = type(object)
+        if typ is set:
+            stream.write("{")
+            endchar = "}"
+        else:
+            stream.write("frozenset({")
+            endchar = "})"
+            indent += len("frozenset(")
+        items = sorted(object, key=_mypyc_safe_key)
+        self._format_items(items, stream, indent, allowance + len(endchar), context, level)
+        stream.write(endchar)
+
+    _dispatch[set.__repr__] = _pprint_set
+    _dispatch[frozenset.__repr__] = _pprint_set
