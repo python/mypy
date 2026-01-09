@@ -968,6 +968,12 @@ def define_options(
         default=[],
         help="Enable a specific error code",
     )
+    strictness_group.add_argument(
+        "--enable-all-error-codes",
+        action="store_true",
+        help="Enable all error codes. Unlike the other flag for error code enablement,"
+        + " these can be countermanded by --disable-error-code",
+    )
 
     error_group = parser.add_argument_group(
         title="Configuring error messages",
