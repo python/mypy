@@ -94,11 +94,11 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
+from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
     bytes_get_item_unsafe_op,
     bytes_range_check_op,
-    isinstance_bytearray,
     isinstance_bytes,
 )
 from mypyc.primitives.dict_ops import (

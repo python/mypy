@@ -49,24 +49,6 @@ isinstance_bytes = function_op(
     error_kind=ERR_NEVER,
 )
 
-# bytearray(obj)
-function_op(
-    name="builtins.bytearray",
-    arg_types=[object_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="PyByteArray_FromObject",
-    error_kind=ERR_MAGIC,
-)
-
-# translate isinstance(obj, bytearray)
-isinstance_bytearray = function_op(
-    name="builtins.isinstance",
-    arg_types=[object_rprimitive],
-    return_type=bit_rprimitive,
-    c_function_name="PyByteArray_Check",
-    error_kind=ERR_NEVER,
-)
-
 # bytes ==/!= (return -1/0/1)
 bytes_compare = custom_op(
     arg_types=[bytes_rprimitive, bytes_rprimitive],
