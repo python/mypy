@@ -94,7 +94,13 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.primitives.bytes_ops import isinstance_bytearray, isinstance_bytes
+from mypyc.primitives.bytes_ops import (
+    bytes_adjust_index_op,
+    bytes_get_item_unsafe_op,
+    bytes_range_check_op,
+    isinstance_bytearray,
+    isinstance_bytes,
+)
 from mypyc.primitives.dict_ops import (
     dict_items_op,
     dict_keys_op,
@@ -1299,3 +1305,54 @@ def translate_bytes_writer_set_item(
     )
 
     return builder.none()
+
+
+@specialize_dunder("__getitem__", bytes_rprimitive)
+def translate_bytes_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized bytes.__getitem__ implementation with bounds checking."""
+    # Check that we have exactly one argument
+    if len(args) != 1:
+        return None
+
+    # Get the bytes object
+    obj = builder.accept(base_expr)
+
+    # Get the index argument
+    index = builder.accept(args[0])
+
+    # Only use the optimized version for i64 index (requires experimental mode)
+    if not is_int64_rprimitive(index.type):
+        return None
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(
+        bytes_adjust_index_op, [obj, index], ctx_expr.line
+    )
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(
+        bytes_range_check_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
+    builder.add(Unreachable())
+
+    # Handle valid index - get the item
+    builder.activate_block(valid_block)
+    result = builder.primitive_op(
+        bytes_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    return result

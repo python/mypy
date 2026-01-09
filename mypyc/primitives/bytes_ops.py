@@ -12,15 +12,18 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -165,4 +168,39 @@ function_op(
     return_type=int_rprimitive,
     c_function_name="CPyBytes_Ord",
     error_kind=ERR_MAGIC,
+)
+
+# Optimized bytes.__getitem__ operations
+
+# bytes index adjustment - convert negative index to positive
+bytes_adjust_index_op = custom_primitive_op(
+    name="bytes_adjust_index",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyBytes_AdjustIndex",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[BYTES_EXTRA_OPS],
+)
+
+# bytes range check - check if index is in valid range
+bytes_range_check_op = custom_primitive_op(
+    name="bytes_range_check",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyBytes_RangeCheck",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[BYTES_EXTRA_OPS],
+)
+
+# bytes.__getitem__() - get byte at index (no bounds checking)
+bytes_get_item_unsafe_op = custom_primitive_op(
+    name="bytes_get_item_unsafe",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyBytes_GetItemUnsafe",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[BYTES_EXTRA_OPS],
 )
