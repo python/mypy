@@ -504,6 +504,11 @@ str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcount
 # Python bytes object.
 bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
 
+# Python bytearray object.
+bytearray_rprimitive: Final = RPrimitive(
+    "builtins.bytearray", is_unboxed=False, is_refcounted=True
+)
+
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
 tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
@@ -632,6 +637,10 @@ def is_bytes_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytes"
 
 
+def is_bytearray_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytearray"
+
+
 def is_tuple_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.tuple"
 
@@ -646,6 +655,7 @@ def is_sequence_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
         or is_tuple_rprimitive(rtype)
         or is_str_rprimitive(rtype)
         or is_bytes_rprimitive(rtype)
+        or is_bytearray_rprimitive(rtype)
     )
 
 

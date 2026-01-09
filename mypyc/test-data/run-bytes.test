@@ -260,6 +260,10 @@ from typing import Any
 from testutil import assertRaises
 
 def test_basics() -> None:
+    brr0 = bytearray()
+    assert brr0 == bytearray(b'')
+    assert brr0 == b''
+    assert len(brr0) == 0
     brr1 = bytearray(3)
     assert brr1 == bytearray(b'\x00\x00\x00')
     assert brr1 == b'\x00\x00\x00'
@@ -276,15 +280,29 @@ def test_basics() -> None:
     assert len(brr1) == 3
     assert len(brr2) == 4
 
-def f(b: bytes) -> str:
+def test_bytearray_type_object() -> None:
+    b = bytearray()
+    assert type(b) is bytearray
+
+def fb(b: bytes) -> str:
     return "xy"
 
 def test_bytearray_passed_into_bytes() -> None:
     brr1: Any = bytearray()
     with assertRaises(TypeError, "bytes object expected; got bytearray"):
-        f(brr1)
+        fb(brr1)
     with assertRaises(TypeError, "bytes object expected; got bytearray"):
         b: bytes = brr1
+
+def fba(brr: bytearray) -> str:
+    return "xy"
+
+def test_bytes_passed_into_bytearray() -> None:
+    b: Any = b"foo"
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        fba(b)
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        brr: bytearray = b
 
 [case testBytearraySlicing]
 def test_bytearray_slicing() -> None:

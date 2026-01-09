@@ -2,6 +2,7 @@ from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
+    bytearray_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
     int64_rprimitive,
@@ -35,6 +36,16 @@ method_op(
 method_op(
     name="write",
     arg_types=[bytes_writer_rprimitive, bytes_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_Write",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+method_op(
+    name="write",
+    arg_types=[bytes_writer_rprimitive, bytearray_rprimitive],
     return_type=none_rprimitive,
     c_function_name="CPyBytesWriter_Write",
     error_kind=ERR_MAGIC,

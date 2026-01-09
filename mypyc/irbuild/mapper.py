@@ -31,6 +31,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bool_rprimitive,
+    bytearray_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
@@ -88,6 +89,8 @@ class Mapper:
                 return str_rprimitive
             elif typ.type.fullname == "builtins.bytes":
                 return bytes_rprimitive
+            elif typ.type.fullname == "builtins.bytearray":
+                return bytearray_rprimitive
             elif typ.type.fullname == "builtins.list":
                 return list_rprimitive
             # Dict subclasses are at least somewhat common and we
