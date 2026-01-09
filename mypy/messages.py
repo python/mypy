@@ -44,6 +44,7 @@ from mypy.nodes import (
     ArgKind,
     CallExpr,
     Context,
+    Decorator,
     Expression,
     FuncDef,
     IndexExpr,
@@ -1110,7 +1111,7 @@ class MessageBuilder:
             all_valid_kwargs: set[str] = set()
             for item in overload.items:
                 for i, arg_name in enumerate(item.arg_names): 
-                    if arg_name is not None and arg_kinds[i] != ARG_STAR:
+                    if arg_name is not None and item.arg_kinds[i] != ARG_STAR:
                         all_valid_kwargs.add(arg_name)
                 if item.is_kw_arg:
                     all_valid_kwargs.clear()
@@ -1126,28 +1127,41 @@ class MessageBuilder:
             for kwarg_name, kwarg_type in unexpected_kwargs:
                 matching_type_args: list[str] = []
                 not_matching_type_args: list[str] = []
+                matching_variant: CallableType | None = None
 
                 for item in overload.items:
+                    has_type_match = False
                     for i, formal_type in enumerate(item.arg_types):
                         formal_name = item.arg_names[i]
                         if formal_name is not None and item.arg_kinds[i] != ARG_STAR:
                             if is_subtype(kwarg_type, formal_type):
                                 if formal_name not in matching_type_args:
                                     matching_type_args.append(formal_name)
+                                has_type_match = True
                             else:
                                 if formal_name not in not_matching_type_args:
                                     not_matching_type_args.append(formal_name)
+                    if has_type_match and matching_variant is None:
+                        matching_variant = item
                 
                 matches = best_matches(kwarg_name, matching_type_args, n=3)
                 if not matches:
                     matches = best_matches(kwarg_name, not_matching_type_args, n=3)
                 
                 msg = f'Unexpected keyword argument "{kwarg_name}"' + for_func
+                
+                if matching_variant is not None and matching_variant.definition is not None:
+                    defn = matching_variant.definition
+                    if isinstance(defn, Decorator):
+                        func_line = defn.func.line
+                    else:
+                        func_line = defn.line
+                    msg += f" defined on line {func_line}"
+                
                 if matches: 
                     msg += f"; did you mean {pretty_seq(matches, 'or')}?"
                 self.fail(msg, context, code=code)
 
-                # do we want to still show possible overload variants as a note?
             return 
             
         arg_types_str = ", ".join(format_type(arg, self.options) for arg in arg_types)

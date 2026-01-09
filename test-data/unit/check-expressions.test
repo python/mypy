@@ -2584,17 +2584,15 @@ def last_known_value() -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testInvalidArgumentInOverloadError]
-from typing import overload
-
-@overload 
-def f(foobar: int) -> None:
-    pass
+from typing import overload, Union
 
 @overload
-def f(foobar: str) -> None:
+def f(foobar: int) -> None: ...
+
+@overload
+def f(foobar: str) -> None: ...
+
+def f(foobar: Union[int, str]) -> None:
     pass
 
-def f(foobar: bool) -> None:
-    pass
-
-f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"?
+f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f" defined on line 4; did you mean "foobar"?
