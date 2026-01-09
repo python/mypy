@@ -22,7 +22,6 @@ function_op(
     return_type=bytearray_rprimitive,
     c_function_name="PyByteArray_FromObject",
     error_kind=ERR_MAGIC,
-    dependencies=[BYTEARRAY_EXTRA_OPS],
 )
 
 # bytearray() -- construct empty bytearray
@@ -32,6 +31,7 @@ function_op(
     return_type=bytearray_rprimitive,
     c_function_name="CPyByteArray_New",
     error_kind=ERR_MAGIC,
+    dependencies=[BYTEARRAY_EXTRA_OPS],
 )
 
 # isinstance(obj, bytearray)
