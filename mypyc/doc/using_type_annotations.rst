@@ -38,7 +38,7 @@ implementations:
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
 * ``bytes`` (:ref:`native operations <bytes-ops>`)
-* ``bytearray`` (:ref:`native operations <bytes-ops>`)
+* ``bytearray`` (:ref:`native operations <bytearray-ops>`)
 * ``list[T]`` (:ref:`native operations <list-ops>`)
 * ``dict[K, V]`` (:ref:`native operations <dict-ops>`)
 * ``set[T]`` (:ref:`native operations <set-ops>`)
