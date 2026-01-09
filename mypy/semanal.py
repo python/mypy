@@ -5641,6 +5641,15 @@ class SemanticAnalyzer(
             return
         all_type_params_names = [p.name for p in s.type_args]
 
+        # Check for multiple TypeVarTuples in type alias definition
+        has_type_var_tuple = False
+        for p in s.type_args:
+            if p.kind == TYPE_VAR_TUPLE_KIND:
+                if has_type_var_tuple:
+                    self.fail("Can only use one TypeVarTuple in a type alias", s)
+                    break
+                has_type_var_tuple = True
+
         try:
             existing = self.current_symbol_table().get(s.name.name)
             if existing and not (
