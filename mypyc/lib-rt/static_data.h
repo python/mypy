@@ -38,6 +38,7 @@ typedef struct mypyc_interned_str_struct {
     PyObject *clear;
     PyObject *close_;
     PyObject *copy;
+    PyObject *endswith;
     PyObject *keys;
     PyObject *items;
     PyObject *join;

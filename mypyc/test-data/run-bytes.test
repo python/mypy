@@ -221,6 +221,27 @@ def test_startswith() -> None:
     assert test2.startswith(b'some')
     assert not test2.startswith(b'other')
 
+def test_endswith() -> None:
+    # Test default behavior
+    test = b'some string'
+    assert test.endswith(b'string')
+    assert test.endswith(b'some string')
+    assert not test.endswith(b'other')
+    assert not test.endswith(b'some string but longer')
+
+    # Test empty cases
+    assert test.endswith(b'')
+    assert b''.endswith(b'')
+    assert not b''.endswith(test)
+
+    # Test bytearray to verify slow paths
+    assert test.endswith(bytearray(b'string'))
+    assert not test.endswith(bytearray(b'other'))
+
+    test2 = bytearray(b'some string')
+    assert test2.endswith(b'string')
+    assert not test2.endswith(b'other')
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
