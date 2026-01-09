@@ -7,6 +7,7 @@ from typing import Any, Final, TypeAlias as _TypeAlias, TypeVar, cast
 import mypy.applytype
 import mypy.constraints
 import mypy.typeops
+from mypy import errorcodes as codes
 from mypy.checker_state import checker_state
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
@@ -83,6 +84,12 @@ IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 IS_VAR: Final = 4
 IS_EXPLICIT_SETTER: Final = 5
+
+# Known unsafe subtyping relationships that should trigger warnings.
+# Each tuple is (subclass_fullname, superclass_fullname).
+# These are cases where a class is a subclass at runtime but treating it
+# as a subtype can cause runtime errors.
+UNSAFE_SUBTYPING_PAIRS: Final = [("datetime.datetime", "datetime.date")]
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
@@ -528,6 +535,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
+            lname = left.type.fullname
+
+            # Check if this is an unsafe subtype relationship that should be blocked
+            if (
+                self.options
+                and codes.UNSAFE_SUBTYPE in self.options.enabled_error_codes
+                and (lname, rname) in UNSAFE_SUBTYPING_PAIRS
+            ):
+                return False
+
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             # NamedTuples are a special case, because `NamedTuple` is not listed
