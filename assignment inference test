@@ -1,0 +1,15 @@
+[1mdiff --git a/test-data/unit/check-expressions.test b/test-data/unit/check-expressions.test[m
+[1mindex 4d99325d9..0e01e6bbc 100644[m
+[1m--- a/test-data/unit/check-expressions.test[m
+[1m+++ b/test-data/unit/check-expressions.test[m
+[36m@@ -2540,6 +2540,10 @@[m [mdef last_known_value() -> None:[m
+ [builtins fixtures/primitives.pyi][m
+ [m
+ [case walrus_operator_in_comprehension_infers_type][m
+[32m+[m[32m# Ensure that assignment expressions (:=) inside comprehensions[m
+[32m+[m[32m# correctly infer and propagate the assigned variable's type[m
+[32m+[m[32m# outside the comprehension scope.[m
+[32m+[m
+ from dataclasses import dataclass[m
+ [m
+ @dataclass[m
