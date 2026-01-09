@@ -52,6 +52,7 @@ intern_strings(void) {
     INTERN_STRING(close_, "close");
     INTERN_STRING(copy, "copy");
     INTERN_STRING(dispatch_cache, "dispatch_cache");
+    INTERN_STRING(endswith, "endswith");
     INTERN_STRING(get_type_hints, "get_type_hints");
     INTERN_STRING(keys, "keys");
     INTERN_STRING(items, "items");

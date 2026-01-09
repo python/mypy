@@ -238,9 +238,9 @@ def test_endswith() -> None:
     assert test.endswith(bytearray(b'string'))
     assert not test.endswith(bytearray(b'other'))
 
-    test = bytearray(b'some string')
-    assert test.endswith(b'string')
-    assert not test.endswith(b'other')
+    test2 = bytearray(b'some string')
+    assert test2.endswith(b'string')
+    assert not test2.endswith(b'other')
 
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
