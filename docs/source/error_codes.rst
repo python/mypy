@@ -1547,7 +1547,7 @@ Check that type arguments exist [type-arg]
 ------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-any-generics` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-any-generics <mypy --disallow-any-generics>` to enable it.
 
 If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
 type has values for each type argument. For example, the types ``list`` or
@@ -1571,7 +1571,7 @@ Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-untyped-defs` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>` to enable it.
 
 If you use :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`, mypy requires that all functions
 have annotations (either a Python 3 annotation or a type comment).
@@ -1604,7 +1604,7 @@ Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--warn-redundant-casts` to enable it.
+   This error code is disabled by default. Use :option:`--warn-redundant-casts <mypy --warn-redundant-casts>` to enable it.
 
 If you use :option:`--warn-redundant-casts <mypy --warn-redundant-casts>`, mypy will generate an error if the source
 type of a cast is the same as the target type.
@@ -1656,7 +1656,7 @@ Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--strict-equality` to enable it.
+   This error code is disabled by default. Use :option:`--strict-equality <mypy --strict-equality>` to enable it.
 
 If you use :option:`--strict-equality <mypy --strict-equality>`, mypy will generate an error if it
 thinks that a comparison operation is always true or false. These are
@@ -1715,7 +1715,7 @@ Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-untyped-calls` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-untyped-calls <mypy --disallow-untyped-calls>` to enable it.
 
 If you use :option:`--disallow-untyped-calls <mypy --disallow-untyped-calls>`, mypy generates an error when you
 call an unannotated function in an annotated function.
@@ -1739,7 +1739,7 @@ Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--warn-return-any` to enable it.
+   This error code is disabled by default. Use :option:`--warn-return-any <mypy --warn-return-any>` to enable it.
 
 If you use :option:`--warn-return-any <mypy --warn-return-any>`, mypy generates an error if you return a
 value with an ``Any`` type in a function that is annotated to return a
@@ -1764,7 +1764,7 @@ Check that types have no Any components due to missing imports [no-any-unimporte
 ----------------------------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-any-unimported` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-any-unimported <mypy --disallow-any-unimported>` to enable it.
 
 If you use :option:`--disallow-any-unimported <mypy --disallow-any-unimported>`, mypy generates an error if a component of
 a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"
@@ -1789,7 +1789,7 @@ Check that statement or expression is unreachable [unreachable]
 ---------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--warn-unreachable` to enable it.
+   This error code is disabled by default. Use :option:`--warn-unreachable <mypy --warn-unreachable>` to enable it.
 
 If you use :option:`--warn-unreachable <mypy --warn-unreachable>`, mypy generates an error if it
 thinks that a statement or expression will never be executed. In most cases, this is due to
@@ -2040,7 +2040,7 @@ Check that ``# type: ignore`` comment is used [unused-ignore]
 -------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--warn-unused-ignores` to enable it.
+   This error code is disabled by default. Use :option:`--warn-unused-ignores <mypy --warn-unused-ignores>` to enable it.
 
 If you use :option:`--enable-error-code unused-ignore <mypy --enable-error-code>`,
 or :option:`--warn-unused-ignores <mypy --warn-unused-ignores>`
@@ -2212,7 +2212,7 @@ Check that explicit Any type annotations are not allowed [explicit-any]
 -----------------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-any-explicit` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-any-explicit <mypy --disallow-any-explicit>` to enable it.
 
 If you use :option:`--disallow-any-explicit <mypy --disallow-any-explicit>`, mypy generates an error
 if you use an explicit ``Any`` type annotation.
@@ -2275,7 +2275,7 @@ Error if an untyped decorator makes a typed function effectively untyped [untype
 --------------------------------------------------------------------------------------------
 
 .. note::
-   This error code is disabled by default. Use :option:`--disallow-untyped-decorators` to enable it.
+   This error code is disabled by default. Use :option:`--disallow-untyped-decorators <mypy --disallow-untyped-decorators>` to enable it.
 
 If enabled with :option:`--disallow-untyped-decorators <mypy --disallow-untyped-decorators>`
 mypy generates an error if a typed function is wrapped by an untyped decorator
