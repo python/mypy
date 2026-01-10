@@ -803,12 +803,724 @@ the issue:
        def set_y(self) -> None:
            self.y: int = self.x  # Added annotation here
 
-.. _code-import:
+Mypy generates an error if it can't resolve an `import` statement.
+This is a parent error code of `import-not-found` and `import-untyped`
 
+<<<<<<< HEAD
+See :ref:`ignore-missing-imports` for how to work around these errors.
+
+.. _code-import-not-found:
+
+Check that import target can be found [import-not-found]
+--------------------------------------------------------
+
+Mypy generates an error if it can't find the source code or a stub file
+for an imported module.
+
+Example:
+
+.. code-block:: python
+
+    # Error: Cannot find implementation or library stub for module named "m0dule_with_typo"  [import-not-found]
+    import m0dule_with_typo
+
+See :ref:`ignore-missing-imports` for how to work around these errors.
+
+.. _code-import-untyped:
+
+Check that import target can be found [import-untyped]
+------------------------------------------------------
+
+Mypy generates an error if it can find the source code for an imported module,
+but that module does not provide type annotations (via :ref:`PEP 561 <installed-packages>`).
+
+Example:
+
+.. code-block:: python
+
+    # Error: Library stubs not installed for "bs4"  [import-untyped]
+    import bs4
+    # Error: Skipping analyzing "no_py_typed": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+    import no_py_typed
+
+In some cases, these errors can be fixed by installing an appropriate
+stub package. See :ref:`ignore-missing-imports` for more details.
+
+.. _code-no-redef:
+
+Check that each name is defined once [no-redef]
+-----------------------------------------------
+
+Mypy may generate an error if you have multiple definitions for a name
+in the same namespace.  The reason is that this is often an error, as
+the second definition may overwrite the first one. Also, mypy often
+can't be able to determine whether references point to the first or
+the second definition, which would compromise type checking.
+
+If you silence this error, all references to the defined name refer to
+the *first* definition.
+
+Example:
+
+.. code-block:: python
+
+   class A:
+       def __init__(self, x: int) -> None: ...
+
+   class A:  # Error: Name "A" already defined on line 1  [no-redef]
+       def __init__(self, x: str) -> None: ...
+
+   # Error: Argument 1 to "A" has incompatible type "str"; expected "int"
+   #        (the first definition wins!)
+   A('x')
+
+.. _code-func-returns-value:
+
+Check that called function returns a value [func-returns-value]
+---------------------------------------------------------------
+
+Mypy reports an error if you call a function with a ``None``
+return type and don't ignore the return value, as this is
+usually (but not always) a programming error.
+
+In this example, the ``if f()`` check is always false since ``f``
+returns ``None``:
+
+.. code-block:: python
+
+   def f() -> None:
+       ...
+
+   # OK: we don't do anything with the return value
+   f()
+
+   # Error: "f" does not return a value (it only ever returns None)  [func-returns-value]
+   if f():
+        print("not false")
+
+.. _code-abstract:
+
+Check instantiation of abstract classes [abstract]
+--------------------------------------------------
+
+Mypy generates an error if you try to instantiate an abstract base
+class (ABC). An abstract base class is a class with at least one
+abstract method or attribute. (See also :py:mod:`abc` module documentation)
+
+Sometimes a class is made accidentally abstract, often due to an
+unimplemented abstract method. In a case like this you need to provide
+an implementation for the method to make the class concrete
+(non-abstract).
+
+Example:
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+
+    class Persistent(metaclass=ABCMeta):
+        @abstractmethod
+        def save(self) -> None: ...
+
+    class Thing(Persistent):
+        def __init__(self) -> None:
+            ...
+
+        ...  # No "save" method
+
+    # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
+    t = Thing()
+
+.. _code-type-abstract:
+
+Safe handling of abstract type object types [type-abstract]
+-----------------------------------------------------------
+
+Mypy always allows instantiating (calling) type objects typed as ``type[t]``,
+even if it is not known that ``t`` is non-abstract, since it is a common
+pattern to create functions that act as object factories (custom constructors).
+Therefore, to prevent issues described in the above section, when an abstract
+type object is passed where ``type[t]`` is expected, mypy will give an error.
+Example (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+
+   class Config(metaclass=ABCMeta):
+       @abstractmethod
+       def get_value(self, attr: str) -> str: ...
+
+   def make_many[T](typ: type[T], n: int) -> list[T]:
+       return [typ() for _ in range(n)]  # This will raise if typ is abstract
+
+   # Error: Only concrete class can be given where "type[Config]" is expected [type-abstract]
+   make_many(Config, 5)
+
+.. _code-safe-super:
+
+Check that call to an abstract method via super is valid [safe-super]
+---------------------------------------------------------------------
+
+Abstract methods often don't have any default implementation, i.e. their
+bodies are just empty. Calling such methods in subclasses via ``super()``
+will cause runtime errors, so mypy prevents you from doing so:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: ...
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
+                                     # trivial body via super() is unsafe  [safe-super]
+   Sub().foo()  # This will crash at runtime.
+
+Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
+ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
+
+.. _code-valid-newtype:
+
+Check the target of NewType [valid-newtype]
+-------------------------------------------
+
+The target of a :py:class:`~typing.NewType` definition must be a class type. It can't
+be a union type, ``Any``, or various other special types.
+
+You can also get this error if the target has been imported from a
+module whose source mypy cannot find, since any such definitions are
+treated by mypy as values with ``Any`` types. Example:
+
+.. code-block:: python
+
+   from typing import NewType
+
+   # The source for "acme" is not available for mypy
+   from acme import Entity  # type: ignore
+
+   # Error: Argument 2 to NewType(...) must be subclassable (got "Any")  [valid-newtype]
+   UserEntity = NewType('UserEntity', Entity)
+
+To work around the issue, you can either give mypy access to the sources
+for ``acme`` or create a stub file for the module.  See :ref:`ignore-missing-imports`
+for more information.
+
+.. _code-exit-return:
+
+Check the return type of __exit__ [exit-return]
+-----------------------------------------------
+
+If mypy can determine that :py:meth:`__exit__ <object.__exit__>` always returns ``False``, mypy
+checks that the return type is *not* ``bool``.  The boolean value of
+the return type affects which lines mypy thinks are reachable after a
+``with`` statement, since any :py:meth:`__exit__ <object.__exit__>` method that can return
+``True`` may swallow exceptions. An imprecise return type can result
+in mysterious errors reported near ``with`` statements.
+
+To fix this, use either ``typing.Literal[False]`` or
+``None`` as the return type. Returning ``None`` is equivalent to
+returning ``False`` in this context, since both are treated as false
+values.
+
+Example:
+
+.. code-block:: python
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> bool:  # Error
+           print('exit')
+           return False
+
+This produces the following output from mypy:
+
+.. code-block:: text
+
+   example.py:3: error: "bool" is invalid as return type for "__exit__" that always returns False
+   example.py:3: note: Use "typing_extensions.Literal[False]" as the return type or change it to
+       "None"
+   example.py:3: note: If return type of "__exit__" implies that it may return True, the context
+       manager may swallow exceptions
+
+You can use ``Literal[False]`` to fix the error:
+
+.. code-block:: python
+
+   from typing import Literal
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> Literal[False]:  # OK
+           print('exit')
+           return False
+
+You can also use ``None``:
+
+.. code-block:: python
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> None:  # Also OK
+           print('exit')
+
+.. _code-name-match:
+
+Check that naming is consistent [name-match]
+--------------------------------------------
+
+The definition of a named tuple or a TypedDict must be named
+consistently when using the call-based syntax. Example:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    # Error: First argument to namedtuple() should be "Point2D", not "Point"
+    Point2D = NamedTuple("Point", [("x", int), ("y", int)])
+
+.. _code-literal-required:
+
+Check that literal is used where expected [literal-required]
+------------------------------------------------------------
+
+There are some places where only a (string) literal value is expected for
+the purposes of static type checking, for example a ``TypedDict`` key, or
+a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
+will result in an error. Note that in many cases you can also use ``Final``
+or ``Literal`` variables. Example:
+
+.. code-block:: python
+
+   from typing import Final, Literal, TypedDict
+
+   class Point(TypedDict):
+       x: int
+       y: int
+
+   def test(p: Point) -> None:
+       X: Final = "x"
+       p[X]  # OK
+
+       Y: Literal["y"] = "y"
+       p[Y]  # OK
+
+       key = "x"  # Inferred type of key is `str`
+       # Error: TypedDict key must be a string literal;
+       #   expected one of ("x", "y")  [literal-required]
+       p[key]
+
+.. _code-no-overload-impl:
+
+Check that overloaded functions have an implementation [no-overload-impl]
+-------------------------------------------------------------------------
+
+Overloaded functions outside of stub files must be followed by a non overloaded
+implementation.
+
+.. code-block:: python
+
+   from typing import overload
+
+   @overload
+   def func(value: int) -> int:
+       ...
+
+   @overload
+   def func(value: str) -> str:
+       ...
+
+   # presence of required function below is checked
+   def func(value):
+       pass  # actual implementation
+
+.. _code-unused-coroutine:
+
+Check that coroutine return value is used [unused-coroutine]
+------------------------------------------------------------
+
+Mypy ensures that return values of async def functions are not
+ignored, as this is usually a programming error, as the coroutine
+won't be executed at the call site.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   async def g() -> None:
+       f()  # Error: missing await
+       await f()  # OK
+
+You can work around this error by assigning the result to a temporary,
+otherwise unused variable:
+
+.. code-block:: python
+
+       _ = f()  # No error
+
+.. _code-top-level-await:
+
+Warn about top level await expressions [top-level-await]
+--------------------------------------------------------
+
+This error code is separate from the general ``[syntax]`` errors, because in
+some environments (e.g. IPython) a top level ``await`` is allowed. In such
+environments a user may want to use ``--disable-error-code=top-level-await``,
+which allows one to still have errors for other improper uses of ``await``,
+for example:
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   top = await f()  # Error: "await" outside function  [top-level-await]
+
+.. _code-await-not-async:
+
+Warn about await expressions used outside of coroutines [await-not-async]
+-------------------------------------------------------------------------
+
+``await`` must be used inside a coroutine.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   def g() -> None:
+       await f()  # Error: "await" outside coroutine ("async def")  [await-not-async]
+
+.. _code-assert-type:
+
+Check types in assert_type [assert-type]
+=======
 Check for an issue with imports [import]
+>>>>>>> 3a7bdeb82af40a75cfe8e028552616014e5ea0e5
 ----------------------------------------
-.. _error-codes-optional:
 
+The inferred type for an expression passed to ``assert_type`` must match
+the provided type.
+
+.. code-block:: python
+
+   from typing_extensions import assert_type
+
+   assert_type([1], list[int])  # OK
+
+   assert_type([1], list[str])  # Error
+
+.. _code-truthy-function:
+
+Check that function isn't used in boolean context [truthy-function]
+-------------------------------------------------------------------
+
+Functions will always evaluate to true in boolean contexts.
+
+.. code-block:: python
+
+    def f():
+        ...
+
+    if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+        pass
+
+.. _code-str-format:
+
+Check that string formatting/interpolation is type-safe [str-format]
+--------------------------------------------------------------------
+
+Mypy will check that f-strings, ``str.format()`` calls, and ``%`` interpolations
+are valid (when corresponding template is a literal string). This includes
+checking number and types of replacements, for example:
+
+.. code-block:: python
+
+    # Error: Cannot find replacement for positional format specifier 1 [str-format]
+    "{} and {}".format("spam")
+    "{} and {}".format("spam", "eggs")  # OK
+    # Error: Not all arguments converted during string formatting [str-format]
+    "{} and {}".format("spam", "eggs", "cheese")
+
+    # Error: Incompatible types in string interpolation
+    # (expression has type "float", placeholder has type "int") [str-format]
+    "{:d}".format(3.14)
+
+.. _code-str-bytes-safe:
+
+Check for implicit bytes coercions [str-bytes-safe]
+---------------------------------------------------
+
+Warn about cases where a bytes object may be converted to a string in an unexpected manner.
+
+.. code-block:: python
+
+    b = b"abc"
+
+    # Error: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc".
+    # If this is desired behavior, use f"{x!r}" or "{!r}".format(x).
+    # Otherwise, decode the bytes [str-bytes-safe]
+    print(f"The alphabet starts with {b}")
+
+    # Okay
+    print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
+    print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
+.. _code-str-unpack:
+
+Check that ``str`` is not unpacked [str-unpack]
+-----------------------------------------------
+
+It can sometimes be surprising that ``str`` is iterable, especially when unpacking
+in an assignment.
+
+Example:
+
+.. code-block:: python
+
+    def print_dict(d: dict[str, str]) -> int:
+        # We meant to do d.items(), but instead we're unpacking the str keys of d
+
+        # Error: Unpacking a string is disallowed
+        for k, v in d:
+            print(k, v)
+
+.. _code-overload-overlap:
+
+Check that overloaded functions don't overlap [overload-overlap]
+----------------------------------------------------------------
+
+Warn if multiple ``@overload`` variants overlap in potentially unsafe ways.
+This guards against the following situation:
+
+.. code-block:: python
+
+    from typing import overload
+
+    class A: ...
+    class B(A): ...
+
+    @overload
+    def foo(x: B) -> int: ...  # Error: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+    @overload
+    def foo(x: A) -> str: ...
+    def foo(x): ...
+
+    def takes_a(a: A) -> str:
+        return foo(a)
+
+    a: A = B()
+    value = takes_a(a)
+    # mypy will think that value is a str, but it could actually be an int
+    reveal_type(value) # Revealed type is "builtins.str"
+
+
+Note that in cases where you ignore this error, mypy will usually still infer the
+types you expect.
+
+See :ref:`overloading <function-overloading>` for more explanation.
+
+
+.. _code-overload-cannot-match:
+
+Check for overload signatures that cannot match [overload-cannot-match]
+-----------------------------------------------------------------------
+
+Warn if an ``@overload`` variant can never be matched, because an earlier
+overload has a wider signature. For example, this can happen if the two
+overloads accept the same parameters and each parameter on the first overload
+has the same type or a wider type than the corresponding parameter on the second
+overload.
+
+Example:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def process(response1: object, response2: object) -> object:
+        ...
+    @overload
+    def process(response1: int, response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+        ...
+
+    def process(response1: object, response2: object) -> object:
+        return response1 + response2
+
+.. _code-annotation-unchecked:
+
+Notify about an annotation in an unchecked function [annotation-unchecked]
+--------------------------------------------------------------------------
+
+Sometimes a user may accidentally omit an annotation for a function, and mypy
+will not check the body of this function (unless one uses
+:option:`--check-untyped-defs <mypy --check-untyped-defs>` or
+:option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`). To avoid
+such situations go unnoticed, mypy will show a note, if there are any type
+annotations in an unchecked function:
+
+.. code-block:: python
+
+    def test_assignment():  # "-> None" return annotation is missing
+        # Note: By default the bodies of untyped functions are not checked,
+        # consider using --check-untyped-defs [annotation-unchecked]
+        x: int = "no way"
+
+Note that mypy will still exit with return code ``0``, since such behaviour is
+specified by :pep:`484`.
+
+.. _code-prop-decorator:
+
+Decorator preceding property not supported [prop-decorator]
+-----------------------------------------------------------
+
+Mypy does not yet support analysis of decorators that precede the property
+decorator. If the decorator does not preserve the declared type of the property,
+mypy will not infer the correct type for the declaration. If the decorator cannot
+be moved after the ``@property`` decorator, then you must use a type ignore
+comment:
+
+.. code-block:: python
+
+    class MyClass:
+        @special  # type: ignore[prop-decorator]
+        @property
+        def magic(self) -> str:
+            return ""
+
+.. note::
+
+    For backward compatibility, this error code is a subcode of the generic ``[misc]`` code.
+
+.. _code-syntax:
+
+Report syntax errors [syntax]
+-----------------------------
+
+If the code being checked is not syntactically valid, mypy issues a
+syntax error. Most, but not all, syntax errors are *blocking errors*:
+they can't be ignored with a ``# type: ignore`` comment.
+
+.. _code-typeddict-readonly-mutated:
+
+ReadOnly key of a TypedDict is mutated [typeddict-readonly-mutated]
+-------------------------------------------------------------------
+
+Consider this example:
+
+.. code-block:: python
+
+    from datetime import datetime
+    from typing import TypedDict
+    from typing_extensions import ReadOnly
+
+    class User(TypedDict):
+        username: ReadOnly[str]
+        last_active: datetime
+
+    user: User = {'username': 'foobar', 'last_active': datetime.now()}
+    user['last_active'] = datetime.now()  # ok
+    user['username'] = 'other'  # error: ReadOnly TypedDict key "key" TypedDict is mutated  [typeddict-readonly-mutated]
+
+`PEP 705 <https://peps.python.org/pep-0705>`_ specifies
+how ``ReadOnly`` special form works for ``TypedDict`` objects.
+
+.. _code-narrowed-type-not-subtype:
+
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
+
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeIs
+
+    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeIs[str]:  # OK
+        ...
+
+.. _code-maybe-unrecognized-str-typeform:
+
+String appears in a context which expects a TypeForm [maybe-unrecognized-str-typeform]
+--------------------------------------------------------------------------------------
+
+TypeForm literals may contain string annotations:
+
+.. code-block:: python
+
+   typx1: TypeForm = str | None
+   typx2: TypeForm = 'str | None'  # OK
+   typx3: TypeForm = 'str' | None  # OK
+
+However TypeForm literals containing a string annotation can only be recognized
+by mypy in the following locations:
+
+.. code-block:: python
+
+   typx_var: TypeForm = 'str | None'  # assignment r-value
+
+   def func(typx_param: TypeForm) -> TypeForm:
+       return 'str | None'  # returned expression
+
+   func('str | None')  # callable's argument
+
+If you try to use a string annotation in some other location
+which expects a TypeForm, the string value will always be treated as a ``str``
+even if a ``TypeForm`` would be more appropriate and this error code
+will be generated:
+
+.. code-block:: python
+
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   # Error: List item 0 has incompatible type "str"; expected "TypeForm[Any]"  [list-item]
+   list_of_typx: list[TypeForm] = ['str | None', float]
+
+Fix the error by surrounding the entire type with ``TypeForm(...)``:
+
+.. code-block:: python
+
+   list_of_typx: list[TypeForm] = [TypeForm('str | None'), float]  # OK
+
+Similarly, if you try to use a string literal in a location which expects a
+TypeForm, this error code will be generated:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]
+
+Fix the error by adding ``# type: ignore[maybe-unrecognized-str-typeform]``
+to the line with the string literal:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]  # type: ignore[maybe-unrecognized-str-typeform]
+
+.. _code-misc:
+
+Miscellaneous checks [misc]
+---------------------------
+
+Mypy performs numerous other, less commonly failing checks that don't
+have specific error codes. These use the ``misc`` error code. Other
+than being used for multiple unrelated errors, the ``misc`` error code
+is not special. For example, you can ignore all errors in this
+category by using ``# type: ignore[misc]`` comment. Since these errors
+are not expected to be common, it's unlikely that you'll see two
+*different* errors with the ``misc`` code on a single line -- though
+this can certainly happen once in a while.
+
+.. note::
+
+    Future mypy versions will likely add new error codes for some errors
+    that currently use the ``misc`` error code.
 Error codes for optional checks
 -------------------------------
 
