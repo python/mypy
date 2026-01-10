@@ -536,6 +536,18 @@ potentially problematic or redundant in some way.
                 # Error: 'Statement is unreachable' error
                 print(x + "bad")
 
+    Note that unreachable ``pass`` statements are intentionally not
+    reported by this option. This allows ``pass`` to be used as a
+    placeholder during development without triggering an error.
+
+    .. code-block:: python
+
+        def f(x: int) -> None:
+            if x > 0:
+                return
+                pass  # no --warn-unreachable error is reported here
+
+
     To help prevent mypy from generating spurious warnings, the "Statement is
     unreachable" warning will be silenced in exactly two cases:
 
