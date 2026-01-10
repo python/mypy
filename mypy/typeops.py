@@ -8,15 +8,14 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, TypeVar, cast
 
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -64,6 +63,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -208,7 +208,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     fallback=named_type("builtins.function"),
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
-                if allow_cache:
+                if allow_cache and state.strict_optional:
                     info.type_object_type = result
                 return result
 
@@ -230,7 +230,9 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     result = type_object_type_from_function(t, info, method.info, fallback, is_new)
-    if allow_cache:
+    # Only write cached result is strict_optional=True, otherwise we may get
+    # inconsistent behaviour because of union simplification.
+    if allow_cache and state.strict_optional:
         info.type_object_type = result
     return result
 
@@ -317,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -421,27 +423,9 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = []
-        original_type = get_proper_type(original_type)
-        for c in method.items:
-            if isinstance(original_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best effort since bind_self can be called in many
-                # contexts, and doing complete validation might trigger infinite recursion.
-                #
-                # Note that overload item filtering normally happens elsewhere. This is needed
-                # at least during constraint inference.
-                keep = is_valid_self_type_best_effort(c, original_type)
-            else:
-                keep = True
-            if keep:
-                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
-        if len(items) == 0:
-            # If no item matches, returning all items helps avoid some spurious errors
-            items = [
-                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-            ]
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func: CallableType = method
@@ -510,43 +494,6 @@ def bind_self(
     return cast(F, res)
 
 
-def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
-    """Quickly check if self_type might match the self in a callable.
-
-    Avoid performing any complex type operations. This is performance-critical.
-
-    Default to returning True if we don't know (or it would be too expensive).
-    """
-    if (
-        self_type.args
-        and c.arg_types
-        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-        and arg_type.args
-        and self_type.type.fullname != "functools._SingleDispatchCallable"
-    ):
-        if self_type.type is not arg_type.type:
-            # We can't map to supertype, since it could trigger expensive checks for
-            # protocol types, so we consevatively assume this is fine.
-            return True
-
-        # Fast path: no explicit annotation on self
-        if all(
-            (
-                type(arg) is TypeVarType
-                and type(arg.upper_bound) is Instance
-                and arg.upper_bound.type.fullname == "builtins.object"
-            )
-            for arg in arg_type.args
-        ):
-            return True
-
-        from mypy.meet import is_overlapping_types
-
-        return is_overlapping_types(self_type, c.arg_types[0])
-    return True
-
-
 def erase_to_bound(t: Type) -> Type:
     # TODO: use value restrictions to produce a union?
     t = get_proper_type(t)
@@ -554,14 +501,14 @@ def erase_to_bound(t: Type) -> Type:
         return t.upper_bound
     if isinstance(t, TypeType):
         if isinstance(t.item, TypeVarType):
-            return TypeType.make_normalized(t.item.upper_bound)
+            return TypeType.make_normalized(t.item.upper_bound, is_type_form=t.is_type_form)
     return t
 
 
 def callable_corresponding_argument(
     typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
-    """Return the argument a function that corresponds to `model`"""
+    """Return the argument of a function that corresponds to `model`"""
 
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
@@ -575,16 +522,23 @@ def callable_corresponding_argument(
         # taking both *args and **args, or a pair of functions like so:
 
         # def right(a: int = ...) -> None: ...
-        # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        # def left(x: int = ..., /, *, a: int = ...) -> None: ...
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
+            # This is not principled, but prevents a crash. It's weird to have a FormalArgument
+            # that has an UnpackType.
+            and not isinstance(by_name.typ, UnpackType)
+            and not isinstance(by_pos.typ, UnpackType)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
+        return by_name
+
     return by_name if by_name is not None else by_pos
 
 
@@ -718,15 +672,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
-                    tj = get_proper_type(tj)
+                    proper_tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
                     if (
-                        isinstance(tj, Instance)
-                        and tj.last_known_value is not None
+                        isinstance(proper_tj, Instance)
+                        and proper_tj.last_known_value is not None
                         and not (
                             isinstance(proper_ti, Instance)
-                            and tj.last_known_value == proper_ti.last_known_value
+                            and proper_tj.last_known_value == proper_ti.last_known_value
                         )
                     ):
                         continue
@@ -841,9 +795,9 @@ def false_only(t: Type) -> ProperType:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
         elif isinstance(t, Instance):
-            if t.type.is_final or t.type.is_enum:
+            if (t.type.is_final or t.type.is_enum) and state.strict_optional:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, LiteralType) and t.is_enum_literal():
+        elif isinstance(t, LiteralType) and t.is_enum_literal() and state.strict_optional:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
@@ -1051,7 +1005,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1073,21 +1027,22 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
+        # Non-empty enums cannot subclass each other so simply removing duplicates is enough.
         items = [
-            try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in remove_dups(flatten_nested_unions(typ.relevant_items()))
         ]
-        return make_simplified_union(items, contract_literals=False)
+        return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType.make_union(items)
 
     return typ
 
@@ -1165,12 +1120,12 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
 
 class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
-        super().__init__(self._merge)
+        super().__init__()
         self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
+    def strategy(self, items: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
-        for item in iter:
+        for item in items:
             out.extend(item)
         return out
 
@@ -1306,3 +1261,54 @@ def get_protocol_member(
             )
         )
     return subtype
+
+
+def _is_disjoint_base(info: TypeInfo) -> bool:
+    # It either has the @disjoint_base decorator or defines nonempty __slots__.
+    if info.is_disjoint_base:
+        return True
+    if not info.slots:
+        return False
+    own_slots = {
+        slot
+        for slot in info.slots
+        if not any(
+            base_info.type.slots is not None and slot in base_info.type.slots
+            for base_info in info.bases
+        )
+    }
+    return bool(own_slots)
+
+
+def _get_disjoint_base_of(instance: Instance) -> TypeInfo | None:
+    """Returns the disjoint base of the given instance, if it exists."""
+    if _is_disjoint_base(instance.type):
+        return instance.type
+    for base in instance.type.mro:
+        if _is_disjoint_base(base):
+            return base
+    return None
+
+
+def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
+    """Returns whether the given instances can share a disjoint base.
+
+    This means that a child class of these classes can exist at runtime.
+    """
+    # Ignore None disjoint bases (which are `object`).
+    disjoint_bases = [
+        base for instance in instances if (base := _get_disjoint_base_of(instance)) is not None
+    ]
+    if not disjoint_bases:
+        # All are `object`.
+        return True
+
+    candidate = disjoint_bases[0]
+    for base in disjoint_bases[1:]:
+        if candidate.has_base(base.fullname):
+            continue
+        elif base.has_base(candidate.fullname):
+            candidate = base
+        else:
+            return False
+    return True

@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from mypyc.ir.deps import LIBRT_BASE64
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
+    bytes_rprimitive,
     c_int_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    float_rprimitive,
     int_rprimitive,
+    none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (
@@ -24,6 +31,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    method_op,
 )
 
 # Get the 'bool' type object.
@@ -214,7 +222,7 @@ new_slice_op = function_op(
 type_op = function_op(
     name="builtins.type",
     arg_types=[object_rprimitive],
-    c_function_name="PyObject_Type",
+    c_function_name="CPy_TYPE",
     return_type=object_rprimitive,
     error_kind=ERR_NEVER,
 )
@@ -325,4 +333,237 @@ set_immortal_op = custom_primitive_op(
     arg_types=[object_rprimitive],
     return_type=void_rtype,
     error_kind=ERR_NEVER,
+)
+
+write_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.WriteBuffer"]
+read_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.ReadBuffer"]
+
+# ReadBuffer(source)
+function_op(
+    name="librt.internal.ReadBuffer",
+    arg_types=[bytes_rprimitive],
+    return_type=read_buffer_rprimitive,
+    c_function_name="ReadBuffer_internal",
+    error_kind=ERR_MAGIC,
+)
+
+# WriteBuffer()
+function_op(
+    name="librt.internal.WriteBuffer",
+    arg_types=[],
+    return_type=write_buffer_rprimitive,
+    c_function_name="WriteBuffer_internal",
+    error_kind=ERR_MAGIC,
+)
+
+method_op(
+    name="getvalue",
+    arg_types=[write_buffer_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="WriteBuffer_getvalue_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_bool",
+    arg_types=[object_rprimitive, bool_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_bool",
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="read_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_str",
+    arg_types=[object_rprimitive, str_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_str",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="read_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_bytes",
+    arg_types=[object_rprimitive, bytes_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_bytes",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="read_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_float",
+    arg_types=[object_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_float_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_float",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="read_float_internal",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+function_op(
+    name="librt.internal.write_int",
+    arg_types=[object_rprimitive, int_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_int_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_int",
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="read_int_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_tag",
+    arg_types=[object_rprimitive, uint8_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_tag_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_tag",
+    arg_types=[object_rprimitive],
+    return_type=uint8_rprimitive,
+    c_function_name="read_tag_internal",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+function_op(
+    name="librt.internal.cache_version",
+    arg_types=[],
+    return_type=uint8_rprimitive,
+    c_function_name="cache_version_internal",
+    error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.base64.b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+cpyfunction_get_name = function_op(
+    name="CPyFunction_get_name",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_name",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_name = function_op(
+    name="CPyFunction_set_name",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_name",
+    error_kind=ERR_NEG_INT,
+)
+
+cpyfunction_get_code = function_op(
+    name="CPyFunction_get_code",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_code",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_defaults = function_op(
+    name="CPyFunction_get_defaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_defaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_kwdefaults = function_op(
+    name="CPyFunction_get_kwdefaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_kwdefaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_annotations = function_op(
+    name="CPyFunction_get_annotations",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_annotations",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_annotations = function_op(
+    name="CPyFunction_set_annotations",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_annotations",
+    error_kind=ERR_NEG_INT,
 )

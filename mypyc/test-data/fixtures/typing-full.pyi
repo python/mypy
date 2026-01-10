@@ -11,10 +11,10 @@ from abc import abstractmethod, ABCMeta
 class GenericMeta(type): pass
 
 class _SpecialForm:
-    def __getitem__(self, index): ...
+    def __getitem__(self, index: Any) -> Any: ...
 class TypeVar:
-    def __init__(self, name, *args, bound=None): ...
-    def __or__(self, other): ...
+    def __init__(self, name: str, *args: Any, bound: Any = None): ...
+    def __or__(self, other: Any) -> Any: ...
 
 cast = 0
 overload = 0
@@ -32,6 +32,7 @@ Final = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 Callable: _SpecialForm
 Union: _SpecialForm
 Literal: _SpecialForm

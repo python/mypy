@@ -56,6 +56,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RArray,
     RInstance,
     RPrimitive,
@@ -181,7 +182,7 @@ disjoint_types = {
     set_rprimitive.name,
     tuple_rprimitive.name,
     range_rprimitive.name,
-}
+} | set(KNOWN_NATIVE_TYPES)
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:

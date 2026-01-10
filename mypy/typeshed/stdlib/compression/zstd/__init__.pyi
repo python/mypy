@@ -35,6 +35,7 @@ zstd_version_info: Final[tuple[int, int, int]]
 COMPRESSION_LEVEL_DEFAULT: Final = _zstd.ZSTD_CLEVEL_DEFAULT
 
 class FrameInfo:
+    __slots__ = ("decompressed_size", "dictionary_id")
     decompressed_size: int
     dictionary_id: int
     def __init__(self, decompressed_size: int, dictionary_id: int) -> None: ...
@@ -43,9 +44,14 @@ def get_frame_info(frame_buffer: ReadableBuffer) -> FrameInfo: ...
 def train_dict(samples: Iterable[ReadableBuffer], dict_size: int) -> ZstdDict: ...
 def finalize_dict(zstd_dict: ZstdDict, /, samples: Iterable[ReadableBuffer], dict_size: int, level: int) -> ZstdDict: ...
 def compress(
-    data: ReadableBuffer, level: int | None = None, options: Mapping[int, int] | None = None, zstd_dict: ZstdDict | None = None
+    data: ReadableBuffer,
+    level: int | None = None,
+    options: Mapping[int, int] | None = None,
+    zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
 ) -> bytes: ...
-def decompress(data: ReadableBuffer, zstd_dict: ZstdDict | None = None, options: Mapping[int, int] | None = None) -> bytes: ...
+def decompress(
+    data: ReadableBuffer, zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None, options: Mapping[int, int] | None = None
+) -> bytes: ...
 @final
 class CompressionParameter(enum.IntEnum):
     compression_level = _zstd.ZSTD_c_compressionLevel

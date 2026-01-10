@@ -79,8 +79,8 @@ def test_concat() -> None:
     assert type(b1) == bytes
     assert type(b2) == bytes
     assert type(b3) == bytes
-    brr1: bytes = bytearray(3)
-    brr2: bytes = bytearray(range(5))
+    brr1 = bytearray(3)
+    brr2 = bytearray(range(5))
     b4 = b1 + brr1
     assert b4 == b'123\x00\x00\x00'
     assert type(brr1) == bytearray
@@ -94,9 +94,9 @@ def test_concat() -> None:
     b5 = brr2 + b2
     assert b5 == bytearray(b'\x00\x01\x02\x03\x04456')
     assert type(b5) == bytearray
-    b5 = b2 + brr2
-    assert b5 == b'456\x00\x01\x02\x03\x04'
-    assert type(b5) == bytes
+    b6 = b2 + brr2
+    assert b6 == b'456\x00\x01\x02\x03\x04'
+    assert type(b6) == bytes
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')
@@ -134,6 +134,93 @@ def test_ord_bytesarray() -> None:
     with assertRaises(TypeError):
         ord(bytearray(b''))
 
+def test_multiply() -> None:
+    # Use bytes() and int() to avoid constant folding
+    b = b'ab' + bytes()
+    zero = int()
+    one = 1 + zero
+    three = 3 + zero
+    neg_one = -1 + zero
+
+    assert b * zero == b''
+    assert b * one == b'ab'
+    assert b * three == b'ababab'
+    assert b * neg_one == b''
+    assert zero * b == b''
+    assert one * b == b'ab'
+    assert three * b == b'ababab'
+    assert neg_one * b == b''
+
+    # Test with empty bytes
+    empty = bytes()
+    five = 5 + zero
+    assert empty * five == b''
+    assert five * empty == b''
+
+    # Test with single byte
+    single = b'\xff' + bytes()
+    four = 4 + zero
+    assert single * four == b'\xff\xff\xff\xff'
+    assert four * single == b'\xff\xff\xff\xff'
+
+    # Test type preservation
+    two = 2 + zero
+    result = b * two
+    assert type(result) == bytes
+
+def test_translate() -> None:
+    # Identity translation table (fast path - exact bytes)
+    identity = bytes(range(256))
+    b = b'hello world' + bytes()
+    assert b.translate(identity) == b'hello world'
+
+    # ROT13-like translation for lowercase letters
+    table = bytearray(range(256))
+    for i in range(ord('a'), ord('z') + 1):
+        table[i] = ord('a') + (i - ord('a') + 13) % 26
+    table_bytes = bytes(table)
+    assert b'hello'.translate(table_bytes) == b'uryyb'
+    assert (b'abc' + bytes()).translate(table_bytes) == b'nop'
+
+    # Test with special characters
+    assert b'\x00\x01\xff'.translate(identity) == b'\x00\x01\xff'
+
+    # Test with bytearray table (slow path - fallback to Python method)
+    bytearray_table = bytearray(range(256))
+    assert b'hello'.translate(bytearray_table) == b'hello'
+    # Modify bytearray table to uppercase
+    for i in range(ord('a'), ord('z') + 1):
+        bytearray_table[i] = ord('A') + (i - ord('a'))
+    assert b'hello world'.translate(bytearray_table) == b'HELLO WORLD'
+    assert (b'test' + bytes()).translate(bytearray_table) == b'TEST'
+
+    # Test error on wrong table size
+    with assertRaises(ValueError, "translation table must be 256 characters long"):
+        b'test'.translate(b'short')
+    with assertRaises(ValueError, "translation table must be 256 characters long"):
+        b'test'.translate(bytes(100))
+
+def test_startswith() -> None:
+    # Test default behavior
+    test = b'some string'
+    assert test.startswith(b'some')
+    assert test.startswith(b'some string')
+    assert not test.startswith(b'other')
+    assert not test.startswith(b'some string but longer')
+
+    # Test empty cases
+    assert test.startswith(b'')
+    assert b''.startswith(b'')
+    assert not b''.startswith(test)
+
+    # Test bytearray to verify slow paths
+    assert test.startswith(bytearray(b'some'))
+    assert not test.startswith(bytearray(b'other'))
+
+    test2 = bytearray(b'some string')
+    assert test2.startswith(b'some')
+    assert not test2.startswith(b'other')
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
@@ -170,34 +257,56 @@ def test_bytes_slicing() -> None:
 [case testBytearrayBasics]
 from typing import Any
 
+from testutil import assertRaises
+
 def test_basics() -> None:
-    brr1: bytes = bytearray(3)
+    brr0 = bytearray()
+    assert brr0 == bytearray(b'')
+    assert brr0 == b''
+    assert len(brr0) == 0
+    brr1 = bytearray(3)
     assert brr1 == bytearray(b'\x00\x00\x00')
     assert brr1 == b'\x00\x00\x00'
     l = [10, 20, 30, 40]
-    brr2: bytes = bytearray(l)
+    brr2 = bytearray(l)
     assert brr2 == bytearray(b'\n\x14\x1e(')
     assert brr2 == b'\n\x14\x1e('
-    brr3: bytes = bytearray(range(5))
+    brr3 = bytearray(range(5))
     assert brr3 == bytearray(b'\x00\x01\x02\x03\x04')
     assert brr3 == b'\x00\x01\x02\x03\x04'
-    brr4: bytes = bytearray('string', 'utf-8')
+    brr4 = bytearray('string', 'utf-8')
     assert brr4 == bytearray(b'string')
     assert brr4 == b'string'
     assert len(brr1) == 3
     assert len(brr2) == 4
 
-def f(b: bytes) -> bool:
-    return True
+def test_bytearray_type_object() -> None:
+    b = bytearray()
+    assert type(b) is bytearray
+
+def fb(b: bytes) -> str:
+    return "xy"
 
 def test_bytearray_passed_into_bytes() -> None:
-    assert f(bytearray(3))
     brr1: Any = bytearray()
-    assert f(brr1)
+    with assertRaises(TypeError, "bytes object expected; got bytearray"):
+        fb(brr1)
+    with assertRaises(TypeError, "bytes object expected; got bytearray"):
+        b: bytes = brr1
+
+def fba(brr: bytearray) -> str:
+    return "xy"
+
+def test_bytes_passed_into_bytearray() -> None:
+    b: Any = b"foo"
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        fba(b)
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        brr: bytearray = b
 
 [case testBytearraySlicing]
 def test_bytearray_slicing() -> None:
-    b: bytes = bytearray(b'abcdefg')
+    b = bytearray(b'abcdefg')
     zero = int()
     ten = 10 + zero
     two = 2 + zero
@@ -231,7 +340,7 @@ def test_bytearray_slicing() -> None:
 from testutil import assertRaises
 
 def test_bytearray_indexing() -> None:
-    b: bytes = bytearray(b'\xae\x80\xfe\x15')
+    b = bytearray(b'\xae\x80\xfe\x15')
     assert b[0] == 174
     assert b[1] == 128
     assert b[2] == 254
@@ -259,10 +368,6 @@ from a import bytes_subclass
 def test_bytes_join() -> None:
     assert b' '.join([b'a', b'b']) == b'a b'
     assert b' '.join([]) == b''
-
-    x: bytes = bytearray(b' ')
-    assert x.join([b'a', b'b']) == b'a b'
-    assert type(x.join([b'a', b'b'])) == bytearray
 
     y: bytes = bytes_subclass()
     assert y.join([]) == b'spook'
@@ -374,3 +479,30 @@ class subbytearray(bytearray):
 [file userdefinedbytes.py]
 class bytes:
     pass
+
+[case testBytesOptionalEquality]
+from __future__ import annotations
+
+def eq_b_opt_b(x: bytes | None, y: bytes) -> bool:
+    return x == y
+
+def ne_b_b_opt(x: bytes, y: bytes | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    b = b'x'
+    assert eq_b_opt_b(b, b)
+    assert eq_b_opt_b(b + bytes([int()]), b + bytes([int()]))
+
+    assert not eq_b_opt_b(b'x', b'y')
+    assert not eq_b_opt_b(b'y', b'x')
+    assert not eq_b_opt_b(None, b'x')
+
+def test_optional_ne() -> None:
+    b = b'x'
+    assert not ne_b_b_opt(b, b)
+    assert not ne_b_b_opt(b + b'y', b + bytes() + b'y')
+
+    assert ne_b_b_opt(b'x', b'y')
+    assert ne_b_b_opt(b'y', b'x')
+    assert ne_b_b_opt(b'x', None)

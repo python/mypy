@@ -14,8 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final, NamedTuple, NoReturn, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, NamedTuple, NoReturn, TypeAlias as _TypeAlias
 
 import pytest
 
@@ -43,7 +42,7 @@ class DeleteFile(NamedTuple):
     path: str
 
 
-FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
+FileOperation: _TypeAlias = UpdateFile | DeleteFile
 
 
 def _file_arg_to_module(filename: str) -> str:
@@ -315,6 +314,19 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
+
+        if (
+            not [line for line in self.input if line.strip()]
+            and "Empty" not in self.name
+            and not [
+                file
+                for file in self.files
+                # these files are added based on other things
+                if os.path.basename(file[0]) not in ("typing.pyi", "_typeshed.pyi", "builtins.pyi")
+            ]
+        ):
+            raise AssertionError(f"{self.name} is empty.")
+
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
         suite = parent.obj()
@@ -604,6 +616,12 @@ def pytest_addoption(parser: Any) -> None:
         action="store_true",
         default=False,
         help="Update test data to reflect actual output (supported only for certain tests)",
+    )
+    group.addoption(
+        "--mypy-num-workers",
+        type=int,
+        default=0,
+        help="Run tests using multiple worker processes for each test case",
     )
     group.addoption(
         "--save-failures-to",

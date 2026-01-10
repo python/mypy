@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // Misc primitive operations + C helpers
 //
 // These are registered in mypyc.primitives.misc_ops.
@@ -27,12 +29,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        _Py_IDENTIFIER(send);
-        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
-        if (name == NULL) {
-            return NULL;
-        }
-        return PyObject_CallMethodOneArg(iter, name, val);
+        return PyObject_CallMethodOneArg(iter, mypyc_interned_str.send, val);
     }
 }
 
@@ -48,8 +45,6 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 // Signals an error (2) if the an exception should be propagated.
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
 {
-    _Py_IDENTIFIER(close);
-    _Py_IDENTIFIER(throw);
     PyObject *exc_type = (PyObject *)Py_TYPE(CPy_ExcState()->exc_value);
     PyObject *type, *value, *traceback;
     PyObject *_m;
@@ -57,7 +52,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     *outp = NULL;
 
     if (PyErr_GivenExceptionMatches(exc_type, PyExc_GeneratorExit)) {
-        _m = _PyObject_GetAttrId(iter, &PyId_close);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.close_);
         if (_m) {
             res = PyObject_CallNoArgs(_m);
             Py_DECREF(_m);
@@ -70,7 +65,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
             return 2;
         }
     } else {
-        _m = _PyObject_GetAttrId(iter, &PyId_throw);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.throw_);
         if (_m) {
             _CPy_GetExcInfo(&type, &value, &traceback);
             res = PyObject_CallFunctionObjArgs(_m, type, value, traceback, NULL);
@@ -86,6 +81,8 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
                 if (res) {
                     *outp = res;
                     return 1;
+                } else {
+                    return 2;
                 }
             }
         } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -112,7 +109,7 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // manage to work with TypingMeta and its friends.
     if (metaclass == &PyType_Type)
         return true;
-    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
+    PyObject *module = PyObject_GetAttr((PyObject *)metaclass, mypyc_interned_str.__module__);
     if (!module) {
         PyErr_Clear();
         return false;
@@ -227,6 +224,17 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (!name)
         goto error;
 
+    if (template_->tp_doc) {
+        // cpython expects tp_doc to be heap-allocated so convert it here to
+        // avoid segfaults on deallocation.
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *doc = (char *)PyMem_Malloc(size);
+        if (!doc)
+            goto error;
+        memcpy(doc, template_->tp_doc, size);
+        template_->tp_doc = doc;
+    }
+
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
     if (!t)
@@ -236,7 +244,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
            sizeof(PyTypeObject) - sizeof(PyVarObject));
 
     if (bases != orig_bases) {
-        if (PyObject_SetAttrString((PyObject *)t, "__orig_bases__", orig_bases) < 0)
+        if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__orig_bases__, orig_bases) < 0)
             goto error;
     }
 
@@ -279,7 +287,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     // Reject anything that would give us a nontrivial __slots__,
     // because the layout will conflict
-    slots = PyObject_GetAttrString((PyObject *)t, "__slots__");
+    slots = PyObject_GetAttr((PyObject *)t, mypyc_interned_str.__slots__);
     if (slots) {
         // don't fail on an empty __slots__
         int is_true = PyObject_IsTrue(slots);
@@ -292,13 +300,28 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         PyErr_Clear();
     }
 
-    if (PyObject_SetAttrString((PyObject *)t, "__module__", modname) < 0)
+    if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
         goto error;
 
     if (init_subclass((PyTypeObject *)t, NULL))
         goto error;
 
     Py_XDECREF(dummy_class);
+
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *tp_doc = (char *)PyMem_Malloc(size);
+        if (tp_doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+
+        memcpy(tp_doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = tp_doc;
+    }
 
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
@@ -437,7 +460,7 @@ CPyPickle_GetState(PyObject *obj)
 {
     PyObject *attrs = NULL, *state = NULL;
 
-    attrs = PyObject_GetAttrString((PyObject *)Py_TYPE(obj), "__mypyc_attrs__");
+    attrs = PyObject_GetAttr((PyObject *)Py_TYPE(obj), mypyc_interned_str.__mypyc_attrs__);
     if (!attrs) {
         goto fail;
     }
@@ -713,7 +736,7 @@ int CPyStatics_Initialize(PyObject **statics,
 // Call super(type(self), self)
 PyObject *
 CPy_Super(PyObject *builtins, PyObject *self) {
-    PyObject *super_type = PyObject_GetAttrString(builtins, "super");
+    PyObject *super_type = PyObject_GetAttr(builtins, mypyc_interned_str.super);
     if (!super_type)
         return NULL;
     PyObject *result = PyObject_CallFunctionObjArgs(
@@ -724,7 +747,7 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 
 static bool import_single(PyObject *mod_id, PyObject **mod_static,
                           PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
-    if (*mod_static == Py_None) {
+    if (Py_IsNone(*mod_static)) {
         CPyModule *mod = PyImport_Import(mod_id);
         if (mod == NULL) {
             return false;
@@ -849,9 +872,9 @@ PyObject *
 CPy_CallReverseOpMethod(PyObject *left,
                         PyObject *right,
                         const char *op,
-                        _Py_Identifier *method) {
+                        PyObject *method) {
     // Look up reverse method
-    PyObject *m = _PyObject_GetAttrId(right, method);
+    PyObject *m = PyObject_GetAttr(right, method);
     if (m == NULL) {
         // If reverse method not defined, generate TypeError instead AttributeError
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -868,7 +891,7 @@ CPy_CallReverseOpMethod(PyObject *left,
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
                                              PyObject *cls,
                                              PyObject *func) {
-    PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
+    PyObject *registry = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.registry);
     PyObject *register_func = NULL;
     PyObject *typing = NULL;
     PyObject *get_type_hints = NULL;
@@ -881,7 +904,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // passed a class
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
-            register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            register_func = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.register_);
             if (register_func == NULL) goto fail;
             return PyMethod_New(register_func, cls);
         }
@@ -902,7 +925,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         func = cls;
         typing = PyImport_ImportModule("typing");
         if (typing == NULL) goto fail;
-        get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
+        get_type_hints = PyObject_GetAttr(typing, mypyc_interned_str.get_type_hints);
 
         type_hints = PyObject_CallOneArg(get_type_hints, func);
         PyObject *argname;
@@ -923,7 +946,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
     }
 
     // clear the cache so we consider the newly added function when dispatching
-    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    PyObject *dispatch_cache = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.dispatch_cache);
     if (dispatch_cache == NULL) goto fail;
     PyDict_Clear(dispatch_cache);
 
@@ -1029,6 +1052,18 @@ PyObject *CPy_GetANext(PyObject *aiter)
 error:
     return NULL;
 }
+
+#if CPY_3_11_FEATURES
+
+// Return obj.__name__ (specialized to type objects, which are the most common target).
+PyObject *CPy_GetName(PyObject *obj) {
+    if (PyType_Check(obj)) {
+        return PyType_GetName((PyTypeObject *)obj);
+    }
+    return PyObject_GetAttr(obj, mypyc_interned_str.__name__);
+}
+
+#endif
 
 #ifdef MYPYC_LOG_TRACE
 

@@ -410,13 +410,12 @@ class DataclassTransformer:
             for attr in attributes
             if attr.is_in_init
         ]
-        type_vars = [tv for tv in self._cls.type_vars]
         add_method_to_class(
             self._api,
             self._cls,
             "__replace__",
             args=args,
-            return_type=Instance(self._cls.info, type_vars),
+            return_type=fill_typevars(self._cls.info),
         )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
