@@ -1071,6 +1071,14 @@ x: TestType = 42
 y: TestType = 'a'
 z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "int | str")
 
+TA = TypeAliasType("TA", value=int)
+a: TA = 1
+b: TA = 's'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+TA2 = TypeAliasType("TA2", type_params=(), value=int)  # shuffled arguments
+a2: TA2 = 1
+b2: TA2 = 's'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 reveal_type(TestType)  # N: Revealed type is "typing_extensions.TypeAliasType"
 TestType()  # E: "TypeAliasType" not callable
 
