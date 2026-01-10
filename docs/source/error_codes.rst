@@ -357,7 +357,7 @@ The preferred way to annotate the type of `None` is `None`.
 
 .. _code-metaclass:
 
-Check the validity of a class's metaclass [metaclass] 
+Check the validity of a class's metaclass [metaclass]
 -----------------------------------------------------
 
 Mypy checks whether the metaclass of a class is valid. The metaclass
@@ -386,7 +386,7 @@ Example with an error:
 
 .. _code-var-annotated:
 
-Require annotation if variable type is unclear [var-annotated] 
+Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
 
 In some cases mypy can't infer the type of a variable without an
@@ -420,7 +420,7 @@ To address this, we add an explicit annotation:
 
 .. _code-override:
 
-Check validity of overrides [override] 
+Check validity of overrides [override]
 --------------------------------------
 
 Mypy checks that an overridden method or attribute is compatible with
@@ -456,7 +456,7 @@ Example:
 
 .. _code-return:
 
-Check that function returns a value [return] 
+Check that function returns a value [return]
 --------------------------------------------
 
 If a function has a non-``None`` return type, mypy expects that the
@@ -486,7 +486,7 @@ Example:
 
 .. _code-empty-body:
 
-Check that functions don't have empty bodies outside stubs [empty-body] 
+Check that functions don't have empty bodies outside stubs [empty-body]
 -----------------------------------------------------------------------
 
 This error code is similar to the ``[return]`` code but is emitted specifically
@@ -518,7 +518,7 @@ are considered implicitly abstract:
 
 .. _code-return-value:
 
-Check that return value is compatible [return-value] 
+Check that return value is compatible [return-value]
 ----------------------------------------------------
 
 Mypy checks that the returned value is compatible with the type
@@ -534,7 +534,7 @@ Example:
 
 .. _code-assignment:
 
-Check types in assignment statement [assignment] 
+Check types in assignment statement [assignment]
 ------------------------------------------------
 
 Mypy checks that the assigned expression is compatible with the
@@ -558,7 +558,7 @@ Example:
 
 .. _code-method-assign:
 
-Check that assignment target is not a method [method-assign] 
+Check that assignment target is not a method [method-assign]
 ------------------------------------------------------------
 
 In general, assigning to a method on class object or instance (a.k.a.
@@ -589,7 +589,7 @@ so only the second assignment will still generate an error.
 
 .. _code-type-var:
 
-Check type variable values [type-var] 
+Check type variable values [type-var]
 -------------------------------------
 
 Mypy checks that value of a type variable is compatible with a value
@@ -609,7 +609,7 @@ Example (Python 3.12 syntax):
 
 .. _code-operator:
 
-Check uses of various operators [operator] 
+Check uses of various operators [operator]
 ------------------------------------------
 
 Mypy checks that operands support a binary or unary operation, such as
@@ -625,7 +625,7 @@ Example:
 
 .. _code-index:
 
-Check indexing operations [index] 
+Check indexing operations [index]
 ---------------------------------
 
 Mypy checks that the indexed value in indexing operation such as
@@ -648,7 +648,7 @@ Example:
 
 .. _code-list-item:
 
-Check list items [list-item] 
+Check list items [list-item]
 ----------------------------
 
 When constructing a list using ``[item, ...]``, mypy checks that each item
@@ -664,7 +664,7 @@ Example:
 
 .. _code-dict-item:
 
-Check dict items [dict-item] 
+Check dict items [dict-item]
 ----------------------------
 
 When constructing a dictionary using ``{key: value, ...}`` or ``dict(key=value, ...)``,
@@ -680,7 +680,7 @@ Example:
 
 .. _code-typeddict-item:
 
- Check TypedDict items [typeddict-item] 
+ Check TypedDict items [typeddict-item]
 --------------------------------------
 
 When constructing a TypedDict object, mypy checks that each key and value is compatible
@@ -706,7 +706,7 @@ Example:
 
 .. _code-typeddict-unknown-key:
 
- Check TypedDict Keys [typeddict-unknown-key] 
+ Check TypedDict Keys [typeddict-unknown-key]
 ---------------------------------------------
 
 When constructing a TypedDict object, mypy checks whether the
@@ -764,7 +764,7 @@ runtime:
 
 .. _code-has-type:
 
-Check that type of target is known [has-type] 
+Check that type of target is known [has-type]
 ---------------------------------------------
 
 Mypy sometimes generates an error when it hasn't inferred any type for
@@ -805,7 +805,7 @@ the issue:
 
 .. _code-import:
 
-Check for an issue with imports [import] 
+Check for an issue with imports [import]
 ----------------------------------------
 .. _error-codes-optional:
 
