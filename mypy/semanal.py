@@ -4061,7 +4061,11 @@ class SemanticAnalyzer(
         type_params: TypeVarLikeList | None
         all_type_params_names: list[str] | None
         if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
-            rvalue = s.rvalue.args[1]
+            rvalue = (
+                s.rvalue.args[1]
+                if s.rvalue.arg_kinds[1] == ARG_POS
+                else s.rvalue.args[s.rvalue.arg_names.index("value")]
+            )
             pep_695 = True
             type_params, all_type_params_names = self.analyze_type_alias_type_params(s.rvalue)
         else:
@@ -4249,7 +4253,9 @@ class SemanticAnalyzer(
             return False
         if not self.check_typevarlike_name(rvalue, name, rvalue):
             return False
-        if rvalue.arg_kinds.count(ARG_POS) != 2:
+        if rvalue.arg_kinds.count(ARG_POS) != (
+            2 - ("value" in rvalue.arg_names) - ("name" in rvalue.arg_names)
+        ):
             return False
 
         return True
