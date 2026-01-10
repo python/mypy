@@ -1056,11 +1056,7 @@ def test2(x: T2) -> T2:
         reveal_type(x)  # N: Revealed type is "builtins.str"
 
     if False:
-        # This is unreachable, but we don't report an error, unfortunately.
-        # The presence of the TypeVar with values unfortunately currently shuts
-        # down type-checking for this entire function.
-        # TODO: Find a way of removing this limitation
-        reveal_type(x)
+        reveal_type(x)  # E: Statement is unreachable
 
     return x
 
@@ -1074,20 +1070,14 @@ class Test3(Generic[T2]):
             reveal_type(self.x)  # N: Revealed type is "builtins.str"
 
         if False:
-            # Same issue as above
-            reveal_type(self.x)
+            reveal_type(self.x)  # E: Statement is unreachable
 
 
 class Test4(Generic[T3]):
     def __init__(self, x: T3):
-        # https://github.com/python/mypy/issues/9456
-        # On TypeVars with value restrictions, we currently have no way
-        # of checking a statement for all the type expansions.
-        # Thus unreachable warnings are disabled
         if x and False:
             pass
-        # This test should fail after this limitation is removed.
-        if False and x:
+        if False and x:  # E: Right operand of "and" is never evaluated
             pass
 
 [builtins fixtures/isinstancelist.pyi]
