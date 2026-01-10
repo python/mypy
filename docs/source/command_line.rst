@@ -541,10 +541,10 @@ potentially problematic or redundant in some way.
 
     .. code-block:: python
 
-    def f(x: int) -> None:
-        if x > 0:
-            return
-            pass  # no --warn-unreachable error is reported here
+        def f(x: int) -> None:
+            if x > 0:
+                return
+                pass  # no --warn-unreachable error is reported here
 
 
     To help prevent mypy from generating spurious warnings, the "Statement is
