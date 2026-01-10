@@ -28,7 +28,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (PyObject_GetOptionalAttrString(base, "__mro_entries__", &meth) < 0) {
+        if (PyObject_GetOptionalAttr(base, mypyc_interned_str.__mro_entries__, &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -92,7 +92,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
         return -1;
     }
 
-    func = PyObject_GetAttrString(super, "__init_subclass__");
+    func = PyObject_GetAttr(super, mypyc_interned_str.__init_subclass__);
     Py_DECREF(super);
     if (func == NULL) {
         return -1;
