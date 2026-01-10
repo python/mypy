@@ -3961,6 +3961,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"TypedDict({prefix}{s})"
 
     def visit_raw_expression_type(self, t: RawExpressionType, /) -> str:
+        # For bytes literals, the value is already escaped, just add quotes and b prefix
+        if t.base_type_name == "builtins.bytes":
+            # The value is already escaped (e.g., "foo" or "hello\\nworld")
+            # Just add quotes and b prefix
+            return f"b'{t.literal_value}'"
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType, /) -> str:

@@ -2444,6 +2444,16 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
+[case testBytesLiteralType]
+x: Literal[b'foo\xfe\x00']
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    Literal?[b'foo\xfe\x00']))
+
 [case testMetaclass]
 class Foo(metaclass=Bar): pass
 [out]

@@ -703,6 +703,9 @@ def read_type(data: ReadBuffer) -> Type:
             value = read_int(data)
         elif type_name == "builtins.str":
             value = read_str(data)
+        elif type_name == "builtins.bytes":
+            # Bytes literals are serialized as escaped strings
+            value = read_str(data)
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
         raw_type = RawExpressionType(value, type_name)

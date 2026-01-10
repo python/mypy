@@ -1926,3 +1926,21 @@ MypyFile:1(
     TempNode:2(
       Any)
     Literal?[a?, b?, c?]))
+
+[case testLiteralBytesType]
+from typing import Literal
+x: Literal[b"foo"]
+y: Literal[b"hello\nworld", b"\x00\xff"]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  AssignmentStmt:2(
+    NameExpr(x)
+    TempNode:2(
+      Any)
+    Literal?[b'foo'])
+  AssignmentStmt:3(
+    NameExpr(y)
+    TempNode:3(
+      Any)
+    Literal?[b'hello\nworld', b'\x00\xff']))
