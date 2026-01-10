@@ -535,6 +535,7 @@ potentially problematic or redundant in some way.
             else:
                 # Error: 'Statement is unreachable' error
                 print(x + "bad")
+                
     Note that unreachable ``pass`` statements are intentionally not
     reported by this option. This allows ``pass`` to be used as a
     placeholder during development without triggering an error.
