@@ -539,7 +539,7 @@ potentially problematic or redundant in some way.
     reported by this option. This allows ``pass`` to be used as a
     placeholder during development without triggering an error.
 
-    For example::
+    .. code-block:: python
 
     def f(x: int) -> None:
         if x > 0:
