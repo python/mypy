@@ -1213,7 +1213,7 @@ the provided type.
    assert_type([1], list[int])  # OK
 
    assert_type([1], list[str])  # Error
-   
+
 .. _code-truthy-function:
 
 Check that function isn't used in boolean context [truthy-function]
