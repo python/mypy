@@ -2237,3 +2237,13 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695MultipleTypeVarTuplesTypeAlias]
+type TA1[*Ts1, *Ts2] = tuple[*Ts1] | tuple[*Ts2]  # E: Can only use one TypeVarTuple in a type alias
+type TA2[T, *Ts1, *Ts2] = tuple[T, *Ts1, *Ts2]  # E: Can only use one TypeVarTuple in a type alias \
+                                                 # E: More than one variadic Unpack in a type is not allowed
+type TA3[*Ts1, T, *Ts2] = tuple[*Ts1, T, *Ts2]  # E: Can only use one TypeVarTuple in a type alias \
+                                                 # E: More than one variadic Unpack in a type is not allowed
+type TA4[*Ts] = tuple[*Ts]  # OK - single TypeVarTuple is fine
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
