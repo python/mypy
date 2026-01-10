@@ -131,6 +131,7 @@ error codes that you can enable.
 
 Check that attribute exists [attr-defined]
 ------------------------------------------
+
 Mypy checks that an attribute is defined in the target class or module
 when using the dot operator. This applies to both getting and setting
 an attribute. New attributes are defined by assignments in the class
@@ -680,7 +681,7 @@ Example:
 
 .. _code-typeddict-item:
 
- Check TypedDict items [typeddict-item]
+Check TypedDict items [typeddict-item]
 --------------------------------------
 
 When constructing a TypedDict object, mypy checks that each key and value is compatible
@@ -706,8 +707,8 @@ Example:
 
 .. _code-typeddict-unknown-key:
 
- Check TypedDict Keys [typeddict-unknown-key]
----------------------------------------------
+Check TypedDict Keys [typeddict-unknown-key]
+--------------------------------------------
 
 When constructing a TypedDict object, mypy checks whether the
 definition contains unknown keys, to catch invalid keys and
@@ -803,10 +804,14 @@ the issue:
        def set_y(self) -> None:
            self.y: int = self.x  # Added annotation here
 
+.. _code-import:
+
+Check for an issue with imports [import]
+----------------------------------------
+
 Mypy generates an error if it can't resolve an `import` statement.
 This is a parent error code of `import-not-found` and `import-untyped`
 
-<<<<<<< HEAD
 See :ref:`ignore-missing-imports` for how to work around these errors.
 
 .. _code-import-not-found:
@@ -1196,9 +1201,6 @@ Warn about await expressions used outside of coroutines [await-not-async]
 .. _code-assert-type:
 
 Check types in assert_type [assert-type]
-=======
-Check for an issue with imports [import]
->>>>>>> 3a7bdeb82af40a75cfe8e028552616014e5ea0e5
 ----------------------------------------
 
 The inferred type for an expression passed to ``assert_type`` must match
@@ -1521,6 +1523,9 @@ this can certainly happen once in a while.
 
     Future mypy versions will likely add new error codes for some errors
     that currently use the ``misc`` error code.
+
+.. _error-codes-optional:
+
 Error codes for optional checks
 -------------------------------
 
