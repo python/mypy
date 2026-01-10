@@ -141,10 +141,17 @@ class InstanceJoiner:
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
-            result: ProperType = Instance(t.type, args)
+            lkv = t.last_known_value if t.last_known_value == s.last_known_value else None
+            result: ProperType = Instance(t.type, args, last_known_value=lkv)
         elif t.type.bases and is_proper_subtype(
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
         ):
+            result = self.join_instances_via_supertype(t, s)
+        elif s.type.bases and is_proper_subtype(
+            s, t, subtype_context=SubtypeContext(ignore_type_params=True)
+        ):
+            result = self.join_instances_via_supertype(s, t)
+        elif is_subtype(t, s, subtype_context=SubtypeContext(ignore_type_params=True)):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
@@ -626,13 +633,17 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType):
             if t == self.s:
+                # E.g. Literal["x"], Literal["x"] -> Literal["x"]
                 return t
             if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
+            # E.g. Literal["x"], Literal["y"] -> str
             return join_types(self.s.fallback, t.fallback)
         elif isinstance(self.s, Instance) and self.s.last_known_value == t:
-            return t
+            # E.g. Literal["x"], Literal["x"]? -> Literal["x"]?
+            return self.s
         else:
+            # E.g. Literal["x"], Literal["y"]? -> str
             return join_types(self.s, t.fallback)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
