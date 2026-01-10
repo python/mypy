@@ -629,9 +629,24 @@ def read_type(data: ReadBuffer) -> Type:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         args = tuple(read_type(data) for i in range(n))
-        expect_tag(data, LITERAL_NONE)  # TODO
-        expect_tag(data, LITERAL_NONE)  # TODO
-        unbound = UnboundType(name, args)
+        # Read optional original_str_expr
+        t = read_tag(data)
+        if t == LITERAL_NONE:
+            original_str_expr = None
+        elif t == LITERAL_STR:
+            original_str_expr = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for original_str_expr: {t}"
+        # Read optional original_str_fallback
+        t = read_tag(data)
+        if t == LITERAL_NONE:
+            original_str_fallback = None
+        elif t == LITERAL_STR:
+            original_str_fallback = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for original_str_fallback: {t}"
+        unbound = UnboundType(name, args, original_str_expr=original_str_expr,
+                              original_str_fallback=original_str_fallback)
         read_loc(data, unbound)
         expect_end_tag(data)
         return unbound
@@ -642,7 +657,25 @@ def read_type(data: ReadBuffer) -> Type:
         items = [read_type(data) for i in range(n)]
         # Read uses_pep604_syntax flag
         uses_pep604_syntax = read_bool(data)
+        # Read optional original_str_expr
+        t = read_tag(data)
+        if t == LITERAL_NONE:
+            original_str_expr = None
+        elif t == LITERAL_STR:
+            original_str_expr = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for original_str_expr: {t}"
+        # Read optional original_str_fallback
+        t = read_tag(data)
+        if t == LITERAL_NONE:
+            original_str_fallback = None
+        elif t == LITERAL_STR:
+            original_str_fallback = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for original_str_fallback: {t}"
         union = UnionType(items, uses_pep604_syntax=uses_pep604_syntax)
+        union.original_str_expr = original_str_expr
+        union.original_str_fallback = original_str_fallback
         read_loc(data, union)
         expect_end_tag(data)
         return union
@@ -663,11 +696,13 @@ def read_type(data: ReadBuffer) -> Type:
         return ellipsis_type
     elif tag == types.RAW_EXPRESSION_TYPE:
         type_name = read_str(data)
-        value: types.LiteralValue
+        value: types.LiteralValue | str
         if type_name == "builtins.bool":
             value = read_bool(data)
         elif type_name == "builtins.int":
             value = read_int(data)
+        elif type_name == "builtins.str":
+            value = read_str(data)
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
         raw_type = RawExpressionType(value, type_name)

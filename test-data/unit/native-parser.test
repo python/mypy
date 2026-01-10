@@ -1859,3 +1859,70 @@ MypyFile:1(
     TempNode:1(
       Any)
     tuple?[int?, Unpack[Ts?], str?]))
+
+
+[case testLiteralStringType]
+from typing import Literal
+x: Literal["hello"]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  AssignmentStmt:2(
+    NameExpr(x)
+    TempNode:2(
+      Any)
+    Literal?[hello?]))
+
+[case testLiteralStringWithEscapes]
+from typing import Literal
+x: Literal["hello\nworld"]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  AssignmentStmt:2(
+    NameExpr(x)
+    TempNode:2(
+      Any)
+    Literal?['hello\nworld']))
+
+[case testForwardReference]
+x: "int"
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    int?))
+
+[case testForwardReferenceWithUnion]
+x: "int | str"
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    int? | str?))
+
+[case testForwardReferenceWithComplexType]
+x: "list[int]"
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    list?[int?]))
+
+[case testMultipleLiteralStrings]
+from typing import Literal
+x: Literal["a", "b", "c"]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  AssignmentStmt:2(
+    NameExpr(x)
+    TempNode:2(
+      Any)
+    Literal?[a?, b?, c?]))
