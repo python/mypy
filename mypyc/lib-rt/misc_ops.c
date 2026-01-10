@@ -109,7 +109,7 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // manage to work with TypingMeta and its friends.
     if (metaclass == &PyType_Type)
         return true;
-    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
+    PyObject *module = PyObject_GetAttr((PyObject *)metaclass, mypyc_interned_str.__module__);
     if (!module) {
         PyErr_Clear();
         return false;
@@ -244,7 +244,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
            sizeof(PyTypeObject) - sizeof(PyVarObject));
 
     if (bases != orig_bases) {
-        if (PyObject_SetAttrString((PyObject *)t, "__orig_bases__", orig_bases) < 0)
+        if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__orig_bases__, orig_bases) < 0)
             goto error;
     }
 
@@ -287,7 +287,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     // Reject anything that would give us a nontrivial __slots__,
     // because the layout will conflict
-    slots = PyObject_GetAttrString((PyObject *)t, "__slots__");
+    slots = PyObject_GetAttr((PyObject *)t, mypyc_interned_str.__slots__);
     if (slots) {
         // don't fail on an empty __slots__
         int is_true = PyObject_IsTrue(slots);
@@ -300,7 +300,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         PyErr_Clear();
     }
 
-    if (PyObject_SetAttrString((PyObject *)t, "__module__", modname) < 0)
+    if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
         goto error;
 
     if (init_subclass((PyTypeObject *)t, NULL))
@@ -460,7 +460,7 @@ CPyPickle_GetState(PyObject *obj)
 {
     PyObject *attrs = NULL, *state = NULL;
 
-    attrs = PyObject_GetAttrString((PyObject *)Py_TYPE(obj), "__mypyc_attrs__");
+    attrs = PyObject_GetAttr((PyObject *)Py_TYPE(obj), mypyc_interned_str.__mypyc_attrs__);
     if (!attrs) {
         goto fail;
     }
@@ -736,7 +736,7 @@ int CPyStatics_Initialize(PyObject **statics,
 // Call super(type(self), self)
 PyObject *
 CPy_Super(PyObject *builtins, PyObject *self) {
-    PyObject *super_type = PyObject_GetAttrString(builtins, "super");
+    PyObject *super_type = PyObject_GetAttr(builtins, mypyc_interned_str.super);
     if (!super_type)
         return NULL;
     PyObject *result = PyObject_CallFunctionObjArgs(
@@ -891,7 +891,7 @@ CPy_CallReverseOpMethod(PyObject *left,
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
                                              PyObject *cls,
                                              PyObject *func) {
-    PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
+    PyObject *registry = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.registry);
     PyObject *register_func = NULL;
     PyObject *typing = NULL;
     PyObject *get_type_hints = NULL;
@@ -904,7 +904,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // passed a class
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
-            register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            register_func = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.register_);
             if (register_func == NULL) goto fail;
             return PyMethod_New(register_func, cls);
         }
@@ -925,7 +925,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         func = cls;
         typing = PyImport_ImportModule("typing");
         if (typing == NULL) goto fail;
-        get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
+        get_type_hints = PyObject_GetAttr(typing, mypyc_interned_str.get_type_hints);
 
         type_hints = PyObject_CallOneArg(get_type_hints, func);
         PyObject *argname;
@@ -946,7 +946,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
     }
 
     // clear the cache so we consider the newly added function when dispatching
-    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    PyObject *dispatch_cache = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.dispatch_cache);
     if (dispatch_cache == NULL) goto fail;
     PyDict_Clear(dispatch_cache);
 

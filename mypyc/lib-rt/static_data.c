@@ -21,8 +21,13 @@ intern_strings(void) {
         return 0;
     }
     INTERN_STRING(__init_subclass__, "__init_subclass__");
+    INTERN_STRING(__module__, "__module__");
     INTERN_STRING(__mro_entries__, "__mro_entries__");
+    INTERN_STRING(__mypyc_attrs__, "__mypyc_attrs__");
     INTERN_STRING(__name__, "__name__");
+    INTERN_STRING(__orig_bases__, "__orig_bases__");
+    INTERN_STRING(__qualname__, "__qualname__");
+    INTERN_STRING(__slots__, "__slots__");
     INTERN_STRING(__radd__, "__radd__");
     INTERN_STRING(__rsub__, "__rsub__");
     INTERN_STRING(__rmul__, "__rmul__");
@@ -46,12 +51,17 @@ intern_strings(void) {
     INTERN_STRING(clear, "clear");
     INTERN_STRING(close_, "close");
     INTERN_STRING(copy, "copy");
+    INTERN_STRING(dispatch_cache, "dispatch_cache");
+    INTERN_STRING(get_type_hints, "get_type_hints");
     INTERN_STRING(keys, "keys");
     INTERN_STRING(items, "items");
     INTERN_STRING(join, "join");
+    INTERN_STRING(register_, "register");
+    INTERN_STRING(registry, "registry");
     INTERN_STRING(send, "send");
     INTERN_STRING(setdefault, "setdefault");
     INTERN_STRING(startswith, "startswith");
+    INTERN_STRING(super, "super");
     INTERN_STRING(throw_, "throw");
     INTERN_STRING(translate, "translate");
     INTERN_STRING(update, "update");
