@@ -1032,7 +1032,7 @@ else:
     reveal_type(z)  # No output: this branch is unreachable
 [builtins fixtures/bool.pyi]
 
-[case testEnumReachabilityNoNarrowingForUnionMessiness]
+[case testEnumReachabilityNarrowingForUnionMessiness]
 from enum import Enum
 from typing import Literal
 
@@ -1045,17 +1045,16 @@ x: Foo
 y: Literal[Foo.A, Foo.B]
 z: Literal[Foo.B, Foo.C]
 
-# For the sake of simplicity, no narrowing is done when the narrower type is a Union.
 if x is y:
-    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
 
 if y is z:
-    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
-    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"

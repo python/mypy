@@ -12,6 +12,7 @@ class str: pass
 class dict: pass
 class tuple: pass
 class ellipsis: pass
+class list: pass
 
 import sys
 

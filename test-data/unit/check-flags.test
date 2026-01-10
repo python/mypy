@@ -2372,7 +2372,7 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDisableBytearrayPromotion]
-# flags: --disable-bytearray-promotion --strict-equality
+# flags: --disable-bytearray-promotion --strict-equality --warn-unreachable
 def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 f(memoryview(b"asdf"))
