@@ -6734,6 +6734,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and len(type_expr.args) == 1
             ):
                 expr_in_type_expr = type_expr.args[0]
+            elif isinstance(type_expr, MemberExpr) and type_expr.name == "__class__":
+                expr_in_type_expr = type_expr.expr
             else:
                 continue
             for j in expr_indices:
