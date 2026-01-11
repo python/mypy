@@ -32,15 +32,12 @@ copyright = "2012-%Y Jukka Lehtosalo and mypy contributors"
 version = mypy_version.split("-")[0]
 release = mypy_version
 
-exclude_patterns = [
-    "build",
-    "Thumbs.db",
-    ".DS_Store",
-]
+exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output ----------------------------------------------
 
 html_theme = "furo"
+
 
 # --- DYNAMIC BRANCH DETECTION FOR EDIT BUTTON ---
 def get_git_branch():
@@ -48,13 +45,16 @@ def get_git_branch():
         # Check if running on ReadTheDocs
         if os.environ.get("READTHEDOCS") == "True":
             return os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "master")
-        
+
         # Otherwise, get the current branch from git locally
-        return subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"]
-        ).decode("utf-8").strip()
+        return (
+            subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+            .decode("utf-8")
+            .strip()
+        )
     except Exception:
         return "master"
+
 
 current_branch = get_git_branch()
 
@@ -66,7 +66,7 @@ html_theme_options = {
 # ------------------------------------------------
 
 html_logo = "mypy_light.svg"
-# html_static_path = ['_static']
+html_static_path = ["_static"]
 
 rst_prolog = ".. |...| unicode:: U+2026   .. ellipsis\n"
 
@@ -77,6 +77,7 @@ intersphinx_mapping = {
     "monkeytype": ("https://monkeytype.readthedocs.io/en/latest", None),
     "setuptools": ("https://setuptools.pypa.io/en/latest", None),
 }
+
 
 def setup(app: Sphinx) -> None:
     app.add_object_type(
