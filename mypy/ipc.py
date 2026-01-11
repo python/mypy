@@ -13,14 +13,14 @@ import os
 import shutil
 import sys
 import tempfile
+from abc import abstractmethod
 from collections.abc import Callable
 from select import select
 from types import TracebackType
-from typing import Any, Final
+from typing import Final
+from typing_extensions import Self
 
 from librt.internal import ReadBuffer, WriteBuffer
-
-from mypy.cache import read_json, write_json
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -366,29 +366,34 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
     return [connections.index(r) for r in ready]
 
 
-# TODO: switch send() and receive() to proper fixed binary format.
-def send(connection: IPCBase, data: dict[str, Any]) -> None:
+def send(connection: IPCBase, data: IPCMessage) -> None:
     """Send data to a connection encoded and framed.
 
-    The data must be a JSON object. We assume that a single send call is a
+    The data must be a non-abstract IPCMessage. We assume that a single send call is a
     single frame to be sent.
     """
     buf = WriteBuffer()
-    write_json(buf, data)
+    data.write(buf)
     connection.write_bytes(buf.getvalue())
 
 
-def receive(connection: IPCBase) -> dict[str, Any]:
-    """Receive single JSON data frame from a connection.
+def receive(connection: IPCBase) -> ReadBuffer:
+    """Receive single encoded IPCMessage frame from a connection.
 
     Raise OSError if the data received is not valid.
     """
     bdata = connection.read_bytes()
     if not bdata:
         raise OSError("No data received")
-    try:
-        buf = ReadBuffer(bdata)
-        data = read_json(buf)
-    except Exception as e:
-        raise OSError("Data received is not valid JSON dict") from e
-    return data
+    return ReadBuffer(bdata)
+
+
+class IPCMessage:
+    @classmethod
+    @abstractmethod
+    def read(cls, buf: ReadBuffer) -> Self:
+        raise NotImplementedError
+
+    @abstractmethod
+    def write(self, buf: WriteBuffer) -> None:
+        raise NotImplementedError
