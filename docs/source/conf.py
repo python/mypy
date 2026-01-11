@@ -66,7 +66,7 @@ html_theme_options = {
 # ------------------------------------------------
 
 html_logo = "mypy_light.svg"
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 rst_prolog = ".. |...| unicode:: U+2026   .. ellipsis\n"
 
