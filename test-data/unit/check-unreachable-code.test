@@ -1660,3 +1660,10 @@ def x() -> None:
 main:4: error: Statement is unreachable
         if 5:
         ^~~~~
+
+[case testNoFalseUnreachableWithAnyEqualityNarrowing]
+# flags: --warn-unreachable
+from typing import Any, Optional
+def main(contents: Any, commit: Optional[str]) -> None:
+    if contents.get("commit") == commit:
+        reveal_type(commit)  # N: Revealed type is "builtins.str | None"
