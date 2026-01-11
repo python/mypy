@@ -83,8 +83,6 @@ exclude_patterns = [
     "build",
     "Thumbs.db",
     ".DS_Store",
-    "error_code_list.rst",
-    "error_code_list2.rst",
 ]
 
 # The reST default role (used for this markup: `text`) to use for all
