@@ -6726,37 +6726,37 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         else_map = {}  # this is the big difference compared to the above
                         partial_type_maps.append((if_map, else_map))
 
-        exprs_in_type_calls = []
         for i in expr_indices:
-            expr = operands[i]
-            if isinstance(expr, CallExpr) and is_type_call(expr):
-                exprs_in_type_calls.append(expr.args[0])
+            type_expr = operands[i]
+            if (
+                isinstance(type_expr, CallExpr)
+                and refers_to_fullname(type_expr.callee, "builtins.type")
+                and len(type_expr.args) == 1
+            ):
+                expr_in_type_expr = type_expr.args[0]
+            else:
+                continue
+            for j in expr_indices:
+                if i == j:
+                    continue
+                expr = operands[j]
 
-        if exprs_in_type_calls:
-            for expr_in_type_call in exprs_in_type_calls:
-                for i in expr_indices:
-                    expr = operands[i]
-                    if isinstance(expr, CallExpr) and is_type_call(expr):
-                        continue
+                current_type_range = self.get_isinstance_type(expr)
+                if_map, else_map = conditional_types_to_typemaps(
+                    expr_in_type_expr,
+                    *self.conditional_types_with_intersection(
+                        self.lookup_type(expr_in_type_expr), current_type_range, expr_in_type_expr
+                    ),
+                )
 
-                    current_type_range = self.get_isinstance_type(expr)
-                    if_map, else_map = conditional_types_to_typemaps(
-                        expr_in_type_call,
-                        *self.conditional_types_with_intersection(
-                            self.lookup_type(expr_in_type_call),
-                            current_type_range,
-                            expr_in_type_call,
-                        ),
-                    )
-
-                    is_final = (
-                        expr.node.is_final
-                        if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo)
-                        else False
-                    )
-                    if not is_final:
-                        else_map = {}
-                    partial_type_maps.append((if_map, else_map))
+                is_final = (
+                    expr.node.is_final
+                    if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo)
+                    else False
+                )
+                if not is_final:
+                    else_map = {}
+                partial_type_maps.append((if_map, else_map))
 
         # We will not have duplicate entries in our type maps if we only have two operands,
         # so we can skip running meets on the intersections
@@ -8560,11 +8560,6 @@ def has_custom_eq_checks(t: Type) -> bool:
             and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS
         )
     )
-
-
-def is_type_call(expr: CallExpr) -> bool:
-    """Is expr a call to type with one argument?"""
-    return refers_to_fullname(expr.callee, "builtins.type") and len(expr.args) == 1
 
 
 def convert_to_typetype(type_map: TypeMap) -> TypeMap:
