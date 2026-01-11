@@ -1,6 +1,7 @@
 # Read the Docs configuration file
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-
+# Documentation on Read the Docs is intended to be built from released
+# git tags to support versioned documentation.
 version: 2
 
 build:
