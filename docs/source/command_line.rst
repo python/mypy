@@ -562,7 +562,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --deprecated-calls-exclude
 
-    This flag allows one to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    This flag allows one to selectively disable :ref:`deprecated <code-deprecated>` warnings
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
 

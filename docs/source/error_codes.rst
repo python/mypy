@@ -113,7 +113,7 @@ Requiring error codes
 ---------------------
 
 It's possible to require error codes be specified in ``type: ignore`` comments.
-See :ref:`ignore-without-code<code-ignore-without-code>` for more information.
+See :ref:`ignore-without-code <code-ignore-without-code>` for more information.
 
 .. _error-code-list:
 
