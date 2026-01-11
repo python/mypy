@@ -1639,6 +1639,20 @@ class C:
             return NotImplemented
 [builtins fixtures/isinstance.pyi]
 
+[case testIgnoreReturningNotImplementedSimple]
+# flags: --warn-unreachable
+-- This behavior may or may not actually be desirable.
+-- This test just serves to document mypy's current behavior.
+-- And mypy's handling of NotImplemented has long been known
+-- to be suboptimal, eg https://github.com/python/mypy/issues/363.
+-- If you change this behavior, please change the corresponding docs
+-- https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-warn-unreachable
+def foo() -> None:
+    return None
+    return NotImplemented #no error
+    return None # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
 [case testPassAndEllipsisUnreachable]
 # flags: --warn-unreachable
 def f() -> None:

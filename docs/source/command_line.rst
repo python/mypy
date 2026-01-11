@@ -537,13 +537,15 @@ potentially problematic or redundant in some way.
                 print(x + "bad")
 
     To help prevent mypy from generating spurious warnings, the "Statement is
-    unreachable" warning will be silenced in exactly two cases:
+    unreachable" warning will be silenced in exactly three cases:
 
     1.  When the unreachable statement is a ``raise`` statement, is an
         ``assert False`` statement, or calls a function that has the :py:data:`~typing.NoReturn`
         return type hint. In other words, when the unreachable statement
         throws an error or terminates the program in some way.
-    2.  When the unreachable statement was *intentionally* marked as unreachable
+    2.  When the unreachable statement is ``return NotImplemented``. This
+        is allowed by mypy due to its use in operator overloading.
+    3.  When the unreachable statement was *intentionally* marked as unreachable
         using :ref:`version_and_platform_checks`.
 
     .. note::
