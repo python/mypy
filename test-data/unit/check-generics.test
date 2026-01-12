@@ -3625,14 +3625,21 @@ t2.foo = [1]  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
 
 [case testMissingTypeArgsInApplication]
 from typing import Generic
-from typing_extensions import Unpack, TypeVarTuple
+from typing_extensions import Unpack, TypeVarTuple, ParamSpec
 
 Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
 
-class CanHaveZero(Generic[Unpack[Ts]]): ...
+class CanHaveZero1(Generic[Unpack[Ts]]): ...
+class CanHaveZero2(Generic[P]): ...
 
-ok1: CanHaveZero[()]
-ok2: tuple[()]
+ok1: CanHaveZero1[()]
+ok2: CanHaveZero2[()]
+ok3: tuple[()]
+
+reveal_type(ok1)  # N: Revealed type is "__main__.CanHaveZero1[()]"
+reveal_type(ok2)  # N: Revealed type is "__main__.CanHaveZero2[[]]"
+reveal_type(ok3)  # N: Revealed type is "tuple[()]"
 
 bad1: list[()] = []  # E: "list" expects 1 type argument, but none given
 [builtins fixtures/tuple.pyi]
@@ -3640,15 +3647,23 @@ bad1: list[()] = []  # E: "list" expects 1 type argument, but none given
 [case testMissingTypeArgsInApplicationStrict]
 # flags: --strict
 from typing import Generic
-from typing_extensions import Unpack, TypeVarTuple
+from typing_extensions import Unpack, TypeVarTuple, ParamSpec
 
 Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
 
-class CanHaveZero(Generic[Unpack[Ts]]): ...
+class CanHaveZero1(Generic[Unpack[Ts]]): ...
+class CanHaveZero2(Generic[P]): ...
 
-ok1: CanHaveZero[()]
-ok2: tuple[()]
+ok1: CanHaveZero1[()]
+ok2: CanHaveZero2[()]
+ok3: tuple[()]
+
+reveal_type(ok1)  # N: Revealed type is "__main__.CanHaveZero1[()]"
+reveal_type(ok2)  # N: Revealed type is "__main__.CanHaveZero2[[]]"
+reveal_type(ok3)  # N: Revealed type is "tuple[()]"
 
 bad1: list[()] = []  # E: "list" expects 1 type argument, but none given \
                      # E: Missing type arguments for generic type "list"
+
 [builtins fixtures/tuple.pyi]
