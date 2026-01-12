@@ -3622,3 +3622,33 @@ t2.foo = [B()]
 t2.foo = [C()]
 t2.foo = [1]  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
 [builtins fixtures/property.pyi]
+
+[case testMissingTypeArgsInApplication]
+from typing import Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+class CanHaveZero(Generic[Unpack[Ts]]): ...
+
+ok1: CanHaveZero[()]
+ok2: tuple[()]
+
+bad1: list[()] = []  # E: "list" expects 1 type argument, but none given
+[builtins fixtures/tuple.pyi]
+
+[case testMissingTypeArgsInApplicationStrict]
+# flags: --strict
+from typing import Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+class CanHaveZero(Generic[Unpack[Ts]]): ...
+
+ok1: CanHaveZero[()]
+ok2: tuple[()]
+
+bad1: list[()] = []  # E: "list" expects 1 type argument, but none given \
+                     # E: Missing type arguments for generic type "list"
+[builtins fixtures/tuple.pyi]
