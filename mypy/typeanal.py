@@ -2533,7 +2533,9 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         arg_count = len(t.args)
         min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
         max_tv_count = len(t.type.type_vars)
-        if arg_count and (arg_count < min_tv_count or arg_count > max_tv_count):
+        if (arg_count or empty_tuple_index) and (
+            arg_count < min_tv_count or arg_count > max_tv_count
+        ):
             fail(
                 wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),
                 t,
