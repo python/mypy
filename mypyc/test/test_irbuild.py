@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os.path
-import sys
 
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -53,10 +52,11 @@ files = [
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
     "irbuild-math.test",
+    "irbuild-weakref.test",
+    "irbuild-librt-strings.test",
+    "irbuild-base64.test",
+    "irbuild-match.test",
 ]
-
-if sys.version_info >= (3, 10):
-    files.append("irbuild-match.test")
 
 
 class TestGenOps(MypycDataSuite):
@@ -69,6 +69,9 @@ class TestGenOps(MypycDataSuite):
         options = infer_ir_build_options_from_test_name(testcase.name)
         if options is None:
             # Skipped test case
+            return
+        if "_withgil" in testcase.name and IS_FREE_THREADED:
+            # Test case should only run on a non-free-threaded build.
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)

@@ -7,8 +7,9 @@ requires = [
     # the following is from mypy-requirements.txt/setup.py
     "typing_extensions>=4.6.0",
     "mypy_extensions>=1.0.0",
-    "pathspec>=0.9.0",
+    "pathspec>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
+    "librt>=0.6.2; platform_python_implementation != 'PyPy'",
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
@@ -37,7 +38,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -46,13 +46,14 @@ classifiers = [
   "Topic :: Software Development",
   "Typing :: Typed",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   # When changing this, also update build-system.requires and mypy-requirements.txt
   "typing_extensions>=4.6.0",
   "mypy_extensions>=1.0.0",
-  "pathspec>=0.9.0",
+  "pathspec>=1.0.0",
   "tomli>=1.1.0; python_version<'3.11'",
+  "librt>=0.6.2; platform_python_implementation != 'PyPy'",
 ]
 dynamic = ["version"]
 
@@ -105,7 +106,7 @@ mypyc = [
 
 [tool.black]
 line-length = 99
-target-version = ["py39", "py310", "py311", "py312", "py313"]
+target-version = ["py310", "py311", "py312", "py313", "py314"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|
@@ -115,7 +116,7 @@ force-exclude = '''
 
 [tool.ruff]
 line-length = 99
-target-version = "py39"
+target-version = "py310"
 fix = true
 
 extend-exclude = [
@@ -159,6 +160,7 @@ ignore = [
   "B007",  # Loop control variable not used within the loop body.
   "B011",  # Don't use assert False
   "B023",  # Function definition does not bind loop variable
+  "B905",  # zip-without-explicit-strict
   "E2",    # conflicts with black
   "E402",  # module level import not at top of file
   "E501",  # conflicts with black
@@ -221,6 +223,11 @@ addopts = "-nauto --strict-markers --strict-config"
 
 # treat xpasses as test failures so they get converted to regular tests as soon as possible
 xfail_strict = true
+
+# Force warnings as errors
+filterwarnings = [
+  "error",
+]
 
 [tool.coverage.run]
 branch = true

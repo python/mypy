@@ -2,7 +2,8 @@ import sys
 from _bz2 import BZ2Compressor as BZ2Compressor, BZ2Decompressor as BZ2Decompressor
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Iterable
-from typing import IO, Literal, Protocol, SupportsIndex, TextIO, overload
+from io import TextIOWrapper
+from typing import IO, Literal, Protocol, SupportsIndex, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 14):
@@ -15,8 +16,10 @@ __all__ = ["BZ2File", "BZ2Compressor", "BZ2Decompressor", "open", "compress", "d
 # The following attributes and methods are optional:
 # def fileno(self) -> int: ...
 # def close(self) -> object: ...
+@type_check_only
 class _ReadableFileobj(_Reader, Protocol): ...
 
+@type_check_only
 class _WritableFileobj(Protocol):
     def write(self, b: bytes, /) -> object: ...
     # The following attributes and methods are optional:
@@ -48,7 +51,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: _WritableFileobj,
@@ -66,7 +69,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath,
@@ -84,7 +87,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
@@ -93,7 +96,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> BZ2File | TextIO: ...
+) -> BZ2File | TextIOWrapper: ...
 
 class BZ2File(BaseStream, IO[bytes]):
     def __enter__(self) -> Self: ...

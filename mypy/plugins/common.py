@@ -360,7 +360,7 @@ def _add_method_by_spec(
 
     signature = CallableType(arg_types, arg_kinds, arg_names, return_type, function_type)
     if tvar_defs:
-        signature.variables = tvar_defs
+        signature.variables = tuple(tvar_defs)
 
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info

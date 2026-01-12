@@ -11,11 +11,30 @@ match m:
 -- Literal Pattern --
 
 [case testMatchLiteralPatternNarrows]
+# flags: --warn-unreachable
 m: object
 
 match m:
     case 1:
         reveal_type(m)  # N: Revealed type is "Literal[1]"
+    case 2:
+        reveal_type(m)  # N: Revealed type is "Literal[2]"
+    case other:
+        reveal_type(other)  # N: Revealed type is "builtins.object"
+
+[case testMatchLiteralPatternNarrows2]
+# flags: --warn-unreachable
+from typing import Any
+
+m: Any
+
+match m:
+    case 1:
+        reveal_type(m)  # N: Revealed type is "Any"
+    case 2:
+        reveal_type(m)  # N: Revealed type is "Any"
+    case other:
+        reveal_type(other)  # N: Revealed type is "Any"
 
 [case testMatchLiteralPatternAlreadyNarrower-skip]
 m: bool
@@ -42,7 +61,7 @@ m: object
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # N: Revealed type is "builtins.object"
 [file b.py]
 b: int
 
@@ -64,7 +83,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "b.B">"
+        reveal_type(m)  # N: Revealed type is "__main__.A"
 [file b.py]
 class B: ...
 b: B
@@ -77,7 +96,7 @@ m: int
 
 match m:
     case b.b:
-        reveal_type(m)
+        reveal_type(m)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -292,7 +311,7 @@ m: Tuple[int, str, float, bool]
 match m:
     case [a, *b, c]:
         reveal_type(a)  # N: Revealed type is "builtins.int"
-        reveal_type(b)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.float]]"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str | builtins.float]"
         reveal_type(c)  # N: Revealed type is "builtins.bool"
         reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
 [builtins fixtures/list.pyi]
@@ -721,13 +740,14 @@ m: object
 match m:
     case xyz(y):  # E: Name "xyz" is not defined
         reveal_type(m)  # N: Revealed type is "Any"
-        reveal_type(y)  # E: Cannot determine type of "y" \
-                        # N: Revealed type is "Any"
+        reveal_type(y)  # N: Revealed type is "Any"
 
 match m:
     case xyz(z=x):  # E: Name "xyz" is not defined
-        reveal_type(x)  # E: Cannot determine type of "x" \
-                        # N: Revealed type is "Any"
+        reveal_type(x)  # N: Revealed type is "Any"
+    case (xyz1() as n) | (xyz2(attr=n)):  # E: Name "xyz1" is not defined \
+                                          # E: Name "xyz2" is not defined
+        reveal_type(n)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureDataclass]
 from dataclasses import dataclass
@@ -1002,14 +1022,23 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]
+from typing import Any
 class A: ...
 
 m: object
+n: Any
 
 match m:
     case A(a=j):  # E: Class "__main__.A" has no attribute "a"
         reveal_type(m)  # N: Revealed type is "__main__.A"
         reveal_type(j)  # N: Revealed type is "Any"
+
+match n:
+    # Matching against object should not emit an error for non-existing keys
+    case object(a=k):
+        reveal_type(n)  # N: Revealed type is "builtins.object"
+        reveal_type(n.a)  # N: Revealed type is "Any"
+        reveal_type(k)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternDuplicateKeyword]
 class A:
@@ -1068,6 +1097,143 @@ m: object
 match m:
     case Foo():
         pass
+
+[case testMatchClassPatternCallable]
+# flags: --warn-unreachable
+from typing import Callable, Any
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_any(x: Any) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+        case other:
+            reveal_type(other)  # N: Revealed type is "Any"
+
+def test_object(x: object) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[case testMatchClassPatternCallbackProtocol]
+# flags: --warn-unreachable
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class FnProto(Protocol):
+    def __call__(self, x: int, /) -> object: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_any(x: Any) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+        case other:
+            reveal_type(other)  # N: Revealed type is "Any"
+
+def test_object(x: object) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchClassPatternAnyCallableProtocol]
+# flags: --warn-unreachable
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class AnyCallable(Protocol):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.AnyCallable"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[builtins fixtures/dict.pyi]
+
+
+[case testMatchClassPatternProtocol]
+from typing import Any
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class Proto(Protocol):
+    def foo(self, x: int, /) -> object: ...
+
+class Impl:
+    def foo(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Proto"
+
+def test_impl(x: Impl) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Impl"
+
+[builtins fixtures/dict.pyi]
+
 
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
@@ -1172,7 +1338,7 @@ m: object
 
 match m:
     case 1 | 2 as n:
-        reveal_type(n)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
+        reveal_type(n)  # N: Revealed type is "Literal[1] | Literal[2]"
 
 [case testMatchAsPatternAlreadyNarrower]
 m: bool
@@ -1188,29 +1354,29 @@ m: object
 
 match m:
     case 1 | 2:
-        reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
 
 [case testMatchOrPatternNarrowsStr]
 m: object
 
 match m:
     case "foo" | "bar":
-        reveal_type(m)  # N: Revealed type is "Union[Literal['foo'], Literal['bar']]"
+        reveal_type(m)  # N: Revealed type is "Literal['foo'] | Literal['bar']"
 
 [case testMatchOrPatternNarrowsUnion]
 m: object
 
 match m:
     case 1 | "foo":
-        reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal['foo']]"
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal['foo']"
 
-[case testMatchOrPatterCapturesMissing]
+[case testMatchOrPatternCapturesMissing]
 from typing import List
 m: List[int]
 
 match m:
     case [x, y] | list(x):  # E: Alternative patterns bind different names
-        reveal_type(x)  # N: Revealed type is "builtins.object"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
         reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
@@ -1219,7 +1385,7 @@ m: object
 
 match m:
     case list(x) | dict(x):
-        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+        reveal_type(x)  # N: Revealed type is "builtins.list[Any] | builtins.dict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
 -- Interactions --
@@ -1233,7 +1399,7 @@ match m:
     case str(x):
         reveal_type(x)  # N: Revealed type is "builtins.str"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testMatchCapturePatternMultipleCaptures]
 from typing import Iterable
@@ -1297,12 +1463,12 @@ def main() -> None:
             match func2(True):
                 case c:
                     reveal_type(a)  # N: Revealed type is "builtins.str"
-                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+                    reveal_type(c)  # N: Revealed type is "builtins.bytes | builtins.int"
             reveal_type(a)  # N: Revealed type is "builtins.str"
         case a:
             reveal_type(a)  # N: Revealed type is "builtins.int"
 
-[case testMatchCapturePatternFromAsyncFunctionReturningUnion-xfail]
+[case testMatchCapturePatternFromAsyncFunctionReturningUnion]
 async def func1(arg: bool) -> str | int: ...
 async def func2(arg: bool) -> bytes | int: ...
 
@@ -1312,7 +1478,7 @@ async def main() -> None:
             match await func2(True):
                 case c:
                     reveal_type(a)  # N: Revealed type is "builtins.str"
-                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+                    reveal_type(c)  # N: Revealed type is "builtins.bytes | builtins.int"
             reveal_type(a)  # N: Revealed type is "builtins.str"
         case a:
             reveal_type(a)  # N: Revealed type is "builtins.int"
@@ -1383,6 +1549,16 @@ match m:
         reveal_type(a)
 [builtins fixtures/isinstancelist.pyi]
 
+[case testMatchSubjectAssignExprWithGuard]
+from typing import Optional
+def func() -> Optional[str]: ...
+
+match m := func():
+    case _ if not m:
+        reveal_type(m)  # N: Revealed type is "Literal[''] | None"
+    case _:
+        reveal_type(m)  # N: Revealed type is "builtins.str"
+
 -- Exhaustiveness --
 
 [case testMatchUnionNegativeNarrowing]
@@ -1405,8 +1581,8 @@ m: Union[str, bytes, int]
 
 match m:
     case str(a) | bytes(a):
-        reveal_type(a)  # N: Revealed type is "builtins.object"
-        reveal_type(m)  # N: Revealed type is "Union[builtins.str, builtins.bytes]"
+        reveal_type(a)  # N: Revealed type is "builtins.str | builtins.bytes"
+        reveal_type(m)  # N: Revealed type is "builtins.str | builtins.bytes"
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
@@ -1513,7 +1689,7 @@ match m1:
     case [int()]:
         reveal_type(m1)  # N: Revealed type is "typing.Sequence[builtins.int]"
     case r:
-        reveal_type(m1)  # N: Revealed type is "typing.Sequence[Union[builtins.int, builtins.str]]"
+        reveal_type(m1)  # N: Revealed type is "typing.Sequence[builtins.int | builtins.str]"
 
 m2: Tuple[int | str]
 
@@ -1529,7 +1705,7 @@ match m3:
     case (1,):
         reveal_type(m3)  # N: Revealed type is "tuple[Literal[1]]"
     case r2:
-        reveal_type(m3)  # N: Revealed type is "tuple[Union[builtins.int, builtins.str]]"
+        reveal_type(m3)  # N: Revealed type is "tuple[builtins.int | builtins.str]"
 
 m4: Tuple[Literal[1], int]
 
@@ -1545,9 +1721,9 @@ m5: Tuple[Literal[1, 2], Literal["a", "b"]]
 
 match m5:
     case (1, str()):
-        reveal_type(m5)  # N: Revealed type is "tuple[Literal[1], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m5)  # N: Revealed type is "tuple[Literal[1], Literal['a'] | Literal['b']]"
     case _:
-        reveal_type(m5)  # N: Revealed type is "tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m5)  # N: Revealed type is "tuple[Literal[2], Literal['a'] | Literal['b']]"
 
 m6: Tuple[Literal[1, 2], Literal["a", "b"]]
 
@@ -1555,7 +1731,7 @@ match m6:
     case (1, "a"):
         reveal_type(m6)  # N: Revealed type is "tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m6)  # N: Revealed type is "tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m6)  # N: Revealed type is "tuple[Literal[1] | Literal[2], Literal['a'] | Literal['b']]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1566,14 +1742,15 @@ from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
 
 class Medal(Enum):
-    gold = 1
+    GOLD = 1
 
 def f(m: Medal) -> None:
     always_assigned: int | None = None
     match m:
-        case Medal.gold:
+        case Medal.GOLD:
             always_assigned = 1
-            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
 
@@ -1593,7 +1770,7 @@ def f(m: Medal) -> int:
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
             return 0
         case _:
-            reveal_type(m)  # N: Revealed type is "Union[Literal[__main__.Medal.silver], Literal[__main__.Medal.bronze]]"
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver] | Literal[__main__.Medal.bronze]"
             return 1
 
 def g(m: Medal) -> int:
@@ -1609,6 +1786,34 @@ def g(m: Medal) -> int:
             return 2
 [builtins fixtures/enum.pyi]
 
+[case testMatchLiteralOrValuePattern]
+# flags: --warn-unreachable
+from typing import Literal
+
+def test1(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1:
+            reveal_type(x)  # N: Revealed type is "Literal[1]"
+        case other:
+            reveal_type(x)  # N: Revealed type is "Literal[2] | Literal[3]"
+
+def test2(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1:
+            reveal_type(x)  # N: Revealed type is "Literal[1]"
+        case 2:
+            reveal_type(x)  # N: Revealed type is "Literal[2]"
+        case 3:
+            reveal_type(x)  # N: Revealed type is "Literal[3]"
+        case other:
+            1  # E: Statement is unreachable
+
+def test3(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1 | 3:
+            reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[3]"
+        case other:
+            reveal_type(x)  # N: Revealed type is "Literal[2]"
 
 [case testMatchLiteralPatternEnumWithTypedAttribute]
 from enum import Enum
@@ -1757,8 +1962,24 @@ def union(x: str | bool) -> None:
     match x:
         case True:
             return
-    reveal_type(x)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+    reveal_type(x)  # N: Revealed type is "builtins.str | Literal[False]"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchNarrowDownUnionUsingClassPattern]
+
+class Foo: ...
+class Bar(Foo): ...
+
+def test_1(bar: Bar) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
+def test_2(bar: Bar | str) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
 
 [case testMatchAssertFalseToSilenceFalsePositives]
 class C:
@@ -1828,7 +2049,7 @@ def f(x: int | str | None) -> None:
             case str():
                 break
         reveal_type(x)  # N: Revealed type is "None"
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | None"
 
 [case testMatchNarrowDownWithStarred-skip]
 from typing import List
@@ -1963,9 +2184,9 @@ var: tuple[int, int] | tuple[str, str]
 # TODO: we can infer better here.
 match var:
     case (42, a):
-        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
     case ("yes", b):
-        reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(b)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
@@ -2179,9 +2400,11 @@ def f() -> None:
     match x := returns_a_or_none():
         case A():
             reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "__main__.A | None"
     match x := returns_a():
         case A():
             reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "__main__.A"
     y = returns_a_or_none()
     match y:
         case A():
@@ -2194,7 +2417,7 @@ def match_stmt_error1(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+        return x  # E: Incompatible return value type (got "str | None", expected "str")
     match object():
         case str(x):
             pass
@@ -2216,7 +2439,7 @@ def match_stmt_error2(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+        return x  # E: Incompatible return value type (got "str | None", expected "str")
     match [None]:
         case [x]:
             pass
@@ -2226,7 +2449,7 @@ def match_stmt_error3(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+        return x  # E: Incompatible return value type (got "str | None", expected "str")
     match {'a': None}:
         case {'a': x}:
             pass
@@ -2236,7 +2459,7 @@ def match_stmt_error4(x: Optional[list[str]]) -> None:
     if x is None:
         x = ["a"]
     def nested() -> list[str]:
-        return x  # E: Incompatible return value type (got "Optional[list[str]]", expected "list[str]")
+        return x  # E: Incompatible return value type (got "list[str] | None", expected "list[str]")
     match ["a"]:
         case [*x]:
             pass
@@ -2249,7 +2472,7 @@ def match_stmt_error5(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+        return x  # E: Incompatible return value type (got "str | None", expected "str")
     match C():
         case C(a=x):
             pass
@@ -2339,7 +2562,7 @@ def f4(e: int | str | bytes) -> int:
             return 0  # E: Statement is unreachable
         case x if isinstance(x, str):
             return 0
-    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
+    reveal_type(e)  # N: Revealed type is "builtins.int | builtins.bytes"
     return 0
 
 [builtins fixtures/primitives.pyi]
@@ -2390,7 +2613,7 @@ m3: Tuple[int, int, Unpack[Tuple[str, ...]], int, int]
 match m3:
     case [a3, *b3, c3]:
         reveal_type(a3)  # N: Revealed type is "builtins.int"
-        reveal_type(b3)  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+        reveal_type(b3)  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
         reveal_type(c3)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
@@ -2565,7 +2788,7 @@ def fn1(x: Some | int | str) -> None:
             def value():
                 return 1
             reveal_type(value)  # N: Revealed type is "def () -> Any"
-        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], Any]")
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "int | str", variable has type "Callable[[], Any]")
             pass
 
 def fn2(x: Some | int | str) -> None:
@@ -2582,9 +2805,113 @@ def fn2(x: Some | int | str) -> None:
                                  # N:     def value() -> int
                 return 1
             reveal_type(value)  # N: Revealed type is "def () -> builtins.str"
-        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], str]")
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "int | str", variable has type "Callable[[], str]")
             pass
 [builtins fixtures/dict.pyi]
+
+[case testMatchFunctionCall]
+# flags: --warn-unreachable
+
+def fn() -> int | str: ...
+
+match fn():
+    case str(s):
+        reveal_type(s)  # N: Revealed type is "builtins.str"
+    case int(i):
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+    case other:
+        other  # E: Statement is unreachable
+
+[case testMatchAttribute]
+# flags: --warn-unreachable
+
+class A:
+    foo: int | str
+
+match A().foo:
+    case str(s):
+        reveal_type(s)  # N: Revealed type is "builtins.str"
+    case int(i):
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+    case other:
+        other  # E: Statement is unreachable
+
+[case testMatchLiteral]
+# flags: --warn-unreachable
+
+def int_literal() -> None:
+    match 12:
+        case 1 as s:
+            reveal_type(s)  # E: Statement is unreachable
+        case int(i):
+            reveal_type(i)  # N: Revealed type is "Literal[12]?"
+        case other:
+            other  # E: Statement is unreachable
+
+def str_literal() -> None:
+    match 'foo':
+        case 'a' as s:
+            reveal_type(s)  # E: Statement is unreachable
+        case str(i):
+            reveal_type(i)  # N: Revealed type is "Literal['foo']?"
+        case other:
+            other  # E: Statement is unreachable
+
+[case testMatchOperations]
+# flags: --warn-unreachable
+
+x: int
+match -x:
+    case -1 as s:
+        reveal_type(s)  # N: Revealed type is "Literal[-1]"
+    case int(s):
+        reveal_type(s)  # N: Revealed type is "builtins.int"
+    case other:
+        other  # E: Statement is unreachable
+
+match 1 + 2:
+    case 3 as s:
+        reveal_type(s)  # N: Revealed type is "Literal[3]"
+    case int(s):
+        reveal_type(s)  # N: Revealed type is "builtins.int"
+    case other:
+        other  # E: Statement is unreachable
+
+match 1 > 2:
+    case True as s:
+        reveal_type(s)  # N: Revealed type is "Literal[True]"
+    case False as s:
+        reveal_type(s)  # N: Revealed type is "Literal[False]"
+    case other:
+        other  # E: Statement is unreachable
+[builtins fixtures/ops.pyi]
+
+[case testMatchDictItem]
+# flags: --warn-unreachable
+
+m: dict[str, int | str]
+k: str
+
+match m[k]:
+    case str(s):
+        reveal_type(s)  # N: Revealed type is "builtins.str"
+    case int(i):
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+    case other:
+        other  # E: Statement is unreachable
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchLiteralValuePathological]
+# flags: --warn-unreachable
+
+match 0:
+    case 0 as i:
+        reveal_type(i)  # N: Revealed type is "Literal[0]?"
+    case int(i):
+        i  # E: Statement is unreachable
+    case other:
+        other  # E: Statement is unreachable
 
 [case testMatchNamedTupleSequence]
 from typing import Any, NamedTuple
@@ -2601,6 +2928,28 @@ def f(t: T) -> None:
             reveal_type(k)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.K]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchTypeObjectTypeVar]
+# flags: --warn-unreachable
+from typing import TypeVar
+import b
+
+T_Choice = TypeVar("T_Choice", bound=b.One | b.Two)
+
+def switch(choice: type[T_Choice]) -> None:
+    match choice:
+        case b.One:
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+        case b.Two:
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+        case _:
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+
+[file b.py]
+class One: ...
+class Two: ...
+
+[builtins fixtures/tuple.pyi]
+
 [case testNewRedefineMatchBasics]
 # flags: --allow-redefinition-new --local-partial-types
 
@@ -2612,7 +2961,7 @@ def f1(x: int | str | list[bytes]) -> None:
             reveal_type(y) # N: Revealed type is "builtins.str"
         case [y]:
             reveal_type(y) # N: Revealed type is "builtins.bytes"
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.bytes]"
+    reveal_type(y) # N: Revealed type is "builtins.str | builtins.bytes"
 
 [case testNewRedefineLoopWithMatch]
 # flags: --allow-redefinition-new --local-partial-types
@@ -2817,3 +3166,72 @@ match value_type:
     case _:
         assert_never(value_type)
 [builtins fixtures/tuple.pyi]
+
+[case testAssignmentToFinalInMatchCaseNotAllowed]
+from typing import Final
+
+FOO: Final[int] = 10
+
+val: int = 8
+match val:
+    case FOO:  # E: Cannot assign to final name "FOO"
+        pass
+
+[case testMatchExhaustivenessWithDeferral]
+# flags: --enable-error-code exhaustive-match
+from typing import Literal
+import unknown_module  # E: Cannot find implementation or library stub for module named "unknown_module" \
+                       # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+def foo(e: Literal[0, 1]) -> None:
+    match e:
+        case 0:
+            defer
+        case 1:
+            ...
+
+defer = unknown_module.foo
+
+[case testMatchErrorsIncorrectName]
+class A:
+    pass
+
+match 5:
+    case A.blah():  # E: "type[A]" has no attribute "blah"
+        pass
+
+[case testMatchAllowsAnyClassArgsForAny]
+match 5:
+    case BlahBlah(a, b):  # E: Name "BlahBlah" is not defined
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "Any"
+    case BlahBlah(c=c):  # E: Name "BlahBlah" is not defined
+        reveal_type(c)  # N: Revealed type is "Any"
+
+[case testMatchAllowsNoneTypeAsClass]
+import types
+
+class V:
+    X = types.NoneType
+
+def fun(val: str | None):
+    match val:
+        case V.X():
+            reveal_type(val)  # N: Revealed type is "None"
+
+    match val:
+        case types.NoneType():
+            reveal_type(val)  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchMappingRestErrorLocation]
+rest: list[int]
+data: list[int]
+match data:
+    case [1, *rest]:
+        ...
+config: dict[str, object]
+match config:
+    case {"a": 1, **rest}:  # E: Incompatible types in capture pattern (pattern captures type "dict[str, object]", variable has type "list[int]")
+        ...
+[builtins fixtures/dict.pyi]

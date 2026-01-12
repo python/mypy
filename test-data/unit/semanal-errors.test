@@ -361,15 +361,11 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
@@ -408,36 +404,26 @@ main:3: error: Cannot assign to literal
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: Cannot assign to function call
-[out version>=3.10]
 main:1: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
@@ -498,8 +484,6 @@ main:2: error: Cannot delete function call
 x = 1
 del x + 1
 [out]
-main:2: error: Cannot delete operator
-[out version>=3.10]
 main:2: error: Cannot delete expression
 
 [case testInvalidDel3]
@@ -537,13 +521,6 @@ def f(y: t): x = t
 main:4: error: "t" is a type variable and only valid in type context
 main:5: error: "t" is a type variable and only valid in type context
 
-[case testMissingSelf]
-import typing
-class A:
-  def f(): pass
-[out]
-main:3: error: Method must have at least one argument. Did you forget the "self" argument?
-
 [case testInvalidBaseClass]
 import typing
 class A(B): pass
@@ -557,15 +534,6 @@ def f() -> None: super().y
 [out]
 main:2: error: "super" used outside class
 main:3: error: "super" used outside class
-
-[case testMissingSelfInMethod]
-import typing
-class A:
-  def f() -> None: pass
-  def g(): pass
-[out]
-main:3: error: Method must have at least one argument. Did you forget the "self" argument?
-main:4: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testMultipleMethodDefinition]
 import typing
@@ -897,8 +865,6 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
@@ -975,8 +941,6 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: Cannot assign to function call
-[out version>=3.10]
 main:2: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
@@ -1014,6 +978,12 @@ class A(Generic[T]):
     class B(Generic[T]): pass \
           # E: Free type variable expected in Generic[...]
 [out]
+
+[case testRedeclaredTypeVarWithinNestedGenericClass]
+from typing import Generic, Iterable, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    class B(Iterable[T]): pass  # E: Type variable "T" is bound by an outer class
 
 [case testIncludingGenericTwiceInBaseClassList]
 from typing import Generic, TypeVar
@@ -1230,7 +1200,7 @@ class A:
     @overload  # E: Decorators on top of @property are not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Only supported top decorator is @f.setter
+    @property  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1313,8 +1283,6 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]

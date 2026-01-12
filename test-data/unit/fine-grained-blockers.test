@@ -19,12 +19,6 @@ def f(x: int) -> None: pass
 def f() -> None: pass
 [out]
 ==
-a.py:1: error: Invalid syntax
-==
-main:2: error: Missing positional argument "x" in call to "f"
-==
-[out version>=3.10]
-==
 a.py:1: error: Expected ':'
 ==
 main:2: error: Missing positional argument "x" in call to "f"
@@ -43,16 +37,6 @@ def f(x: int) -> None: pass
 [file a.py.4]
 def f() -> None: pass
 [out]
-==
-a.py:1: error: Invalid syntax  [syntax]
-    def f(x: int) ->
-                    ^
-==
-main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
-    a.f()
-    ^~~~~
-==
-[out version>=3.10]
 ==
 a.py:1: error: Expected ':'  [syntax]
     def f(x: int) ->
@@ -76,13 +60,6 @@ def f(x: int
 [file a.py.4]
 def f(x: int) -> None: pass
 [out]
-==
-a.py:1: error: Invalid syntax
-==
-a.py:2: error: Invalid syntax
-==
-main:2: error: Missing positional argument "x" in call to "f"
-[out version>=3.10]
 ==
 a.py:1: error: Expected ':'
 ==
@@ -121,14 +98,6 @@ def f() -> None
 [file a.py.3]
 def f() -> None: pass
 [out]
-main:3: error: Too many arguments for "f"
-main:5: error: Too many arguments for "f"
-==
-a.py:1: error: Invalid syntax
-==
-main:3: error: Too many arguments for "f"
-main:5: error: Too many arguments for "f"
-[out version>=3.10]
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
 ==

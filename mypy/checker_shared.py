@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Set as AbstractSet
 from contextlib import contextmanager
 from typing import NamedTuple, overload
 
@@ -137,6 +137,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+    allow_constructor_cache: bool
 
     @property
     @abstractmethod
@@ -245,17 +246,22 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
+    def narrow_type_by_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[dict[Expression, Type] | None, dict[Expression, Type] | None]:
+        raise NotImplementedError
+
+    @abstractmethod
     def check_deprecated(self, node: Node | None, context: Context) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def warn_deprecated(self, node: Node | None, context: Context) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -275,6 +281,14 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
         raise NotImplementedError
 
 
@@ -333,6 +347,10 @@ class CheckerScope:
             if isinstance(item, TypeInfo):
                 return fill_typevars(item)
         return None
+
+    def is_top_level(self) -> bool:
+        """Is current scope top-level (no classes or functions)?"""
+        return len(self.stack) == 1
 
     @contextmanager
     def push_function(self, item: FuncItem) -> Iterator[None]:

@@ -1,3 +1,4 @@
+import ast
 import builtins
 import os
 import sys
@@ -9,8 +10,8 @@ from _ast import (
 )
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload
-from typing_extensions import Self, Unpack, deprecated
+from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload, type_check_only
+from typing_extensions import Self, Unpack, deprecated, disjoint_base
 
 if sys.version_info >= (3, 13):
     from _ast import PyCF_OPTIMIZED_AST as PyCF_OPTIMIZED_AST
@@ -19,6 +20,7 @@ if sys.version_info >= (3, 13):
 _EndPositionT = typing_extensions.TypeVar("_EndPositionT", int, int | None, default=int | None)
 
 # Corresponds to the names in the `_attributes` class variable which is non-empty in certain AST nodes
+@type_check_only
 class _Attributes(TypedDict, Generic[_EndPositionT], total=False):
     lineno: int
     col_offset: int
@@ -28,16 +30,24 @@ class _Attributes(TypedDict, Generic[_EndPositionT], total=False):
 # The various AST classes are implemented in C, and imported from _ast at runtime,
 # but they consider themselves to live in the ast module,
 # so we'll define the stubs in this file.
-class AST:
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 12):
+    @disjoint_base
+    class AST:
         __match_args__ = ()
-    _attributes: ClassVar[tuple[str, ...]]
-    _fields: ClassVar[tuple[str, ...]]
-    if sys.version_info >= (3, 13):
-        _field_types: ClassVar[dict[str, Any]]
+        _attributes: ClassVar[tuple[str, ...]]
+        _fields: ClassVar[tuple[str, ...]]
+        if sys.version_info >= (3, 13):
+            _field_types: ClassVar[dict[str, Any]]
 
-    if sys.version_info >= (3, 14):
-        def __replace__(self) -> Self: ...
+        if sys.version_info >= (3, 14):
+            def __replace__(self) -> Self: ...
+
+else:
+    class AST:
+        if sys.version_info >= (3, 10):
+            __match_args__ = ()
+        _attributes: ClassVar[tuple[str, ...]]
+        _fields: ClassVar[tuple[str, ...]]
 
 class mod(AST): ...
 
@@ -623,21 +633,6 @@ class AsyncWith(stmt):
             **kwargs: Unpack[_Attributes],
         ) -> Self: ...
 
-if sys.version_info >= (3, 10):
-    class Match(stmt):
-        __match_args__ = ("subject", "cases")
-        subject: expr
-        cases: list[match_case]
-        if sys.version_info >= (3, 13):
-            def __init__(self, subject: expr, cases: list[match_case] = ..., **kwargs: Unpack[_Attributes]) -> None: ...
-        else:
-            def __init__(self, subject: expr, cases: list[match_case], **kwargs: Unpack[_Attributes]) -> None: ...
-
-        if sys.version_info >= (3, 14):
-            def __replace__(
-                self, *, subject: expr = ..., cases: list[match_case] = ..., **kwargs: Unpack[_Attributes]
-            ) -> Self: ...
-
 class Raise(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("exc", "cause")
@@ -1076,13 +1071,13 @@ if sys.version_info >= (3, 14):
         value: expr
         str: builtins.str
         conversion: int
-        format_spec: builtins.str | None = None
+        format_spec: expr | None = None
         def __init__(
             self,
             value: expr = ...,
             str: builtins.str = ...,
             conversion: int = ...,
-            format_spec: builtins.str | None = ...,
+            format_spec: expr | None = ...,
             **kwargs: Unpack[_Attributes],
         ) -> None: ...
         def __replace__(
@@ -1091,7 +1086,7 @@ if sys.version_info >= (3, 14):
             value: expr = ...,
             str: builtins.str = ...,
             conversion: int = ...,
-            format_spec: builtins.str | None = ...,
+            format_spec: expr | None = ...,
             **kwargs: Unpack[_Attributes],
         ) -> Self: ...
 
@@ -1110,8 +1105,18 @@ class Constant(expr):
     kind: str | None
     if sys.version_info < (3, 14):
         # Aliases for value, for backwards compatibility
-        s: _ConstantValue
-        n: _ConstantValue
+        @property
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
+        def n(self) -> _ConstantValue: ...
+        @n.setter
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
+        def n(self, value: _ConstantValue) -> None: ...
+        @property
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
+        def s(self) -> _ConstantValue: ...
+        @s.setter
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
+        def s(self, value: _ConstantValue) -> None: ...
 
     def __init__(self, value: _ConstantValue, kind: str | None = None, **kwargs: Unpack[_Attributes]) -> None: ...
 
@@ -1135,13 +1140,13 @@ class Subscript(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("value", "slice", "ctx")
     value: expr
-    slice: _Slice
+    slice: expr
     ctx: expr_context  # Not present in Python < 3.13 if not passed to `__init__`
-    def __init__(self, value: expr, slice: _Slice, ctx: expr_context = ..., **kwargs: Unpack[_Attributes]) -> None: ...
+    def __init__(self, value: expr, slice: expr, ctx: expr_context = ..., **kwargs: Unpack[_Attributes]) -> None: ...
 
     if sys.version_info >= (3, 14):
         def __replace__(
-            self, *, value: expr = ..., slice: _Slice = ..., ctx: expr_context = ..., **kwargs: Unpack[_Attributes]
+            self, *, value: expr = ..., slice: expr = ..., ctx: expr_context = ..., **kwargs: Unpack[_Attributes]
         ) -> Self: ...
 
 class Starred(expr):
@@ -1194,36 +1199,28 @@ class Tuple(expr):
 @deprecated("Deprecated since Python 3.9.")
 class slice(AST): ...
 
-_Slice: typing_extensions.TypeAlias = expr
-_SliceAttributes: typing_extensions.TypeAlias = _Attributes
-
-class Slice(_Slice):
+class Slice(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("lower", "upper", "step")
     lower: expr | None
     upper: expr | None
     step: expr | None
     def __init__(
-        self, lower: expr | None = None, upper: expr | None = None, step: expr | None = None, **kwargs: Unpack[_SliceAttributes]
+        self, lower: expr | None = None, upper: expr | None = None, step: expr | None = None, **kwargs: Unpack[_Attributes]
     ) -> None: ...
 
     if sys.version_info >= (3, 14):
         def __replace__(
-            self,
-            *,
-            lower: expr | None = ...,
-            upper: expr | None = ...,
-            step: expr | None = ...,
-            **kwargs: Unpack[_SliceAttributes],
+            self, *, lower: expr | None = ..., upper: expr | None = ..., step: expr | None = ..., **kwargs: Unpack[_Attributes]
         ) -> Self: ...
 
-@deprecated("Deprecated since Python 3.9. Use ast.Tuple instead.")
+@deprecated("Deprecated since Python 3.9. Use `ast.Tuple` instead.")
 class ExtSlice(slice):
-    def __new__(cls, dims: Iterable[slice] = (), **kwargs: Unpack[_SliceAttributes]) -> Tuple: ...  # type: ignore[misc]
+    def __new__(cls, dims: Iterable[slice] = (), **kwargs: Unpack[_Attributes]) -> Tuple: ...  # type: ignore[misc]
 
 @deprecated("Deprecated since Python 3.9. Use the index value directly instead.")
 class Index(slice):
-    def __new__(cls, value: expr, **kwargs: Unpack[_SliceAttributes]) -> expr: ...  # type: ignore[misc]
+    def __new__(cls, value: expr, **kwargs: Unpack[_Attributes]) -> expr: ...  # type: ignore[misc]
 
 class expr_context(AST): ...
 
@@ -1465,22 +1462,6 @@ class withitem(AST):
         def __replace__(self, *, context_expr: expr = ..., optional_vars: expr | None = ...) -> Self: ...
 
 if sys.version_info >= (3, 10):
-    class match_case(AST):
-        __match_args__ = ("pattern", "guard", "body")
-        pattern: _Pattern
-        guard: expr | None
-        body: list[stmt]
-        if sys.version_info >= (3, 13):
-            def __init__(self, pattern: _Pattern, guard: expr | None = None, body: list[stmt] = ...) -> None: ...
-        else:
-            @overload
-            def __init__(self, pattern: _Pattern, guard: expr | None, body: list[stmt]) -> None: ...
-            @overload
-            def __init__(self, pattern: _Pattern, guard: expr | None = None, *, body: list[stmt]) -> None: ...
-
-        if sys.version_info >= (3, 14):
-            def __replace__(self, *, pattern: _Pattern = ..., guard: expr | None = ..., body: list[stmt] = ...) -> Self: ...
-
     class pattern(AST):
         lineno: int
         col_offset: int
@@ -1493,8 +1474,35 @@ if sys.version_info >= (3, 10):
                 self, *, lineno: int = ..., col_offset: int = ..., end_lineno: int = ..., end_col_offset: int = ...
             ) -> Self: ...
 
-    # Without the alias, Pyright complains variables named pattern are recursively defined
-    _Pattern: typing_extensions.TypeAlias = pattern
+    class match_case(AST):
+        __match_args__ = ("pattern", "guard", "body")
+        pattern: ast.pattern
+        guard: expr | None
+        body: list[stmt]
+        if sys.version_info >= (3, 13):
+            def __init__(self, pattern: ast.pattern, guard: expr | None = None, body: list[stmt] = ...) -> None: ...
+        elif sys.version_info >= (3, 10):
+            @overload
+            def __init__(self, pattern: ast.pattern, guard: expr | None, body: list[stmt]) -> None: ...
+            @overload
+            def __init__(self, pattern: ast.pattern, guard: expr | None = None, *, body: list[stmt]) -> None: ...
+
+        if sys.version_info >= (3, 14):
+            def __replace__(self, *, pattern: ast.pattern = ..., guard: expr | None = ..., body: list[stmt] = ...) -> Self: ...
+
+    class Match(stmt):
+        __match_args__ = ("subject", "cases")
+        subject: expr
+        cases: list[match_case]
+        if sys.version_info >= (3, 13):
+            def __init__(self, subject: expr, cases: list[match_case] = ..., **kwargs: Unpack[_Attributes]) -> None: ...
+        else:
+            def __init__(self, subject: expr, cases: list[match_case], **kwargs: Unpack[_Attributes]) -> None: ...
+
+        if sys.version_info >= (3, 14):
+            def __replace__(
+                self, *, subject: expr = ..., cases: list[match_case] = ..., **kwargs: Unpack[_Attributes]
+            ) -> Self: ...
 
     class MatchValue(pattern):
         __match_args__ = ("value",)
@@ -1506,11 +1514,11 @@ if sys.version_info >= (3, 10):
 
     class MatchSingleton(pattern):
         __match_args__ = ("value",)
-        value: Literal[True, False] | None
-        def __init__(self, value: Literal[True, False] | None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
+        value: bool | None
+        def __init__(self, value: bool | None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
 
         if sys.version_info >= (3, 14):
-            def __replace__(self, *, value: Literal[True, False] | None = ..., **kwargs: Unpack[_Attributes[int]]) -> Self: ...
+            def __replace__(self, *, value: bool | None = ..., **kwargs: Unpack[_Attributes[int]]) -> Self: ...
 
     class MatchSequence(pattern):
         __match_args__ = ("patterns",)
@@ -1590,22 +1598,22 @@ if sys.version_info >= (3, 10):
     class MatchStar(pattern):
         __match_args__ = ("name",)
         name: str | None
-        def __init__(self, name: str | None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
+        def __init__(self, name: str | None = None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
 
         if sys.version_info >= (3, 14):
             def __replace__(self, *, name: str | None = ..., **kwargs: Unpack[_Attributes[int]]) -> Self: ...
 
     class MatchAs(pattern):
         __match_args__ = ("pattern", "name")
-        pattern: _Pattern | None
+        pattern: ast.pattern | None
         name: str | None
         def __init__(
-            self, pattern: _Pattern | None = None, name: str | None = None, **kwargs: Unpack[_Attributes[int]]
+            self, pattern: ast.pattern | None = None, name: str | None = None, **kwargs: Unpack[_Attributes[int]]
         ) -> None: ...
 
         if sys.version_info >= (3, 14):
             def __replace__(
-                self, *, pattern: _Pattern | None = ..., name: str | None = ..., **kwargs: Unpack[_Attributes[int]]
+                self, *, pattern: ast.pattern | None = ..., name: str | None = ..., **kwargs: Unpack[_Attributes[int]]
             ) -> Self: ...
 
     class MatchOr(pattern):
@@ -1701,31 +1709,35 @@ if sys.version_info >= (3, 12):
                 self, *, name: str = ..., default_value: expr | None = ..., **kwargs: Unpack[_Attributes[int]]
             ) -> Self: ...
 
-class _ABC(type):
-    def __init__(cls, *args: Unused) -> None: ...
+if sys.version_info >= (3, 14):
+    @type_check_only
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
+
+else:
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
 
 if sys.version_info < (3, 14):
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Num(Constant, metaclass=_ABC):
-        value: int | float | complex
+        def __new__(cls, n: complex, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Str(Constant, metaclass=_ABC):
-        value: str
-        # Aliases for value, for backwards compatibility
-        s: str
+        def __new__(cls, s: str, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Bytes(Constant, metaclass=_ABC):
-        value: bytes
-        # Aliases for value, for backwards compatibility
-        s: bytes
+        def __new__(cls, s: bytes, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
-    class NameConstant(Constant, metaclass=_ABC): ...
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
+    class NameConstant(Constant, metaclass=_ABC):
+        def __new__(cls, value: _ConstantValue, kind: str | None, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
-    class Ellipsis(Constant, metaclass=_ABC): ...
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
+    class Ellipsis(Constant, metaclass=_ABC):
+        def __new__(cls, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
 # everything below here is defined in ast.py
 
@@ -1734,8 +1746,18 @@ _T = _TypeVar("_T", bound=AST)
 if sys.version_info >= (3, 13):
     @overload
     def parse(
+        source: _T,
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
+        mode: Literal["exec", "eval", "func_type", "single"] = "exec",
+        *,
+        type_comments: bool = False,
+        feature_version: None | int | tuple[int, int] = None,
+        optimize: Literal[-1, 0, 1, 2] = -1,
+    ) -> _T: ...
+    @overload
+    def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any] = "<unknown>",
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
         mode: Literal["exec"] = "exec",
         *,
         type_comments: bool = False,
@@ -1745,7 +1767,7 @@ if sys.version_info >= (3, 13):
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["eval"],
         *,
         type_comments: bool = False,
@@ -1755,7 +1777,7 @@ if sys.version_info >= (3, 13):
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["func_type"],
         *,
         type_comments: bool = False,
@@ -1765,7 +1787,7 @@ if sys.version_info >= (3, 13):
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["single"],
         *,
         type_comments: bool = False,
@@ -1802,19 +1824,28 @@ if sys.version_info >= (3, 13):
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any] = "<unknown>",
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
         mode: str = "exec",
         *,
         type_comments: bool = False,
         feature_version: None | int | tuple[int, int] = None,
         optimize: Literal[-1, 0, 1, 2] = -1,
-    ) -> AST: ...
+    ) -> mod: ...
 
 else:
     @overload
     def parse(
+        source: _T,
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
+        mode: Literal["exec", "eval", "func_type", "single"] = "exec",
+        *,
+        type_comments: bool = False,
+        feature_version: None | int | tuple[int, int] = None,
+    ) -> _T: ...
+    @overload
+    def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any] = "<unknown>",
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
         mode: Literal["exec"] = "exec",
         *,
         type_comments: bool = False,
@@ -1823,7 +1854,7 @@ else:
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["eval"],
         *,
         type_comments: bool = False,
@@ -1832,7 +1863,7 @@ else:
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["func_type"],
         *,
         type_comments: bool = False,
@@ -1841,7 +1872,7 @@ else:
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any],
+        filename: str | bytes | os.PathLike[Any],
         mode: Literal["single"],
         *,
         type_comments: bool = False,
@@ -1874,12 +1905,12 @@ else:
     @overload
     def parse(
         source: str | ReadableBuffer,
-        filename: str | ReadableBuffer | os.PathLike[Any] = "<unknown>",
+        filename: str | bytes | os.PathLike[Any] = "<unknown>",
         mode: str = "exec",
         *,
         type_comments: bool = False,
         feature_version: None | int | tuple[int, int] = None,
-    ) -> AST: ...
+    ) -> mod: ...
 
 def literal_eval(node_or_string: str | AST) -> Any: ...
 
@@ -2042,15 +2073,15 @@ class NodeVisitor:
     def visit_Param(self, node: Param) -> Any: ...
 
     if sys.version_info < (3, 14):
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Num(self, node: Num) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Str(self, node: Str) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Bytes(self, node: Bytes) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_NameConstant(self, node: NameConstant) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Ellipsis(self, node: Ellipsis) -> Any: ...  # type: ignore[deprecated]
 
 class NodeTransformer(NodeVisitor):

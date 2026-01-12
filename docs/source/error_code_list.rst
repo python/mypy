@@ -215,6 +215,57 @@ You can use :py:class:`~collections.abc.Callable` as the type for callable objec
         for x in objs:
             f(x)
 
+.. _code-nonetype-type:
+
+Check that NoneType is not used as a type (annotation) [nonetype-type]
+----------------------------------------------------------------------
+
+The preferred way to annotate the type of `None` is `None`.
+`NoneType` is equivalent, but mypy won't allow it by default.
+
+.. code-block:: python
+
+    from types import NoneType
+    def f(x: None) -> None:
+        reveal_type(x) # note: Revealed type is "None"
+
+    # error: NoneType should not be used as a type, please use None instead  [nonetype-type]
+    def g(x: NoneType) -> None:
+        reveal_type(x) # note: Revealed type is "None"
+
+    # error: NoneType should not be used as a type, please use None instead  [nonetype-type]
+    x1: NoneType = None
+    x2: None = None # OK
+
+.. _code-metaclass:
+
+Check the validity of a class's metaclass [metaclass]
+-----------------------------------------------------
+
+Mypy checks whether the metaclass of a class is valid. The metaclass
+must be a subclass of ``type``. Further, the class hierarchy must yield
+a consistent metaclass. For more details, see the
+`Python documentation <https://docs.python.org/3.13/reference/datamodel.html#determining-the-appropriate-metaclass>`_
+
+Note that mypy's metaclass checking is limited and may produce false-positives.
+See also :ref:`limitations`.
+
+Example with an error:
+
+.. code-block:: python
+
+    class GoodMeta(type):
+        pass
+
+    class BadMeta:
+        pass
+
+    class A1(metaclass=GoodMeta):  # OK
+        pass
+
+    class A2(metaclass=BadMeta):  # Error:  Metaclasses not inheriting from "type" are not supported  [metaclass]
+        pass
+
 .. _code-var-annotated:
 
 Require annotation if variable type is unclear [var-annotated]
@@ -1003,8 +1054,8 @@ Warn about top level await expressions [top-level-await]
 This error code is separate from the general ``[syntax]`` errors, because in
 some environments (e.g. IPython) a top level ``await`` is allowed. In such
 environments a user may want to use ``--disable-error-code=top-level-await``,
-that allows to still have errors for other improper uses of ``await``, for
-example:
+which allows one to still have errors for other improper uses of ``await``,
+for example:
 
 .. code-block:: python
 
@@ -1099,6 +1150,25 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     # Okay
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
+.. _code-str-unpack:
+
+Check that ``str`` is not unpacked [str-unpack]
+---------------------------------------------------------
+
+It can sometimes be surprising that ``str`` is iterable, especially when unpacking
+in an assignment.
+
+Example:
+
+.. code-block:: python
+
+    def print_dict(d: dict[str, str]) -> int:
+        # We meant to do d.items(), but instead we're unpacking the str keys of d
+
+        # Error: Unpacking a string is disallowed
+        for k, v in d:
+            print(k, v)
 
 .. _code-overload-overlap:
 
@@ -1256,6 +1326,65 @@ type must be a subtype of the original type::
 
     def g(x: object) -> TypeIs[str]:  # OK
         ...
+
+.. _code-maybe-unrecognized-str-typeform:
+
+String appears in a context which expects a TypeForm [maybe-unrecognized-str-typeform]
+--------------------------------------------------------------------------------------
+
+TypeForm literals may contain string annotations:
+
+.. code-block:: python
+
+   typx1: TypeForm = str | None
+   typx2: TypeForm = 'str | None'  # OK
+   typx3: TypeForm = 'str' | None  # OK
+
+However TypeForm literals containing a string annotation can only be recognized
+by mypy in the following locations:
+
+.. code-block:: python
+
+   typx_var: TypeForm = 'str | None'  # assignment r-value
+
+   def func(typx_param: TypeForm) -> TypeForm:
+       return 'str | None'  # returned expression
+
+   func('str | None')  # callable's argument
+
+If you try to use a string annotation in some other location
+which expects a TypeForm, the string value will always be treated as a ``str``
+even if a ``TypeForm`` would be more appropriate and this error code
+will be generated:
+
+.. code-block:: python
+
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   # Error: List item 0 has incompatible type "str"; expected "TypeForm[Any]"  [list-item]
+   list_of_typx: list[TypeForm] = ['str | None', float]
+
+Fix the error by surrounding the entire type with ``TypeForm(...)``:
+
+.. code-block:: python
+
+   list_of_typx: list[TypeForm] = [TypeForm('str | None'), float]  # OK
+
+Similarly, if you try to use a string literal in a location which expects a
+TypeForm, this error code will be generated:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]
+
+Fix the error by adding ``# type: ignore[maybe-unrecognized-str-typeform]``
+to the line with the string literal:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]  # type: ignore[maybe-unrecognized-str-typeform]
 
 .. _code-misc:
 

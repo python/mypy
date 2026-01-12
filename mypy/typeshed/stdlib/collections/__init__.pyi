@@ -2,8 +2,8 @@ import sys
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import SupportsItems, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from types import GenericAlias
-from typing import Any, ClassVar, Generic, NoReturn, SupportsIndex, TypeVar, final, overload
-from typing_extensions import Self
+from typing import Any, ClassVar, Generic, NoReturn, SupportsIndex, TypeVar, final, overload, type_check_only
+from typing_extensions import Self, disjoint_base
 
 if sys.version_info >= (3, 10):
     from collections.abc import (
@@ -107,6 +107,8 @@ class UserDict(MutableMapping[_KT, _VT]):
     if sys.version_info >= (3, 12):
         @overload
         def get(self, key: _KT, default: None = None) -> _VT | None: ...
+        @overload
+        def get(self, key: _KT, default: _VT) -> _VT: ...
         @overload
         def get(self, key: _KT, default: _T) -> _VT | _T: ...
 
@@ -229,6 +231,7 @@ class UserString(Sequence[UserString]):
     def upper(self) -> Self: ...
     def zfill(self, width: int) -> Self: ...
 
+@disjoint_base
 class deque(MutableSequence[_T]):
     @property
     def maxlen(self) -> int | None: ...
@@ -340,17 +343,21 @@ class _OrderedDictValuesView(ValuesView[_VT_co]):
 # but they are not exposed anywhere)
 # pyright doesn't have a specific error code for subclassing error!
 @final
+@type_check_only
 class _odict_keys(dict_keys[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_KT_co]: ...
 
 @final
+@type_check_only
 class _odict_items(dict_items[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
 @final
+@type_check_only
 class _odict_values(dict_values[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_VT_co]: ...
 
+@disjoint_base
 class OrderedDict(dict[_KT, _VT]):
     def popitem(self, last: bool = True) -> tuple[_KT, _VT]: ...
     def move_to_end(self, key: _KT, last: bool = True) -> None: ...
@@ -390,6 +397,7 @@ class OrderedDict(dict[_KT, _VT]):
     @overload
     def __ror__(self, value: dict[_T1, _T2], /) -> OrderedDict[_KT | _T1, _VT | _T2]: ...  # type: ignore[misc]
 
+@disjoint_base
 class defaultdict(dict[_KT, _VT]):
     default_factory: Callable[[], _VT] | None
     @overload
@@ -452,6 +460,8 @@ class ChainMap(MutableMapping[_KT, _VT]):
     @overload
     def get(self, key: _KT, default: None = None) -> _VT | None: ...
     @overload
+    def get(self, key: _KT, default: _VT) -> _VT: ...
+    @overload
     def get(self, key: _KT, default: _T) -> _VT | _T: ...
     def __missing__(self, key: _KT) -> _VT: ...  # undocumented
     def __bool__(self) -> bool: ...
@@ -470,9 +480,15 @@ class ChainMap(MutableMapping[_KT, _VT]):
     __copy__ = copy
     # All arguments to `fromkeys` are passed to `dict.fromkeys` at runtime,
     # so the signature should be kept in line with `dict.fromkeys`.
-    @classmethod
-    @overload
-    def fromkeys(cls, iterable: Iterable[_T]) -> ChainMap[_T, Any | None]: ...
+    if sys.version_info >= (3, 13):
+        @classmethod
+        @overload
+        def fromkeys(cls, iterable: Iterable[_T], /) -> ChainMap[_T, Any | None]: ...
+    else:
+        @classmethod
+        @overload
+        def fromkeys(cls, iterable: Iterable[_T]) -> ChainMap[_T, Any | None]: ...
+
     @classmethod
     @overload
     # Special-case None: the user probably wants to add non-None values later.

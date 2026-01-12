@@ -2,7 +2,7 @@ import sys
 from _typeshed import AnyStr_co, StrOrBytesPath
 from collections.abc import Callable, Iterable, Iterator
 from types import GenericAlias, TracebackType
-from typing import IO, Any, AnyStr, Literal, Protocol, overload
+from typing import IO, Any, AnyStr, Literal, Protocol, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -25,6 +25,7 @@ if sys.version_info >= (3, 11):
 else:
     _TextMode: TypeAlias = Literal["r", "rU", "U"]
 
+@type_check_only
 class _HasReadlineAndFileno(Protocol[AnyStr_co]):
     def readline(self) -> AnyStr_co: ...
     def fileno(self) -> int: ...

@@ -3,7 +3,7 @@
 
 import _typeshed
 from typing import (
-    TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
+    Self, TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
@@ -39,9 +39,14 @@ __SupportsSomeKindOfPow = Union[
 ]
 
 class object:
+    __class__: type
+    def __new__(cls) -> Self: pass
     def __init__(self) -> None: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
+    def __str__(self) -> str: pass
+    def __setattr__(self, k: str, v: object) -> None: pass
+    def __delattr__(self, k: str) -> None: pass
 
 class type:
     def __init__(self, o: object) -> None: ...
@@ -81,6 +86,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+    def bit_length(self) -> int: pass
 
 class str:
     @overload
@@ -122,6 +128,7 @@ class str:
     def removeprefix(self, prefix: str, /) -> str: ...
     def removesuffix(self, suffix: str, /) -> str: ...
     def islower(self) -> bool: ...
+    def count(self, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -160,7 +167,7 @@ class bytes:
     def __init__(self) -> None: ...
     @overload
     def __init__(self, x: object) -> None: ...
-    def __add__(self, x: bytes) -> bytes: ...
+    def __add__(self, x: bytes | bytearray) -> bytes: ...
     def __mul__(self, x: int) -> bytes: ...
     def __rmul__(self, x: int) -> bytes: ...
     def __eq__(self, x: object) -> bool: ...
@@ -170,7 +177,10 @@ class bytes:
     @overload
     def __getitem__(self, i: slice) -> bytes: ...
     def join(self, x: Iterable[object]) -> bytes: ...
-    def decode(self, x: str=..., y: str=...) -> str: ...
+    def decode(self, encoding: str=..., errors: str=...) -> str: ...
+    def translate(self, t: bytes | bytearray) -> bytes: ...
+    def startswith(self, t: bytes | bytearray) -> bool: ...
+    def __iter__(self) -> Iterator[int]: ...
 
 class bytearray:
     @overload
@@ -179,10 +189,14 @@ class bytearray:
     def __init__(self, x: object) -> None: pass
     @overload
     def __init__(self, string: str, encoding: str, err: str = ...) -> None: pass
-    def __add__(self, s: bytes) -> bytearray: ...
+    def __add__(self, s: bytes | bytearray) -> bytearray: ...
     def __setitem__(self, i: int, o: int) -> None: ...
+    @overload
     def __getitem__(self, i: int) -> int: ...
+    @overload
+    def __getitem__(self, i: slice) -> bytearray: ...
     def decode(self, x: str = ..., y: str = ...) -> str: ...
+    def startswith(self, t: bytes) -> bool: ...
 
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
@@ -238,13 +252,14 @@ class list(Generic[_T], Sequence[_T], Iterable[_T]):
     def __iadd__(self, value: Iterable[_T], /) -> List[_T]: ...  # type: ignore[misc]
     def append(self, x: _T) -> None: pass
     def pop(self, i: int = -1) -> _T: pass
-    def count(self, _T) -> int: pass
+    def count(self, x: _T) -> int: pass
     def extend(self, l: Iterable[_T]) -> None: pass
     def insert(self, i: int, x: _T) -> None: pass
     def sort(self) -> None: pass
     def reverse(self) -> None: pass
     def remove(self, o: _T) -> None: pass
     def index(self, o: _T) -> int: pass
+    def clear(self) -> None: pass
     def copy(self) -> List[_T]: pass
 
 class dict(Mapping[_K, _V]):
@@ -302,6 +317,11 @@ class range(Iterable[int]):
     def __len__(self) -> int: pass
     def __next__(self) -> int: pass
 
+class map(Iterator[_S]):
+    def __init__(self, func: Callable[[_T], _S], iterable: Iterable[_T]) -> None: pass
+    def __iter__(self) -> Self: pass
+    def __next__(self) -> _S: pass
+
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
                  fset: Optional[Callable[[Any, Any], None]] = ...,
@@ -337,6 +357,7 @@ class RuntimeError(Exception): pass
 class UnicodeEncodeError(RuntimeError): pass
 class UnicodeDecodeError(RuntimeError): pass
 class NotImplementedError(RuntimeError): pass
+class ReferenceError(Exception): pass
 
 class StopIteration(Exception):
     value: Any
@@ -349,12 +370,17 @@ class GeneratorExit(BaseException): pass
 
 def any(i: Iterable[_T]) -> bool: pass
 def all(i: Iterable[_T]) -> bool: pass
-def sum(i: Iterable[_T]) -> int: pass
+@overload
+def sum(i: Iterable[bool]) -> int: pass
+@overload
+def sum(i: Iterable[_T]) -> _T: pass
+@overload
+def sum(i: Iterable[_T], start: _T) -> _T: pass
 def reversed(object: Sequence[_T]) -> Iterator[_T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
 def len(o: object) -> int: pass
-def print(*object) -> None: pass
+def print(*args: object) -> None: pass
 def isinstance(x: object, t: object) -> bool: pass
 def iter(i: Iterable[_T]) -> Iterator[_T]: pass
 @overload

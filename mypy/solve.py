@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
@@ -270,6 +270,7 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     uppers = new_uppers
 
     # ...unless this is the only information we have, then we just pass it on.
+    lowers = list(lowers)
     if not uppers and not lowers:
         candidate = UninhabitedType()
         candidate.ambiguous = True
@@ -281,10 +282,11 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     # Process each bound separately, and calculate the lower and upper
     # bounds based on constraints. Note that we assume that the constraint
     # targets do not have constraint references.
-    if type_state.infer_unions:
+    if type_state.infer_unions and lowers:
         # This deviates from the general mypy semantics because
         # recursive types are union-heavy in 95% of cases.
-        bottom = UnionType.make_union(list(lowers))
+        # Retain `None` when no bottoms were provided to avoid bogus `Never` inference.
+        bottom = UnionType.make_union(lowers)
     else:
         # The order of lowers is non-deterministic.
         # We attempt to sort lowers because joins are non-associative. For instance:
