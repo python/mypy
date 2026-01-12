@@ -113,7 +113,7 @@ If you would like to publish a library package to a package repository
 yourself (e.g. on PyPI) for either internal or external use in type
 checking, packages that supply type information via type comments or
 annotations in the code should put a ``py.typed`` file in their
-package directory. 
+package directory.
 
 For new packages, a minimal ``pyproject.toml`` configuration using
 setuptools may look like this:
@@ -154,7 +154,7 @@ The ``setup.py`` file could look like this:
     )
 
 Some packages have a mix of stub files and runtime files. These packages also
-require a ``py.typed`` file. 
+require a ``py.typed`` file.
 
 For example:
 
