@@ -1136,6 +1136,10 @@ class MessageBuilder:
     def unpacking_strings_disallowed(self, context: Context) -> None:
         self.fail("Unpacking a string is disallowed", context, code=codes.STR_UNPACK)
 
+    def str_iteration_disallowed(self, context: Context) -> None:
+        self.fail('Iterating over "str" is disallowed', context)
+        self.note("This is because --disallow-str-iteration is enabled", context)
+
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f"{format_type(type, self.options)} object is not iterable", context)
 

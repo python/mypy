@@ -5381,6 +5381,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         echk = self.expr_checker
         iterable: Type
         iterable = get_proper_type(type)
+        if self.options.disallow_str_iteration and self.is_str_iteration_type(iterable):
+            self.msg.str_iteration_disallowed(context)
+            item_type = self.named_type("builtins.str")
+            iterator_type = self.named_generic_type("typing.Iterator", [item_type])
+            return iterator_type, item_type
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
         if (
@@ -5392,6 +5397,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # Non-tuple iterable.
             iterable = echk.check_method_call_by_name("__next__", iterator, [], [], context)[0]
             return iterator, iterable
+
+    def is_str_iteration_type(self, typ: Type) -> bool:
+        typ = get_proper_type(typ)
+        if isinstance(typ, LiteralType):
+            return isinstance(typ.value, str)
+        if isinstance(typ, Instance):
+            return typ.type.fullname == "builtins.str"
+        if isinstance(typ, UnionType):
+            return any(self.is_str_iteration_type(item) for item in typ.relevant_items())
+        if isinstance(typ, TypeVarType):
+            return self.is_str_iteration_type(typ.upper_bound)
+        return False
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).

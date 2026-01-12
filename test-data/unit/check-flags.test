@@ -2451,6 +2451,37 @@ f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray";
 f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
 [builtins fixtures/primitives.pyi]
 
+[case testDisallowStrIteration]
+# flags: --disallow-str-iteration --python-version 3.12
+from typing import Iterable, Sequence
+
+s = "hello"
+for ch in s:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+    reveal_type(ch)  # N: Revealed type is "builtins.str"
+[x for x in s]  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+
+def takes_seq(x: Sequence[int]) -> None: ...
+def takes_seq_str(x: Sequence[str]) -> None: ...
+takes_seq_str(s)  # E: Argument 1 to "takes_seq_str" has incompatible type "str"; expected "Sequence[str]"
+
+def takes_iter_str(x: Iterable[str]) -> None: ...
+takes_iter_str(s)  # E: Argument 1 to "takes_iter_str" has incompatible type "str"; expected "Iterable[str]"
+
+seq: Sequence[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Sequence[str]")
+iterable: Iterable[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Iterable[str]")
+
+def takes_maybe_seq(x: str | Sequence[str]) -> None:
+    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+
+def takes_bound[T: str](x: T) -> None:
+    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+
+[case testIterStrOverload]
+reveal_type(iter("foo"))  # N: Revealed type is "typing.Iterable[builtins.str]"
+[builtins fixtures/dict.pyi]
+
 [case testNoCrashFollowImportsForStubs]
 # flags: --config-file tmp/mypy.ini
 {**{"x": "y"}}

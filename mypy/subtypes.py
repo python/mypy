@@ -479,6 +479,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # dynamic base classes correctly, see #5456.
             return not isinstance(self.right, NoneType)
         right = self.right
+        if (
+            self.options
+            and self.options.disallow_str_iteration
+            and left.type.fullname == "builtins.str"
+            and isinstance(right, Instance)
+            and right.type.fullname in ("typing.Sequence", "collections.abc.Sequence")
+        ):
+            return False
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, TupleType):

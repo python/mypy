@@ -37,6 +37,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_any_unimported",
     "disallow_incomplete_defs",
     "disallow_subclassing_any",
+    "disallow_str_iteration",
     "disallow_untyped_calls",
     "disallow_untyped_decorators",
     "disallow_untyped_defs",
@@ -237,6 +238,9 @@ class Options:
 
         # Disable treating bytearray and memoryview as subtypes of bytes
         self.strict_bytes = False
+
+        # Disallow iterating over str instances or using them as Sequence[T]
+        self.disallow_str_iteration = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
