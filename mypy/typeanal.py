@@ -526,8 +526,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
         # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
-        if count == 0 and not empty_tuple_index:
+        if count == 0 and empty_tuple_index:
+            return [Parameters([], [], [])]
+        elif count == 0:
             return []
+
         if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
             # Single Any is interpreted as ..., rather that a single argument with Any type.
             # I didn't find this in the PEP, but it sounds reasonable.
@@ -544,12 +547,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 return [AnyType(TypeOfAny.from_error)]
             return list(an_args)
-        first = an_args[0] if an_args else None
-        first_line = first.line if first else -1
-        first_column = first.column if first else -1
+        first = an_args[0]
         return [
             Parameters(
-                an_args, [ARG_POS] * count, [None] * count, line=first_line, column=first_column
+                an_args, [ARG_POS] * count, [None] * count, line=first.line, column=first.column
             )
         ]
 
