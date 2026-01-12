@@ -81,9 +81,17 @@ Creating PEP 561 compatible packages
 
 .. note::
 
-  You can generally ignore this section unless you maintain a package on
-  PyPI, or want to publish type information for an existing PyPI
-  package.
+   Starting with setuptools version 69.0.0, packages built with
+   setuptools include type information (such as ``py.typed`` files)
+   by default. This behavior is still experimental and may change
+   in future versions of setuptools.
+
+   For new projects, prefer using ``pyproject.toml`` instead of
+   ``setup.py`` for package configuration.
+
+You can generally ignore this section unless you maintain a package on
+PyPI, or want to publish type information for an existing PyPI
+package.
 
 :pep:`561` describes three main ways to distribute type
 information:
@@ -105,7 +113,23 @@ If you would like to publish a library package to a package repository
 yourself (e.g. on PyPI) for either internal or external use in type
 checking, packages that supply type information via type comments or
 annotations in the code should put a ``py.typed`` file in their
-package directory. For example, here is a typical directory structure:
+package directory. 
+
+For new packages, a minimal ``pyproject.toml`` configuration using
+setuptools may look like this:
+
+.. code-block:: toml
+
+    [build-system]
+    requires = ["setuptools>=69.0.0"]
+    build-backend = "setuptools.build_meta"
+
+    [project]
+    name = "example-package"
+    version = "0.1.0"
+
+For existing packages that still use legacy ``setup.py``-based
+configuration, a typical directory structure looks like this:
 
 .. code-block:: text
 
@@ -130,39 +154,9 @@ The ``setup.py`` file could look like this:
     )
 
 Some packages have a mix of stub files and runtime files. These packages also
-require a ``py.typed`` file. An example can be seen below:
+require a ``py.typed`` file. 
 
-.. code-block:: text
-
-    setup.py
-    package_b/
-        __init__.py
-        lib.py
-        lib.pyi
-        py.typed
-
-The ``setup.py`` file might look like this:
-
-.. code-block:: python
-
-    from setuptools import setup
-
-    setup(
-        name="SuperPackageB",
-        author="Me",
-        version="0.1",
-        package_data={"package_b": ["py.typed", "lib.pyi"]},
-        packages=["package_b"]
-    )
-
-In this example, both ``lib.py`` and the ``lib.pyi`` stub file exist. At
-runtime, the Python interpreter will use ``lib.py``, but mypy will use
-``lib.pyi`` instead.
-
-If the package is stub-only (not imported at runtime), the package should have
-a prefix of the runtime package name and a suffix of ``-stubs``.
-A ``py.typed`` file is not needed for stub-only packages. For example, if we
-had stubs for ``package_c``, we might do the following:
+For example:
 
 .. code-block:: text
 
