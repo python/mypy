@@ -507,7 +507,7 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
-[case testOrdOfStrIndex]
+[case testOrdOfStrIndex_64bit]
 from mypy_extensions import i64
 def ord_str_index(s: str, i: int) -> int:
     return ord(s[i])
