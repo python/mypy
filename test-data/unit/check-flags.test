@@ -2452,33 +2452,50 @@ f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview
 [builtins fixtures/primitives.pyi]
 
 [case testDisallowStrIteration]
-# flags: --disallow-str-iteration --python-version 3.12
-from typing import Iterable, Sequence
+# flags: --disallow-str-iteration
+from typing import Collection, Iterable, Reversible, Sequence, TypeVar
+
+def takes_str(x: str):
+    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+    [ch for ch in x]  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
 
 s = "hello"
-for ch in s:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
-    reveal_type(ch)  # N: Revealed type is "builtins.str"
-[x for x in s]  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
 
-def takes_seq(x: Sequence[int]) -> None: ...
 def takes_seq_str(x: Sequence[str]) -> None: ...
 takes_seq_str(s)  # E: Argument 1 to "takes_seq_str" has incompatible type "str"; expected "Sequence[str]"
 
 def takes_iter_str(x: Iterable[str]) -> None: ...
 takes_iter_str(s)  # E: Argument 1 to "takes_iter_str" has incompatible type "str"; expected "Iterable[str]"
 
+def takes_collection_str(x: Collection[str]) -> None: ...
+takes_collection_str(s)  # E: Argument 1 to "takes_collection_str" has incompatible type "str"; expected "Collection[str]"
+
+def takes_reversible_str(x: Reversible[str]) -> None: ...
+takes_reversible_str(s)  # E: Argument 1 to "takes_reversible_str" has incompatible type "str"; expected "Reversible[str]"
+
 seq: Sequence[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Sequence[str]")
 iterable: Iterable[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Iterable[str]")
+collection: Collection[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Collection[str]")
+reversible: Reversible[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Reversible[str]")
 
-def takes_maybe_seq(x: str | Sequence[str]) -> None:
+def takes_maybe_seq(x: "str | Sequence[int]") -> None:
+    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str | builtins.int"
+
+T = TypeVar('T', bound=str)
+
+def takes_str_upper_bound(x: T) -> None:
     for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
         reveal_type(ch)  # N: Revealed type is "builtins.str"
 
-def takes_bound[T: str](x: T) -> None:
-    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
-        reveal_type(ch)  # N: Revealed type is "builtins.str"
+reveal_type(reversed(s))  # N: Revealed type is "builtins.reversed[builtins.str]"  # E: Argument 1 to "reversed" has incompatible type "str"; expected "Reversible[str]"
+
+[builtins fixtures/str-iter.pyi]
+[typing fixtures/typing-str-iter.pyi]
 
 [case testIterStrOverload]
+# flags: --disallow-str-iteration
 reveal_type(iter("foo"))  # N: Revealed type is "typing.Iterable[builtins.str]"
 [builtins fixtures/dict.pyi]
 

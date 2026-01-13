@@ -5381,11 +5381,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         echk = self.expr_checker
         iterable: Type
         iterable = get_proper_type(type)
+
         if self.options.disallow_str_iteration and self.is_str_iteration_type(iterable):
             self.msg.str_iteration_disallowed(context)
-            item_type = self.named_type("builtins.str")
-            iterator_type = self.named_generic_type("typing.Iterator", [item_type])
-            return iterator_type, item_type
+
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
         if (

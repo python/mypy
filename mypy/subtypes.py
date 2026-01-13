@@ -484,7 +484,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and self.options.disallow_str_iteration
             and left.type.fullname == "builtins.str"
             and isinstance(right, Instance)
-            and right.type.fullname in ("typing.Sequence", "collections.abc.Sequence")
+            and right.type.fullname
+            in (
+                "collections.abc.Collection",
+                "collections.abc.Iterable",
+                "collections.abc.Reversible",
+                "collections.abc.Sequence",
+                "typing.Collection",
+                "typing.Iterable",
+                "typing.Reversible",
+                "typing.Sequence",
+                "_typeshed.SupportsLenAndGetItem",
+            )
         ):
             return False
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
