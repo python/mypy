@@ -79,14 +79,14 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_instance(self, t: Instance) -> ProperType:
-        args = erased_vars(t.type.defn.type_vars, TypeOfAny.special_form)
+        args = erased_vars(t.type.defn.type_vars, TypeOfAny.explicit)
         return Instance(t.type, args, t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        return AnyType(TypeOfAny.explicit)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        return AnyType(TypeOfAny.explicit)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         raise RuntimeError("Parameters should have been bound to a class")
@@ -94,14 +94,14 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
         # Likely, we can never get here because of aggressive erasure of types that
         # can contain this, but better still return a valid replacement.
-        return t.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
+        return t.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.explicit)])
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        return AnyType(TypeOfAny.explicit)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.
-        any_type = AnyType(TypeOfAny.special_form)
+        any_type = AnyType(TypeOfAny.explicit)
         return CallableType(
             arg_types=[any_type, any_type],
             arg_kinds=[ARG_STAR, ARG_STAR2],
