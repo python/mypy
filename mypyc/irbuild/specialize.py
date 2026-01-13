@@ -24,6 +24,7 @@ from mypy.nodes import (
     DictExpr,
     Expression,
     GeneratorExpr,
+    IndexExpr,
     IntExpr,
     ListExpr,
     MemberExpr,
@@ -72,6 +73,8 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -125,9 +128,12 @@ from mypyc.primitives.str_ops import (
     bytes_decode_latin1_strict,
     bytes_decode_utf8_strict,
     isinstance_str,
+    str_adjust_index_op,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
     str_encode_utf8_strict,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 
@@ -1126,9 +1132,33 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
-    arg = constant_fold_expr(builder, expr.args[0])
+    arg_expr = expr.args[0]
+    arg = constant_fold_expr(builder, arg_expr)
     if isinstance(arg, (str, bytes)) and len(arg) == 1:
         return Integer(ord(arg))
+
+    # Check for ord(s[i]) where s is str and i is an integer
+    if isinstance(arg_expr, IndexExpr):
+        # Check base type
+        base_type = builder.node_type(arg_expr.base)
+        if is_str_rprimitive(base_type):
+            # Check index type
+            index_expr = arg_expr.index
+            index_type = builder.node_type(index_expr)
+            if is_tagged(index_type) or is_fixed_width_rtype(index_type):
+                # This is ord(s[i]) where s is str and i is an integer.
+                # Generate specialized inline code using the helper.
+                result = translate_getitem_with_bounds_check(
+                    builder,
+                    arg_expr.base,
+                    [arg_expr.index],
+                    expr,
+                    str_adjust_index_op,
+                    str_range_check_op,
+                    str_get_item_unsafe_as_int_op,
+                )
+                return result
+
     return None
 
 

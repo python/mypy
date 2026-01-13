@@ -507,6 +507,65 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
+[case testOrdOfStrIndex_64bit]
+from mypy_extensions import i64
+def ord_str_index(s: str, i: int) -> int:
+    return ord(s[i])
+def ord_str_index_i64(s: str, i: i64) -> int:
+    return ord(s[i])
+[typing fixtures/typing-full.pyi]
+[out]
+def ord_str_index(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    return r10
+def ord_str_index_i64(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    return r3
+
 [case testStrip]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
