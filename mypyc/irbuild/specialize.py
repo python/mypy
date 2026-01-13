@@ -73,6 +73,8 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -1130,22 +1132,22 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
-    arg = constant_fold_expr(builder, expr.args[0])
+    arg_expr = expr.args[0]
+    arg = constant_fold_expr(builder, arg_expr)
     if isinstance(arg, (str, bytes)) and len(arg) == 1:
         return Integer(ord(arg))
 
-    # Check for ord(s[i]) pattern where s is str and i is a native integer
-    arg_expr = expr.args[0]
+    # Check for ord(s[i]) where s is str and i is an integer
     if isinstance(arg_expr, IndexExpr):
-        # Check if base is a string
+        # Check base type
         base_type = builder.node_type(arg_expr.base)
-        if base_type == str_rprimitive:
-            # Check if the index has one argument and it's a native integer type
+        if is_str_rprimitive(base_type):
+            # Check index type
             index_expr = arg_expr.index
             index_type = builder.node_type(index_expr)
-            if is_int_rprimitive(index_type) or is_fixed_width_rtype(index_type):
-                # This is ord(s[i]) where s is str and i is a native integer
-                # Generate specialized inline code using the helper
+            if is_tagged(index_type) or is_fixed_width_rtype(index_type):
+                # This is ord(s[i]) where s is str and i is an integer.
+                # Generate specialized inline code using the helper.
                 result = translate_getitem_with_bounds_check(
                     builder,
                     arg_expr.base,
