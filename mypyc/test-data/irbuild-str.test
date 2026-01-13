@@ -507,6 +507,15 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
+[case testOrdOfStrIndex]
+from mypy_extensions import i64
+def ord_str_index(s: str, i: int) -> int:
+    return ord(s[i])
+def ord_str_index_i64(s: str, i: i64) -> int:
+    return ord(s[i])
+[typing fixtures/typing-full.pyi]
+[out]
+
 [case testStrip]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)

@@ -24,6 +24,7 @@ from mypy.nodes import (
     DictExpr,
     Expression,
     GeneratorExpr,
+    IndexExpr,
     IntExpr,
     ListExpr,
     MemberExpr,
@@ -1129,6 +1130,21 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     arg = constant_fold_expr(builder, expr.args[0])
     if isinstance(arg, (str, bytes)) and len(arg) == 1:
         return Integer(ord(arg))
+
+    # Check for ord(s[i]) pattern where s is str and i is a native integer
+    arg_expr = expr.args[0]
+    if isinstance(arg_expr, IndexExpr):
+        # Check if base is a string
+        base_type = builder.node_type(arg_expr.base)
+        if base_type == str_rprimitive:
+            # Check if the index has one argument and it's a native integer type
+            index_expr = arg_expr.index
+            index_type = builder.node_type(index_expr)
+            if is_int_rprimitive(index_type) or is_fixed_width_rtype(index_type):
+                # This is ord(s[i]) where s is str and i is a native integer
+                # TODO: Generate specialized code here
+                assert False, "ord(s[i]) specialization not yet implemented"
+
     return None
 
 
