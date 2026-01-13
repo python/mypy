@@ -5642,7 +5642,6 @@ class SemanticAnalyzer(
             return
         all_type_params_names = [p.name for p in s.type_args]
 
-
         try:
             existing = self.current_symbol_table().get(s.name.name)
             if existing and not (
