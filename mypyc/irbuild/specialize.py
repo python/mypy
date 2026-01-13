@@ -126,9 +126,12 @@ from mypyc.primitives.str_ops import (
     bytes_decode_latin1_strict,
     bytes_decode_utf8_strict,
     isinstance_str,
+    str_adjust_index_op,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
     str_encode_utf8_strict,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 
@@ -1142,8 +1145,17 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
             index_type = builder.node_type(index_expr)
             if is_int_rprimitive(index_type) or is_fixed_width_rtype(index_type):
                 # This is ord(s[i]) where s is str and i is a native integer
-                # TODO: Generate specialized code here
-                assert False, "ord(s[i]) specialization not yet implemented"
+                # Generate specialized inline code using the helper
+                result = translate_getitem_with_bounds_check(
+                    builder,
+                    arg_expr.base,
+                    [arg_expr.index],
+                    expr,
+                    str_adjust_index_op,
+                    str_range_check_op,
+                    str_get_item_unsafe_as_int_op,
+                )
+                return result
 
     return None
 
