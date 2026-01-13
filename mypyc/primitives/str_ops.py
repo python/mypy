@@ -519,7 +519,6 @@ str_adjust_index_op = custom_primitive_op(
     return_type=int64_rprimitive,
     c_function_name="CPyStr_AdjustIndex",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[STR_EXTRA_OPS],
 )
 
@@ -530,7 +529,6 @@ str_range_check_op = custom_primitive_op(
     return_type=bool_rprimitive,
     c_function_name="CPyStr_RangeCheck",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[STR_EXTRA_OPS],
 )
 
@@ -541,6 +539,5 @@ str_get_item_unsafe_as_int_op = custom_primitive_op(
     return_type=int_rprimitive,
     c_function_name="CPyStr_GetItemUnsafeAsInt",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[STR_EXTRA_OPS],
 )
