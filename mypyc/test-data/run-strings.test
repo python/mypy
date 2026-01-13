@@ -808,6 +808,7 @@ def test_chr() -> None:
 
 [case testOrd]
 from testutil import assertRaises
+from mypy_extensions import i64, i32, i16
 
 def test_ord() -> None:
     assert ord(' ') == 32
@@ -833,6 +834,77 @@ def test_ord() -> None:
         ord('aa')
     with assertRaises(TypeError):
         ord('')
+
+def test_ord_str_index() -> None:
+    # ASCII
+    s1 = "hello"
+    assert ord(s1[0 + int()]) == 104  # 'h'
+    assert ord(s1[1 + int()]) == 101  # 'e'
+    assert ord(s1[4 + int()]) == 111  # 'o'
+    assert ord(s1[-1 + int()]) == 111  # 'o'
+    assert ord(s1[-5 + int()]) == 104  # 'h'
+
+    # Latin-1 (8 bits)
+    s2 = "café"
+    assert ord(s2[0 + int()]) == 99   # 'c'
+    assert ord(s2[3 + int()]) == 233  # 'é' (U+00E9)
+    assert ord(s2[-1 + int()]) == 233
+
+    # 16-bit unicode
+    s3 = "你好"  # Chinese
+    assert ord(s3[0 + int()]) == 20320  # '你' (U+4F60)
+    assert ord(s3[1 + int()]) == 22909  # '好' (U+597D)
+    assert ord(s3[-1 + int()]) == 22909
+    assert ord(s3[-2 + int()]) == 20320
+
+    # 4-byte unicode
+    s5 = "a😀b"  # Emoji between ASCII chars
+    assert ord(s5[0 + int()]) == 97    # 'a'
+    assert ord(s5[1 + int()]) == 128512  # '😀' (U+1F600)
+    assert ord(s5[2 + int()]) == 98    # 'b'
+    assert ord(s5[-1 + int()]) == 98
+    assert ord(s5[-2 + int()]) == 128512
+    assert ord(s5[-3 + int()]) == 97
+
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[5 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[100 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[-6 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[-100 + int()])
+
+    s_empty = ""
+    with assertRaises(IndexError, "index out of range"):
+        ord(s_empty[0 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s_empty[-1 + int()])
+
+def test_ord_str_index_i64() -> None:
+    s = "hello"
+
+    idx_i64: i64 = 2 + int()
+    assert ord(s[idx_i64]) == 108  # 'l'
+
+    idx_i64_neg: i64 = -1 + int()
+    assert ord(s[idx_i64_neg]) == 111  # 'o'
+
+    idx_overflow: i64 = 10 + int()
+    with assertRaises(IndexError, "index out of range"):
+        ord(s[idx_overflow])
+
+    idx_underflow: i64 = -10 + int()
+    with assertRaises(IndexError, "index out of range"):
+        ord(s[idx_underflow])
+
+def test_ord_str_index_unicode_mix() -> None:
+    # Mix of 1-byte, 2-byte, 3-byte, and 4-byte characters
+    s = "a\u00e9\u4f60😀"  # 'a', 'é', '你', '😀'
+    assert ord(s[0 + int()]) == 97      # 1-byte
+    assert ord(s[1 + int()]) == 233     # 2-byte
+    assert ord(s[2 + int()]) == 20320   # 3-byte
+    assert ord(s[3 + int()]) == 128512  # 4-byte
 
 [case testDecode]
 from testutil import assertRaises
