@@ -2247,3 +2247,16 @@ type TA3[*Ts1, T, *Ts2] = tuple[*Ts1, T, *Ts2]  # E: Can only use one TypeVarTup
 type TA4[*Ts] = tuple[*Ts]  # OK - single TypeVarTuple is fine
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+[case testMultipleTypeVarTuplesOldStyle]
+# flags: --python-version 3.12
+from typing import Union
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts1 = TypeVarTuple("Ts1")
+Ts2 = TypeVarTuple("Ts2")
+
+TA = Union[tuple[*Ts1], tuple[*Ts2]]  # E: Can only use one TypeVarTuple in a type alias
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

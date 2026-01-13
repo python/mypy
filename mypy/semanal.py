@@ -4020,6 +4020,8 @@ class SemanticAnalyzer(
         for td in tvar_defs:
             if isinstance(td, TypeVarTupleType):
                 if variadic:
+                    if not python_3_12_type_alias:
+                        self.fail("Can only use one TypeVarTuple in a type alias", rvalue)
                     continue
                 variadic = True
             new_tvar_defs.append(td)
