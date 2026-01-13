@@ -41,6 +41,14 @@ typedef struct {
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } BytesWriterObject;
 
+typedef struct {
+    PyObject_HEAD
+    char *buf;  // Beginning of the buffer
+    Py_ssize_t len;  // Current length (number of bytes written)
+    Py_ssize_t capacity;  // Total capacity of the buffer
+    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
+} StringWriterObject;
+
 #define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
 #define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
 #define LibRTStrings_BytesWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[2])

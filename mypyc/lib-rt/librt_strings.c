@@ -379,6 +379,371 @@ BytesWriter_len_internal(PyObject *self) {
     return writer->len << 1;
 }
 
+//
+// StringWriter
+//
+
+static PyTypeObject StringWriterType;
+
+static bool
+_grow_buffer_string(StringWriterObject *data, Py_ssize_t n) {
+    Py_ssize_t target = data->len + n;
+    Py_ssize_t size = data->capacity;
+    do {
+        size *= 2;
+    } while (target >= size);
+    if (data->buf == data->data) {
+        // Move from embedded buffer to heap-allocated buffer
+        data->buf = PyMem_Malloc(size);
+        if (data->buf != NULL) {
+            memcpy(data->buf, data->data, WRITER_EMBEDDED_BUF_LEN);
+        }
+    } else {
+        data->buf = PyMem_Realloc(data->buf, size);
+    }
+    if (unlikely(data->buf == NULL)) {
+        PyErr_NoMemory();
+        return false;
+    }
+    data->capacity = size;
+    return true;
+}
+
+static inline bool
+ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
+    if (likely(data->capacity - data->len >= n)) {
+        return true;
+    } else {
+        return _grow_buffer_string(data, n);
+    }
+}
+
+static inline void
+StringWriter_init_internal(StringWriterObject *self) {
+    self->buf = self->data;
+    self->len = 0;
+    self->capacity = WRITER_EMBEDDED_BUF_LEN;
+}
+
+static PyObject*
+StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    if (type != &StringWriterType) {
+        PyErr_SetString(PyExc_TypeError, "StringWriter cannot be subclassed");
+        return NULL;
+    }
+
+    StringWriterObject *self = (StringWriterObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        StringWriter_init_internal(self);
+    }
+    return (PyObject *)self;
+}
+
+static PyObject *
+StringWriter_internal(void) {
+    StringWriterObject *self = (StringWriterObject *)StringWriterType.tp_alloc(&StringWriterType, 0);
+    if (self == NULL)
+        return NULL;
+    StringWriter_init_internal(self);
+    return (PyObject *)self;
+}
+
+static int
+StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
+{
+    if (!PyArg_ParseTuple(args, "")) {
+        return -1;
+    }
+
+    if (kwds != NULL && PyDict_Size(kwds) > 0) {
+        PyErr_SetString(PyExc_TypeError,
+                        "StringWriter() takes no keyword arguments");
+        return -1;
+    }
+
+    StringWriter_init_internal(self);
+    return 0;
+}
+
+static void
+StringWriter_dealloc(StringWriterObject *self)
+{
+    if (self->buf != self->data) {
+        PyMem_Free(self->buf);
+        self->buf = NULL;
+    }
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject*
+StringWriter_getvalue_internal(PyObject *self)
+{
+    StringWriterObject *obj = (StringWriterObject *)self;
+    return PyBytes_FromStringAndSize(obj->buf, obj->len);
+}
+
+static PyObject*
+StringWriter_repr(StringWriterObject *self)
+{
+    PyObject *value = StringWriter_getvalue_internal((PyObject *)self);
+    if (value == NULL) {
+        return NULL;
+    }
+    PyObject *value_repr = PyObject_Repr(value);
+    Py_DECREF(value);
+    if (value_repr == NULL) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("StringWriter(%U)", value_repr);
+    Py_DECREF(value_repr);
+    return result;
+}
+
+static PyObject*
+StringWriter_getvalue(StringWriterObject *self, PyObject *Py_UNUSED(ignored))
+{
+    return PyBytes_FromStringAndSize(self->buf, self->len);
+}
+
+static Py_ssize_t
+StringWriter_length(StringWriterObject *self)
+{
+    return self->len;
+}
+
+static PyObject*
+StringWriter_item(StringWriterObject *self, Py_ssize_t index)
+{
+    Py_ssize_t length = self->len;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "StringWriter index out of range");
+        return NULL;
+    }
+
+    // Return the byte at the given index as a Python int
+    return PyLong_FromLong((unsigned char)self->buf[index]);
+}
+
+static int
+StringWriter_ass_item(StringWriterObject *self, Py_ssize_t index, PyObject *value)
+{
+    Py_ssize_t length = self->len;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "StringWriter index out of range");
+        return -1;
+    }
+
+    // Check that value is not NULL (deletion not supported)
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "StringWriter does not support item deletion");
+        return -1;
+    }
+
+    // Convert value to uint8
+    uint8_t byte_value = CPyLong_AsUInt8(value);
+    if (unlikely(byte_value == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+        CPy_TypeError("u8", value);
+        return -1;
+    }
+
+    // Assign the byte
+    self->buf[index] = (char)byte_value;
+    return 0;
+}
+
+static PySequenceMethods StringWriter_as_sequence = {
+    .sq_length = (lenfunc)StringWriter_length,
+    .sq_item = (ssizeargfunc)StringWriter_item,
+    .sq_ass_item = (ssizeobjargproc)StringWriter_ass_item,
+};
+
+static PyObject* StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* StringWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
+
+static PyMethodDef StringWriter_methods[] = {
+    {"append", (PyCFunction) StringWriter_append, METH_FASTCALL | METH_KEYWORDS,
+     PyDoc_STR("Append a single byte to the buffer")
+    },
+    {"write", (PyCFunction) StringWriter_write, METH_FASTCALL | METH_KEYWORDS,
+     PyDoc_STR("Append bytes to the buffer")
+    },
+    {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
+     "Return the buffer content as bytes object"
+    },
+    {"truncate", (PyCFunction) StringWriter_truncate, METH_FASTCALL,
+     PyDoc_STR("Truncate the buffer to the specified size")
+    },
+    {NULL}  /* Sentinel */
+};
+
+static PyTypeObject StringWriterType = {
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "StringWriter",
+    .tp_doc = PyDoc_STR("Memory buffer for building bytes objects from parts"),
+    .tp_basicsize = sizeof(StringWriterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = StringWriter_new,
+    .tp_init = (initproc) StringWriter_init,
+    .tp_dealloc = (destructor) StringWriter_dealloc,
+    .tp_methods = StringWriter_methods,
+    .tp_as_sequence = &StringWriter_as_sequence,
+    .tp_repr = (reprfunc)StringWriter_repr,
+};
+
+static inline bool
+check_string_writer(PyObject *data) {
+    if (unlikely(Py_TYPE(data) != &StringWriterType)) {
+        PyErr_Format(
+            PyExc_TypeError, "data must be a StringWriter object, got %s", Py_TYPE(data)->tp_name
+        );
+        return false;
+    }
+    return true;
+}
+
+static char
+StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
+    const char *data;
+    Py_ssize_t size;
+    if (likely(PyBytes_Check(value))) {
+        data = PyBytes_AS_STRING(value);
+        size = PyBytes_GET_SIZE(value);
+    } else {
+        data = PyByteArray_AS_STRING(value);
+        size = PyByteArray_GET_SIZE(value);
+    }
+    // Write bytes content.
+    if (!ensure_string_writer_size(self, size))
+        return CPY_NONE_ERROR;
+    memcpy(self->buf + self->len, data, size);
+    self->len += size;
+    return CPY_NONE;
+}
+
+static PyObject*
+StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"value", 0};
+    static CPyArg_Parser parser = {"O:write", kwlist, 0};
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+        return NULL;
+    }
+    if (!check_string_writer(self)) {
+        return NULL;
+    }
+    if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
+        return NULL;
+    }
+    if (unlikely(StringWriter_write_internal((StringWriterObject *)self, value) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static inline char
+StringWriter_append_internal(StringWriterObject *self, uint8_t value) {
+    if (!ensure_string_writer_size(self, 1))
+        return CPY_NONE_ERROR;
+    _WRITE(self, uint8_t, value);
+    return CPY_NONE;
+}
+
+static PyObject*
+StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"value", 0};
+    static CPyArg_Parser parser = {"O:append", kwlist, 0};
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+        return NULL;
+    }
+    if (!check_string_writer(self)) {
+        return NULL;
+    }
+    uint8_t unboxed = CPyLong_AsUInt8(value);
+    if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+        CPy_TypeError("u8", value);
+        return NULL;
+    }
+    if (unlikely(StringWriter_append_internal((StringWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static char
+StringWriter_truncate_internal(PyObject *self, int64_t size) {
+    StringWriterObject *writer = (StringWriterObject *)self;
+    Py_ssize_t current_size = writer->len;
+
+    // Validate size is non-negative
+    if (size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be non-negative");
+        return CPY_NONE_ERROR;
+    }
+
+    // Validate size doesn't exceed current size
+    if (size > current_size) {
+        PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
+        return CPY_NONE_ERROR;
+    }
+
+    writer->len = size;
+    return CPY_NONE;
+}
+
+static PyObject*
+StringWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "truncate() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    if (!check_string_writer(self)) {
+        return NULL;
+    }
+
+    PyObject *size_obj = args[0];
+    int overflow;
+    long long size = PyLong_AsLongLongAndOverflow(size_obj, &overflow);
+
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (overflow != 0) {
+        PyErr_SetString(PyExc_ValueError, "integer out of range");
+        return NULL;
+    }
+
+    if (unlikely(StringWriter_truncate_internal(self, size) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyTypeObject *
+StringWriter_type_internal(void) {
+    return &StringWriterType;  // Return borrowed reference
+};
+
+static CPyTagged
+StringWriter_len_internal(PyObject *self) {
+    StringWriterObject *writer = (StringWriterObject *)self;
+    return writer->len << 1;
+}
+
+// End of StringWriter
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
