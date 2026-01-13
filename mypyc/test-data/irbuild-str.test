@@ -525,7 +525,7 @@ def ord_str_index(s, i):
     r5 :: c_ptr
     r6, r7 :: i64
     r8, r9 :: bool
-    r10 :: int
+    r10 :: short_int
 L0:
     r0 = i & 1
     r1 = r0 == 0
@@ -554,7 +554,7 @@ def ord_str_index_i64(s, i):
     s :: str
     i, r0 :: i64
     r1, r2 :: bool
-    r3 :: int
+    r3 :: short_int
 L0:
     r0 = CPyStr_AdjustIndex(s, i)
     r1 = CPyStr_RangeCheck(s, r0)

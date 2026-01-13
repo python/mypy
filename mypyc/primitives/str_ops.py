@@ -16,6 +16,7 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
+    short_int_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
 )
@@ -536,7 +537,7 @@ str_range_check_op = custom_primitive_op(
 str_get_item_unsafe_as_int_op = custom_primitive_op(
     name="str_get_item_unsafe_as_int",
     arg_types=[str_rprimitive, int64_rprimitive],
-    return_type=int_rprimitive,
+    return_type=short_int_rprimitive,
     c_function_name="CPyStr_GetItemUnsafeAsInt",
     error_kind=ERR_NEVER,
     dependencies=[STR_EXTRA_OPS],
