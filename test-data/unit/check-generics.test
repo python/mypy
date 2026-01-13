@@ -3628,7 +3628,8 @@ from typing import Generic, Callable
 from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
-class X1(Generic[P]): ...
+class X1(Generic[P]):
+    def __call__(self, *a: P.args, **k: P.kwargs) -> None: ...
 X2 = Callable[P, None]
 
 x1: X1[()]
@@ -3637,8 +3638,10 @@ x2: X2[()]
 reveal_type(x1)  # N: Revealed type is "__main__.X1[[]]"
 reveal_type(x2)  # N: Revealed type is "def ()"
 
+x1()
+x1(5)  # E: Too many arguments for "__call__" of "X1"
 x2()
-x2(int)  # E: Too many arguments
+x2(5)  # E: Too many arguments
 [builtins fixtures/tuple.pyi]
 
 [case testMissingTypeArgsInApplication]
