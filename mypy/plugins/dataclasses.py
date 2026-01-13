@@ -457,13 +457,9 @@ class DataclassTransformer:
             )
             return
 
-        generated_slots = {attr.name for attr in attributes}
         existing_slots = info.names.get("__slots__")
         slots_defined_by_plugin = existing_slots is not None and existing_slots.plugin_generated
-        if (
-            (info.slots is not None and info.slots != generated_slots and not slots_defined_by_plugin)
-            or (existing_slots is not None and not slots_defined_by_plugin)
-        ):
+        if existing_slots is not None and not slots_defined_by_plugin:
             # This means we have a slots conflict.
             # Class explicitly specifies a different `__slots__` field.
             # And `@dataclass(slots=True)` is used.
@@ -481,6 +477,7 @@ class DataclassTransformer:
             # does not have concrete `__slots__` defined. Ignoring.
             return
 
+        generated_slots = {attr.name for attr in attributes}
         info.slots = generated_slots
 
         # Now, insert `.__slots__` attribute to class namespace:
