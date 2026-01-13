@@ -9,5 +9,5 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def __getitem__(self, __key: _KT) -> _VT_co: pass
 
 class SupportsLenAndGetItem(Protocol[_T_co]):
-    def __len__(self) -> int: ...
-    def __getitem__(self, k: int, /) -> _T_co: ...
+    def __len__(self) -> int: pass
+    def __getitem__(self, k: int, /) -> _T_co: pass

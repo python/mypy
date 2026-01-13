@@ -1,0 +1,13 @@
+diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
+index bd425ff3c..61a28e3a9 100644
+--- a/mypy/typeshed/stdlib/builtins.pyi
++++ b/mypy/typeshed/stdlib/builtins.pyi
+@@ -1455,6 +1455,8 @@ def input(prompt: object = "", /) -> str: ...
+ class _GetItemIterable(Protocol[_T_co]):
+     def __getitem__(self, i: int, /) -> _T_co: ...
+ 
++@overload
++def iter(object: str, /) -> Iterator[str]: ...
+ @overload
+ def iter(object: SupportsIter[_SupportsNextT_co], /) -> _SupportsNextT_co: ...
+ @overload

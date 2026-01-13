@@ -3122,6 +3122,15 @@ def get_conflict_protocol_types(
     Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
     """
     assert right.type.is_protocol
+
+    if left.type.fullname == "builtins.str" and right.type.fullname in (
+        "collections.abc.Collection",
+        "typing.Collection",
+    ):
+        # `str` doesn't conform to the `Collection` protocol, but we don't want to show that as the reason for the error.
+        assert options.disallow_str_iteration
+        return []
+
     conflicts: list[tuple[str, Type, Type, bool]] = []
     for member in right.type.protocol_members:
         if member in ("__init__", "__new__"):
