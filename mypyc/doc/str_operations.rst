@@ -20,6 +20,7 @@ Operators
 
 * Concatenation (``s1 + s2``)
 * Indexing (``s[n]``)
+  * Also ``ord(s[n])``, which avoids the temporary length-1 str
 * Slicing (``s[n:m]``, ``s[n:]``, ``s[:m]``)
 * Comparisons (``==``, ``!=``)
 * Augmented assignment (``s1 += s2``)
