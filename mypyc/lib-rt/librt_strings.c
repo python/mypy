@@ -12,7 +12,7 @@
 // BytesWriter
 //
 
-#define _WRITE(data, type, v) \
+#define _WRITE_BYTES(data, type, v) \
     do { \
        *(type *)(((BytesWriterObject *)data)->buf + ((BytesWriterObject *)data)->len) = v; \
        ((BytesWriterObject *)data)->len += sizeof(type); \
@@ -290,7 +290,7 @@ static inline char
 BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
     if (!ensure_bytes_writer_size(self, 1))
         return CPY_NONE_ERROR;
-    _WRITE(self, uint8_t, value);
+    _WRITE_BYTES(self, uint8_t, value);
     return CPY_NONE;
 }
 
@@ -421,6 +421,7 @@ ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
 static inline void
 StringWriter_init_internal(StringWriterObject *self) {
     self->buf = self->data;
+    self->kind = 1;
     self->len = 0;
     self->capacity = WRITER_EMBEDDED_BUF_LEN;
 }
@@ -480,7 +481,7 @@ static PyObject*
 StringWriter_getvalue_internal(PyObject *self)
 {
     StringWriterObject *obj = (StringWriterObject *)self;
-    return PyBytes_FromStringAndSize(obj->buf, obj->len);
+    return PyUnicode_FromKindAndData(obj->kind, obj->buf, obj->len);
 }
 
 static PyObject*
@@ -503,7 +504,7 @@ StringWriter_repr(StringWriterObject *self)
 static PyObject*
 StringWriter_getvalue(StringWriterObject *self, PyObject *Py_UNUSED(ignored))
 {
-    return PyBytes_FromStringAndSize(self->buf, self->len);
+    return PyUnicode_FromKindAndData(self->kind, self->buf, self->len);
 }
 
 static Py_ssize_t
@@ -574,7 +575,7 @@ static PyMethodDef StringWriter_methods[] = {
      PyDoc_STR("Append bytes to the buffer")
     },
     {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
-     "Return the buffer content as bytes object"
+     "Return the buffer content as str object"
     },
     {"truncate", (PyCFunction) StringWriter_truncate, METH_FASTCALL,
      PyDoc_STR("Truncate the buffer to the specified size")
@@ -585,7 +586,7 @@ static PyMethodDef StringWriter_methods[] = {
 static PyTypeObject StringWriterType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "StringWriter",
-    .tp_doc = PyDoc_STR("Memory buffer for building bytes objects from parts"),
+    .tp_doc = PyDoc_STR("Memory buffer for building string objects from parts"),
     .tp_basicsize = sizeof(StringWriterObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
@@ -653,7 +654,7 @@ static inline char
 StringWriter_append_internal(StringWriterObject *self, uint8_t value) {
     if (!ensure_string_writer_size(self, 1))
         return CPY_NONE_ERROR;
-    _WRITE(self, uint8_t, value);
+    // TODO: Replace _WRITE_BYTES(self, uint8_t, value);
     return CPY_NONE;
 }
 
@@ -771,7 +772,13 @@ librt_strings_module_exec(PyObject *m)
     if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
+    if (PyType_Ready(&StringWriterType) < 0) {
+        return -1;
+    }
     if (PyModule_AddObjectRef(m, "BytesWriter", (PyObject *) &BytesWriterType) < 0) {
+        return -1;
+    }
+    if (PyModule_AddObjectRef(m, "StringWriter", (PyObject *) &StringWriterType) < 0) {
         return -1;
     }
 

@@ -44,8 +44,9 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     char *buf;  // Beginning of the buffer
-    Py_ssize_t len;  // Current length (number of bytes written)
-    Py_ssize_t capacity;  // Total capacity of the buffer
+    char kind;  // Bytes per code point (1, 2 or 4)
+    Py_ssize_t len;  // Current length (number of code points written)
+    Py_ssize_t capacity;  // Total capacity of the buffer (number of code points)
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } StringWriterObject;
 

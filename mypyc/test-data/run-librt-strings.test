@@ -4,7 +4,7 @@ import base64
 import binascii
 import random
 
-from librt.strings import BytesWriter
+from librt.strings import BytesWriter, StringWriter
 
 from testutil import assertRaises
 
@@ -188,6 +188,10 @@ def test_bytes_writer_wrapper_functions() -> None:
         b[0] = -1
     with assertRaises(TypeError):
         b[0] = 256
+
+def test_string_writer_basics() -> None:
+    w = StringWriter()
+    assert w.getvalue() == ""
 
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
