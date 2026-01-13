@@ -1136,8 +1136,8 @@ class MessageBuilder:
     def unpacking_strings_disallowed(self, context: Context) -> None:
         self.fail("Unpacking a string is disallowed", context, code=codes.STR_UNPACK)
 
-    def str_iteration_disallowed(self, context: Context) -> None:
-        self.fail('Iterating over "str" is disallowed', context)
+    def str_iteration_disallowed(self, context: Context, str_type: Type) -> None:
+        self.fail(f"Iterating over {format_type(str_type, self.options)} is disallowed", context)
         self.note("This is because --disallow-str-iteration is enabled", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
@@ -2210,6 +2210,15 @@ class MessageBuilder:
         conflict_types = get_conflict_protocol_types(
             subtype, supertype, class_obj=class_obj, options=self.options
         )
+
+        if subtype.type.has_base("builtins.str") and supertype.type.has_base("typing.Container"):
+            # `str` doesn't properly conform to the `Container` protocol, but we don't want to show that as the reason for the error.
+            conflict_types = [
+                conflict_type
+                for conflict_type in conflict_types
+                if conflict_type[0] != "__contains__"
+            ]
+
         if conflict_types and (
             not is_subtype(subtype, erase_type(supertype), options=self.options)
             or not subtype.type.defn.type_vars
@@ -3122,14 +3131,6 @@ def get_conflict_protocol_types(
     Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
     """
     assert right.type.is_protocol
-
-    if left.type.fullname == "builtins.str" and right.type.fullname in (
-        "collections.abc.Collection",
-        "typing.Collection",
-    ):
-        # `str` doesn't conform to the `Collection` protocol, but we don't want to show that as the reason for the error.
-        assert options.disallow_str_iteration
-        return []
 
     conflicts: list[tuple[str, Type, Type, bool]] = []
     for member in right.type.protocol_members:

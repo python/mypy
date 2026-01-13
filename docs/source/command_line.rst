@@ -786,6 +786,8 @@ of the above sections.
        for ch in s:  # error: Iterating over "str" is disallowed
            print(ch)
 
+        for ch in iter(s):  # OK
+           print(ch)
 
 .. option:: --extra-checks
 

@@ -26,11 +26,6 @@ class Iterator(Iterable[_T_co], Protocol[_T_co]):
     def __iter__(self) -> Iterator[_T_co]: ...
 
 @runtime_checkable
-class Reversible(Iterable[_T_co], Protocol[_T_co]):
-    @abstractmethod
-    def __reversed__(self) -> Iterator[_T_co]: ...
-
-@runtime_checkable
 class Container(Protocol[_T_co]):
     # This is generic more on vibes than anything else
     @abstractmethod
@@ -42,7 +37,7 @@ class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
     @abstractmethod
     def __len__(self) -> int: ...
 
-class Sequence(Reversible[_T_co], Collection[_T_co]):
+class Sequence(Collection[_T_co]):
     @overload
     @abstractmethod
     def __getitem__(self, index: int) -> _T_co: ...
@@ -51,7 +46,6 @@ class Sequence(Reversible[_T_co], Collection[_T_co]):
     def __getitem__(self, index: slice) -> Sequence[_T_co]: ...
     def __contains__(self, value: object) -> bool: ...
     def __iter__(self) -> Iterator[_T_co]: ...
-    def __reversed__(self) -> Iterator[_T_co]: ...
 
 class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     @abstractmethod

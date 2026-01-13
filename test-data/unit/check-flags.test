@@ -2453,7 +2453,8 @@ f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview
 
 [case testDisallowStrIteration]
 # flags: --disallow-str-iteration
-from typing import Collection, Iterable, Reversible, Sequence, TypeVar
+from abc import abstractmethod
+from typing import Collection, Container, Iterable, Protocol, Sequence, TypeVar
 
 def takes_str(x: str):
     for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
@@ -2471,25 +2472,41 @@ takes_iter_str(s)  # E: Argument 1 to "takes_iter_str" has incompatible type "st
 def takes_collection_str(x: Collection[str]) -> None: ...
 takes_collection_str(s)  # E: Argument 1 to "takes_collection_str" has incompatible type "str"; expected "Collection[str]"
 
-def takes_reversible_str(x: Reversible[str]) -> None: ...
-takes_reversible_str(s)  # E: Argument 1 to "takes_reversible_str" has incompatible type "str"; expected "Reversible[str]"
-
 seq: Sequence[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Sequence[str]")
 iterable: Iterable[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Iterable[str]")
 collection: Collection[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Collection[str]")
-reversible: Reversible[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Reversible[str]")
 
 def takes_maybe_seq(x: "str | Sequence[int]") -> None:
-    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+    for ch in x:  # E: Iterating over "str | Sequence[int]" is disallowed  # N: This is because --disallow-str-iteration is enabled
         reveal_type(ch)  # N: Revealed type is "builtins.str | builtins.int"
 
 T = TypeVar('T', bound=str)
+_T_co = TypeVar('_T_co', covariant=True)
 
 def takes_str_upper_bound(x: T) -> None:
-    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+    for ch in x:  # E: Iterating over "T" is disallowed  # N: This is because --disallow-str-iteration is enabled
         reveal_type(ch)  # N: Revealed type is "builtins.str"
 
-reveal_type(reversed(s))  # N: Revealed type is "builtins.reversed[builtins.str]"  # E: Argument 1 to "reversed" has incompatible type "str"; expected "Reversible[str]"
+class StrSubclass(str):
+    def __contains__(self, x: object) -> bool: ...
+
+def takes_str_subclass(x: StrSubclass):
+    for ch in x:  # E: Iterating over "StrSubclass" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+
+class CollectionSubclass(Collection[_T_co], Protocol[_T_co]):
+    @abstractmethod
+    def __missing_impl__(self): ...
+
+def takes_collection_subclass(x: CollectionSubclass[str]) -> None: ...
+
+takes_collection_subclass(s)  # E: Argument 1 to "takes_collection_subclass" has incompatible type "str"; expected "CollectionSubclass[str]" \
+                              # N: "str" is missing following "CollectionSubclass" protocol member: \
+                              # N:     __missing_impl__
+
+takes_collection_subclass(StrSubclass())  # E: Argument 1 to "takes_collection_subclass" has incompatible type "StrSubclass"; expected "CollectionSubclass[str]" \
+                                          # N: "StrSubclass" is missing following "CollectionSubclass" protocol member: \
+                                          # N:     __missing_impl__
 
 [builtins fixtures/str-iter.pyi]
 [typing fixtures/typing-str-iter.pyi]

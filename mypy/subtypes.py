@@ -479,22 +479,23 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # dynamic base classes correctly, see #5456.
             return not isinstance(self.right, NoneType)
         right = self.right
+
         if (
             self.options
             and self.options.disallow_str_iteration
-            and left.type.fullname == "builtins.str"
+            and left.type.has_base("builtins.str")
             and isinstance(right, Instance)
-            and right.type.fullname
-            in (
-                "collections.abc.Collection",
-                "collections.abc.Iterable",
-                "collections.abc.Reversible",
-                "collections.abc.Sequence",
-                "typing.Collection",
-                "typing.Iterable",
-                "typing.Reversible",
-                "typing.Sequence",
-                "_typeshed.SupportsLenAndGetItem",
+            and not right.type.has_base("builtins.str")
+            and any(
+                right.type.has_base(base)
+                for base in (
+                    "collections.abc.Collection",
+                    "collections.abc.Iterable",
+                    "collections.abc.Sequence",
+                    "typing.Collection",
+                    "typing.Iterable",
+                    "typing.Sequence",
+                )
             )
         ):
             return False

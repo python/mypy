@@ -5383,7 +5383,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         iterable = get_proper_type(type)
 
         if self.options.disallow_str_iteration and self.is_str_iteration_type(iterable):
-            self.msg.str_iteration_disallowed(context)
+            self.msg.str_iteration_disallowed(context, iterable)
 
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
@@ -5402,7 +5402,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(typ, LiteralType):
             return isinstance(typ.value, str)
         if isinstance(typ, Instance):
-            return typ.type.fullname == "builtins.str"
+            return is_proper_subtype(typ, self.named_type("builtins.str"))
         if isinstance(typ, UnionType):
             return any(self.is_str_iteration_type(item) for item in typ.relevant_items())
         if isinstance(typ, TypeVarType):
