@@ -650,12 +650,142 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     return Py_None;
 }
 
-static inline char
-StringWriter_append_internal(StringWriterObject *self, uint8_t value) {
-    if (!ensure_string_writer_size(self, 1))
-        return CPY_NONE_ERROR;
-    // TODO: Replace _WRITE_BYTES(self, uint8_t, value);
+static void convert_string_data(char *src_buf, char *dest_buf, Py_ssize_t len,
+                                char old_kind, char new_kind) {
+    bool in_place = (src_buf == dest_buf);
+
+    if (old_kind == 1 && new_kind == 2) {
+        uint8_t *src = (uint8_t *)src_buf;
+        uint16_t *dest = (uint16_t *)dest_buf;
+        if (in_place) {
+            // Convert backwards to avoid overwriting
+            for (Py_ssize_t i = len - 1; i >= 0; i--) {
+                dest[i] = src[i];
+            }
+        } else {
+            // Convert forwards
+            for (Py_ssize_t i = 0; i < len; i++) {
+                dest[i] = src[i];
+            }
+        }
+    } else if (old_kind == 2 && new_kind == 4) {
+        uint16_t *src = (uint16_t *)src_buf;
+        uint32_t *dest = (uint32_t *)dest_buf;
+        if (in_place) {
+            // Convert backwards to avoid overwriting
+            for (Py_ssize_t i = len - 1; i >= 0; i--) {
+                dest[i] = src[i];
+            }
+        } else {
+            // Convert forwards
+            for (Py_ssize_t i = 0; i < len; i++) {
+                dest[i] = src[i];
+            }
+        }
+    }
+}
+
+static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, char new_kind) {
+    // Current buffer size in bytes
+    Py_ssize_t current_buf_size = (self->buf == self->data) ? WRITER_EMBEDDED_BUF_LEN : (self->capacity * old_kind);
+    // Needed buffer size in bytes for new kind
+    Py_ssize_t needed_size = self->len * new_kind;
+
+    if (current_buf_size >= needed_size) {
+        // Convert in place
+        convert_string_data(self->buf, self->buf, self->len, old_kind, new_kind);
+        self->kind = new_kind;
+        self->capacity = current_buf_size / new_kind;
+    } else {
+        // Allocate new buffer
+        Py_ssize_t new_capacity = self->capacity;
+        do {
+            new_capacity *= 2;
+        } while (new_capacity * new_kind < needed_size);
+
+        char *new_buf = PyMem_Malloc(new_capacity * new_kind);
+        if (unlikely(new_buf == NULL)) {
+            PyErr_NoMemory();
+            return CPY_NONE_ERROR;
+        }
+
+        // Convert data during copy
+        convert_string_data(self->buf, new_buf, self->len, old_kind, new_kind);
+
+        // Free old buffer if it was heap-allocated
+        if (self->buf != self->data) {
+            PyMem_Free(self->buf);
+        }
+
+        self->buf = new_buf;
+        self->kind = new_kind;
+        self->capacity = new_capacity;
+    }
     return CPY_NONE;
+}
+
+static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
+    if (self->kind == 1) {
+        // Either kind 1 -> 2 or 1 -> 4. First switch to kind 2.
+        if (convert_string_buffer_kind(self, 1, 2) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        if ((uint32_t)value > 0xffff) {
+            // Call recursively to switch from kind 2 to 4
+            return string_writer_switch_kind(self, value);
+        }
+        return CPY_NONE;
+    } else {
+        // Must be kind 2 -> 4
+        return convert_string_buffer_kind(self, 2, 4);
+    }
+}
+
+static char string_append_slow_path(StringWriterObject *self, int32_t value) {
+    if (self->kind == 2) {
+        if ((uint32_t)value <= 0xffff) {
+            if (!ensure_string_writer_size(self, 1))
+                return CPY_NONE_ERROR;
+            // Copy 2-byte character to buffer
+            uint16_t val16 = (uint16_t)value;
+            memcpy(self->buf + self->len * 2, &val16, 2);
+            self->len++;
+            return CPY_NONE;
+        }
+        if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        return string_append_slow_path(self, value);
+    } else if (self->kind == 1) {
+        // Check precondition -- this must only be used on slow path
+        assert((uint32_t)value > 0xff);
+        if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        return string_append_slow_path(self, value);
+    }
+    assert(self->kind == 4);
+    if ((uint32_t)value < (1 << 20)) {
+        if (!ensure_string_writer_size(self, 1))
+            return CPY_NONE_ERROR;
+        // Copy 4-byte character to buffer
+        uint32_t val32 = (uint32_t)value;
+        memcpy(self->buf + self->len * 4, &val32, 4);
+        self->len++;
+        return CPY_NONE;
+    }
+    // TODO: exception
+    return CPY_NONE_ERROR;
+}
+
+static inline char
+StringWriter_append_internal(StringWriterObject *self, int32_t value) {
+    char kind = self->kind;
+    if (kind == 1 && (uint32_t)value < 256) {
+        if (!ensure_string_writer_size(self, 1))
+            return CPY_NONE_ERROR;
+        self->buf[self->index++] = value;
+        self->kind = kind;
+        return CPY_NONE;
+    }
+    return string_append_slow_path(self, value);
 }
 
 static PyObject*
