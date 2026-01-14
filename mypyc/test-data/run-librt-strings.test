@@ -213,6 +213,28 @@ def test_string_writer_repr() -> None:
     expected = "StringWriter('" + chr(0x10000) + "')"
     assert repr(w3) == expected
 
+def test_string_writer_repr_escaping() -> None:
+    # Kind 1: Test escaping of newline, nul, tab, backslash
+    w = StringWriter()
+    w.append(ord('a'))
+    w.append(ord('\n'))
+    w.append(0)
+    w.append(ord('\t'))
+    w.append(ord('\\'))
+    assert repr(w) == "StringWriter('a\\n\\x00\\t\\\\')"
+
+    # Kind 2: escaping with UCS-2
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(ord('\n'))
+    assert repr(w2) == "StringWriter('" + chr(0x100) + "\\n')"
+
+    # Kind 4: escaping with UCS-4
+    w3 = StringWriter()
+    w3.append(0x10000)
+    w3.append(0)
+    assert repr(w3) == "StringWriter('" + chr(0x10000) + "\\x00')"
+
 def test_string_writer_len() -> None:
     # Kind 1 (ASCII)
     w = StringWriter()
