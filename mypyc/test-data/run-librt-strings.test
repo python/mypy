@@ -56,9 +56,9 @@ def test_bytes_writer_set_item() -> None:
     with assertRaises(IndexError):
         w[-(1 << 50)] = 0
 
-    with assertRaises(TypeError):
+    with assertRaises(ValueError):
         w[0] = int() - 1
-    with assertRaises(TypeError):
+    with assertRaises(ValueError):
         w[0] = int() + 256
 
     # Grow BytesWriter
