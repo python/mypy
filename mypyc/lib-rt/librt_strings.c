@@ -775,7 +775,7 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
         return string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
-    if ((uint32_t)value < (1 << 20)) {
+    if ((uint32_t)value <= 0x10FFFF) {
         if (!ensure_string_writer_size(self, 1))
             return CPY_NONE_ERROR;
         // Copy 4-byte character to buffer
@@ -784,7 +784,8 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
         self->len++;
         return CPY_NONE;
     }
-    // TODO: exception
+    // Code point is out of valid Unicode range
+    PyErr_Format(PyExc_ValueError, "code point %d is outside valid Unicode range (0-1114111)", value);
     return CPY_NONE_ERROR;
 }
 

@@ -350,6 +350,24 @@ def test_string_writer_append() -> None:
     w.append(0x10000)
     assert w.getvalue() == "a\xff\u0100\uffff" + chr(0x10000)
 
+    # Maximum valid Unicode code point (0x10FFFF = 1114111)
+    w2 = StringWriter()
+    w2.append(0x10FFFF)
+    assert w2.getvalue() == chr(0x10FFFF)
+
+    # Invalid code points
+    w3 = StringWriter()
+    with assertRaises(ValueError, "code point 1114112 is outside valid Unicode range (0-1114111)"):
+        w3.append(0x110000)
+
+    w4 = StringWriter()
+    with assertRaises(ValueError, "code point -1 is outside valid Unicode range (0-1114111)"):
+        w4.append(-1)
+
+    w5 = StringWriter()
+    with assertRaises(ValueError, "code point 2097152 is outside valid Unicode range (0-1114111)"):
+        w5.append(0x200000)
+
 def test_string_writer_write() -> None:
     # Kind 1: Write ASCII strings
     w = StringWriter()
