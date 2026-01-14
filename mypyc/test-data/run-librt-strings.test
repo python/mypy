@@ -210,6 +210,89 @@ def test_string_writer_append() -> None:
     w.append(0x10000)
     assert w.getvalue() == "a\xff\u0100\uffff" + chr(0x10000)
 
+def test_string_writer_append_grow_same_kind() -> None:
+    # Test growing buffer while staying in kind 1 (ASCII)
+    w = StringWriter()
+    # Append enough ASCII characters to grow beyond embedded buffer
+    for i in range(1000):
+        w.append(ord('a') + (i % 26))
+        assert len(w) == i + 1
+    result = w.getvalue()
+    assert len(result) == 1000
+    for i in range(1000):
+        assert result[i] == chr(ord('a') + (i % 26))
+
+    # Test growing buffer while staying in kind 2
+    w2 = StringWriter()
+    w2.append(0x100)  # Switch to kind 2
+    for i in range(1000):
+        w2.append(0x100 + (i % 100))
+        assert len(w2) == i + 2
+    result2 = w2.getvalue()
+    assert len(result2) == 1001
+    assert result2[0] == chr(0x100)
+    for i in range(1000):
+        assert result2[i + 1] == chr(0x100 + (i % 100))
+
+    # Test growing buffer while staying in kind 4
+    w3 = StringWriter()
+    w3.append(0x10000)  # Switch to kind 4
+    for i in range(500):
+        w3.append(0x10000 + (i % 100))
+        assert len(w3) == i + 2
+    result3 = w3.getvalue()
+    assert len(result3) == 501
+    assert result3[0] == chr(0x10000)
+    for i in range(500):
+        assert result3[i + 1] == chr(0x10000 + (i % 100))
+
+def test_string_writer_append_grow_and_switch_kind() -> None:
+    # Test growing buffer AND switching from kind 1 to kind 2
+    w = StringWriter()
+    # Fill with ASCII to grow buffer
+    for i in range(500):
+        w.append(ord('A'))
+    assert len(w) == 500
+    # Now append non-ASCII that requires kind 2, triggering both grow and kind switch
+    for i in range(500):
+        w.append(0x100 + i)
+    result = w.getvalue()
+    assert len(result) == 1000
+    for i in range(500):
+        assert result[i] == 'A'
+    for i in range(500):
+        assert result[500 + i] == chr(0x100 + i)
+
+    # Test growing buffer AND switching from kind 2 to kind 4
+    w2 = StringWriter()
+    w2.append(0x100)  # Switch to kind 2
+    # Fill with kind 2 characters to grow buffer
+    for i in range(300):
+        w2.append(0x200 + (i % 100))
+    assert len(w2) == 301
+    # Now append characters that require kind 4, triggering both grow and kind switch
+    for i in range(300):
+        w2.append(0x10000 + i)
+    result2 = w2.getvalue()
+    assert len(result2) == 601
+    assert result2[0] == chr(0x100)
+    for i in range(300):
+        assert result2[1 + i] == chr(0x200 + (i % 100))
+    for i in range(300):
+        assert result2[301 + i] == chr(0x10000 + i)
+
+    # Test switching kind 1->4 with buffer growth
+    w3 = StringWriter()
+    for i in range(300):
+        w3.append(ord('X'))
+    # Jump directly to kind 4
+    w3.append(0x10000)
+    result3 = w3.getvalue()
+    assert len(result3) == 301
+    for i in range(300):
+        assert result3[i] == 'X'
+    assert result3[300] == chr(0x10000)
+
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
 import librt.strings
