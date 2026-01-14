@@ -528,8 +528,16 @@ StringWriter_item(StringWriterObject *self, Py_ssize_t index)
         return NULL;
     }
 
-    // Return the byte at the given index as a Python int
-    return PyLong_FromLong((unsigned char)self->buf[index]);
+    // Read the character at the given index based on kind
+    uint32_t value;
+    if (self->kind == 1) {
+        value = ((uint8_t *)self->buf)[index];
+    } else if (self->kind == 2) {
+        value = ((uint16_t *)self->buf)[index];
+    } else {
+        value = ((uint32_t *)self->buf)[index];
+    }
+    return PyLong_FromLong(value);
 }
 
 static PySequenceMethods StringWriter_as_sequence = {

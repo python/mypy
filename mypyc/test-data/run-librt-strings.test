@@ -193,6 +193,124 @@ def test_string_writer_basics() -> None:
     w = StringWriter()
     assert w.getvalue() == ""
 
+def test_string_writer_repr() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    assert repr(w) == "StringWriter('')"
+    w.append(ord('h'))
+    w.append(ord('i'))
+    assert repr(w) == "StringWriter('hi')"
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(0x200)
+    assert repr(w2) == "StringWriter('" + chr(0x100) + chr(0x200) + "')"
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    expected = "StringWriter('" + chr(0x10000) + "')"
+    assert repr(w3) == expected
+
+def test_string_writer_len() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    assert len(w) == 0
+    w.append(ord('a'))
+    assert len(w) == 1
+    w.append(ord('b'))
+    w.append(ord('c'))
+    assert len(w) == 3
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    assert len(w2) == 1
+    for i in range(10):
+        w2.append(0x200 + i)
+    assert len(w2) == 11
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    assert len(w3) == 1
+    w3.append(0x10001)
+    w3.append(0x10002)
+    assert len(w3) == 3
+
+    # Test len after growing buffer
+    w4 = StringWriter()
+    for i in range(500):
+        w4.append(ord('X'))
+    assert len(w4) == 500
+
+def test_string_writer_get_item() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    w.append(ord('f'))
+    w.append(ord('o'))
+    w.append(ord('o'))
+    assert w[0 + int()] == ord('f')
+    assert w[1 + int()] == ord('o')
+    assert w[2 + int()] == ord('o')
+    assert w[-1 + int()] == ord('o')
+    assert w[-2 + int()] == ord('o')
+    assert w[-3 + int()] == ord('f')
+
+    with assertRaises(IndexError):
+        w[3 + int()]
+    with assertRaises(IndexError):
+        w[-4 + int()]
+    with assertRaises(IndexError):
+        w[1 << 50]
+    with assertRaises(IndexError):
+        w[-(1 << 50)]
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(0x200)
+    w2.append(0x300)
+    assert w2[0 + int()] == 0x100
+    assert w2[1 + int()] == 0x200
+    assert w2[2 + int()] == 0x300
+    assert w2[-1 + int()] == 0x300
+    assert w2[-2 + int()] == 0x200
+    assert w2[-3 + int()] == 0x100
+
+    with assertRaises(IndexError):
+        w2[3 + int()]
+    with assertRaises(IndexError):
+        w2[-4 + int()]
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    w3.append(0x10001)
+    w3.append(0x10002)
+    assert w3[0 + int()] == 0x10000
+    assert w3[1 + int()] == 0x10001
+    assert w3[2 + int()] == 0x10002
+    assert w3[-1 + int()] == 0x10002
+    assert w3[-2 + int()] == 0x10001
+    assert w3[-3 + int()] == 0x10000
+
+    with assertRaises(IndexError):
+        w3[3 + int()]
+    with assertRaises(IndexError):
+        w3[-4 + int()]
+
+    # Test get_item after buffer growth
+    w4 = StringWriter()
+    for i in range(1000):
+        w4.append(ord('a') + (i % 26))
+    assert w4[0 + int()] == ord('a')
+    assert w4[999 + int()] == ord('a') + (999 % 26)
+    assert w4[500 + int()] == ord('a') + (500 % 26)
+    assert w4[-1 + int()] == ord('a') + (999 % 26)
+    assert w4[-1000 + int()] == ord('a')
+
 def test_string_writer_append() -> None:
     w = StringWriter()
     w.append(ord('a'))
