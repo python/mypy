@@ -493,10 +493,6 @@ class SemanticAnalyzer(
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
         self.all_exports: list[str] = []
-        # Map from module id to list of explicitly exported names (i.e. names in __all__).
-        # This is used by stubgen/stubtest, DO NOT use for any other purposes as it is
-        # not populated on incremental runs (nor in parallel mode).
-        self.export_map: dict[str, list[str]] = {}
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -724,7 +720,6 @@ class SemanticAnalyzer(
         if file_node.fullname == "typing_extensions":
             self.add_typing_extension_aliases(file_node)
         self.adjust_public_exports()
-        self.export_map[self.cur_mod_id] = self.all_exports
         self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
