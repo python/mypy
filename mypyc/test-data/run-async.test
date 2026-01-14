@@ -1449,9 +1449,17 @@ def wrap_async(fn: F) -> F:
 def wrapped(val: int) -> int:
     return val
 
+@wrap
+def wrapped2(val: int) -> int:
+    return val * 2
+
 @wrap_async
 async def wrapped_async(val: int) -> int:
     return val
+
+@wrap_async
+async def wrapped2_async(val: int) -> int:
+    return val * 2
 
 class T:
     def returns_one(self) -> int:
@@ -1517,6 +1525,16 @@ def test_function() -> None:
     assert not is_coroutine(wrapped)
     assert is_coroutine(wrapped_async)
     assert asyncio.run(wrapped_async(22)) == 44
+
+    assert getattr(wrapped, "__name__") == "wrapped", getattr(wrapped, "__name__")
+    assert getattr(wrapped2, "__name__") == "wrapped2", getattr(wrapped2, "__name__")
+
+    assert getattr(wrapped_async, "__name__") == "wrapped_async", getattr(wrapped_async, "__name__")
+    assert getattr(wrapped2_async, "__name__") == "wrapped2_async", getattr(wrapped2_async, "__name__")
+
+    setattr(wrapped_async, "__name__", "new name")
+    assert getattr(wrapped_async, "__name__") == "new name", getattr(wrapped_async, "__name__")
+    assert getattr(wrapped2_async, "__name__") == "wrapped2_async", getattr(wrapped2_async, "__name__")
 
 def test_method() -> None:
     assert not is_coroutine(T.returns_one)
