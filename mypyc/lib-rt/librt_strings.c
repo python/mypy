@@ -528,44 +528,13 @@ StringWriter_item(StringWriterObject *self, Py_ssize_t index)
     return PyLong_FromLong((unsigned char)self->buf[index]);
 }
 
-static int
-StringWriter_ass_item(StringWriterObject *self, Py_ssize_t index, PyObject *value)
-{
-    Py_ssize_t length = self->len;
-
-    // Check bounds
-    if (index < 0 || index >= length) {
-        PyErr_SetString(PyExc_IndexError, "StringWriter index out of range");
-        return -1;
-    }
-
-    // Check that value is not NULL (deletion not supported)
-    if (value == NULL) {
-        PyErr_SetString(PyExc_TypeError, "StringWriter does not support item deletion");
-        return -1;
-    }
-
-    // Convert value to uint8
-    uint8_t byte_value = CPyLong_AsUInt8(value);
-    if (unlikely(byte_value == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
-        CPy_TypeError("u8", value);
-        return -1;
-    }
-
-    // Assign the byte
-    self->buf[index] = (char)byte_value;
-    return 0;
-}
-
 static PySequenceMethods StringWriter_as_sequence = {
     .sq_length = (lenfunc)StringWriter_length,
     .sq_item = (ssizeargfunc)StringWriter_item,
-    .sq_ass_item = (ssizeobjargproc)StringWriter_ass_item,
 };
 
 static PyObject* StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
-static PyObject* StringWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef StringWriter_methods[] = {
     {"append", (PyCFunction) StringWriter_append, METH_FASTCALL | METH_KEYWORDS,
@@ -576,9 +545,6 @@ static PyMethodDef StringWriter_methods[] = {
     },
     {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
      "Return the buffer content as str object"
-    },
-    {"truncate", (PyCFunction) StringWriter_truncate, METH_FASTCALL,
-     PyDoc_STR("Truncate the buffer to the specified size")
     },
     {NULL}  /* Sentinel */
 };
@@ -781,7 +747,7 @@ StringWriter_append_internal(StringWriterObject *self, int32_t value) {
     if (kind == 1 && (uint32_t)value < 256) {
         if (!ensure_string_writer_size(self, 1))
             return CPY_NONE_ERROR;
-        self->buf[self->index++] = value;
+        self->buf[self->len++] = value;
         self->kind = kind;
         return CPY_NONE;
     }
@@ -805,57 +771,6 @@ StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObjec
         return NULL;
     }
     if (unlikely(StringWriter_append_internal((StringWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
-        return NULL;
-    }
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static char
-StringWriter_truncate_internal(PyObject *self, int64_t size) {
-    StringWriterObject *writer = (StringWriterObject *)self;
-    Py_ssize_t current_size = writer->len;
-
-    // Validate size is non-negative
-    if (size < 0) {
-        PyErr_SetString(PyExc_ValueError, "size must be non-negative");
-        return CPY_NONE_ERROR;
-    }
-
-    // Validate size doesn't exceed current size
-    if (size > current_size) {
-        PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
-        return CPY_NONE_ERROR;
-    }
-
-    writer->len = size;
-    return CPY_NONE;
-}
-
-static PyObject*
-StringWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
-    if (unlikely(nargs != 1)) {
-        PyErr_Format(PyExc_TypeError,
-                     "truncate() takes exactly 1 argument (%zu given)", nargs);
-        return NULL;
-    }
-    if (!check_string_writer(self)) {
-        return NULL;
-    }
-
-    PyObject *size_obj = args[0];
-    int overflow;
-    long long size = PyLong_AsLongLongAndOverflow(size_obj, &overflow);
-
-    if (size == -1 && PyErr_Occurred()) {
-        return NULL;
-    }
-    if (overflow != 0) {
-        PyErr_SetString(PyExc_ValueError, "integer out of range");
-        return NULL;
-    }
-
-    if (unlikely(StringWriter_truncate_internal(self, size) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
