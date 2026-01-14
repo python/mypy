@@ -550,10 +550,10 @@ static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_
 
 static PyMethodDef StringWriter_methods[] = {
     {"append", (PyCFunction) StringWriter_append, METH_FASTCALL | METH_KEYWORDS,
-     PyDoc_STR("Append a single byte to the buffer")
+     PyDoc_STR("Append a single character (as int codepoint) to the buffer")
     },
     {"write", (PyCFunction) StringWriter_write, METH_FASTCALL | METH_KEYWORDS,
-     PyDoc_STR("Append bytes to the buffer")
+     PyDoc_STR("Append a string to the buffer")
     },
     {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
      "Return the buffer content as str object"
@@ -587,22 +587,47 @@ check_string_writer(PyObject *data) {
     return true;
 }
 
+// Forward declaration
+static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
+
 static char
 StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
-    const char *data;
-    Py_ssize_t size;
-    if (likely(PyBytes_Check(value))) {
-        data = PyBytes_AS_STRING(value);
-        size = PyBytes_GET_SIZE(value);
-    } else {
-        data = PyByteArray_AS_STRING(value);
-        size = PyByteArray_GET_SIZE(value);
+    // Get string info
+    Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
+    if (str_len == 0) {
+        return CPY_NONE;
     }
-    // Write bytes content.
-    if (!ensure_string_writer_size(self, size))
+
+    int src_kind = PyUnicode_KIND(value);
+    void *src_data = PyUnicode_DATA(value);
+
+    // Switch kind if source requires wider characters
+    if (src_kind > self->kind) {
+        // Use max value for the source kind to trigger proper kind switch
+        int32_t max_for_kind = (src_kind == 2) ? 0x100 : 0x10000;
+        if (string_writer_switch_kind(self, max_for_kind) == CPY_NONE_ERROR) {
+            return CPY_NONE_ERROR;
+        }
+    }
+
+    // Ensure we have enough space
+    if (!ensure_string_writer_size(self, str_len)) {
         return CPY_NONE_ERROR;
-    memcpy(self->buf + self->len, data, size);
-    self->len += size;
+    }
+
+    // Copy data - ASCII/Latin1 (kind 1) are handled uniformly
+    if (self->kind == src_kind) {
+        // Same kind, direct copy
+        memcpy(self->buf + self->len * self->kind, src_data, str_len * src_kind);
+    } else {
+        // Different kinds, convert character by character
+        for (Py_ssize_t i = 0; i < str_len; i++) {
+            Py_UCS4 ch = PyUnicode_READ(src_kind, src_data, i);
+            PyUnicode_WRITE(self->kind, self->buf, self->len + i, ch);
+        }
+    }
+
+    self->len += str_len;
     return CPY_NONE;
 }
 
@@ -617,8 +642,8 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     if (!check_string_writer(self)) {
         return NULL;
     }
-    if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
-        PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
+    if (unlikely(!PyUnicode_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "value must be a str object");
         return NULL;
     }
     if (unlikely(StringWriter_write_internal((StringWriterObject *)self, value) == CPY_NONE_ERROR)) {

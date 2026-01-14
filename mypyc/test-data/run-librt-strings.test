@@ -350,6 +350,54 @@ def test_string_writer_append() -> None:
     w.append(0x10000)
     assert w.getvalue() == "a\xff\u0100\uffff" + chr(0x10000)
 
+def test_string_writer_write() -> None:
+    # Kind 1: Write ASCII strings
+    w = StringWriter()
+    w.write("hello")
+    assert w.getvalue() == "hello"
+    w.write(" world")
+    assert w.getvalue() == "hello world"
+
+    # Write empty string
+    w.write("")
+    assert w.getvalue() == "hello world"
+
+    # Kind 1 -> Kind 2: Write string with UCS-2 characters
+    w2 = StringWriter()
+    w2.write("abc")
+    assert w2.getvalue() == "abc"
+    w2.write(chr(0x100) + chr(0x200))
+    assert w2.getvalue() == "abc" + chr(0x100) + chr(0x200)
+    w2.write("xyz")
+    assert w2.getvalue() == "abc" + chr(0x100) + chr(0x200) + "xyz"
+
+    # Kind 2: Write all UCS-2
+    w3 = StringWriter()
+    w3.append(0x100)
+    w3.write(chr(0x200) + chr(0x300))
+    assert w3.getvalue() == chr(0x100) + chr(0x200) + chr(0x300)
+
+    # Kind 2 -> Kind 4: Write string with UCS-4 characters
+    w4 = StringWriter()
+    w4.write(chr(0x100))
+    w4.write(chr(0x10000))
+    assert w4.getvalue() == chr(0x100) + chr(0x10000)
+
+    # Kind 4: Write mixed
+    w5 = StringWriter()
+    w5.append(0x10000)
+    w5.write("abc")
+    w5.write(chr(0x200))
+    w5.write(chr(0x10001))
+    assert w5.getvalue() == chr(0x10000) + "abc" + chr(0x200) + chr(0x10001)
+
+    # Test with longer strings to trigger buffer growth
+    w6 = StringWriter()
+    for _ in range(100):
+        w6.write("hello")
+    assert w6.getvalue() == "hello" * 100
+    assert len(w6) == 500
+
 def test_string_writer_append_grow_same_kind() -> None:
     # Test growing buffer while staying in kind 1 (ASCII)
     w = StringWriter()
