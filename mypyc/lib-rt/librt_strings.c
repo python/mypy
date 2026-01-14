@@ -662,31 +662,37 @@ static void convert_string_data(char *src_buf, char *dest_buf, Py_ssize_t len,
     bool in_place = (src_buf == dest_buf);
 
     if (old_kind == 1 && new_kind == 2) {
-        uint8_t *src = (uint8_t *)src_buf;
-        uint16_t *dest = (uint16_t *)dest_buf;
         if (in_place) {
             // Convert backwards to avoid overwriting
             for (Py_ssize_t i = len - 1; i >= 0; i--) {
-                dest[i] = src[i];
+                uint8_t val = (uint8_t)src_buf[i];
+                uint16_t expanded = val;
+                memcpy(dest_buf + i * 2, &expanded, 2);
             }
         } else {
             // Convert forwards
             for (Py_ssize_t i = 0; i < len; i++) {
-                dest[i] = src[i];
+                uint8_t val = (uint8_t)src_buf[i];
+                uint16_t expanded = val;
+                memcpy(dest_buf + i * 2, &expanded, 2);
             }
         }
     } else if (old_kind == 2 && new_kind == 4) {
-        uint16_t *src = (uint16_t *)src_buf;
-        uint32_t *dest = (uint32_t *)dest_buf;
         if (in_place) {
             // Convert backwards to avoid overwriting
             for (Py_ssize_t i = len - 1; i >= 0; i--) {
-                dest[i] = src[i];
+                uint16_t val;
+                memcpy(&val, src_buf + i * 2, 2);
+                uint32_t expanded = val;
+                memcpy(dest_buf + i * 4, &expanded, 4);
             }
         } else {
             // Convert forwards
             for (Py_ssize_t i = 0; i < len; i++) {
-                dest[i] = src[i];
+                uint16_t val;
+                memcpy(&val, src_buf + i * 2, 2);
+                uint32_t expanded = val;
+                memcpy(dest_buf + i * 4, &expanded, 4);
             }
         }
     }
