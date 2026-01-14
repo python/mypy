@@ -97,6 +97,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import (
+    apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
@@ -586,6 +587,12 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base_type = builder.node_type(expr.base)
     is_list = is_list_rprimitive(base_type)
     can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    # Check for dunder specialization for non-slice indexing
+    if not isinstance(index, SliceExpr):
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
+        if specialized is not None:
+            return specialized
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 

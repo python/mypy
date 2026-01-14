@@ -29,6 +29,7 @@ from mypy.nodes import (
     Import,
     ImportAll,
     ImportFrom,
+    IndexExpr,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -92,6 +93,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     TryFinallyNonlocalControl,
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.specialize import apply_dunder_specialization
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -260,6 +262,15 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         return
 
     for lvalue in lvalues:
+        # Check for __setitem__ dunder specialization before converting to assignment target
+        if isinstance(lvalue, IndexExpr):
+            specialized = apply_dunder_specialization(
+                builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
+            )
+            if specialized is not None:
+                builder.flush_keep_alives()
+                continue
+
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
         builder.flush_keep_alives()
