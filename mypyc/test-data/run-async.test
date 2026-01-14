@@ -1432,16 +1432,16 @@ async def identity_async(val: int) -> int:
 F = TypeVar("F", bound=Callable[..., Any])
 
 def wrap(fn: F) -> F:
+    if is_coroutine(fn):
+        @wraps(fn)
+        async def wrapper_async(*args) -> Any:
+            return await fn(*args) + await fn(*args)
+
+        return cast(F, wrapper_async)
+
     @wraps(fn)
     def wrapper(*args) -> Any:
         return fn(*args) + fn(*args)
-
-    return cast(F, wrapper)
-
-def wrap_async(fn: F) -> F:
-    @wraps(fn)
-    async def wrapper(*args) -> Any:
-        return await fn(*args) + await fn(*args)
 
     return cast(F, wrapper)
 
@@ -1453,11 +1453,11 @@ def wrapped(val: int) -> int:
 def wrapped2(val: int) -> int:
     return val * 2
 
-@wrap_async
+@wrap
 async def wrapped_async(val: int) -> int:
     return val
 
-@wrap_async
+@wrap
 async def wrapped2_async(val: int) -> int:
     return val * 2
 
@@ -1472,7 +1472,7 @@ class T:
     def returns_two(self) -> int:
         return 1
 
-    @wrap_async
+    @wrap
     async def returns_two_async(self) -> int:
         return 1
 
@@ -1569,7 +1569,7 @@ def test_nested() -> None:
     def nested_wrapped() -> int:
         return 2
 
-    @wrap_async
+    @wrap
     async def nested_wrapped_async() -> int:
         return 2
 
