@@ -765,9 +765,9 @@ StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObjec
     if (!check_string_writer(self)) {
         return NULL;
     }
-    uint8_t unboxed = CPyLong_AsUInt8(value);
-    if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
-        CPy_TypeError("u8", value);
+    int32_t unboxed = CPyLong_AsInt32(value);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        CPy_TypeError("i32", value);
         return NULL;
     }
     if (unlikely(StringWriter_append_internal((StringWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {

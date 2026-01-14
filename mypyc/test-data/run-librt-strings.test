@@ -193,6 +193,23 @@ def test_string_writer_basics() -> None:
     w = StringWriter()
     assert w.getvalue() == ""
 
+def test_string_writer_append() -> None:
+    w = StringWriter()
+    w.append(ord('a'))
+    assert w.getvalue() == "a"
+    w.append(0xff)
+    assert w.getvalue() == "a\xff"
+
+    # Switch kind 1->2
+    w.append(0x100)
+    assert w.getvalue() == "a\xff\u0100", w.getvalue()
+    w.append(0xffff)
+    assert w.getvalue() == "a\xff\u0100\uffff"
+
+    # Switch kind 2->4
+    w.append(0x10000)
+    assert w.getvalue() == "a\xff\u0100\uffff" + chr(0x10000)
+
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
 import librt.strings
