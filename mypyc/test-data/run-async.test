@@ -1573,3 +1573,151 @@ def test_nested() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testFuture]
+import asyncio
+from typing import Any, Awaitable
+
+from testutil import assertRaises
+
+from m import (
+    m_future_with_result,
+    m_future_with_exception,
+    m_future_with_caught_exception,
+    m_future_with_reraised_exception
+)
+
+async def set_result(fut: asyncio.Future, result: Any) -> None:
+    if isinstance(result, Exception):
+        fut.set_exception(result)
+    else:
+        fut.set_result(result)
+
+def make_future(result: Any) -> asyncio.Future:
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    loop.create_task(set_result(fut, result))
+    return fut
+
+async def future_with_result(result: int) -> int:
+    return await make_future(result)
+
+async def future_with_exception(exception: Exception) -> Any:
+    return await make_future(exception)
+
+async def future_with_caught_exception(exception: Exception) -> None:
+    try:
+        return await make_future(exception)
+    except type(exception):
+        return None
+
+async def future_with_reraised_exception(first_exc: Exception, second_exc: Exception) -> Any:
+    try:
+        return await make_future(first_exc)
+    except type(first_exc):
+        raise second_exc
+
+def test_future() -> None:
+    assert asyncio.run(future_with_result(42)) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(future_with_exception(ValueError("error")))
+
+    assert asyncio.run(future_with_caught_exception(ValueError("error"))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(future_with_reraised_exception(ValueError("error"), RuntimeError("reraised")))
+
+class ctx_man:
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+async def wrap(f: Awaitable) -> Any:
+    with ctx_man():
+        return await f
+
+def test_future_with_context_manager() -> None:
+    assert asyncio.run(wrap(future_with_result(42))) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(wrap(future_with_exception(ValueError("error"))))
+
+    assert asyncio.run(wrap(future_with_caught_exception(ValueError("error")))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(wrap(future_with_reraised_exception(ValueError("error"), RuntimeError("reraised"))))
+
+def test_interpreted_future() -> None:
+    assert asyncio.run(m_future_with_result(42)) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(m_future_with_exception(ValueError("error")))
+
+    assert asyncio.run(m_future_with_caught_exception(ValueError("error"))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(m_future_with_reraised_exception(ValueError("error"), RuntimeError("reraised")))
+
+def test_interpreted_future_with_context_manager() -> None:
+    assert asyncio.run(wrap(m_future_with_result(42))) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(wrap(m_future_with_exception(ValueError("error"))))
+
+    assert asyncio.run(wrap(m_future_with_caught_exception(ValueError("error")))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(wrap(m_future_with_reraised_exception(ValueError("error"), RuntimeError("reraised"))))
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
+
+class Future:
+    def set_result(self, result: object) -> None: ...
+    def set_exception(self, exception: object) -> None: ...
+    def __await__(self) -> Generator[Any, Any, Any]: ...
+
+class Loop:
+    def create_future(self) -> Future: ...
+    def create_task(self, x: object) -> None: ...
+
+def get_running_loop() -> Loop: ...
+
+[file m.py]
+import asyncio
+from typing import Any
+
+async def set_result(fut: asyncio.Future, result: Any) -> None:
+    if isinstance(result, Exception):
+        fut.set_exception(result)
+    else:
+        fut.set_result(result)
+
+def make_future(result: Any) -> asyncio.Future:
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    loop.create_task(set_result(fut, result))
+    return fut
+
+async def m_future_with_result(result: int) -> int:
+    return await make_future(result)
+
+async def m_future_with_exception(exception: Exception) -> Any:
+    return await make_future(exception)
+
+async def m_future_with_caught_exception(exception: Exception) -> None:
+    try:
+        return await make_future(exception)
+    except type(exception):
+        return None
+
+async def m_future_with_reraised_exception(first_exc: Exception, second_exc: Exception) -> Any:
+    try:
+        return await make_future(first_exc)
+    except type(first_exc):
+        raise second_exc

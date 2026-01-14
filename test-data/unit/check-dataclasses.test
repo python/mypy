@@ -1606,6 +1606,20 @@ class PublishedMessages:
     left: int
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassSlotsWithDeferredBase]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass
+class A(B): ...
+
+@dataclass
+class B: ...
+
+@dataclass(slots=True)
+class C: ...
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesAnyInherit]
 from dataclasses import dataclass
 from typing import Any

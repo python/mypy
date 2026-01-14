@@ -11,6 +11,10 @@ def bytes_writer_basics() -> bytes:
     return b.getvalue()
 def bytes_writer_len(b: BytesWriter) -> i64:
     return len(b)
+def bytes_writer_get_item(b: BytesWriter, i: i64) -> u8:
+    return b[i]
+def bytes_writer_set_item(b: BytesWriter, i: i64, x: u8) -> None:
+    b[i] = x
 [out]
 def bytes_writer_basics():
     r0, b :: librt.strings.BytesWriter
@@ -58,3 +62,34 @@ L0:
     r0 = CPyBytesWriter_Len(b)
     r1 = r0 >> 1
     return r1
+def bytes_writer_get_item(b, i):
+    b :: librt.strings.BytesWriter
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: u8
+L0:
+    r0 = CPyBytesWriter_AdjustIndex(b, i)
+    r1 = CPyBytesWriter_RangeCheck(b, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytesWriter_GetItem(b, r0)
+    return r3
+def bytes_writer_set_item(b, i, x):
+    b :: librt.strings.BytesWriter
+    i :: i64
+    x :: u8
+    r0 :: i64
+    r1, r2 :: bool
+L0:
+    r0 = CPyBytesWriter_AdjustIndex(b, i)
+    r1 = CPyBytesWriter_RangeCheck(b, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    CPyBytesWriter_SetItem(b, r0, x)
+    return 1
