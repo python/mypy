@@ -13,7 +13,12 @@ int intern_strings(void);
 
 typedef struct mypyc_interned_str_struct {
     PyObject *__init_subclass__;
+    PyObject *__module__;
     PyObject *__mro_entries__;
+    PyObject *__mypyc_attrs__;
+    PyObject *__orig_bases__;
+    PyObject *__qualname__;
+    PyObject *__slots__;
     PyObject *__name__;
     PyObject *__radd__;
     PyObject *__rsub__;
@@ -38,12 +43,17 @@ typedef struct mypyc_interned_str_struct {
     PyObject *clear;
     PyObject *close_;
     PyObject *copy;
+    PyObject *dispatch_cache;
+    PyObject *get_type_hints;
     PyObject *keys;
     PyObject *items;
     PyObject *join;
+    PyObject *register_;
+    PyObject *registry;
     PyObject *send;
     PyObject *setdefault;
     PyObject *startswith;
+    PyObject *super;
     PyObject *throw_;
     PyObject *translate;
     PyObject *update;
