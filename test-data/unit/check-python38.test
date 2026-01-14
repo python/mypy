@@ -738,6 +738,15 @@ if typeguard(x=(n := cast(object, "hi"))):
 [out]
 main:8: note: Revealed type is "builtins.int"
 
+[case testWalrusAssignmentAcrossCallArguments]
+def f(notifications: str, initial_reference: str) -> int:
+    return 42
+
+f(
+    initial_reference=(request_reference := "abc"),
+    notifications=reveal_type(request_reference),  # N: Revealed type is "builtins.str"
+)
+
 [case testNoCrashOnAssignmentExprClass]
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
