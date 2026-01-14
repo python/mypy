@@ -528,14 +528,18 @@ StringWriter_item(StringWriterObject *self, Py_ssize_t index)
         return NULL;
     }
 
-    // Read the character at the given index based on kind
+    // Read the character at the given index based on kind using memcpy
     uint32_t value;
     if (self->kind == 1) {
-        value = ((uint8_t *)self->buf)[index];
+        uint8_t val;
+        memcpy(&val, self->buf + index, 1);
+        value = val;
     } else if (self->kind == 2) {
-        value = ((uint16_t *)self->buf)[index];
+        uint16_t val;
+        memcpy(&val, self->buf + index * 2, 2);
+        value = val;
     } else {
-        value = ((uint32_t *)self->buf)[index];
+        memcpy(&value, self->buf + index * 4, 4);
     }
     return PyLong_FromLong(value);
 }
