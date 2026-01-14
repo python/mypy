@@ -331,6 +331,11 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 static inline int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
+    #if CPY_3_12_FEATURES
+        if (likely(PyUnstable_Long_IsCompact(lobj))) {
+            return PyUnstable_Long_CompactValue(lobj);
+        }
+    #else
         Py_ssize_t size = Py_SIZE(lobj);
         if (likely(size == 1)) {
             // Fast path
@@ -338,6 +343,7 @@ static inline int64_t CPyLong_AsInt64(PyObject *o) {
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     return CPyLong_AsInt64_(o);

@@ -376,16 +376,6 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-static int
-_CPyObject_HasAttr(PyObject *v, PyObject *name) {
-    PyObject *tmp = NULL;
-    int result = PyObject_GetOptionalAttr(v, name, &tmp);
-    if (tmp) {
-        Py_DECREF(tmp);
-    }
-    return result;
-}
-
 #if CPY_3_12_FEATURES
 
 // These are copied from genobject.c in Python 3.12
