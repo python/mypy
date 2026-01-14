@@ -389,17 +389,21 @@ static bool
 _grow_buffer_string(StringWriterObject *data, Py_ssize_t n) {
     Py_ssize_t target = data->len + n;
     Py_ssize_t size = data->capacity;
+    char kind = data->kind;
     do {
         size *= 2;
     } while (target >= size);
+    // Calculate size in bytes
+    Py_ssize_t size_bytes = size * kind;
     if (data->buf == data->data) {
         // Move from embedded buffer to heap-allocated buffer
-        data->buf = PyMem_Malloc(size);
+        data->buf = PyMem_Malloc(size_bytes);
         if (data->buf != NULL) {
-            memcpy(data->buf, data->data, WRITER_EMBEDDED_BUF_LEN);
+            // Copy existing data (len * kind bytes)
+            memcpy(data->buf, data->data, data->len * kind);
         }
     } else {
-        data->buf = PyMem_Realloc(data->buf, size);
+        data->buf = PyMem_Realloc(data->buf, size_bytes);
     }
     if (unlikely(data->buf == NULL)) {
         PyErr_NoMemory();
