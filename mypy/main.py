@@ -1371,6 +1371,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    mypyc: bool = False,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -1398,6 +1399,9 @@ def process_options(
 
     options = Options()
     strict_option_set = False
+    if mypyc:
+        # Mypyc has strict_bytes enabled by default
+        options.strict_bytes = True
 
     def set_strict_flags() -> None:
         nonlocal strict_option_set

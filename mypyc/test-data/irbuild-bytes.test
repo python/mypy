@@ -48,24 +48,17 @@ def f(s: str, num: int) -> None:
 def f(s, num):
     s :: str
     num :: int
-    r0 :: object
-    r1 :: str
-    r2, r3, a :: object
-    r4 :: bytes
-    b, r5 :: object
-    r6 :: bytes
-    c :: object
+    r0, a, r1, b :: bytearray
+    r2 :: object
+    r3, c :: bytearray
 L0:
-    r0 = builtins :: module
-    r1 = 'bytearray'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
-    a = r3
-    r4 = PyByteArray_FromObject(s)
-    b = r4
-    r5 = box(int, num)
-    r6 = PyByteArray_FromObject(r5)
-    c = r6
+    r0 = CPyByteArray_New()
+    a = r0
+    r1 = PyByteArray_FromObject(s)
+    b = r1
+    r2 = box(int, num)
+    r3 = PyByteArray_FromObject(r2)
+    c = r3
     return 1
 
 [case testBytesEquality]
@@ -107,15 +100,26 @@ L0:
     return r0
 
 [case testBytesIndex]
-def f(a: bytes, i: int) -> int:
+from mypy_extensions import i64
+
+def f(a: bytes, i: i64) -> int:
     return a[i]
 [out]
 def f(a, i):
     a :: bytes
-    i, r0 :: int
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: int
 L0:
-    r0 = CPyBytes_GetItem(a, i)
-    return r0
+    r0 = CPyBytes_AdjustIndex(a, i)
+    r1 = CPyBytes_RangeCheck(a, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytes_GetItemUnsafe(a, r0)
+    return r3
 
 [case testBytesConcat]
 def f(a: bytes, b: bytes) -> bytes:
@@ -261,3 +265,16 @@ L0:
     r0 = CPyBytes_Startswith(a, b)
     r1 = truncate r0: i32 to builtins.bool
     return r1
+
+[case testBytesVsBytearray]
+def bytes_func(b: bytes) -> None: pass
+def bytearray_func(ba: bytearray) -> None: pass
+
+def foo(b: bytes, ba: bytearray) -> None:
+    bytes_func(b)
+    bytearray_func(ba)
+    bytes_func(ba)
+    bytearray_func(b)
+[out]
+main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
+main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"
