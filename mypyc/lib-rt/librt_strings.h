@@ -31,7 +31,7 @@ import_librt_strings(void)
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
 // Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 512
+#define WRITER_EMBEDDED_BUF_LEN 256
 
 typedef struct {
     PyObject_HEAD

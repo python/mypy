@@ -50,21 +50,14 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index) {
 }
 
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b) {
-    if (PyBytes_Check(a) && PyBytes_Check(b)) {
-        Py_ssize_t a_len = ((PyVarObject *)a)->ob_size;
-        Py_ssize_t b_len = ((PyVarObject *)b)->ob_size;
-        PyBytesObject *ret = (PyBytesObject *)PyBytes_FromStringAndSize(NULL, a_len + b_len);
-        if (ret != NULL) {
-            memcpy(ret->ob_sval, ((PyBytesObject *)a)->ob_sval, a_len);
-            memcpy(ret->ob_sval + a_len, ((PyBytesObject *)b)->ob_sval, b_len);
-        }
-        return (PyObject *)ret;
-    } else if (PyByteArray_Check(a)) {
-        return PyByteArray_Concat(a, b);
-    } else {
-        PyBytes_Concat(&a, b);
-        return a;
+    Py_ssize_t a_len = ((PyVarObject *)a)->ob_size;
+    Py_ssize_t b_len = ((PyVarObject *)b)->ob_size;
+    PyBytesObject *ret = (PyBytesObject *)PyBytes_FromStringAndSize(NULL, a_len + b_len);
+    if (ret != NULL) {
+        memcpy(ret->ob_sval, ((PyBytesObject *)a)->ob_sval, a_len);
+        memcpy(ret->ob_sval + a_len, ((PyBytesObject *)b)->ob_sval, b_len);
     }
+    return (PyObject *)ret;
 }
 
 static inline Py_ssize_t Clamp(Py_ssize_t a, Py_ssize_t b, Py_ssize_t c) {
@@ -72,8 +65,7 @@ static inline Py_ssize_t Clamp(Py_ssize_t a, Py_ssize_t b, Py_ssize_t c) {
 }
 
 PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
-    if ((PyBytes_Check(obj) || PyByteArray_Check(obj))
-            && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end)) {
+    if (CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end)) {
         Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
         Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
         Py_ssize_t len = ((PyVarObject *)obj)->ob_size;
@@ -141,18 +133,10 @@ PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
     return (PyObject *)ret;
 }
 
-
 CPyTagged CPyBytes_Ord(PyObject *obj) {
-    if (PyBytes_Check(obj)) {
-        Py_ssize_t s = PyBytes_GET_SIZE(obj);
-        if (s == 1) {
-            return (unsigned char)(PyBytes_AS_STRING(obj)[0]) << 1;
-        }
-    } else if (PyByteArray_Check(obj)) {
-        Py_ssize_t s = PyByteArray_GET_SIZE(obj);
-        if (s == 1) {
-            return (unsigned char)(PyByteArray_AS_STRING(obj)[0]) << 1;
-        }
+    Py_ssize_t s = PyBytes_GET_SIZE(obj);
+    if (s == 1) {
+        return (unsigned char)(PyBytes_AS_STRING(obj)[0]) << 1;
     }
     PyErr_SetString(PyExc_TypeError, "ord() expects a character");
     return CPY_INT_TAG;
