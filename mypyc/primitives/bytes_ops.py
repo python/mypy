@@ -160,7 +160,6 @@ bytes_adjust_index_op = custom_primitive_op(
     return_type=int64_rprimitive,
     c_function_name="CPyBytes_AdjustIndex",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[BYTES_EXTRA_OPS],
 )
 
@@ -171,7 +170,6 @@ bytes_range_check_op = custom_primitive_op(
     return_type=bool_rprimitive,
     c_function_name="CPyBytes_RangeCheck",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[BYTES_EXTRA_OPS],
 )
 
@@ -182,6 +180,5 @@ bytes_get_item_unsafe_op = custom_primitive_op(
     return_type=int_rprimitive,
     c_function_name="CPyBytes_GetItemUnsafe",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[BYTES_EXTRA_OPS],
 )
