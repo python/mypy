@@ -22,11 +22,11 @@ import_librt_strings(void)
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
- #define LIBRT_STRINGS_API_VERSION 3
+ #define LIBRT_STRINGS_API_VERSION 4
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 14
+#define LIBRT_STRINGS_API_LEN 15
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
@@ -63,7 +63,8 @@ typedef struct {
 #define LibRTStrings_StringWriter_append_internal (*(char (*)(StringWriterObject *source, int32_t value)) LibRTStrings_API[10])
 #define LibRTStrings_string_append_slow_path (*(char (*)(StringWriterObject *obj, int32_t value)) LibRTStrings_API[11])
 #define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[12])
-#define LibRTStrings_StringWriter_write_internal (*(char (*)(StringWriterObject *source, PyObject *value)) LibRTStrings_API[13])
+#define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[13])
+#define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[14])
 
 static int
 import_librt_strings(void)

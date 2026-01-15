@@ -13,23 +13,32 @@ CPyStringWriter_Len(PyObject *obj) {
     return (CPyTagged)((StringWriterObject *)obj)->len << 1;
 }
 
+static inline bool
+CPyStringWriter_EnsureSize(StringWriterObject *data, Py_ssize_t n) {
+    if (likely(data->capacity - data->len >= n)) {
+        return true;
+    } else {
+        return LibRTStrings_grow_string_buffer(data, n);
+    }
+}
+
 static inline char
 CPyStringWriter_Append(PyObject *obj, int32_t value) {
     StringWriterObject *self = (StringWriterObject *)obj;
     char kind = self->kind;
 
-    // Fast path for kind 1 (ASCII/Latin-1) with common characters
+    // Fast path: kind 1 (ASCII/Latin-1) with character < 256
     if (kind == 1 && (uint32_t)value < 256) {
+        // Store length in local variable to enable additional optimizations
         Py_ssize_t len = self->len;
-        Py_ssize_t capacity = self->capacity;
-        if (likely(capacity - len >= 1)) {
-            self->buf[len] = (char)value;
-            self->len = len + 1;
-            return CPY_NONE;
-        }
+        if (!CPyStringWriter_EnsureSize(self, 1))
+            return CPY_NONE_ERROR;
+        self->buf[len] = (char)value;
+        self->len = len + 1;
+        return CPY_NONE;
     }
 
-    // Slow path handles capacity growth and kind switching
+    // Slow path: handles kind switching and other cases
     return LibRTStrings_string_append_slow_path(self, value);
 }
 
