@@ -877,6 +877,11 @@ librt_strings_module_exec(PyObject *m)
         (void *)_grow_buffer,
         (void *)BytesWriter_type_internal,
         (void *)BytesWriter_truncate_internal,
+        (void *)StringWriter_internal,
+        (void *)StringWriter_getvalue_internal,
+        (void *)StringWriter_append_internal,
+        (void *)string_append_slow_path,
+        (void *)StringWriter_type_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
