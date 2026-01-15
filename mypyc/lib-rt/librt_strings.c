@@ -385,31 +385,50 @@ BytesWriter_len_internal(PyObject *self) {
 
 static PyTypeObject StringWriterType;
 
+static void convert_string_data(char *src_buf, char *dest_buf, Py_ssize_t len,
+                                char old_kind, char new_kind);
+
+// Helper to grow string buffer and optionally convert to new kind
+// Returns true on success, false on failure (with PyErr set)
+// Updates self->buf, self->capacity, and self->kind
 static bool
-_grow_buffer_string(StringWriterObject *data, Py_ssize_t n) {
-    Py_ssize_t target = data->len + n;
-    Py_ssize_t size = data->capacity;
-    char kind = data->kind;
-    do {
-        size *= 2;
-    } while (target >= size);
-    // Calculate size in bytes
-    Py_ssize_t size_bytes = size * kind;
-    if (data->buf == data->data) {
+grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, char new_kind) {
+    char old_kind = self->kind;
+    Py_ssize_t new_capacity = self->capacity;
+
+    while (target_capacity >= new_capacity) {
+        new_capacity *= 2;
+    }
+
+    Py_ssize_t size_bytes = new_capacity * new_kind;
+    char *new_buf;
+    bool from_embedded = (self->buf == self->data);
+
+    if (from_embedded) {
         // Move from embedded buffer to heap-allocated buffer
-        data->buf = PyMem_Malloc(size_bytes);
-        if (data->buf != NULL) {
-            // Copy existing data (len * kind bytes)
-            memcpy(data->buf, data->data, data->len * kind);
+        new_buf = PyMem_Malloc(size_bytes);
+        if (new_buf != NULL) {
+            // Copy existing data from embedded buffer
+            memcpy(new_buf, self->data, self->len * old_kind);
         }
     } else {
-        data->buf = PyMem_Realloc(data->buf, size_bytes);
+        // Realloc existing heap buffer
+        new_buf = PyMem_Realloc(self->buf, size_bytes);
     }
-    if (unlikely(data->buf == NULL)) {
+
+    if (unlikely(new_buf == NULL)) {
         PyErr_NoMemory();
         return false;
     }
-    data->capacity = size;
+
+    // Convert data if kind changed
+    if (old_kind != new_kind) {
+        convert_string_data(new_buf, new_buf, self->len, old_kind, new_kind);
+    }
+
+    self->buf = new_buf;
+    self->capacity = new_capacity;
+    self->kind = new_kind;
     return true;
 }
 
@@ -418,7 +437,7 @@ ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
     if (likely(data->capacity - data->len >= n)) {
         return true;
     } else {
-        return _grow_buffer_string(data, n);
+        return grow_string_buffer_helper(data, data->len + n, data->kind);
     }
 }
 
@@ -710,34 +729,10 @@ static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, 
         self->kind = new_kind;
         self->capacity = current_buf_size / new_kind;
     } else {
-        // Allocate new buffer
-        Py_ssize_t new_capacity = self->capacity;
-        do {
-            new_capacity *= 2;
-        } while (new_capacity * new_kind < needed_size);
-
-        char *new_buf;
-        bool from_embedded = (self->buf == self->data);
-        if (from_embedded) {
-            // Move from embedded buffer to heap-allocated buffer
-            new_buf = PyMem_Malloc(new_capacity * new_kind);
-        } else {
-            // Realloc existing heap buffer
-            new_buf = PyMem_Realloc(self->buf, new_capacity * new_kind);
-        }
-
-        if (unlikely(new_buf == NULL)) {
-            PyErr_NoMemory();
+        // Need to allocate new buffer
+        if (!grow_string_buffer_helper(self, self->len, new_kind)) {
             return CPY_NONE_ERROR;
         }
-
-        // Convert data - either during copy from embedded buffer or in-place
-        convert_string_data(from_embedded ? self->buf : new_buf, new_buf,
-                           self->len, old_kind, new_kind);
-
-        self->buf = new_buf;
-        self->kind = new_kind;
-        self->capacity = new_capacity;
     }
     return CPY_NONE;
 }
