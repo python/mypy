@@ -716,18 +716,25 @@ static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, 
             new_capacity *= 2;
         } while (new_capacity * new_kind < needed_size);
 
-        char *new_buf = PyMem_Malloc(new_capacity * new_kind);
-        if (unlikely(new_buf == NULL)) {
-            PyErr_NoMemory();
-            return CPY_NONE_ERROR;
-        }
-
-        // Convert data during copy
-        convert_string_data(self->buf, new_buf, self->len, old_kind, new_kind);
-
-        // Free old buffer if it was heap-allocated
-        if (self->buf != self->data) {
-            PyMem_Free(self->buf);
+        char *new_buf;
+        if (self->buf == self->data) {
+            // Move from embedded buffer to heap-allocated buffer
+            new_buf = PyMem_Malloc(new_capacity * new_kind);
+            if (unlikely(new_buf == NULL)) {
+                PyErr_NoMemory();
+                return CPY_NONE_ERROR;
+            }
+            // Convert data during copy
+            convert_string_data(self->buf, new_buf, self->len, old_kind, new_kind);
+        } else {
+            // Realloc existing heap buffer
+            new_buf = PyMem_Realloc(self->buf, new_capacity * new_kind);
+            if (unlikely(new_buf == NULL)) {
+                PyErr_NoMemory();
+                return CPY_NONE_ERROR;
+            }
+            // Convert in-place (backwards to avoid overwriting)
+            convert_string_data(new_buf, new_buf, self->len, old_kind, new_kind);
         }
 
         self->buf = new_buf;
