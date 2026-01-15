@@ -200,14 +200,14 @@ static PySequenceMethods BytesWriter_as_sequence = {
 };
 
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs);
-static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs);
 static PyObject* BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef BytesWriter_methods[] = {
     {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL,
      PyDoc_STR("Append a single byte to the buffer")
     },
-    {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL | METH_KEYWORDS,
+    {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL,
      PyDoc_STR("Append bytes to the buffer")
     },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
@@ -265,16 +265,16 @@ BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
 }
 
 static PyObject*
-BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:write", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_bytes_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
@@ -574,14 +574,14 @@ static PySequenceMethods StringWriter_as_sequence = {
     .sq_item = (ssizeargfunc)StringWriter_item,
 };
 
-static PyObject* StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
-static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs);
+static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef StringWriter_methods[] = {
-    {"append", (PyCFunction) StringWriter_append, METH_FASTCALL | METH_KEYWORDS,
+    {"append", (PyCFunction) StringWriter_append, METH_FASTCALL,
      PyDoc_STR("Append a single character (as int codepoint) to the buffer")
     },
-    {"write", (PyCFunction) StringWriter_write, METH_FASTCALL | METH_KEYWORDS,
+    {"write", (PyCFunction) StringWriter_write, METH_FASTCALL,
      PyDoc_STR("Append a string to the buffer")
     },
     {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
@@ -661,16 +661,16 @@ StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
 }
 
 static PyObject*
-StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:write", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_string_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     if (unlikely(!PyUnicode_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a str object");
         return NULL;
@@ -795,16 +795,16 @@ StringWriter_append_internal(StringWriterObject *self, int32_t value) {
 }
 
 static PyObject*
-StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:append", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "append() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_string_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     int32_t unboxed = CPyLong_AsInt32(value);
     if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("i32", value);
