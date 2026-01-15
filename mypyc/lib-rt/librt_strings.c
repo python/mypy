@@ -385,8 +385,8 @@ BytesWriter_len_internal(PyObject *self) {
 
 static PyTypeObject StringWriterType;
 
-static void convert_string_data(char *src_buf, char *dest_buf, Py_ssize_t len,
-                                char old_kind, char new_kind);
+static void convert_string_data_in_place(char *buf, Py_ssize_t len,
+                                         char old_kind, char new_kind);
 
 // Helper to grow string buffer and optionally convert to new kind
 // Returns true on success, false on failure (with PyErr set)
@@ -423,7 +423,7 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
 
     // Convert data if kind changed
     if (old_kind != new_kind) {
-        convert_string_data(new_buf, new_buf, self->len, old_kind, new_kind);
+        convert_string_data_in_place(new_buf, self->len, old_kind, new_kind);
     }
 
     self->buf = new_buf;
@@ -676,43 +676,22 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     return Py_None;
 }
 
-static void convert_string_data(char *src_buf, char *dest_buf, Py_ssize_t len,
-                                char old_kind, char new_kind) {
-    bool in_place = (src_buf == dest_buf);
-
+static void convert_string_data_in_place(char *buf, Py_ssize_t len,
+                                         char old_kind, char new_kind) {
     if (old_kind == 1 && new_kind == 2) {
-        if (in_place) {
-            // Convert backwards to avoid overwriting
-            for (Py_ssize_t i = len - 1; i >= 0; i--) {
-                uint8_t val = (uint8_t)src_buf[i];
-                uint16_t expanded = val;
-                memcpy(dest_buf + i * 2, &expanded, 2);
-            }
-        } else {
-            // Convert forwards
-            for (Py_ssize_t i = 0; i < len; i++) {
-                uint8_t val = (uint8_t)src_buf[i];
-                uint16_t expanded = val;
-                memcpy(dest_buf + i * 2, &expanded, 2);
-            }
+        // Convert backwards to avoid overwriting
+        for (Py_ssize_t i = len - 1; i >= 0; i--) {
+            uint8_t val = (uint8_t)buf[i];
+            uint16_t expanded = val;
+            memcpy(buf + i * 2, &expanded, 2);
         }
     } else if (old_kind == 2 && new_kind == 4) {
-        if (in_place) {
-            // Convert backwards to avoid overwriting
-            for (Py_ssize_t i = len - 1; i >= 0; i--) {
-                uint16_t val;
-                memcpy(&val, src_buf + i * 2, 2);
-                uint32_t expanded = val;
-                memcpy(dest_buf + i * 4, &expanded, 4);
-            }
-        } else {
-            // Convert forwards
-            for (Py_ssize_t i = 0; i < len; i++) {
-                uint16_t val;
-                memcpy(&val, src_buf + i * 2, 2);
-                uint32_t expanded = val;
-                memcpy(dest_buf + i * 4, &expanded, 4);
-            }
+        // Convert backwards to avoid overwriting
+        for (Py_ssize_t i = len - 1; i >= 0; i--) {
+            uint16_t val;
+            memcpy(&val, buf + i * 2, 2);
+            uint32_t expanded = val;
+            memcpy(buf + i * 4, &expanded, 4);
         }
     }
 }
@@ -725,7 +704,7 @@ static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, 
 
     if (current_buf_size >= needed_size) {
         // Convert in place
-        convert_string_data(self->buf, self->buf, self->len, old_kind, new_kind);
+        convert_string_data_in_place(self->buf, self->len, old_kind, new_kind);
         self->kind = new_kind;
         self->capacity = current_buf_size / new_kind;
     } else {
