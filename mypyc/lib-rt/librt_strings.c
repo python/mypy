@@ -199,12 +199,12 @@ static PySequenceMethods BytesWriter_as_sequence = {
     .sq_ass_item = (ssizeobjargproc)BytesWriter_ass_item,
 };
 
-static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs);
 static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 static PyObject* BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef BytesWriter_methods[] = {
-    {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
+    {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL,
      PyDoc_STR("Append a single byte to the buffer")
     },
     {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL | METH_KEYWORDS,
@@ -295,16 +295,16 @@ BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
 }
 
 static PyObject*
-BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:append", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "append() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_bytes_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
