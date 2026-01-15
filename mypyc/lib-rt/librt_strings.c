@@ -623,14 +623,16 @@ StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
 
     int src_kind = PyUnicode_KIND(value);
     void *src_data = PyUnicode_DATA(value);
+    int self_kind = self->kind;
 
     // Switch kind if source requires wider characters
-    if (src_kind > self->kind) {
+    if (src_kind > self_kind) {
         // Use max value for the source kind to trigger proper kind switch
-        int32_t max_for_kind = (src_kind == 2) ? 0x100 : 0x10000;
-        if (string_writer_switch_kind(self, max_for_kind) == CPY_NONE_ERROR) {
+        int32_t codepoint = (src_kind == 2) ? 0x100 : 0x10000;
+        if (string_writer_switch_kind(self, codepoint) == CPY_NONE_ERROR) {
             return CPY_NONE_ERROR;
         }
+        self_kind = self->kind;
     }
 
     // Ensure we have enough space
@@ -639,14 +641,14 @@ StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
     }
 
     // Copy data - ASCII/Latin1 (kind 1) are handled uniformly
-    if (self->kind == src_kind) {
+    if (self_kind == src_kind) {
         // Same kind, direct copy
-        memcpy(self->buf + self->len * self->kind, src_data, str_len * src_kind);
+        memcpy(self->buf + self->len * self_kind, src_data, str_len * src_kind);
     } else {
         // Different kinds, convert character by character
         for (Py_ssize_t i = 0; i < str_len; i++) {
             Py_UCS4 ch = PyUnicode_READ(src_kind, src_data, i);
-            PyUnicode_WRITE(self->kind, self->buf, self->len + i, ch);
+            PyUnicode_WRITE(self_kind, self->buf, self->len + i, ch);
         }
     }
 
