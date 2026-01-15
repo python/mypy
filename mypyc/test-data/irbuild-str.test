@@ -519,6 +519,8 @@ def ord_str_index_to_i16(s: str, i: i64) -> i16:
     return ord(s[i])
 def ord_str_index_to_u8(s: str, i: i64) -> u8:
     return ord(s[i])
+def ord_str_index_to_i64(s: str, i: i64) -> i64:
+    return ord(s[i])
 [typing fixtures/typing-full.pyi]
 [out]
 def ord_str_index(s, i):
@@ -667,6 +669,23 @@ L5:
     unreachable
 L6:
     return r8
+def ord_str_index_to_i64(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+    r4 :: i64
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    r4 = r3 >> 1
+    return r4
 
 [case testStrip]
 from typing import NewType, Union
