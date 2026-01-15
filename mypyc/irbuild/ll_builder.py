@@ -540,12 +540,77 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        # short_int (CPyTagged) is guaranteed to be a tagged value, never a pointer,
+        # so we don't need the fast/slow path split like coerce_int_to_fixed_width.
+        # However, we still need range checking when target type is smaller than source.
+        assert is_fixed_width_rtype(target_type), target_type
+        assert isinstance(target_type, RPrimitive), target_type
+
         if is_int64_rprimitive(target_type) or (
             PLATFORM_SIZE == 4 and is_int32_rprimitive(target_type)
         ):
+            # No range check needed - target is same size or larger than source
             return self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
-        # TODO: i32 on 64-bit platform
-        assert False, (src.type, target_type, PLATFORM_SIZE)
+
+        # Target is smaller than source - need range checking
+        size = target_type.size
+        assert size < short_int_rprimitive.size, (target_type, size, short_int_rprimitive.size)
+
+        res = Register(target_type)
+        in_range, overflow, end = BasicBlock(), BasicBlock(), BasicBlock()
+
+        # Calculate bounds for the target type
+        upper_bound = 1 << (size * 8 - 1)
+        if not target_type.is_signed:
+            upper_bound *= 2
+
+        # Check if value < upper_bound
+        check_upper = self.add(
+            ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT)
+        )
+        self.add(Branch(check_upper, in_range, overflow, Branch.BOOL))
+
+        self.activate_block(in_range)
+
+        # Check if value >= lower_bound
+        in_range2 = BasicBlock()
+        if target_type.is_signed:
+            lower_bound = -upper_bound
+        else:
+            lower_bound = 0
+        check_lower = self.add(
+            ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE)
+        )
+        self.add(Branch(check_lower, in_range2, overflow, Branch.BOOL))
+
+        self.activate_block(in_range2)
+
+        # Value is in range - shift right to remove tag, then truncate
+        shifted = self.int_op(
+            c_pyssize_t_rprimitive,
+            src,
+            Integer(1, c_pyssize_t_rprimitive),
+            IntOp.RIGHT_SHIFT,
+            line,
+        )
+        tmp = self.add(Truncate(shifted, target_type))
+        self.add(Assign(res, tmp))
+        self.goto(end)
+
+        # Value is out of range - raise OverflowError
+        self.activate_block(overflow)
+        if is_int32_rprimitive(target_type):
+            self.call_c(int32_overflow, [], line)
+        elif is_int16_rprimitive(target_type):
+            self.call_c(int16_overflow, [], line)
+        elif is_uint8_rprimitive(target_type):
+            self.call_c(uint8_overflow, [], line)
+        else:
+            assert False, target_type
+        self.add(Unreachable())
+
+        self.activate_block(end)
+        return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
