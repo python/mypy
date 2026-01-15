@@ -459,8 +459,6 @@ class LowLevelIRBuilder:
         assert is_fixed_width_rtype(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
-        res = Register(target_type)
-
         fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock()
 
         check = self.check_tagged_short_int(src, line)
@@ -482,6 +480,7 @@ class LowLevelIRBuilder:
             else:
                 tmp = src
             tmp = self.int_op(target_type, tmp, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+            res = Register(target_type)
             self.add(Assign(res, tmp))
             self.goto(end)
 
@@ -518,7 +517,7 @@ class LowLevelIRBuilder:
         overflow_block: BasicBlock,
         success_block: BasicBlock,
         line: int,
-    ) -> Value:
+    ) -> Register:
         """Helper to convert a tagged value to a smaller fixed-width type with range checking.
 
         This method generates IR for converting a tagged integer (like short_int or the fast
@@ -552,9 +551,7 @@ class LowLevelIRBuilder:
             upper_bound *= 2
 
         # Check if value < upper_bound
-        check_upper = self.add(
-            ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT)
-        )
+        check_upper = self.add(ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT))
         self.add(Branch(check_upper, in_range, overflow_block, Branch.BOOL))
 
         self.activate_block(in_range)
@@ -564,9 +561,7 @@ class LowLevelIRBuilder:
             lower_bound = -upper_bound
         else:
             lower_bound = 0
-        check_lower = self.add(
-            ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE)
-        )
+        check_lower = self.add(ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE))
         self.add(Branch(check_lower, in_range2, overflow_block, Branch.BOOL))
 
         self.activate_block(in_range2)
