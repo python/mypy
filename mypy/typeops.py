@@ -638,7 +638,15 @@ def make_simplified_union(
 
 
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
-    from mypy.subtypes import is_proper_subtype
+    from mypy.subtypes import SubtypeContext, is_proper_subtype
+
+    subtype_context = SubtypeContext(
+        ignore_promotions=True,
+        keep_erased_types=keep_erased,
+        options=(
+            checker_state.type_checker.options if checker_state.type_checker is not None else None
+        ),
+    )
 
     # The first pass through this loop, we check if later items are subtypes of earlier items.
     # The second pass through this loop, we check if earlier items are subtypes of later items
@@ -687,9 +695,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                     ):
                         continue
 
-                    if is_proper_subtype(
-                        ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
-                    ):
+                    if is_proper_subtype(ti, tj, subtype_context=subtype_context):
                         duplicate_index = j
                         break
             if duplicate_index != -1:

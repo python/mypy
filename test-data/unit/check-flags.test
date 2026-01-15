@@ -2454,7 +2454,7 @@ f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview
 [case testDisallowStrIteration]
 # flags: --disallow-str-iteration
 from abc import abstractmethod
-from typing import Collection, Container, Iterable, Protocol, Sequence, TypeVar
+from typing import Collection, Container, Iterable, Mapping, Protocol, Sequence, TypeVar, Union
 
 def takes_str(x: str):
     for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
@@ -2507,6 +2507,9 @@ takes_collection_subclass(s)  # E: Argument 1 to "takes_collection_subclass" has
 takes_collection_subclass(StrSubclass())  # E: Argument 1 to "takes_collection_subclass" has incompatible type "StrSubclass"; expected "CollectionSubclass[str]" \
                                           # N: "StrSubclass" is missing following "CollectionSubclass" protocol member: \
                                           # N:     __missing_impl__
+
+def repro(x: Mapping[str, Union[str, Sequence[str]]]) -> None:
+    x = {**x}
 
 [builtins fixtures/str-iter.pyi]
 [typing fixtures/typing-str-iter.pyi]
