@@ -155,6 +155,7 @@ from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
+from mypy.disallow_str_iteration_state import disallow_str_iteration_state
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
@@ -514,7 +515,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
+        with (
+            state.strict_optional_set(self.options.strict_optional),
+            disallow_str_iteration_state.set(self.options.disallow_str_iteration),
+            checker_state.set(self),
+        ):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options
             )
@@ -559,7 +564,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """
         self.allow_constructor_cache = allow_constructor_cache
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
+        with (
+            state.strict_optional_set(self.options.strict_optional),
+            disallow_str_iteration_state.set(self.options.disallow_str_iteration),
+            checker_state.set(self),
+        ):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(
@@ -5382,7 +5391,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         iterable: Type
         iterable = get_proper_type(type)
 
-        if self.options.disallow_str_iteration and self.is_str_iteration_type(iterable):
+        if disallow_str_iteration_state.disallow_str_iteration and self.is_str_iteration_type(
+            iterable
+        ):
             self.msg.str_iteration_disallowed(context, iterable)
 
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]

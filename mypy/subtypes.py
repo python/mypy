@@ -34,6 +34,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
+from mypy.disallow_str_iteration_state import disallow_str_iteration_state
 from mypy.state import state
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
@@ -481,22 +482,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
 
         if (
-            self.options
-            and self.options.disallow_str_iteration
-            and left.type.has_base("builtins.str")
+            disallow_str_iteration_state.disallow_str_iteration
             and isinstance(right, Instance)
-            and not right.type.has_base("builtins.str")
-            and any(
-                right.type.has_base(base)
-                for base in (
-                    "collections.abc.Collection",
-                    "collections.abc.Iterable",
-                    "collections.abc.Sequence",
-                    "typing.Collection",
-                    "typing.Iterable",
-                    "typing.Sequence",
-                )
-            )
+            and is_subtype_relation_ignored_to_disallow_str_iteration(left, right)
         ):
             return False
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
@@ -2331,3 +2319,21 @@ def is_erased_instance(t: Instance) -> bool:
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
     return True
+
+
+def is_subtype_relation_ignored_to_disallow_str_iteration(left: Instance, right: Instance) -> bool:
+    return (
+        left.type.has_base("builtins.str")
+        and not right.type.has_base("builtins.str")
+        and any(
+            right.type.has_base(base)
+            for base in (
+                "collections.abc.Collection",
+                "collections.abc.Iterable",
+                "collections.abc.Sequence",
+                "typing.Collection",
+                "typing.Iterable",
+                "typing.Sequence",
+            )
+        )
+    )

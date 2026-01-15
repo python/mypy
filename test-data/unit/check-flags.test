@@ -2508,8 +2508,14 @@ takes_collection_subclass(StrSubclass())  # E: Argument 1 to "takes_collection_s
                                           # N: "StrSubclass" is missing following "CollectionSubclass" protocol member: \
                                           # N:     __missing_impl__
 
-def repro(x: Mapping[str, Union[str, Sequence[str]]]) -> None:
+def dict_unpacking_unaffected_by_union_simplification(x: Mapping[str, Union[str, Sequence[str]]]) -> None:
     x = {**x}
+
+def narrowing(x: "str | Sequence[str]"):
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
 
 [builtins fixtures/str-iter.pyi]
 [typing fixtures/typing-str-iter.pyi]

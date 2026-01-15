@@ -48,3 +48,5 @@ class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, key: _KT) -> _VT: pass
+
+def isinstance(x: object, t: type) -> bool: pass
