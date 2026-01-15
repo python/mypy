@@ -432,12 +432,18 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     return true;
 }
 
+static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+    return grow_string_buffer_helper(data, data->len + n, data->kind);
+}
+
 static inline bool
 ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
     if (likely(data->capacity - data->len >= n)) {
         return true;
     } else {
-        return grow_string_buffer_helper(data, data->len + n, data->kind);
+        // Don't inline the grow function since this is slow path and we
+        // want to keep this as short as possible for better inlining
+        return grow_string_buffer(data, n);
     }
 }
 
@@ -610,12 +616,10 @@ check_string_writer(PyObject *data) {
     return true;
 }
 
-// Forward declaration
 static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
 
 static char
 StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
-    // Get string info
     Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
     if (str_len == 0) {
         return CPY_NONE;
@@ -627,7 +631,7 @@ StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
 
     // Switch kind if source requires wider characters
     if (src_kind > self_kind) {
-        // Use max value for the source kind to trigger proper kind switch
+        // Use value in the source kind range to trigger proper kind switch
         int32_t codepoint = (src_kind == 2) ? 0x100 : 0x10000;
         if (string_writer_switch_kind(self, codepoint) == CPY_NONE_ERROR) {
             return CPY_NONE_ERROR;
@@ -678,6 +682,7 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     return Py_None;
 }
 
+// Convert string data to next larger kind (1->2 or 2->4)
 static void convert_string_data_in_place(char *buf, Py_ssize_t len,
                                          char old_kind, char new_kind) {
     if (old_kind == 1 && new_kind == 2) {
@@ -695,6 +700,8 @@ static void convert_string_data_in_place(char *buf, Py_ssize_t len,
             uint32_t expanded = val;
             memcpy(buf + i * 4, &expanded, 4);
         }
+    } else {
+        assert(false);
     }
 }
 
@@ -730,13 +737,17 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
         return CPY_NONE;
     } else {
         // Must be kind 2 -> 4
+        assert(self->kind == 2);
+        assert((uint32_t)value > 0xffff);
         return convert_string_buffer_kind(self, 2, 4);
     }
 }
 
+// Handle all append cases except for append that stays within kind 1
 static char string_append_slow_path(StringWriterObject *self, int32_t value) {
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
+            // Kind stays the same
             if (!ensure_string_writer_size(self, 1))
                 return CPY_NONE_ERROR;
             // Copy 2-byte character to buffer
