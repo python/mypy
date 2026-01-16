@@ -1106,23 +1106,23 @@ class MessageBuilder:
             for_func = ""
 
         # For keyword argument errors
-        unexpected_kwargs: list[tuple[str, Type]] = [] 
-        if arg_names is not None and arg_kinds is not None: 
+        unexpected_kwargs: list[tuple[str, Type]] = []
+        if arg_names is not None and arg_kinds is not None:
             all_valid_kwargs: set[str] = set()
             for item in overload.items:
-                for i, arg_name in enumerate(item.arg_names): 
+                for i, arg_name in enumerate(item.arg_names):
                     if arg_name is not None and item.arg_kinds[i] != ARG_STAR:
                         all_valid_kwargs.add(arg_name)
                 if item.is_kw_arg:
                     all_valid_kwargs.clear()
                     break
 
-            if all_valid_kwargs: 
+            if all_valid_kwargs:
                 for i, (arg_name, arg_kind) in enumerate(zip(arg_names, arg_kinds)):
-                    if arg_kind == ARG_NAMED and arg_name is not None: 
+                    if arg_kind == ARG_NAMED and arg_name is not None:
                         if arg_name not in all_valid_kwargs:
                             unexpected_kwargs.append((arg_name, arg_types[i]))
-        
+
         if unexpected_kwargs:
             for kwarg_name, kwarg_type in unexpected_kwargs:
                 matching_type_args: list[str] = []
@@ -1143,13 +1143,13 @@ class MessageBuilder:
                                     not_matching_type_args.append(formal_name)
                     if has_type_match and matching_variant is None:
                         matching_variant = item
-                
+
                 matches = best_matches(kwarg_name, matching_type_args, n=3)
                 if not matches:
                     matches = best_matches(kwarg_name, not_matching_type_args, n=3)
-                
+
                 msg = f'Unexpected keyword argument "{kwarg_name}"' + for_func
-                
+
                 if matching_variant is not None and matching_variant.definition is not None:
                     defn = matching_variant.definition
                     if isinstance(defn, Decorator):
@@ -1157,11 +1157,11 @@ class MessageBuilder:
                     else:
                         func_line = defn.line
                     msg += f" defined on line {func_line}"
-                
-                if matches: 
+
+                if matches:
                     msg += f"; did you mean {pretty_seq(matches, 'or')}?"
                 self.fail(msg, context, code=code)
-                
+
                 if matching_variant is None:
                     self.note(
                         f"Possible overload variant{plural_s(len(overload.items))}:",
@@ -1171,8 +1171,8 @@ class MessageBuilder:
                     for item in overload.items:
                         self.note(pretty_callable(item, self.options), context, offset=4, code=code)
 
-            return 
-            
+            return
+
         arg_types_str = ", ".join(format_type(arg, self.options) for arg in arg_types)
         num_args = len(arg_types)
         if num_args == 0:
