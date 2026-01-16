@@ -145,10 +145,10 @@ class ConversionSpecifier:
         self.key = m_dict.get("key")
 
         # Replace unmatched optional groups with empty matches (for convenience).
-        self.conv_type = m_dict.get("type", "")
-        self.flags = m_dict.get("flags", "")
-        self.width = m_dict.get("width", "")
-        self.precision = m_dict.get("precision", "")
+        self.conv_type = m_dict.get("type") or ""
+        self.flags = m_dict.get("flags") or ""
+        self.width = m_dict.get("width") or ""
+        self.precision = m_dict.get("precision") or ""
 
         # Used only for str.format() calls (it may be custom for types with __format__()).
         self.format_spec = m_dict.get("format_spec")

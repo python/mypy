@@ -1748,13 +1748,13 @@ def f(blocks: Any): # E: Name "Any" is not defined \
     to_process = list(blocks)
 [builtins fixtures/list.pyi]
 
-[case testSpecialCaseEmptyListInitialization2_no_parallel]
+[case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
     to_process = []
     to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
                               # N: Possible overload variants: \
-                              # N:     def [T] __init__(self) -> list[T] \
-                              # N:     def [T] __init__(self, x: Iterable[T]) -> list[T]
+                              # N:     def [T] list() -> list[T] \
+                              # N:     def [T] list(x: Iterable[T]) -> list[T]
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndAssigned]
