@@ -1,7 +1,7 @@
 # Builtins stub used in disallow-str-iteration tests.
 
 
-from typing import Generic, Iterator, Mapping, Sequence, TypeVar, overload
+from typing import Generic, Iterator, Mapping, Sequence, SupportsIndex,TypeVar, overload
 
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
@@ -20,10 +20,7 @@ class str(Sequence[str]):
     def __iter__(self) -> Iterator[str]: pass
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> bool: pass
-    @overload
-    def __getitem__(self, i: int, /) -> str: ...
-    @overload
-    def __getitem__(self, s: slice, /) -> Sequence[str]: ...
+    def __getitem__(self, key: SupportsIndex | slice, /) -> str: pass
 
 class list(Sequence[_T], Generic[_T]):
     def __iter__(self) -> Iterator[_T]: pass

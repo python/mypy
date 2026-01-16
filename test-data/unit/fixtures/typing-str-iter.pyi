@@ -17,28 +17,28 @@ _KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
 _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 _TC = TypeVar("_TC", bound=type[object])
 
-@runtime_checkable
 class Iterable(Protocol[_T_co]):
     @abstractmethod
     def __iter__(self) -> Iterator[_T_co]: ...
 
-@runtime_checkable
 class Iterator(Iterable[_T_co], Protocol[_T_co]):
     @abstractmethod
     def __next__(self) -> _T_co: ...
     def __iter__(self) -> Iterator[_T_co]: ...
 
-@runtime_checkable
 class Container(Protocol[_T_co]):
     # This is generic more on vibes than anything else
     @abstractmethod
     def __contains__(self, x: object, /) -> bool: ...
 
-@runtime_checkable
 class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
     # Implement Sized (but don't have it as a base class).
     @abstractmethod
     def __len__(self) -> int: ...
+
+class SupportsIndex(Protocol, metaclass=ABCMeta):
+    @abstractmethod
+    def __index__(self) -> int: ...
 
 class Sequence(Collection[_T_co]):
     @overload

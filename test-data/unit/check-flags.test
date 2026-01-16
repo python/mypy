@@ -2454,7 +2454,7 @@ f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview
 [case testDisallowStrIteration]
 # flags: --disallow-str-iteration
 from abc import abstractmethod
-from typing import Collection, Container, Iterable, Mapping, Protocol, Sequence, TypeVar, Union
+from typing import Collection, Container, Iterable, Mapping, Protocol, Sequence, SupportsIndex, TypeVar, Union
 
 def takes_str(x: str):
     for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
@@ -2489,6 +2489,7 @@ def takes_str_upper_bound(x: T) -> None:
 
 class StrSubclass(str):
     def __contains__(self, x: object) -> bool: ...
+    def __getitem__(self, key: Union[SupportsIndex, slice], /) -> str: ...
 
 def takes_str_subclass(x: StrSubclass):
     for ch in x:  # E: Iterating over "StrSubclass" is disallowed  # N: This is because --disallow-str-iteration is enabled

@@ -155,7 +155,10 @@ from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
-from mypy.disallow_str_iteration_state import disallow_str_iteration_state
+from mypy.disallow_str_iteration_state import (
+    STR_ITERATION_PROTOCOL_BASES,
+    disallow_str_iteration_state,
+)
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
@@ -2215,7 +2218,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         )
         found_method_base_classes: list[TypeInfo] = []
+        is_str_or_has_str_base = defn.info.fullname == "builtins.str"
         for base in defn.info.mro[1:]:
+            if disallow_str_iteration_state.disallow_str_iteration:
+                if base.fullname == "builtins.str":
+                    is_str_or_has_str_base = True
+
+                if is_str_or_has_str_base and base.fullname in STR_ITERATION_PROTOCOL_BASES:
+                    continue
+
             result = self.check_method_or_accessor_override_for_base(
                 defn, base, check_override_compatibility
             )
