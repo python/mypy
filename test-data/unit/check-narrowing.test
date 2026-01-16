@@ -2742,6 +2742,7 @@ def foo(x: dict[str, Any]) -> bool:
 
 
 [case testNarrowingTypeObjects]
+# flags: --warn-unreachable
 from __future__ import annotations
 from typing import Callable, Any, TypeVar, Generic, Protocol
 _T_co = TypeVar('_T_co', covariant=True)
@@ -2768,7 +2769,10 @@ def main(key: str):
     existing_value_type = get_type(key)
     if existing_value_type is TupleLike:
         reveal_type(TupleLike)  # N: Revealed type is "def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]"
-        TupleLike(Box2("str"))
+        reveal_type(TupleLike(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str]"
+
+        reveal_type(existing_value_type)  # N: Revealed type is "(def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]) | type[Any]"
+        reveal_type(existing_value_type(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str] | Any"
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingCollections]
