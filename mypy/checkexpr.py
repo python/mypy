@@ -1792,19 +1792,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         arg_types = self.infer_arg_types_in_context(callee, args, arg_kinds, formal_to_actual)
 
-        self.check_argument_count(
-            callee,
-            arg_types,
-            arg_kinds,
-            arg_names,
-            formal_to_actual,
-            context,
-            object_type,
-            callable_name,
-        )
-
-        self.check_argument_types(
-            arg_types, arg_kinds, args, callee, formal_to_actual, context, object_type=object_type
+        self.check_call_arguments(
+            callee, arg_types, arg_kinds, arg_names, args,
+            formal_to_actual, context, callable_name, object_type,
         )
 
         if (
@@ -2335,6 +2325,171 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # arguments.
         return self.apply_generic_arguments(callee_type, inferred_args, context)
 
+    def check_call_arguments(
+        self,
+        callee: CallableType,
+        arg_types: list[Type],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
+        args: list[Expression],
+        formal_to_actual: list[list[int]],
+        context: Context,
+        callable_name: str | None,
+        object_type: Type | None,
+    ) -> None:
+        """Check argument count and types, consolidating errors for missing positional args."""
+        with self.msg.filter_errors():
+            _, missing_positional = self.check_argument_count(
+                callee, arg_types, arg_kinds, arg_names, formal_to_actual,
+                context, object_type, callable_name,
+            )
+
+        if missing_positional:
+            func_name = callable_name or callee.name or "function"
+            if "." in func_name:
+                func_name = func_name.split(".")[-1]
+
+            shift_info = None
+            num_positional_args = sum(1 for k in arg_kinds if k == nodes.ARG_POS)
+            if num_positional_args >= 2:
+                shift_info = self.detect_shifted_positional_args(
+                    callee, arg_types, arg_kinds, missing_positional
+                )
+
+            with self.msg.filter_errors() as type_error_watcher:
+                self.check_argument_types(
+                    arg_types, arg_kinds, args, callee, formal_to_actual, context,
+                    object_type=object_type
+                )
+            has_type_errors = type_error_watcher.has_new_errors()
+
+            if shift_info is not None:
+                _, param_name, expected_type, high_confidence = shift_info
+                if high_confidence and param_name:
+                    type_str = format_type(expected_type, self.chk.options)
+                    self.msg.fail(
+                        f'Expected {type_str} for parameter "{param_name}"; '
+                        f'did you forget argument "{param_name}"?',
+                        context,
+                        code=codes.CALL_ARG,
+                    )
+                else:
+                    self.msg.fail(
+                        f'Incompatible arguments for "{func_name}"; check for missing arguments',
+                        context,
+                        code=codes.CALL_ARG,
+                    )
+            elif has_type_errors:
+                self.msg.fail(
+                    f'Incompatible arguments for "{func_name}"; check for missing arguments',
+                    context,
+                    code=codes.CALL_ARG,
+                )
+            else:
+                self.check_argument_count(
+                    callee, arg_types, arg_kinds, arg_names, formal_to_actual,
+                    context, object_type, callable_name,
+                )
+        else:
+            self.check_argument_count(
+                callee, arg_types, arg_kinds, arg_names, formal_to_actual,
+                context, object_type, callable_name,
+            )
+            self.check_argument_types(
+                arg_types, arg_kinds, args, callee, formal_to_actual, context,
+                object_type=object_type
+            )
+
+    def detect_shifted_positional_args(
+        self,
+        callee: CallableType,
+        actual_types: list[Type],
+        actual_kinds: list[ArgKind],
+        missing_positional: list[int],
+    ) -> tuple[int, str | None, Type, bool] | None:
+        """Detect if positional arguments are shifted due to a missing argument.
+
+        Returns (1-indexed position, param name, expected type, high_confidence) if a
+        shift pattern is found, None otherwise. High confidence is set when the function
+        has fixed parameters (no defaults, *args, or **kwargs).
+        """
+        if not missing_positional:
+            return None
+
+        has_star_args = any(k == nodes.ARG_STAR for k in callee.arg_kinds)
+        has_star_kwargs = any(k == nodes.ARG_STAR2 for k in callee.arg_kinds)
+        has_defaults = any(k == nodes.ARG_OPT for k in callee.arg_kinds)
+        single_missing = len(missing_positional) == 1
+        high_confidence = (
+            single_missing and not has_star_args and not has_star_kwargs and not has_defaults
+        )
+
+        positional_actual_types = [
+            actual_types[i] for i, k in enumerate(actual_kinds) if k == nodes.ARG_POS
+        ]
+        if len(positional_actual_types) < 2:
+            return None
+
+        positional_formal_types: list[Type] = []
+        positional_formal_names: list[str | None] = []
+        for i, kind in enumerate(callee.arg_kinds):
+            if kind.is_positional():
+                positional_formal_types.append(callee.arg_types[i])
+                positional_formal_names.append(callee.arg_names[i])
+
+        # Find first position where arg doesn't match but would match next position
+        shift_position = None
+        for i, actual_type in enumerate(positional_actual_types):
+            if i >= len(positional_formal_types):
+                break
+            if is_subtype(actual_type, positional_formal_types[i], options=self.chk.options):
+                continue
+            next_idx = i + 1
+            if next_idx >= len(positional_formal_types):
+                break
+            if is_subtype(actual_type, positional_formal_types[next_idx], options=self.chk.options):
+                shift_position = i
+                break
+            else:
+                break
+
+        if shift_position is None:
+            return None
+
+        # Validate that all args would match if we inserted one at shift_position
+        if not self._validate_shift_insertion(
+            positional_actual_types, positional_formal_types, shift_position
+        ):
+            return None
+
+        return (
+            shift_position + 1,
+            positional_formal_names[shift_position],
+            positional_formal_types[shift_position],
+            high_confidence,
+        )
+
+    def _validate_shift_insertion(
+        self,
+        actual_types: list[Type],
+        formal_types: list[Type],
+        insert_position: int,
+    ) -> bool:
+        """Check if inserting an argument at insert_position would fix type errors."""
+        for i, actual_type in enumerate(actual_types):
+            if i < insert_position:
+                if i >= len(formal_types):
+                    return False
+                expected = formal_types[i]
+            else:
+                shifted_idx = i + 1
+                if shifted_idx >= len(formal_types):
+                    return False
+                expected = formal_types[shifted_idx]
+            if not is_subtype(actual_type, expected, options=self.chk.options):
+                return False
+        return True
+
     def check_argument_count(
         self,
         callee: CallableType,
@@ -2345,13 +2500,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         context: Context | None,
         object_type: Type | None = None,
         callable_name: str | None = None,
-    ) -> bool:
+    ) -> tuple[bool, list[int]]:
         """Check that there is a value for all required arguments to a function.
 
         Also check that there are no duplicate values for arguments. Report found errors
         using 'messages' if it's not None. If 'messages' is given, 'context' must also be given.
 
-        Return False if there were any errors. Otherwise return True
+        Return a tuple of:
+        - False if there were any errors, True otherwise
+        - List of formal argument indices that are missing positional arguments
         """
         if context is None:
             # Avoid "is None" checks
@@ -2369,12 +2526,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             callee, actual_types, actual_kinds, actual_names, all_actuals, context
         )
 
+        missing_positional: list[int] = []
+
         # Check for too many or few values for formals.
         for i, kind in enumerate(callee.arg_kinds):
             mapped_args = formal_to_actual[i]
             if kind.is_required() and not mapped_args and not is_unexpected_arg_error:
                 # No actual for a mandatory formal
                 if kind.is_positional():
+                    missing_positional.append(i)
                     self.msg.too_few_arguments(callee, context, actual_names)
                     if object_type and callable_name and "." in callable_name:
                         self.missing_classvar_callable_note(object_type, callable_name, context)
@@ -2413,7 +2573,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     if actual_kinds[mapped_args[0]] == nodes.ARG_STAR2 and paramspec_entries > 1:
                         self.msg.fail("ParamSpec.kwargs should only be passed once", context)
                         ok = False
-        return ok
+        return ok, missing_positional
 
     def check_for_extra_actual_arguments(
         self,
@@ -2873,7 +3033,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     matches.append(typ)
                 elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
-                ):
+                )[0]:
                     if args_have_var_arg and typ.is_var_arg:
                         star_matches.append(typ)
                     elif args_have_kw_arg and typ.is_kw_arg:
@@ -3246,7 +3406,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         with self.msg.filter_errors():
             if not self.check_argument_count(
                 callee, arg_types, arg_kinds, arg_names, formal_to_actual, None
-            ):
+            )[0]:
                 # Too few or many arguments -> no match.
                 return False
 

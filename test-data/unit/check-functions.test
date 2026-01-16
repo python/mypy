@@ -3767,3 +3767,51 @@ class C:
 
 def defer() -> int:
     return 1
+
+[case testMissingPositionalArgumentShiftedTypes]
+def f(x: int, y: str, z: bytes, aa: int) -> None: ...
+
+f(1, b'x', 1)
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Expected "str" for parameter "y"; did you forget argument "y"?
+
+[case testMissingPositionalArgumentShiftedTypesFirstArg]
+def f(x: int, y: str, z: bytes) -> None: ...
+
+f("hello", b'x')
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Expected "int" for parameter "x"; did you forget argument "x"?
+
+[case testMissingPositionalArgumentNoShift]
+def f(x: int, y: str, z: bytes) -> None: ...
+
+f("wrong", 123)
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Incompatible arguments for "f"; check for missing arguments
+
+[case testMissingPositionalArgumentShiftedTypesManyArgs]
+def f(a: int, b: str, c: float, d: list[int], e: tuple[str, ...]) -> None: ...
+
+f(1, 1.5, [1, 2, 3], ("a", "b"))
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Expected "str" for parameter "b"; did you forget argument "b"?
+
+[case testMissingPositionalArgumentShiftedWithDefaults]
+def f(x: int, y: str, z: bytes = b'default') -> None: ...
+
+f("hello")
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Incompatible arguments for "f"; check for missing arguments
+
+[case testMissingPositionalArgumentShiftedWithStarArgs]
+def f(x: int, y: str, z: bytes, *args: int) -> None: ...
+
+f("hello", b'x')
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Incompatible arguments for "f"; check for missing arguments
