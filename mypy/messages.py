@@ -1169,7 +1169,9 @@ class MessageBuilder:
                         code=code,
                     )
                     for item in overload.items:
-                        self.note(pretty_callable(item, self.options), context, offset=4, code=code)
+                        self.note(
+                            pretty_callable(item, self.options), context, offset=4, code=code
+                        )
 
             return
 
