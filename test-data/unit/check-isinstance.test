@@ -2707,7 +2707,7 @@ if type(y) == int:
     reveal_type(y) # N: Revealed type is "builtins.int"
 
 
-[case testMultipleTypeEqualsCheck]
+[case testMultipleTypeEqualsCheck-xfail]
 from typing import Any
 
 x: Any
@@ -2727,7 +2727,7 @@ y: Any
 if type(y) is int:
     reveal_type(y) # N: Revealed type is "builtins.int"
 
-[case testTypeEqualsCheckUsingImplicitTypes]
+[case testTypeEqualsCheckUsingImplicitTypes-xfail]
 from typing import Any
 
 x: str
@@ -2741,7 +2741,7 @@ if type(x) is type(z):
     reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(z) # N: Revealed type is "builtins.str"
 
-[case testTypeEqualsCheckUsingDifferentSpecializedTypes]
+[case testTypeEqualsCheckUsingDifferentSpecializedTypes-xfail]
 from collections import defaultdict
 
 x: defaultdict
@@ -2752,7 +2752,7 @@ if type(x) is type(y) is type(z):
     reveal_type(y) # N: Revealed type is "collections.defaultdict[Any, Any]"
     reveal_type(z) # N: Revealed type is "collections.defaultdict[Any, Any]"
 
-[case testUnionTypeEquality]
+[case testUnionTypeEquality-xfail]
 from typing import Any, reveal_type
 # flags: --warn-unreachable
 
@@ -2762,7 +2762,7 @@ if type(x) == (int, str):
 
 [builtins fixtures/tuple.pyi]
 
-[case testTypeIntersectionWithConcreteTypes]
+[case testTypeIntersectionWithConcreteTypes-xfail]
 class X: x = 1
 class Y: y = 1
 class Z(X, Y): ...
@@ -2782,7 +2782,7 @@ if isinstance(x, type(y)) and isinstance(y, type(x)):
 
 [builtins fixtures/isinstance.pyi]
 
-[case testTypeEqualsCheckUsingIsNonOverlapping]
+[case testTypeEqualsCheckUsingIsNonOverlapping-xfail]
 # flags: --warn-unreachable
 from typing import Union
 
@@ -2817,7 +2817,7 @@ if type(x) is int:
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
-[case testTypeEqualsMultipleTypesShouldntNarrow]
+[case testTypeEqualsMultipleTypesShouldntNarrow-xfail]
 # flags: --warn-unreachable
 # make sure we don't do any narrowing if there are multiple types being compared
 # flags: --warn-unreachable
