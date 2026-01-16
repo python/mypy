@@ -2517,6 +2517,11 @@ def narrowing(x: "str | Sequence[str]"):
     else:
         reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
 
+Item = TypeVar("Item")
+def takes_generic_list(x: list[Item]) -> None: ...
+takes_generic_list(reveal_type([s, seq]))  # N: Revealed type is "builtins.list[builtins.object]"
+takes_generic_list(reveal_type([seq, s]))  # N: Revealed type is "builtins.list[builtins.object]"
+
 [builtins fixtures/str-iter.pyi]
 [typing fixtures/typing-str-iter.pyi]
 

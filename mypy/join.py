@@ -9,6 +9,10 @@ import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY, TypeInfo
+from mypy.disallow_str_iteration_state import (
+    disallow_str_iteration_state,
+    STR_ITERATION_PROTOCOL_BASES,
+)
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -169,12 +173,24 @@ class InstanceJoiner:
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
 
+        should_skip_str_iteration_protocol_bases = (
+            disallow_str_iteration_state.disallow_str_iteration and t.type.has_base("builtins.str")
+        )
+
         # Go over both sets of bases in case there's an explicit Protocol base. This is important
         # to ensure commutativity of join (although in cases where both classes have relevant
         # Protocol bases this maybe might still not be commutative)
         base_types: dict[TypeInfo, None] = {}  # dict to deduplicate but preserve order
         for base in t.type.bases:
+            if (
+                should_skip_str_iteration_protocol_bases
+                and base.type.fullname in STR_ITERATION_PROTOCOL_BASES
+            ):
+                base_types[object_from_instance(t).type] = None
+                continue
+
             base_types[base.type] = None
+
         for base in s.type.bases:
             if base.type.is_protocol and is_subtype(t, base):
                 base_types[base.type] = None

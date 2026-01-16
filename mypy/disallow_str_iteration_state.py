@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mypy.types import Instance
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -23,3 +24,23 @@ class DisallowStrIterationState:
 
 
 disallow_str_iteration_state: Final = DisallowStrIterationState(disallow_str_iteration=False)
+
+
+STR_ITERATION_PROTOCOL_BASES: Final = frozenset(
+    {
+        "collections.abc.Collection",
+        "collections.abc.Iterable",
+        "collections.abc.Sequence",
+        "typing.Collection",
+        "typing.Iterable",
+        "typing.Sequence",
+    }
+)
+
+
+def is_subtype_relation_ignored_to_disallow_str_iteration(left: Instance, right: Instance) -> bool:
+    return (
+        left.type.has_base("builtins.str")
+        and not right.type.has_base("builtins.str")
+        and any(right.type.has_base(base) for base in STR_ITERATION_PROTOCOL_BASES)
+    )
