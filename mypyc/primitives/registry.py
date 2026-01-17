@@ -7,20 +7,20 @@ count and argument types.
 
 Example op definition:
 
-list_len_op = func_op(name='builtins.len',
-                      arg_types=[list_rprimitive],
-                      result_type=short_int_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=emit_len)
+list_len_op = function_op(name='builtins.len',
+                          arg_types=[list_rprimitive],
+                          result_type=short_int_rprimitive,
+                          error_kind=ERR_NEVER,
+                          c_function_name="...")
 
 This op is automatically generated for calls to len() with a single
 list argument. The result type is short_int_rprimitive, and this
-never raises an exception (ERR_NEVER). The function emit_len is used
-to generate C for this op.  The op can also be manually generated using
-"list_len_op". Ops that are only generated automatically don't need to
+never raises an exception (ERR_NEVER). The function c_function_name is
+called when generating C for this op.  The op can also be manually generated
+using "list_len_op". Ops that are only generated automatically don't need to
 be assigned to a module attribute.
 
-Ops defined with custom_op are only explicitly generated in
+Ops defined with custom[_primitive]_op are only explicitly generated in
 mypyc.irbuild and won't be generated automatically. They are always
 assigned to a module attribute, as otherwise they won't be accessible.
 
@@ -39,6 +39,7 @@ from __future__ import annotations
 
 from typing import Final, NamedTuple
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.ops import PrimitiveDescription, StealsDescription
 from mypyc.ir.rtypes import RType
 
@@ -62,7 +63,7 @@ class CFunctionDescription(NamedTuple):
     priority: int
     is_pure: bool
     returns_null: bool
-    capsule: str | None
+    dependencies: list[Dependency] | None
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -101,7 +102,8 @@ def method_op(
     is_borrowed: bool = False,
     priority: int = 1,
     is_pure: bool = False,
-    capsule: str | None = None,
+    experimental: bool = False,
+    dependencies: list[Dependency] | None = None,
 ) -> PrimitiveDescription:
     """Define a c function call op that replaces a method call.
 
@@ -146,8 +148,8 @@ def method_op(
         extra_int_constants,
         priority,
         is_pure=is_pure,
-        experimental=False,
-        capsule=capsule,
+        experimental=experimental,
+        dependencies=dependencies,
     )
     ops.append(desc)
     return desc
@@ -167,7 +169,7 @@ def function_op(
     is_borrowed: bool = False,
     priority: int = 1,
     experimental: bool = False,
-    capsule: str | None = None,
+    dependencies: list[Dependency] | None = None,
 ) -> PrimitiveDescription:
     """Define a C function call op that replaces a function call.
 
@@ -197,7 +199,7 @@ def function_op(
         priority=priority,
         is_pure=False,
         experimental=experimental,
-        capsule=capsule,
+        dependencies=dependencies,
     )
     ops.append(desc)
     return desc
@@ -217,7 +219,7 @@ def binary_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
-    capsule: str | None = None,
+    dependencies: list[Dependency] | None = None,
 ) -> PrimitiveDescription:
     """Define a c function call op for a binary operation.
 
@@ -246,7 +248,7 @@ def binary_op(
         priority=priority,
         is_pure=False,
         experimental=False,
-        capsule=capsule,
+        dependencies=dependencies,
     )
     ops.append(desc)
     return desc
@@ -288,7 +290,7 @@ def custom_op(
         0,
         is_pure=is_pure,
         returns_null=returns_null,
-        capsule=None,
+        dependencies=None,
     )
 
 
@@ -305,7 +307,8 @@ def custom_primitive_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     is_pure: bool = False,
-    capsule: str | None = None,
+    experimental: bool = False,
+    dependencies: list[Dependency] | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op that can't be automatically generated based on the AST.
 
@@ -327,8 +330,8 @@ def custom_primitive_op(
         extra_int_constants=extra_int_constants,
         priority=0,
         is_pure=is_pure,
-        experimental=False,
-        capsule=capsule,
+        experimental=experimental,
+        dependencies=dependencies,
     )
 
 
@@ -345,7 +348,7 @@ def unary_op(
     is_borrowed: bool = False,
     priority: int = 1,
     is_pure: bool = False,
-    capsule: str | None = None,
+    dependencies: list[Dependency] | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op for an unary operation.
 
@@ -372,7 +375,7 @@ def unary_op(
         priority=priority,
         is_pure=is_pure,
         experimental=False,
-        capsule=capsule,
+        dependencies=dependencies,
     )
     ops.append(desc)
     return desc
@@ -385,10 +388,12 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
 
 
 # Import various modules that set up global state.
+import mypyc.primitives.bytearray_ops
 import mypyc.primitives.bytes_ops
 import mypyc.primitives.dict_ops
 import mypyc.primitives.float_ops
 import mypyc.primitives.int_ops
+import mypyc.primitives.librt_strings_ops
 import mypyc.primitives.list_ops
 import mypyc.primitives.misc_ops
 import mypyc.primitives.str_ops

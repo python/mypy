@@ -106,7 +106,7 @@ dir/a.py:1: error: Name "undef" is not defined
 [file dir/sub.pkg/a.py]
 undef
 [out]
-sub.pkg is not a valid Python package name
+sub.pkg contains __init__.py but is not a valid Python package name
 == Return code: 2
 
 [case testBadFileEncoding]
@@ -117,7 +117,6 @@ sub.pkg is not a valid Python package name
 mypy: can't decode file 'a.py': unknown encoding: uft-8
 == Return code: 2
 
--- '
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
 [file one/mod/__init__.py]
@@ -492,7 +491,7 @@ disallow_any_generics = True
 [file m.py]
 def j(s: frozenset) -> None: pass
 [out]
-m.py:1: error: Missing type parameters for generic type "frozenset"
+m.py:1: error: Missing type arguments for generic type "frozenset"
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -504,7 +503,7 @@ disallow_any_generics = True
 from typing import FrozenSet
 def j(s: FrozenSet) -> None: pass
 [out]
-m.py:2: error: Missing type parameters for generic type "FrozenSet"
+m.py:2: error: Missing type arguments for generic type "FrozenSet"
 
 [case testSectionInheritance]
 # cmd: mypy a
@@ -538,7 +537,7 @@ strict_optional = True
 \[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
+a/b/c/d/e/__init__.py:2: error: Missing type arguments for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
 
 [case testMissingFile]
@@ -546,7 +545,6 @@ a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; 
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
---'
 
 [case testModulesAndPackages]
 # cmd: mypy --package p.a --package p.b --module c
@@ -900,7 +898,7 @@ some_file.py:11: error: Incompatible types in assignment (expression has type
     ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
                                                         ^~~~~~~~~~~~~~~~~~~~~...
 some_file.py:11: error: Argument 1 to "some_interesting_method" of
-"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"OneCustomClassName" has incompatible type "int | str | float"; expected
 "AnotherCustomClassDefinedBelow"
     ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
                                                                          ^~~
@@ -1038,10 +1036,6 @@ public static void main(String[] args)
 [file pkg/y.py]
 x: str = 0
 [out]
-pkg/x.py:1: error: Invalid syntax
-Found 1 error in 1 file (errors prevented further checking)
-== Return code: 2
-[out version>=3.10]
 pkg/x.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2

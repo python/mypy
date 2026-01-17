@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -13,6 +14,14 @@ from gettext import gettext
 from io import TextIOWrapper
 from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
+
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
     get_config_module_names,
@@ -20,6 +29,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -39,10 +49,8 @@ from mypy.version import __version__
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
 
-
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
-RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -807,15 +815,6 @@ def define_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
-    # This flag is deprecated, Mypy only supports Python 3.9+
-    add_invertible_flag(
-        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
-    add_invertible_flag(
-        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",
@@ -1152,6 +1151,11 @@ def define_options(
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
+    # Experimental parallel type-checking support.
+    internals_group.add_argument(
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+    )
+
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
     )
@@ -1367,6 +1371,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    mypyc: bool = False,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -1394,6 +1399,9 @@ def process_options(
 
     options = Options()
     strict_option_set = False
+    if mypyc:
+        # Mypyc has strict_bytes enabled by default
+        options.strict_bytes = True
 
     def set_strict_flags() -> None:
         nonlocal strict_option_set
@@ -1527,9 +1535,6 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
-
-    if options.force_uppercase_builtins:
-        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

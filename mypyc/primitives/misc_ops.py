@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import LIBRT_BASE64
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -472,6 +474,96 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+cpyfunction_get_name = function_op(
+    name="CPyFunction_get_name",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_name",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_name = function_op(
+    name="CPyFunction_set_name",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_name",
+    error_kind=ERR_NEG_INT,
+)
+
+cpyfunction_get_code = function_op(
+    name="CPyFunction_get_code",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_code",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_defaults = function_op(
+    name="CPyFunction_get_defaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_defaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_kwdefaults = function_op(
+    name="CPyFunction_get_kwdefaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_kwdefaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_annotations = function_op(
+    name="CPyFunction_get_annotations",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_annotations",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_annotations = function_op(
+    name="CPyFunction_set_annotations",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_annotations",
+    error_kind=ERR_NEG_INT,
 )

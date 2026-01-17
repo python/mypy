@@ -3,6 +3,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdint.h>
+#include <string.h>
 #include "CPy.h"
 #define LIBRT_INTERNAL_MODULE
 #include "librt_internal.h"
@@ -27,8 +28,6 @@
 #define LONG_INT_TRAILER 15
 
 #define CPY_BOOL_ERROR 2
-#define CPY_NONE_ERROR 2
-#define CPY_NONE 1
 
 #define _CHECK_READ_BUFFER(data, err)  if (unlikely(_check_read_buffer(data) == CPY_NONE_ERROR)) \
                                            return err;
@@ -41,13 +40,14 @@
 
 #define _READ(result, data, type) \
     do { \
-        *(result) = *(type *)(((ReadBufferObject *)data)->ptr); \
+        memcpy((void *) result, ((ReadBufferObject *)data)->ptr, sizeof(type)); \
         ((ReadBufferObject *)data)->ptr += sizeof(type); \
     } while (0)
 
 #define _WRITE(data, type, v) \
     do { \
-       *(type *)(((WriteBufferObject *)data)->ptr) = v; \
+       type temp = v; \
+       memcpy(((WriteBufferObject *)data)->ptr, (const void *) &temp, sizeof(type)); \
        ((WriteBufferObject *)data)->ptr += sizeof(type); \
     } while (0)
 

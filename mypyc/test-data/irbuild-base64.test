@@ -1,13 +1,55 @@
 [case testBase64_experimental]
-from librt.base64 import b64encode
+from librt.base64 import b64encode, b64decode, urlsafe_b64encode, urlsafe_b64decode
 
 def enc(b: bytes) -> bytes:
     return b64encode(b)
+
+def dec_bytes(b: bytes) -> bytes:
+    return b64decode(b)
+
+def dec_str(b: str) -> bytes:
+    return b64decode(b)
+
+def uenc(b: bytes) -> bytes:
+    return urlsafe_b64encode(b)
+
+def udec_bytes(b: bytes) -> bytes:
+    return urlsafe_b64decode(b)
+
+def udec_str(b: str) -> bytes:
+    return urlsafe_b64decode(b)
 [out]
 def enc(b):
     b, r0 :: bytes
 L0:
-    r0 = LibRTBase64_b64encode_internal(b)
+    r0 = LibRTBase64_b64encode_internal(b, 0)
+    return r0
+def dec_bytes(b):
+    b, r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64decode_internal(b, 0)
+    return r0
+def dec_str(b):
+    b :: str
+    r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64decode_internal(b, 0)
+    return r0
+def uenc(b):
+    b, r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64encode_internal(b, 1)
+    return r0
+def udec_bytes(b):
+    b, r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64decode_internal(b, 1)
+    return r0
+def udec_str(b):
+    b :: str
+    r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64decode_internal(b, 1)
     return r0
 
 [case testBase64ExperimentalDisabled]

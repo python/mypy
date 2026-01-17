@@ -47,7 +47,7 @@ x = 5  # type: Union[int, Callable[[], str], Callable[[], int]]
 
 if callable(x):
     y = x() + 2 # E: Unsupported operand types for + ("str" and "int") \
-                # N: Left operand is of type "Union[str, int]"
+                # N: Left operand is of type "str | int"
 else:
     z = x + 6
 
@@ -62,7 +62,7 @@ if callable(x):
     y = x() + 'test'
 else:
     z = x + 6  # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
+               # N: Left operand is of type "int | str"
 
 [builtins fixtures/callable.pyi]
 
@@ -156,7 +156,7 @@ if callable(x) and x() == 'test':
     x()
 else:
     x + 5  # E: Unsupported left operand type for + ("Callable[[], str]") \
-           # N: Left operand is of type "Union[int, Callable[[], str]]"
+           # N: Left operand is of type "int | Callable[[], str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -280,9 +280,9 @@ T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(t())  # N: Revealed type is "builtins.int | builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(t)  # N: Revealed type is "builtins.int | builtins.str"
 
 [builtins fixtures/callable.pyi]
 

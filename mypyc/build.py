@@ -26,8 +26,9 @@ import re
 import sys
 import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, cast
 
+import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
@@ -36,8 +37,9 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, X86_64, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
+from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -52,6 +54,7 @@ class ModDesc(NamedTuple):
 
 LIBRT_MODULES = [
     ModDesc("librt.internal", ["librt_internal.c"], [], []),
+    ModDesc("librt.strings", ["librt_strings.c"], [], []),
     ModDesc(
         "librt.base64",
         [
@@ -70,6 +73,13 @@ LIBRT_MODULES = [
             "base64/arch/neon64/codec.c",
         ],
         [
+            "base64/arch/avx/enc_loop_asm.c",
+            "base64/arch/avx2/enc_loop.c",
+            "base64/arch/avx2/enc_loop_asm.c",
+            "base64/arch/avx2/enc_reshuffle.c",
+            "base64/arch/avx2/enc_translate.c",
+            "base64/arch/avx2/dec_loop.c",
+            "base64/arch/avx2/dec_reshuffle.c",
             "base64/arch/generic/32/enc_loop.c",
             "base64/arch/generic/64/enc_loop.c",
             "base64/arch/generic/32/dec_loop.c",
@@ -87,6 +97,7 @@ LIBRT_MODULES = [
             "base64/arch/neon64/enc_loop_asm.c",
             "base64/codecs.h",
             "base64/env.h",
+            "base64/lib_openmp.c",
             "base64/tables/tables.h",
             "base64/tables/table_dec_32bit.h",
             "base64/tables/table_enc_12bit.h",
@@ -106,11 +117,11 @@ if TYPE_CHECKING:
         from setuptools import Extension
     else:
         from distutils.core import Extension as _distutils_Extension
-        from typing_extensions import TypeAlias
+        from typing import TypeAlias
 
         from setuptools import Extension as _setuptools_Extension
 
-        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+        Extension: TypeAlias = _setuptools_Extension | _distutils_Extension
 
 if sys.version_info >= (3, 12):
     # From setuptools' monkeypatch
@@ -179,7 +190,7 @@ def get_mypy_config(
     fscache: FileSystemCache | None,
 ) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
-    all_sources, options = process_options(mypy_options, fscache=fscache)
+    all_sources, options = process_options(mypy_options, fscache=fscache, mypyc=True)
     if only_compile_paths is not None:
         paths_set = set(only_compile_paths)
         mypyc_sources = [s for s in all_sources if s.path in paths_set]
@@ -273,14 +284,14 @@ def generate_c(
     groups: emitmodule.Groups,
     fscache: FileSystemCache,
     compiler_options: CompilerOptions,
-) -> tuple[list[list[tuple[str, str]]], str]:
+) -> tuple[list[list[tuple[str, str]]], str, list[SourceDep]]:
     """Drive the actual core compilation step.
 
     The groups argument describes how modules are assigned to C
     extension modules. See the comments on the Groups type in
     mypyc.emitmodule for details.
 
-    Returns the C source code and (for debugging) the pretty printed IR.
+    Returns the C source code, (for debugging) the pretty printed IR, and list of SourceDeps.
     """
     t0 = time.time()
 
@@ -316,7 +327,10 @@ def generate_c(
     if options.mypyc_annotation_file:
         generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
-    return ctext, "\n".join(format_modules(modules))
+    # Collect SourceDep dependencies
+    source_deps = sorted(emitmodule.collect_source_dependencies(modules), key=lambda d: d.path)
+
+    return ctext, "\n".join(format_modules(modules)), source_deps
 
 
 def build_using_shared_lib(
@@ -477,9 +491,9 @@ def mypyc_build(
     *,
     separate: bool | list[tuple[list[str], str | None]] = False,
     only_compile_paths: Iterable[str] | None = None,
-    skip_cgen_input: Any | None = None,
+    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
     always_use_shared_lib: bool = False,
-) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]]]:
+) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]], list[SourceDep]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
@@ -502,14 +516,16 @@ def mypyc_build(
 
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
+    source_deps: list[SourceDep] = []
     if not skip_cgen_input:
-        group_cfiles, ops_text = generate_c(
+        group_cfiles, ops_text, source_deps = generate_c(
             all_sources, options, groups, fscache, compiler_options=compiler_options
         )
         # TODO: unique names?
         write_file(os.path.join(compiler_options.target_dir, "ops.txt"), ops_text)
     else:
-        group_cfiles = skip_cgen_input
+        group_cfiles = skip_cgen_input[0]
+        source_deps = [SourceDep(d) for d in skip_cgen_input[1]]
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
@@ -526,7 +542,7 @@ def mypyc_build(
         deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
         group_cfilenames.append((cfilenames, deps))
 
-    return groups, group_cfilenames
+    return groups, group_cfilenames, source_deps
 
 
 def mypycify(
@@ -539,7 +555,7 @@ def mypycify(
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: bool | list[tuple[list[str], str | None]] = False,
-    skip_cgen_input: Any | None = None,
+    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,
@@ -624,7 +640,7 @@ def mypycify(
     )
 
     # Generate all the actual important C code
-    groups, group_cfilenames = mypyc_build(
+    groups, group_cfilenames, source_deps = mypyc_build(
         paths,
         only_compile_paths=only_compile_paths,
         compiler_options=compiler_options,
@@ -661,17 +677,17 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
-        if X86_64:
-            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
-            cflags.append("-msse4.2")
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
         if experimental_features:
             cflags.append("-DMYPYC_EXPERIMENTAL")
+        if opt_level == "0":
+            cflags.append("-UNDEBUG")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
             opt_level = "d"
+            cflags.append("/UNDEBUG")
         elif opt_level in ("1", "2", "3"):
             opt_level = "2"
         if debug_level == "0":
@@ -692,10 +708,6 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
-        if X86_64:
-            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
-            # Also Windows 11 requires SSE4.2 since 24H2.
-            cflags.append("/arch:SSE4.2")
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
         if experimental_features:
@@ -706,11 +718,19 @@ def mypycify(
     # compiler invocations.
     shared_cfilenames = []
     if not compiler_options.include_runtime_files:
-        for name in RUNTIME_C_FILES:
+        # Collect all files to copy: runtime files + conditional source files
+        files_to_copy = list(RUNTIME_C_FILES)
+        for source_dep in source_deps:
+            files_to_copy.append(source_dep.path)
+            files_to_copy.append(source_dep.get_header())
+
+        # Copy all files
+        for name in files_to_copy:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-            shared_cfilenames.append(rt_file)
+            if name.endswith(".c"):
+                shared_cfilenames.append(rt_file)
 
     extensions = []
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):

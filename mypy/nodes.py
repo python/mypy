@@ -5,10 +5,19 @@ from __future__ import annotations
 import os
 from abc import abstractmethod
 from collections import defaultdict
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Optional,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from librt.internal import (
     read_float as read_float_bare,
@@ -3732,12 +3741,18 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
-                    return node
-                elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
-                    return node
-                else:
-                    return None
+            elif possible_redefinitions := sorted(
+                [n for n in cls.names.keys() if n.startswith(f"{name}-redefinition")]
+            ):
+                node = cls.names[possible_redefinitions[-1]].node
+            else:
+                continue
+            if isinstance(node, SYMBOL_FUNCBASE_TYPES):
+                return node
+            elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
+                return node
+            else:
+                return None
         return None
 
     def calculate_metaclass_type(self) -> mypy.types.Instance | None:

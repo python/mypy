@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.deps import Capsule, Dependency, SourceDep
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType, deserialize_type
@@ -30,17 +31,25 @@ class ModuleIR:
         # These are only visible in the module that defined them, so no need
         # to serialize.
         self.type_var_names = type_var_names
-        # Capsules needed by the module, specified via module names such as "librt.base64"
-        self.capsules: set[str] = set()
+        # Dependencies needed by the module (such as capsules or source files)
+        self.dependencies: set[Dependency] = set()
 
     def serialize(self) -> JsonDict:
+        # Serialize dependencies as a list of dicts with type information
+        serialized_deps = []
+        for dep in sorted(self.dependencies, key=lambda d: (type(d).__name__, str(d))):
+            if isinstance(dep, Capsule):
+                serialized_deps.append({"type": "Capsule", "name": dep.name})
+            elif isinstance(dep, SourceDep):
+                serialized_deps.append({"type": "SourceDep", "path": dep.path})
+
         return {
             "fullname": self.fullname,
             "imports": self.imports,
             "functions": [f.serialize() for f in self.functions],
             "classes": [c.serialize() for c in self.classes],
             "final_names": [(k, t.serialize()) for k, t in self.final_names],
-            "capsules": sorted(self.capsules),
+            "dependencies": serialized_deps,
         }
 
     @classmethod
@@ -53,7 +62,16 @@ class ModuleIR:
             [(k, deserialize_type(t, ctx)) for k, t in data["final_names"]],
             [],
         )
-        module.capsules = set(data["capsules"])
+
+        # Deserialize dependencies
+        deps: set[Dependency] = set()
+        for dep_dict in data["dependencies"]:
+            if dep_dict["type"] == "Capsule":
+                deps.add(Capsule(dep_dict["name"]))
+            elif dep_dict["type"] == "SourceDep":
+                deps.add(SourceDep(dep_dict["path"]))
+        module.dependencies = deps
+
         return module
 
 

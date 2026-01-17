@@ -6,12 +6,15 @@ The tests are written in C++ and use the Google Test framework.
 from __future__ import annotations
 
 import os
-import platform
 import subprocess
 import sys
 from distutils import ccompiler, sysconfig
 from typing import Any
 
+# we'll import stuff from the source tree, let's ensure is on the sys path
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+import build_setup  # noqa: F401
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -24,8 +27,6 @@ C_APIS_TO_TEST = [
     "generic_ops.c",
     "pythonsupport.c",
 ]
-
-X86_64 = platform.machine() in ("x86_64", "AMD64", "amd64")
 
 
 class BuildExtGtest(build_ext):
@@ -53,7 +54,7 @@ if "--run-capi-tests" in sys.argv:
     kwargs: dict[str, Any]
     if sys.platform == "darwin":
         kwargs = {"language": "c++"}
-        compile_args = []
+        compile_args: list[str] = []
     else:
         kwargs = {}
         compile_args = ["--std=c++11"]
@@ -75,19 +76,13 @@ if "--run-capi-tests" in sys.argv:
         cmdclass={"build_ext": BuildExtGtest},
     )
 else:
-    # TODO: we need a way to share our preferred C flags and get_extension() logic with
-    # mypyc/build.py without code duplication.
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
     cflags: list[str] = []
-    if compiler.compiler_type == "unix":
-        cflags += ["-O3"]
-        if X86_64:
-            cflags.append("-msse4.2")  # Enable SIMD (see also mypyc/build.py)
-    elif compiler.compiler_type == "msvc":
+    if compiler.compiler_type == "unix":  # type: ignore[attr-defined]
+        cflags += ["-O3", "-Wno-unused-function"]
+    elif compiler.compiler_type == "msvc":  # type: ignore[attr-defined]
         cflags += ["/O2"]
-        if X86_64:
-            cflags.append("/arch:SSE4.2")  # Enable SIMD (see also mypyc/build.py)
 
     setup(
         ext_modules=[
@@ -95,6 +90,19 @@ else:
                 "librt.internal",
                 [
                     "librt_internal.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                    "getargsfast.c",
+                ],
+                include_dirs=["."],
+                extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.strings",
+                [
+                    "librt_strings.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
