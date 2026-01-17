@@ -520,7 +520,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = None  # type: Animal
+    pet: Animal
 
 h = House()
 h.pet = Dog()
@@ -625,7 +625,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = None  # type: Animal
+    pet: Animal
 
 h = House()
 h.pet = Dog()
@@ -1040,7 +1040,7 @@ from typing import Union
 LinkedList = Union['Cons', 'Nil']
 class Nil: pass
 class Cons:
-    tail = None  # type: LinkedList
+    tail: LinkedList
 def last(x: LinkedList) -> Nil:
     while isinstance(x, Cons):
         x = x.tail
@@ -1449,7 +1449,7 @@ def f(x: object) -> None:
 
 [case testIsinstanceAndOr]
 class A:
-    a = None  # type: A
+    a: 'A'
 
 def f(x: object) -> None:
     b = isinstance(x, A) and x.a or A()
