@@ -43,8 +43,14 @@ def parse(
     if options.native_parser:
         import mypy.nativeparse
 
+        ignore_errors = options.ignore_errors or fnam in errors.ignored_files
+        # If errors are ignored, we can drop many function bodies to speed up type checking.
+        strip_function_bodies = ignore_errors and not options.preserve_asts
+
         errors.set_file(fnam, module, options=options)
-        tree, parse_errors, type_ignores = mypy.nativeparse.native_parse(fnam)
+        tree, parse_errors, type_ignores = mypy.nativeparse.native_parse(
+            fnam, skip_function_bodies=strip_function_bodies
+        )
         # Convert type ignores list to dict
         tree.ignored_lines = dict(type_ignores)
         # Set is_stub based on file extension
