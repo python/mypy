@@ -155,6 +155,7 @@ def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
                 prev = defs[-1]
                 if isinstance(prev, OverloadedFuncDef):
                     prev.items.append(stmt)
+                    prev.unanalyzed_items.append(stmt)
                 else:
                     assert isinstance(prev, (FuncDef, Decorator))
                     defs[-1] = OverloadedFuncDef([prev, stmt])
