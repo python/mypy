@@ -447,7 +447,7 @@ class ClassIR:
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
-        ir.supports_weakref = data["supports_weakref"]
+        ir.supports_weakref = data.get("supports_weakref", False)
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
         ir.needs_getseters = data["needs_getseters"]
         ir._serializable = data["_serializable"]
