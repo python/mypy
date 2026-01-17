@@ -950,3 +950,15 @@ import native
 15
 NT(x=4)
 {'x': 5}
+
+[case testExtraLibRtSourceFileDep]
+table_list = list(range(256))
+table_list[ord('A')] = ord('B')
+table = bytes(table_list)
+
+def translate(b: bytes) -> bytes:
+    # The primimitive for bytes.translate requires an optional C file from lib-rt
+    return b.translate(table)
+[file driver.py]
+import native
+assert native.translate(b'ABCD') == b'BBCD'

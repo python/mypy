@@ -312,3 +312,13 @@ print(type(Eggs(obj1=pkg1.A.B())["obj1"]).__module__)
 [out]
 B
 pkg2.mod2
+
+[case testStrictBytesRequired]
+# cmd: --no-strict-bytes a.py
+
+[file a.py]
+def f(b: bytes) -> None: pass
+f(bytearray())
+
+[out]
+a.py:1: error: Option --strict-bytes cannot be disabled when using mypyc

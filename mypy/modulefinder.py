@@ -13,11 +13,10 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Final, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final, TypeAlias as _TypeAlias
 
 from pathspec import PathSpec
-from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
+from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from mypy import pyinfo
 from mypy.errors import CompileError
@@ -60,7 +59,7 @@ OnePackageDir = tuple[str, bool]
 PackageDirs = list[OnePackageDir]
 
 # Minimum and maximum Python versions for modules in stdlib as (major, minor)
-StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], Optional[tuple[int, int]]]]
+StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], tuple[int, int] | None]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -118,7 +117,7 @@ class ModuleNotFoundReason(Enum):
 
 # If we found the module, returns the path to the module as a str.
 # Otherwise, returns the reason why the module wasn't found.
-ModuleSearchResult = Union[str, ModuleNotFoundReason]
+ModuleSearchResult = str | ModuleNotFoundReason
 
 
 class BuildSource:
@@ -737,8 +736,8 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
         with open(gitignore) as f:
             lines = f.readlines()
         try:
-            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
-        except GitWildMatchPatternError:
+            return parent_gitignores + [(dir, PathSpec.from_lines("gitignore", lines))]
+        except GitIgnorePatternError:
             print(f"error: could not parse {gitignore}", file=sys.stderr)
             return parent_gitignores
     return parent_gitignores
