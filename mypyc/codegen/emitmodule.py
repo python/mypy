@@ -1137,16 +1137,6 @@ class GroupGenerator:
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
-                if cl.coroutine_name:
-                    fn = cl.methods["__call__"]
-                    filepath = self.source_paths[module.fullname]
-                    name = cl.coroutine_name
-                    wrapper_name = emitter.emit_cpyfunction_instance(
-                        fn, name, filepath, error_stmt
-                    )
-                    static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
-                    emitter.emit_line(f"{static_name} = {wrapper_name};")
-
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 
         self.generate_top_level_call(module, emitter)

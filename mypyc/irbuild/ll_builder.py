@@ -459,8 +459,6 @@ class LowLevelIRBuilder:
         assert is_fixed_width_rtype(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
-        res = Register(target_type)
-
         fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock()
 
         check = self.check_tagged_short_int(src, line)
@@ -471,37 +469,20 @@ class LowLevelIRBuilder:
         size = target_type.size
         if size < int_rprimitive.size:
             # Add a range check when the target type is smaller than the source type
-            fast2, fast3 = BasicBlock(), BasicBlock()
-            upper_bound = 1 << (size * 8 - 1)
-            if not target_type.is_signed:
-                upper_bound *= 2
-            check2 = self.add(ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT))
-            self.add(Branch(check2, fast2, slow, Branch.BOOL))
-            self.activate_block(fast2)
-            if target_type.is_signed:
-                lower_bound = -upper_bound
-            else:
-                lower_bound = 0
-            check3 = self.add(ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE))
-            self.add(Branch(check3, fast3, slow, Branch.BOOL))
-            self.activate_block(fast3)
-            tmp = self.int_op(
-                c_pyssize_t_rprimitive,
-                src,
-                Integer(1, c_pyssize_t_rprimitive),
-                IntOp.RIGHT_SHIFT,
-                line,
+            # Use helper method to generate range checking and conversion
+            res = self.coerce_tagged_to_fixed_width_with_range_check(
+                src, target_type, int_rprimitive.size, slow, end, line
             )
-            tmp = self.add(Truncate(tmp, target_type))
         else:
+            # No range check needed when target is same size or larger
             if size > int_rprimitive.size:
                 tmp = self.add(Extend(src, target_type, signed=True))
             else:
                 tmp = src
             tmp = self.int_op(target_type, tmp, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
-
-        self.add(Assign(res, tmp))
-        self.goto(end)
+            res = Register(target_type)
+            self.add(Assign(res, tmp))
+            self.goto(end)
 
         self.activate_block(slow)
         if is_int64_rprimitive(target_type) or (
@@ -521,31 +502,122 @@ class LowLevelIRBuilder:
             self.add(Assign(res, tmp))
             self.add(KeepAlive([src]))
             self.goto(end)
-        elif is_int32_rprimitive(target_type):
-            # Slow path just always generates an OverflowError
-            self.call_c(int32_overflow, [], line)
-            self.add(Unreachable())
-        elif is_int16_rprimitive(target_type):
-            # Slow path just always generates an OverflowError
-            self.call_c(int16_overflow, [], line)
-            self.add(Unreachable())
-        elif is_uint8_rprimitive(target_type):
-            # Slow path just always generates an OverflowError
-            self.call_c(uint8_overflow, [], line)
-            self.add(Unreachable())
         else:
-            assert False, target_type
+            # Slow path just always generates an OverflowError
+            self.emit_fixed_width_overflow_error(target_type, line)
 
         self.activate_block(end)
         return res
 
+    def coerce_tagged_to_fixed_width_with_range_check(
+        self,
+        src: Value,
+        target_type: RType,
+        source_size: int,
+        overflow_block: BasicBlock,
+        success_block: BasicBlock,
+        line: int,
+    ) -> Register:
+        """Helper to convert a tagged value to a smaller fixed-width type with range checking.
+
+        This method generates IR for converting a tagged integer (like short_int or the fast
+        path of int) to a smaller fixed-width type (i32, i16, uint8) with overflow detection.
+
+        The method performs range checks and branches to overflow_block on failure, or
+        success_block on success (after assigning the result to a register).
+
+        Args:
+            src: Tagged source value (with tag bit set)
+            target_type: Target fixed-width type (must be smaller than source_size)
+            source_size: Size in bytes of the source type
+            overflow_block: Block to branch to on overflow
+            success_block: Block to goto after successful conversion
+            line: Line number
+
+        Returns:
+            Result register containing the converted value (valid in success_block)
+        """
+        assert is_fixed_width_rtype(target_type), target_type
+        assert isinstance(target_type, RPrimitive), target_type
+        size = target_type.size
+        assert size < source_size, (target_type, size, source_size)
+
+        res = Register(target_type)
+        in_range, in_range2 = BasicBlock(), BasicBlock()
+
+        # Calculate bounds for the target type (in tagged representation)
+        upper_bound = 1 << (size * 8 - 1)
+        if not target_type.is_signed:
+            upper_bound *= 2
+
+        # Check if value < upper_bound
+        check_upper = self.add(ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT))
+        self.add(Branch(check_upper, in_range, overflow_block, Branch.BOOL))
+
+        self.activate_block(in_range)
+
+        # Check if value >= lower_bound
+        if target_type.is_signed:
+            lower_bound = -upper_bound
+        else:
+            lower_bound = 0
+        check_lower = self.add(ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE))
+        self.add(Branch(check_lower, in_range2, overflow_block, Branch.BOOL))
+
+        self.activate_block(in_range2)
+
+        # Value is in range - shift right to remove tag, then truncate
+        shifted = self.int_op(
+            c_pyssize_t_rprimitive,
+            src,
+            Integer(1, c_pyssize_t_rprimitive),
+            IntOp.RIGHT_SHIFT,
+            line,
+        )
+        tmp = self.add(Truncate(shifted, target_type))
+        self.add(Assign(res, tmp))
+        self.goto(success_block)
+
+        return res
+
+    def emit_fixed_width_overflow_error(self, target_type: RType, line: int) -> None:
+        """Emit overflow error for fixed-width type conversion."""
+        if is_int32_rprimitive(target_type):
+            self.call_c(int32_overflow, [], line)
+        elif is_int16_rprimitive(target_type):
+            self.call_c(int16_overflow, [], line)
+        elif is_uint8_rprimitive(target_type):
+            self.call_c(uint8_overflow, [], line)
+        else:
+            assert False, target_type
+        self.add(Unreachable())
+
     def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        # short_int (CPyTagged) is guaranteed to be a tagged value, never a pointer,
+        # so we don't need the fast/slow path split like coerce_int_to_fixed_width.
+        # However, we still need range checking when target type is smaller than source.
+        assert is_fixed_width_rtype(target_type), target_type
+        assert isinstance(target_type, RPrimitive), target_type
+
         if is_int64_rprimitive(target_type) or (
             PLATFORM_SIZE == 4 and is_int32_rprimitive(target_type)
         ):
+            # No range check needed - target is same size or larger than source
             return self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
-        # TODO: i32 on 64-bit platform
-        assert False, (src.type, target_type, PLATFORM_SIZE)
+
+        # Target is smaller than source - need range checking
+        # Use helper method to generate range checking and conversion
+        overflow, end = BasicBlock(), BasicBlock()
+        res = self.coerce_tagged_to_fixed_width_with_range_check(
+            src, target_type, short_int_rprimitive.size, overflow, end, line
+        )
+
+        # Handle overflow case
+        self.activate_block(overflow)
+        self.emit_fixed_width_overflow_error(target_type, line)
+
+        self.activate_block(end)
+        return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
