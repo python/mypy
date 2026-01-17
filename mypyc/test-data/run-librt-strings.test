@@ -4,7 +4,7 @@ import base64
 import binascii
 import random
 
-from librt.strings import BytesWriter
+from librt.strings import BytesWriter, StringWriter
 
 from testutil import assertRaises
 
@@ -188,6 +188,316 @@ def test_bytes_writer_wrapper_functions() -> None:
         b[0] = -1
     with assertRaises(TypeError):
         b[0] = 256
+
+def test_string_writer_basics() -> None:
+    w = StringWriter()
+    assert w.getvalue() == ""
+
+def test_string_writer_repr() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    assert repr(w) == "StringWriter('')"
+    w.append(ord('h'))
+    w.append(ord('i'))
+    assert repr(w) == "StringWriter('hi')"
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(0x200)
+    assert repr(w2) == "StringWriter('" + chr(0x100) + chr(0x200) + "')"
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    expected = "StringWriter('" + chr(0x10000) + "')"
+    assert repr(w3) == expected
+
+def test_string_writer_repr_escaping() -> None:
+    # Kind 1: Test escaping of newline, nul, tab, backslash
+    w = StringWriter()
+    w.append(ord('a'))
+    w.append(ord('\n'))
+    w.append(0)
+    w.append(ord('\t'))
+    w.append(ord('\\'))
+    assert repr(w) == "StringWriter('a\\n\\x00\\t\\\\')"
+
+    # Kind 2: escaping with UCS-2
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(ord('\n'))
+    assert repr(w2) == "StringWriter('" + chr(0x100) + "\\n')"
+
+    # Kind 4: escaping with UCS-4
+    w3 = StringWriter()
+    w3.append(0x10000)
+    w3.append(0)
+    assert repr(w3) == "StringWriter('" + chr(0x10000) + "\\x00')"
+
+def test_string_writer_len() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    assert len(w) == 0
+    w.append(ord('a'))
+    assert len(w) == 1
+    w.append(ord('b'))
+    w.append(ord('c'))
+    assert len(w) == 3
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    assert len(w2) == 1
+    for i in range(10):
+        w2.append(0x200 + i)
+    assert len(w2) == 11
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    assert len(w3) == 1
+    w3.append(0x10001)
+    w3.append(0x10002)
+    assert len(w3) == 3
+
+    # Test len after growing buffer
+    w4 = StringWriter()
+    for i in range(500):
+        w4.append(ord('X'))
+    assert len(w4) == 500
+
+def test_string_writer_get_item() -> None:
+    # Kind 1 (ASCII)
+    w = StringWriter()
+    w.append(ord('f'))
+    w.append(ord('o'))
+    w.append(ord('o'))
+    assert w[0 + int()] == ord('f')
+    assert w[1 + int()] == ord('o')
+    assert w[2 + int()] == ord('o')
+    assert w[-1 + int()] == ord('o')
+    assert w[-2 + int()] == ord('o')
+    assert w[-3 + int()] == ord('f')
+
+    with assertRaises(IndexError):
+        w[3 + int()]
+    with assertRaises(IndexError):
+        w[-4 + int()]
+    with assertRaises(IndexError):
+        w[1 << 50]
+    with assertRaises(IndexError):
+        w[-(1 << 50)]
+
+    # Kind 2 (UCS-2)
+    w2 = StringWriter()
+    w2.append(0x100)
+    w2.append(0x200)
+    w2.append(0x300)
+    assert w2[0 + int()] == 0x100
+    assert w2[1 + int()] == 0x200
+    assert w2[2 + int()] == 0x300
+    assert w2[-1 + int()] == 0x300
+    assert w2[-2 + int()] == 0x200
+    assert w2[-3 + int()] == 0x100
+
+    with assertRaises(IndexError):
+        w2[3 + int()]
+    with assertRaises(IndexError):
+        w2[-4 + int()]
+
+    # Kind 4 (UCS-4)
+    w3 = StringWriter()
+    w3.append(0x10000)
+    w3.append(0x10001)
+    w3.append(0x10002)
+    assert w3[0 + int()] == 0x10000
+    assert w3[1 + int()] == 0x10001
+    assert w3[2 + int()] == 0x10002
+    assert w3[-1 + int()] == 0x10002
+    assert w3[-2 + int()] == 0x10001
+    assert w3[-3 + int()] == 0x10000
+
+    with assertRaises(IndexError):
+        w3[3 + int()]
+    with assertRaises(IndexError):
+        w3[-4 + int()]
+
+    # Test get_item after buffer growth
+    w4 = StringWriter()
+    for i in range(1000):
+        w4.append(ord('a') + (i % 26))
+    assert w4[0 + int()] == ord('a')
+    assert w4[999 + int()] == ord('a') + (999 % 26)
+    assert w4[500 + int()] == ord('a') + (500 % 26)
+    assert w4[-1 + int()] == ord('a') + (999 % 26)
+    assert w4[-1000 + int()] == ord('a')
+
+def test_string_writer_append() -> None:
+    w = StringWriter()
+    w.append(ord('a'))
+    assert w.getvalue() == "a"
+    w.append(0xff)
+    assert w.getvalue() == "a\xff"
+
+    # Switch kind 1->2
+    w.append(0x100)
+    assert w.getvalue() == "a\xff\u0100", w.getvalue()
+    w.append(0xffff)
+    assert w.getvalue() == "a\xff\u0100\uffff"
+
+    # Switch kind 2->4
+    w.append(0x10000)
+    assert w.getvalue() == "a\xff\u0100\uffff" + chr(0x10000)
+
+    # Maximum valid Unicode code point (0x10FFFF = 1114111)
+    w2 = StringWriter()
+    w2.append(0x10FFFF)
+    assert w2.getvalue() == chr(0x10FFFF)
+
+    # Invalid code points
+    w3 = StringWriter()
+    with assertRaises(ValueError, "code point 1114112 is outside valid Unicode range (0-1114111)"):
+        w3.append(0x110000)
+
+    w4 = StringWriter()
+    with assertRaises(ValueError, "code point -1 is outside valid Unicode range (0-1114111)"):
+        w4.append(-1)
+
+    w5 = StringWriter()
+    with assertRaises(ValueError, "code point 2097152 is outside valid Unicode range (0-1114111)"):
+        w5.append(0x200000)
+
+def test_string_writer_write() -> None:
+    # Kind 1: Write ASCII strings
+    w = StringWriter()
+    w.write("hello")
+    assert w.getvalue() == "hello"
+    w.write(" world")
+    assert w.getvalue() == "hello world"
+
+    # Write empty string
+    w.write("")
+    assert w.getvalue() == "hello world"
+
+    # Kind 1 -> Kind 2: Write string with UCS-2 characters
+    w2 = StringWriter()
+    w2.write("abc")
+    assert w2.getvalue() == "abc"
+    w2.write(chr(0x100) + chr(0x200))
+    assert w2.getvalue() == "abc" + chr(0x100) + chr(0x200)
+    w2.write("xyz")
+    assert w2.getvalue() == "abc" + chr(0x100) + chr(0x200) + "xyz"
+
+    # Kind 2: Write all UCS-2
+    w3 = StringWriter()
+    w3.append(0x100)
+    w3.write(chr(0x200) + chr(0x300))
+    assert w3.getvalue() == chr(0x100) + chr(0x200) + chr(0x300)
+
+    # Kind 2 -> Kind 4: Write string with UCS-4 characters
+    w4 = StringWriter()
+    w4.write(chr(0x100))
+    w4.write(chr(0x10000))
+    assert w4.getvalue() == chr(0x100) + chr(0x10000)
+
+    # Kind 4: Write mixed
+    w5 = StringWriter()
+    w5.append(0x10000)
+    w5.write("abc")
+    w5.write(chr(0x200))
+    w5.write(chr(0x10001))
+    assert w5.getvalue() == chr(0x10000) + "abc" + chr(0x200) + chr(0x10001)
+
+    # Test with longer strings to trigger buffer growth
+    w6 = StringWriter()
+    for _ in range(100):
+        w6.write("hello")
+    assert w6.getvalue() == "hello" * 100
+    assert len(w6) == 500
+
+def test_string_writer_append_grow_same_kind() -> None:
+    # Test growing buffer while staying in kind 1 (ASCII)
+    w = StringWriter()
+    # Append enough ASCII characters to grow beyond embedded buffer
+    for i in range(1000):
+        w.append(ord('a') + (i % 26))
+        assert len(w) == i + 1
+    result = w.getvalue()
+    assert len(result) == 1000
+    for i in range(1000):
+        assert result[i] == chr(ord('a') + (i % 26))
+
+    # Test growing buffer while staying in kind 2
+    w2 = StringWriter()
+    w2.append(0x100)  # Switch to kind 2
+    for i in range(1000):
+        w2.append(0x100 + (i % 100))
+        assert len(w2) == i + 2
+    result2 = w2.getvalue()
+    assert len(result2) == 1001
+    assert result2[0] == chr(0x100)
+    for i in range(1000):
+        assert result2[i + 1] == chr(0x100 + (i % 100))
+
+    # Test growing buffer while staying in kind 4
+    w3 = StringWriter()
+    w3.append(0x10000)  # Switch to kind 4
+    for i in range(500):
+        w3.append(0x10000 + (i % 100))
+        assert len(w3) == i + 2
+    result3 = w3.getvalue()
+    assert len(result3) == 501
+    assert result3[0] == chr(0x10000)
+    for i in range(500):
+        assert result3[i + 1] == chr(0x10000 + (i % 100))
+
+def test_string_writer_append_grow_and_switch_kind() -> None:
+    # Test growing buffer AND switching from kind 1 to kind 2
+    w = StringWriter()
+    # Fill with ASCII to grow buffer
+    for i in range(500):
+        w.append(ord('A'))
+    assert len(w) == 500
+    # Now append non-ASCII that requires kind 2, triggering both grow and kind switch
+    for i in range(500):
+        w.append(0x100 + i)
+    result = w.getvalue()
+    assert len(result) == 1000
+    for i in range(500):
+        assert result[i] == 'A'
+    for i in range(500):
+        assert result[500 + i] == chr(0x100 + i)
+
+    # Test growing buffer AND switching from kind 2 to kind 4
+    w2 = StringWriter()
+    w2.append(0x100)  # Switch to kind 2
+    # Fill with kind 2 characters to grow buffer
+    for i in range(300):
+        w2.append(0x200 + (i % 100))
+    assert len(w2) == 301
+    # Now append characters that require kind 4, triggering both grow and kind switch
+    for i in range(300):
+        w2.append(0x10000 + i)
+    result2 = w2.getvalue()
+    assert len(result2) == 601
+    assert result2[0] == chr(0x100)
+    for i in range(300):
+        assert result2[1 + i] == chr(0x200 + (i % 100))
+    for i in range(300):
+        assert result2[301 + i] == chr(0x10000 + i)
+
+    # Test switching kind 1->4 with buffer growth
+    w3 = StringWriter()
+    for i in range(300):
+        w3.append(ord('X'))
+    # Jump directly to kind 4
+    w3.append(0x10000)
+    result3 = w3.getvalue()
+    assert len(result3) == 301
+    for i in range(300):
+        assert result3[i] == 'X'
+    assert result3[300] == chr(0x10000)
 
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features

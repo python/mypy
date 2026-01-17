@@ -33,6 +33,7 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -985,27 +986,33 @@ def is_literal_type_like(t: Type | None) -> bool:
         return False
 
 
-def is_singleton_type(typ: Type) -> bool:
-    """Returns 'true' if this type is a "singleton type" -- if there exists
-    exactly only one runtime value associated with this type.
-
-    That is, given two values 'a' and 'b' that have the same type 't',
-    'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
-    always true.
-
-    Currently, this returns True when given NoneTypes, enum LiteralTypes,
-    enum types with a single value and ... (Ellipses).
-
-    Note that other kinds of LiteralTypes cannot count as singleton types. For
-    example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
-    that 'a is b' will always be true -- some implementations of Python will end up
-    constructing two distinct instances of 100001.
+def is_singleton_identity_type(typ: ProperType) -> bool:
     """
-    typ = get_proper_type(typ)
-    return typ.is_singleton_type()
+    Returns True if every value of this type is identical to every other value of this type,
+    as judged by the `is` operator.
+
+    Note that this is not true of certain LiteralType, such as Literal[100001] or Literal["string"]
+    """
+    if isinstance(typ, NoneType):
+        return True
+    if isinstance(typ, Instance):
+        return (typ.type.is_enum and len(typ.type.enum_members) == 1) or (
+            typ.type.fullname in ELLIPSIS_TYPE_NAMES
+        )
+    if isinstance(typ, LiteralType):
+        return typ.is_enum_literal() or isinstance(typ.value, bool)
+    return False
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
+def is_singleton_equality_type(typ: ProperType) -> bool:
+    """
+    Returns True if every value of this type compares equal to every other value of this type,
+    as judged by the `==` operator.
+    """
+    return isinstance(typ, LiteralType) or is_singleton_identity_type(typ)
+
+
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1034,7 +1041,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
         ]
         return UnionType.make_union(items)
 
-    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+    if isinstance(typ, Instance) and (
+        target_fullname is None or typ.type.fullname == target_fullname
+    ):
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
