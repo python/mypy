@@ -534,7 +534,7 @@ Both = Union[int, str]
 def foo(x: int, y: int = ...) -> int: ...
 @overload
 def foo(x: str, y: str = ...) -> str: ...
-def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "Union[int, str]")
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "int | str")
     return x
 
 @overload
@@ -592,6 +592,25 @@ x = ''  # E: Incompatible types in assignment (expression has type "str", variab
 x = 1
 [file m2.py]
 x = 1
+
+[case testStarImportDoesNotImportGeneratedIntersections]
+from m1 import *
+from m2 import *
+[file m1.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m2.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m3.py]
+class A: ...
+class B: ...
+class AB(A, B): ...
+[builtins fixtures/isinstance.pyi]
 
 [case testAssignToFuncDefViaImport]
 
@@ -947,21 +966,16 @@ accept_float(a.b.c.value)
 
 [file a/__init__.py]
 value = 3
-b.value
-a.b.value
+b.value  # E: Name "b" is not defined
+a.b.value  # E: Name "a" is not defined
 
 [file a/b/__init__.py]
 value = "a"
-c.value
-a.b.c.value
+c.value  # E: Name "c" is not defined
+a.b.c.value  # E: Name "a" is not defined
 
 [file a/b/c.py]
 value = 3.2
-[out]
-tmp/a/__init__.py:2: error: Name "b" is not defined
-tmp/a/__init__.py:3: error: Name "a" is not defined
-tmp/a/b/__init__.py:2: error: Name "c" is not defined
-tmp/a/b/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
@@ -2496,54 +2510,43 @@ y = int()
 
 [case testImportFromReExportInCycleUsingRelativeImport1]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 x: One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 
 class Two(One):
     pass
 y: Two
-y = x
+y = x  # E: Incompatible types in assignment (expression has type "One", variable has type "Two")
 x = y
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportInCycleUsingRelativeImport2]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 import m
-reveal_type(m.One)
+reveal_type(m.One)  # N: Revealed type is "def () -> m.one.One"
 x: m.One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 class Two:
     pass
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportedNamedTupleInCycle1]
 from m import One
@@ -2597,14 +2600,14 @@ reveal_type(x)
 class Two:
     pass
 [out]
-tmp/m/two.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/m/two.py:3: note: Revealed type is "builtins.int | builtins.str"
 
 [case testImportCycleSpecialCase]
 import p
 [file p/__init__.py]
 from . import a
 from . import b
-reveal_type(a.foo())
+reveal_type(a.foo())  # N: Revealed type is "builtins.int"
 [file p/a.py]
 import p
 def foo() -> int: pass
@@ -2612,11 +2615,8 @@ def foo() -> int: pass
 import p
 
 def run() -> None:
-    reveal_type(p.a.foo())
+    reveal_type(p.a.foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/module.pyi]
-[out]
-tmp/p/b.py:4: note: Revealed type is "builtins.int"
-tmp/p/__init__.py:3: note: Revealed type is "builtins.int"
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImports]
 # flags: --ignore-missing-imports
@@ -3192,7 +3192,6 @@ from b import no_such_export
 from a import *
 [out]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar2]
 import a
@@ -3204,8 +3203,6 @@ from c import *
 from a import *
 [out]
 tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar3]
 import test1

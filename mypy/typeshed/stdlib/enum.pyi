@@ -255,6 +255,7 @@ _auto_null: Any
 class Flag(Enum):
     _name_: str | None  # type: ignore[assignment]
     _value_: int
+    _numeric_repr_: Callable[[int], str]
     @_magic_enum_attr
     def name(self) -> str | None: ...  # type: ignore[override]
     @_magic_enum_attr
@@ -309,6 +310,7 @@ if sys.version_info >= (3, 11):
     def global_enum(cls: _EnumerationT, update_str: bool = False) -> _EnumerationT: ...
     def global_enum_repr(self: Enum) -> str: ...
     def global_flag_repr(self: Flag) -> str: ...
+    def show_flag_values(value: int) -> list[int]: ...
 
 if sys.version_info >= (3, 12):
     # The body of the class is the same, but the base classes are different.
