@@ -51,6 +51,7 @@ include/
 pyvenv.cfg
 
 .tox
+.worktrees
 pip-wheel-metadata
 
 
