@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+
+from mypy import errorcodes as codes
 from mypy.errors import Errors
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll
 from mypy.options import Options
@@ -59,7 +62,18 @@ def parse(
         collector = ImportCollector()
         tree.accept(collector)
         tree.imports = collector.imports
-        # TODO: Report parse_errors to errors object
+        # Report parse errors
+        for error in parse_errors:
+            message = error["message"]
+            # Standardize error message by capitalizing the first word
+            message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
+            errors.report(
+                error["line"],
+                error["column"],
+                message,
+                blocker=True,
+                code=codes.SYNTAX,
+            )
         if raise_on_error and errors.is_errors():
             errors.raise_error()
         return tree
