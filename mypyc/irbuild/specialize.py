@@ -1284,7 +1284,7 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     return builder.call_c(
         int_to_bytes_op, [self_arg, length_arg, byteorder_arg, signed_arg], expr.line
 
-      
+
 def translate_getitem_with_bounds_check(
     builder: IRBuilder,
     base_expr: Expression,
