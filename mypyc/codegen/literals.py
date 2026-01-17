@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Final, Union
-from typing_extensions import TypeGuard
+from typing import Final, TypeGuard
 
 # Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.
-LiteralValue = Union[
-    str, bytes, int, bool, float, complex, tuple[object, ...], frozenset[object], None
-]
+LiteralValue = (
+    str | bytes | int | bool | float | complex | tuple[object, ...] | frozenset[object] | None
+)
 
 
 def _is_literal_value(obj: object) -> TypeGuard[LiteralValue]:

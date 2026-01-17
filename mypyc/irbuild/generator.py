@@ -10,7 +10,7 @@ mypyc.irbuild.function.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
 from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME

@@ -14,7 +14,8 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional, cast
+from collections.abc import Callable
+from typing import Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -23,6 +24,7 @@ from mypy.nodes import (
     DictExpr,
     Expression,
     GeneratorExpr,
+    IndexExpr,
     IntExpr,
     ListExpr,
     MemberExpr,
@@ -54,6 +56,7 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     bytes_rprimitive,
+    bytes_writer_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
     int16_rprimitive,
@@ -69,7 +72,9 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_sequence_rprimitive,
     is_str_rprimitive,
+    is_tagged,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -81,6 +86,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    get_expr_length_value,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -91,7 +97,13 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.primitives.bytes_ops import isinstance_bytearray, isinstance_bytes
+from mypyc.primitives.bytearray_ops import isinstance_bytearray
+from mypyc.primitives.bytes_ops import (
+    bytes_adjust_index_op,
+    bytes_get_item_unsafe_op,
+    bytes_range_check_op,
+    isinstance_bytes,
+)
 from mypyc.primitives.dict_ops import (
     dict_items_op,
     dict_keys_op,
@@ -107,6 +119,14 @@ from mypyc.primitives.int_ops import (
     int_to_little_endian_op,
     isinstance_int,
 )
+from mypyc.primitives.generic_ops import generic_setattr, setup_object
+from mypyc.primitives.int_ops import isinstance_int
+from mypyc.primitives.librt_strings_ops import (
+    bytes_writer_adjust_index_op,
+    bytes_writer_get_item_unsafe_op,
+    bytes_writer_range_check_op,
+    bytes_writer_set_item_unsafe_op,
+)
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -115,9 +135,12 @@ from mypyc.primitives.str_ops import (
     bytes_decode_latin1_strict,
     bytes_decode_utf8_strict,
     isinstance_str,
+    str_adjust_index_op,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
     str_encode_utf8_strict,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 
@@ -128,13 +151,26 @@ from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 #
 # Specializers take three arguments: the IRBuilder, the CallExpr being
 # compiled, and the RefExpr that is the left hand side of the call.
-Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Optional[Value]]
+Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Value | None]
+
+# Dunder specializers are for special method calls like __getitem__, __setitem__, etc.
+# that don't naturally map to CallExpr nodes (e.g., from IndexExpr).
+#
+# They take four arguments: the IRBuilder, the base expression (target object),
+# the list of argument expressions (positional arguments to the dunder), and the
+# context expression (e.g., IndexExpr) for error reporting.
+DunderSpecializer = Callable[["IRBuilder", Expression, list[Expression], Expression], Value | None]
 
 # Dictionary containing all configured specializers.
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
 specializers: dict[tuple[str, RType | None], list[Specializer]] = {}
+
+# Dictionary containing all configured dunder specializers.
+#
+# Dunder specializers are keyed on the dunder name and RType (always a method call).
+dunder_specializers: dict[tuple[str, RType], list[DunderSpecializer]] = {}
 
 
 def _apply_specialization(
@@ -185,6 +221,53 @@ def specialize_function(
     return wrapper
 
 
+def specialize_dunder(name: str, typ: RType) -> Callable[[DunderSpecializer], DunderSpecializer]:
+    """Decorator to register a function as being a dunder specializer.
+
+    Dunder specializers handle special method calls like __getitem__ that
+    don't naturally map to CallExpr nodes.
+
+    There may exist multiple specializers for one dunder. When translating
+    dunder calls, the earlier appended specializer has higher priority.
+    """
+
+    def wrapper(f: DunderSpecializer) -> DunderSpecializer:
+        dunder_specializers.setdefault((name, typ), []).append(f)
+        return f
+
+    return wrapper
+
+
+def apply_dunder_specialization(
+    builder: IRBuilder,
+    base_expr: Expression,
+    args: list[Expression],
+    name: str,
+    ctx_expr: Expression,
+) -> Value | None:
+    """Invoke the DunderSpecializer callback if one has been registered.
+
+    Args:
+        builder: The IR builder
+        base_expr: The base expression (target object)
+        args: List of argument expressions (positional arguments to the dunder)
+        name: The dunder method name (e.g., "__getitem__")
+        ctx_expr: The context expression for error reporting (e.g., IndexExpr)
+
+    Returns:
+        The specialized value, or None if no specialization was found.
+    """
+    base_type = builder.node_type(base_expr)
+
+    # Check if there's a specializer for this dunder method and type
+    if (name, base_type) in dunder_specializers:
+        for specializer in dunder_specializers[name, base_type]:
+            val = specializer(builder, base_expr, args, ctx_expr)
+            if val is not None:
+                return val
+    return None
+
+
 @specialize_function("builtins.globals")
 def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 0:
@@ -227,17 +310,11 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
-        if isinstance(expr_rtype, RTuple):
-            # len() of fixed-length tuple can be trivially determined
-            # statically, though we still need to evaluate it.
-            builder.accept(arg)
-            return Integer(len(expr_rtype.types))
+        # NOTE (?) I'm not sure if my handling of can_borrow is correct here
+        obj = builder.accept(arg, can_borrow=is_list_rprimitive(expr_rtype))
+        if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
+            return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
-            if is_list_rprimitive(builder.node_type(arg)):
-                borrow = True
-            else:
-                borrow = False
-            obj = builder.accept(arg, can_borrow=borrow)
             return builder.builtin_len(obj, expr.line)
     return None
 
@@ -1062,9 +1139,33 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
-    arg = constant_fold_expr(builder, expr.args[0])
+    arg_expr = expr.args[0]
+    arg = constant_fold_expr(builder, arg_expr)
     if isinstance(arg, (str, bytes)) and len(arg) == 1:
         return Integer(ord(arg))
+
+    # Check for ord(s[i]) where s is str and i is an integer
+    if isinstance(arg_expr, IndexExpr):
+        # Check base type
+        base_type = builder.node_type(arg_expr.base)
+        if is_str_rprimitive(base_type):
+            # Check index type
+            index_expr = arg_expr.index
+            index_type = builder.node_type(index_expr)
+            if is_tagged(index_type) or is_fixed_width_rtype(index_type):
+                # This is ord(s[i]) where s is str and i is an integer.
+                # Generate specialized inline code using the helper.
+                result = translate_getitem_with_bounds_check(
+                    builder,
+                    arg_expr.base,
+                    [arg_expr.index],
+                    expr,
+                    str_adjust_index_op,
+                    str_range_check_op,
+                    str_get_item_unsafe_as_int_op,
+                )
+                return result
+
     return None
 
 
@@ -1109,7 +1210,14 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
         subtype = builder.accept(expr.args[0])
-        return builder.add(Call(ir.setup, [subtype], expr.line))
+        subs = ir.subclasses()
+        if subs is not None and len(subs) == 0:
+            return builder.add(Call(ir.setup, [subtype], expr.line))
+        # Call a function that dynamically resolves the setup function of extension classes from the type object.
+        # This is necessary because the setup involves default attribute initialization and setting up
+        # the vtable which are specific to a given type and will not work if a subtype is created using
+        # the setup function of its base.
+        return builder.call_c(setup_object, [subtype], expr.line)
 
     return None
 
@@ -1175,4 +1283,148 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     byteorder_arg = builder.accept(byteorder_expr)
     return builder.call_c(
         int_to_bytes_op, [self_arg, length_arg, byteorder_arg, signed_arg], expr.line
+
+      
+def translate_getitem_with_bounds_check(
+    builder: IRBuilder,
+    base_expr: Expression,
+    args: list[Expression],
+    ctx_expr: Expression,
+    adjust_index_op: PrimitiveDescription,
+    range_check_op: PrimitiveDescription,
+    get_item_unsafe_op: PrimitiveDescription,
+) -> Value | None:
+    """Shared helper for optimized __getitem__ with bounds checking.
+
+    This implements the common pattern of:
+    1. Adjusting negative indices
+    2. Checking if index is in valid range
+    3. Raising IndexError if out of range
+    4. Getting the item if in range
+
+    Args:
+        builder: The IR builder
+        base_expr: The base object expression
+        args: The arguments to __getitem__ (should be length 1)
+        ctx_expr: The context expression for line numbers
+        adjust_index_op: Primitive op to adjust negative indices
+        range_check_op: Primitive op to check if index is in valid range
+        get_item_unsafe_op: Primitive op to get item (no bounds checking)
+
+    Returns:
+        The result value, or None if optimization doesn't apply
+    """
+    # Check that we have exactly one argument
+    if len(args) != 1:
+        return None
+
+    # Get the object
+    obj = builder.accept(base_expr)
+
+    # Get the index argument
+    index = builder.accept(args[0])
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(range_check_op, [obj, adjusted_index], ctx_expr.line)
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
+    builder.add(Unreachable())
+
+    # Handle valid index - get the item
+    builder.activate_block(valid_block)
+    result = builder.primitive_op(get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line)
+
+    return result
+
+
+@specialize_dunder("__getitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized BytesWriter.__getitem__ implementation with bounds checking."""
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        bytes_writer_adjust_index_op,
+        bytes_writer_range_check_op,
+        bytes_writer_get_item_unsafe_op,
+    )
+
+
+@specialize_dunder("__setitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_set_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized BytesWriter.__setitem__ implementation with bounds checking."""
+    # Check that we have exactly two arguments (index and value)
+    if len(args) != 2:
+        return None
+
+    # Get the BytesWriter object
+    obj = builder.accept(base_expr)
+
+    # Get the index and value arguments
+    index = builder.accept(args[0])
+    value = builder.accept(args[1])
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(
+        bytes_writer_adjust_index_op, [obj, index], ctx_expr.line
+    )
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(
+        bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
+    builder.add(Unreachable())
+
+    # Handle valid index - set the item
+    builder.activate_block(valid_block)
+    builder.primitive_op(
+        bytes_writer_set_item_unsafe_op, [obj, adjusted_index, value], ctx_expr.line
+    )
+
+    return builder.none()
+
+
+@specialize_dunder("__getitem__", bytes_rprimitive)
+def translate_bytes_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized bytes.__getitem__ implementation with bounds checking."""
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        bytes_adjust_index_op,
+        bytes_range_check_op,
+        bytes_get_item_unsafe_op,
     )

@@ -334,6 +334,11 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 static inline int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
+    #if CPY_3_12_FEATURES
+        if (likely(PyUnstable_Long_IsCompact(lobj))) {
+            return PyUnstable_Long_CompactValue(lobj);
+        }
+    #else
         Py_ssize_t size = Py_SIZE(lobj);
         if (likely(size == 1)) {
             // Fast path
@@ -341,6 +346,7 @@ static inline int64_t CPyLong_AsInt64(PyObject *o) {
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     return CPyLong_AsInt64_(o);
@@ -738,6 +744,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
@@ -772,6 +779,7 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
 
 
 // Bytes operations
@@ -783,8 +791,9 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
-
-
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
+int CPyBytes_Endswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
 
@@ -938,7 +947,7 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  _Py_Identifier *method);
+                                  PyObject *method);
 
 bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
@@ -959,6 +968,26 @@ static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name)
 static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
     return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
 }
+
+PyObject *CPy_SetupObject(PyObject *type);
+
+typedef struct {
+    PyCMethodObject func;
+
+    PyObject *func_name;
+    PyObject *func_code;
+} CPyFunction;
+
+PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
+                          PyCFunction func, int func_flags, const char *func_doc,
+                          int first_line, int code_flags, bool has_self_arg);
+PyObject* CPyFunction_get_name(PyObject *op, void *context);
+int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
+PyObject* CPyFunction_get_code(PyObject *op, void *context);
+PyObject* CPyFunction_get_defaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_kwdefaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_annotations(PyObject *op, void *context);
+int CPyFunction_set_annotations(PyObject *op, PyObject *value, void *context);
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);
