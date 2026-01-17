@@ -166,8 +166,10 @@ def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
     return defs
 
 
-def parse_to_binary_ast(filename: str) -> tuple[bytes, list[dict[str, Any]], TypeIgnores]:
-    return ast_serialize.parse(filename)  # type: ignore[no-any-return]
+def parse_to_binary_ast(
+    filename: str, skip_function_bodies: bool = False
+) -> tuple[bytes, list[dict[str, Any]], TypeIgnores]:
+    return ast_serialize.parse(filename, skip_function_bodies)  # type: ignore[no-any-return]
 
 
 def read_statement(data: ReadBuffer) -> Statement:
