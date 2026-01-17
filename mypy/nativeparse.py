@@ -131,8 +131,10 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
     assert read_tag(data) == tag
 
 
-def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
-    b, errors, ignores = parse_to_binary_ast(filename)
+def native_parse(
+    filename: str, skip_function_bodies: bool = False
+) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+    b, errors, ignores = parse_to_binary_ast(filename, skip_function_bodies)
     data = ReadBuffer(b)
     n = read_int(data)
     defs = read_statements(data, n)

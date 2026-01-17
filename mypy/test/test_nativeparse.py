@@ -60,10 +60,13 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     changes, _ = parse_mypy_comments(comments, options)
     options = options.apply_changes(changes)
 
+    # Check if we should skip function bodies (when ignoring errors)
+    skip_function_bodies = "# mypy: ignore-errors=True" in source
+
     try:
         with temp_source(source) as fnam:
             try:
-                node, errors, type_ignores = native_parse(fnam)
+                node, errors, type_ignores = native_parse(fnam, skip_function_bodies)
             except ValueError as e:
                 print(f"Parse failed: {e}")
                 assert False
