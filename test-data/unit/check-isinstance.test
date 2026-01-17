@@ -2729,7 +2729,7 @@ from typing import Union
 
 y: str
 if type(y) is int:  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
-    y # E: Statement is unreachable
+    y  # E: Statement is unreachable
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
@@ -2760,6 +2760,7 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testTypeEqualsMultipleTypesShouldntNarrow]
+# flags: --warn-unreachable
 # make sure we don't do any narrowing if there are multiple types being compared
 
 from typing import Union

@@ -8,7 +8,23 @@ import re
 import unittest
 
 from mypyc.ir.deps import SourceDep
-from mypyc.primitives import registry
+from mypyc.ir.ops import PrimitiveDescription
+from mypyc.primitives import (
+    bytearray_ops,
+    bytes_ops,
+    dict_ops,
+    exc_ops,
+    float_ops,
+    generic_ops,
+    int_ops,
+    list_ops,
+    misc_ops,
+    registry,
+    set_ops,
+    str_ops,
+    tuple_ops,
+    weakref_ops,
+)
 
 
 class TestHeaderInclusion(unittest.TestCase):
@@ -34,6 +50,26 @@ class TestHeaderInclusion(unittest.TestCase):
         ]:
             for ops in values:
                 all_ops.extend(ops)
+
+        for module in [
+            bytes_ops,
+            str_ops,
+            dict_ops,
+            list_ops,
+            bytearray_ops,
+            generic_ops,
+            int_ops,
+            misc_ops,
+            tuple_ops,
+            exc_ops,
+            float_ops,
+            set_ops,
+            weakref_ops,
+        ]:
+            for name in dir(module):
+                val = getattr(module, name, None)
+                if isinstance(val, PrimitiveDescription):
+                    all_ops.append(val)
 
         # Find additional headers via extra C source file dependencies.
         for op in all_ops:

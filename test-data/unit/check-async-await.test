@@ -1080,3 +1080,14 @@ class Launcher(P):
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testInvalidAsyncForInComprehensionNoCrash]
+# a # is at the end to mark these not as section headers
+[[5 async for _ in [5]] for _ in []]#  # E: "async for" outside async function \
+                                       # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[{5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
+                                       # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[{5: 5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
+                                          # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

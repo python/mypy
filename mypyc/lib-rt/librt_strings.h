@@ -31,7 +31,7 @@ import_librt_strings(void)
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
 // Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 512
+#define WRITER_EMBEDDED_BUF_LEN 256
 
 typedef struct {
     PyObject_HEAD
@@ -40,6 +40,15 @@ typedef struct {
     Py_ssize_t capacity;  // Total capacity of the buffer
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } BytesWriterObject;
+
+typedef struct {
+    PyObject_HEAD
+    char *buf;  // Beginning of the buffer
+    char kind;  // Bytes per code point (1, 2 or 4)
+    Py_ssize_t len;  // Current length (number of code points written)
+    Py_ssize_t capacity;  // Total capacity of the buffer (number of code points)
+    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
+} StringWriterObject;
 
 #define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
 #define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
