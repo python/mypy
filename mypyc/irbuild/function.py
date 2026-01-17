@@ -365,6 +365,10 @@ def gen_func_ir(
                 func_decl.kind,
                 is_prop_getter=func_decl.is_prop_getter,
                 is_prop_setter=func_decl.is_prop_setter,
+                is_generator=func_decl.is_generator,
+                is_coroutine=func_decl.is_coroutine,
+                implicit=func_decl.implicit,
+                internal=func_decl.internal,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:

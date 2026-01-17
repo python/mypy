@@ -6,20 +6,10 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
-from mypyc.ir.ops import (
-    NAMESPACE_STATIC,
-    BasicBlock,
-    Call,
-    Integer,
-    LoadStatic,
-    Register,
-    Return,
-    SetAttr,
-    Value,
-)
+from mypyc.ir.ops import BasicBlock, Call, GetAttr, Integer, Register, Return, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, c_pointer_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -108,6 +98,7 @@ def add_coroutine_properties(
     Needed to make introspection functions like inspect.iscoroutinefunction work.
     """
     callable_class_ir.coroutine_name = coroutine_name
+    callable_class_ir.attributes[CPYFUNCTION_NAME] = object_rprimitive
 
     properties = {
         "__name__": cpyfunction_get_name,
@@ -123,14 +114,7 @@ def add_coroutine_properties(
     }
 
     def get_func_wrapper() -> Value:
-        return builder.add(
-            LoadStatic(
-                object_rprimitive,
-                callable_class_ir.name + "_cpyfunction",
-                builder.module_name,
-                NAMESPACE_STATIC,
-            )
-        )
+        return builder.add(GetAttr(builder.self(), CPYFUNCTION_NAME, -1))
 
     for name, primitive in properties.items():
         with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
