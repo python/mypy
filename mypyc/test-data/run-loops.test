@@ -1,7 +1,7 @@
 # Test cases for "range" objects, "for" and "while" loops (compile and run)
 
 [case testFor]
-from typing import List, Tuple
+from typing import Any, List, Tuple
 def count(n: int) -> None:
     for i in range(n):
         print(i)
@@ -19,6 +19,10 @@ def list_iter(l: List[int]) -> None:
     for i in l:
         print(i)
 def tuple_iter(l: Tuple[int, ...]) -> None:
+    for i in l:
+        print(i)
+def empty_tuple_iter(l: Tuple[()]) -> None:
+    i: Any
     for i in l:
         print(i)
 def str_iter(l: str) -> None:
@@ -39,7 +43,7 @@ def count_down_short() -> None:
 [file driver.py]
 from native import (
     count, list_iter, list_rev_iter, list_rev_iter_lol, count_between, count_down, count_double,
-    count_down_short, tuple_iter, str_iter,
+    count_down_short, tuple_iter, empty_tuple_iter, str_iter,
 )
 count(5)
 list_iter(list(reversed(range(5))))
@@ -52,6 +56,7 @@ count_down_short()
 print('==')
 list_rev_iter_lol(list(reversed(range(5))))
 tuple_iter((1, 2, 3))
+empty_tuple_iter(())
 str_iter("abc")
 [out]
 0

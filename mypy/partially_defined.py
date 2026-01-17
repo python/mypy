@@ -206,11 +206,13 @@ class DefinedVariableTracker:
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
         # in things like try/except/finally statements.
         self.disable_branch_skip = False
+        self.in_finally = False
 
     def copy(self) -> DefinedVariableTracker:
         result = DefinedVariableTracker()
         result.scopes = [s.copy() for s in self.scopes]
         result.disable_branch_skip = self.disable_branch_skip
+        result.in_finally = self.in_finally
         return result
 
     def _scope(self) -> Scope:
@@ -579,7 +581,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.end_branch_statement()
 
         if o.finally_body is not None:
+            self.tracker.in_finally = True
             o.finally_body.accept(self)
+            self.tracker.in_finally = False
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
@@ -620,7 +624,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.name in self.builtins and self.tracker.in_scope(ScopeType.Global):
             return
-        if self.tracker.is_possibly_undefined(o.name):
+        if (
+            self.tracker.is_possibly_undefined(o.name)
+            and self.tracker.in_finally == self.tracker.disable_branch_skip
+        ):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
             # We don't want to report the error on the same variable multiple times.
