@@ -558,13 +558,15 @@ def read_class_def(data: ReadBuffer) -> ClassDef:
 
     # Extract metaclass from keywords if present
     metaclass = dict(keywords).get("metaclass") if keywords else None
+    # Remove metaclass from keywords since it's passed as a separate field
+    filtered_keywords = [(k, v) for k, v in keywords if k != "metaclass"] if keywords else None
 
     class_def = ClassDef(
         name,
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
-        keywords=keywords if keywords else None
+        keywords=filtered_keywords
     )
     class_def.decorators = decorators
     read_loc(data, class_def)

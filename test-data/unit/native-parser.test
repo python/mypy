@@ -1799,7 +1799,6 @@ class Foo(metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
