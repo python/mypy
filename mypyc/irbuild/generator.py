@@ -164,6 +164,7 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
+        generator_class_ir.is_environment = True
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
 

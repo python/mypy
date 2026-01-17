@@ -419,7 +419,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         self.emitter.emit_line("}")
                 if not merged_branch:
                     var_name = op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
-                    if cl.is_generated:
+                    if cl.is_environment:
                         # A generated class does not "exist" to the user, this is just an unbound
                         # variable in their code, not a missing attribute on the generated class.
                         exc_class = "PyExc_UnboundLocalError"
@@ -924,7 +924,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_attribute_error(self, op: Branch, class_ir: ClassIR, attr: str) -> None:
         assert op.traceback_entry is not None
         globals_static = self.emitter.static_name("globals", self.module_name)
-        if class_ir.is_generated:
+        if class_ir.is_environment:
             self.emit_line(
                 'CPy_UnboundLocalError("%s", "%s", "%s", %d, %s);'
                 % (

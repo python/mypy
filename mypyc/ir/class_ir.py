@@ -91,6 +91,7 @@ class ClassIR:
         module_name: str,
         is_trait: bool = False,
         is_generated: bool = False,
+        is_environment: bool = False,
         is_abstract: bool = False,
         is_ext_class: bool = True,
         is_final_class: bool = False,
@@ -99,6 +100,8 @@ class ClassIR:
         self.module_name = module_name
         self.is_trait = is_trait
         self.is_generated = is_generated
+        # True for env classes where attributes represent locals.
+        self.is_environment = is_environment
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
         self.is_final_class = is_final_class
@@ -231,6 +234,7 @@ class ClassIR:
             "ClassIR("
             "name={self.name}, module_name={self.module_name}, "
             "is_trait={self.is_trait}, is_generated={self.is_generated}, "
+            "is_environment={self.is_environment}, "
             "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}, "
             "is_final_class={self.is_final_class}"
             ")".format(self=self)
@@ -380,6 +384,7 @@ class ClassIR:
             "is_ext_class": self.is_ext_class,
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
+            "is_environment": self.is_environment,
             "is_augmented": self.is_augmented,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
@@ -438,6 +443,7 @@ class ClassIR:
 
         ir.is_trait = data["is_trait"]
         ir.is_generated = data["is_generated"]
+        ir.is_environment = data.get("is_environment", False)
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
