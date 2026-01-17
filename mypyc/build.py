@@ -97,6 +97,7 @@ LIBRT_MODULES = [
             "base64/arch/neon64/enc_loop_asm.c",
             "base64/codecs.h",
             "base64/env.h",
+            "base64/lib_openmp.c",
             "base64/tables/tables.h",
             "base64/tables/table_dec_32bit.h",
             "base64/tables/table_enc_12bit.h",
@@ -189,7 +190,7 @@ def get_mypy_config(
     fscache: FileSystemCache | None,
 ) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
-    all_sources, options = process_options(mypy_options, fscache=fscache)
+    all_sources, options = process_options(mypy_options, fscache=fscache, mypyc=True)
     if only_compile_paths is not None:
         paths_set = set(only_compile_paths)
         mypyc_sources = [s for s in all_sources if s.path in paths_set]
@@ -680,10 +681,13 @@ def mypycify(
             cflags.append("-DMYPYC_LOG_TRACE")
         if experimental_features:
             cflags.append("-DMYPYC_EXPERIMENTAL")
+        if opt_level == "0":
+            cflags.append("-UNDEBUG")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
             opt_level = "d"
+            cflags.append("/UNDEBUG")
         elif opt_level in ("1", "2", "3"):
             opt_level = "2"
         if debug_level == "0":

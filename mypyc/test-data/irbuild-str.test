@@ -507,6 +507,186 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
+[case testOrdOfStrIndex_64bit]
+from mypy_extensions import i64, i32, i16, u8
+def ord_str_index(s: str, i: int) -> int:
+    return ord(s[i])
+def ord_str_index_i64(s: str, i: i64) -> int:
+    return ord(s[i])
+def ord_str_index_to_i32(s: str, i: i64) -> i32:
+    return ord(s[i])
+def ord_str_index_to_i16(s: str, i: i64) -> i16:
+    return ord(s[i])
+def ord_str_index_to_u8(s: str, i: i64) -> u8:
+    return ord(s[i])
+def ord_str_index_to_i64(s: str, i: i64) -> i64:
+    return ord(s[i])
+[typing fixtures/typing-full.pyi]
+[out]
+def ord_str_index(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    return r10
+def ord_str_index_i64(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    return r3
+def ord_str_index_to_i32(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+    r4, r5 :: bit
+    r6 :: native_int
+    r7, r8 :: i32
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    r4 = r3 < 4294967296 :: signed
+    if r4 goto L3 else goto L5 :: bool
+L3:
+    r5 = r3 >= -4294967296 :: signed
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    r6 = r3 >> 1
+    r7 = truncate r6: native_int to i32
+    r8 = r7
+    goto L6
+L5:
+    CPyInt32_Overflow()
+    unreachable
+L6:
+    return r8
+def ord_str_index_to_i16(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+    r4, r5 :: bit
+    r6 :: native_int
+    r7, r8 :: i16
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    r4 = r3 < 65536 :: signed
+    if r4 goto L3 else goto L5 :: bool
+L3:
+    r5 = r3 >= -65536 :: signed
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    r6 = r3 >> 1
+    r7 = truncate r6: native_int to i16
+    r8 = r7
+    goto L6
+L5:
+    CPyInt16_Overflow()
+    unreachable
+L6:
+    return r8
+def ord_str_index_to_u8(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+    r4, r5 :: bit
+    r6 :: native_int
+    r7, r8 :: u8
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    r4 = r3 < 512 :: signed
+    if r4 goto L3 else goto L5 :: bool
+L3:
+    r5 = r3 >= 0 :: signed
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    r6 = r3 >> 1
+    r7 = truncate r6: native_int to u8
+    r8 = r7
+    goto L6
+L5:
+    CPyUInt8_Overflow()
+    unreachable
+L6:
+    return r8
+def ord_str_index_to_i64(s, i):
+    s :: str
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: short_int
+    r4 :: i64
+L0:
+    r0 = CPyStr_AdjustIndex(s, i)
+    r1 = CPyStr_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
+    r4 = r3 >> 1
+    return r4
+
 [case testStrip]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
