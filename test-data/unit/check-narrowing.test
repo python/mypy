@@ -1364,13 +1364,13 @@ class A: ...
 val: Optional[A]
 
 if val == None:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 else:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 if val != None:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 
 if val in (None,):
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
@@ -1380,6 +1380,19 @@ if val not in (None,):
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
 else:
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
+
+class Hmm:
+    def __eq__(self, other) -> bool: ...
+
+hmm: Optional[Hmm]
+if hmm == None:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
+else:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
+if hmm != None:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
+else:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithTupleOfTypes]
@@ -2277,13 +2290,13 @@ def f4(x: SE) -> None:
 # https://github.com/python/mypy/issues/17864
 def f(x: str | int) -> None:
     if x == "x":
-        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
         y = x
 
     if x in ["x"]:
         # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
         reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
-        y = x
+        y = x  # E: Incompatible types in assignment (expression has type "str | int", variable has type "str")
         z = x
     z = y
 [builtins fixtures/primitives.pyi]
@@ -2699,3 +2712,101 @@ reveal_type(t.foo)  # N: Revealed type is "__main__.D"
 t.foo = C1()
 reveal_type(t.foo)  # N: Revealed type is "__main__.C"
 [builtins fixtures/property.pyi]
+
+[case testNarrowingNotImplemented]
+from __future__ import annotations
+from typing_extensions import Self
+
+class X:
+    def __divmod__(self, other: Self | int) -> tuple[Self, Self]: ...
+
+    def __floordiv__(self, other: Self | int) -> Self:
+        qr = self.__divmod__(other)
+        if qr is NotImplemented:
+            return NotImplemented
+        return qr[0]
+[builtins fixtures/notimplemented.pyi]
+
+
+[case testNarrowingBooleans]
+# flags: --warn-return-any
+from typing import Any
+
+def foo(x: dict[str, Any]) -> bool:
+    if x.get("event") is False:
+        return False
+    if x.get("event") is True:
+        return True
+    raise
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingTypeObjects]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import Callable, Any, TypeVar, Generic, Protocol
+_T_co = TypeVar('_T_co', covariant=True)
+
+class Boxxy(Protocol[_T_co]):
+    def get_box(self) -> _T_co: ...
+
+class TupleLike(Generic[_T_co]):
+    def __init__(self, iterable: Boxxy[_T_co], /) -> None:
+        raise
+
+class Box1(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+class Box2(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+def get_type(setting_name: str) -> Callable[[Box1], Any] | type[Any]:
+    raise
+
+def main(key: str):
+    existing_value_type = get_type(key)
+    if existing_value_type is TupleLike:
+        reveal_type(TupleLike)  # N: Revealed type is "def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]"
+        reveal_type(TupleLike(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str]"
+
+        reveal_type(existing_value_type)  # N: Revealed type is "(def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]) | type[Any]"
+        reveal_type(existing_value_type(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str] | Any"
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingCollections]
+# flags: --warn-unreachable
+from typing import cast
+
+class X:
+    def __init__(self) -> None:
+        self.x: dict[str, str] = {}
+        self.y: list[str] = []
+
+    def xxx(self) -> None:
+        if self.x == {}:
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == dict():
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == cast(dict[int, int], {}):
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+    def yyy(self) -> None:
+        if self.y == []:
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == list():
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == cast(list[int], []):
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+[builtins fixtures/dict.pyi]

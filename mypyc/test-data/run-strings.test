@@ -808,7 +808,7 @@ def test_chr() -> None:
 
 [case testOrd]
 from testutil import assertRaises
-from mypy_extensions import i64, i32, i16
+from mypy_extensions import i64, i32, i16, u8
 
 def test_ord() -> None:
     assert ord(' ') == 32
@@ -905,6 +905,46 @@ def test_ord_str_index_unicode_mix() -> None:
     assert ord(s[1 + int()]) == 233     # 2-byte
     assert ord(s[2 + int()]) == 20320   # 3-byte
     assert ord(s[3 + int()]) == 128512  # 4-byte
+
+def test_ord_str_index_to_fixed_width() -> None:
+    # Test i32 coercion (signed 32-bit: -2^31 to 2^31-1)
+    # All valid Unicode code points fit in i32, so test min/max boundaries
+    s_i32_min = chr(0)
+    assert i32(ord(s_i32_min[0 + int()])) == 0
+
+    s_i32_max = chr(0x10FFFF)  # Max Unicode code point
+    assert i32(ord(s_i32_max[0 + int()])) == 0x10FFFF
+
+    # Test i16 coercion (signed 16-bit: -2^15 to 2^15-1, i.e., -32768 to 32767)
+    # ord() returns non-negative, so test 0 to 32767
+    s_i16_min = chr(0)
+    assert i16(ord(s_i16_min[0 + int()])) == 0
+
+    s_i16_max = chr(32767)  # 2^15 - 1
+    assert i16(ord(s_i16_max[0 + int()])) == 32767
+
+    s_i16_overflow = chr(32768)  # 2^15
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        i16(ord(s_i16_overflow[0 + int()]))
+
+    s_i16_overflow2 = chr(32769)  # 2^15 + 1
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        i16(ord(s_i16_overflow2[0 + int()]))
+
+    # Test u8 coercion (unsigned 8-bit: 0 to 2^8-1, i.e., 0 to 255)
+    s_u8_min = chr(0)
+    assert u8(ord(s_u8_min[0 + int()])) == 0
+
+    s_u8_max = chr(255)
+    assert u8(ord(s_u8_max[0 + int()])) == 255
+
+    s_u8_overflow = chr(256)
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
+        u8(ord(s_u8_overflow[0 + int()]))
+
+    s_u8_overflow2 = chr(257)
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
+        u8(ord(s_u8_overflow2[0 + int()]))
 
 [case testDecode]
 from testutil import assertRaises

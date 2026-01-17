@@ -92,8 +92,9 @@ def main(argv: list[str]) -> None:
     try:
         with server:
             serve(server, ctx)
-    except OSError:
-        pass
+    except OSError as exc:
+        if options.verbosity >= 1:
+            print("Error communicating with coordinator:", exc)
     except Exception as exc:
         report_internal_error(exc, errors.file, 0, errors, options)
     finally:
