@@ -9,8 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 import mypy.nodes
 from mypy.nodes import (
@@ -30,6 +29,7 @@ from mypy.nodes import (
     Import,
     ImportAll,
     ImportFrom,
+    IndexExpr,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -93,6 +93,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     TryFinallyNonlocalControl,
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.specialize import apply_dunder_specialization
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -261,6 +262,15 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         return
 
     for lvalue in lvalues:
+        # Check for __setitem__ dunder specialization before converting to assignment target
+        if isinstance(lvalue, IndexExpr):
+            specialized = apply_dunder_specialization(
+                builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
+            )
+            if specialized is not None:
+                builder.flush_keep_alives()
+                continue
+
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
         builder.flush_keep_alives()
@@ -599,7 +609,9 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
         (make_entry(type) if type else None, var, make_handler(body))
         for type, var, body in zip(t.types, t.vars, t.handlers)
     ]
-    else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
+
+    _else_body = t.else_body
+    else_body = (lambda: builder.accept(_else_body)) if _else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
 
 
