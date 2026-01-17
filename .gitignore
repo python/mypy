@@ -51,7 +51,6 @@ include/
 pyvenv.cfg
 
 .tox
-.worktrees
 pip-wheel-metadata
 
 
@@ -61,3 +60,4 @@ test_capi
 test_capi
 /mypyc/lib-rt/build/
 /mypyc/lib-rt/*.so
+.worktrees/
