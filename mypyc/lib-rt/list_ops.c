@@ -33,12 +33,7 @@ char CPyList_Clear(PyObject *list) {
     if (PyList_CheckExact(list)) {
         PyList_Clear(list);
     } else {
-        _Py_IDENTIFIER(clear);
-        PyObject *name = _PyUnicode_FromId(&PyId_clear);
-        if (name == NULL) {
-            return 0;
-        }
-        PyObject *res = PyObject_CallMethodNoArgs(list, name);
+        PyObject *res = PyObject_CallMethodNoArgs(list, mypyc_interned_str.clear);
         if (res == NULL) {
             return 0;
         }
@@ -50,13 +45,7 @@ PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
-    _Py_IDENTIFIER(copy);
-
-    PyObject *name = _PyUnicode_FromId(&PyId_copy);
-    if (name == NULL) {
-        return NULL;
-    }
-    return PyObject_CallMethodNoArgs(list, name);
+    return PyObject_CallMethodNoArgs(list, mypyc_interned_str.copy);
 }
 
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {

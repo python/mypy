@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Final, cast
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, Final, TypeGuard, cast
 
 import mypy.subtypes
 import mypy.typeops
@@ -817,7 +816,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
-            actual = actual.as_anonymous().fallback
+            actual = actual.create_anonymous_fallback()
         if isinstance(actual, LiteralType):
             actual = actual.fallback
         if isinstance(actual, Instance):
