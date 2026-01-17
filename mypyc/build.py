@@ -97,6 +97,7 @@ LIBRT_MODULES = [
             "base64/arch/neon64/enc_loop_asm.c",
             "base64/codecs.h",
             "base64/env.h",
+            "base64/lib_openmp.c",
             "base64/tables/tables.h",
             "base64/tables/table_dec_32bit.h",
             "base64/tables/table_enc_12bit.h",

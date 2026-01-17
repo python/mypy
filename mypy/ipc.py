@@ -350,7 +350,7 @@ def read_status(status_file: str) -> dict[str, object]:
         except Exception as e:
             raise BadStatus("Malformed status file (not JSON)") from e
     if not isinstance(data, dict):
-        raise BadStatus("Invalid status file (not a dict)")
+        raise BadStatus(f"Invalid status file (not a dict): {data}")
     return data
 
 

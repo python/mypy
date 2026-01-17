@@ -12,7 +12,7 @@
 // BytesWriter
 //
 
-#define _WRITE(data, type, v) \
+#define _WRITE_BYTES(data, type, v) \
     do { \
        *(type *)(((BytesWriterObject *)data)->buf + ((BytesWriterObject *)data)->len) = v; \
        ((BytesWriterObject *)data)->len += sizeof(type); \
@@ -199,15 +199,15 @@ static PySequenceMethods BytesWriter_as_sequence = {
     .sq_ass_item = (ssizeobjargproc)BytesWriter_ass_item,
 };
 
-static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
-static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs);
+static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs);
 static PyObject* BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef BytesWriter_methods[] = {
-    {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
+    {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL,
      PyDoc_STR("Append a single byte to the buffer")
     },
-    {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL | METH_KEYWORDS,
+    {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL,
      PyDoc_STR("Append bytes to the buffer")
     },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
@@ -265,16 +265,16 @@ BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
 }
 
 static PyObject*
-BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:write", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_bytes_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
@@ -290,21 +290,21 @@ static inline char
 BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
     if (!ensure_bytes_writer_size(self, 1))
         return CPY_NONE_ERROR;
-    _WRITE(self, uint8_t, value);
+    _WRITE_BYTES(self, uint8_t, value);
     return CPY_NONE;
 }
 
 static PyObject*
-BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"value", 0};
-    static CPyArg_Parser parser = {"O:append", kwlist, 0};
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
+BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "append() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
     if (!check_bytes_writer(self)) {
         return NULL;
     }
+    PyObject *value = args[0];
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
@@ -379,6 +379,457 @@ BytesWriter_len_internal(PyObject *self) {
     return writer->len << 1;
 }
 
+//
+// StringWriter
+//
+
+static PyTypeObject StringWriterType;
+
+static void convert_string_data_in_place(char *buf, Py_ssize_t len,
+                                         char old_kind, char new_kind);
+
+// Helper to grow string buffer and optionally convert to new kind
+// Returns true on success, false on failure (with PyErr set)
+// Updates self->buf, self->capacity, and self->kind
+static bool
+grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, char new_kind) {
+    char old_kind = self->kind;
+    Py_ssize_t new_capacity = self->capacity;
+
+    while (target_capacity >= new_capacity) {
+        new_capacity *= 2;
+    }
+
+    Py_ssize_t size_bytes = new_capacity * new_kind;
+    char *new_buf;
+    bool from_embedded = (self->buf == self->data);
+
+    if (from_embedded) {
+        // Move from embedded buffer to heap-allocated buffer
+        new_buf = PyMem_Malloc(size_bytes);
+        if (new_buf != NULL) {
+            // Copy existing data from embedded buffer
+            memcpy(new_buf, self->data, self->len * old_kind);
+        }
+    } else {
+        // Realloc existing heap buffer
+        new_buf = PyMem_Realloc(self->buf, size_bytes);
+    }
+
+    if (unlikely(new_buf == NULL)) {
+        PyErr_NoMemory();
+        return false;
+    }
+
+    // Convert data if kind changed
+    if (old_kind != new_kind) {
+        convert_string_data_in_place(new_buf, self->len, old_kind, new_kind);
+    }
+
+    self->buf = new_buf;
+    self->capacity = new_capacity;
+    self->kind = new_kind;
+    return true;
+}
+
+static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+    return grow_string_buffer_helper(data, data->len + n, data->kind);
+}
+
+static inline bool
+ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
+    if (likely(data->capacity - data->len >= n)) {
+        return true;
+    } else {
+        // Don't inline the grow function since this is slow path and we
+        // want to keep this as short as possible for better inlining
+        return grow_string_buffer(data, n);
+    }
+}
+
+static inline void
+StringWriter_init_internal(StringWriterObject *self) {
+    self->buf = self->data;
+    self->kind = 1;
+    self->len = 0;
+    self->capacity = WRITER_EMBEDDED_BUF_LEN;
+}
+
+static PyObject*
+StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    if (type != &StringWriterType) {
+        PyErr_SetString(PyExc_TypeError, "StringWriter cannot be subclassed");
+        return NULL;
+    }
+
+    StringWriterObject *self = (StringWriterObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        StringWriter_init_internal(self);
+    }
+    return (PyObject *)self;
+}
+
+static PyObject *
+StringWriter_internal(void) {
+    StringWriterObject *self = (StringWriterObject *)StringWriterType.tp_alloc(&StringWriterType, 0);
+    if (self == NULL)
+        return NULL;
+    StringWriter_init_internal(self);
+    return (PyObject *)self;
+}
+
+static int
+StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
+{
+    if (!PyArg_ParseTuple(args, "")) {
+        return -1;
+    }
+
+    if (kwds != NULL && PyDict_Size(kwds) > 0) {
+        PyErr_SetString(PyExc_TypeError,
+                        "StringWriter() takes no keyword arguments");
+        return -1;
+    }
+
+    StringWriter_init_internal(self);
+    return 0;
+}
+
+static void
+StringWriter_dealloc(StringWriterObject *self)
+{
+    if (self->buf != self->data) {
+        PyMem_Free(self->buf);
+        self->buf = NULL;
+    }
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject*
+StringWriter_getvalue_internal(PyObject *self)
+{
+    StringWriterObject *obj = (StringWriterObject *)self;
+    return PyUnicode_FromKindAndData(obj->kind, obj->buf, obj->len);
+}
+
+static PyObject*
+StringWriter_repr(StringWriterObject *self)
+{
+    PyObject *value = StringWriter_getvalue_internal((PyObject *)self);
+    if (value == NULL) {
+        return NULL;
+    }
+    PyObject *value_repr = PyObject_Repr(value);
+    Py_DECREF(value);
+    if (value_repr == NULL) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("StringWriter(%U)", value_repr);
+    Py_DECREF(value_repr);
+    return result;
+}
+
+static PyObject*
+StringWriter_getvalue(StringWriterObject *self, PyObject *Py_UNUSED(ignored))
+{
+    return PyUnicode_FromKindAndData(self->kind, self->buf, self->len);
+}
+
+static Py_ssize_t
+StringWriter_length(StringWriterObject *self)
+{
+    return self->len;
+}
+
+static PyObject*
+StringWriter_item(StringWriterObject *self, Py_ssize_t index)
+{
+    Py_ssize_t length = self->len;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "StringWriter index out of range");
+        return NULL;
+    }
+
+    // Read the character at the given index based on kind using memcpy
+    uint32_t value;
+    if (self->kind == 1) {
+        uint8_t val;
+        memcpy(&val, self->buf + index, 1);
+        value = val;
+    } else if (self->kind == 2) {
+        uint16_t val;
+        memcpy(&val, self->buf + index * 2, 2);
+        value = val;
+    } else {
+        memcpy(&value, self->buf + index * 4, 4);
+    }
+    return PyLong_FromLong(value);
+}
+
+static PySequenceMethods StringWriter_as_sequence = {
+    .sq_length = (lenfunc)StringWriter_length,
+    .sq_item = (ssizeargfunc)StringWriter_item,
+};
+
+static PyObject* StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs);
+static PyObject* StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs);
+
+static PyMethodDef StringWriter_methods[] = {
+    {"append", (PyCFunction) StringWriter_append, METH_FASTCALL,
+     PyDoc_STR("Append a single character (as int codepoint) to the buffer")
+    },
+    {"write", (PyCFunction) StringWriter_write, METH_FASTCALL,
+     PyDoc_STR("Append a string to the buffer")
+    },
+    {"getvalue", (PyCFunction) StringWriter_getvalue, METH_NOARGS,
+     "Return the buffer content as str object"
+    },
+    {NULL}  /* Sentinel */
+};
+
+static PyTypeObject StringWriterType = {
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "StringWriter",
+    .tp_doc = PyDoc_STR("Memory buffer for building string objects from parts"),
+    .tp_basicsize = sizeof(StringWriterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = StringWriter_new,
+    .tp_init = (initproc) StringWriter_init,
+    .tp_dealloc = (destructor) StringWriter_dealloc,
+    .tp_methods = StringWriter_methods,
+    .tp_as_sequence = &StringWriter_as_sequence,
+    .tp_repr = (reprfunc)StringWriter_repr,
+};
+
+static inline bool
+check_string_writer(PyObject *data) {
+    if (unlikely(Py_TYPE(data) != &StringWriterType)) {
+        PyErr_Format(
+            PyExc_TypeError, "data must be a StringWriter object, got %s", Py_TYPE(data)->tp_name
+        );
+        return false;
+    }
+    return true;
+}
+
+static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
+
+static char
+StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
+    Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
+    if (str_len == 0) {
+        return CPY_NONE;
+    }
+
+    int src_kind = PyUnicode_KIND(value);
+    void *src_data = PyUnicode_DATA(value);
+    int self_kind = self->kind;
+
+    // Switch kind if source requires wider characters
+    if (src_kind > self_kind) {
+        // Use value in the source kind range to trigger proper kind switch
+        int32_t codepoint = (src_kind == 2) ? 0x100 : 0x10000;
+        if (string_writer_switch_kind(self, codepoint) == CPY_NONE_ERROR) {
+            return CPY_NONE_ERROR;
+        }
+        self_kind = self->kind;
+    }
+
+    // Ensure we have enough space
+    if (!ensure_string_writer_size(self, str_len)) {
+        return CPY_NONE_ERROR;
+    }
+
+    // Copy data - ASCII/Latin1 (kind 1) are handled uniformly
+    if (self_kind == src_kind) {
+        // Same kind, direct copy
+        memcpy(self->buf + self->len * self_kind, src_data, str_len * src_kind);
+    } else {
+        // Different kinds, convert character by character
+        for (Py_ssize_t i = 0; i < str_len; i++) {
+            Py_UCS4 ch = PyUnicode_READ(src_kind, src_data, i);
+            PyUnicode_WRITE(self_kind, self->buf, self->len + i, ch);
+        }
+    }
+
+    self->len += str_len;
+    return CPY_NONE;
+}
+
+static PyObject*
+StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    if (!check_string_writer(self)) {
+        return NULL;
+    }
+    PyObject *value = args[0];
+    if (unlikely(!PyUnicode_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "value must be a str object");
+        return NULL;
+    }
+    if (unlikely(StringWriter_write_internal((StringWriterObject *)self, value) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+// Convert string data to next larger kind (1->2 or 2->4)
+static void convert_string_data_in_place(char *buf, Py_ssize_t len,
+                                         char old_kind, char new_kind) {
+    if (old_kind == 1 && new_kind == 2) {
+        // Convert backwards to avoid overwriting
+        for (Py_ssize_t i = len - 1; i >= 0; i--) {
+            uint8_t val = (uint8_t)buf[i];
+            uint16_t expanded = val;
+            memcpy(buf + i * 2, &expanded, 2);
+        }
+    } else if (old_kind == 2 && new_kind == 4) {
+        // Convert backwards to avoid overwriting
+        for (Py_ssize_t i = len - 1; i >= 0; i--) {
+            uint16_t val;
+            memcpy(&val, buf + i * 2, 2);
+            uint32_t expanded = val;
+            memcpy(buf + i * 4, &expanded, 4);
+        }
+    } else {
+        assert(false);
+    }
+}
+
+static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, char new_kind) {
+    // Current buffer size in bytes
+    Py_ssize_t current_buf_size = (self->buf == self->data) ? WRITER_EMBEDDED_BUF_LEN : (self->capacity * old_kind);
+    // Needed buffer size in bytes for new kind
+    Py_ssize_t needed_size = self->len * new_kind;
+
+    if (current_buf_size >= needed_size) {
+        // Convert in place
+        convert_string_data_in_place(self->buf, self->len, old_kind, new_kind);
+        self->kind = new_kind;
+        self->capacity = current_buf_size / new_kind;
+    } else {
+        // Need to allocate new buffer
+        if (!grow_string_buffer_helper(self, self->len, new_kind)) {
+            return CPY_NONE_ERROR;
+        }
+    }
+    return CPY_NONE;
+}
+
+static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
+    if (self->kind == 1) {
+        // Either kind 1 -> 2 or 1 -> 4. First switch to kind 2.
+        if (convert_string_buffer_kind(self, 1, 2) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        if ((uint32_t)value > 0xffff) {
+            // Call recursively to switch from kind 2 to 4
+            return string_writer_switch_kind(self, value);
+        }
+        return CPY_NONE;
+    } else {
+        // Must be kind 2 -> 4
+        assert(self->kind == 2);
+        assert((uint32_t)value > 0xffff);
+        return convert_string_buffer_kind(self, 2, 4);
+    }
+}
+
+// Handle all append cases except for append that stays within kind 1
+static char string_append_slow_path(StringWriterObject *self, int32_t value) {
+    if (self->kind == 2) {
+        if ((uint32_t)value <= 0xffff) {
+            // Kind stays the same
+            if (!ensure_string_writer_size(self, 1))
+                return CPY_NONE_ERROR;
+            // Copy 2-byte character to buffer
+            uint16_t val16 = (uint16_t)value;
+            memcpy(self->buf + self->len * 2, &val16, 2);
+            self->len++;
+            return CPY_NONE;
+        }
+        if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        return string_append_slow_path(self, value);
+    } else if (self->kind == 1) {
+        // Check precondition -- this must only be used on slow path
+        assert((uint32_t)value > 0xff);
+        if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
+        return string_append_slow_path(self, value);
+    }
+    assert(self->kind == 4);
+    if ((uint32_t)value <= 0x10FFFF) {
+        if (!ensure_string_writer_size(self, 1))
+            return CPY_NONE_ERROR;
+        // Copy 4-byte character to buffer
+        uint32_t val32 = (uint32_t)value;
+        memcpy(self->buf + self->len * 4, &val32, 4);
+        self->len++;
+        return CPY_NONE;
+    }
+    // Code point is out of valid Unicode range
+    PyErr_Format(PyExc_ValueError, "code point %d is outside valid Unicode range (0-1114111)", value);
+    return CPY_NONE_ERROR;
+}
+
+static inline char
+StringWriter_append_internal(StringWriterObject *self, int32_t value) {
+    char kind = self->kind;
+    if (kind == 1 && (uint32_t)value < 256) {
+        if (!ensure_string_writer_size(self, 1))
+            return CPY_NONE_ERROR;
+        self->buf[self->len++] = value;
+        self->kind = kind;
+        return CPY_NONE;
+    }
+    return string_append_slow_path(self, value);
+}
+
+static PyObject*
+StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "append() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    if (!check_string_writer(self)) {
+        return NULL;
+    }
+    PyObject *value = args[0];
+    int32_t unboxed = CPyLong_AsInt32(value);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        CPy_TypeError("i32", value);
+        return NULL;
+    }
+    if (unlikely(StringWriter_append_internal((StringWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyTypeObject *
+StringWriter_type_internal(void) {
+    return &StringWriterType;  // Return borrowed reference
+};
+
+static CPyTagged
+StringWriter_len_internal(PyObject *self) {
+    StringWriterObject *writer = (StringWriterObject *)self;
+    return writer->len << 1;
+}
+
+// End of StringWriter
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
@@ -406,7 +857,13 @@ librt_strings_module_exec(PyObject *m)
     if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
+    if (PyType_Ready(&StringWriterType) < 0) {
+        return -1;
+    }
     if (PyModule_AddObjectRef(m, "BytesWriter", (PyObject *) &BytesWriterType) < 0) {
+        return -1;
+    }
+    if (PyModule_AddObjectRef(m, "StringWriter", (PyObject *) &StringWriterType) < 0) {
         return -1;
     }
 
