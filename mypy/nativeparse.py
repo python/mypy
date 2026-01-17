@@ -730,15 +730,22 @@ def read_block(data: ReadBuffer) -> Block:
     expect_tag(data, nodes.BLOCK)
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
-    assert n > 0
-    a = read_statements(data, n)
-    expect_end_tag(data)
-    b = Block(a)
-    b.line = a[0].line
-    b.column = a[0].column
-    b.end_line = a[-1].end_line
-    b.end_column = a[-1].end_column
-    return b
+    if n == 0:
+        # Empty block - read explicit location
+        b = Block([])
+        read_loc(data, b)
+        expect_end_tag(data)
+        return b
+    else:
+        # Non-empty block - read statements and set location from them
+        a = read_statements(data, n)
+        expect_end_tag(data)
+        b = Block(a)
+        b.line = a[0].line
+        b.column = a[0].column
+        b.end_line = a[-1].end_line
+        b.end_column = a[-1].end_column
+        return b
 
 
 def read_optional_block(data: ReadBuffer) -> Block | None:
