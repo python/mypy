@@ -210,3 +210,13 @@ L0:
     r0 = CPyTagged_Invert(n)
     x = r0
     return x
+
+[case testIntBitLength]
+def f(x: int) -> int:
+    return x.bit_length()
+[out]
+def f(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_BitLength(x)
+    return r0

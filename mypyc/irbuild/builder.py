@@ -5,9 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Union, overload
+from typing import Any, Final, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -40,7 +40,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeParam,
-    UnaryExpr,
     Var,
 )
 from mypy.types import (
@@ -106,6 +105,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.mapper import Mapper
@@ -146,7 +146,7 @@ class UnsupportedException(Exception):
     pass
 
 
-SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
+SymbolTarget = AssignmentTargetRegister | AssignmentTargetAttr
 
 
 class IRBuilder:
@@ -965,12 +965,8 @@ class IRBuilder:
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
-        if isinstance(e, IntExpr):
-            return e.value
-        elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
-            return -e.expr.value
-        else:
-            return None
+        folded = constant_fold_expr(self, e)
+        return folded if isinstance(folded, int) else None
 
     def get_sequence_type(self, expr: Expression) -> RType:
         return self.get_sequence_type_from_type(self.types[expr])
@@ -994,8 +990,10 @@ class IRBuilder:
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
         elif isinstance(target_type, TupleType):
+            items = target_type.items
+            assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            rtypes = set(map(self.mapper.type_to_rtype, items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:

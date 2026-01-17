@@ -1165,7 +1165,7 @@ This example correctly uses a covariant type variable:
 
 See :ref:`variance-of-generics` for more about variance.
 
-Generic protocols can also be recursive. Example (Python 3.12 synta):
+Generic protocols can also be recursive. Example (Python 3.12 syntax):
 
 .. code-block:: python
 
