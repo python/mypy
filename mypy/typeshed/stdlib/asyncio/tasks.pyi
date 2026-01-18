@@ -413,7 +413,12 @@ else:
 
 def all_tasks(loop: AbstractEventLoop | None = None) -> set[Task[Any]]: ...
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 14):
+    def create_task(
+        coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None, eager_start: bool | None = None
+    ) -> Task[_T]: ...
+
+elif sys.version_info >= (3, 11):
     def create_task(coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
 
 else:

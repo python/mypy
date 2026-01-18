@@ -2714,7 +2714,14 @@ reveal_type(t.foo)  # N: Revealed type is "__main__.C"
 [builtins fixtures/property.pyi]
 
 [case testNarrowingNotImplemented]
+# flags: --python-version 3.10
 from __future__ import annotations
+import types
+
+def foo(x: types.NotImplementedType | str):
+    if x is not NotImplemented:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
 from typing_extensions import Self
 
 class X:
