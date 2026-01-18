@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Final, cast
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, Final, TypeGuard, cast
 
 import mypy.subtypes
 import mypy.typeops
@@ -21,6 +20,7 @@ from mypy.nodes import (
     ArgKind,
     TypeInfo,
 )
+from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -41,7 +41,6 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
-    TypeQuery,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -670,9 +669,9 @@ def is_complete_type(typ: Type) -> bool:
     return typ.accept(CompleteTypeVisitor())
 
 
-class CompleteTypeVisitor(TypeQuery[bool]):
+class CompleteTypeVisitor(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(all)
+        super().__init__(ALL_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False
@@ -817,7 +816,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
-            actual = actual.as_anonymous().fallback
+            actual = actual.create_anonymous_fallback()
         if isinstance(actual, LiteralType):
             actual = actual.fallback
         if isinstance(actual, Instance):

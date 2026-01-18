@@ -7,8 +7,7 @@ and mypyc.irbuild.builder.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -97,7 +96,13 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_printf_style,
 )
-from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.specialize import (
+    apply_dunder_specialization,
+    apply_function_specialization,
+    apply_method_specialization,
+    translate_object_new,
+    translate_object_setattr,
+)
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, name_op
@@ -291,8 +296,8 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         # Grab first argument
         vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
-            # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[6]
+            # grab seventh argument (see comment in translate_super_method_call)
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -472,34 +477,39 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if callee.name in base.method_decls:
             break
     else:
-        if (
-            ir.is_ext_class
-            and ir.builtin_base is None
-            and not ir.inherits_python
-            and callee.name == "__init__"
-            and len(expr.args) == 0
-        ):
-            # Call translates to object.__init__(self), which is a
-            # no-op, so omit the call.
-            return builder.none()
+        if callee.name == "__new__":
+            result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
+            if result:
+                return result
+        elif callee.name == "__setattr__":
+            result = translate_object_setattr(
+                builder, expr, MemberExpr(callee.call, "__setattr__")
+            )
+            if result:
+                return result
+        if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
+            if callee.name == "__init__" and len(expr.args) == 0:
+                # Call translates to object.__init__(self), which is a
+                # no-op, so omit the call.
+                return builder.none()
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
     arg_values = [builder.accept(arg) for arg in expr.args]
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
-    if decl.kind != FUNC_STATICMETHOD:
+    if decl.kind != FUNC_STATICMETHOD and decl.name != "__new__":
         # Grab first argument
         vself: Value = builder.self()
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 6th value
+            # For generator classes, the self target is the 7th value
             # in the symbol table (which is an ordered dict). This is sort
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[6]
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)
@@ -548,7 +558,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     # Special case some int ops to allow borrowing operands.
     if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == "//":
-            expr = try_optimize_int_floor_divide(expr)
+            expr = try_optimize_int_floor_divide(builder, expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
             borrow_right = True
@@ -561,11 +571,11 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     return builder.binary_op(left, right, expr.op, expr.line)
 
 
-def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     """Replace // with a power of two with a right shift, if possible."""
-    if not isinstance(expr.right, IntExpr):
+    divisor = constant_fold_expr(builder, expr.right)
+    if not isinstance(divisor, int):
         return expr
-    divisor = expr.right.value
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
         return OpExpr(">>", expr.left, IntExpr(shift))
@@ -578,10 +588,20 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     is_list = is_list_rprimitive(base_type)
     can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
 
+    # Check for dunder specialization for non-slice indexing
+    if not isinstance(index, SliceExpr):
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
+        if specialized is not None:
+            return specialized
+
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
-    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
-        return builder.add(TupleGet(base, index.value, expr.line))
+    if isinstance(base.type, RTuple):
+        folded_index = constant_fold_expr(builder, index)
+        if isinstance(folded_index, int):
+            length = len(base.type.types)
+            if -length <= folded_index <= length - 1:
+                return builder.add(TupleGet(base, folded_index, expr.line))
 
     if isinstance(index, SliceExpr):
         value = try_gen_slice_op(builder, base, index)

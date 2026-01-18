@@ -9,8 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 import mypy.nodes
 from mypy.nodes import (
@@ -30,9 +29,11 @@ from mypy.nodes import (
     Import,
     ImportAll,
     ImportFrom,
+    IndexExpr,
     ListExpr,
     Lvalue,
     MatchStmt,
+    NameExpr,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -92,6 +93,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     TryFinallyNonlocalControl,
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.specialize import apply_dunder_specialization
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -170,10 +172,43 @@ def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
     builder.nonlocal_control[-1].gen_return(builder, retval, stmt.line)
 
 
+def check_unsupported_cls_assignment(builder: IRBuilder, stmt: AssignmentStmt) -> None:
+    fn = builder.fn_info
+    method_args = fn.fitem.arg_names
+    if fn.name != "__new__" or len(method_args) == 0:
+        return
+
+    ir = builder.get_current_class_ir()
+    if ir is None or ir.inherits_python or not ir.is_ext_class:
+        return
+
+    cls_arg = method_args[0]
+
+    def flatten(lvalues: list[Expression]) -> list[Expression]:
+        flat = []
+        for lvalue in lvalues:
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
+                flat += flatten(lvalue.items)
+            else:
+                flat.append(lvalue)
+        return flat
+
+    lvalues = flatten(stmt.lvalues)
+
+    for lvalue in lvalues:
+        if isinstance(lvalue, NameExpr) and lvalue.name == cls_arg:
+            # Disallowed because it could break the transformation of object.__new__ calls
+            # inside __new__ methods.
+            builder.error(
+                f'Assignment to argument "{cls_arg}" in "__new__" method unsupported', stmt.line
+            )
+
+
 def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     lvalues = stmt.lvalues
     assert lvalues
     builder.disallow_class_assignments(lvalues, stmt.line)
+    check_unsupported_cls_assignment(builder, stmt)
     first_lvalue = lvalues[0]
     if stmt.type and isinstance(stmt.rvalue, TempNode):
         # This is actually a variable annotation without initializer. Don't generate
@@ -227,6 +262,15 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         return
 
     for lvalue in lvalues:
+        # Check for __setitem__ dunder specialization before converting to assignment target
+        if isinstance(lvalue, IndexExpr):
+            specialized = apply_dunder_specialization(
+                builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
+            )
+            if specialized is not None:
+                builder.flush_keep_alives()
+                continue
+
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
         builder.flush_keep_alives()
@@ -565,7 +609,9 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
         (make_entry(type) if type else None, var, make_handler(body))
         for type, var, body in zip(t.types, t.vars, t.handlers)
     ]
-    else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
+
+    _else_body = t.else_body
+    else_body = (lambda: builder.accept(_else_body)) if _else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
 
 
@@ -795,7 +841,14 @@ def transform_try_finally_stmt_async(
     # Check if we have a return value
     if ret_reg:
         return_block, check_old_exc = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), check_old_exc, return_block, Branch.IS_ERROR))
+        builder.add(
+            Branch(
+                builder.read(ret_reg, allow_error_value=True),
+                check_old_exc,
+                return_block,
+                Branch.IS_ERROR,
+            )
+        )
 
         builder.activate_block(return_block)
         builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)

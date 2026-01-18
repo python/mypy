@@ -5,9 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Union, overload
+from typing import Any, Final, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -40,7 +40,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeParam,
-    UnaryExpr,
     Var,
 )
 from mypy.types import (
@@ -76,6 +75,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadStatic,
+    MethodCall,
     Op,
     PrimitiveDescription,
     RaiseStandardError,
@@ -105,6 +105,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.mapper import Mapper
@@ -145,7 +146,7 @@ class UnsupportedException(Exception):
     pass
 
 
-SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
+SymbolTarget = AssignmentTargetRegister | AssignmentTargetAttr
 
 
 class IRBuilder:
@@ -700,7 +701,12 @@ class IRBuilder:
         assert False, "Unsupported lvalue: %r" % lvalue
 
     def read(
-        self, target: Value | AssignmentTarget, line: int = -1, can_borrow: bool = False
+        self,
+        target: Value | AssignmentTarget,
+        line: int = -1,
+        *,
+        can_borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
             return target
@@ -716,7 +722,15 @@ class IRBuilder:
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
                 borrow = can_borrow and target.can_borrow
-                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
+                return self.add(
+                    GetAttr(
+                        target.obj,
+                        target.attr,
+                        line,
+                        borrow=borrow,
+                        allow_error_value=allow_error_value,
+                    )
+                )
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 
@@ -735,8 +749,15 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
+                setattr = target.obj_type.class_ir.get_method("__setattr__")
+                if setattr:
+                    key = self.load_str(target.attr)
+                    boxed_reg = self.builder.box(rvalue_reg)
+                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    self.add(call)
+                else:
+                    rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
+                    self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
@@ -944,12 +965,8 @@ class IRBuilder:
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
-        if isinstance(e, IntExpr):
-            return e.value
-        elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
-            return -e.expr.value
-        else:
-            return None
+        folded = constant_fold_expr(self, e)
+        return folded if isinstance(folded, int) else None
 
     def get_sequence_type(self, expr: Expression) -> RType:
         return self.get_sequence_type_from_type(self.types[expr])
@@ -973,8 +990,10 @@ class IRBuilder:
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
         elif isinstance(target_type, TupleType):
+            items = target_type.items
+            assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            rtypes = set(map(self.mapper.type_to_rtype, items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:
@@ -1241,6 +1260,7 @@ class IRBuilder:
         ret_type: RType,
         fn_info: FuncInfo | str = "",
         self_type: RType | None = None,
+        internal: bool = False,
     ) -> Iterator[None]:
         """Generate IR for a method.
 
@@ -1268,7 +1288,7 @@ class IRBuilder:
             sig = FuncSignature(args, ret_type)
             name = self.function_name_stack.pop()
             class_ir = self.class_ir_stack.pop()
-            decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+            decl = FuncDecl(name, class_ir.name, self.module_name, sig, internal=internal)
             ir = FuncIR(decl, arg_regs, blocks)
             class_ir.methods[name] = ir
             class_ir.method_decls[name] = ir.decl
@@ -1436,6 +1456,10 @@ class IRBuilder:
             return
         self.function_names.add(name)
         self.functions.append(func_ir)
+
+    def get_current_class_ir(self) -> ClassIR | None:
+        type_info = self.fn_info.fitem.info
+        return self.mapper.type_to_ir.get(type_info)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

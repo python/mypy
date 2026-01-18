@@ -26,14 +26,17 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Final, Generic, TypeVar, Union
-from typing_extensions import get_origin, is_typeddict
+from typing import Any, Final, Generic, TypeVar, Union, get_origin
+from typing_extensions import is_typeddict
 
 import mypy.build
+import mypy.checkexpr
+import mypy.checkmember
+import mypy.erasetype
 import mypy.modulefinder
 import mypy.nodes
 import mypy.state
@@ -42,6 +45,7 @@ import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.evalexpr import UNKNOWN, evaluate_expression
+from mypy.maptype import map_instance_to_supertype
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -56,7 +60,7 @@ class Missing:
 MISSING: Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = T | Missing
 
 
 class Unrepresentable:
@@ -136,6 +140,11 @@ class Error:
         """Whether or not the error is for something being (or not being) positional-only."""
         # TODO: This is hacky, use error codes or something more resilient
         return "should be positional" in self.message
+
+    def is_disjoint_base_related(self) -> bool:
+        """Whether or not the error is related to @disjoint_base."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return "@disjoint_base" in self.message
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -415,6 +424,18 @@ def verify_mypyfile(
 
     for entry in sorted(to_check):
         stub_entry = stub.names[entry].node if entry in stub.names else MISSING
+        if entry in stub.names:
+            if xref := stub.names[entry].cross_ref:
+                orig_module = xref.rsplit(".", 1)[0]
+            elif isinstance(stub_entry, nodes.SymbolNode) and (name := stub_entry.fullname):
+                orig_module = name.rsplit(".", 1)[0]
+            else:
+                orig_module = None
+
+            if orig_module and orig_module != stub.fullname and orig_module in _all_stubs:
+                # Skip re-exported names whose defining module will be checked separately.
+                continue
+
         if isinstance(stub_entry, nodes.MypyFile):
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
@@ -506,11 +527,16 @@ def _is_disjoint_base(typ: type[object]) -> bool:
 def _verify_disjoint_base(
     stub: nodes.TypeInfo, runtime: type[object], object_path: list[str]
 ) -> Iterator[Error]:
-    # If it's final, doesn't matter whether it's a disjoint base or not
-    if stub.is_final:
-        return
     is_disjoint_runtime = _is_disjoint_base(runtime)
-    if is_disjoint_runtime and not stub.is_disjoint_base:
+    # Don't complain about missing @disjoint_base if there are __slots__, because
+    # in that case we can infer that it's a disjoint base.
+    if (
+        is_disjoint_runtime
+        and not stub.is_disjoint_base
+        and not runtime.__dict__.get("__slots__")
+        and not stub.is_final
+        and not (stub.is_enum and stub.enum_members)
+    ):
         yield Error(
             object_path,
             "is a disjoint base at runtime, but isn't marked with @disjoint_base in the stub",
@@ -518,14 +544,40 @@ def _verify_disjoint_base(
             runtime,
             stub_desc=repr(stub),
         )
-    elif not is_disjoint_runtime and stub.is_disjoint_base:
-        yield Error(
-            object_path,
-            "is marked with @disjoint_base in the stub, but isn't a disjoint base at runtime",
-            stub,
-            runtime,
-            stub_desc=repr(stub),
-        )
+    elif stub.is_disjoint_base:
+        if not is_disjoint_runtime:
+            yield Error(
+                object_path,
+                "is marked with @disjoint_base in the stub, but isn't a disjoint base at runtime",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+        if runtime.__dict__.get("__slots__"):
+            yield Error(
+                object_path,
+                "is marked as @disjoint_base, but also has slots; add __slots__ instead",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+        elif stub.is_final:
+            yield Error(
+                object_path,
+                "is marked as @disjoint_base, but also marked as @final; remove @disjoint_base",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+        elif stub.is_enum and stub.enum_members:
+            yield Error(
+                object_path,
+                "is marked as @disjoint_base, but is an enum with members, which is implicitly final; "
+                "remove @disjoint_base",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
 
 
 def _verify_metaclass(
@@ -745,8 +797,8 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        f'stub argument "{stub_arg.variable.name}" '
-        f'differs from runtime argument "{runtime_arg.name}"'
+        f'stub parameter "{stub_arg.variable.name}" '
+        f'differs from runtime parameter "{runtime_arg.name}"'
     )
 
 
@@ -757,11 +809,15 @@ def _verify_arg_default_value(
     if runtime_arg.default is not inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
-                f'runtime argument "{runtime_arg.name}" '
-                "has a default value but stub argument does not"
+                f'runtime parameter "{runtime_arg.name}" '
+                "has a default value but stub parameter does not"
             )
         else:
-            runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
+            type_context = stub_arg.variable.type
+            runtime_type = get_mypy_type_of_runtime_value(
+                runtime_arg.default, type_context=type_context
+            )
+
             # Fallback to the type annotation type if var type is missing. The type annotation
             # is an UnboundType, but I don't know enough to know what the pros and cons here are.
             # UnboundTypes have ugly question marks following them, so default to var type.
@@ -779,9 +835,9 @@ def _verify_arg_default_value(
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    f'runtime argument "{runtime_arg.name}" '
+                    f'runtime parameter "{runtime_arg.name}" '
                     f"has a default value of type {runtime_type}, "
-                    f"which is incompatible with stub argument type {stub_type}"
+                    f"which is incompatible with stub parameter type {stub_type}"
                 )
             if stub_arg.initializer is not None:
                 stub_default = evaluate_expression(stub_arg.initializer)
@@ -805,15 +861,15 @@ def _verify_arg_default_value(
                             defaults_match = False
                     if not defaults_match:
                         yield (
-                            f'runtime argument "{runtime_arg.name}" '
+                            f'runtime parameter "{runtime_arg.name}" '
                             f"has a default value of {runtime_arg.default!r}, "
-                            f"which is different from stub argument default {stub_default!r}"
+                            f"which is different from stub parameter default {stub_default!r}"
                         )
     else:
         if stub_arg.kind.is_optional():
             yield (
-                f'stub argument "{stub_arg.variable.name}" has a default value '
-                f"but runtime argument does not"
+                f'stub parameter "{stub_arg.variable.name}" has a default value '
+                f"but runtime parameter does not"
             )
 
 
@@ -923,21 +979,36 @@ class Signature(Generic[T]):
         # For most dunder methods, just assume all args are positional-only
         assume_positional_only = is_dunder(stub.name, exclude_special=True)
 
+        is_arg_pos_only: defaultdict[str, set[bool]] = defaultdict(set)
+        for func in map(_resolve_funcitem_from_decorator, stub.items):
+            assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
+            args = maybe_strip_cls(stub.name, func.arguments)
+            for index, arg in enumerate(args):
+                if (
+                    arg.variable.name.startswith("__")
+                    or arg.pos_only
+                    or assume_positional_only
+                    or arg.variable.name.strip("_") == "self"
+                    or (index == 0 and arg.variable.name.strip("_") == "cls")
+                ):
+                    is_arg_pos_only[arg.variable.name].add(True)
+                else:
+                    is_arg_pos_only[arg.variable.name].add(False)
+
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None, "Failed to resolve decorated overload"
+            assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
-                name = (
-                    f"__{index}"
-                    if arg.variable.name.startswith("__")
-                    or arg.pos_only
-                    or assume_positional_only
-                    or arg.variable.name.strip("_") == "self"
-                    else arg.variable.name
-                )
+                # We can only use the index-based name if the argument is always
+                # positional only. Sometimes overloads have an arg as positional-only
+                # in some but not all branches of the overload.
+                name = arg.variable.name
+                if is_arg_pos_only[name] == {True}:
+                    name = f"__{index}"
+
                 all_args.setdefault(name, []).append((arg, index))
 
         def get_position(arg_name: str) -> int:
@@ -995,7 +1066,10 @@ class Signature(Generic[T]):
 
 
 def _verify_signature(
-    stub: Signature[nodes.Argument], runtime: Signature[inspect.Parameter], function_name: str
+    stub: Signature[nodes.Argument],
+    runtime: Signature[inspect.Parameter],
+    function_name: str,
+    warn_runtime_is_object_init: bool = False,
 ) -> Iterator[str]:
     # Check positional arguments match up
     for stub_arg, runtime_arg in zip(stub.pos, runtime.pos):
@@ -1006,10 +1080,11 @@ def _verify_signature(
             and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'stub parameter "{stub_arg.variable.name}" should be positional-only '
                 f'(add "/", e.g. "{runtime_arg.name}, /")'
             )
         if (
@@ -1017,10 +1092,11 @@ def _verify_signature(
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
             and not runtime_arg.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
+                f'stub parameter "{stub_arg.variable.name}" should be positional or keyword '
                 '(remove "/")'
             )
 
@@ -1035,28 +1111,30 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
-                    msg = f'runtime does not have argument "{stub_arg.variable.name}"'
+                    msg = f'runtime does not have parameter "{stub_arg.variable.name}"'
                     if runtime.varkw is not None:
                         msg += ". Maybe you forgot to make it keyword-only in the stub?"
+                    elif warn_runtime_is_object_init:
+                        msg += ". You may need to write stubs for __new__ instead of __init__."
                     yield msg
                 else:
-                    yield f'stub argument "{stub_arg.variable.name}" is not keyword-only'
+                    yield f'stub parameter "{stub_arg.variable.name}" is not keyword-only'
             if stub.varpos is not None:
-                yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+                yield f'runtime does not have *args parameter "{stub.varpos.variable.name}"'
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
                 if not _is_private_parameter(runtime_arg):
-                    yield f'stub does not have argument "{runtime_arg.name}"'
+                    yield f'stub does not have parameter "{runtime_arg.name}"'
             else:
-                yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
+                yield f'runtime parameter "{runtime_arg.name}" is not keyword-only'
 
     # Checks involving *args
     if len(stub.pos) <= len(runtime.pos) or runtime.varpos is None:
         if stub.varpos is None and runtime.varpos is not None:
-            yield f'stub does not have *args argument "{runtime.varpos.name}"'
+            yield f'stub does not have *args parameter "{runtime.varpos.name}"'
         if stub.varpos is not None and runtime.varpos is None:
-            yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+            yield f'runtime does not have *args parameter "{stub.varpos.variable.name}"'
 
     # Check keyword-only args
     for arg in sorted(set(stub.kwonly) & set(runtime.kwonly)):
@@ -1075,9 +1153,13 @@ def _verify_signature(
             if arg in {runtime_arg.name for runtime_arg in runtime.pos}:
                 # Don't report this if we've reported it before
                 if arg not in {runtime_arg.name for runtime_arg in runtime.pos[len(stub.pos) :]}:
-                    yield f'runtime argument "{arg}" is not keyword-only'
+                    yield f'runtime parameter "{arg}" is not keyword-only'
             else:
-                yield f'runtime does not have argument "{arg}"'
+                msg = f'runtime does not have parameter "{arg}"'
+                if warn_runtime_is_object_init:
+                    msg += ". You may need to write stubs for __new__ instead of __init__."
+                yield msg
+
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
@@ -1085,10 +1167,10 @@ def _verify_signature(
                 runtime.varpos is None
                 and arg in {stub_arg.variable.name for stub_arg in stub.pos[len(runtime.pos) :]}
             ):
-                yield f'stub argument "{arg}" is not keyword-only'
+                yield f'stub parameter "{arg}" is not keyword-only'
         else:
             if not _is_private_parameter(runtime.kwonly[arg]):
-                yield f'stub does not have argument "{arg}"'
+                yield f'stub does not have parameter "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
@@ -1098,9 +1180,9 @@ def _verify_signature(
         stub_pos_names = {stub_arg.variable.name for stub_arg in stub.pos}
         # Ideally we'd do a strict subset check, but in practice the errors from that aren't useful
         if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
+            yield f'stub does not have **kwargs parameter "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
-        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+        yield f'runtime does not have **kwargs parameter "{stub.varkw.variable.name}"'
 
 
 def _is_private_parameter(arg: inspect.Parameter) -> bool:
@@ -1163,7 +1245,12 @@ def verify_funcitem(
     if not signature:
         return
 
-    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+    for message in _verify_signature(
+        stub_sig,
+        runtime_sig,
+        function_name=stub.name,
+        warn_runtime_is_object_init=runtime is object.__init__,
+    ):
         yield Error(
             object_path,
             "is inconsistent, " + message,
@@ -1199,7 +1286,8 @@ def verify_var(
     ):
         yield Error(object_path, "is read-only at runtime but not in the stub", stub, runtime)
 
-    runtime_type = get_mypy_type_of_runtime_value(runtime)
+    runtime_type = get_mypy_type_of_runtime_value(runtime, type_context=stub.type)
+    note = ""
     if (
         runtime_type is not None
         and stub.type is not None
@@ -1212,17 +1300,28 @@ def verify_var(
             runtime_type = get_mypy_type_of_runtime_value(runtime.value)
             if runtime_type is not None and is_subtype_helper(runtime_type, stub.type):
                 should_error = False
-            # We always allow setting the stub value to ...
+            # We always allow setting the stub value to Ellipsis (...), but use
+            # _value_ type as a fallback if given. If a member is ... and _value_
+            # type is given, all runtime types should be assignable to _value_.
             proper_type = mypy.types.get_proper_type(stub.type)
             if (
                 isinstance(proper_type, mypy.types.Instance)
                 and proper_type.type.fullname in mypy.types.ELLIPSIS_TYPE_NAMES
             ):
-                should_error = False
+                value_t = stub.info.get("_value_")
+                if value_t is None or value_t.type is None or runtime_type is None:
+                    should_error = False
+                elif is_subtype_helper(runtime_type, value_t.type):
+                    should_error = False
+                else:
+                    note = " (incompatible '_value_')"
 
         if should_error:
             yield Error(
-                object_path, f"variable differs from runtime type {runtime_type}", stub, runtime
+                object_path,
+                f"variable differs from runtime type {runtime_type}{note}",
+                stub,
+                runtime,
             )
 
 
@@ -1273,7 +1372,12 @@ def verify_overloadedfuncdef(
     stub_sig = Signature.from_overloadedfuncdef(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
 
-    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+    for message in _verify_signature(
+        stub_sig,
+        runtime_sig,
+        function_name=stub.name,
+        warn_runtime_is_object_init=runtime is object.__init__,
+    ):
         # TODO: This is a little hacky, but the addition here is super useful
         if "has a default value of type" in message:
             message += (
@@ -1420,7 +1524,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if decorator.fullname == "builtins.classmethod":
             if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
                 raise StubtestFailure(
-                    f"unexpected class argument name {func.arguments[0].variable.name!r} "
+                    f"unexpected class parameter name {func.arguments[0].variable.name!r} "
                     f"in {dec.fullname}"
                 )
             # FuncItem is written so that copy.copy() actually works, even when compiled
@@ -1561,6 +1665,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__conditional_annotations__",  # 3.14+
         "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
@@ -1660,6 +1765,71 @@ def is_read_only_property(runtime: object) -> bool:
 
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
+    if (
+        hasattr(runtime, "__name__")
+        and runtime.__name__ == "__init__"
+        and hasattr(runtime, "__text_signature__")
+        and runtime.__text_signature__ == "($self, /, *args, **kwargs)"
+        and hasattr(runtime, "__objclass__")
+        and hasattr(runtime.__objclass__, "__text_signature__")
+        and runtime.__objclass__.__text_signature__ is not None
+    ):
+        # This is an __init__ method with the generic C-class signature.
+        # In this case, the underlying class often has a better signature,
+        # which we can convert into an __init__ signature by adding in the
+        # self parameter.
+        try:
+            s = inspect.signature(runtime.__objclass__)
+
+            parameter_kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            if s.parameters:
+                first_parameter = next(iter(s.parameters.values()))
+                if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+            return s.replace(
+                parameters=[inspect.Parameter("self", parameter_kind), *s.parameters.values()]
+            )
+        except Exception:
+            pass
+
+    if (
+        hasattr(runtime, "__name__")
+        and runtime.__name__ == "__new__"
+        and hasattr(runtime, "__text_signature__")
+        and runtime.__text_signature__ == "($type, *args, **kwargs)"
+        and hasattr(runtime, "__self__")
+        and hasattr(runtime.__self__, "__text_signature__")
+        and runtime.__self__.__text_signature__ is not None
+    ):
+        # This is a __new__ method with the generic C-class signature.
+        # In this case, the underlying class often has a better signature,
+        # which we can convert into a __new__ signature by adding in the
+        # cls parameter.
+
+        # If the attached class has a valid __init__, skip recovering a
+        # signature for this __new__ method.
+        has_init = False
+        if (
+            hasattr(runtime.__self__, "__init__")
+            and hasattr(runtime.__self__.__init__, "__objclass__")
+            and runtime.__self__.__init__.__objclass__ is runtime.__self__
+        ):
+            has_init = True
+
+        if not has_init:
+            try:
+                s = inspect.signature(runtime.__self__)
+                parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+                if s.parameters:
+                    first_parameter = next(iter(s.parameters.values()))
+                    if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                        parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+                return s.replace(
+                    parameters=[inspect.Parameter("cls", parameter_kind), *s.parameters.values()]
+                )
+            except Exception:
+                pass
+
     try:
         try:
             return inspect.signature(runtime)
@@ -1696,10 +1866,39 @@ def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -
     return f'{"async " if is_async else ""}def {signature}'
 
 
+class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
+    """Rewrites @type_check_only instances to the nearest runtime-visible base class."""
+
+    def visit_instance(self, t: mypy.types.Instance, /) -> mypy.types.Type:
+        instance = mypy.types.get_proper_type(super().visit_instance(t))
+        assert isinstance(instance, mypy.types.Instance)
+
+        if instance.type.is_type_check_only:
+            # find the nearest non-@type_check_only base class
+            for base_info in instance.type.mro[1:]:
+                if not base_info.is_type_check_only:
+                    return map_instance_to_supertype(instance, base_info)
+
+            msg = f"all base classes of {instance.type.fullname!r} are @type_check_only"
+            assert False, msg
+
+        return instance
+
+    def visit_type_alias_type(self, t: mypy.types.TypeAliasType, /) -> mypy.types.Type:
+        return t
+
+
+_TYPE_CHECK_ONLY_BASE_MAPPER = _TypeCheckOnlyBaseMapper()
+
+
+def _relax_type_check_only_type(typ: mypy.types.ProperType) -> mypy.types.ProperType:
+    return mypy.types.get_proper_type(typ.accept(_TYPE_CHECK_ONLY_BASE_MAPPER))
+
+
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
-    left = mypy.types.get_proper_type(left)
-    right = mypy.types.get_proper_type(right)
+    left = _relax_type_check_only_type(mypy.types.get_proper_type(left))
+    right = _relax_type_check_only_type(mypy.types.get_proper_type(right))
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
@@ -1719,7 +1918,18 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         return mypy.subtypes.is_subtype(left, right)
 
 
-def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
+def get_mypy_node_for_name(module: str, type_name: str) -> mypy.nodes.SymbolNode | None:
+    stub = get_stub(module)
+    if stub is None:
+        return None
+    if type_name not in stub.names:
+        return None
+    return stub.names[type_name].node
+
+
+def get_mypy_type_of_runtime_value(
+    runtime: Any, type_context: mypy.types.Type | None = None
+) -> mypy.types.Type | None:
     """Returns a mypy type object representing the type of ``runtime``.
 
     Returns None if we can't find something that works.
@@ -1780,14 +1990,45 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
             is_ellipsis_args=True,
         )
 
-    # Try and look up a stub for the runtime object
-    stub = get_stub(type(runtime).__module__)
-    if stub is None:
+    skip_type_object_type = False
+    if type_context:
+        # Don't attempt to process the type object when context is generic
+        # This is related to issue #3737
+        type_context = mypy.types.get_proper_type(type_context)
+        # Callable types with a generic return value
+        if isinstance(type_context, mypy.types.CallableType):
+            if isinstance(type_context.ret_type, mypy.types.TypeVarType):
+                skip_type_object_type = True
+        # Type[x] where x is generic
+        if isinstance(type_context, mypy.types.TypeType):
+            if isinstance(type_context.item, mypy.types.TypeVarType):
+                skip_type_object_type = True
+
+    if isinstance(runtime, type) and not skip_type_object_type:
+
+        def _named_type(name: str) -> mypy.types.Instance:
+            parts = name.rsplit(".", maxsplit=1)
+            node = get_mypy_node_for_name(parts[0], parts[1])
+            assert isinstance(node, nodes.TypeInfo)
+            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
+            return mypy.types.Instance(node, [any_type] * len(node.defn.type_vars))
+
+        # Try and look up a stub for the runtime object itself
+        # The logic here is similar to ExpressionChecker.analyze_ref_expr
+        type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
+        if isinstance(type_info, nodes.TypeInfo):
+            result: mypy.types.Type | None = None
+            result = mypy.typeops.type_object_type(type_info, _named_type)
+            if mypy.checkexpr.is_type_type_context(type_context):
+                # This is the type in a type[] expression, so substitute type
+                # variables with Any.
+                result = mypy.erasetype.erase_typevars(result)
+            return result
+
+    # Try and look up a stub for the runtime object's type
+    type_info = get_mypy_node_for_name(type(runtime).__module__, type(runtime).__name__)
+    if type_info is None:
         return None
-    type_name = type(runtime).__name__
-    if type_name not in stub.names:
-        return None
-    type_info = stub.names[type_name].node
     if isinstance(type_info, nodes.Var):
         return type_info.type
     if not isinstance(type_info, nodes.TypeInfo):
@@ -1925,30 +2166,8 @@ def get_typeshed_stdlib_modules(
 
 def get_importable_stdlib_modules() -> set[str]:
     """Return all importable stdlib modules at runtime."""
-    all_stdlib_modules: AbstractSet[str]
-    if sys.version_info >= (3, 10):
-        all_stdlib_modules = sys.stdlib_module_names
-    else:
-        all_stdlib_modules = set(sys.builtin_module_names)
-        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
-        for m in pkgutil.iter_modules():
-            if isinstance(m.module_finder, importlib.machinery.FileFinder):
-                modules_by_finder[m.module_finder].add(m.name)
-        for finder, module_group in modules_by_finder.items():
-            if (
-                "site-packages" not in Path(finder.path).parts
-                # if "_queue" is present, it's most likely the module finder
-                # for stdlib extension modules;
-                # if "queue" is present, it's most likely the module finder
-                # for pure-Python stdlib modules.
-                # In either case, we'll want to add all the modules that the finder has to offer us.
-                # This is a bit hacky, but seems to work well in a cross-platform way.
-                and {"_queue", "queue"} & module_group
-            ):
-                all_stdlib_modules.update(module_group)
-
     importable_stdlib_modules: set[str] = set()
-    for module_name in all_stdlib_modules:
+    for module_name in sys.stdlib_module_names:
         if module_name in ANNOYING_STDLIB_MODULES:
             continue
 
@@ -2019,6 +2238,7 @@ class _Arguments:
     concise: bool
     ignore_missing_stub: bool
     ignore_positional_only: bool
+    ignore_disjoint_bases: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2112,6 +2332,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
+            if args.ignore_disjoint_bases and error.is_disjoint_base_related():
+                continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
                 continue
@@ -2186,8 +2408,6 @@ def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
-    if sys.version_info >= (3, 14):
-        parser.color = True  # Set as init arg in 3.14
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
         "--concise",
@@ -2203,6 +2423,12 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-positional-only",
         action="store_true",
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
+    )
+    # TODO: Remove once PEP 800 is accepted
+    parser.add_argument(
+        "--ignore-disjoint-bases",
+        action="store_true",
+        help="Disable checks for PEP 800 @disjoint_base classes",
     )
     parser.add_argument(
         "--allowlist",

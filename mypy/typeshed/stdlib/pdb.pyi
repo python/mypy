@@ -5,9 +5,10 @@ from cmd import Cmd
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from inspect import _SourceObjectType
 from linecache import _ModuleGlobals
+from rlcompleter import Completer
 from types import CodeType, FrameType, TracebackType
 from typing import IO, Any, ClassVar, Final, Literal, TypeVar
-from typing_extensions import ParamSpec, Self, TypeAlias
+from typing_extensions import ParamSpec, Self, TypeAlias, deprecated
 
 __all__ = ["run", "pm", "Pdb", "runeval", "runctx", "runcall", "set_trace", "post_mortem", "help"]
 if sys.version_info >= (3, 14):
@@ -17,7 +18,7 @@ _T = TypeVar("_T")
 _P = ParamSpec("_P")
 _Mode: TypeAlias = Literal["inline", "cli"]
 
-line_prefix: str  # undocumented
+line_prefix: Final[str]  # undocumented
 
 class Restart(Exception): ...
 
@@ -59,7 +60,17 @@ class Pdb(Bdb, Cmd):
     stack: list[tuple[FrameType, int]]
     curindex: int
     curframe: FrameType | None
-    curframe_locals: Mapping[str, Any]
+    if sys.version_info >= (3, 13):
+        @property
+        @deprecated("The frame locals reference is no longer cached. Use 'curframe.f_locals' instead.")
+        def curframe_locals(self) -> Mapping[str, Any]: ...
+        @curframe_locals.setter
+        @deprecated(
+            "Setting 'curframe_locals' no longer has any effect as of 3.14. Update the contents of 'curframe.f_locals' instead."
+        )
+        def curframe_locals(self, value: Mapping[str, Any]) -> None: ...
+    else:
+        curframe_locals: Mapping[str, Any]
     if sys.version_info >= (3, 14):
         mode: _Mode | None
         colorize: bool
@@ -131,7 +142,11 @@ class Pdb(Bdb, Cmd):
         def completedefault(self, text: str, line: str, begidx: int, endidx: int) -> list[str]: ...
 
     def do_commands(self, arg: str) -> bool | None: ...
-    def do_break(self, arg: str, temporary: bool = ...) -> bool | None: ...
+    if sys.version_info >= (3, 14):
+        def do_break(self, arg: str, temporary: bool = False) -> bool | None: ...
+    else:
+        def do_break(self, arg: str, temporary: bool | Literal[0, 1] = 0) -> bool | None: ...
+
     def do_tbreak(self, arg: str) -> bool | None: ...
     def do_enable(self, arg: str) -> bool | None: ...
     def do_disable(self, arg: str) -> bool | None: ...
@@ -196,6 +211,10 @@ class Pdb(Bdb, Cmd):
         def completenames(self, text: str, line: str, begidx: int, endidx: int) -> list[str]: ...  # type: ignore[override]
     if sys.version_info >= (3, 12):
         def set_convenience_variable(self, frame: FrameType, name: str, value: Any) -> None: ...
+    if sys.version_info >= (3, 13):
+        # Added in 3.13.8 and 3.14.1
+        @property
+        def rlcompleter(self) -> type[Completer]: ...
 
     def _select_frame(self, number: int) -> None: ...
     def _getval_except(self, arg: str, frame: FrameType | None = None) -> object: ...

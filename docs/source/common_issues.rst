@@ -731,7 +731,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerReturn(A):
         # A more specific return type is fine
-        def test(self, t: Sequence[int]) -> List[str]:  # OK
+        def test(self, t: Sequence[int]) -> list[str]:  # OK
             ...
 
     class GeneralizedReturn(A):
@@ -746,7 +746,7 @@ not necessary:
 .. code-block:: python
 
     class NarrowerArgument(A):
-        def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
+        def test(self, t: list[int]) -> Sequence[str]:  # type: ignore[override]
             ...
 
 .. _unreachable:

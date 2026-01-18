@@ -14,10 +14,10 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
-from collections.abc import Collection, Iterable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Final, cast
+from typing import Any, Final, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -29,6 +29,7 @@ from mypy.errors import (
     ErrorWatcher,
     IterationDependentErrors,
     IterationErrorWatcher,
+    NonOverlapErrorInfo,
 )
 from mypy.nodes import (
     ARG_NAMED,
@@ -42,7 +43,6 @@ from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     CallExpr,
-    ClassDef,
     Context,
     Expression,
     FuncDef,
@@ -249,20 +249,10 @@ class MessageBuilder:
         """
 
         def span_from_context(ctx: Context) -> Iterable[int]:
-            """This determines where a type: ignore for a given context has effect.
-
-            Current logic is a bit tricky, to keep as much backwards compatibility as
-            possible. We may reconsider this to always be a single line (or otherwise
-            simplify it) when we drop Python 3.7.
-
-            TODO: address this in follow up PR
-            """
-            if isinstance(ctx, (ClassDef, FuncDef)):
+            """This determines where a type: ignore for a given context has effect."""
+            if not isinstance(ctx, Expression):
                 return range(ctx.line, ctx.line + 1)
-            elif not isinstance(ctx, Expression):
-                return [ctx.line]
-            else:
-                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
         origin_span: Iterable[int] | None
         if origin is not None:
@@ -649,26 +639,11 @@ class MessageBuilder:
             else:
                 base = extract_type(name)
 
-            for method, op in op_methods_to_symbols.items():
-                for variant in method, "__r" + method[2:]:
-                    # FIX: do not rely on textual formatting
-                    if name.startswith(f'"{variant}" of'):
-                        if op == "in" or variant != method:
-                            # Reversed order of base/argument.
-                            return self.unsupported_operand_types(
-                                op, arg_type, base, context, code=codes.OPERATOR
-                            )
-                        else:
-                            return self.unsupported_operand_types(
-                                op, base, arg_type, context, code=codes.OPERATOR
-                            )
-
             if name.startswith('"__getitem__" of'):
                 return self.invalid_index_type(
                     arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
                 )
-
-            if name.startswith('"__setitem__" of'):
+            elif name.startswith('"__setitem__" of'):
                 if n == 1:
                     return self.invalid_index_type(
                         arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
@@ -684,6 +659,20 @@ class MessageBuilder:
                         message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
                     )
                     return self.fail(error_msg.value, context, code=error_msg.code)
+            elif name.startswith('"__'):
+                for method, op in op_methods_to_symbols.items():
+                    for variant in method, "__r" + method[2:]:
+                        # FIX: do not rely on textual formatting
+                        if name.startswith(f'"{variant}" of'):
+                            if op == "in" or variant != method:
+                                # Reversed order of base/argument.
+                                return self.unsupported_operand_types(
+                                    op, arg_type, base, context, code=codes.OPERATOR
+                                )
+                            else:
+                                return self.unsupported_operand_types(
+                                    op, base, arg_type, context, code=codes.OPERATOR
+                                )
 
             target = f"to {name} "
 
@@ -1145,7 +1134,7 @@ class MessageBuilder:
             )
 
     def unpacking_strings_disallowed(self, context: Context) -> None:
-        self.fail("Unpacking a string is disallowed", context)
+        self.fail("Unpacking a string is disallowed", context, code=codes.STR_UNPACK)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f"{format_type(type, self.options)} object is not iterable", context)
@@ -1402,7 +1391,7 @@ class MessageBuilder:
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
         if isinstance(typ, Instance) and is_mapping:
-            self.fail("Keywords must be strings", context)
+            self.fail("Argument after ** must have string keys", context, code=codes.ARG_TYPE)
         else:
             self.fail(
                 f"Argument after ** must be a mapping, not {format_type(typ, self.options)}",
@@ -1625,6 +1614,26 @@ class MessageBuilder:
         )
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
+        # In loops (and similar cases), the same expression might be analysed multiple
+        # times and thereby confronted with different types.  We only want to raise a
+        # `comparison-overlap` error if it occurs in all cases and therefore collect the
+        # respective types of the current iteration here so that we can report the error
+        # later if it is persistent over all iteration steps:
+        for watcher in self.errors.get_watchers():
+            if watcher._filter:
+                break
+            if isinstance(watcher, IterationErrorWatcher):
+                watcher.iteration_dependent_errors.nonoverlapping_types[-1][
+                    NonOverlapErrorInfo(
+                        line=ctx.line,
+                        column=ctx.column,
+                        end_line=ctx.end_line,
+                        end_column=ctx.end_column,
+                        kind=kind,
+                    )
+                ] = (left, right)
+                return
+
         left_str = "element" if kind == "container" else "left operand"
         right_str = "container item" if kind == "container" else "right operand"
         message = "Non-overlapping {} check ({} type: {}, {} type: {})"
@@ -1804,21 +1813,17 @@ class MessageBuilder:
         )
 
     def need_annotation_for_var(
-        self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
+        self, node: SymbolNode, context: Context, options: Options | None = None
     ) -> None:
         hint = ""
-        pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
-        if python_version and isinstance(node, Var) and isinstance(node.type, PartialType):
+        if options and isinstance(node, Var) and isinstance(node.type, PartialType):
             type_dec = "<type>"
             if not node.type.type:
                 # partial None
-                if pep604_supported:
-                    recommended_type = f"{type_dec} | None"
-                else:
-                    recommended_type = f"Optional[{type_dec}]"
+                recommended_type = f"{type_dec} | None"
             elif node.type.type.fullname in reverse_builtin_aliases:
                 # partial types other than partial None
                 name = node.type.type.fullname.partition(".")[2]
@@ -2009,7 +2014,11 @@ class MessageBuilder:
             )
 
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
-        self.fail(f'Untyped decorator makes function "{func_name}" untyped', context)
+        self.fail(
+            f'Untyped decorator makes function "{func_name}" untyped',
+            context,
+            code=codes.UNTYPED_DECORATOR,
+        )
 
     def bad_proto_variance(
         self, actual: int, tvar_name: str, expected: int, context: Context
@@ -2511,6 +2520,13 @@ class MessageBuilder:
     def iteration_dependent_errors(self, iter_errors: IterationDependentErrors) -> None:
         for error_info in iter_errors.yield_uselessness_error_infos():
             self.fail(*error_info[:2], code=error_info[2])
+        for nonoverlaps, kind, context in iter_errors.yield_nonoverlapping_types():
+            self.dangerous_comparison(
+                mypy.typeops.make_simplified_union(nonoverlaps[0]),
+                mypy.typeops.make_simplified_union(nonoverlaps[1]),
+                kind,
+                context,
+            )
         for types, context in iter_errors.yield_revealed_type_infos():
             self.reveal_type(mypy.typeops.make_simplified_union(types), context)
 
@@ -2527,6 +2543,15 @@ def quote_type_string(type_string: str) -> str:
     return f'"{type_string}"'
 
 
+def should_format_arg_as_type(arg_kind: ArgKind, arg_name: str | None, verbosity: int) -> bool:
+    """
+    Determine whether a function argument should be formatted as its Type or with name.
+    """
+    return (arg_kind == ARG_POS and arg_name is None) or (
+        verbosity == 0 and arg_kind.is_positional()
+    )
+
+
 def format_callable_args(
     arg_types: list[Type],
     arg_kinds: list[ArgKind],
@@ -2537,7 +2562,7 @@ def format_callable_args(
     """Format a bunch of Callable arguments into a string"""
     arg_strings = []
     for arg_name, arg_type, arg_kind in zip(arg_names, arg_types, arg_kinds):
-        if arg_kind == ARG_POS and arg_name is None or verbosity == 0 and arg_kind.is_positional():
+        if should_format_arg_as_type(arg_kind, arg_name, verbosity):
             arg_strings.append(format(arg_type))
         else:
             constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
@@ -2555,13 +2580,18 @@ def format_type_inner(
     options: Options,
     fullnames: set[str] | None,
     module_names: bool = False,
+    use_pretty_callable: bool = True,
 ) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
     Args:
+      typ: type to be formatted
       verbosity: a coarse grained control on the verbosity of the type
+      options: Options object controlling formatting
       fullnames: a set of names that should be printed in full
+      module_names: whether to show module names for module types
+      use_pretty_callable: use pretty_callable to format Callable types.
     """
 
     def format(typ: Type) -> str:
@@ -2697,17 +2727,9 @@ def format_type_inner(
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                return (
-                    f"{literal_str} | None"
-                    if options.use_or_syntax()
-                    else f"Optional[{literal_str}]"
-                )
+                return f"{literal_str} | None"
             elif union_items:
-                return (
-                    f"{literal_str} | {format_union(union_items)}"
-                    if options.use_or_syntax()
-                    else f"Union[{', '.join(format_union_items(union_items))}, {literal_str}]"
-                )
+                return f"{literal_str} | {format_union(union_items)}"
             else:
                 return literal_str
         else:
@@ -2718,17 +2740,9 @@ def format_type_inner(
             )
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-                return (
-                    f"{format(rest[0])} | None"
-                    if options.use_or_syntax()
-                    else f"Optional[{format(rest[0])}]"
-                )
+                return f"{format(rest[0])} | None"
             else:
-                s = (
-                    format_union(typ.items)
-                    if options.use_or_syntax()
-                    else f"Union[{', '.join(format_union_items(typ.items))}]"
-                )
+                s = format_union(typ.items)
             return s
     elif isinstance(typ, NoneType):
         return "None"
@@ -2739,7 +2753,11 @@ def format_type_inner(
     elif isinstance(typ, UninhabitedType):
         return "Never"
     elif isinstance(typ, TypeType):
-        return f"type[{format(typ.item)}]"
+        if typ.is_type_form:
+            type_name = "TypeForm"
+        else:
+            type_name = "type"
+        return f"{type_name}[{format(typ.item)}]"
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
@@ -2758,6 +2776,16 @@ def format_type_inner(
             param_spec = func.param_spec()
             if param_spec is not None:
                 return f"Callable[{format(param_spec)}, {return_type}]"
+
+            # Use pretty format (def-style) for complex signatures with named, optional, or star args.
+            # Use compact Callable[[...], ...] only for signatures with all simple positional args.
+            if use_pretty_callable:
+                if any(
+                    not should_format_arg_as_type(kind, name, verbosity)
+                    for kind, name in zip(func.arg_kinds, func.arg_names)
+                ):
+                    return pretty_callable(func, options)
+
             args = format_callable_args(
                 func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
             )
@@ -2989,30 +3017,37 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             s += ", /"
             slash = True
 
-    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     definition = get_func_def(tp)
+
+    # Extract function name, prefer the "human-readable" name if available.
+    func_name = None
+    if tp.name:
+        func_name = tp.name.split()[0]  # skip "of Class" part
+    elif isinstance(definition, FuncDef):
+        func_name = definition.name
+
+    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+    first_arg = None
     if (
         isinstance(definition, FuncDef)
         and hasattr(definition, "arguments")
         and not tp.from_concatenate
     ):
         definition_arg_names = [arg.variable.name for arg in definition.arguments]
-        if (
-            len(definition_arg_names) > len(tp.arg_names)
-            and definition_arg_names[0]
-            and not skip_self
-        ):
-            if s:
-                s = ", " + s
-            s = definition_arg_names[0] + s
-        s = f"{definition.name}({s})"
-    elif tp.name:
+        if len(definition_arg_names) > len(tp.arg_names) and definition_arg_names[0]:
+            first_arg = definition_arg_names[0]
+    else:
+        # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
-        if first_arg:
-            if s:
-                s = ", " + s
-            s = first_arg + s
-        s = f"{tp.name.split()[0]}({s})"  # skip "of Class" part
+
+    if tp.is_type_obj():
+        skip_self = True
+    if first_arg and not skip_self:
+        if s:
+            s = ", " + s
+        s = first_arg + s
+    if func_name:
+        s = f"{func_name}({s})"
     else:
         s = f"({s})"
 
