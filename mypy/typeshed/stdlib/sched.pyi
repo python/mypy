@@ -1,6 +1,7 @@
 import sys
+import time
 from collections.abc import Callable
-from typing import Any, NamedTuple
+from typing import Any, ClassVar, NamedTuple, type_check_only
 from typing_extensions import TypeAlias
 
 __all__ = ["scheduler"]
@@ -17,18 +18,24 @@ if sys.version_info >= (3, 10):
         kwargs: dict[str, Any]
 
 else:
-    class Event(NamedTuple):
+    @type_check_only
+    class _EventBase(NamedTuple):
         time: float
         priority: Any
         action: _ActionCallback
         argument: tuple[Any, ...]
         kwargs: dict[str, Any]
 
+    class Event(_EventBase):
+        __hash__: ClassVar[None]  # type: ignore[assignment]
+
 class scheduler:
     timefunc: Callable[[], float]
     delayfunc: Callable[[float], object]
 
-    def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], object] = ...) -> None: ...
+    def __init__(
+        self, timefunc: Callable[[], float] = time.monotonic, delayfunc: Callable[[float], object] = time.sleep
+    ) -> None: ...
     def enterabs(
         self, time: float, priority: Any, action: _ActionCallback, argument: tuple[Any, ...] = (), kwargs: dict[str, Any] = ...
     ) -> Event: ...

@@ -1,7 +1,5 @@
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Any
 T = TypeVar('T')
-
-Any = 0
 
 class object:
     def __init__(self) -> None: pass

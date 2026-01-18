@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Container, cast
+from collections.abc import Callable, Container
+from typing import cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -133,7 +134,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
-        return TypeType.make_normalized(t.item.accept(self), line=t.line)
+        return TypeType.make_normalized(
+            t.item.accept(self), line=t.line, is_type_form=t.is_type_form
+        )
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")
@@ -144,29 +147,34 @@ def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) ->
     or just the ones in the provided collection.
     """
 
+    if ids_to_erase is None:
+        return t.accept(TypeVarEraser(None, AnyType(TypeOfAny.special_form)))
+
     def erase_id(id: TypeVarId) -> bool:
-        if ids_to_erase is None:
-            return True
         return id in ids_to_erase
 
     return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form)))
 
 
+def erase_meta_id(id: TypeVarId) -> bool:
+    return id.is_meta_var()
+
+
 def replace_meta_vars(t: Type, target_type: Type) -> Type:
     """Replace unification variables in a type with the target type."""
-    return t.accept(TypeVarEraser(lambda id: id.is_meta_var(), target_type))
+    return t.accept(TypeVarEraser(erase_meta_id, target_type))
 
 
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
-    def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+    def __init__(self, erase_id: Callable[[TypeVarId], bool] | None, replacement: Type) -> None:
         super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if self.erase_id(t.id):
+        if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t
 
@@ -202,13 +210,22 @@ class TypeVarEraser(TypeTranslator):
                     return unpacked
         return result
 
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        # Usually this is done in semanal_typeargs.py, but erasure can create
+        # a non-normal callable from normal one.
+        result.normalize_trivial_unpack()
+        return result
+
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        if self.erase_id(t.id):
+        if self.erase_id is None or self.erase_id(t.id):
             return t.tuple_fallback.copy_modified(args=[self.replacement])
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        if self.erase_id(t.id):
+        # TODO: we should probably preserve prefix here.
+        if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t
 

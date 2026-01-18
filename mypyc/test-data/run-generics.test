@@ -1,0 +1,113 @@
+[case testTypeVarMappingBound]
+# Dicts are special-cased for efficient iteration.
+from typing import Dict, TypedDict, TypeVar, Union
+
+class TD(TypedDict):
+    foo: int
+
+M = TypeVar("M", bound=Dict[str, int])
+U = TypeVar("U", bound=Union[Dict[str, int], Dict[str, str]])
+T = TypeVar("T", bound=TD)
+
+def fn_mapping(m: M) -> None:
+    print([x for x in m])
+    print([x for x in m.values()])
+    print([x for x in m.keys()])
+    print({k: v for k, v in m.items()})
+
+def fn_union(m: U) -> None:
+    print([x for x in m])
+    print([x for x in m.values()])
+    print([x for x in m.keys()])
+    print({k: v for k, v in m.items()})
+
+def fn_typeddict(t: T) -> None:
+    print([x for x in t])
+    print([x for x in t.values()])
+    print([x for x in t.keys()])
+    print({k: v for k, v in t.items()})
+
+def test_mapping() -> None:
+    fn_mapping({})
+    print("=====")
+    fn_mapping({"a": 1, "b": 2})
+    print("=====")
+
+    fn_union({"a": 1, "b": 2})
+    print("=====")
+    fn_union({"a": "1", "b": "2"})
+    print("=====")
+
+    orig: Union[Dict[str, int], Dict[str, str]] = {"a": 1, "b": 2}
+    fn_union(orig)
+    print("=====")
+
+    td: TD = {"foo": 1}
+    fn_typeddict(td)
+[typing fixtures/typing-full.pyi]
+[out]
+\[]
+\[]
+\[]
+{}
+=====
+\['a', 'b']
+\[1, 2]
+\['a', 'b']
+{'a': 1, 'b': 2}
+=====
+\['a', 'b']
+\[1, 2]
+\['a', 'b']
+{'a': 1, 'b': 2}
+=====
+\['a', 'b']
+\['1', '2']
+\['a', 'b']
+{'a': '1', 'b': '2'}
+=====
+\['a', 'b']
+\[1, 2]
+\['a', 'b']
+{'a': 1, 'b': 2}
+=====
+\['foo']
+\[1]
+\['foo']
+{'foo': 1}
+
+[case testParamSpecComponentsAreUsable]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+def deco(func: Callable[P, int]) -> Callable[P, int]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> int:
+        print([x for x in args])
+        print({k: v for k, v in kwargs.items()})
+        print(list(kwargs))
+        print(list(kwargs.keys()))
+        print(list(kwargs.values()))
+        return func(*args, **kwargs)
+
+    return inner
+
+@deco
+def f(x: int, y: str) -> int:
+    return x
+
+def test_usable() -> None:
+    assert f(1, 'a') == 1
+    assert f(2, y='b') == 2
+[out]
+\[1, 'a']
+{}
+\[]
+\[]
+\[]
+\[2]
+{'y': 'b'}
+\['y']
+\['y']
+\['b']

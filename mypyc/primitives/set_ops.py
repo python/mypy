@@ -1,12 +1,13 @@
-"""Primitive set (and frozenset) ops."""
+"""Primitive set and frozenset ops."""
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
     bool_rprimitive,
     c_int_rprimitive,
+    frozenset_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
     set_rprimitive,
@@ -22,7 +23,7 @@ from mypyc.primitives.registry import (
 # Get the 'builtins.set' type object.
 load_address_op(name="builtins.set", type=object_rprimitive, src="PySet_Type")
 
-# Get the 'builtins.frozenset' tyoe object.
+# Get the 'builtins.frozenset' type object.
 load_address_op(name="builtins.frozenset", type=object_rprimitive, src="PyFrozenSet_Type")
 
 # Construct an empty set.
@@ -44,19 +45,58 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# Construct an empty frozenset
+function_op(
+    name="builtins.frozenset",
+    arg_types=[],
+    return_type=frozenset_rprimitive,
+    c_function_name="PyFrozenSet_New",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive)],
+)
+
 # frozenset(obj)
 function_op(
     name="builtins.frozenset",
     arg_types=[object_rprimitive],
-    return_type=object_rprimitive,
+    return_type=frozenset_rprimitive,
     c_function_name="PyFrozenSet_New",
     error_kind=ERR_MAGIC,
+)
+
+# translate isinstance(obj, set)
+isinstance_set = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PySet_Check",
+    error_kind=ERR_NEVER,
+)
+
+# translate isinstance(obj, frozenset)
+isinstance_frozenset = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyFrozenSet_Check",
+    error_kind=ERR_NEVER,
 )
 
 # item in set
 set_in_op = binary_op(
     name="in",
     arg_types=[object_rprimitive, set_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PySet_Contains",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+)
+
+# item in frozenset
+binary_op(
+    name="in",
+    arg_types=[object_rprimitive, frozenset_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PySet_Contains",
     error_kind=ERR_NEG_INT,

@@ -7,6 +7,8 @@ from typing import Final
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
+    HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -32,6 +34,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -60,24 +63,29 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
+    RInstance,
     RStruct,
     RTuple,
     RType,
+    is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
+    is_none_rprimitive,
     is_pointer_rprimitive,
     is_tagged,
 )
@@ -139,7 +147,7 @@ def generate_native_function(
     # eliminated during code generation.
     for block in fn.blocks:
         terminator = block.terminator
-        assert isinstance(terminator, ControlOp)
+        assert isinstance(terminator, ControlOp), terminator
 
         for target in terminator.targets():
             is_next_block = target.label == block.label + 1
@@ -148,7 +156,7 @@ def generate_native_function(
             # generates them will add instructions between the branch and the
             # next label, causing the label to be wrongly removed. A better
             # solution would be to change the IR so that it adds a basic block
-            # inbetween the calls.
+            # in between the calls.
             is_problematic_op = isinstance(terminator, Branch) and any(
                 isinstance(s, GetAttr) for s in terminator.sources()
             )
@@ -205,6 +213,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.label is not self.next_block:
             self.emit_line("goto %s;" % self.label(op.label))
 
+    def error_value_check(self, value: Value, compare: str) -> str:
+        typ = value.type
+        if isinstance(typ, RTuple):
+            # TODO: What about empty tuple?
+            return self.emitter.tuple_undefined_check_cond(
+                typ, self.reg(value), self.c_error_value, compare
+            )
+        else:
+            return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
+
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
@@ -221,15 +239,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             expr_result = self.reg(op.value)
             cond = f"{neg}{expr_result}"
         elif op.op == Branch.IS_ERROR:
-            typ = op.value.type
             compare = "!=" if negated else "=="
-            if isinstance(typ, RTuple):
-                # TODO: What about empty tuple?
-                cond = self.emitter.tuple_undefined_check_cond(
-                    typ, self.reg(op.value), self.c_error_value, compare
-                )
-            else:
-                cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
+            cond = self.error_value_check(op.value, compare)
         else:
             assert False, "Invalid branch"
 
@@ -285,7 +296,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
         typ = op.dest.type
-        assert isinstance(typ, RArray)
+        assert isinstance(typ, RArray), typ
         dest = self.reg(op.dest)
         # RArray values can only be assigned to once, so we can always
         # declare them on initialization.
@@ -354,6 +365,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
+        if op.allow_error_value:
+            self.get_attr_with_allow_error_value(op)
+            return
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
@@ -362,20 +376,23 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them.
-            version = "_TRAIT" if cl.is_trait else ""
-            self.emit_line(
-                "%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */"
-                % (
-                    dest,
-                    version,
-                    obj,
-                    self.emitter.type_struct_name(rtype.class_ir),
-                    rtype.getter_index(op.attr),
-                    rtype.struct_name(self.names),
-                    self.ctype(rtype.attr_type(op.attr)),
-                    op.attr,
+            if cl.is_method_final(op.attr):
+                self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
+            else:
+                version = "_TRAIT" if cl.is_trait else ""
+                self.emit_line(
+                    "%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */"
+                    % (
+                        dest,
+                        version,
+                        obj,
+                        self.emitter.type_struct_name(rtype.class_ir),
+                        rtype.getter_index(op.attr),
+                        rtype.struct_name(self.names),
+                        self.ctype(rtype.attr_type(op.attr)),
+                        op.attr,
+                    )
                 )
-            )
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
@@ -404,7 +421,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class, repr(op.attr), repr(cl.name)
+                            exc_class,
+                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
+                            repr(cl.name),
                         )
                     )
 
@@ -418,6 +437,28 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.op_index += 1
             elif not always_defined:
                 self.emitter.emit_line("}")
+
+    def get_attr_with_allow_error_value(self, op: GetAttr) -> None:
+        """Handle GetAttr with allow_error_value=True.
+
+        This allows NULL or other error value without raising AttributeError.
+        """
+        dest = self.reg(op)
+        obj = self.reg(op.obj)
+        rtype = op.class_type
+        cl = rtype.class_ir
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+
+        # Direct struct access without NULL check
+        attr_expr = self.get_attr_expr(obj, op, decl_cl)
+        self.emitter.emit_line(f"{dest} = {attr_expr};")
+
+        # Only emit inc_ref if not NULL
+        if attr_rtype.is_refcounted and not op.is_borrowed:
+            check = self.error_value_check(op, "!=")
+            self.emitter.emit_line(f"if ({check}) {{")
+            self.emitter.emit_inc_ref(dest, attr_rtype)
+            self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
@@ -529,11 +570,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
         dest = self.get_dest_assign(op)
-        obj = self.reg(op.obj)
+        self.emit_method_call(dest, op.obj, op.method, op.args)
 
-        rtype = op.receiver_type
+    def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
+        obj = self.reg(op_obj)
+        rtype = op_obj.type
+        assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
-        name = op.method
         method = rtype.class_ir.get_method(name)
         assert method is not None
 
@@ -547,7 +590,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if method.decl.kind == FUNC_STATICMETHOD
             else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
-        args = ", ".join(obj_args + [self.reg(arg) for arg in op.args])
+        args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type(method, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
         if is_direct:
@@ -567,11 +610,26 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     rtype.struct_name(self.names),
                     mtype,
                     args,
-                    op.method,
+                    name,
                 )
             )
 
     def visit_inc_ref(self, op: IncRef) -> None:
+        if (
+            isinstance(op.src, Box)
+            and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
+            and HAVE_IMMORTAL
+        ):
+            # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
+            return
+
+        if isinstance(op.src, LoadLiteral) and HAVE_IMMORTAL:
+            value = op.src.value
+            # We can skip inc ref for immortal literals on Python 3.12+
+            if type(value) is int and -5 <= value <= 256:
+                # Small integers are immortal
+                return
+
         src = self.reg(op.src)
         self.emit_inc_ref(src, op.src.type)
 
@@ -583,6 +641,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        if op.is_unchecked and op.is_borrowed:
+            self.emit_line(f"{self.reg(op)} = {self.reg(op.src)};")
+            return
         branch = self.next_branch()
         handler = None
         if branch is not None:
@@ -722,6 +783,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -736,13 +799,38 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         # TODO: support tuple type
-        assert isinstance(op.src_type, RStruct)
+        assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
         self.emit_line(
             "{} = ({})&(({} *){})->{};".format(
                 dest, op.type._ctype, op.src_type.name, src, op.field
             )
         )
+
+    def visit_set_element(self, op: SetElement) -> None:
+        dest = self.reg(op)
+        item = self.reg(op.item)
+        field = op.field
+        if isinstance(op.src, Undef):
+            # First assignment to an undefined struct is trivial.
+            self.emit_line(f"{dest}.{field} = {item};")
+        else:
+            # In the general case create a copy of the struct with a single
+            # item modified.
+            #
+            # TODO: Can we do better if only a subset of fields are initialized?
+            # TODO: Make this less verbose in the common case
+            # TODO: Support tuples (or use RStruct for tuples)?
+            src = self.reg(op.src)
+            src_type = op.src.type
+            assert isinstance(src_type, RStruct), src_type
+            init_items = []
+            for n in src_type.names:
+                if n != field:
+                    init_items.append(f"{src}.{n}")
+                else:
+                    init_items.append(item)
+            self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
@@ -798,6 +886,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif r == "nan":
                 return "NAN"
             return r
+        elif isinstance(reg, CString):
+            return '"' + encode_c_string_literal(reg.value) + '"'
         else:
             return self.emitter.reg(reg)
 
@@ -838,7 +928,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr,
+                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
                 op.traceback_entry[1],
                 globals_static,
             )
@@ -859,3 +949,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint64_t)"
         else:
             return ""
+
+
+_translation_table: Final[dict[int, str]] = {}
+
+
+def encode_c_string_literal(b: bytes) -> str:
+    """Convert bytestring to the C string literal syntax (with necessary escaping).
+
+    For example, b'foo\n' gets converted to 'foo\\n' (note that double quotes are not added).
+    """
+    if not _translation_table:
+        # Initialize the translation table on the first call.
+        d = {
+            ord("\n"): "\\n",
+            ord("\r"): "\\r",
+            ord("\t"): "\\t",
+            ord('"'): '\\"',
+            ord("\\"): "\\\\",
+        }
+        for i in range(256):
+            if i not in d:
+                if i < 32 or i >= 127:
+                    d[i] = "\\x%.2x" % i
+                else:
+                    d[i] = chr(i)
+        _translation_table.update(str.maketrans(d))
+    return b.decode("latin1").translate(_translation_table)

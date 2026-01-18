@@ -36,6 +36,7 @@ Functions
 * ``delattr(obj, name)``
 * ``slice(start, stop, step)``
 * ``globals()``
+* ``sorted(obj)``
 
 Method decorators
 -----------------

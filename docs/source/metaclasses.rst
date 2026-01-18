@@ -34,12 +34,14 @@ Mypy supports the lookup of attributes in the metaclass:
 
 .. code-block:: python
 
-    from typing import ClassVar, Self
+    from typing import ClassVar, TypeVar
+
+    S = TypeVar("S")
 
     class M(type):
         count: ClassVar[int] = 0
 
-        def make(cls) -> Self:
+        def make(cls: type[S]) -> S:
             M.count += 1
             return cls()
 
@@ -54,9 +56,6 @@ Mypy supports the lookup of attributes in the metaclass:
 
     b: B = B.make()  # metaclasses are inherited
     print(B.count + " objects were created")  # Error: Unsupported operand types for + ("int" and "str")
-
-.. note::
-    In Python 3.10 and earlier, ``Self`` is available in ``typing_extensions``.
 
 .. _limitations:
 
@@ -88,3 +87,31 @@ so it's better not to combine metaclasses and class hierarchies:
   such as ``class A(metaclass=f()): ...``
 * Mypy does not and cannot understand arbitrary metaclass code.
 * Mypy only recognizes subclasses of :py:class:`type` as potential metaclasses.
+* ``Self`` is not allowed as annotation in metaclasses as per `PEP 673`_.
+
+.. _PEP 673: https://peps.python.org/pep-0673/#valid-locations-for-self
+
+For some builtin types, mypy may think their metaclass is :py:class:`abc.ABCMeta`
+even if it is :py:class:`type` at runtime. In those cases, you can either:
+
+* use :py:class:`abc.ABCMeta` instead of :py:class:`type` as the
+  superclass of your metaclass if that works in your use-case
+* mute the error with ``# type: ignore[metaclass]``
+
+.. code-block:: python
+
+    import abc
+
+    assert type(tuple) is type  # metaclass of tuple is type at runtime
+
+    # The problem:
+    class M0(type): pass
+    class A0(tuple, metaclass=M0): pass  # Mypy Error: metaclass conflict
+
+    # Option 1: use ABCMeta instead of type
+    class M1(abc.ABCMeta): pass
+    class A1(tuple, metaclass=M1): pass
+
+    # Option 2: mute the error
+    class M2(type): pass
+    class A2(tuple, metaclass=M2): pass  # type: ignore[metaclass]

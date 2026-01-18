@@ -1,5 +1,4 @@
 [case testTypeVarDefaultsBasic]
-import builtins
 from typing import Generic, TypeVar, ParamSpec, Callable, Tuple, List
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -10,11 +9,11 @@ Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int, str]])
 def f1(a: T1) -> List[T1]: ...
 reveal_type(f1)  # N: Revealed type is "def [T1 = builtins.int] (a: T1`-1 = builtins.int) -> builtins.list[T1`-1 = builtins.int]"
 
-def f2(a: Callable[P1, None] ) -> Callable[P1, None]: ...
+def f2(a: Callable[P1, None]) -> Callable[P1, None]: ...
 reveal_type(f2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] (a: def (*P1.args, **P1.kwargs)) -> def (*P1.args, **P1.kwargs)"
 
 def f3(a: Tuple[Unpack[Ts1]]) -> Tuple[Unpack[Ts1]]: ...
-reveal_type(f3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] (a: Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]) -> Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+reveal_type(f3)  # N: Revealed type is "def [Ts1 = Unpack[tuple[builtins.int, builtins.str]]] (a: tuple[Unpack[Ts1`-1 = Unpack[tuple[builtins.int, builtins.str]]]]) -> tuple[Unpack[Ts1`-1 = Unpack[tuple[builtins.int, builtins.str]]]]"
 
 
 class ClassA1(Generic[T1]): ...
@@ -23,7 +22,7 @@ class ClassA3(Generic[Unpack[Ts1]]): ...
 
 reveal_type(ClassA1)  # N: Revealed type is "def [T1 = builtins.int] () -> __main__.ClassA1[T1`1 = builtins.int]"
 reveal_type(ClassA2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] () -> __main__.ClassA2[P1`1 = [builtins.int, builtins.str]]"
-reveal_type(ClassA3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] () -> __main__.ClassA3[Unpack[Ts1`1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+reveal_type(ClassA3)  # N: Revealed type is "def [Ts1 = Unpack[tuple[builtins.int, builtins.str]]] () -> __main__.ClassA3[Unpack[Ts1`1 = Unpack[tuple[builtins.int, builtins.str]]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsValid]
@@ -42,7 +41,8 @@ T3 = TypeVar("T3", bound=List[Any], default=List[int])
 T4 = TypeVar("T4", int, str, default=int)
 T5 = TypeVar("T5", default=S0)
 T6 = TypeVar("T6", bound=float, default=S1)
-# T7 = TypeVar("T7", bound=List[Any], default=List[S0])  # TODO
+T7 = TypeVar("T7", bound=List[Any], default=List[S0])
+T8 = TypeVar("T8", default=Tuple[int, Unpack[Tuple[int, str]]])
 
 P1 = ParamSpec("P1", default=[])
 P2 = ParamSpec("P2", default=...)
@@ -51,7 +51,7 @@ P4 = ParamSpec("P4", default=P0)
 
 Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int]])
 Ts2 = TypeVarTuple("Ts2", default=Unpack[Tuple[int, ...]])
-# Ts3 = TypeVarTuple("Ts3", default=Unpack[Ts0])  # TODO
+Ts3 = TypeVarTuple("Ts3", default=Unpack[Ts0])
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsInvalid]
@@ -68,7 +68,7 @@ P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be 
 P3 = ParamSpec("P3", default=(2, int))  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
 P4 = ParamSpec("P4", default=[2, int])  # E: Argument 0 of ParamSpec default must be a type
 
-Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple must be an Unpacked tuple
+Ts1 = TypeVarTuple("Ts1", default=2)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 [builtins fixtures/tuple.pyi]
@@ -181,8 +181,8 @@ reveal_type(func_b1(callback1))  # N: Revealed type is "def (x: builtins.str)"
 reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]: ...
-# reveal_type(func_c1(callback1))  # Revealed type is "builtins.tuple[str]"  # TODO
-# reveal_type(func_c1(2))  # Revealed type is "builtins.tuple[builtins.int, builtins.str]"  # TODO
+reveal_type(func_c1(callback1))  # N: Revealed type is "tuple[builtins.str]"
+reveal_type(func_c1(2))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsClass1]
@@ -219,7 +219,7 @@ def func_a1(
 class ClassA2(Generic[T1, T2, T3]): ...
 
 def func_a2(
-    a: ClassA2,  # E: Missing type parameters for generic type "ClassA2"
+    a: ClassA2,  # E: Missing type arguments for generic type "ClassA2"
     b: ClassA2[float],
     c: ClassA2[float, float],
     d: ClassA2[float, float, float],
@@ -250,7 +250,7 @@ class ClassA3(Generic[T1, T2]):
     def __init__(self, var: Union[int, None] = None) -> None: ...
 
 def func_a3(
-    a: ClassA3,  # E: Missing type parameters for generic type "ClassA3"
+    a: ClassA3,  # E: Missing type arguments for generic type "ClassA3"
     b: ClassA3[float],
     c: ClassA3[float, float],
     d: ClassA3[float, float, float],  # E: "ClassA3" expects between 1 and 2 type arguments, but 3 given
@@ -275,11 +275,11 @@ def func_a4(
     a: ClassA4,
     b: ClassA4[float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[builtins.int | None]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
 
     k = ClassA4()
-    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[builtins.int | None]"
     l = ClassA4[float]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
 
@@ -316,7 +316,7 @@ def func_b1(
 class ClassB2(Generic[P1, P2]): ...
 
 def func_b2(
-    a: ClassB2,  # E: Missing type parameters for generic type "ClassB2"
+    a: ClassB2,  # E: Missing type arguments for generic type "ClassB2"
     b: ClassB2[[float]],
     c: ClassB2[[float], [float]],
     d: ClassB2[[float], [float], [float]],  # E: "ClassB2" expects between 1 and 2 type arguments, but 3 given
@@ -401,7 +401,7 @@ def func_c3(
 class ClassC4(Generic[T1, Unpack[Ts1], T3]): ...
 
 def func_c4(
-    a: ClassC4,  # E: Missing type parameters for generic type "ClassC4"
+    a: ClassC4,  # E: Missing type arguments for generic type "ClassC4"
     b: ClassC4[int],
     c: ClassC4[int, float],
 ) -> None:
@@ -416,6 +416,38 @@ def func_c4(
     m = ClassC4[int, float]()
     reveal_type(m)  # N: Revealed type is "__main__.ClassC4[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsSwap]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+X = TypeVar("X", default=object)
+Y = TypeVar("Y", default=object)
+
+
+class Foo(Generic[T, Y]):
+    def test(self) -> None:
+        reveal_type( Foo[Y, T]() )  # N: Revealed type is "__main__.Foo[Y`2 = builtins.object, T`1]"
+
+
+class Bar(Generic[X, Y]):
+    def test(self) -> None:
+        reveal_type( Bar[Y, X]() )  # N: Revealed type is "__main__.Bar[Y`2 = builtins.object, X`1 = builtins.object]"
+
+
+[case testTypeVarDefaultsSwap2]
+from typing import TypeVar, Generic
+
+X = TypeVar("X", default=object)
+Y = TypeVar("Y", default=object)
+U = TypeVar("U", default=object)
+V = TypeVar("V", default=object)
+
+class Transform(Generic[X, Y]):
+    def invert(self) -> "Transform[Y, X]": ...
+
+class Foo(Transform[U, V], Generic[U, V]):
+    def invert(self) -> "Foo[V, U]": ...
 
 [case testTypeVarDefaultsClassRecursive1]
 # flags: --disallow-any-generics
@@ -539,47 +571,47 @@ def func_a1(
 TA2 = Tuple[T1, T2, T3]
 
 def func_a2(
-    a: TA2,  # E: Missing type parameters for generic type "TA2"
+    a: TA2,  # E: Missing type arguments for generic type "TA2"
     b: TA2[float],
     c: TA2[float, float],
     d: TA2[float, float, float],
     e: TA2[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given 4
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "Tuple[Any, builtins.int, builtins.str]"
-    reveal_type(b)  # N: Revealed type is "Tuple[builtins.float, builtins.int, builtins.str]"
-    reveal_type(c)  # N: Revealed type is "Tuple[builtins.float, builtins.float, builtins.str]"
-    reveal_type(d)  # N: Revealed type is "Tuple[builtins.float, builtins.float, builtins.float]"
-    reveal_type(e)  # N: Revealed type is "Tuple[Any, builtins.int, builtins.str]"
+    reveal_type(a)  # N: Revealed type is "tuple[Any, builtins.int, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "tuple[builtins.float, builtins.int, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "tuple[builtins.float, builtins.float, builtins.str]"
+    reveal_type(d)  # N: Revealed type is "tuple[builtins.float, builtins.float, builtins.float]"
+    reveal_type(e)  # N: Revealed type is "tuple[Any, builtins.int, builtins.str]"
 
 TA3 = Union[Dict[T1, T2], List[T3]]
 
 def func_a3(
-    a: TA3,  # E: Missing type parameters for generic type "TA3"
+    a: TA3,  # E: Missing type arguments for generic type "TA3"
     b: TA3[float],
     c: TA3[float, float],
     d: TA3[float, float, float],
     e: TA3[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given 4
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "Union[builtins.dict[Any, builtins.int], builtins.list[builtins.str]]"
-    reveal_type(b)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.int], builtins.list[builtins.str]]"
-    reveal_type(c)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.float], builtins.list[builtins.str]]"
-    reveal_type(d)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.float], builtins.list[builtins.float]]"
-    reveal_type(e)  # N: Revealed type is "Union[builtins.dict[Any, builtins.int], builtins.list[builtins.str]]"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, builtins.int] | builtins.list[builtins.str]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.float, builtins.int] | builtins.list[builtins.str]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float] | builtins.list[builtins.str]"
+    reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float] | builtins.list[builtins.float]"
+    reveal_type(e)  # N: Revealed type is "builtins.dict[Any, builtins.int] | builtins.list[builtins.str]"
 
 TA4 = Tuple[T1, T4, T2]
 
 def func_a4(
-    a: TA4,  # E: Missing type parameters for generic type "TA4"
+    a: TA4,  # E: Missing type arguments for generic type "TA4"
     b: TA4[float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given 1
     c: TA4[float, float],
     d: TA4[float, float, float],
     e: TA4[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given 4
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "Tuple[Any, Any, builtins.int]"
-    reveal_type(b)  # N: Revealed type is "Tuple[Any, Any, builtins.int]"
-    reveal_type(c)  # N: Revealed type is "Tuple[builtins.float, builtins.float, builtins.int]"
-    reveal_type(d)  # N: Revealed type is "Tuple[builtins.float, builtins.float, builtins.float]"
-    reveal_type(e)  # N: Revealed type is "Tuple[Any, Any, builtins.int]"
+    reveal_type(a)  # N: Revealed type is "tuple[Any, Any, builtins.int]"
+    reveal_type(b)  # N: Revealed type is "tuple[Any, Any, builtins.int]"
+    reveal_type(c)  # N: Revealed type is "tuple[builtins.float, builtins.float, builtins.int]"
+    reveal_type(d)  # N: Revealed type is "tuple[builtins.float, builtins.float, builtins.float]"
+    reveal_type(e)  # N: Revealed type is "tuple[Any, Any, builtins.int]"
 [builtins fixtures/dict.pyi]
 
 [case testTypeVarDefaultsTypeAlias2]
@@ -608,7 +640,7 @@ class ClassB2(Generic[P1, P2]): ...
 TB2 = ClassB2[P1, P2]
 
 def func_b2(
-    a: TB2,  # E: Missing type parameters for generic type "TB2"
+    a: TB2,  # E: Missing type arguments for generic type "TB2"
     b: TB2[[float]],
     c: TB2[[float], [float]],
     d: TB2[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 1 and 2, given 3
@@ -639,7 +671,7 @@ def func_c1(
     b: TC1[float],
 ) -> None:
     # reveal_type(a)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
-    reveal_type(b)  # N: Revealed type is "Tuple[builtins.float]"
+    reveal_type(b)  # N: Revealed type is "tuple[builtins.float]"
 
 TC2 = Tuple[T3, Unpack[Ts3]]
 
@@ -650,7 +682,7 @@ def func_c2(
 ) -> None:
     # reveal_type(a)  # Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     # reveal_type(b)  # Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
-    reveal_type(c)  # N: Revealed type is "Tuple[builtins.int]"
+    reveal_type(c)  # N: Revealed type is "tuple[builtins.int]"
 
 TC3 = Tuple[T3, Unpack[Ts4]]
 
@@ -660,19 +692,19 @@ def func_c3(
     c: TC3[int, Unpack[Tuple[float]]],
 ) -> None:
     # reveal_type(a)  # Revealed type is "Tuple[builtins.str]"  # TODO
-    reveal_type(b)  # N: Revealed type is "Tuple[builtins.int]"
-    reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, builtins.float]"
+    reveal_type(b)  # N: Revealed type is "tuple[builtins.int]"
+    reveal_type(c)  # N: Revealed type is "tuple[builtins.int, builtins.float]"
 
 TC4 = Tuple[T1, Unpack[Ts1], T3]
 
 def func_c4(
-    a: TC4,  # E: Missing type parameters for generic type "TC4"
+    a: TC4,  # E: Missing type arguments for generic type "TC4"
     b: TC4[int],
     c: TC4[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "Tuple[Any, Unpack[builtins.tuple[Any, ...]], builtins.str]"
+    reveal_type(a)  # N: Revealed type is "tuple[Any, Unpack[builtins.tuple[Any, ...]], builtins.str]"
     # reveal_type(b)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
-    reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, builtins.float]"
+    reveal_type(c)  # N: Revealed type is "tuple[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsTypeAliasRecursive1]
@@ -685,7 +717,7 @@ T2 = TypeVar("T2", default=T1)
 TD1 = Dict[T1, T2]
 
 def func_d1(
-    a: TD1,  # E: Missing type parameters for generic type "TD1"
+    a: TD1,  # E: Missing type arguments for generic type "TD1"
     b: TD1[int],
     c: TD1[int, float],
 ) -> None:
@@ -717,3 +749,191 @@ def func_d3(
     reveal_type(c)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.int, builtins.float]]]"
     reveal_type(d)  # N: Revealed type is "__main__.B[builtins.int]"
 [builtins fixtures/dict.pyi]
+
+[case testTypeVarDefaultsAndTypeObjectTypeInUnion]
+from __future__ import annotations
+from typing import Generic
+from typing_extensions import TypeVar
+
+_I = TypeVar("_I", default=int)
+
+class C(Generic[_I]): pass
+
+t: type[C] | int = C
+[builtins fixtures/tuple.pyi]
+
+[case testGenericTypeAliasWithDefaultTypeVarPreservesNoneInDefault]
+from typing_extensions import TypeVar
+from typing import Generic, Union
+
+T1 = TypeVar("T1", default=Union[int, None])
+T2 = TypeVar("T2", default=Union[int, None])
+
+
+class A(Generic[T1, T2]):
+    def __init__(self, a: T1, b: T2) -> None:
+        self.a = a
+        self.b = b
+
+
+MyA = A[T1, int]
+a: MyA = A(None, 10)
+reveal_type(a.a)  # N: Revealed type is "builtins.int | None"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesTypeAliasType]
+from typing import Generic
+from typing_extensions import TypeAliasType, TypeVar
+
+K = TypeAliasType("K", int)
+V = TypeAliasType("V", int)
+L = TypeAliasType("L", list[int])
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+class A3(Generic[T3]):
+    x: T3
+
+reveal_type(A1().x)  # N: Revealed type is "builtins.int"
+reveal_type(A2().x)  # N: Revealed type is "builtins.int"
+reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesImplicitAlias]
+from typing_extensions import TypeVar
+
+K = int
+V = int
+L = list[int]
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesExplicitAlias]
+from typing_extensions import TypeAlias, TypeVar
+
+K: TypeAlias = int
+V: TypeAlias = int
+L: TypeAlias = list[int]
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultSpecialTypes]
+from typing import Generic, NamedTuple
+from typing_extensions import TypedDict, TypeVar
+
+class TD(TypedDict):
+    foo: str
+
+class NT(NamedTuple):
+    foo: str
+
+T1 = TypeVar("T1", str, TD, default=TD)
+T2 = TypeVar("T2", str, NT, default=NT)
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+
+reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.str})"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.str, fallback=__main__.NT]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultSpecialTypesGeneric]
+from typing import Generic, NamedTuple
+from typing_extensions import TypedDict, TypeVar
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    foo: T
+class TD2(TD[int]): pass
+class TD3(TD[int]):
+    bar: str
+
+class NT(NamedTuple, Generic[T]):
+    foo: T
+class NT2(NT[int]): pass
+
+T1 = TypeVar("T1", str, TD[int], default=TD[int])
+T2 = TypeVar("T2", str, NT[int], default=NT[int])
+T3 = TypeVar("T3", str, TD2, default=TD[int])
+T4 = TypeVar("T4", str, TD3, default=TD[int])  # E: TypeVar default must be one of the constraint types
+T5 = TypeVar("T5", str, NT2, default=NT[int])  # E: TypeVar default must be one of the constraint types
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+class A3(Generic[T3]):
+    x: T3
+
+reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(A3().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsApplicationInAliasNoCrash]
+# https://github.com/python/mypy/issues/19186
+from typing import Generic, TypeVar
+from typing_extensions import TypeAlias
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+
+Alias: TypeAlias = "MyClass[T1, T2]"
+
+class MyClass(Generic["T1", "T2"]): ...
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsApplicationInAliasNoCrashNested]
+from typing import Generic, TypeVar
+from typing_extensions import TypeAlias
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=list[T1])
+
+Alias: TypeAlias = "MyClass[T1, T2]"
+
+class MyClass(Generic["T1", "T2"]): ...
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is "__main__.MyClass[builtins.int, builtins.list[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsMustBeInScope]
+from typing import Generic, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+T3 = TypeVar("T3", default=T2)
+
+class A(Generic[T1, T2, T3]): ...
+reveal_type(A)  # N: Revealed type is "def [T1, T2 = T1`1, T3 = T2`2 = T1`1] () -> __main__.A[T1`1, T2`2 = T1`1, T3`3 = T2`2 = T1`1]"
+a: A[int]
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int, builtins.int, T1`1]"
+
+class B(Generic[T1, T3]): ...  # E: Type variable T2 referenced in the default of T3 is unbound
+reveal_type(B)  # N: Revealed type is "def [T1, T3 = Any] () -> __main__.B[T1`1, T3`2 = Any]"
+b: B[int]
+reveal_type(b)  # N: Revealed type is "__main__.B[builtins.int, Any]"
+
+class C(Generic[T2]): ...  # E: Type variable T1 referenced in the default of T2 is unbound
+reveal_type(C)  # N: Revealed type is "def [T2 = Any] () -> __main__.C[T2`1 = Any]"
+c: C
+reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+
+class D(Generic[T2, T1]): ...  # E: Type variable T1 referenced in the default of T2 is unbound \
+                               # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
+reveal_type(D)  # N: Revealed type is "def [T2 = Any, T1 = Any] () -> __main__.D[T2`1 = Any, T1`2 = Any]"
+d: D
+reveal_type(d)  # N: Revealed type is "__main__.D[Any, Any]"
+[builtins fixtures/tuple.pyi]

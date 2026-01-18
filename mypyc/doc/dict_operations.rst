@@ -50,6 +50,8 @@ Methods
 * ``d.items()``
 * ``d.copy()``
 * ``d.clear()``
+* ``d.setdefault(key)``
+* ``d.setdefault(key, value)``
 * ``d1.update(d2: dict)``
 * ``d.update(x: Iterable)``
 
