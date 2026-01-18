@@ -12,7 +12,7 @@ from mypy.checkstrformat import (
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context, Expression, StrExpr
+from mypy.nodes import Context, Expression
 from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
@@ -23,9 +23,10 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.primitives.bytes_ops import bytes_build_op
 from mypyc.primitives.int_ops import int_to_str_op
-from mypyc.primitives.str_ops import str_build_op, str_op
+from mypyc.primitives.str_ops import ascii_op, str_build_op, str_op
 
 
 @unique
@@ -41,6 +42,7 @@ class FormatOp(Enum):
 
     STR = "s"
     INT = "d"
+    ASCII = "a"
     BYTES = "b"
 
 
@@ -52,14 +54,25 @@ def generate_format_ops(specifiers: list[ConversionSpecifier]) -> list[FormatOp]
     format_ops = []
     for spec in specifiers:
         # TODO: Match specifiers instead of using whole_seq
-        if spec.whole_seq == "%s" or spec.whole_seq == "{:{}}":
+        # Conversion flags for str.format/f-strings (e.g. {!a}); only if no format spec.
+        if spec.conversion and not spec.format_spec:
+            if spec.conversion == "!a":
+                format_op = FormatOp.ASCII
+            else:
+                return None
+        # printf-style tokens and special f-string lowering patterns.
+        elif spec.whole_seq == "%s" or spec.whole_seq == "{:{}}":
             format_op = FormatOp.STR
         elif spec.whole_seq == "%d":
             format_op = FormatOp.INT
+        elif spec.whole_seq == "%a":
+            format_op = FormatOp.ASCII
         elif spec.whole_seq == "%b":
             format_op = FormatOp.BYTES
+        # Any other non-empty spec means we can't optimize; fall back to runtime formatting.
         elif spec.whole_seq:
             return None
+        # Empty spec ("{}") defaults to str().
         else:
             format_op = FormatOp.STR
         format_ops.append(format_op)
@@ -143,16 +156,23 @@ def convert_format_expr_to_str(
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
         if format_op == FormatOp.STR:
-            if is_str_rprimitive(node_type) or isinstance(
-                x, StrExpr
-            ):  # NOTE: why does mypyc think our fake StrExprs are not str rprimitives?
+            if isinstance(folded := constant_fold_expr(builder, x), str):
+                var_str = builder.load_literal_value(folded)
+            elif is_str_rprimitive(node_type):
                 var_str = builder.accept(x)
             elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.primitive_op(str_op, [builder.accept(x)], line)
+        elif format_op == FormatOp.ASCII:
+            if (folded := constant_fold_expr(builder, x)) is not None:
+                var_str = builder.load_literal_value(ascii(folded))
+            else:
+                var_str = builder.primitive_op(ascii_op, [builder.accept(x)], line)
         elif format_op == FormatOp.INT:
-            if is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+            if isinstance(folded := constant_fold_expr(builder, x), int):
+                var_str = builder.load_literal_value(str(folded))
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 return None

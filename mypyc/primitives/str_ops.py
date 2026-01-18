@@ -51,6 +51,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# ascii(obj)
+ascii_op = function_op(
+    name="builtins.ascii",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="PyObject_ASCII",
+    error_kind=ERR_MAGIC,
+)
+
 # translate isinstance(obj, str)
 isinstance_str = function_op(
     name="builtins.isinstance",
@@ -180,7 +189,7 @@ for i in range(len(str_find_types) - 1):
         name="rfind",
         arg_types=str_find_types[0 : i + 2],
         return_type=int_rprimitive,
-        c_function_name=str_find_functions[i],
+        c_function_name=str_rfind_functions[i],
         extra_int_constants=str_rfind_constants[i] + [(-1, c_int_rprimitive)],
         error_kind=ERR_MAGIC,
     )
