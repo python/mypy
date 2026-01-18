@@ -1295,17 +1295,13 @@ class MessageBuilder:
             )
 
     def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent(
-            """\
+        return dedent("""\
         It is recommended for "__eq__" to work with arbitrary objects, for example:
             def __eq__(self, other: object) -> bool:
                 if not isinstance(other, {class_name}):
                     return NotImplemented
                 return <logic to compare two {class_name} instances>
-        """.format(
-                class_name=class_name
-            )
-        )
+        """.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
         self,
@@ -1802,7 +1798,7 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        source, target = format_type_distinctly(source_type, target_type, options=self.options)
         self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
