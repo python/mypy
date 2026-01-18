@@ -515,7 +515,7 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
             [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
                 for arg in arguments],
             [arg.kind for arg in arguments],
-            [arg.variable.name for arg in arguments],
+            [None if arg.pos_only else arg.variable.name for arg in arguments],
             return_type if return_type else AnyType(TypeOfAny.unannotated),
             _dummy_fallback
             )
@@ -1077,7 +1077,7 @@ def read_expression(data: ReadBuffer) -> Expression:
                 [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
                  for arg in arguments],
                 [arg.kind for arg in arguments],
-                [arg.variable.name for arg in arguments],
+                [None if arg.pos_only else arg.variable.name for arg in arguments],
                 AnyType(TypeOfAny.unannotated),
                 _dummy_fallback,
             )
