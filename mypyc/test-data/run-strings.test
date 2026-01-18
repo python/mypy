@@ -1257,3 +1257,4 @@ FMT: Final = "{} {}"
 
 def test_format() -> str:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+    return
