@@ -20,7 +20,6 @@ from mypy.nodes import (
     ArgKind,
     TypeInfo,
 )
-from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
