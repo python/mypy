@@ -1456,6 +1456,27 @@ if int():
     b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
+[case testGeneratorNoSpuriousError]
+from typing import Iterable, overload
+
+@overload
+def take_iterable(iterable: Iterable[bool], /) -> None: ...
+@overload
+def take_iterable(iterable: Iterable[int], /) -> None: ...
+def take_iterable(iterable): pass
+
+take_iterable(1 for _ in [])
+take_iterable(reveal_type(1 for _ in [])) # N: Revealed type is "typing.Generator[builtins.int, None, None]"
+
+# NOTE: Type is revealed for every overload tried
+# TODO: Overload shouldn't fail if expression contains an error that shouldn't affect the inferred type.
+take_iterable(reveal_type(1 if (-"") else 1 for _ in [])) # N: Revealed type is "typing.Generator[builtins.int, None, None]" \
+                                                          # N: Revealed type is "typing.Generator[builtins.bool, None, None]" \
+                                                          # E: Generator has incompatible item type "int"; expected "bool" \
+                                                          # E: Unsupported operand type for unary - ("str")
+
+[builtins fixtures/for.pyi]
+
 -- Conditional expressions
 -- -----------------------
 

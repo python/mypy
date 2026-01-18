@@ -988,7 +988,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             isinstance(sym.node, Var)
             and sym.node.info
             and sym.node.info.is_enum
-            and not sym.node.name.startswith("__")
+            and sym.node.name in sym.node.info.enum_members
         ):
             value = sym.node.name
             base_enum_short_name = sym.node.info.name
