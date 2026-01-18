@@ -258,6 +258,10 @@ class _IterParseIterator(Iterator[tuple[str, Element]], Protocol):
     if sys.version_info >= (3, 11):
         def __del__(self) -> None: ...
 
+@overload
+def iterparse(source: _FileRead, events: Sequence[str] | None = None) -> _IterParseIterator: ...
+@overload
+@deprecated("The `parser` parameter is deprecated since Python 3.4.")
 def iterparse(source: _FileRead, events: Sequence[str] | None = None, parser: XMLParser | None = None) -> _IterParseIterator: ...
 
 _EventQueue: TypeAlias = tuple[str] | tuple[str, tuple[str, str]] | tuple[str, None]

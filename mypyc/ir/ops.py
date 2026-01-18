@@ -1210,6 +1210,7 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
     ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
+    INDEX_ERROR: Final = "IndexError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)

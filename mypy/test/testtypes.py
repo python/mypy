@@ -194,12 +194,12 @@ class TypesSuite(Suite):
 
     def test_type_alias_expand_once(self) -> None:
         A, target = self.fx.def_alias_1(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
         A, target = self.fx.def_alias_2(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)

@@ -1071,6 +1071,14 @@ x: TestType = 42
 y: TestType = 'a'
 z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "int | str")
 
+TA = TypeAliasType("TA", value=int)
+a: TA = 1
+b: TA = 's'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+TA2 = TypeAliasType("TA2", type_params=(), value=int)  # shuffled arguments
+a2: TA2 = 1
+b2: TA2 = 's'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 reveal_type(TestType)  # N: Revealed type is "typing_extensions.TypeAliasType"
 TestType()  # E: "TypeAliasType" not callable
 
@@ -1339,7 +1347,7 @@ a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeAliasDict_no_parallel]
+[case testTypeAliasDict]
 D = dict[str, int]
 d = D()
 reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
@@ -1347,8 +1355,8 @@ reveal_type(D())  # N: Revealed type is "builtins.dict[builtins.str, builtins.in
 reveal_type(D(x=1))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 reveal_type(D(x="asdf"))  # E: No overload variant of "dict" matches argument type "str" \
                           # N: Possible overload variants: \
-                          # N:     def __init__(self, **kwargs: int) -> dict[str, int] \
-                          # N:     def __init__(self, arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
+                          # N:     def dict(**kwargs: int) -> dict[str, int] \
+                          # N:     def dict(arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
                           # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 

@@ -202,6 +202,9 @@ class TestRun(MypycDataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.strict_optional = True
+        options.strict_bytes = True
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
         options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True

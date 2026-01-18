@@ -4920,6 +4920,7 @@ def test_setattr() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4957,6 +4958,7 @@ def test_setattr_inherited() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4996,6 +4998,7 @@ def test_setattr_overridden() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -5064,6 +5067,7 @@ def test_setattr_nonnative() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -5133,6 +5137,8 @@ def test_no_setattr_nonnative() -> None:
 
     object.__setattr__(i, "three", 102)
     assert i.three == 102
+
+    i = i
 
     del i.three
     assert i.three == None
