@@ -34,6 +34,7 @@ from mypy.nodes import (
 from mypy.state import state
 from mypy.types import (
     ELLIPSIS_TYPE_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -996,8 +997,10 @@ def is_singleton_identity_type(typ: ProperType) -> bool:
     if isinstance(typ, NoneType):
         return True
     if isinstance(typ, Instance):
-        return (typ.type.is_enum and len(typ.type.enum_members) == 1) or (
-            typ.type.fullname in ELLIPSIS_TYPE_NAMES
+        return (
+            (typ.type.is_enum and len(typ.type.enum_members) == 1)
+            or (typ.type.fullname in ELLIPSIS_TYPE_NAMES)
+            or (typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES)
         )
     if isinstance(typ, LiteralType):
         return typ.is_enum_literal() or isinstance(typ.value, bool)
