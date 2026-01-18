@@ -5070,6 +5070,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
+                s.unreachable_else = else_map is None
+
                 # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)

@@ -1206,3 +1206,27 @@ def f2() -> None:
 
     print(value)  # E: Name "value" may be undefined
 [builtins fixtures/for_else_exception.pyi]
+
+[case testOmittedUnrequiredElse]
+# flags: --enable-error-code possibly-undefined
+from typing import Literal
+
+a: Literal[True]
+if a:
+    w = 1
+w + 1
+
+b: bool
+if b:
+    x = 1
+elif not b:
+    x = 2
+x + 1
+
+if b:
+    y = 1
+elif not b:
+    if a:
+        z = 2
+    y = z
+y + 1
