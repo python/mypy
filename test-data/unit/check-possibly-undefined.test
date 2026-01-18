@@ -1066,7 +1066,6 @@ else:
 
 print(value)  # Should not error
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testForElseWithBreakInTryExceptContinueNoIf]
 # flags: --enable-error-code possibly-undefined
@@ -1084,7 +1083,6 @@ else:
 
 print(value)  # Should not error
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testForElseWithBreakInTryExceptPass]
 # flags: --enable-error-code possibly-undefined
@@ -1107,7 +1105,6 @@ else:
 
 print(value)  # Should not error
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testForElseWithConditionalDefBeforeBreak]
 # flags: --enable-error-code possibly-undefined
@@ -1131,7 +1128,6 @@ else:
 
 print(value)  # Should not error
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testForElseDefineInBothBranches]
 # flags: --enable-error-code possibly-undefined
@@ -1145,7 +1141,6 @@ else:
 
 print(value)  # Should not error - value is defined in all paths
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testForElseWithWalrusInBreak]
 # flags: --enable-error-code possibly-undefined
@@ -1165,4 +1160,38 @@ else:
 
 print(value)  # Should not error
 [builtins fixtures/for_else_exception.pyi]
-[typing fixtures/typing-medium.pyi]
+
+[case testForElseWithWalrusInBreakConditionalRaise]
+# flags: --enable-error-code possibly-undefined
+# Test with walrus operator in if condition before break
+def random() -> float: return 0.5
+
+def f1() -> None:
+    if random():
+        for i in range(10):
+            if value := random():
+                break
+        else:
+            if random() > 0.5:  # E: Unsupported left operand type for > ("float")
+                raise RuntimeError
+
+        print(value)  # E: Name "value" may be undefined
+    else:
+        value = random()
+
+    print(value)  # Already emitted error
+
+
+def f2() -> None:
+    if random():
+        for i in range(10):
+            if value := random():
+                break
+        else:
+            if random() > 0.5:  # E: Unsupported left operand type for > ("float")
+                raise RuntimeError
+    else:
+        value = random()
+
+    print(value)  # E: Name "value" may be undefined
+[builtins fixtures/for_else_exception.pyi]
