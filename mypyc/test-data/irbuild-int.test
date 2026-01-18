@@ -238,6 +238,7 @@ def h(x, byteorder):
     r0 :: bytes
 L0:
     r0 = CPyTagged_ToBytes(x, 8, byteorder, 0)
+    return r0
 
 [case testIntBitLength]
 def f(x: int) -> int:
