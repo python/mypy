@@ -930,6 +930,9 @@ class ASTConverter:
             arg_types = [None] * len(args)
             return_type = None
         elif n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, lineno, n.col_offset, blocker=False
+            )
             try:
                 func_type_ast = ast3_parse(n.type_comment, "<func_type>", "func_type")
                 assert isinstance(func_type_ast, FunctionType)
@@ -1141,7 +1144,13 @@ class ASTConverter:
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
-            else:
+            elif type_comment is not None:
+                self.fail(
+                    message_registry.TYPE_COMMENT_DEPRECATED,
+                    arg.lineno,
+                    arg.col_offset,
+                    blocker=False,
+                )
                 arg_type = self.translate_type_comment(arg, type_comment)
         if argument_elide_name(arg.arg):
             pos_only = True
@@ -1269,6 +1278,10 @@ class ASTConverter:
     def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
         lvalues = self.translate_expr_list(n.targets)
         rvalue = self.visit(n.value)
+        if n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, n.lineno, n.col_offset, blocker=False
+            )
         typ = self.translate_type_comment(n, n.type_comment)
         s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
         return self.set_line(s, n)
@@ -1296,6 +1309,10 @@ class ASTConverter:
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
+        if n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, n.lineno, n.col_offset, blocker=False
+            )
         target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(
             self.visit(n.target),
@@ -1308,6 +1325,10 @@ class ASTConverter:
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_AsyncFor(self, n: ast3.AsyncFor) -> ForStmt:
+        if n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, n.lineno, n.col_offset, blocker=False
+            )
         target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(
             self.visit(n.target),
@@ -1335,6 +1356,10 @@ class ASTConverter:
 
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast3.With) -> WithStmt:
+        if n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, n.lineno, n.col_offset, blocker=False
+            )
         target_type = self.translate_type_comment(n, n.type_comment)
         node = WithStmt(
             [self.visit(i.context_expr) for i in n.items],
@@ -1346,6 +1371,10 @@ class ASTConverter:
 
     # AsyncWith(withitem* items, stmt* body, string? type_comment)
     def visit_AsyncWith(self, n: ast3.AsyncWith) -> WithStmt:
+        if n.type_comment is not None:
+            self.fail(
+                message_registry.TYPE_COMMENT_DEPRECATED, n.lineno, n.col_offset, blocker=False
+            )
         target_type = self.translate_type_comment(n, n.type_comment)
         s = WithStmt(
             [self.visit(i.context_expr) for i in n.items],
