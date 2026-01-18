@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
 from typing import (
-    Callable,
     Final,
     Generic,
     Literal,
     NamedTuple,
-    Optional,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
     TypeVar,
-    Union,
     cast,
     overload,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
@@ -155,6 +153,7 @@ from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
@@ -184,7 +183,8 @@ from mypy.typeops import (
     fixup_partial_type,
     function_type,
     is_literal_type_like,
-    is_singleton_type,
+    is_singleton_equality_type,
+    is_singleton_identity_type,
     make_simplified_union,
     true_only,
     try_expanding_sum_type_to_union,
@@ -197,6 +197,7 @@ from mypy.typeops import (
 from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -247,8 +248,8 @@ DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = FuncDef | OverloadedFuncDef | Decorator
+FineGrainedDeferredNodeType: _TypeAlias = FuncDef | MypyFile | OverloadedFuncDef
 
 
 # A node which is postponed to be processed during the next pass.
@@ -281,7 +282,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
+TypeMap: _TypeAlias = dict[Expression, Type] | None
 
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
@@ -346,6 +347,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     tscope: Scope
     scope: CheckerScope
+    # Innermost enclosing type
+    type: TypeInfo | None
     # Stack of function return types
     return_types: list[Type]
     # Flags; true for dynamically typed functions
@@ -395,6 +398,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     # A helper state to produce unique temporary names on demand.
     _unique_id: int
+    # Fake concrete type used when checking variance
+    _variance_dummy_type: Instance | None
 
     def __init__(
         self,
@@ -421,6 +426,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
         self.globals = tree.names
+        self.type = None
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -469,6 +475,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
+        self._variance_dummy_type = None
 
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
@@ -1801,7 +1808,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 "but must return a subtype of",
             )
         elif not isinstance(
-            get_proper_type(bound_type.ret_type), (AnyType, Instance, TupleType, UninhabitedType)
+            get_proper_type(bound_type.ret_type),
+            (AnyType, Instance, TupleType, UninhabitedType, LiteralType),
         ):
             self.fail(
                 message_registry.NON_INSTANCE_NEW_TYPE.format(
@@ -2569,7 +2577,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         continue
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
-                        if isinstance(node, FuncDef) and not node.is_property:
+                        if (
+                            isinstance(node, FuncDef)
+                            and not node.is_property
+                            and (
+                                not node.is_decorated  # fast path
+                                # allow trivial decorators like @classmethod and @override
+                                or not (sym := node.info.get(node.name))
+                                or not isinstance(sym.node, Decorator)
+                                or not sym.node.decorators
+                            )
+                        ):
+                            # If there's any decorator, we can no longer map arguments 1:1 reliably.
                             arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
@@ -2657,7 +2676,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         if not can_have_shared_disjoint_base(typ.bases):
             self.fail(message_registry.INCOMPATIBLE_DISJOINT_BASES.format(typ.name), defn)
-        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
+        with (
+            self.tscope.class_scope(defn.info),
+            self.enter_partial_types(is_class=True),
+            self.enter_class(defn.info),
+        ):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
@@ -2724,6 +2747,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
         infer_class_variances(defn.info)
+
+    @contextmanager
+    def enter_class(self, type: TypeInfo) -> Iterator[None]:
+        original_type = self.type
+        self.type = type
+        try:
+            yield
+        finally:
+            self.type = original_type
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -2917,17 +2949,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
+        if self._variance_dummy_type is None:
+            _, dummy_info = self.make_fake_typeinfo("<dummy>", "Dummy", "Dummy", [])
+            self._variance_dummy_type = Instance(dummy_info, [])
+        dummy = self._variance_dummy_type
         for i, tvar in enumerate(tvars):
             if not isinstance(tvar, TypeVarType):
                 # Variance of TypeVarTuple and ParamSpec is underspecified by PEPs.
                 continue
             up_args: list[Type] = [
-                object_type if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                object_type if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             down_args: list[Type] = [
-                UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                UninhabitedType() if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
@@ -3146,12 +3180,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """
         if isinstance(s, AssertStmt) and is_false_literal(s.expr):
             return True
-        elif isinstance(s, (RaiseStmt, PassStmt)):
+        elif isinstance(s, ReturnStmt) and is_literal_not_implemented(s.expr):
+            return True
+        elif isinstance(s, RaiseStmt):
             return True
         elif isinstance(s, ExpressionStmt):
-            if isinstance(s.expr, EllipsisExpr):
-                return True
-            elif isinstance(s.expr, CallExpr):
+            if isinstance(s.expr, CallExpr):
                 with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                     typ = get_proper_type(
                         self.expr_checker.accept(
@@ -3291,9 +3325,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             del partial_types[var]
                             lvalue_type = var.type
                     else:
-                        # Try to infer a partial type. No need to check the return value, as
-                        # an error will be reported elsewhere.
-                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                        # Try to infer a partial type.
+                        if not self.infer_partial_type(var, lvalue, rvalue_type):
+                            # If that also failed, give up and let the caller know that we
+                            # cannot read their mind. The definition site will be reported later.
+                            # Calling .put() directly because the newly inferred type is
+                            # not a subtype of None - we are not looking for narrowing
+                            fallback = self.inference_error_fallback_type(rvalue_type)
+                            self.binder.put(lvalue, fallback)
+                            # Same as self.set_inference_error_fallback_type but inlined
+                            # to avoid computing fallback twice.
+                            # We are replacing partial<None> now, so the variable type
+                            # should remain optional.
+                            self.set_inferred_type(var, lvalue, make_optional_type(fallback))
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)
@@ -3377,7 +3421,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             and lvalue_type is not None
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition_new and lvalue_type is not None:
+                elif (
+                    self.options.allow_redefinition_new
+                    and lvalue_type is not None
+                    and not isinstance(lvalue_type, PartialType)
+                ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
@@ -4066,9 +4114,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_multi_assignment_from_union(
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
-        elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-            self.msg.unpacking_strings_disallowed(context)
         else:
+            rvalue_literal = rvalue_type
+            if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
+                if rvalue_type.last_known_value is None:
+                    self.msg.unpacking_strings_disallowed(context)
+                else:
+                    rvalue_literal = rvalue_type.last_known_value
+            if (
+                isinstance(rvalue_literal, LiteralType)
+                and isinstance(rvalue_literal.value, str)
+                and len(lvalues) != len(rvalue_literal.value)
+            ):
+                self.msg.unpacking_strings_disallowed(context)
+
             self.check_multi_assignment_from_iterable(
                 lvalues, rvalue_type, context, infer_lvalue_type
             )
@@ -4326,9 +4385,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_type = get_proper_type(rvalue_type)
-        if self.type_is_iterable(rvalue_type) and isinstance(
-            rvalue_type, (Instance, CallableType, TypeType, Overloaded)
-        ):
+        if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(rvalue_type, context)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
@@ -4426,7 +4483,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
             if name.name != "_" and not self.infer_partial_type(name, lvalue, init_type):
-                self.msg.need_annotation_for_var(name, context, self.options.python_version)
+                self.msg.need_annotation_for_var(name, context, self.options)
                 self.set_inference_error_fallback_type(name, lvalue, init_type)
         elif (
             isinstance(lvalue, MemberExpr)
@@ -4436,7 +4493,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)
         ):
             # Multiple, inconsistent types inferred for an attribute.
-            self.msg.need_annotation_for_var(name, context, self.options.python_version)
+            self.msg.need_annotation_for_var(name, context, self.options)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -4633,9 +4690,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
                 if not is_valid_inferred_type(rvalue_type, self.options) and inferred is not None:
-                    self.msg.need_annotation_for_var(
-                        inferred, context, self.options.python_version
-                    )
+                    self.msg.need_annotation_for_var(inferred, context, self.options)
                     rvalue_type = rvalue_type.accept(SetNothingToAny())
 
             if (
@@ -4953,10 +5008,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
-                if (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                ):
+                if isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES:
                     typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
@@ -5029,6 +5081,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.deleted_as_rvalue(t, s)
 
                 if_map, else_map = self.find_isinstance_check(e)
+
+                s.unreachable_else = else_map is None
 
                 # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -5115,7 +5169,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
-        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+        if (isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES) or (
+            isinstance(e, CallExpr)
+            and isinstance(e.callee, RefExpr)
+            and e.callee.fullname == "builtins.NotImplemented"
+        ):
             self.fail(
                 message_registry.INVALID_EXCEPTION.with_additional_msg(
                     '; did you mean "NotImplementedError"?'
@@ -5271,16 +5329,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            return typ.items
+            merged_type = make_simplified_union(typ.items)
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
+        elif is_named_instance(typ, "builtins.tuple"):
+            # variadic tuple
+            merged_type = make_simplified_union((typ.args[0],))
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         elif isinstance(typ, UnionType):
             return [
                 union_typ
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
-            # variadic tuple
-            return [typ.args[0]]
         else:
             return [typ]
 
@@ -5917,7 +5981,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             errors.append((pretty_names_list, "would have incompatible method signatures"))
             return None
 
-        curr_module.names[full_name] = SymbolTableNode(GDEF, info)
+        curr_module.names[full_name] = SymbolTableNode(GDEF, info, False, module_hidden=True)
         return Instance(info, [], extra_attrs=instances[0].extra_attrs or instances[1].extra_attrs)
 
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
@@ -6196,13 +6260,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             expr_indices: The list of indices of expressions in ``node`` that are being
                 compared
         """
-
-        def is_type_call(expr: CallExpr) -> bool:
-            """Is expr a call to type with one argument?"""
-            return refers_to_fullname(expr.callee, "builtins.type") and len(expr.args) == 1
-
         # exprs that are being passed into type
         exprs_in_type_calls: list[Expression] = []
+
+        for index in expr_indices:
+            expr = node.operands[index]
+            if isinstance(expr, CallExpr) and is_type_call(expr):
+                exprs_in_type_calls.append(expr.args[0])
+
+        if not exprs_in_type_calls:
+            return {}, {}
+
         # type that is being compared to type(expr)
         type_being_compared: list[TypeRange] | None = None
         # whether the type being compared to is final
@@ -6210,28 +6278,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         for index in expr_indices:
             expr = node.operands[index]
-
             if isinstance(expr, CallExpr) and is_type_call(expr):
-                exprs_in_type_calls.append(expr.args[0])
-            else:
-                current_type = self.get_isinstance_type(expr)
-                if current_type is None:
-                    continue
-                if type_being_compared is not None:
-                    # It doesn't really make sense to have several types being
-                    # compared to the output of type (like type(x) == int == str)
-                    # because whether that's true is solely dependent on what the
-                    # types being compared are, so we don't try to narrow types any
-                    # further because we can't really get any information about the
-                    # type of x from that check
-                    return {}, {}
-                else:
-                    if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo):
-                        is_final = expr.node.is_final
-                    type_being_compared = current_type
-
-        if not exprs_in_type_calls:
-            return {}, {}
+                continue
+            current_type = self.get_isinstance_type(expr)
+            if current_type is None:
+                continue
+            if type_being_compared is not None:
+                # It doesn't really make sense to have several types being
+                # compared to the output of type (like type(x) == int == str)
+                # because whether that's true is solely dependent on what the
+                # types being compared are, so we don't try to narrow types any
+                # further because we can't really get any information about the
+                # type of x from that check
+                return {}, {}
+            if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo):
+                is_final = expr.node.is_final
+            type_being_compared = current_type
 
         if_maps: list[TypeMap] = []
         else_maps: list[TypeMap] = []
@@ -6496,7 +6558,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if (
                 literal(expr) == LITERAL_TYPE
                 and not is_literal_none(expr)
+                and not is_literal_not_implemented(expr)
+                and not is_false_literal(expr)
+                and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
+                and not (
+                    isinstance(p_expr := get_proper_type(expr_type), CallableType)
+                    and p_expr.is_type_obj()
+                )
             ):
                 h = literal_hash(expr)
                 if h is not None:
@@ -6535,7 +6604,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     operands,
                     operand_types,
                     expr_indices,
-                    narrowable_operand_index_to_hash,
+                    narrowable_indices=narrowable_operand_index_to_hash.keys(),
                 )
             elif operator in {"in", "not in"}:
                 assert len(expr_indices) == 2
@@ -6600,69 +6669,144 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         operands: list[Expression],
         operand_types: list[Type],
         expr_indices: list[int],
-        narrowable_operand_index_to_hash: dict[int, tuple[Key, ...]],
+        narrowable_indices: AbstractSet[int],
     ) -> tuple[TypeMap, TypeMap]:
         """Calculate type maps for '==', '!=', 'is' or 'is not' expression."""
-        # is_valid_target:
-        #   Controls which types we're allowed to narrow exprs to. Note that
-        #   we cannot use 'is_literal_type_like' in both cases since doing
-        #   'x = 10000 + 1; x is 10001' is not always True in all Python
-        #   implementations.
-        #
-        # coerce_only_in_literal_context:
-        #   If true, coerce types into literal types only if one or more of
-        #   the provided exprs contains an explicit Literal type. This could
-        #   technically be set to any arbitrary value, but it seems being liberal
-        #   with narrowing when using 'is' and conservative when using '==' seems
-        #   to break the least amount of real-world code.
-        #
-        # should_narrow_by_identity:
-        #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
-        #   that could cause identity-based narrowing to produce invalid results.
-        if operator in {"is", "is not"}:
-            is_valid_target: Callable[[Type], bool] = is_singleton_type
-            coerce_only_in_literal_context = False
-            should_narrow_by_identity = True
-        else:
-
-            def is_exactly_literal_type(t: Type) -> bool:
-                return isinstance(get_proper_type(t), LiteralType)
-
-            def has_no_custom_eq_checks(t: Type) -> bool:
-                return not custom_special_method(
-                    t, "__eq__", check_all=False
-                ) and not custom_special_method(t, "__ne__", check_all=False)
-
-            is_valid_target = is_exactly_literal_type
-            coerce_only_in_literal_context = True
-
-            expr_types = [operand_types[i] for i in expr_indices]
-            should_narrow_by_identity = all(
-                map(has_no_custom_eq_checks, expr_types)
-            ) and not is_ambiguous_mix_of_enums(expr_types)
-
-        if_map: TypeMap = {}
-        else_map: TypeMap = {}
-        if should_narrow_by_identity:
-            if_map, else_map = self.refine_identity_comparison_expression(
-                operands,
-                operand_types,
-                expr_indices,
-                narrowable_operand_index_to_hash.keys(),
-                is_valid_target,
-                coerce_only_in_literal_context,
-            )
-
-        if if_map == {} and else_map == {}:
-            if_map, else_map = self.refine_away_none_in_comparison(
-                operands, operand_types, expr_indices, narrowable_operand_index_to_hash.keys()
-            )
-
         # If we haven't been able to narrow types yet, we might be dealing with a
         # explicit type(x) == some_type check
-        if if_map == {} and else_map == {}:
-            if_map, else_map = self.find_type_equals_check(node, expr_indices)
+        if_map, else_map = self.narrow_type_by_equality(
+            operator, operands, operand_types, expr_indices, narrowable_indices=narrowable_indices
+        )
+        if node is not None:
+            type_if_map, type_else_map = self.find_type_equals_check(node, expr_indices)
+            if_map = and_conditional_maps(if_map, type_if_map)
+            else_map = and_conditional_maps(else_map, type_else_map)
         return if_map, else_map
+
+    def narrow_type_by_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[TypeMap, TypeMap]:
+        """
+        Calculate type maps for '==', '!=', 'is' or 'is not' expression, ignoring `type(x)` checks.
+
+        The 'operands' and 'operand_types' lists should be the full list of operands used
+        in the overall comparison expression. The 'chain_indices' list is the list of indices
+        actually used within this identity comparison chain.
+
+        So if we have the expression:
+
+            a <= b is c is d <= e
+
+        ...then 'operands' and 'operand_types' would be lists of length 5 and 'chain_indices'
+        would be the list [1, 2, 3].
+
+        The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
+        to refine the types of: that is, all operands that will potentially be a part of
+        the output TypeMaps.
+
+        """
+        # should_narrow_by_identity_equality:
+        # If operator is "==" or "!=", we cannot narrow if we detect the presence of a user defined
+        # custom __eq__ or __ne__ method
+        should_narrow_by_identity_equality: bool
+
+        # is_target_for_value_narrowing:
+        # If the operator returns True when compared to this target, do we narrow in else branch?
+        # E.g. if operator is "==", then:
+        # - is_target_for_value_narrowing(str) == False
+        # - is_target_for_value_narrowing(Literal["asdf"]) == True
+        is_target_for_value_narrowing: Callable[[ProperType], bool]
+
+        # should_coerce_literals:
+        # Ideally, we should always attempt to have this set to True. Unfortunately, for now,
+        # performing this coercion can sometimes result in overly aggressive narrowing when taking
+        # in the context of other type checker behaviour.
+        should_coerce_literals: bool
+
+        if operator in {"is", "is not"}:
+            is_target_for_value_narrowing = is_singleton_identity_type
+            should_coerce_literals = True
+            should_narrow_by_identity_equality = True
+
+        elif operator in {"==", "!="}:
+            is_target_for_value_narrowing = is_singleton_equality_type
+
+            should_coerce_literals = False
+            for i in expr_indices:
+                typ = get_proper_type(operand_types[i])
+                if is_literal_type_like(typ) or (isinstance(typ, Instance) and typ.type.is_enum):
+                    should_coerce_literals = True
+                    break
+
+            expr_types = [operand_types[i] for i in expr_indices]
+            should_narrow_by_identity_equality = not any(
+                map(has_custom_eq_checks, expr_types)
+            ) and not is_ambiguous_mix_of_enums(expr_types)
+        else:
+            raise AssertionError
+
+        if not should_narrow_by_identity_equality:
+            # This is a bit of a legacy code path that might be a little unsound since it ignores
+            # custom __eq__. We should see if we can get rid of it in favour of `return {}, {}`
+            return self.refine_away_none_in_comparison(
+                operands, operand_types, expr_indices, narrowable_indices
+            )
+
+        value_targets = []
+        type_targets = []
+        for i in expr_indices:
+            expr_type = operand_types[i]
+            if should_coerce_literals:
+                # TODO: doing this prevents narrowing a single-member Enum to literal
+                # of its member, because we expand it here and then refuse to add equal
+                # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
+                # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
+                # See testMatchEnumSingleChoice
+                expr_type = coerce_to_literal(expr_type)
+            if is_target_for_value_narrowing(get_proper_type(expr_type)):
+                value_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
+            else:
+                type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
+
+        partial_type_maps = []
+
+        if value_targets:
+            for i in expr_indices:
+                if i not in narrowable_indices:
+                    continue
+                for j, target in value_targets:
+                    if i == j:
+                        continue
+                    expr_type = coerce_to_literal(operand_types[i])
+                    expr_type = try_expanding_sum_type_to_union(expr_type, None)
+                    if_map, else_map = conditional_types_to_typemaps(
+                        operands[i], *conditional_types(expr_type, [target])
+                    )
+                    partial_type_maps.append((if_map, else_map))
+
+        if type_targets:
+            for i in expr_indices:
+                if i not in narrowable_indices:
+                    continue
+                for j, target in type_targets:
+                    if i == j:
+                        continue
+                    expr_type = operand_types[i]
+                    if_map, else_map = conditional_types_to_typemaps(
+                        operands[i], *conditional_types(expr_type, [target])
+                    )
+                    if if_map:
+                        else_map = {}  # this is the big difference compared to the above
+                        partial_type_maps.append((if_map, else_map))
+
+        # We will not have duplicate entries in our type maps if we only have two operands,
+        # so we can skip running meets on the intersections
+        return reduce_conditional_maps(partial_type_maps, use_meet=len(operands) > 2)
 
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
         """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
@@ -6845,144 +6989,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return parent_expr
         return expr
 
-    def refine_identity_comparison_expression(
-        self,
-        operands: list[Expression],
-        operand_types: list[Type],
-        chain_indices: list[int],
-        narrowable_operand_indices: AbstractSet[int],
-        is_valid_target: Callable[[ProperType], bool],
-        coerce_only_in_literal_context: bool,
-    ) -> tuple[TypeMap, TypeMap]:
-        """Produce conditional type maps refining expressions by an identity/equality comparison.
-
-        The 'operands' and 'operand_types' lists should be the full list of operands used
-        in the overall comparison expression. The 'chain_indices' list is the list of indices
-        actually used within this identity comparison chain.
-
-        So if we have the expression:
-
-            a <= b is c is d <= e
-
-        ...then 'operands' and 'operand_types' would be lists of length 5 and 'chain_indices'
-        would be the list [1, 2, 3].
-
-        The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
-        to refine the types of: that is, all operands that will potentially be a part of
-        the output TypeMaps.
-
-        Although this function could theoretically try setting the types of the operands
-        in the chains to the meet, doing that causes too many issues in real-world code.
-        Instead, we use 'is_valid_target' to identify which of the given chain types
-        we could plausibly use as the refined type for the expressions in the chain.
-
-        Similarly, 'coerce_only_in_literal_context' controls whether we should try coercing
-        expressions in the chain to a Literal type. Performing this coercion is sometimes
-        too aggressive of a narrowing, depending on context.
-        """
-        should_coerce = True
-        if coerce_only_in_literal_context:
-
-            def should_coerce_inner(typ: Type) -> bool:
-                typ = get_proper_type(typ)
-                return is_literal_type_like(typ) or (
-                    isinstance(typ, Instance) and typ.type.is_enum
-                )
-
-            should_coerce = any(should_coerce_inner(operand_types[i]) for i in chain_indices)
-
-        target: Type | None = None
-        possible_target_indices = []
-        for i in chain_indices:
-            expr_type = operand_types[i]
-            if should_coerce:
-                expr_type = coerce_to_literal(expr_type)
-            if not is_valid_target(get_proper_type(expr_type)):
-                continue
-            if target and not is_same_type(target, expr_type):
-                # We have multiple disjoint target types. So the 'if' branch
-                # must be unreachable.
-                return None, {}
-            target = expr_type
-            possible_target_indices.append(i)
-
-        # There's nothing we can currently infer if none of the operands are valid targets,
-        # so we end early and infer nothing.
-        if target is None:
-            return {}, {}
-
-        # If possible, use an unassignable expression as the target.
-        # We skip refining the type of the target below, so ideally we'd
-        # want to pick an expression we were going to skip anyways.
-        singleton_index = -1
-        for i in possible_target_indices:
-            if i not in narrowable_operand_indices:
-                singleton_index = i
-
-        # But if none of the possible singletons are unassignable ones, we give up
-        # and arbitrarily pick the last item, mostly because other parts of the
-        # type narrowing logic bias towards picking the rightmost item and it'd be
-        # nice to stay consistent.
-        #
-        # That said, it shouldn't matter which index we pick. For example, suppose we
-        # have this if statement, where 'x' and 'y' both have singleton types:
-        #
-        #     if x is y:
-        #         reveal_type(x)
-        #         reveal_type(y)
-        #     else:
-        #         reveal_type(x)
-        #         reveal_type(y)
-        #
-        # At this point, 'x' and 'y' *must* have the same singleton type: we would have
-        # ended early in the first for-loop in this function if they weren't.
-        #
-        # So, we should always get the same result in the 'if' case no matter which
-        # index we pick. And while we do end up getting different results in the 'else'
-        # case depending on the index (e.g. if we pick 'y', then its type stays the same
-        # while 'x' is narrowed to '<uninhabited>'), this distinction is also moot: mypy
-        # currently will just mark the whole branch as unreachable if either operand is
-        # narrowed to <uninhabited>.
-        if singleton_index == -1:
-            singleton_index = possible_target_indices[-1]
-
-        sum_type_name = None
-        target = get_proper_type(target)
-        if isinstance(target, LiteralType) and (
-            target.is_enum_literal() or isinstance(target.value, bool)
-        ):
-            sum_type_name = target.fallback.type.fullname
-
-        target_type = [TypeRange(target, is_upper_bound=False)]
-
-        partial_type_maps = []
-        for i in chain_indices:
-            # If we try refining a type against itself, conditional_type_map
-            # will end up assuming that the 'else' branch is unreachable. This is
-            # typically not what we want: generally the user will intend for the
-            # target type to be some fixed 'sentinel' value and will want to refine
-            # the other exprs against this one instead.
-            if i == singleton_index:
-                continue
-
-            # Naturally, we can't refine operands which are not permitted to be refined.
-            if i not in narrowable_operand_indices:
-                continue
-
-            expr = operands[i]
-            expr_type = coerce_to_literal(operand_types[i])
-
-            if sum_type_name is not None:
-                expr_type = try_expanding_sum_type_to_union(expr_type, sum_type_name)
-
-            # We intentionally use 'conditional_types' directly here instead of
-            # 'self.conditional_types_with_intersection': we only compute ad-hoc
-            # intersections when working with pure instances.
-            types = conditional_types(expr_type, target_type)
-            partial_type_maps.append(conditional_types_to_typemaps(expr, *types))
-
-        return reduce_conditional_maps(partial_type_maps)
-
     def refine_away_none_in_comparison(
         self,
         operands: list[Expression],
@@ -6993,7 +6999,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Produces conditional type maps refining away None in an identity/equality chain.
 
         For more details about what the different arguments mean, see the
-        docstring of 'refine_identity_comparison_expression' up above.
+        docstring of 'narrow_type_by_equality' up above.
         """
 
         non_optional_types = []
@@ -7657,7 +7663,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
-                        self.msg.need_annotation_for_var(var, context, self.options.python_version)
+                        self.msg.need_annotation_for_var(var, context, self.options)
                         self.partial_reported.add(var)
                     if var.type:
                         fixed = fixup_partial_type(var.type)
@@ -7684,9 +7690,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if in_scope:
                     context = partial_types[node]
                     if is_local or not self.options.allow_untyped_globals:
-                        self.msg.need_annotation_for_var(
-                            node, context, self.options.python_version
-                        )
+                        self.msg.need_annotation_for_var(node, context, self.options)
                         self.partial_reported.add(node)
                 else:
                     # Defer the node -- we might get a better type in the outer scope
@@ -7763,9 +7767,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return
         self.msg.note(msg, context, offset=offset, code=code)
 
-    def iterable_item_type(
-        self, it: Instance | CallableType | TypeType | Overloaded, context: Context
-    ) -> Type:
+    def iterable_item_type(self, it: ProperType, context: Context) -> Type:
         if isinstance(it, Instance):
             iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
             item_type = iterable.args[0]
@@ -7914,6 +7916,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return False
 
     def get_isinstance_type(self, expr: Expression) -> list[TypeRange] | None:
+        """Get the type(s) resulting from an isinstance check.
+
+        Returns an empty list for isinstance(x, ()).
+        """
         if isinstance(expr, OpExpr) and expr.op == "|":
             left = self.get_isinstance_type(expr.left)
             if left is None and is_literal_none(expr.left):
@@ -7953,11 +7959,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
                 return None
-        if not types:
-            # this can happen if someone has empty tuple as 2nd argument to isinstance
-            # strictly speaking, we should return UninhabitedType but for simplicity we will simply
-            # refuse to do any type inference for now
-            return None
         return types
 
     def is_literal_enum(self, n: Expression) -> bool:
@@ -8018,7 +8019,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             fallback = typ.fallback.copy_with_extra_attr(name, any_type)
             return typ.copy_modified(fallback=fallback)
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
-            return TypeType.make_normalized(self.add_any_attribute_to_type(typ.item, name))
+            return TypeType.make_normalized(
+                self.add_any_attribute_to_type(typ.item, name), is_type_form=typ.is_type_form
+            )
         if isinstance(typ, TypeVarType):
             return typ.copy_modified(
                 upper_bound=self.add_any_attribute_to_type(typ.upper_bound, name),
@@ -8146,6 +8149,97 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return None
 
 
+class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
+    """
+    Adapts TypeChecker to the SemanticAnalyzerCoreInterface,
+    allowing most type expressions to be parsed during the TypeChecker pass.
+
+    See ExpressionChecker.try_parse_as_type_expression() to understand how this
+    class is used.
+    """
+
+    _chk: TypeChecker
+    _names: dict[str, SymbolTableNode]
+    did_fail: bool
+
+    def __init__(self, chk: TypeChecker, names: dict[str, SymbolTableNode]) -> None:
+        self._chk = chk
+        self._names = names
+        self.did_fail = False
+
+    def lookup_qualified(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
+        sym = self._names.get(name)
+        # All names being looked up should have been previously gathered,
+        # even if the related SymbolTableNode does not refer to a valid SymbolNode
+        assert sym is not None, name
+        return sym
+
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None, fullname
+        return ret
+
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
+        try:
+            return self._chk.lookup_qualified(fullname)
+        except KeyError:
+            return None
+
+    def fail(
+        self,
+        msg: str,
+        ctx: Context,
+        serious: bool = False,
+        *,
+        blocker: bool = False,
+        code: ErrorCode | None = None,
+    ) -> None:
+        self.did_fail = True
+
+    def note(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
+        pass
+
+    def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
+        if feature not in self._chk.options.enable_incomplete_feature:
+            self.fail("__ignored__", ctx)
+            return False
+        return True
+
+    def record_incomplete_ref(self) -> None:
+        pass
+
+    def defer(self, debug_context: Context | None = None, force_progress: bool = False) -> None:
+        pass
+
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        return False
+
+    @property
+    def final_iteration(self) -> bool:
+        return True
+
+    def is_future_flag_set(self, flag: str) -> bool:
+        return self._chk.tree.is_future_flag_set(flag)
+
+    @property
+    def is_stub_file(self) -> bool:
+        return self._chk.tree.is_stub
+
+    def is_func_scope(self) -> bool:
+        # Return arbitrary value.
+        #
+        # This method is currently only used to decide whether to pair
+        # a fail() message with a note() message or not. Both of those
+        # message types are ignored.
+        return False
+
+    @property
+    def type(self) -> TypeInfo | None:
+        return self._chk.type
+
+
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
 
@@ -8185,53 +8279,90 @@ def conditional_types(
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
-    Returns a 2-tuple: The first element is the proposed type, if the expression
-    can be the proposed type. The second element is the type it would hold
-    if it was not the proposed type, if any. UninhabitedType means unreachable.
-    None means no new information can be inferred. If default is set it is returned
-    instead."""
-    if proposed_type_ranges:
-        if len(proposed_type_ranges) == 1:
-            target = proposed_type_ranges[0].item
-            target = get_proper_type(target)
-            if isinstance(target, LiteralType) and (
-                target.is_enum_literal() or isinstance(target.value, bool)
-            ):
-                enum_name = target.fallback.type.fullname
-                current_type = try_expanding_sum_type_to_union(current_type, enum_name)
-        proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
-        if isinstance(proposed_type, AnyType):
-            # We don't really know much about the proposed type, so we shouldn't
-            # attempt to narrow anything. Instead, we broaden the expr to Any to
-            # avoid false positives
-            return proposed_type, default
-        elif not any(
-            type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
-            # Expression is always of one of the types in proposed_type_ranges
-            return default, UninhabitedType()
-        elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
-        else:
-            # we can only restrict when the type is precise, not bounded
-            proposed_precise_type = UnionType.make_union(
-                [
-                    type_range.item
-                    for type_range in proposed_type_ranges
-                    if not type_range.is_upper_bound
-                ]
-            )
-            remaining_type = restrict_subtype_away(
-                current_type,
-                proposed_precise_type,
-                consider_runtime_isinstance=consider_runtime_isinstance,
-            )
-            return proposed_type, remaining_type
-    else:
+    Returns a 2-tuple:
+        The first element is the proposed type, if the expression can be the proposed type.
+            (or default, if default is set and the expression is a subtype of the proposed type).
+        The second element is the type it would hold if it was not the proposed type, if any.
+            (or default, if default is set and the expression is not a subtype of the proposed type).
+
+        UninhabitedType means unreachable.
+        None means no new information can be inferred.
+    """
+    if proposed_type_ranges is None:
         # An isinstance check, but we don't understand the type
         return current_type, default
+
+    if not proposed_type_ranges:
+        # This is the case for `if isinstance(x, ())` which always returns False.
+        return UninhabitedType(), default
+
+    if len(proposed_type_ranges) == 1:
+        # expand e.g. bool -> Literal[True] | Literal[False]
+        target = proposed_type_ranges[0].item
+        target = get_proper_type(target)
+        if isinstance(target, LiteralType) and (
+            target.is_enum_literal() or isinstance(target.value, bool)
+        ):
+            enum_name = target.fallback.type.fullname
+            current_type = try_expanding_sum_type_to_union(current_type, enum_name)
+
+    proper_type = get_proper_type(current_type)
+    # factorize over union types: isinstance(A|B, C) -> yes = A_yes | B_yes
+    if isinstance(proper_type, UnionType):
+        result: list[tuple[Type | None, Type | None]] = [
+            conditional_types(
+                union_item,
+                proposed_type_ranges,
+                default=union_item,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
+            for union_item in get_proper_types(proper_type.items)
+        ]
+        # separate list of tuples into two lists
+        yes_types, no_types = zip(*result)
+        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
+    else:
+        proposed_items = [type_range.item for type_range in proposed_type_ranges]
+        proposed_type = make_simplified_union(proposed_items)
+
+    if isinstance(proper_type, AnyType):
+        return proposed_type, current_type
+    if isinstance(proposed_type, AnyType):
+        # We don't really know much about the proposed type, so we shouldn't
+        # attempt to narrow anything. Instead, we broaden the expr to Any to
+        # avoid false positives
+        return proposed_type, default
+    if not any(type_range.is_upper_bound for type_range in proposed_type_ranges):
+        # concrete subtype
+        if is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+            return default, UninhabitedType()
+
+        # structural subtypes
+        if (
+            isinstance(proposed_type, CallableType)
+            or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
+        ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
+            # Note: It's possible that current_type=`Any | Proto` while proposed_type=`Proto`
+            #  so we cannot return `Never` for the else branch
+            remainder = restrict_subtype_away(
+                current_type,
+                default if default is not None else proposed_type,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
+            return default, remainder
+    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        # Expression is never of any type in proposed_type_ranges
+        return UninhabitedType(), default
+    # we can only restrict when the type is precise, not bounded
+    proposed_precise_type = UnionType.make_union(
+        [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]
+    )
+    remaining_type = restrict_subtype_away(
+        current_type,
+        proposed_precise_type,
+        consider_runtime_isinstance=consider_runtime_isinstance,
+    )
+    return proposed_type, remaining_type
 
 
 def conditional_types_to_typemaps(
@@ -8277,7 +8408,7 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.None"
 
 
-def is_literal_not_implemented(n: Expression) -> bool:
+def is_literal_not_implemented(n: Expression | None) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
 
 
@@ -8380,7 +8511,10 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
         for n1 in m1:
             for n2 in m2:
                 if literal_hash(n1) == literal_hash(n2):
-                    result[n1] = meet_types(m1[n1], m2[n2])
+                    meet_result = meet_types(m1[n1], m2[n2])
+                    if isinstance(meet_result, UninhabitedType):
+                        return None
+                    result[n1] = meet_result
     return result
 
 
@@ -8447,6 +8581,36 @@ def reduce_conditional_maps(
             final_else_map = or_conditional_maps(final_else_map, else_map)
 
         return final_if_map, final_else_map
+
+
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {
+    "builtins.bytes",
+    "builtins.bytearray",
+    "builtins.memoryview",
+    "builtins.list",
+    "builtins.dict",
+    "builtins.set",
+}
+
+
+def has_custom_eq_checks(t: Type) -> bool:
+    return (
+        custom_special_method(t, "__eq__", check_all=False)
+        or custom_special_method(t, "__ne__", check_all=False)
+        # custom_special_method has special casing for builtins.* and typing.* that make the
+        # above always return False. So here we return True if the a value of a builtin type
+        # will ever compare equal to value of another type, e.g. a bytes value can compare equal
+        # to a bytearray value. We also include builtins collections, see testNarrowingCollections
+        or (
+            isinstance(pt := get_proper_type(t), Instance)
+            and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS
+        )
+    )
+
+
+def is_type_call(expr: CallExpr) -> bool:
+    """Is expr a call to type with one argument?"""
+    return refers_to_fullname(expr.callee, "builtins.type") and len(expr.args) == 1
 
 
 def convert_to_typetype(type_map: TypeMap) -> TypeMap:
@@ -8574,8 +8738,9 @@ def is_unsafe_overlapping_overload_signatures(
     # Note: We repeat this check twice in both directions compensate for slight
     # asymmetries in 'is_callable_compatible'.
 
+    other_expanded = expand_callable_variants(other)
     for sig_variant in expand_callable_variants(signature):
-        for other_variant in expand_callable_variants(other):
+        for other_variant in other_expanded:
             # Using only expanded callables may cause false negatives, we can add
             # more variants (e.g. using inference between callables) in the future.
             if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):

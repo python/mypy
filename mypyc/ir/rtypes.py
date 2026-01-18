@@ -38,8 +38,7 @@ NOTE: As a convention, we don't create subclasses of concrete RType
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar, final
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -505,6 +504,11 @@ str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcount
 # Python bytes object.
 bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
 
+# Python bytearray object.
+bytearray_rprimitive: Final = RPrimitive(
+    "builtins.bytearray", is_unboxed=False, is_refcounted=True
+)
+
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
 tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
@@ -514,8 +518,14 @@ range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refc
 
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
-    for name in ["native_internal.Buffer"]
+    for name in [
+        "librt.internal.WriteBuffer",
+        "librt.internal.ReadBuffer",
+        "librt.strings.BytesWriter",
+    ]
 }
+
+bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
@@ -627,6 +637,10 @@ def is_bytes_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytes"
 
 
+def is_bytearray_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytearray"
+
+
 def is_tuple_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.tuple"
 
@@ -641,6 +655,7 @@ def is_sequence_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
         or is_tuple_rprimitive(rtype)
         or is_str_rprimitive(rtype)
         or is_bytes_rprimitive(rtype)
+        or is_bytearray_rprimitive(rtype)
     )
 
 

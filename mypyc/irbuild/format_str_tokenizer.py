@@ -12,7 +12,7 @@ from mypy.checkstrformat import (
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context, Expression, StrExpr
+from mypy.nodes import Context, Expression
 from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
@@ -23,6 +23,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.primitives.bytes_ops import bytes_build_op
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.str_ops import str_build_op, str_op
@@ -143,16 +144,18 @@ def convert_format_expr_to_str(
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
         if format_op == FormatOp.STR:
-            if is_str_rprimitive(node_type) or isinstance(
-                x, StrExpr
-            ):  # NOTE: why does mypyc think our fake StrExprs are not str rprimitives?
+            if isinstance(folded := constant_fold_expr(builder, x), str):
+                var_str = builder.load_literal_value(folded)
+            elif is_str_rprimitive(node_type):
                 var_str = builder.accept(x)
             elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.primitive_op(str_op, [builder.accept(x)], line)
         elif format_op == FormatOp.INT:
-            if is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+            if isinstance(folded := constant_fold_expr(builder, x), int):
+                var_str = builder.load_literal_value(str(folded))
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 return None

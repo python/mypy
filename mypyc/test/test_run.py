@@ -22,6 +22,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
+from mypyc.codegen.emitmodule import collect_source_dependencies
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
@@ -73,10 +74,11 @@ files = [
     "run-weakref.test",
     "run-python37.test",
     "run-python38.test",
+    "run-librt-strings.test",
+    "run-base64.test",
+    "run-match.test",
 ]
 
-if sys.version_info >= (3, 10):
-    files.append("run-match.test")
 if sys.version_info >= (3, 12):
     files.append("run-python312.test")
 
@@ -86,7 +88,8 @@ from mypyc.build import mypycify
 
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
-                           multi_file={}, opt_level='{}', install_native_libs={}),
+                           multi_file={}, opt_level='{}', install_librt={},
+                           experimental_features={}),
 )
 """
 
@@ -199,11 +202,15 @@ class TestRun(MypycDataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.strict_optional = True
+        options.strict_bytes = True
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
         options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
+        options.check_untyped_defs = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -239,13 +246,19 @@ class TestRun(MypycDataSuite):
 
         groups = construct_groups(sources, separate, len(module_names) > 1, None)
 
-        native_libs = "_native_libs" in testcase.name
+        # Use _librt_internal to test mypy-specific parts of librt (they have
+        # some special-casing in mypyc), for everything else use _librt suffix.
+        librt_internal = testcase.name.endswith("_librt_internal")
+        librt = testcase.name.endswith("_librt") or "_librt_" in testcase.name
+        # Enable experimental features (local librt build also includes experimental features)
+        experimental_features = testcase.name.endswith("_experimental")
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
                 separate=self.separate,
                 strict_dunder_typing=self.strict_dunder_typing,
-                depends_on_native_internal=native_libs,
+                depends_on_librt_internal=librt_internal,
+                experimental_features=experimental_features,
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
@@ -258,6 +271,7 @@ class TestRun(MypycDataSuite):
             ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
+            deps = sorted(dep.path for dep in collect_source_dependencies(ir))
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"
@@ -278,9 +292,21 @@ class TestRun(MypycDataSuite):
         with open(setup_file, "w", encoding="utf-8") as f:
             f.write(
                 setup_format.format(
-                    module_paths, separate, cfiles, self.multi_file, opt_level, native_libs
+                    module_paths,
+                    separate,
+                    (cfiles, deps),
+                    self.multi_file,
+                    opt_level,
+                    librt,
+                    experimental_features,
                 )
             )
+
+        if librt:
+            # This hack forces Python to prefer the local "installation".
+            os.makedirs("librt", exist_ok=True)
+            with open(os.path.join("librt", "__init__.py"), "a"):
+                pass
 
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):

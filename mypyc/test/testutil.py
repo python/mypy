@@ -7,8 +7,7 @@ import os
 import os.path
 import re
 import shutil
-from collections.abc import Iterator
-from typing import Callable
+from collections.abc import Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
@@ -115,6 +114,9 @@ def build_ir_for_single_file2(
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
+    options.strict_bytes = True
+    options.disable_bytearray_promotion = True
+    options.disable_memoryview_promotion = True
     options.per_module_options["__main__"] = {"mypyc": True}
 
     source = build.BuildSource("main", "__main__", program_text)
@@ -281,4 +283,6 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
+    if re.search("_experimental(_|$)", name):
+        options.experimental_features = True
     return options

@@ -127,9 +127,9 @@ class TarFile:
     encoding: str | None
     errors: str
     fileobject: type[ExFileObject]  # undocumented
-    pax_headers: Mapping[str, str] | None
+    pax_headers: Mapping[str, str]
     debug: int | None
-    errorlevel: int | None
+    errorlevel: int
     offset: int  # undocumented
     extraction_filter: _FilterFunction | None
     if sys.version_info >= (3, 13):
@@ -214,7 +214,7 @@ class TarFile:
             errorlevel: int | None = ...,
             level: None = None,
             options: Mapping[int, int] | None = None,
-            zstd_dict: ZstdDict | None = None,
+            zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
         ) -> Self: ...
 
     @overload
@@ -355,7 +355,7 @@ class TarFile:
             debug: int | None = ...,
             errorlevel: int | None = ...,
             options: Mapping[int, int] | None = None,
-            zstd_dict: ZstdDict | None = None,
+            zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
         ) -> Self: ...
         @overload
         @classmethod
@@ -376,7 +376,7 @@ class TarFile:
             debug: int | None = ...,
             errorlevel: int | None = ...,
             options: Mapping[int, int] | None = None,
-            zstd_dict: ZstdDict | None = None,
+            zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
         ) -> Self: ...
 
     @overload
@@ -611,7 +611,7 @@ class TarFile:
             fileobj: IO[bytes] | None = None,
             level: None = None,
             options: Mapping[int, int] | None = None,
-            zstd_dict: ZstdDict | None = None,
+            zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
             *,
             format: int | None = ...,
             tarinfo: type[TarInfo] | None = ...,
@@ -631,7 +631,7 @@ class TarFile:
             fileobj: IO[bytes] | None = None,
             level: int | None = None,
             options: Mapping[int, int] | None = None,
-            zstd_dict: ZstdDict | None = None,
+            zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
             *,
             format: int | None = ...,
             tarinfo: type[TarInfo] | None = ...,

@@ -80,6 +80,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr, /) -> T:
+        pass
+
+    @abstractmethod
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr, /) -> T:
         pass
 
@@ -509,6 +513,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         raise NotImplementedError()
 
     def visit_cast_expr(self, o: mypy.nodes.CastExpr, /) -> T:
+        raise NotImplementedError()
+
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr, /) -> T:
         raise NotImplementedError()
 
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr, /) -> T:

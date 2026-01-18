@@ -12,9 +12,9 @@ import importlib
 import inspect
 import keyword
 import os.path
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import FunctionType, ModuleType
-from typing import Any, Callable
+from typing import Any
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
@@ -322,7 +322,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 default_value = get_default_value(i, arg)
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
-                        argtype = annotations[arg]
+                        argtype = get_annotation(arg)
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":

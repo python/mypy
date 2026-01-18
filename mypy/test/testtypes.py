@@ -194,12 +194,12 @@ class TypesSuite(Suite):
 
     def test_type_alias_expand_once(self) -> None:
         A, target = self.fx.def_alias_1(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
         A, target = self.fx.def_alias_2(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
@@ -1050,6 +1050,35 @@ class JoinSuite(Suite):
     def test_join_type_type_type_var(self) -> None:
         self.assert_join(self.fx.type_a, self.fx.t, self.fx.o)
         self.assert_join(self.fx.t, self.fx.type_a, self.fx.o)
+
+    def test_join_type_var_bounds(self) -> None:
+        tvar1 = TypeVarType(
+            "tvar1",
+            "tvar1",
+            TypeVarId(-100),
+            [],
+            self.fx.o,
+            AnyType(TypeOfAny.from_omitted_generics),
+            INVARIANT,
+        )
+        any_type = AnyType(TypeOfAny.special_form)
+        tvar2 = TypeVarType(
+            "tvar2",
+            "tvar2",
+            TypeVarId(-101),
+            [],
+            upper_bound=UnionType(
+                [
+                    TupleType([any_type], self.fx.std_tuple),
+                    TupleType([any_type, any_type], self.fx.std_tuple),
+                ]
+            ),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+            variance=INVARIANT,
+        )
+
+        self.assert_join(tvar1, tvar2, self.fx.o)
+        self.assert_join(tvar2, tvar1, self.fx.o)
 
     # There are additional test cases in check-inference.test.
 

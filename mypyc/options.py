@@ -17,7 +17,8 @@ class CompilerOptions:
         strict_dunder_typing: bool = False,
         group_name: str | None = None,
         log_trace: bool = False,
-        depends_on_native_internal: bool = False,
+        depends_on_librt_internal: bool = False,
+        experimental_features: bool = False,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -51,7 +52,11 @@ class CompilerOptions:
         # mypyc_trace.txt when compiled module is executed. This is useful for
         # performance analysis.
         self.log_trace = log_trace
-        # If enabled, add capsule imports of native_internal API. This should be used
+        # If enabled, add capsule imports of librt.internal API. This should be used
         # only for mypy itself, third-party code compiled with mypyc should not use
-        # native_internal.
-        self.depends_on_native_internal = depends_on_native_internal
+        # librt.internal.
+        self.depends_on_librt_internal = depends_on_librt_internal
+        # Some experimental features are only available when building librt in
+        # experimental mode (e.g. use _experimental suffix in librt run test).
+        # These can't be used with a librt wheel installed from PyPI.
+        self.experimental_features = experimental_features
