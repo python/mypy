@@ -314,7 +314,10 @@ def read_statement(data: ReadBuffer) -> Statement:
         body = read_block(data)
         # Read else clause
         else_body = read_optional_block(data)
+        # Read is_async flag
+        is_async = read_bool(data)
         stmt = ForStmt(index, expr, body, else_body)
+        stmt.is_async = is_async
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -337,7 +340,10 @@ def read_statement(data: ReadBuffer) -> Statement:
                 target_list.append(None)
         # Read body
         body = read_block(data)
+        # Read is_async flag
+        is_async = read_bool(data)
         stmt = WithStmt(expr_list, target_list, body)
+        stmt.is_async = is_async
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
