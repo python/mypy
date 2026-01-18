@@ -49,7 +49,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import AnyType, Instance, ProperType, TupleType, TypeOfAny, TypeType, get_proper_type
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -147,12 +147,15 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
+        typ = builder.types.get(expr) or expr.node.type
+        if typ is None:
+            typ = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
             expr.node,
             fullname,
             expr.name,
             builder.is_native_ref_expr(expr),
-            builder.types[expr],
+            typ,
             expr.line,
         )
         if value is not None:
@@ -208,8 +211,11 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
+        typ = builder.types.get(expr) or final_var.type
+        if typ is None:
+            typ = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            final_var, fullname, final_var.name, native, builder.types[expr], expr.line
+            final_var, fullname, final_var.name, native, typ, expr.line
         )
         if value is not None:
             return value
