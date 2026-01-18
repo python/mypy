@@ -1958,28 +1958,29 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Returns the inferred types of *actual arguments*.
         """
-        res: list[Type | None] = [None] * len(args)
-
-        for i, actuals in enumerate(formal_to_actual):
+        # Precompute arg_context so that we type check argument expressions in evaluation order
+        arg_context: list[Type | None] = [None] * len(args)
+        for fi, actuals in enumerate(formal_to_actual):
             for ai in actuals:
-                if not arg_kinds[ai].is_star():
-                    arg_type = callee.arg_types[i]
-                    # When the outer context for a function call is known to be recursive,
-                    # we solve type constraints inferred from arguments using unions instead
-                    # of joins. This is a bit arbitrary, but in practice it works for most
-                    # cases. A cleaner alternative would be to switch to single bin type
-                    # inference, but this is a lot of work.
-                    old = self.infer_more_unions_for_recursive_type(arg_type)
-                    res[ai] = self.accept(args[ai], arg_type)
-                    # We need to manually restore union inference state, ugh.
-                    type_state.infer_unions = old
+                if arg_kinds[ai].is_star():
+                    continue
+                arg_context[ai] = callee.arg_types[fi]
 
-        # Fill in the rest of the argument types.
-        for i, t in enumerate(res):
-            if not t:
-                res[i] = self.accept(args[i])
-        assert all(tp is not None for tp in res)
-        return cast(list[Type], res)
+        res = []
+        for arg, ctx in zip(args, arg_context):
+            if ctx is not None:
+                # When the outer context for a function call is known to be recursive,
+                # we solve type constraints inferred from arguments using unions instead
+                # of joins. This is a bit arbitrary, but in practice it works for most
+                # cases. A cleaner alternative would be to switch to single bin type
+                # inference, but this is a lot of work.
+                old = self.infer_more_unions_for_recursive_type(ctx)
+                res.append(self.accept(arg, ctx))
+                # We need to manually restore union inference state, ugh.
+                type_state.infer_unions = old
+            else:
+                res.append(self.accept(arg))
+        return res
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
@@ -2917,7 +2918,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
+            with self.msg.filter_errors(filter_revealed_type=True) as w:
                 with self.chk.local_type_map as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
@@ -4963,10 +4964,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     return [AnyType(TypeOfAny.from_error)] * len(vars)
 
-        if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
-            return list(args)
         # TODO: in future we may want to support type application to variadic functions.
-        assert t.is_type_obj()
+        if (
+            not vars
+            or not any(isinstance(v, TypeVarTupleType) for v in vars)
+            or not t.is_type_obj()
+        ):
+            return list(args)
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
         fake = Instance(info, args, line=ctx.line, column=ctx.column)

@@ -331,9 +331,6 @@ class Type(mypy.nodes.Context):
     def read(cls, data: ReadBuffer) -> Type:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
-    def is_singleton_type(self) -> bool:
-        return False
-
 
 class TypeAliasType(Type):
     """A type alias to another type.
@@ -1479,9 +1476,6 @@ class NoneType(ProperType):
         assert read_tag(data) == END_TAG
         return NoneType()
 
-    def is_singleton_type(self) -> bool:
-        return True
-
 
 # NoneType used to be called NoneTyp so to avoid needlessly breaking
 # external plugins we keep that alias here.
@@ -1847,15 +1841,6 @@ class Instance(ProperType):
         new = self.copy_modified()
         new.extra_attrs = existing_attrs
         return new
-
-    def is_singleton_type(self) -> bool:
-        # TODO:
-        # Also make this return True if the type corresponds to NotImplemented?
-        return (
-            self.type.is_enum
-            and len(self.type.enum_members) == 1
-            or self.type.fullname in ELLIPSIS_TYPE_NAMES
-        )
 
 
 class InstanceCache:
@@ -3331,9 +3316,6 @@ class LiteralType(ProperType):
         ret = LiteralType(read_literal(data, tag), fallback)
         assert read_tag(data) == END_TAG
         return ret
-
-    def is_singleton_type(self) -> bool:
-        return self.is_enum_literal() or isinstance(self.value, bool)
 
 
 class UnionType(ProperType):

@@ -1,5 +1,5 @@
 [case testAllBase64Features_librt_experimental]
-from typing import Any
+from typing import Any, cast
 import base64
 import binascii
 import random
@@ -14,7 +14,7 @@ def test_encode_basic() -> None:
     assert b64encode(b"x") == b"eA=="
 
     with assertRaises(TypeError):
-        b64encode(bytearray(b"x"))
+        b64encode(cast(Any, bytearray(b"x")))
 
 def check_encode(b: bytes) -> None:
      assert b64encode(b) == getattr(base64, "b64encode")(b)
@@ -56,7 +56,7 @@ def test_decode_basic() -> None:
     assert b64decode(b"eA==") == b"x"
 
     with assertRaises(TypeError):
-        b64decode(bytearray(b"eA=="))
+        b64decode(cast(Any, bytearray(b"eA==")))
 
     for non_ascii in "\x80", "foo\u100bar", "foo\ua1234bar":
         with assertRaises(ValueError):

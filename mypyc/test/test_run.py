@@ -202,11 +202,15 @@ class TestRun(MypycDataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.strict_optional = True
+        options.strict_bytes = True
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
         options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
+        options.check_untyped_defs = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.

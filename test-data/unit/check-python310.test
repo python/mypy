@@ -61,7 +61,7 @@ m: object
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.object"
+        reveal_type(m)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: int
 
@@ -2938,11 +2938,14 @@ T_Choice = TypeVar("T_Choice", bound=b.One | b.Two)
 def switch(choice: type[T_Choice]) -> None:
     match choice:
         case b.One:
-            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice)  # N: Revealed type is "def () -> b.One"
+            reveal_type(choice())  # N: Revealed type is "b.One"
         case b.Two:
-            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice)  # N: Revealed type is "def () -> b.Two"
+            reveal_type(choice())  # N: Revealed type is "b.Two"
         case _:
             reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice())  # N: Revealed type is "b.One | b.Two"
 
 [file b.py]
 class One: ...
@@ -3234,4 +3237,77 @@ config: dict[str, object]
 match config:
     case {"a": 1, **rest}:  # E: Incompatible types in capture pattern (pattern captures type "dict[str, object]", variable has type "list[int]")
         ...
+[builtins fixtures/dict.pyi]
+
+[case testMatchTypeNarrowing]
+# flags: --warn-unreachable
+import builtins
+import typing
+import types
+
+def type_bare(field_type: type) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.int"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.str"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bytes"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bool"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "builtins.type"
+            return "bar"
+    return ret
+
+def type_any(field_type: type[typing.Any]) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            return "bar"
+    return ret
+
+def type_object(field_type: type[object]) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.int"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.str"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bytes"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bool"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "type[builtins.object]"
+            return "bar"
+    return ret
 [builtins fixtures/dict.pyi]

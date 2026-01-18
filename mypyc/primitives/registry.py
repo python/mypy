@@ -388,6 +388,7 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
 
 
 # Import various modules that set up global state.
+import mypyc.primitives.bytearray_ops
 import mypyc.primitives.bytes_ops
 import mypyc.primitives.dict_ops
 import mypyc.primitives.float_ops
