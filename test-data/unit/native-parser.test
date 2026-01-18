@@ -2298,3 +2298,14 @@ MypyFile:1(
         Args(
           Var(self))
         Block:7()))))
+
+[case testSuperExpr]
+super().x
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    SuperExpr:1(
+      x
+      CallExpr:1(
+        NameExpr(super)
+        Args()))))

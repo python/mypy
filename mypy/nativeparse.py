@@ -101,6 +101,7 @@ from mypy.nodes import (
     StarExpr,
     Statement,
     StrExpr,
+    SuperExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -810,9 +811,18 @@ def read_expression(data: ReadBuffer) -> Expression:
         e = read_expression(data)
         attr = read_str(data)
         m = MemberExpr(e, attr)
-        read_loc(data, m)
+        # Check if this is a super() call - if so, convert to SuperExpr
+        if (
+            isinstance(e, CallExpr)
+            and isinstance(e.callee, NameExpr)
+            and e.callee.name == "super"
+        ):
+            result: Expression = SuperExpr(attr, e)
+        else:
+            result = m
+        read_loc(data, result)
         expect_end_tag(data)
-        return m
+        return result
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
         read_loc(data, se)
