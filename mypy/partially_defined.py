@@ -297,6 +297,8 @@ class DefinedVariableTracker:
 class Loop:
     def __init__(self) -> None:
         self.has_break = False
+        # variables defined in every loop branch with `break`
+        self.break_vars: set[str] | None = None
 
 
 class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
@@ -476,6 +478,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             has_break = loop.has_break
             if has_break:
                 self.tracker.start_branch_statement()
+                if loop.break_vars is not None:
+                    for bv in loop.break_vars:
+                        self.tracker.record_definition(bv)
                 self.tracker.next_branch()
             o.else_body.accept(self)
             if has_break:
@@ -508,6 +513,14 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_break_stmt(o)
         if self.loops:
             self.loops[-1].has_break = True
+            # Track variables that are definitely defined at the point of break
+            if len(self.tracker._scope().branch_stmts) > 0:
+                branch = self.tracker._scope().branch_stmts[-1].branches[-1]
+                if self.loops[-1].break_vars is None:
+                    self.loops[-1].break_vars = set(branch.must_be_defined)
+                else:
+                    # we only want variables that have been defined in each branch
+                    self.loops[-1].break_vars.intersection_update(branch.must_be_defined)
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
