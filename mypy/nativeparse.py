@@ -113,7 +113,7 @@ from mypy.nodes import (
     YieldFromExpr,
     MISSING_FALLBACK,
 )
-from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType, UnpackType
+from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType, UnpackType, CallableArgument
 
 
 TypeIgnores = list[tuple[int, list[str]]]
@@ -726,6 +726,8 @@ def read_type(data: ReadBuffer) -> Type:
         read_loc(data, unpack)
         expect_end_tag(data)
         return unpack
+    elif tag == types.CALL_TYPE:
+        return read_call_type(data)
     else:
         assert False, tag
 
@@ -1230,3 +1232,105 @@ def read_loc(data: ReadBuffer, node: Context) -> None:
     node.column = column
     node.end_line = line + read_int_bare(data)
     node.end_column = column + read_int_bare(data)
+
+
+def stringify_type_name(typ: Type) -> str | None:
+    """Extract qualified name from a type (for Arg constructor detection)."""
+    if isinstance(typ, UnboundType):
+        return typ.name
+    return None
+
+
+def extract_arg_name(typ: Type) -> str | None:
+    """Extract argument name from a type (for Arg name parameter)."""
+    if isinstance(typ, RawExpressionType) and typ.base_type_name == "builtins.str":
+        return typ.literal_value  # type: ignore[return-value]
+    elif isinstance(typ, UnboundType):
+        # String literals in type context are parsed as UnboundType (forward references)
+        # For Arg names, these are typically simple names without dots
+        if typ.name == "None":
+            return None
+        # Return the name as-is (it's the argument name)
+        return typ.name
+    return None  # Invalid, but let validation handle it
+
+
+def read_call_type(data: ReadBuffer) -> Type:
+    """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
+
+    TODO: This deserialization is lenient and defers error handling to type analysis.
+    The following validations are missing (see mypy/fastparse.py:1948-1999 for reference):
+    - ARG_CONSTRUCTOR_NAME_EXPECTED: When constructor name cannot be extracted
+    - ARG_CONSTRUCTOR_TOO_MANY_ARGS: When more than 2 positional arguments
+    - MULTIPLE_VALUES_FOR_NAME_KWARG: When 'name' is specified multiple times
+    - MULTIPLE_VALUES_FOR_TYPE_KWARG: When 'type' is specified multiple times
+    - ARG_CONSTRUCTOR_UNEXPECTED_ARG: When keyword arg is not 'name' or 'type'
+    - Invalid argument name validation: When name is not a string literal or None
+    """
+    # Read callee
+    callee_type = read_type(data)
+
+    # Read positional arguments
+    expect_tag(data, LIST_GEN)
+    n_args = read_int_bare(data)
+    args = [read_type(data) for _ in range(n_args)]
+
+    # Read keyword arguments
+    expect_tag(data, LIST_GEN)
+    n_kwargs = read_int_bare(data)
+    kwargs = []
+    for _ in range(n_kwargs):
+        tag_kw = read_tag(data)
+        if tag_kw == LITERAL_NONE:
+            kw_name = None
+        elif tag_kw == LITERAL_STR:
+            kw_name = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for keyword name: {tag_kw}"
+        kw_value = read_type(data)
+        kwargs.append((kw_name, kw_value))
+
+    # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
+    constructor = stringify_type_name(callee_type)
+
+    if constructor:
+        # Extract type and name from arguments
+        name: str | None = None
+        default_type = AnyType(TypeOfAny.special_form)
+        typ: Type = default_type
+
+        # Process positional arguments
+        for i, arg in enumerate(args):
+            if i == 0:
+                typ = arg
+            elif i == 1:
+                name = extract_arg_name(arg)
+            # TODO: Emit error for more than 2 positional args (ARG_CONSTRUCTOR_TOO_MANY_ARGS)
+
+        # Process keyword arguments
+        for kw_name, kw_value in kwargs:
+            if kw_name == "name":
+                # TODO: Emit error if name already set (MULTIPLE_VALUES_FOR_NAME_KWARG)
+                if name is not None:
+                    pass  # Duplicate, but defer to type analysis
+                name = extract_arg_name(kw_value)
+            elif kw_name == "type":
+                # TODO: Emit error if type already set (MULTIPLE_VALUES_FOR_TYPE_KWARG)
+                if typ is not default_type:
+                    pass  # Duplicate, but defer to type analysis
+                typ = kw_value
+            # TODO: Emit error for unexpected keyword arg (ARG_CONSTRUCTOR_UNEXPECTED_ARG)
+
+        # Create CallableArgument
+        call_arg = CallableArgument(typ, name, constructor)
+        read_loc(data, call_arg)
+        expect_end_tag(data)
+        return call_arg
+
+    # TODO: Emit error when constructor name is None (ARG_CONSTRUCTOR_NAME_EXPECTED)
+    # If not a valid constructor, fall back to creating an invalid type
+    # (validation will report error later)
+    invalid = AnyType(TypeOfAny.from_error)
+    read_loc(data, invalid)
+    expect_end_tag(data)
+    return invalid

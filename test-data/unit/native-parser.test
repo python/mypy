@@ -1299,6 +1299,57 @@ MypyFile:1(
     Block:2(
       PassStmt:2())))
 
+[case testCallableWithArgConstructor]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, 'x'), Arg(str, 'y')], bool]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?, x), Arg(str?, y)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testCallableWithArgConstructorKeywordSyntax]
+from typing import Callable
+from mypy_extensions import Arg
+def f(callback: Callable[[Arg(type=int, name='value')], str]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(callback))
+    def (callback: Callable?[<TypeList Arg(int?, value)>, str?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testCallableWithArgNoName]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int)], bool]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
 [case testLiteralTypes]
 x: Literal[True, False]
 [out]
