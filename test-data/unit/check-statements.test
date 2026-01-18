@@ -949,9 +949,9 @@ x = f()
 
 [case testExceptionVariableReuseInDeferredNode4]
 class EA(BaseException):
-    a = None  # type: int
+    a: int
 class EB(BaseException):
-    b = None  # type: str
+    b: str
 def f(*arg: BaseException) -> int:
     x
     try: pass
@@ -973,9 +973,9 @@ main:16: note: Revealed type is "builtins.str"
 
 [case testExceptionVariableReuseInDeferredNode5]
 class EA(BaseException):
-    a = None  # type: int
+    a: int
 class EB(BaseException):
-    b = None  # type: str
+    b: str
 def f(*arg: BaseException) -> int:
     try: pass
     except EA as err:
@@ -997,9 +997,9 @@ main:16: note: Revealed type is "builtins.str"
 
 [case testExceptionVariableReuseInDeferredNode6]
 class EA(BaseException):
-    a = None  # type: int
+    a: int
 class EB(BaseException):
-    b = None  # type: str
+    b: str
 def f(*arg: BaseException) -> int:
     try: pass
     except EA as err:
