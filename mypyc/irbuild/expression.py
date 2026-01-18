@@ -49,7 +49,15 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import AnyType, Instance, ProperType, TupleType, TypeOfAny, TypeType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    TypeOfAny,
+    TypeType,
+    get_proper_type,
+)
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -151,12 +159,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         if final_type is None:
             final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            expr.node,
-            fullname,
-            expr.name,
-            builder.is_native_ref_expr(expr),
-            final_type,
-            expr.line,
+            expr.node, fullname, expr.name, builder.is_native_ref_expr(expr), final_type, expr.line
         )
         if value is not None:
             return value
