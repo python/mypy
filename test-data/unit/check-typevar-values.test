@@ -318,7 +318,7 @@ class C(Generic[X]):
 from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
-    x = None  # type: X
+    x: X
     def f(self, x: X) -> None:
         self.x = x
         self.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -328,7 +328,7 @@ class C(Generic[X]):
 from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
-    x = None  # type: X
+    x: X
 cn = C() # type: C[int]
 cn.x = 1
 cn.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
