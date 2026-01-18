@@ -2,13 +2,13 @@ import sys
 from _typeshed import FileDescriptor, FileDescriptorLike, Unused
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping
-from typing import Any, NamedTuple
+from typing import Any, Final, NamedTuple
 from typing_extensions import Self, TypeAlias
 
 _EventMask: TypeAlias = int
 
-EVENT_READ: _EventMask
-EVENT_WRITE: _EventMask
+EVENT_READ: Final = 1
+EVENT_WRITE: Final = 2
 
 class SelectorKey(NamedTuple):
     fileobj: FileDescriptorLike
@@ -50,10 +50,12 @@ if sys.platform == "linux":
     class EpollSelector(_PollLikeSelector):
         def fileno(self) -> int: ...
 
-class DevpollSelector(_PollLikeSelector):
-    def fileno(self) -> int: ...
+if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
+    # Solaris only
+    class DevpollSelector(_PollLikeSelector):
+        def fileno(self) -> int: ...
 
-if sys.platform != "win32":
+if sys.platform != "win32" and sys.platform != "linux":
     class KqueueSelector(_BaseSelectorImpl):
         def fileno(self) -> int: ...
         def select(self, timeout: float | None = None) -> list[tuple[SelectorKey, _EventMask]]: ...

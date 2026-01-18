@@ -99,6 +99,20 @@ if sys.platform == "win32":
     SEC_RESERVE: Final = 0x4000000
     SEC_WRITECOMBINE: Final = 0x40000000
 
+    if sys.version_info >= (3, 13):
+        STARTF_FORCEOFFFEEDBACK: Final = 0x80
+        STARTF_FORCEONFEEDBACK: Final = 0x40
+        STARTF_PREVENTPINNING: Final = 0x2000
+        STARTF_RUNFULLSCREEN: Final = 0x20
+        STARTF_TITLEISAPPID: Final = 0x1000
+        STARTF_TITLEISLINKNAME: Final = 0x800
+        STARTF_UNTRUSTEDSOURCE: Final = 0x8000
+        STARTF_USECOUNTCHARS: Final = 0x8
+        STARTF_USEFILLATTRIBUTE: Final = 0x10
+        STARTF_USEHOTKEY: Final = 0x200
+        STARTF_USEPOSITION: Final = 0x4
+        STARTF_USESIZE: Final = 0x2
+
     STARTF_USESHOWWINDOW: Final = 0x1
     STARTF_USESTDHANDLES: Final = 0x100
 
@@ -114,21 +128,21 @@ if sys.platform == "win32":
     WAIT_TIMEOUT: Final = 258
 
     if sys.version_info >= (3, 10):
-        LOCALE_NAME_INVARIANT: str
-        LOCALE_NAME_MAX_LENGTH: int
-        LOCALE_NAME_SYSTEM_DEFAULT: str
-        LOCALE_NAME_USER_DEFAULT: str | None
+        LOCALE_NAME_INVARIANT: Final[str]
+        LOCALE_NAME_MAX_LENGTH: Final[int]
+        LOCALE_NAME_SYSTEM_DEFAULT: Final[str]
+        LOCALE_NAME_USER_DEFAULT: Final[str | None]
 
-        LCMAP_FULLWIDTH: int
-        LCMAP_HALFWIDTH: int
-        LCMAP_HIRAGANA: int
-        LCMAP_KATAKANA: int
-        LCMAP_LINGUISTIC_CASING: int
-        LCMAP_LOWERCASE: int
-        LCMAP_SIMPLIFIED_CHINESE: int
-        LCMAP_TITLECASE: int
-        LCMAP_TRADITIONAL_CHINESE: int
-        LCMAP_UPPERCASE: int
+        LCMAP_FULLWIDTH: Final[int]
+        LCMAP_HALFWIDTH: Final[int]
+        LCMAP_HIRAGANA: Final[int]
+        LCMAP_KATAKANA: Final[int]
+        LCMAP_LINGUISTIC_CASING: Final[int]
+        LCMAP_LOWERCASE: Final[int]
+        LCMAP_SIMPLIFIED_CHINESE: Final[int]
+        LCMAP_TITLECASE: Final[int]
+        LCMAP_TRADITIONAL_CHINESE: Final[int]
+        LCMAP_UPPERCASE: Final[int]
 
     if sys.version_info >= (3, 12):
         COPYFILE2_CALLBACK_CHUNK_STARTED: Final = 1
@@ -158,6 +172,9 @@ if sys.platform == "win32":
         ERROR_ACCESS_DENIED: Final = 5
         ERROR_PRIVILEGE_NOT_HELD: Final = 1314
 
+    if sys.version_info >= (3, 14):
+        COPY_FILE_DIRECTORY: Final = 0x00000080
+
     def CloseHandle(handle: int, /) -> None: ...
     @overload
     def ConnectNamedPipe(handle: int, overlapped: Literal[True]) -> Overlapped: ...
@@ -174,6 +191,9 @@ if sys.platform == "win32":
         flags_and_attributes: int,
         template_file: int,
         /,
+    ) -> int: ...
+    def CreateFileMapping(
+        file_handle: int, security_attributes: int, protect: int, max_size_high: int, max_size_low: int, name: str, /
     ) -> int: ...
     def CreateJunction(src_path: str, dst_path: str, /) -> None: ...
     def CreateNamedPipe(
@@ -218,6 +238,9 @@ if sys.platform == "win32":
     def GetModuleFileName(module_handle: int, /) -> str: ...
     def GetStdHandle(std_handle: int, /) -> int: ...
     def GetVersion() -> int: ...
+    def MapViewOfFile(
+        file_map: int, desired_access: int, file_offset_high: int, file_offset_low: int, number_bytes: int, /
+    ) -> int: ...
     def OpenProcess(desired_access: int, inherit_handle: bool, process_id: int, /) -> int: ...
     def PeekNamedPipe(handle: int, size: int = 0, /) -> tuple[int, int] | tuple[bytes, int, int]: ...
     if sys.version_info >= (3, 10):
@@ -234,6 +257,7 @@ if sys.platform == "win32":
         named_pipe: int, mode: int | None, max_collection_count: int | None, collect_data_timeout: int | None, /
     ) -> None: ...
     def TerminateProcess(handle: int, exit_code: int, /) -> None: ...
+    def VirtualQuerySize(address: int, /) -> int: ...
     def WaitForMultipleObjects(handle_seq: Sequence[int], wait_flag: bool, milliseconds: int = 0xFFFFFFFF, /) -> int: ...
     def WaitForSingleObject(handle: int, milliseconds: int, /) -> int: ...
     def WaitNamedPipe(name: str, timeout: int, /) -> None: ...
@@ -249,6 +273,22 @@ if sys.platform == "win32":
         def GetOverlappedResult(self, wait: bool, /) -> tuple[int, int]: ...
         def cancel(self) -> None: ...
         def getbuffer(self) -> bytes | None: ...
+
+    if sys.version_info >= (3, 13):
+        def BatchedWaitForMultipleObjects(
+            handle_seq: Sequence[int], wait_all: bool, milliseconds: int = 0xFFFFFFFF
+        ) -> list[int]: ...
+        def CreateEventW(security_attributes: int, manual_reset: bool, initial_state: bool, name: str | None) -> int: ...
+        def CreateMutexW(security_attributes: int, initial_owner: bool, name: str) -> int: ...
+        def GetLongPathName(path: str) -> str: ...
+        def GetShortPathName(path: str) -> str: ...
+        def OpenEventW(desired_access: int, inherit_handle: bool, name: str) -> int: ...
+        def OpenMutexW(desired_access: int, inherit_handle: bool, name: str) -> int: ...
+        def ReleaseMutex(mutex: int) -> None: ...
+        def ResetEvent(event: int) -> None: ...
+        def SetEvent(event: int) -> None: ...
+
+    def OpenFileMapping(desired_access: int, inherit_handle: bool, name: str, /) -> int: ...
 
     if sys.version_info >= (3, 12):
         def CopyFile2(existing_file_name: str, new_file_name: str, flags: int, progress_routine: int | None = None) -> int: ...

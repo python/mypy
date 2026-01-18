@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #ifndef _WIN32
 // On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
 // PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
@@ -14,6 +18,17 @@
 // can't use the above trick
 #define CPyLong_FromSsize_t PyLong_FromSsize_t
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#  if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+#    define CPY_CLZ(x) __builtin_clzll((unsigned long long)(x))
+#    define CPY_BITS 64
+#  else
+#    define CPY_CLZ(x) __builtin_clz((unsigned int)(x))
+#    define CPY_BITS 32
+#  endif
+#endif
+
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
@@ -124,7 +139,7 @@ CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Tagged int subraction slow path, where the result may be a long integer
+// Tagged int subtraction slow path, where the result may be a long integer
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
@@ -232,13 +247,6 @@ PyObject *CPyBool_Str(bool b) {
     return PyObject_Str(b ? Py_True : Py_False);
 }
 
-static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
-    Py_ssize_t i = CPY_LONG_SIZE_UNSIGNED(v);
-    while (i > 0 && CPY_LONG_DIGIT(v, i - 1) == 0)
-        i--;
-    CPyLong_SetUnsignedSize(v, i);
-}
-
 // Bitwise op '&', '|' or '^' using the generic (slow) API
 static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
     PyObject *aobj = CPyTagged_AsObject(a);
@@ -302,7 +310,6 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
     digit *adigits = GetIntDigits(a, &asize, abuf);
     digit *bdigits = GetIntDigits(b, &bsize, bbuf);
 
-    PyLongObject *r;
     if (unlikely(asize < 0 || bsize < 0)) {
         // Negative operand. This is slower, but bitwise ops on them are pretty rare.
         return GenericBitwiseOp(a, b, op);
@@ -317,31 +324,31 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
         asize = bsize;
         bsize = tmp_size;
     }
-    r = _PyLong_New(op == '&' ? asize : bsize);
-    if (unlikely(r == NULL)) {
+    void *digits = NULL;
+    PyLongWriter *writer = PyLongWriter_Create(0, op == '&' ? asize : bsize, &digits);
+    if (unlikely(writer == NULL)) {
         CPyError_OutOfMemory();
     }
     Py_ssize_t i;
     if (op == '&') {
         for (i = 0; i < asize; i++) {
-            CPY_LONG_DIGIT(r, i) = adigits[i] & bdigits[i];
+            ((digit *)digits)[i] = adigits[i] & bdigits[i];
         }
     } else {
         if (op == '|') {
             for (i = 0; i < asize; i++) {
-                CPY_LONG_DIGIT(r, i) = adigits[i] | bdigits[i];
+                ((digit *)digits)[i] = adigits[i] | bdigits[i];
             }
         } else {
             for (i = 0; i < asize; i++) {
-                CPY_LONG_DIGIT(r, i) = adigits[i] ^ bdigits[i];
+                ((digit *)digits)[i] = adigits[i] ^ bdigits[i];
             }
         }
         for (; i < bsize; i++) {
-            CPY_LONG_DIGIT(r, i) = bdigits[i];
+            ((digit *)digits)[i] = bdigits[i];
         }
     }
-    CPyLong_NormalizeUnsigned(r);
-    return CPyTagged_StealFromObject((PyObject *)r);
+    return CPyTagged_StealFromObject(PyLongWriter_Finish(writer));
 }
 
 // Bitwise '~' slow path
@@ -393,7 +400,7 @@ int64_t CPyLong_AsInt64_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -446,7 +453,7 @@ int32_t CPyLong_AsInt32_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -488,7 +495,7 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
 }
 
 void CPyInt32_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
 }
 
 // i16 unboxing slow path
@@ -503,7 +510,7 @@ int16_t CPyLong_AsInt16_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -545,7 +552,7 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 }
 
 void CPyInt16_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
 // u8 unboxing slow path
@@ -560,7 +567,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_UINT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
             return CPY_LL_UINT_ERROR;
         }
     }
@@ -568,7 +575,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
 }
 
 void CPyUInt8_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
 }
 
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
@@ -588,4 +595,53 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         return PyFloat_AsDouble(result);
     }
     return 1.0;
+}
+
+// int.bit_length()
+CPyTagged CPyTagged_BitLength(CPyTagged self) {
+    // Handle zero
+    if (self == 0) {
+        return 0;
+    }
+
+    // Fast path for small (tagged) ints
+    if (CPyTagged_CheckShort(self)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(self);
+        Py_ssize_t absval = val < 0 ? -val : val;
+        int bits = 0;
+        if (absval) {
+#if defined(_MSC_VER)
+    #if defined(_WIN64)
+            unsigned long idx;
+            if (_BitScanReverse64(&idx, (unsigned __int64)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #else
+            unsigned long idx;
+            if (_BitScanReverse(&idx, (unsigned long)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
+            bits = (int)(CPY_BITS - CPY_CLZ(absval));
+#else
+            // Fallback to loop if no builtin
+            while (absval) {
+                absval >>= 1;
+                bits++;
+            }
+#endif
+        }
+        return bits << 1;
+    }
+
+    // Slow path for big ints
+    PyObject *pyint = CPyTagged_AsObject(self);
+    int bits = _PyLong_NumBits(pyint);
+    Py_DECREF(pyint);
+    if (bits < 0) {
+        // _PyLong_NumBits sets an error on failure
+        return CPY_INT_TAG;
+    }
+    return bits << 1;
 }

@@ -1,10 +1,11 @@
 import socket
 import ssl
 import sys
+from _typeshed import StrOrBytesPath
 from builtins import list as _list  # conflicts with a method named "list"
 from re import Pattern
 from typing import Any, BinaryIO, Final, NoReturn, overload
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 __all__ = ["POP3", "error_proto", "POP3_SSL"]
 
@@ -17,7 +18,7 @@ POP3_SSL_PORT: Final = 995
 CR: Final = b"\r"
 LF: Final = b"\n"
 CRLF: Final = b"\r\n"
-HAVE_SSL: bool
+HAVE_SSL: Final[bool]
 
 class POP3:
     encoding: str
@@ -58,14 +59,32 @@ class POP3_SSL(POP3):
         ) -> None: ...
         def stls(self, context: Any = None) -> NoReturn: ...
     else:
+        @overload
         def __init__(
             self,
             host: str,
             port: int = 995,
-            keyfile: str | None = None,
-            certfile: str | None = None,
+            keyfile: None = None,
+            certfile: None = None,
             timeout: float = ...,
             context: ssl.SSLContext | None = None,
         ) -> None: ...
-        # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored
+        @overload
+        @deprecated(
+            "The `keyfile`, `certfile` parameters are deprecated since Python 3.6; "
+            "removed in Python 3.12. Use `context` parameter instead."
+        )
+        def __init__(
+            self,
+            host: str,
+            port: int = 995,
+            keyfile: StrOrBytesPath | None = None,
+            certfile: StrOrBytesPath | None = None,
+            timeout: float = ...,
+            context: None = None,
+        ) -> None: ...
+        keyfile: StrOrBytesPath | None
+        certfile: StrOrBytesPath | None
+        # "context" is actually the last argument,
+        # but that breaks LSP and it doesn't really matter because all the arguments are ignored
         def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> NoReturn: ...

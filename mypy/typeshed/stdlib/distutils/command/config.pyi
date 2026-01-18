@@ -1,12 +1,12 @@
 from _typeshed import StrOrBytesPath
 from collections.abc import Sequence
 from re import Pattern
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Final, Literal
 
 from ..ccompiler import CCompiler
 from ..cmd import Command
 
-LANG_EXT: dict[str, str]
+LANG_EXT: Final[dict[str, str]]
 
 class config(Command):
     description: str
@@ -81,4 +81,4 @@ class config(Command):
         self, header: str, include_dirs: Sequence[str] | None = None, library_dirs: Sequence[str] | None = None, lang: str = "c"
     ) -> bool: ...
 
-def dump_file(filename: StrOrBytesPath, head: Any | None = None) -> None: ...
+def dump_file(filename: StrOrBytesPath, head=None) -> None: ...

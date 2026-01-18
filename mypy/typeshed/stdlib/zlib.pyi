@@ -1,13 +1,14 @@
 import sys
 from _typeshed import ReadableBuffer
-from typing import Final
+from typing import Any, Final, final, type_check_only
+from typing_extensions import Self
 
 DEFLATED: Final = 8
-DEF_MEM_LEVEL: int  # can change
+DEF_MEM_LEVEL: Final[int]
 DEF_BUF_SIZE: Final = 16384
-MAX_WBITS: int
-ZLIB_VERSION: str  # can change
-ZLIB_RUNTIME_VERSION: str  # can change
+MAX_WBITS: Final[int]
+ZLIB_VERSION: Final[str]
+ZLIB_RUNTIME_VERSION: Final[str]
 Z_NO_COMPRESSION: Final = 0
 Z_PARTIAL_FLUSH: Final = 1
 Z_BEST_COMPRESSION: Final = 9
@@ -25,19 +26,36 @@ Z_RLE: Final = 3
 Z_SYNC_FLUSH: Final = 2
 Z_TREES: Final = 6
 
+if sys.version_info >= (3, 14):
+    # Available when zlib was built with zlib-ng
+    ZLIBNG_VERSION: Final[str]
+
 class error(Exception): ...
 
+# This class is not exposed at runtime. It calls itself zlib.Compress.
+@final
+@type_check_only
 class _Compress:
-    def compress(self, data: ReadableBuffer) -> bytes: ...
-    def flush(self, mode: int = ...) -> bytes: ...
+    def __copy__(self) -> Self: ...
+    def __deepcopy__(self, memo: Any, /) -> Self: ...
+    def compress(self, data: ReadableBuffer, /) -> bytes: ...
+    def flush(self, mode: int = 4, /) -> bytes: ...
     def copy(self) -> _Compress: ...
 
+# This class is not exposed at runtime. It calls itself zlib.Decompress.
+@final
+@type_check_only
 class _Decompress:
-    unused_data: bytes
-    unconsumed_tail: bytes
-    eof: bool
-    def decompress(self, data: ReadableBuffer, max_length: int = ...) -> bytes: ...
-    def flush(self, length: int = ...) -> bytes: ...
+    @property
+    def unused_data(self) -> bytes: ...
+    @property
+    def unconsumed_tail(self) -> bytes: ...
+    @property
+    def eof(self) -> bool: ...
+    def __copy__(self) -> Self: ...
+    def __deepcopy__(self, memo: Any, /) -> Self: ...
+    def decompress(self, data: ReadableBuffer, /, max_length: int = 0) -> bytes: ...
+    def flush(self, length: int = 16384, /) -> bytes: ...
     def copy(self) -> _Decompress: ...
 
 def adler32(data: ReadableBuffer, value: int = 1, /) -> int: ...

@@ -1,11 +1,11 @@
 import sys
-from _typeshed import SupportsRead, SupportsReadline
+from _typeshed import StrOrBytesPath, SupportsRead, SupportsReadline
 from collections.abc import Callable, Iterable, Iterator
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Final, Literal, TextIO
-from typing_extensions import Self
+from typing import Any, Final, Literal, TextIO, overload
+from typing_extensions import Self, deprecated
 
 __all__ = ["FTP", "error_reply", "error_temp", "error_perm", "error_proto", "all_errors", "FTP_TLS"]
 
@@ -41,29 +41,17 @@ class FTP:
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     source_address: tuple[str, int] | None
-    if sys.version_info >= (3, 9):
-        def __init__(
-            self,
-            host: str = "",
-            user: str = "",
-            passwd: str = "",
-            acct: str = "",
-            timeout: float | None = ...,
-            source_address: tuple[str, int] | None = None,
-            *,
-            encoding: str = "utf-8",
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            host: str = "",
-            user: str = "",
-            passwd: str = "",
-            acct: str = "",
-            timeout: float | None = ...,
-            source_address: tuple[str, int] | None = None,
-        ) -> None: ...
-
+    def __init__(
+        self,
+        host: str = "",
+        user: str = "",
+        passwd: str = "",
+        acct: str = "",
+        timeout: float | None = ...,
+        source_address: tuple[str, int] | None = None,
+        *,
+        encoding: str = "utf-8",
+    ) -> None: ...
     def connect(
         self, host: str = "", port: int = 0, timeout: float = -999, source_address: tuple[str, int] | None = None
     ) -> str: ...
@@ -86,7 +74,7 @@ class FTP:
     def makeport(self) -> socket: ...
     def makepasv(self) -> tuple[str, int]: ...
     def login(self, user: str = "", passwd: str = "", acct: str = "") -> str: ...
-    # In practice, `rest` rest can actually be anything whose str() is an integer sequence, so to make it simple we allow integers.
+    # In practice, `rest` can actually be anything whose str() is an integer sequence, so to make it simple we allow integers
     def ntransfercmd(self, cmd: str, rest: int | str | None = None) -> tuple[socket, int | None]: ...
     def transfercmd(self, cmd: str, rest: int | str | None = None) -> socket: ...
     def retrbinary(
@@ -131,37 +119,44 @@ class FTP_TLS(FTP):
             source_address: tuple[str, int] | None = None,
             encoding: str = "utf-8",
         ) -> None: ...
-    elif sys.version_info >= (3, 9):
+    else:
+        @overload
         def __init__(
             self,
             host: str = "",
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            keyfile: str | None = None,
-            certfile: str | None = None,
+            keyfile: None = None,
+            certfile: None = None,
             context: SSLContext | None = None,
             timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
         ) -> None: ...
-    else:
+        @overload
+        @deprecated(
+            "The `keyfile`, `certfile` parameters are deprecated since Python 3.6; "
+            "removed in Python 3.12. Use `context` parameter instead."
+        )
         def __init__(
             self,
             host: str = "",
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            keyfile: str | None = None,
-            certfile: str | None = None,
-            context: SSLContext | None = None,
+            keyfile: StrOrBytesPath | None = None,
+            certfile: StrOrBytesPath | None = None,
+            context: None = None,
             timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
+            *,
+            encoding: str = "utf-8",
         ) -> None: ...
-    ssl_version: int
-    keyfile: str | None
-    certfile: str | None
+        ssl_version: int
+        keyfile: StrOrBytesPath | None
+        certfile: StrOrBytesPath | None
     context: SSLContext
     def login(self, user: str = "", passwd: str = "", acct: str = "", secure: bool = True) -> str: ...
     def auth(self) -> str: ...

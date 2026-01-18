@@ -1,12 +1,12 @@
 from collections.abc import Callable, Iterator
 from re import Pattern
-from typing import Any
+from typing import Any, Final
 
-ESCAPE: Pattern[str]
-ESCAPE_ASCII: Pattern[str]
-HAS_UTF8: Pattern[bytes]
-ESCAPE_DCT: dict[str, str]
-INFINITY: float
+ESCAPE: Final[Pattern[str]]  # undocumented
+ESCAPE_ASCII: Final[Pattern[str]]  # undocumented
+HAS_UTF8: Final[Pattern[bytes]]  # undocumented
+ESCAPE_DCT: Final[dict[str, str]]  # undocumented
+INFINITY: Final[float]  # undocumented
 
 def py_encode_basestring(s: str) -> str: ...  # undocumented
 def py_encode_basestring_ascii(s: str) -> str: ...  # undocumented

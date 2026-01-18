@@ -1,0 +1,477 @@
+[case testAnnotateNonNativeAttribute]
+from typing import Any
+
+def f1(x):
+    return x.foo  # A: Get non-native attribute "foo".
+
+def f2(x: Any) -> object:
+    return x.foo  # A: Get non-native attribute "foo".
+
+def f3(x):
+    x.bar = 1  # A: Set non-native attribute "bar".
+
+class C:
+    foo: int
+
+    def method(self) -> int:
+        return self.foo
+
+def good1(x: C) -> int:
+    return x.foo
+
+[case testAnnotateMethod]
+class C:
+    def method(self, x):
+        return x + "y"  # A: Generic "+" operation.
+
+[case testAnnotateGenericBinaryOperations]
+def generic_add(x):
+    return x + 1  # A: Generic "+" operation.
+
+def generic_sub(x):
+    return x - 1  # A: Generic "-" operation.
+
+def generic_mul(x):
+    return x * 1  # A: Generic "*" operation.
+
+def generic_div(x):
+    return x / 1  # A: Generic "/" operation.
+
+def generic_floor_div(x):
+    return x // 1  # A: Generic "//" operation.
+
+def generic_unary_plus(x):
+    return +x  # A: Generic unary "+" operation.
+
+def generic_unary_minus(x):
+    return -x  # A: Generic unary "-" operation.
+
+def native_int_ops(x: int, y: int) -> int:
+    a = x + 1 - y
+    return x * a // y
+
+[case testAnnotateGenericBitwiseOperations]
+def generic_and(x):
+    return x & 1  # A: Generic "&" operation.
+
+def generic_or(x):
+    return x | 1  # A: Generic "|" operation.
+
+def generic_xor(x):
+    return x ^ 1  # A: Generic "^" operation.
+
+def generic_left_shift(x):
+    return x << 1  # A: Generic "<<" operation.
+
+def generic_right_shift(x):
+    return x >> 1  # A: Generic ">>" operation.
+
+def generic_invert(x):
+    return ~x  # A: Generic "~" operation.
+
+def native_int_ops(x: int, y: int) -> int:
+    a = (x & 1) << y
+    return (x | a) >> (y ^ 1)
+
+[case testAnnotateGenericComparisonOperations]
+def generic_eq(x, y):
+    return x == y  # A: Generic comparison operation.
+
+def generic_ne(x, y):
+    return x != y  # A: Generic comparison operation.
+
+def generic_lt(x, y):
+    return x < y  # A: Generic comparison operation.
+
+def generic_le(x, y):
+    return x <= y  # A: Generic comparison operation.
+
+def generic_gt(x, y):
+    return x > y  # A: Generic comparison operation.
+
+def generic_ge(x, y):
+    return x >= y  # A: Generic comparison operation.
+
+def int_comparisons(x: int, y: int) -> int:
+    if x == y:
+        return 0
+    if x < y:
+        return 1
+    if x > y:
+        return 2
+    return 3
+
+[case testAnnotateTwoOperationsOnLine]
+def f(x):
+    return x.foo + 1  # A: Get non-native attribute "foo". Generic "+" operation.
+
+[case testAnnotateNonNativeMethod]
+from typing import Any
+
+def f1(x):
+    return x.foo()  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
+
+def f2(x: Any) -> None:
+    x.foo(1)  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
+    x.foo(a=1)  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
+    t = (1, 'x')
+    x.foo(*t)  # A: Get non-native attribute "foo". Generic call operation.
+    d = {"a": 1}
+    x.foo(*d)  # A: Get non-native attribute "foo". Generic call operation.
+
+class C:
+    def foo(self) -> int:
+        return 0
+
+def g(c: C) -> int:
+    return c.foo()
+
+[case testAnnotateGlobalVariableAccess]
+from typing import Final
+import nonnative
+
+x = 0
+y: Final = 0
+
+def read() -> int:
+    return x  # A: Access global "x" through namespace dictionary (hint: access is faster if you can make it Final).
+
+def assign(a: int) -> None:
+    global x
+    x = a  # A: Access global "x" through namespace dictionary (hint: access is faster if you can make it Final).
+
+def read_final() -> int:
+    return y
+
+def read_nonnative() -> int:
+    return nonnative.z  # A: Get non-native attribute "z".
+
+[file nonnative.py]
+z = 2
+
+[case testAnnotateNestedFunction]
+def f1() -> None:
+    def g() -> None:  # A: A nested function object is allocated each time statement is executed. A module-level function would be faster.
+        pass
+
+    g()
+
+def f2() -> int:
+    l = lambda: 1  # A: A new object is allocated for lambda each time it is evaluated. A module-level function would be faster.
+    return l()
+
+[case testAnnotateGetSetItem]
+from typing import List, Dict
+
+def f1(x, y):
+    return x[y]  # A: Generic indexing operation.
+
+def f2(x, y, z):
+    x[y] = z  # A: Generic indexed assignment.
+
+def list_get_item(x: List[int], y: int) -> int:
+    return x[y]
+
+def list_set_item(x: List[int], y: int) -> None:
+    x[y] = 5
+
+def dict_get_item(d: Dict[str, str]) -> str:
+    return d['x']
+
+def dict_set_item(d: Dict[str, str]) -> None:
+    d['x'] = 'y'
+
+[case testAnnotateStrMethods]
+def startswith(x: str) -> bool:
+    return x.startswith('foo')
+
+def islower(x: str) -> bool:
+    return x.islower()  # A: Call non-native method "islower" (it may be defined in a non-native class, or decorated).
+
+[case testAnnotateSpecificStdlibFeatures]
+import functools
+import itertools
+from functools import partial
+from itertools import chain, groupby, islice
+
+def f(x: int, y: int) -> None: pass
+
+def use_partial1() -> None:
+    p = partial(f, 1)  # A: "functools.partial" is inefficient in compiled code.
+    p(2)
+
+def use_partial2() -> None:
+    p = functools.partial(f, 1)  # A: "functools.partial" is inefficient in compiled code.
+    p(2)
+
+def use_chain1() -> None:
+    for x in chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient in compiled code (hint: replace with for loops).
+        pass
+
+def use_chain2() -> None:
+    for x in itertools.chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient in compiled code (hint: replace with for loops).
+        pass
+
+def use_groupby1() -> None:
+    for a, b in groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient in compiled code.
+        pass
+
+def use_groupby2() -> None:
+    for a, b in itertools.groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient in compiled code.
+        pass
+
+def use_islice() -> None:
+    for x in islice([1, 2, 3], 1, 2):  # A: "itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).
+        pass
+
+[case testAnnotateGenericForLoop]
+from typing import Iterable, Sequence, Iterator, List
+
+def f1(a):
+    for x in a:  # A: For loop uses generic operations (iterable has type "Any").
+        pass
+
+def f2(a: Iterable[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Iterable").
+        pass
+
+def f3(a: Sequence[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Sequence").
+        pass
+
+def f4(a: Iterator[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Iterator").
+        pass
+
+def good1(a: List[str]) -> None:
+    for x in a:
+        pass
+
+class C:
+    def __iter__(self) -> Iterator[str]:
+        assert False
+
+def good2(a: List[str]) -> None:
+    for x in a:
+        pass
+
+[case testAnnotateGenericComprehensionOrGenerator]
+from typing import List, Iterable
+
+def f1(a):
+    return [x for x in a]  # A: Comprehension or generator uses generic operations (iterable has type "Any").
+
+def f2(a: Iterable[int]):
+    return {x for x in a}  # A: Comprehension or generator uses generic operations (iterable has the abstract type "typing.Iterable").
+
+def f3(a):
+    return {x: 1 for x in a}  # A: Comprehension uses generic operations (iterable has type "Any").
+
+def f4(a):
+    return (x for x in a)  # A: Comprehension or generator uses generic operations (iterable has type "Any").
+
+def good1(a: List[int]) -> List[int]:
+    return [x + 1 for x in a]
+
+[case testAnnotateIsinstance]
+from typing import Protocol, runtime_checkable, Union
+
+@runtime_checkable
+class P(Protocol):
+    def foo(self) -> None: ...
+
+class C: pass
+
+class D(C):
+    def bar(self) -> None: pass
+
+def bad1(x: object) -> bool:
+    return isinstance(x, P)  # A: Expensive isinstance() check against protocol "P".
+
+def bad2(x: object) -> bool:
+    return isinstance(x, (str, P))  # A: Expensive isinstance() check against protocol "P".
+
+def good1(x: C) -> bool:
+    if isinstance(x, D):
+        x.bar()
+    return isinstance(x, D)
+
+def good2(x: Union[int, str]) -> int:
+    if isinstance(x, int):
+        return x + 1
+    else:
+        return int(x + "1")
+[typing fixtures/typing-full.pyi]
+
+[case testAnnotateDeepcopy]
+from typing import Any
+import copy
+
+def f(x: Any) -> Any:
+    return copy.deepcopy(x)  # A: "copy.deepcopy" tends to be slow. Make a shallow copy if possible.
+
+[case testAnnotateContextManager]
+from typing import Iterator
+from contextlib import contextmanager
+
+@contextmanager
+def slow_ctx_manager() -> Iterator[None]:
+    yield
+
+class FastCtxManager:
+    def __enter__(self) -> None: pass
+    def __exit__(self, a, b, c) -> None: pass
+
+def f1(x) -> None:
+    with slow_ctx_manager():  # A: "slow_ctx_manager" uses @contextmanager, which is slow in compiled code. Use a native class with "__enter__" and "__exit__" methods instead.
+        x.foo  # A: Get non-native attribute "foo".
+
+def f2(x) -> None:
+    with FastCtxManager():
+        x.foo  # A: Get non-native attribute "foo".
+
+[case testAnnotateAvoidNoiseAtTopLevel]
+from typing import Final
+
+class C(object):
+    x = "s"
+    y: Final = 1
+
+x = "s"
+y: Final = 1
+
+def f1() -> None:
+    x = object  # A: Get non-native attribute "object".
+
+[case testAnnotateCreateNonNativeInstance]
+from typing import NamedTuple
+from dataclasses import dataclass
+
+from nonnative import C
+
+def f1() -> None:
+    c = C()  # A: Creating an instance of non-native class "C" is slow.
+    c.foo()  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
+
+class NT(NamedTuple):
+    x: int
+    y: str
+
+def f2() -> int:
+    o = NT(1, "x")  # A: Creating an instance of non-native class "NT" is slow.
+    return o.x
+
+def f3() -> int:
+    o = NT(x=1, y="x")  # A: Creating an instance of non-native class "NT" is slow.
+    a, b = o
+    return a
+
+@dataclass
+class D:
+    x: int
+
+def f4() -> int:
+    o = D(1)  # A: Class "D" is only partially native, and constructing an instance is slow.
+    return o.x
+
+class Nat:
+    x: int
+
+class Deriv(Nat):
+    def __init__(self, y: int) -> None:
+        self.y = y
+
+def good1() -> int:
+    n = Nat()
+    d = Deriv(y=1)
+    return n.x + d.x + d.y
+
+[file nonnative.py]
+class C:
+    def foo(self) -> None: pass
+
+[case testAnnotateGetAttrAndSetAttrBuiltins]
+def f1(x, s: str):
+    return getattr("x", s)  # A: Dynamic attribute lookup.
+
+def f2(x, s: str):
+    setattr(x, s, None)  # A: Dynamic attribute set.
+
+[case testAnnotateSpecialAssignments]
+from typing import TypeVar, NamedTuple, List, TypedDict, NewType
+
+# Even though these are slow, we don't complain about them since there is generally
+# no better way (and at module top level these are very unlikely to be bottlenecks)
+A = List[int]
+T = TypeVar("T", bound=List[int])
+NT = NamedTuple("NT", [("x", List[int])])
+TD = TypedDict("TD", {"x": List[int]})
+New = NewType("New", List[int])
+[typing fixtures/typing-full.pyi]
+
+[case testAnnotateCallDecoratedNativeFunctionOrMethod]
+from typing import TypeVar, Callable, Any
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def mydeco(f: F) -> F:
+    return f
+
+@mydeco
+def d(x: int) -> int:
+    return x
+
+def f1() -> int:
+    return d(1)  # A: Calling a decorated function ("d") is inefficient, even if it's native.
+
+class C:
+    @mydeco
+    def d(self) -> None:
+        pass
+
+
+def f2() -> None:
+    c = C()
+    c.d()  # A: Call non-native method "d" (it may be defined in a non-native class, or decorated).
+
+[case testAnnotateCallDifferentKindsOfMethods]
+from abc import ABC, abstractmethod
+
+class C:
+    @staticmethod
+    def s() -> None: ...
+
+    @classmethod
+    def c(cls) -> None: ...
+
+    @property
+    def p(self) -> int:
+        return 0
+
+    @property
+    def p2(self) -> int:
+        return 0
+
+    @p2.setter
+    def p2(self, x: int) -> None:
+        pass
+
+def f1() -> int:
+    c = C()
+    c.s()
+    c.c()
+    c.p2 = 1
+    return c.p + c.p2
+
+class A(ABC):
+    @abstractmethod
+    def m(self) -> int:
+        raise NotImplementedError  # A: Get non-native attribute "NotImplementedError".
+
+class D(A):
+    def m(self) -> int:
+        return 1
+
+def f2() -> int:
+    d = D()
+    return d.m()

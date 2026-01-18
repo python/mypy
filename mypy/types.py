@@ -4,41 +4,66 @@ from __future__ import annotations
 
 import sys
 from abc import abstractmethod
+from collections.abc import Iterable, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Dict,
     Final,
-    Iterable,
-    NamedTuple,
     NewType,
-    Sequence,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
     TypeVar,
-    Union,
     cast,
+    overload,
 )
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self
+
+from librt.internal import (
+    read_int as read_int_bare,
+    read_str as read_str_bare,
+    write_int as write_int_bare,
+    write_str as write_str_bare,
+)
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
-from mypy.nodes import (
-    ARG_POS,
-    ARG_STAR,
-    ARG_STAR2,
-    INVARIANT,
-    ArgKind,
-    FakeInfo,
-    FuncDef,
-    SymbolNode,
+from mypy.cache import (
+    DICT_STR_GEN,
+    END_TAG,
+    EXTRA_ATTRS,
+    LIST_GEN,
+    LITERAL_NONE,
+    ReadBuffer,
+    Tag,
+    WriteBuffer,
+    read_bool,
+    read_int,
+    read_int_list,
+    read_literal,
+    read_str,
+    read_str_list,
+    read_str_opt,
+    read_str_opt_list,
+    read_tag,
+    write_bool,
+    write_int,
+    write_int_list,
+    write_literal,
+    write_str,
+    write_str_list,
+    write_str_opt,
+    write_str_opt_list,
+    write_tag,
 )
+from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
 from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
 
 T = TypeVar("T")
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
@@ -70,7 +95,7 @@ JsonDict: _TypeAlias = Dict[str, Any]
 #
 # Note: Float values are only used internally. They are not accepted within
 # Literal[...].
-LiteralValue: _TypeAlias = Union[int, str, bool, float]
+LiteralValue: _TypeAlias = int | str | bool | float
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -84,6 +109,9 @@ if TYPE_CHECKING:
         SyntheticTypeVisitor as SyntheticTypeVisitor,
         TypeVisitor as TypeVisitor,
     )
+
+TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
+TYPE_NAMES: Final = ("builtins.type", "typing.Type")
 
 TYPE_VAR_LIKE_NAMES: Final = (
     "typing.TypeVar",
@@ -131,8 +159,17 @@ LITERAL_TYPE_NAMES: Final = ("typing.Literal", "typing_extensions.Literal")
 # Supported Annotated type names.
 ANNOTATED_TYPE_NAMES: Final = ("typing.Annotated", "typing_extensions.Annotated")
 
-# Supported @deprecated type names
+# Supported Concatenate type names.
+CONCATENATE_TYPE_NAMES: Final = ("typing.Concatenate", "typing_extensions.Concatenate")
+
+# Supported Unpack type names.
+UNPACK_TYPE_NAMES: Final = ("typing.Unpack", "typing_extensions.Unpack")
+
+# Supported @deprecated decorator names
 DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
+
+# Supported @disjoint_base decorator names
+DISJOINT_BASE_DECORATOR_NAMES: Final = ("typing.disjoint_base", "typing_extensions.disjoint_base")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
@@ -149,10 +186,6 @@ REVEAL_TYPE_NAMES: Final = ("builtins.reveal_type", *IMPORTED_REVEAL_TYPE_NAMES)
 ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type")
 
 OVERLOAD_NAMES: Final = ("typing.overload", "typing_extensions.overload")
-
-# Attributes that can optionally be defined in the body of a subclass of
-# enum.Enum but are removed from the class __dict__ by EnumMeta.
-ENUM_REMOVED_PROPS: Final = ("_ignore_", "_order_", "__order__")
 
 NEVER_NAMES: Final = (
     "typing.NoReturn",
@@ -176,6 +209,10 @@ DATACLASS_TRANSFORM_NAMES: Final = (
 )
 # Supported @override decorator names.
 OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
+
+ELLIPSIS_TYPE_NAMES: Final = ("builtins.ellipsis", "types.EllipsisType")
+
+NOT_IMPLEMENTED_TYPE_NAMES: Final = ("builtins._NotImplementedType", "types.NotImplementedType")
 
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
@@ -271,9 +308,6 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
-    def resolve_string_annotation(self) -> Type:
-        return self
-
     def accept(self, visitor: TypeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
@@ -290,8 +324,12 @@ class Type(mypy.nodes.Context):
     def deserialize(cls, data: JsonDict) -> Type:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
-    def is_singleton_type(self) -> bool:
-        return False
+    def write(self, data: WriteBuffer) -> None:
+        raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> Type:
+        raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
 
 class TypeAliasType(Type):
@@ -352,34 +390,7 @@ class TypeAliasType(Type):
             ):
                 mapping[tvar.id] = sub
 
-        new_tp = self.alias.target.accept(InstantiateAliasVisitor(mapping))
-        new_tp.accept(LocationSetter(self.line, self.column))
-        new_tp.line = self.line
-        new_tp.column = self.column
-        return new_tp
-
-    def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
-        # Private method mostly for debugging and testing.
-        unroller = UnrollAliasVisitor(set())
-        if nothing_args:
-            alias = self.copy_modified(args=[UninhabitedType()] * len(self.args))
-        else:
-            alias = self
-        unrolled = alias.accept(unroller)
-        assert isinstance(unrolled, ProperType)
-        return unrolled, unroller.recursed
-
-    def expand_all_if_possible(self, nothing_args: bool = False) -> ProperType | None:
-        """Attempt a full expansion of the type alias (including nested aliases).
-
-        If the expansion is not possible, i.e. the alias is (mutually-)recursive,
-        return None. If nothing_args is True, replace all type arguments with an
-        UninhabitedType() (used to detect recursively defined aliases).
-        """
-        unrolled, recursed = self._partial_expansion(nothing_args=nothing_args)
-        if recursed:
-            return None
-        return unrolled
+        return self.alias.target.accept(InstantiateAliasVisitor(mapping))
 
     @property
     def is_recursive(self) -> bool:
@@ -393,7 +404,7 @@ class TypeAliasType(Type):
         assert self.alias is not None, "Unfixed type alias"
         is_recursive = self.alias._is_recursive
         if is_recursive is None:
-            is_recursive = self.expand_all_if_possible(nothing_args=True) is None
+            is_recursive = self.alias in self.alias.target.accept(CollectAliasesVisitor())
             # We cache the value on the underlying TypeAlias node as an optimization,
             # since the value is the same for all instances of the same alias.
             self.alias._is_recursive = is_recursive
@@ -408,6 +419,11 @@ class TypeAliasType(Type):
         if self.alias is not None:
             return self.alias.target.can_be_false
         return super().can_be_false_default()
+
+    def copy_modified(self, *, args: list[Type] | None = None) -> TypeAliasType:
+        return TypeAliasType(
+            self.alias, args if args is not None else self.args.copy(), self.line, self.column
+        )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_alias_type(self)
@@ -442,10 +458,19 @@ class TypeAliasType(Type):
         alias.type_ref = data["type_ref"]
         return alias
 
-    def copy_modified(self, *, args: list[Type] | None = None) -> TypeAliasType:
-        return TypeAliasType(
-            self.alias, args if args is not None else self.args.copy(), self.line, self.column
-        )
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TYPE_ALIAS_TYPE)
+        write_type_list(data, self.args)
+        assert self.alias is not None
+        write_str(data, self.alias.fullname)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> TypeAliasType:
+        alias = TypeAliasType(None, read_type_list(data))
+        alias.type_ref = read_str(data)
+        assert read_tag(data) == END_TAG
+        return alias
 
 
 class TypeGuardedType(Type):
@@ -459,6 +484,11 @@ class TypeGuardedType(Type):
 
     def __repr__(self) -> str:
         return f"TypeGuard({self.type_guard})"
+
+    # This may hide some real bugs, but it is convenient for various "synthetic"
+    # visitors, similar to RequiredType and ReadOnlyType below.
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return self.type_guard.accept(visitor)
 
 
 class RequiredType(Type):
@@ -474,6 +504,20 @@ class RequiredType(Type):
             return f"Required[{self.item}]"
         else:
             return f"NotRequired[{self.item}]"
+
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return self.item.accept(visitor)
+
+
+class ReadOnlyType(Type):
+    """ReadOnly[T] Only usable at top-level of a TypedDict definition."""
+
+    def __init__(self, item: Type) -> None:
+        super().__init__(line=item.line, column=item.column)
+        self.item = item
+
+    def __repr__(self) -> str:
+        return f"ReadOnly[{self.item}]"
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return self.item.accept(visitor)
@@ -501,7 +545,7 @@ class TypeVarId:
     # function type variables.
 
     # Metavariables are allocated unique ids starting from 1.
-    raw_id: int
+    raw_id: Final[int]
 
     # Level of the variable in type inference. Currently either 0 for
     # declared types, or 1 for type inference metavariables.
@@ -529,6 +573,10 @@ class TypeVarId:
         return self.raw_id.__repr__()
 
     def __eq__(self, other: object) -> bool:
+        # Although this call is not expensive (like UnionType or TypedDictType),
+        # most of the time we get the same object here, so add a fast path.
+        if self is other:
+            return True
         return (
             isinstance(other, TypeVarId)
             and self.raw_id == other.raw_id
@@ -540,7 +588,7 @@ class TypeVarId:
         return not (self == other)
 
     def __hash__(self) -> int:
-        return hash((self.raw_id, self.meta_level, self.namespace))
+        return self.raw_id ^ (self.meta_level << 8) ^ hash(self.namespace)
 
     def is_meta_var(self) -> bool:
         return self.meta_level > 0
@@ -594,6 +642,11 @@ class TypeVarLikeType(ProperType):
     def has_default(self) -> bool:
         t = get_proper_type(self.default)
         return not (isinstance(t, AnyType) and t.type_of_any == TypeOfAny.from_omitted_generics)
+
+    def values_or_bound(self) -> ProperType:
+        if isinstance(self, TypeVarType) and self.values:
+            return UnionType(self.values)
+        return get_proper_type(self.upper_bound)
 
 
 class TypeVarType(TypeVarLikeType):
@@ -685,6 +738,32 @@ class TypeVarType(TypeVarLikeType):
             default=deserialize_type(data["default"]),
             variance=data["variance"],
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TYPE_VAR_TYPE)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        write_type_list(data, self.values)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.variance)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> TypeVarType:
+        ret = TypeVarType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_type_list(data),
+            read_type(data),
+            read_type(data),
+            read_int(data),
+        )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class ParamSpecFlavor:
@@ -815,6 +894,34 @@ class ParamSpecType(TypeVarLikeType):
             prefix=Parameters.deserialize(data["prefix"]),
         )
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, PARAM_SPEC_TYPE)
+        self.prefix.write(data)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        write_int(data, self.flavor)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> ParamSpecType:
+        assert read_tag(data) == PARAMETERS
+        prefix = Parameters.read(data)
+        ret = ParamSpecType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_int(data),
+            read_type(data),
+            read_type(data),
+            prefix=prefix,
+        )
+        assert read_tag(data) == END_TAG
+        return ret
+
 
 class TypeVarTupleType(TypeVarLikeType):
     """Type that refers to a TypeVarTuple.
@@ -870,6 +977,34 @@ class TypeVarTupleType(TypeVarLikeType):
             min_len=data["min_len"],
         )
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TYPE_VAR_TUPLE_TYPE)
+        self.tuple_fallback.write(data)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.min_len)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> TypeVarTupleType:
+        assert read_tag(data) == INSTANCE
+        fallback = Instance.read(data)
+        ret = TypeVarTupleType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_type(data),
+            fallback,
+            read_type(data),
+            min_len=read_int(data),
+        )
+        assert read_tag(data) == END_TAG
+        return ret
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var_tuple(self)
 
@@ -906,27 +1041,50 @@ class TypeVarTupleType(TypeVarLikeType):
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = ("name", "args", "optional", "empty_tuple_index")
+    __slots__ = (
+        "name",
+        "args",
+        "optional",
+        "empty_tuple_index",
+        "original_str_expr",
+        "original_str_fallback",
+    )
 
     def __init__(
         self,
-        name: str | None,
+        name: str,
         args: Sequence[Type] | None = None,
         line: int = -1,
         column: int = -1,
         optional: bool = False,
         empty_tuple_index: bool = False,
+        original_str_expr: str | None = None,
+        original_str_fallback: str | None = None,
     ) -> None:
         super().__init__(line, column)
         if not args:
             args = []
-        assert name is not None
         self.name = name
         self.args = tuple(args)
         # Should this type be wrapped in an Optional?
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
+        # If this UnboundType was originally defined as a str or bytes, keep track of
+        # the original contents of that string-like thing. This way, if this UnboundExpr
+        # ever shows up inside of a LiteralType, we can determine whether that
+        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
+        # (unless 'foo' is an alias for another literal or something) and
+        # Literal["foo"] most likely is.
+        #
+        # We keep track of the entire string instead of just using a boolean flag
+        # so we can distinguish between things like Literal["foo"] vs
+        # Literal["    foo   "].
+        #
+        # We also keep track of what the original base fallback type was supposed to be
+        # so we don't have to try and recompute it later
+        self.original_str_expr = original_str_expr
+        self.original_str_fallback = original_str_fallback
 
     def copy_modified(self, args: Bogus[Sequence[Type] | None] = _dummy) -> UnboundType:
         if args is _dummy:
@@ -938,19 +1096,25 @@ class UnboundType(ProperType):
             column=self.column,
             optional=self.optional,
             empty_tuple_index=self.empty_tuple_index,
+            original_str_expr=self.original_str_expr,
+            original_str_fallback=self.original_str_fallback,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.optional, tuple(self.args)))
+        return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (
-            self.name == other.name and self.optional == other.optional and self.args == other.args
+            self.name == other.name
+            and self.optional == other.optional
+            and self.args == other.args
+            and self.original_str_expr == other.original_str_expr
+            and self.original_str_fallback == other.original_str_fallback
         )
 
     def serialize(self) -> JsonDict:
@@ -958,12 +1122,38 @@ class UnboundType(ProperType):
             ".class": "UnboundType",
             "name": self.name,
             "args": [a.serialize() for a in self.args],
+            "expr": self.original_str_expr,
+            "expr_fallback": self.original_str_fallback,
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UnboundType:
         assert data[".class"] == "UnboundType"
-        return UnboundType(data["name"], [deserialize_type(a) for a in data["args"]])
+        return UnboundType(
+            data["name"],
+            [deserialize_type(a) for a in data["args"]],
+            original_str_expr=data["expr"],
+            original_str_fallback=data["expr_fallback"],
+        )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, UNBOUND_TYPE)
+        write_str(data, self.name)
+        write_type_list(data, self.args)
+        write_str_opt(data, self.original_str_expr)
+        write_str_opt(data, self.original_str_fallback)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> UnboundType:
+        ret = UnboundType(
+            read_str(data),
+            read_type_list(data),
+            original_str_expr=read_str_opt(data),
+            original_str_fallback=read_str_opt(data),
+        )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class CallableArgument(ProperType):
@@ -1058,6 +1248,17 @@ class UnpackType(ProperType):
 
     def serialize(self) -> JsonDict:
         return {".class": "UnpackType", "type": self.type.serialize()}
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, UNPACK_TYPE)
+        self.type.write(data)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> UnpackType:
+        ret = UnpackType(read_type(data))
+        assert read_tag(data) == END_TAG
+        return ret
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UnpackType:
@@ -1160,6 +1361,25 @@ class AnyType(ProperType):
             data["missing_import_name"],
         )
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, ANY_TYPE)
+        write_type_opt(data, self.source_any)
+        write_int(data, self.type_of_any)
+        write_str_opt(data, self.missing_import_name)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> AnyType:
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == ANY_TYPE
+            source_any = AnyType.read(data)
+        else:
+            source_any = None
+        ret = AnyType(read_int(data), source_any, read_str_opt(data))
+        assert read_tag(data) == END_TAG
+        return ret
+
 
 class UninhabitedType(ProperType):
     """This type has no members.
@@ -1193,10 +1413,10 @@ class UninhabitedType(ProperType):
         return visitor.visit_uninhabited_type(self)
 
     def __hash__(self) -> int:
-        return hash(UninhabitedType)
+        return hash((UninhabitedType, self.ambiguous))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, UninhabitedType)
+        return isinstance(other, UninhabitedType) and other.ambiguous == self.ambiguous
 
     def serialize(self) -> JsonDict:
         return {".class": "UninhabitedType"}
@@ -1204,6 +1424,15 @@ class UninhabitedType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> UninhabitedType:
         assert data[".class"] == "UninhabitedType"
+        return UninhabitedType()
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, UNINHABITED_TYPE)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> UninhabitedType:
+        assert read_tag(data) == END_TAG
         return UninhabitedType()
 
 
@@ -1238,8 +1467,14 @@ class NoneType(ProperType):
         assert data[".class"] == "NoneType"
         return NoneType()
 
-    def is_singleton_type(self) -> bool:
-        return True
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, NONE_TYPE)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> NoneType:
+        assert read_tag(data) == END_TAG
+        return NoneType()
 
 
 # NoneType used to be called NoneTyp so to avoid needlessly breaking
@@ -1285,6 +1520,17 @@ class DeletedType(ProperType):
         assert data[".class"] == "DeletedType"
         return DeletedType(data["source"])
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, DELETED_TYPE)
+        write_str_opt(data, self.source)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> DeletedType:
+        ret = DeletedType(read_str_opt(data))
+        assert read_tag(data) == END_TAG
+        return ret
+
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
 NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
@@ -1327,7 +1573,7 @@ class ExtraAttrs:
         return {
             ".class": "ExtraAttrs",
             "attrs": {k: v.serialize() for k, v in self.attrs.items()},
-            "immutable": list(self.immutable),
+            "immutable": sorted(self.immutable),
             "mod_name": self.mod_name,
         }
 
@@ -1339,6 +1585,19 @@ class ExtraAttrs:
             set(data["immutable"]),
             data["mod_name"],
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, EXTRA_ATTRS)
+        write_type_map(data, self.attrs)
+        write_str_list(data, sorted(self.immutable))
+        write_str_opt(data, self.mod_name)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> ExtraAttrs:
+        ret = ExtraAttrs(read_type_map(data), set(read_str_list(data)), read_str_opt(data))
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class Instance(ProperType):
@@ -1444,11 +1703,13 @@ class Instance(ProperType):
     def serialize(self) -> JsonDict | str:
         assert self.type is not None
         type_ref = self.type.fullname
-        if not self.args and not self.last_known_value:
+        if not self.args and not self.last_known_value and not self.extra_attrs:
             return type_ref
-        data: JsonDict = {".class": "Instance"}
-        data["type_ref"] = type_ref
-        data["args"] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {
+            ".class": "Instance",
+            "type_ref": type_ref,
+            "args": [arg.serialize() for arg in self.args],
+        }
         if self.last_known_value is not None:
             data["last_known_value"] = self.last_known_value.serialize()
         data["extra_attrs"] = self.extra_attrs.serialize() if self.extra_attrs else None
@@ -1474,6 +1735,83 @@ class Instance(ProperType):
             inst.extra_attrs = ExtraAttrs.deserialize(data["extra_attrs"])
         return inst
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, INSTANCE)
+        if not self.args and not self.last_known_value and not self.extra_attrs:
+            type_ref = self.type.fullname
+            if type_ref == "builtins.str":
+                write_tag(data, INSTANCE_STR)
+            elif type_ref == "builtins.function":
+                write_tag(data, INSTANCE_FUNCTION)
+            elif type_ref == "builtins.int":
+                write_tag(data, INSTANCE_INT)
+            elif type_ref == "builtins.bool":
+                write_tag(data, INSTANCE_BOOL)
+            elif type_ref == "builtins.object":
+                write_tag(data, INSTANCE_OBJECT)
+            else:
+                write_tag(data, INSTANCE_SIMPLE)
+                write_str_bare(data, type_ref)
+            return
+        write_tag(data, INSTANCE_GENERIC)
+        write_str(data, self.type.fullname)
+        write_type_list(data, self.args)
+        write_type_opt(data, self.last_known_value)
+        if self.extra_attrs is None:
+            write_tag(data, LITERAL_NONE)
+        else:
+            self.extra_attrs.write(data)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> Instance:
+        tag = read_tag(data)
+        # This is quite verbose, but this is very hot code, so we are not
+        # using dictionary lookups here.
+        if tag == INSTANCE_STR:
+            if instance_cache.str_type is None:
+                instance_cache.str_type = Instance(NOT_READY, [])
+                instance_cache.str_type.type_ref = "builtins.str"
+            return instance_cache.str_type
+        if tag == INSTANCE_FUNCTION:
+            if instance_cache.function_type is None:
+                instance_cache.function_type = Instance(NOT_READY, [])
+                instance_cache.function_type.type_ref = "builtins.function"
+            return instance_cache.function_type
+        if tag == INSTANCE_INT:
+            if instance_cache.int_type is None:
+                instance_cache.int_type = Instance(NOT_READY, [])
+                instance_cache.int_type.type_ref = "builtins.int"
+            return instance_cache.int_type
+        if tag == INSTANCE_BOOL:
+            if instance_cache.bool_type is None:
+                instance_cache.bool_type = Instance(NOT_READY, [])
+                instance_cache.bool_type.type_ref = "builtins.bool"
+            return instance_cache.bool_type
+        if tag == INSTANCE_OBJECT:
+            if instance_cache.object_type is None:
+                instance_cache.object_type = Instance(NOT_READY, [])
+                instance_cache.object_type.type_ref = "builtins.object"
+            return instance_cache.object_type
+        if tag == INSTANCE_SIMPLE:
+            inst = Instance(NOT_READY, [])
+            inst.type_ref = read_str_bare(data)
+            return inst
+        assert tag == INSTANCE_GENERIC
+        type_ref = read_str(data)
+        inst = Instance(NOT_READY, read_type_list(data))
+        inst.type_ref = type_ref
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == LITERAL_TYPE
+            inst.last_known_value = LiteralType.read(data)
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == EXTRA_ATTRS
+            inst.extra_attrs = ExtraAttrs.read(data)
+        assert read_tag(data) == END_TAG
+        return inst
+
     def copy_modified(
         self,
         *,
@@ -1490,7 +1828,6 @@ class Instance(ProperType):
             ),
             extra_attrs=self.extra_attrs,
         )
-        # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
         return new
@@ -1505,20 +1842,24 @@ class Instance(ProperType):
         new.extra_attrs = existing_attrs
         return new
 
-    def is_singleton_type(self) -> bool:
-        # TODO:
-        # Also make this return True if the type corresponds to NotImplemented?
-        return (
-            self.type.is_enum
-            and len(self.get_enum_values()) == 1
-            or self.type.fullname in {"builtins.ellipsis", "types.EllipsisType"}
-        )
 
-    def get_enum_values(self) -> list[str]:
-        """Return the list of values for an Enum."""
-        return [
-            name for name, sym in self.type.names.items() if isinstance(sym.node, mypy.nodes.Var)
-        ]
+class InstanceCache:
+    def __init__(self) -> None:
+        self.str_type: Instance | None = None
+        self.function_type: Instance | None = None
+        self.int_type: Instance | None = None
+        self.bool_type: Instance | None = None
+        self.object_type: Instance | None = None
+
+    def reset(self) -> None:
+        self.str_type = None
+        self.function_type = None
+        self.int_type = None
+        self.bool_type = None
+        self.object_type = None
+
+
+instance_cache: Final = InstanceCache()
 
 
 class FunctionLike(ProperType):
@@ -1553,12 +1894,29 @@ class FunctionLike(ProperType):
     def get_name(self) -> str | None:
         pass
 
+    def bound(self) -> bool:
+        return bool(self.items) and self.items[0].is_bound
 
-class FormalArgument(NamedTuple):
-    name: str | None
-    pos: int | None
-    typ: Type
-    required: bool
+
+class FormalArgument:
+    def __init__(self, name: str | None, pos: int | None, typ: Type, required: bool) -> None:
+        self.name = name
+        self.pos = pos
+        self.typ = typ
+        self.required = required
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FormalArgument):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.pos == other.pos
+            and self.typ == other.typ
+            and self.required == other.required
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.pos, self.typ, self.required))
 
 
 class Parameters(ProperType):
@@ -1731,11 +2089,36 @@ class Parameters(ProperType):
         assert data[".class"] == "Parameters"
         return Parameters(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            # This is a micro-optimization until mypyc gets dedicated enum support. Otherwise,
+            # we would spend ~20% of types deserialization time in Enum.__call__().
+            [ARG_KINDS[x] for x in data["arg_kinds"]],
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, PARAMETERS)
+        write_type_list(data, self.arg_types)
+        write_int_list(data, [int(x.value) for x in self.arg_kinds])
+        write_str_opt_list(data, self.arg_names)
+        write_type_list(data, self.variables)
+        write_bool(data, self.imprecise_arg_kinds)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> Parameters:
+        ret = Parameters(
+            read_type_list(data),
+            # This is a micro-optimization until mypyc gets dedicated enum support. Otherwise,
+            # we would spend ~20% of types deserialization time in Enum.__call__().
+            [ARG_KINDS[ak] for ak in read_int_list(data)],
+            read_str_opt_list(data),
+            variables=read_type_var_likes(data),
+            imprecise_arg_kinds=read_bool(data),
+        )
+        assert read_tag(data) == END_TAG
+        return ret
 
     def __hash__(self) -> int:
         return hash(
@@ -1748,7 +2131,7 @@ class Parameters(ProperType):
         )
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, (Parameters, CallableType)):
+        if isinstance(other, Parameters):
             return (
                 self.arg_types == other.arg_types
                 and self.arg_names == other.arg_names
@@ -1778,14 +2161,11 @@ class CallableType(FunctionLike):
         "implicit",  # Was this type implicitly generated instead of explicitly
         # specified by the user?
         "special_sig",  # Non-None for signatures that require special handling
-        # (currently only value is 'dict' for a signature similar to
-        # 'dict')
+        # (currently only values are 'dict' for a signature similar to
+        # 'dict' and 'partial' for a `functools.partial` evaluation)
         "from_type_type",  # Was this callable generated by analyzing Type[...]
         # instantiation?
-        "bound_args",  # Bound type args, mostly unused but may be useful for
-        # tools that consume mypy ASTs
-        "def_extras",  # Information about original definition we want to serialize.
-        # This is used for more detailed error messages.
+        "is_bound",  # Is this a bound method?
         "type_guard",  # T, if -> TypeGuard[T] (ret_type is bool in this case).
         "type_is",  # T, if -> TypeIs[T] (ret_type is bool in this case).
         "from_concatenate",  # whether this callable is from a concatenate object
@@ -1811,8 +2191,7 @@ class CallableType(FunctionLike):
         implicit: bool = False,
         special_sig: str | None = None,
         from_type_type: bool = False,
-        bound_args: Sequence[Type | None] = (),
-        def_extras: dict[str, Any] | None = None,
+        is_bound: bool = False,
         type_guard: Type | None = None,
         type_is: Type | None = None,
         from_concatenate: bool = False,
@@ -1821,14 +2200,12 @@ class CallableType(FunctionLike):
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        for t, k in zip(arg_types, arg_kinds):
+        self.arg_types = list(arg_types)
+        for t in self.arg_types:
             if isinstance(t, ParamSpecType):
                 assert not t.prefix.arg_types
                 # TODO: should we assert that only ARG_STAR contain ParamSpecType?
                 # See testParamSpecJoin, that relies on passing e.g `P.args` as plain argument.
-        if variables is None:
-            variables = []
-        self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
@@ -1836,33 +2213,22 @@ class CallableType(FunctionLike):
         self.fallback = fallback
         assert not name or "<bound method" not in name
         self.name = name
+        # The rules for what exactly is considered a definition:
+        #   * If it is a non-decorated function, FuncDef is the definition
+        #   * If it is a decorated function, enclosing Decorator is the definition
         self.definition = definition
-        self.variables = variables
+        self.variables: tuple[TypeVarLikeType, ...]
+        if variables is None:
+            self.variables = ()
+        else:
+            self.variables = tuple(variables)
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         self.from_concatenate = from_concatenate
         self.imprecise_arg_kinds = imprecise_arg_kinds
-        if not bound_args:
-            bound_args = ()
-        self.bound_args = bound_args
-        if def_extras:
-            self.def_extras = def_extras
-        elif isinstance(definition, FuncDef):
-            # This information would be lost if we don't have definition
-            # after serialization, but it is useful in error messages.
-            # TODO: decide how to add more info here (file, line, column)
-            # without changing interface hash.
-            first_arg: str | None = None
-            if definition.arg_names and definition.info and not definition.is_static:
-                if getattr(definition, "arguments", None):
-                    first_arg = definition.arguments[0].variable.name
-                else:
-                    first_arg = definition.arg_names[0]
-            self.def_extras = {"first_arg": first_arg}
-        else:
-            self.def_extras = {}
+        self.is_bound = is_bound
         self.type_guard = type_guard
         self.type_is = type_is
         self.unpack_kwargs = unpack_kwargs
@@ -1883,8 +2249,7 @@ class CallableType(FunctionLike):
         implicit: Bogus[bool] = _dummy,
         special_sig: Bogus[str | None] = _dummy,
         from_type_type: Bogus[bool] = _dummy,
-        bound_args: Bogus[list[Type | None]] = _dummy,
-        def_extras: Bogus[dict[str, Any]] = _dummy,
+        is_bound: Bogus[bool] = _dummy,
         type_guard: Bogus[Type | None] = _dummy,
         type_is: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
@@ -1908,8 +2273,7 @@ class CallableType(FunctionLike):
             implicit=implicit if implicit is not _dummy else self.implicit,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
-            bound_args=bound_args if bound_args is not _dummy else self.bound_args,
-            def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
+            is_bound=is_bound if is_bound is not _dummy else self.is_bound,
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
             type_is=type_is if type_is is not _dummy else self.type_is,
             from_concatenate=(
@@ -1963,6 +2327,8 @@ class CallableType(FunctionLike):
         if isinstance(ret, TupleType):
             ret = ret.partial_fallback
         if isinstance(ret, TypedDictType):
+            ret = ret.fallback
+        if isinstance(ret, LiteralType):
             ret = ret.fallback
         assert isinstance(ret, Instance)
         return ret.type
@@ -2166,7 +2532,7 @@ class CallableType(FunctionLike):
                     new_unpack = nested_unpacked.args[0]
                 else:
                     if not isinstance(nested_unpacked, TypeVarTupleType):
-                        # We found a non-nomralized tuple type, this means this method
+                        # We found a non-normalized tuple type, this means this method
                         # is called during semantic analysis (e.g. from get_proper_type())
                         # there is no point in normalizing callables at this stage.
                         return self
@@ -2185,15 +2551,9 @@ class CallableType(FunctionLike):
         )
 
     def __hash__(self) -> int:
-        # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
-        if isinstance(self.fallback.type, FakeInfo):
-            is_type_obj = 2
-        else:
-            is_type_obj = self.is_type_obj()
         return hash(
             (
                 self.ret_type,
-                is_type_obj,
                 self.is_ellipsis_args,
                 self.name,
                 tuple(self.arg_types),
@@ -2211,8 +2571,9 @@ class CallableType(FunctionLike):
                 and self.arg_names == other.arg_names
                 and self.arg_kinds == other.arg_kinds
                 and self.name == other.name
-                and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
+                and self.type_guard == other.type_guard
+                and self.type_is == other.type_is
                 and self.fallback == other.fallback
             )
         else:
@@ -2233,8 +2594,7 @@ class CallableType(FunctionLike):
             "variables": [v.serialize() for v in self.variables],
             "is_ellipsis_args": self.is_ellipsis_args,
             "implicit": self.implicit,
-            "bound_args": [(None if t is None else t.serialize()) for t in self.bound_args],
-            "def_extras": dict(self.def_extras),
+            "is_bound": self.is_bound,
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
             "type_is": (self.type_is.serialize() if self.type_is is not None else None),
             "from_concatenate": self.from_concatenate,
@@ -2245,10 +2605,10 @@ class CallableType(FunctionLike):
     @classmethod
     def deserialize(cls, data: JsonDict) -> CallableType:
         assert data[".class"] == "CallableType"
-        # TODO: Set definition to the containing SymbolNode?
+        # The .definition link is set in fixup.py.
         return CallableType(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            [ARG_KINDS[x] for x in data["arg_kinds"]],
             data["arg_names"],
             deserialize_type(data["ret_type"]),
             Instance.deserialize(data["fallback"]),
@@ -2256,8 +2616,7 @@ class CallableType(FunctionLike):
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
             is_ellipsis_args=data["is_ellipsis_args"],
             implicit=data["implicit"],
-            bound_args=[(None if t is None else deserialize_type(t)) for t in data["bound_args"]],
-            def_extras=data["def_extras"],
+            is_bound=data["is_bound"],
             type_guard=(
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
@@ -2266,6 +2625,49 @@ class CallableType(FunctionLike):
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, CALLABLE_TYPE)
+        self.fallback.write(data)
+        write_type_list(data, self.arg_types)
+        write_int_list(data, [int(x.value) for x in self.arg_kinds])
+        write_str_opt_list(data, self.arg_names)
+        self.ret_type.write(data)
+        write_str_opt(data, self.name)
+        write_type_list(data, self.variables)
+        write_bool(data, self.is_ellipsis_args)
+        write_bool(data, self.implicit)
+        write_bool(data, self.is_bound)
+        write_type_opt(data, self.type_guard)
+        write_type_opt(data, self.type_is)
+        write_bool(data, self.from_concatenate)
+        write_bool(data, self.imprecise_arg_kinds)
+        write_bool(data, self.unpack_kwargs)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> CallableType:
+        assert read_tag(data) == INSTANCE
+        fallback = Instance.read(data)
+        ret = CallableType(
+            read_type_list(data),
+            [ARG_KINDS[ak] for ak in read_int_list(data)],
+            read_str_opt_list(data),
+            read_type(data),
+            fallback,
+            name=read_str_opt(data),
+            variables=read_type_var_likes(data),
+            is_ellipsis_args=read_bool(data),
+            implicit=read_bool(data),
+            is_bound=read_bool(data),
+            type_guard=read_type_opt(data),
+            type_is=read_type_opt(data),
+            from_concatenate=read_bool(data),
+            imprecise_arg_kinds=read_bool(data),
+            unpack_kwargs=read_bool(data),
+        )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 # This is a little safety net to prevent reckless special-casing of callables
@@ -2341,6 +2743,21 @@ class Overloaded(FunctionLike):
     def deserialize(cls, data: JsonDict) -> Overloaded:
         assert data[".class"] == "Overloaded"
         return Overloaded([CallableType.deserialize(t) for t in data["items"]])
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, OVERLOADED)
+        write_type_list(data, self.items)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> Overloaded:
+        items = []
+        assert read_tag(data) == LIST_GEN
+        for _ in range(read_int_bare(data)):
+            assert read_tag(data) == CALLABLE_TYPE
+            items.append(CallableType.read(data))
+        assert read_tag(data) == END_TAG
+        return Overloaded(items)
 
 
 class TupleType(ProperType):
@@ -2438,6 +2855,21 @@ class TupleType(ProperType):
             implicit=data["implicit"],
         )
 
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TUPLE_TYPE)
+        self.partial_fallback.write(data)
+        write_type_list(data, self.items)
+        write_bool(data, self.implicit)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> TupleType:
+        assert read_tag(data) == INSTANCE
+        fallback = Instance.read(data)
+        ret = TupleType(read_type_list(data), fallback, implicit=read_bool(data))
+        assert read_tag(data) == END_TAG
+        return ret
+
     def copy_modified(
         self, *, fallback: Instance | None = None, items: list[Type] | None = None
     ) -> TupleType:
@@ -2452,6 +2884,9 @@ class TupleType(ProperType):
     ) -> TupleType | None:
         if fallback is None:
             fallback = self.partial_fallback
+
+        if stride == 0:
+            return None
 
         if any(isinstance(t, UnpackType) for t in self.items):
             total = len(self.items)
@@ -2521,17 +2956,28 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    __slots__ = ("items", "required_keys", "fallback", "extra_items_from")
+    __slots__ = (
+        "items",
+        "required_keys",
+        "readonly_keys",
+        "fallback",
+        "extra_items_from",
+        "to_be_mutated",
+    )
 
     items: dict[str, Type]  # item_name -> item_type
     required_keys: set[str]
+    readonly_keys: set[str]
     fallback: Instance
+
     extra_items_from: list[ProperType]  # only used during semantic analysis
+    to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
 
     def __init__(
         self,
         items: dict[str, Type],
         required_keys: set[str],
+        readonly_keys: set[str],
         fallback: Instance,
         line: int = -1,
         column: int = -1,
@@ -2539,21 +2985,31 @@ class TypedDictType(ProperType):
         super().__init__(line, column)
         self.items = items
         self.required_keys = required_keys
+        self.readonly_keys = readonly_keys
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
+        self.to_be_mutated = False
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
 
     def __hash__(self) -> int:
-        return hash((frozenset(self.items.items()), self.fallback, frozenset(self.required_keys)))
+        return hash(
+            (
+                frozenset(self.items.items()),
+                self.fallback,
+                frozenset(self.required_keys),
+                frozenset(self.readonly_keys),
+            )
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypedDictType):
             return NotImplemented
-
+        if self is other:
+            return True
         return (
             frozenset(self.items.keys()) == frozenset(other.items.keys())
             and all(
@@ -2562,6 +3018,7 @@ class TypedDictType(ProperType):
             )
             and self.fallback == other.fallback
             and self.required_keys == other.required_keys
+            and self.readonly_keys == other.readonly_keys
         )
 
     def serialize(self) -> JsonDict:
@@ -2569,6 +3026,7 @@ class TypedDictType(ProperType):
             ".class": "TypedDictType",
             "items": [[n, t.serialize()] for (n, t) in self.items.items()],
             "required_keys": sorted(self.required_keys),
+            "readonly_keys": sorted(self.readonly_keys),
             "fallback": self.fallback.serialize(),
         }
 
@@ -2578,8 +3036,27 @@ class TypedDictType(ProperType):
         return TypedDictType(
             {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
+            set(data["readonly_keys"]),
             Instance.deserialize(data["fallback"]),
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TYPED_DICT_TYPE)
+        self.fallback.write(data)
+        write_type_map(data, self.items)
+        write_str_list(data, sorted(self.required_keys))
+        write_str_list(data, sorted(self.readonly_keys))
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> TypedDictType:
+        assert read_tag(data) == INSTANCE
+        fallback = Instance.read(data)
+        ret = TypedDictType(
+            read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
+        )
+        assert read_tag(data) == END_TAG
+        return ret
 
     @property
     def is_final(self) -> bool:
@@ -2588,11 +3065,11 @@ class TypedDictType(ProperType):
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
 
-    def as_anonymous(self) -> TypedDictType:
+    def create_anonymous_fallback(self) -> Instance:
         if self.is_anonymous():
-            return self
+            return self.fallback
         assert self.fallback.type.typeddict_type is not None
-        return self.fallback.type.typeddict_type.as_anonymous()
+        return self.fallback.type.typeddict_type.create_anonymous_fallback()
 
     def copy_modified(
         self,
@@ -2601,6 +3078,7 @@ class TypedDictType(ProperType):
         item_types: list[Type] | None = None,
         item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
+        readonly_keys: set[str] | None = None,
     ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
@@ -2610,14 +3088,12 @@ class TypedDictType(ProperType):
             items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
+        if readonly_keys is None:
+            readonly_keys = self.readonly_keys
         if item_names is not None:
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
-        return TypedDictType(items, required_keys, fallback, self.line, self.column)
-
-    def create_anonymous_fallback(self) -> Instance:
-        anonymous = self.as_anonymous()
-        return anonymous.fallback
+        return TypedDictType(items, required_keys, readonly_keys, fallback, self.line, self.column)
 
     def names_are_wider_than(self, other: TypedDictType) -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -2646,7 +3122,7 @@ class RawExpressionType(ProperType):
 
     This synthetic type is only used at the beginning stages of semantic analysis
     and should be completely removing during the process for mapping UnboundTypes to
-    actual types: we turn it into its "node" argument, a LiteralType, or an AnyType.
+    actual types: we either turn it into a LiteralType or an AnyType.
 
     For example, suppose `Foo[1]` is initially represented as the following:
 
@@ -2684,7 +3160,7 @@ class RawExpressionType(ProperType):
         )
     """
 
-    __slots__ = ("literal_value", "base_type_name", "note", "node")
+    __slots__ = ("literal_value", "base_type_name", "note")
 
     def __init__(
         self,
@@ -2693,38 +3169,19 @@ class RawExpressionType(ProperType):
         line: int = -1,
         column: int = -1,
         note: str | None = None,
-        node: Type | None = None,
     ) -> None:
         super().__init__(line, column)
         self.literal_value = literal_value
         self.base_type_name = base_type_name
         self.note = note
-        self.node = node
 
     def simple_name(self) -> str:
         return self.base_type_name.replace("builtins.", "")
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
-        if self.node is not None:
-            return self.node.accept(visitor)
         assert isinstance(visitor, SyntheticTypeVisitor)
         ret: T = visitor.visit_raw_expression_type(self)
         return ret
-
-    def copy_modified(self, node: Type | None) -> RawExpressionType:
-        return RawExpressionType(
-            literal_value=self.literal_value,
-            base_type_name=self.base_type_name,
-            line=self.line,
-            column=self.column,
-            note=self.note,
-            node=node,
-        )
-
-    def resolve_string_annotation(self) -> Type:
-        if self.node is not None:
-            return self.node.resolve_string_annotation()
-        return self
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2737,7 +3194,6 @@ class RawExpressionType(ProperType):
             return (
                 self.base_type_name == other.base_type_name
                 and self.literal_value == other.literal_value
-                and self.node == other.node
             )
         else:
             return NotImplemented
@@ -2769,10 +3225,28 @@ class LiteralType(ProperType):
         self.fallback = fallback
         self._hash = -1  # Cached hash value
 
+    # NOTE: Enum types are always truthy by default, but this can be changed
+    #       in subclasses, so we need to get the truthyness from the Enum
+    #       type rather than base it on the value (which is a non-empty
+    #       string for enums, so always truthy)
+    # TODO: We should consider moving this branch to the `can_be_true`
+    #       `can_be_false` properties instead, so the truthyness only
+    #       needs to be determined once per set of Enum literals.
+    #       However, the same can be said for `TypeAliasType` in some
+    #       cases and we only set the default based on the type it is
+    #       aliasing. So if we decide to change this, we may want to
+    #       change that as well. perf_compare output was inconclusive
+    #       but slightly favored this version, probably because we have
+    #       almost no test cases where we would redundantly compute
+    #       `can_be_false`/`can_be_true`.
     def can_be_false_default(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_false
         return not self.value
 
     def can_be_true_default(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_true
         return bool(self.value)
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -2828,14 +3302,32 @@ class LiteralType(ProperType):
         assert data[".class"] == "LiteralType"
         return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
 
-    def is_singleton_type(self) -> bool:
-        return self.is_enum_literal() or isinstance(self.value, bool)
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, LITERAL_TYPE)
+        self.fallback.write(data)
+        write_literal(data, self.value)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> LiteralType:
+        assert read_tag(data) == INSTANCE
+        fallback = Instance.read(data)
+        tag = read_tag(data)
+        ret = LiteralType(read_literal(data, tag), fallback)
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    __slots__ = ("items", "is_evaluated", "uses_pep604_syntax")
+    __slots__ = (
+        "items",
+        "is_evaluated",
+        "uses_pep604_syntax",
+        "original_str_expr",
+        "original_str_fallback",
+    )
 
     def __init__(
         self,
@@ -2854,6 +3346,11 @@ class UnionType(ProperType):
         self.is_evaluated = is_evaluated
         # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
         self.uses_pep604_syntax = uses_pep604_syntax
+        # The meaning of these two is the same as for UnboundType. A UnionType can be
+        # return by type parser from a string "A|B", and we need to be able to fall back
+        # to plain string, when such a string appears inside a Literal[...].
+        self.original_str_expr: str | None = None
+        self.original_str_fallback: str | None = None
 
     def can_be_true_default(self) -> bool:
         return any(item.can_be_true for item in self.items)
@@ -2867,6 +3364,8 @@ class UnionType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnionType):
             return NotImplemented
+        if self is other:
+            return True
         return frozenset(self.items) == frozenset(other.items)
 
     @overload
@@ -2915,6 +3414,18 @@ class UnionType(ProperType):
             [deserialize_type(t) for t in data["items"]],
             uses_pep604_syntax=data["uses_pep604_syntax"],
         )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, UNION_TYPE)
+        write_type_list(data, self.items)
+        write_bool(data, self.uses_pep604_syntax)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> UnionType:
+        ret = UnionType(read_type_list(data), uses_pep604_syntax=read_bool(data))
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class PartialType(ProperType):
@@ -2976,10 +3487,13 @@ class EllipsisType(ProperType):
 
 
 class TypeType(ProperType):
-    """For types like Type[User].
+    """For types like Type[User] or TypeForm[User | None].
 
-    This annotates variables that are class objects, constrained by
+    Type[C] annotates variables that are class objects, constrained by
     the type argument.  See PEP 484 for more details.
+
+    TypeForm[T] annotates variables that hold the result of evaluating
+    a type expression.  See PEP 747 for more details.
 
     We may encounter expressions whose values are specific classes;
     those are represented as callables (possibly overloaded)
@@ -3003,11 +3517,15 @@ class TypeType(ProperType):
     assumption).
     """
 
-    __slots__ = ("item",)
+    __slots__ = ("item", "is_type_form")
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
     item: ProperType
+
+    # If True then this TypeType represents a TypeForm[T].
+    # If False then this TypeType represents a Type[C].
+    is_type_form: bool
 
     def __init__(
         self,
@@ -3015,23 +3533,31 @@ class TypeType(ProperType):
         *,
         line: int = -1,
         column: int = -1,
+        is_type_form: bool = False,
     ) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
         type UnionType must be handled through make_normalized static method.
         """
         super().__init__(line, column)
         self.item = item
+        self.is_type_form = is_type_form
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> ProperType:
+    def make_normalized(
+        item: Type, *, line: int = -1, column: int = -1, is_type_form: bool = False
+    ) -> ProperType:
         item = get_proper_type(item)
-        if isinstance(item, UnionType):
-            return UnionType.make_union(
-                [TypeType.make_normalized(union_item) for union_item in item.items],
-                line=line,
-                column=column,
-            )
-        return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
+        if is_type_form:
+            # Don't convert TypeForm[X | Y] to (TypeForm[X] | TypeForm[Y])
+            pass
+        else:
+            if isinstance(item, UnionType):
+                return UnionType.make_union(
+                    [TypeType.make_normalized(union_item) for union_item in item.items],
+                    line=line,
+                    column=column,
+                )
+        return TypeType(item, line=line, column=column, is_type_form=is_type_form)  # type: ignore[arg-type]
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_type(self)
@@ -3042,15 +3568,32 @@ class TypeType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeType):
             return NotImplemented
-        return self.item == other.item
+        return self.item == other.item and self.is_type_form == other.is_type_form
 
     def serialize(self) -> JsonDict:
-        return {".class": "TypeType", "item": self.item.serialize()}
+        return {
+            ".class": "TypeType",
+            "item": self.item.serialize(),
+            "is_type_form": self.is_type_form,
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> Type:
         assert data[".class"] == "TypeType"
-        return TypeType.make_normalized(deserialize_type(data["item"]))
+        return TypeType.make_normalized(
+            deserialize_type(data["item"]), is_type_form=data["is_type_form"]
+        )
+
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, TYPE_TYPE)
+        self.item.write(data)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> Type:
+        ret = TypeType.make_normalized(read_type(data))
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class PlaceholderType(ProperType):
@@ -3114,7 +3657,8 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
     """
     if typ is None:
         return None
-    if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
+    # TODO: this is an ugly hack, remove.
+    if isinstance(typ, TypeGuardedType):
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
@@ -3128,19 +3672,17 @@ def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]: 
 
 @overload
 def get_proper_types(
-    types: list[Type | None] | tuple[Type | None, ...]
+    types: list[Type | None] | tuple[Type | None, ...],
 ) -> list[ProperType | None]: ...
 
 
 def get_proper_types(
-    types: list[Type] | list[Type | None] | tuple[Type | None, ...]
+    types: list[Type] | list[Type | None] | tuple[Type | None, ...],
 ) -> list[ProperType] | list[ProperType | None]:
     if isinstance(types, list):
         typelist = types
         # Optimize for the common case so that we don't need to allocate anything
-        if not any(
-            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
-        ):
+        if not any(isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]
     else:
@@ -3160,7 +3702,6 @@ from mypy.type_visitor import (
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
 )
-from mypy.typetraverser import TypeTraverserVisitor
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -3173,50 +3714,49 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneType type as None.
+     - Represent Union[x, y] as x | y
     """
 
     def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
         self.id_mapper = id_mapper
-        self.any_as_dots = False
         self.options = options
+        self.dotted_aliases: set[TypeAliasType] | None = None
 
-    def visit_unbound_type(self, t: UnboundType) -> str:
+    def visit_unbound_type(self, t: UnboundType, /) -> str:
         s = t.name + "?"
         if t.args:
             s += f"[{self.list_str(t.args)}]"
         return s
 
-    def visit_type_list(self, t: TypeList) -> str:
+    def visit_type_list(self, t: TypeList, /) -> str:
         return f"<TypeList {self.list_str(t.items)}>"
 
-    def visit_callable_argument(self, t: CallableArgument) -> str:
+    def visit_callable_argument(self, t: CallableArgument, /) -> str:
         typ = t.typ.accept(self)
         if t.name is None:
             return f"{t.constructor}({typ})"
         else:
             return f"{t.constructor}({typ}, {t.name})"
 
-    def visit_any(self, t: AnyType) -> str:
-        if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
-            return "..."
+    def visit_any(self, t: AnyType, /) -> str:
         return "Any"
 
-    def visit_none_type(self, t: NoneType) -> str:
+    def visit_none_type(self, t: NoneType, /) -> str:
         return "None"
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+    def visit_uninhabited_type(self, t: UninhabitedType, /) -> str:
         return "Never"
 
-    def visit_erased_type(self, t: ErasedType) -> str:
+    def visit_erased_type(self, t: ErasedType, /) -> str:
         return "<Erased>"
 
-    def visit_deleted_type(self, t: DeletedType) -> str:
+    def visit_deleted_type(self, t: DeletedType, /) -> str:
         if t.source is None:
             return "<Deleted>"
         else:
             return f"<Deleted '{t.source}'>"
 
-    def visit_instance(self, t: Instance) -> str:
+    def visit_instance(self, t: Instance, /) -> str:
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
@@ -3236,37 +3776,27 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"<{self.id_mapper.id(t.type)}>"
         return s
 
-    def visit_type_var(self, t: TypeVarType) -> str:
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s = f"`{t.id}"
-        else:
-            # Named type variable type.
-            s = f"{t.name}`{t.id}"
+    def visit_type_var(self, t: TypeVarType, /) -> str:
+        s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
         if t.has_default():
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_param_spec(self, t: ParamSpecType) -> str:
+    def visit_param_spec(self, t: ParamSpecType, /) -> str:
         # prefixes are displayed as Concatenate
         s = ""
         if t.prefix.arg_types:
             s += f"[{self.list_str(t.prefix.arg_types)}, **"
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s += f"`{t.id}"
-        else:
-            # Named type variable type.
-            s += f"{t.name_with_suffix()}`{t.id}"
+        s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
         if t.has_default():
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_parameters(self, t: Parameters) -> str:
+    def visit_parameters(self, t: Parameters, /) -> str:
         # This is copied from visit_callable -- is there a way to decrease duplication?
         if t.is_ellipsis_args:
             return "..."
@@ -3295,18 +3825,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         return f"[{s}]"
 
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> str:
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s = f"`{t.id}"
-        else:
-            # Named type variable type.
-            s = f"{t.name}`{t.id}"
+    def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> str:
+        s = f"{t.name}`{t.id}"
         if t.has_default():
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_callable_type(self, t: CallableType) -> str:
+    def visit_callable_type(self, t: CallableType, /) -> str:
         param_spec = t.param_spec()
         if param_spec is not None:
             num_skip = 2
@@ -3379,27 +3904,28 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         return f"def {s}"
 
-    def visit_overloaded(self, t: Overloaded) -> str:
+    def visit_overloaded(self, t: Overloaded, /) -> str:
         a = []
         for i in t.items:
             a.append(i.accept(self))
         return f"Overload({', '.join(a)})"
 
-    def visit_tuple_type(self, t: TupleType) -> str:
+    def visit_tuple_type(self, t: TupleType, /) -> str:
         s = self.list_str(t.items) or "()"
-        tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != "builtins.tuple":
-                return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
-        return f"{tuple_name}[{s}]"
+                return f"tuple[{s}, fallback={t.partial_fallback.accept(self)}]"
+        return f"tuple[{s}]"
 
-    def visit_typeddict_type(self, t: TypedDictType) -> str:
+    def visit_typeddict_type(self, t: TypedDictType, /) -> str:
         def item_str(name: str, typ: str) -> str:
-            if name in t.required_keys:
-                return f"{name!r}: {typ}"
-            else:
-                return f"{name!r}?: {typ}"
+            modifier = ""
+            if name not in t.required_keys:
+                modifier += "?"
+            if name in t.readonly_keys:
+                modifier += "="
+            return f"{name!r}{modifier}: {typ}"
 
         s = (
             "{"
@@ -3412,99 +3938,106 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 prefix = repr(t.fallback.type.fullname) + ", "
         return f"TypedDict({prefix}{s})"
 
-    def visit_raw_expression_type(self, t: RawExpressionType) -> str:
-        if t.node is not None:
-            return t.node.accept(self)
+    def visit_raw_expression_type(self, t: RawExpressionType, /) -> str:
         return repr(t.literal_value)
 
-    def visit_literal_type(self, t: LiteralType) -> str:
+    def visit_literal_type(self, t: LiteralType, /) -> str:
         return f"Literal[{t.value_repr()}]"
 
-    def visit_union_type(self, t: UnionType) -> str:
-        s = self.list_str(t.items)
-        return f"Union[{s}]"
+    def visit_union_type(self, t: UnionType, /) -> str:
+        return self.list_str(t.items, use_or_syntax=True)
 
-    def visit_partial_type(self, t: PartialType) -> str:
+    def visit_partial_type(self, t: PartialType, /) -> str:
         if t.type is None:
             return "<partial None>"
         else:
             return "<partial {}[{}]>".format(t.type.name, ", ".join(["?"] * len(t.type.type_vars)))
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> str:
+    def visit_ellipsis_type(self, t: EllipsisType, /) -> str:
         return "..."
 
-    def visit_type_type(self, t: TypeType) -> str:
-        if self.options.use_lowercase_names():
-            type_name = "type"
+    def visit_type_type(self, t: TypeType, /) -> str:
+        if t.is_type_form:
+            type_name = "TypeForm"
         else:
-            type_name = "Type"
+            type_name = "type"
         return f"{type_name}[{t.item.accept(self)}]"
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> str:
+    def visit_placeholder_type(self, t: PlaceholderType, /) -> str:
         return f"<placeholder {t.fullname}>"
 
-    def visit_type_alias_type(self, t: TypeAliasType) -> str:
-        if t.alias is not None:
-            unrolled, recursed = t._partial_expansion()
-            self.any_as_dots = recursed
-            type_str = unrolled.accept(self)
-            self.any_as_dots = False
-            return type_str
-        return "<alias (unfixed)>"
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> str:
+        if t.alias is None:
+            return "<alias (unfixed)>"
+        if not t.is_recursive:
+            return get_proper_type(t).accept(self)
+        if self.dotted_aliases is None:
+            self.dotted_aliases = set()
+        elif t in self.dotted_aliases:
+            return "..."
+        self.dotted_aliases.add(t)
+        type_str = get_proper_type(t).accept(self)
+        self.dotted_aliases.discard(t)
+        return type_str
 
-    def visit_unpack_type(self, t: UnpackType) -> str:
+    def visit_unpack_type(self, t: UnpackType, /) -> str:
         return f"Unpack[{t.type.accept(self)}]"
 
-    def list_str(self, a: Iterable[Type]) -> str:
+    def list_str(self, a: Iterable[Type], *, use_or_syntax: bool = False) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """
         res = []
         for t in a:
-            res.append(t.accept(self))
-        return ", ".join(res)
+            s = t.accept(self)
+            if use_or_syntax and isinstance(get_proper_type(t), CallableType):
+                res.append(f"({s})")
+            else:
+                res.append(s)
+        sep = ", " if not use_or_syntax else " | "
+        return sep.join(res)
 
 
 class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):
     """A base class for type translators that need to be run during semantic analysis."""
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+    def visit_placeholder_type(self, t: PlaceholderType, /) -> Type:
         return t
 
-    def visit_callable_argument(self, t: CallableArgument) -> Type:
+    def visit_callable_argument(self, t: CallableArgument, /) -> Type:
         return t
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+    def visit_ellipsis_type(self, t: EllipsisType, /) -> Type:
         return t
 
-    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
-        if t.node is not None:
-            node = t.node.accept(self)
-            return t.copy_modified(node=node)
+    def visit_raw_expression_type(self, t: RawExpressionType, /) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: TypeList, /) -> Type:
         return t
 
 
-class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(self, initial_aliases: set[TypeAliasType]) -> None:
-        self.recursed = False
-        self.initial_aliases = initial_aliases
+class CollectAliasesVisitor(TypeQuery[list[mypy.nodes.TypeAlias]]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen_alias_nodes: set[mypy.nodes.TypeAlias] = set()
 
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        if t in self.initial_aliases:
-            self.recursed = True
-            return AnyType(TypeOfAny.special_form)
-        # Create a new visitor on encountering a new type alias, so that an alias like
-        #     A = Tuple[B, B]
-        #     B = int
-        # will not be detected as recursive on the second encounter of B.
-        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t})
-        result = get_proper_type(t).accept(subvisitor)
-        if subvisitor.recursed:
-            self.recursed = True
-        return result
+    def strategy(self, items: list[list[mypy.nodes.TypeAlias]]) -> list[mypy.nodes.TypeAlias]:
+        out = []
+        for item in items:
+            out.extend(item)
+        return out
+
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> list[mypy.nodes.TypeAlias]:
+        assert t.alias is not None
+        if t.alias not in self.seen_alias_nodes:
+            self.seen_alias_nodes.add(t.alias)
+            res = [t.alias] + t.alias.target.accept(self)
+        else:
+            res = []
+        for arg in t.args:
+            res.extend(arg.accept(self))
+        return res
 
 
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
@@ -3515,24 +4048,9 @@ def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[In
     return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
-class LocationSetter(TypeTraverserVisitor):
-    # TODO: Should we update locations of other Type subclasses?
-    def __init__(self, line: int, column: int) -> None:
-        self.line = line
-        self.column = column
-
-    def visit_instance(self, typ: Instance) -> None:
-        typ.line = self.line
-        typ.column = self.column
-        super().visit_instance(typ)
-
-    def visit_type_alias_type(self, typ: TypeAliasType) -> None:
-        typ.line = self.line
-        typ.column = self.column
-        super().visit_type_alias_type(typ)
-
-
 class HasTypeVars(BoolTypeQuery):
+    """Visitor for querying whether a type has a type variable component."""
+
     def __init__(self) -> None:
         super().__init__(ANY_STRATEGY)
         self.skip_alias_target = True
@@ -3610,7 +4128,7 @@ def extend_args_for_prefix_and_suffix(
 
 
 def flatten_nested_unions(
-    types: Sequence[Type], handle_type_alias_type: bool = True
+    types: Sequence[Type], *, handle_type_alias_type: bool = True, handle_recursive: bool = True
 ) -> list[Type]:
     """Flatten nested unions in a type list."""
     if not isinstance(types, list):
@@ -3624,10 +4142,20 @@ def flatten_nested_unions(
 
     flat_items: list[Type] = []
     for t in typelist:
-        tp = get_proper_type(t) if handle_type_alias_type else t
+        if handle_type_alias_type and isinstance(t, TypeAliasType):
+            if not handle_recursive and t.is_recursive:
+                tp: Type = t
+            else:
+                tp = get_proper_type(t)
+        else:
+            tp = t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
-                flatten_nested_unions(tp.items, handle_type_alias_type=handle_type_alias_type)
+                flatten_nested_unions(
+                    tp.items,
+                    handle_type_alias_type=handle_type_alias_type,
+                    handle_recursive=handle_recursive,
+                )
             )
         else:
             # Must preserve original aliases when possible.
@@ -3649,7 +4177,7 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
     return unpack_index
 
 
-def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
+def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
     """Recursively flatten TupleTypes nested with Unpack.
 
     For example this will transform
@@ -3666,7 +4194,21 @@ def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
         if not isinstance(p_type, TupleType):
             res.append(typ)
             continue
-        res.extend(flatten_nested_tuples(p_type.items))
+        if isinstance(typ.type, TypeAliasType):
+            items = []
+            for item in p_type.items:
+                if (
+                    isinstance(item, ProperType)
+                    and isinstance(item, Instance)
+                    or isinstance(item, TypeAliasType)
+                ):
+                    if len(item.args) == 0:
+                        item = item.copy_modified()
+                        item.set_line(typ)
+                items.append(item)
+        else:
+            items = p_type.items
+        res.extend(flatten_nested_tuples(items))
     return res
 
 
@@ -3724,6 +4266,149 @@ def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
         else:
             args.append(tv)
     return tuple(args)
+
+
+# See docstring for mypy/cache.py for reserved tag ranges.
+# Instance-related tags.
+INSTANCE: Final[Tag] = 80
+INSTANCE_SIMPLE: Final[Tag] = 81
+INSTANCE_GENERIC: Final[Tag] = 82
+INSTANCE_STR: Final[Tag] = 83
+INSTANCE_FUNCTION: Final[Tag] = 84
+INSTANCE_INT: Final[Tag] = 85
+INSTANCE_BOOL: Final[Tag] = 86
+INSTANCE_OBJECT: Final[Tag] = 87
+
+# Other type tags.
+TYPE_ALIAS_TYPE: Final[Tag] = 100
+TYPE_VAR_TYPE: Final[Tag] = 101
+PARAM_SPEC_TYPE: Final[Tag] = 102
+TYPE_VAR_TUPLE_TYPE: Final[Tag] = 103
+UNBOUND_TYPE: Final[Tag] = 104
+UNPACK_TYPE: Final[Tag] = 105
+ANY_TYPE: Final[Tag] = 106
+UNINHABITED_TYPE: Final[Tag] = 107
+NONE_TYPE: Final[Tag] = 108
+DELETED_TYPE: Final[Tag] = 109
+CALLABLE_TYPE: Final[Tag] = 110
+OVERLOADED: Final[Tag] = 111
+TUPLE_TYPE: Final[Tag] = 112
+TYPED_DICT_TYPE: Final[Tag] = 113
+LITERAL_TYPE: Final[Tag] = 114
+UNION_TYPE: Final[Tag] = 115
+TYPE_TYPE: Final[Tag] = 116
+PARAMETERS: Final[Tag] = 117
+
+
+def read_type(data: ReadBuffer, tag: Tag | None = None) -> Type:
+    if tag is None:
+        tag = read_tag(data)
+    # The branches here are ordered manually by type "popularity".
+    if tag == INSTANCE:
+        return Instance.read(data)
+    if tag == ANY_TYPE:
+        return AnyType.read(data)
+    if tag == TYPE_VAR_TYPE:
+        return TypeVarType.read(data)
+    if tag == CALLABLE_TYPE:
+        return CallableType.read(data)
+    if tag == NONE_TYPE:
+        return NoneType.read(data)
+    if tag == UNION_TYPE:
+        return UnionType.read(data)
+    if tag == LITERAL_TYPE:
+        return LiteralType.read(data)
+    if tag == TYPE_ALIAS_TYPE:
+        return TypeAliasType.read(data)
+    if tag == TUPLE_TYPE:
+        return TupleType.read(data)
+    if tag == TYPED_DICT_TYPE:
+        return TypedDictType.read(data)
+    if tag == TYPE_TYPE:
+        return TypeType.read(data)
+    if tag == OVERLOADED:
+        return Overloaded.read(data)
+    if tag == PARAM_SPEC_TYPE:
+        return ParamSpecType.read(data)
+    if tag == TYPE_VAR_TUPLE_TYPE:
+        return TypeVarTupleType.read(data)
+    if tag == UNPACK_TYPE:
+        return UnpackType.read(data)
+    if tag == PARAMETERS:
+        return Parameters.read(data)
+    if tag == UNINHABITED_TYPE:
+        return UninhabitedType.read(data)
+    if tag == UNBOUND_TYPE:
+        return UnboundType.read(data)
+    if tag == DELETED_TYPE:
+        return DeletedType.read(data)
+    assert False, f"Unknown type tag {tag}"
+
+
+def read_function_like(data: ReadBuffer, tag: Tag) -> FunctionLike:
+    if tag == CALLABLE_TYPE:
+        return CallableType.read(data)
+    if tag == OVERLOADED:
+        return Overloaded.read(data)
+    assert False, f"Invalid type tag for FunctionLike {tag}"
+
+
+def read_type_var_likes(data: ReadBuffer) -> list[TypeVarLikeType]:
+    """Specialized version of read_type_list() for lists of type variables."""
+    assert read_tag(data) == LIST_GEN
+    ret: list[TypeVarLikeType] = []
+    for _ in range(read_int_bare(data)):
+        tag = read_tag(data)
+        if tag == TYPE_VAR_TYPE:
+            ret.append(TypeVarType.read(data))
+        elif tag == PARAM_SPEC_TYPE:
+            ret.append(ParamSpecType.read(data))
+        elif tag == TYPE_VAR_TUPLE_TYPE:
+            ret.append(TypeVarTupleType.read(data))
+        else:
+            assert False, f"Invalid type tag for TypeVarLikeType {tag}"
+    return ret
+
+
+def read_type_opt(data: ReadBuffer) -> Type | None:
+    tag = read_tag(data)
+    if tag == LITERAL_NONE:
+        return None
+    return read_type(data, tag)
+
+
+def write_type_opt(data: WriteBuffer, value: Type | None) -> None:
+    if value is not None:
+        value.write(data)
+    else:
+        write_tag(data, LITERAL_NONE)
+
+
+def read_type_list(data: ReadBuffer) -> list[Type]:
+    assert read_tag(data) == LIST_GEN
+    size = read_int_bare(data)
+    return [read_type(data) for _ in range(size)]
+
+
+def write_type_list(data: WriteBuffer, value: Sequence[Type]) -> None:
+    write_tag(data, LIST_GEN)
+    write_int_bare(data, len(value))
+    for item in value:
+        item.write(data)
+
+
+def read_type_map(data: ReadBuffer) -> dict[str, Type]:
+    assert read_tag(data) == DICT_STR_GEN
+    size = read_int_bare(data)
+    return {read_str_bare(data): read_type(data) for _ in range(size)}
+
+
+def write_type_map(data: WriteBuffer, value: dict[str, Type]) -> None:
+    write_tag(data, DICT_STR_GEN)
+    write_int_bare(data, len(value))
+    for key in sorted(value):
+        write_str_bare(data, key)
+        value[key].write(data)
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses

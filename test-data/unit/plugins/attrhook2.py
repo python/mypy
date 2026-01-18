@@ -12,6 +12,8 @@ class AttrPlugin(Plugin):
             return magic_field_callback
         if fullname == "m.Magic.nonexistent_field":
             return nonexistent_field_callback
+        if fullname == "m.Magic.no_assignment_field":
+            return no_assignment_field_callback
         return None
 
 
@@ -22,6 +24,13 @@ def magic_field_callback(ctx: AttributeContext) -> Type:
 def nonexistent_field_callback(ctx: AttributeContext) -> Type:
     ctx.api.fail("Field does not exist", ctx.context)
     return AnyType(TypeOfAny.from_error)
+
+
+def no_assignment_field_callback(ctx: AttributeContext) -> Type:
+    if ctx.is_lvalue:
+        ctx.api.fail(f"Cannot assign to field", ctx.context)
+        return AnyType(TypeOfAny.from_error)
+    return ctx.default_attr_type
 
 
 def plugin(version: str) -> type[AttrPlugin]:

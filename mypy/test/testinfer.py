@@ -134,7 +134,7 @@ def expand_caller_kinds(
 
 
 def expand_callee_kinds(
-    kinds_and_names: list[ArgKind | tuple[ArgKind, str]]
+    kinds_and_names: list[ArgKind | tuple[ArgKind, str]],
 ) -> tuple[list[ArgKind], list[str | None]]:
     kinds = []
     names: list[str | None] = []
@@ -366,7 +366,7 @@ class OperandComparisonGroupingSuite(Suite):
                 )
 
     def test_empty_pair_list(self) -> None:
-        # This case should never occur in practice -- ComparisionExprs
+        # This case should never occur in practice -- ComparisonExprs
         # always contain at least one comparison. But in case it does...
 
         self.assertEqual(group_comparison_operands([], {}, set()), [])

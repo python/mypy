@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 import mypy.nodes
 from mypy.options import Options
@@ -112,7 +113,7 @@ class StrConv(NodeVisitor[str]):
         if o.path != "main":
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
-            a.insert(0, o.path.replace(os.sep, "/"))
+            a.insert(0, o.path.replace(os.getcwd() + os.sep, "").replace(os.sep, "/"))
         if o.ignored_lines:
             a.append("IgnoredLines(%s)" % ", ".join(str(line) for line in sorted(o.ignored_lines)))
         return self.dump(a, o)
@@ -211,6 +212,12 @@ class StrConv(NodeVisitor[str]):
 
     def visit_decorator(self, o: mypy.nodes.Decorator) -> str:
         return self.dump([o.var, o.decorators, o.func], o)
+
+    def visit_type_alias(self, o: mypy.nodes.TypeAlias, /) -> str:
+        return self.dump([o.name, o.target, o.alias_tvars, o.no_args], o)
+
+    def visit_placeholder_node(self, o: mypy.nodes.PlaceholderNode, /) -> str:
+        return self.dump([o.fullname], o)
 
     # Statements
 
@@ -349,6 +356,8 @@ class StrConv(NodeVisitor[str]):
             a.append(p.upper_bound)
         if p.values:
             a.append(("Values", p.values))
+        if p.default:
+            a.append(("Default", [p.default]))
         return [("TypeParam", a)]
 
     # Expressions
@@ -385,7 +394,9 @@ class StrConv(NodeVisitor[str]):
             o.name, o.kind, o.fullname, o.is_inferred_def or o.is_special_form, o.node
         )
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
-            pretty += f" = {o.node.final_value}"
+            final_value = o.node.final_value
+            if final_value is not None:
+                pretty += f" = {o.node.final_value}"
         return short_type(o) + "(" + pretty + ")"
 
     def pretty_name(
@@ -460,6 +471,9 @@ class StrConv(NodeVisitor[str]):
 
     def visit_cast_expr(self, o: mypy.nodes.CastExpr) -> str:
         return self.dump([o.expr, o.type], o)
+
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr) -> str:
+        return self.dump([o.type], o)
 
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr) -> str:
         return self.dump([o.expr, o.type], o)

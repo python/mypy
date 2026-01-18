@@ -1,10 +1,11 @@
 import ctypes
+from _ctypes import _CData
 from collections.abc import Callable, Iterable, Sequence
-from ctypes import _CData, _SimpleCData, c_char
+from ctypes import _SimpleCData, c_char
 from multiprocessing.context import BaseContext
 from multiprocessing.synchronize import _LockLike
 from types import TracebackType
-from typing import Any, Generic, Literal, Protocol, TypeVar, overload
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload, type_check_only
 
 __all__ = ["RawValue", "RawArray", "Value", "Array", "copy", "synchronized"]
 
@@ -73,14 +74,14 @@ def copy(obj: _CT) -> _CT: ...
 @overload
 def synchronized(obj: _SimpleCData[_T], lock: _LockLike | None = None, ctx: Any | None = None) -> Synchronized[_T]: ...
 @overload
-def synchronized(obj: ctypes.Array[c_char], lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedString: ...  # type: ignore
+def synchronized(obj: ctypes.Array[c_char], lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedString: ...
 @overload
 def synchronized(
     obj: ctypes.Array[_SimpleCData[_T]], lock: _LockLike | None = None, ctx: Any | None = None
 ) -> SynchronizedArray[_T]: ...
 @overload
 def synchronized(obj: _CT, lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedBase[_CT]: ...
-
+@type_check_only
 class _AcquireFunc(Protocol):
     def __call__(self, block: bool = ..., timeout: float | None = ..., /) -> bool: ...
 
@@ -115,12 +116,12 @@ class SynchronizedArray(SynchronizedBase[ctypes.Array[_SimpleCData[_T]]], Generi
 class SynchronizedString(SynchronizedArray[bytes]):
     @overload  # type: ignore[override]
     def __getitem__(self, i: slice) -> bytes: ...
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, i: int) -> bytes: ...
     @overload  # type: ignore[override]
     def __setitem__(self, i: slice, value: bytes) -> None: ...
-    @overload  # type: ignore[override]
-    def __setitem__(self, i: int, value: bytes) -> None: ...  # type: ignore[override]
+    @overload
+    def __setitem__(self, i: int, value: bytes) -> None: ...
     def __getslice__(self, start: int, stop: int) -> bytes: ...  # type: ignore[override]
     def __setslice__(self, start: int, stop: int, values: bytes) -> None: ...  # type: ignore[override]
 
