@@ -33,9 +33,9 @@ reveal_type(1) # N: Revealed type is "Literal[1]?"
 [case testErrorCodeSyntaxError]
 1 ''
 [out]
-main:1: error: invalid syntax  [syntax]
+main:1: error: Invalid syntax  [syntax]
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
+main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]
@@ -105,6 +105,33 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
 
+[case testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+x              # type: ignore                              # E: Unused "type: ignore" comment  [unused-ignore]
+x              # type: ignore[name-defined]                # E: Unused "type: ignore" comment  [unused-ignore]
+"x".foobar(y)  # type: ignore[name-defined, attr-defined]  # E: Unused "type: ignore[name-defined]" comment  [unused-ignore]
+
+[case testErrorCodeWarnUnusedIgnores8_IgnoreUnusedIgnore]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+"x"  # type: ignore[unused-ignore]
+"x"  # type: ignore[name-defined, unused-ignore]
+"x"  # type: ignore[xyz, unused-ignore]
+x    # type: ignore[name-defined, unused-ignore]
+
+[case testErrorCodeWarnUnusedIgnores9_SloppyFormattingNotEmptyBrackets]
+# flags: --warn-unused-ignores
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined]
+1 + "ok" + "ok".foo # type: ignore[  ,operator,attr-defined]
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined,]
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined,,]
+
+[case testErrorCodeWarnUnusedIgnores10_SloppyFormattingEmptyBrackets]
+# flags: --warn-unused-ignores
+1+1 # type: ignore    # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[]  # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[ ] # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[,,, ] # E: Unused "type: ignore" comment  [unused-ignore]
+
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
 "x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
@@ -124,10 +151,10 @@ z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unuse
 # flags: --enable-error-code ignore-without-code
 # type: ignore  # whole file ignore
 x
-y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+y # type: ignore  # ignore the lack of error code since we ignore the whole file
 
 [case testErrorCodeMissingMultiple]
-# flags: --enable-error-code ignore-without-code --python-version 3.7
+# flags: --enable-error-code ignore-without-code
 from __future__ import annotations
 class A:
     attr: int
@@ -259,7 +286,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
-y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -330,11 +357,11 @@ a.x = ''  # E: Incompatible types in assignment (expression has type "str", vari
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
 from typing import List, TypeVar
-x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
+x: List  # E: Missing type arguments for generic type "List"  [type-arg]
+y: list  # E: Missing type arguments for generic type "list"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
-z: L  # E: Missing type parameters for generic type "L"  [type-arg]
+z: L  # E: Missing type arguments for generic type "L"  [type-arg]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeUnionAttribute]
@@ -344,7 +371,7 @@ class A:
 class B:
     y: str
 a: Union[A, B]
-a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
+a.x  # E: Item "B" of "A | B" has no attribute "x"  [union-attr]
 
 [case testErrorCodeFunctionHasNoAnnotation]
 # flags: --disallow-untyped-defs
@@ -381,10 +408,25 @@ def f() -> None:
 def g():
     pass
 
+[case testErrorCodeUntypedDecorator]
+# flags: --disallow-untyped-decorators --warn-unused-ignores
+def d(f): return f
+
+@d  # E: Untyped decorator makes function "x" untyped  [untyped-decorator]
+def x() -> int: return 1
+@d  # type: ignore
+def y() -> int: return 2
+@d  # type: ignore[untyped-decorator]
+def best() -> int: return 3
+@d  # type: ignore[misc]  # E: Unused "type: ignore" comment  [unused-ignore] \
+                          # E: Untyped decorator makes function "z" untyped  [untyped-decorator] \
+                          # N: Error code "untyped-decorator" not covered by "type: ignore" comment
+def z() -> int: return 4
+
 [case testErrorCodeIndexing]
 from typing import Dict
 x: Dict[int, int]
-x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
+x['']  # E: Invalid index type "str" for "dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
 1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
@@ -449,7 +491,7 @@ y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeTypedDict]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 class E(TypedDict):
@@ -460,7 +502,7 @@ a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict 
 b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
                   # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+c = {}  # E: Missing key "x" for TypedDict "D"  [typeddict-item]
 d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key] \
                           # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
@@ -472,7 +514,7 @@ a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictNoteIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class A(TypedDict):
     one_commonpart: int
     two_commonparts: int
@@ -484,7 +526,7 @@ not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictSubCodeIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
@@ -522,13 +564,16 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import-not-found]
+from defusedxml import xyz  # E: Library stubs not installed for "defusedxml"  [import-untyped] \
+                            # N: Hint: "python3 -m pip install types-defusedxml" \
+                            # N: (or run "mypy --install-types" to install all missing stub packages)
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import-not-found]
 import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import-not-found]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import-not-found]
 from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
 from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import-not-found] \
                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]
@@ -578,7 +623,7 @@ B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"  [ab
 [case testErrorCodeNewTypeNotSubclassable]
 from typing import Union, NewType
 
-X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, str]")  [valid-newtype]
+X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "int | str")  [valid-newtype]
 
 [case testErrorCodeOverloadVariant]
 from typing import overload
@@ -637,7 +682,7 @@ def g() -> int:
 '{!x}'.format('Hm...')  # E: Invalid conversion type "x", must be one of "r", "s" or "a"  [str-format]
 '}{'.format()  # E: Invalid conversion specifier in format string: unexpected }  [str-format]
 
-'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
+'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int | float | SupportsInt")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
 '{}'.format(b'abc')  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes  [str-bytes-safe]
@@ -649,7 +694,7 @@ def g() -> int:
 x: List[int]  # type: ignore[name-defined]
 
 [case testErrorCodeProtocolProblemsIgnore]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class P(Protocol):
     def f(self, x: str) -> None: ...
@@ -726,7 +771,7 @@ main:2: error: Syntax error in type comment "int"  [syntax]
 [case testErrorCode__exit__Return]
 class InvalidReturn:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False  [exit-return] \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
@@ -821,6 +866,20 @@ class Foo:
         return 2
 [builtins fixtures/list.pyi]
 
+[case testRedundantExpressionsUnionWithAny]
+# flags: --enable-error-code redundant-expr
+from typing import Any, Awaitable, Union
+ok_list: list[Union[Any, Awaitable]]
+for y in ok_list:
+    z = 1 if isinstance(y, Awaitable) else 2
+
+bad_list: list[Awaitable]
+for y in bad_list:
+    z = 1 if isinstance(y, Awaitable) else 2  # E: If condition is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
@@ -828,13 +887,14 @@ Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo"
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictNameMismatch]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTruthyBool]
-# flags: --enable-error-code truthy-bool
+# flags: --enable-error-code truthy-bool --no-local-partial-types
 from typing import List, Union, Any
 
 class Foo:
@@ -846,21 +906,31 @@ foo = Foo()
 if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
+not foo  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+
 zero = 0
 if zero:
     pass
+
+not zero
 
 false = False
 if false:
     pass
 
+not false
+
 null = None
 if null:
     pass
 
+not null
+
 s = ''
 if s:
     pass
+
+not s
 
 good_union: Union[str, int] = 5
 if good_union:
@@ -868,11 +938,15 @@ if good_union:
 if not good_union:
     pass
 
+not good_union
+
 bad_union: Union[Foo, Bar] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
+
+not bad_union  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
 
 # 'object' is special and is treated as potentially falsy
 obj: object = Foo()
@@ -881,16 +955,30 @@ if obj:
 if not obj:
     pass
 
+not obj
+
 lst: List[int] = []
 if lst:
     pass
+
+not lst
 
 a: Any
 if a:
     pass
 
+not a
+
 any_or_object: Union[object, Any]
 if any_or_object:
+    pass
+
+not any_or_object
+
+if (my_foo := Foo()):  # E: "__main__.my_foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+if my_a := (a or Foo()):  # E: "__main__.Foo" returns "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 [builtins fixtures/list.pyi]
 
@@ -903,12 +991,16 @@ if not f:  # E: Function "f" could always be true in boolean context  [truthy-fu
     pass
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
+not f  # E: Function "f" could always be true in boolean context  [truthy-function]
+
 [case testTruthyIterable]
 # flags: --enable-error-code truthy-iterable
 from typing import Iterable
 def func(var: Iterable[str]) -> None:
     if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
         ...
+
+    not var  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
 
 [case testNoOverloadImplementation]
 from typing import overload
@@ -921,22 +1013,21 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDict39]
-# flags: --python-version 3.9 --show-column-numbers
-from typing import Dict
-b: Dict[int, x:y]
-c: Dict[x:y]
+[case testSliceInDictBuiltin]
+# flags: --show-column-numbers
+b: dict[int, x:y]
+c: dict[x:y]
 
 [builtins fixtures/dict.pyi]
 [out]
-main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
-main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
-main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
+main:2:14: error: Invalid type comment or annotation  [valid-type]
+main:2:14: note: did you mean to use ',' instead of ':' ?
+main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:3:9: error: Invalid type comment or annotation  [valid-type]
+main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDict38]
-# flags: --python-version 3.8 --show-column-numbers
+[case testSliceInDictTyping]
+# flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
 c: Dict[x:y]
@@ -958,7 +1049,7 @@ reveal_type(t)  # N: Revealed type is "__main__.TensorType"
 [builtins fixtures/tuple.pyi]
 
 [case testNoteAboutChangedTypedDictErrorCode]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 
@@ -975,11 +1066,13 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
+                          # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
+# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
+                                 # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]
@@ -1021,12 +1114,12 @@ class C(abc.ABC):
 
 T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
-test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+test(C)  # E: Only concrete class can be given where "type[C]" is expected  [type-abstract]
 
 class D(C):
     @abc.abstractmethod
     def bar(self) -> None: ...
-cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "Type[C]"  [type-abstract]
+cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "type[C]"  [type-abstract]
 
 [case testUncheckedAnnotationCodeShown]
 def f():
@@ -1148,3 +1241,98 @@ main:3: note: Revealed local types are:
 main:3: note:     x: builtins.int
 main:3: error: Name "reveal_locals" is not defined  [unimported-reveal]
 [builtins fixtures/isinstancelist.pyi]
+
+[case testCovariantMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Any
+
+class C:
+    x: float
+    y: float
+    z: float
+    w: Any
+    @property
+    def foo(self) -> float: ...
+    @property
+    def bar(self) -> float: ...
+    @bar.setter
+    def bar(self, val: float) -> None: ...
+    baz: float
+    bad1: float
+    bad2: float
+class D(C):
+    x: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    y: float
+    z: Any
+    w: float
+    foo: int
+    bar: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def one(self) -> None:
+        self.baz = 5
+    bad1 = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def other(self) -> None:
+        self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+[builtins fixtures/property.pyi]
+
+[case testNarrowedTypeNotSubtype]
+from typing_extensions import TypeIs
+
+def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"  [narrowed-type-not-subtype]
+    pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testDynamicMetaclass]
+class A(metaclass=type(tuple)): pass  # E: Dynamic metaclass not supported for "A"  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testMetaclassOfTypeAny]
+# mypy: disallow-subclassing-any=True
+from typing import Any
+foo: Any = ...
+class A(metaclass=foo): pass  # E: Class cannot use "foo" as a metaclass (has type "Any")  [metaclass]
+
+[case testMetaclassOfWrongType]
+class Foo:
+    bar = 1
+class A2(metaclass=Foo.bar): pass  # E: Invalid metaclass "Foo.bar"  [metaclass]
+
+[case testMetaclassNotTypeSubclass]
+class M: pass
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported  [metaclass]
+
+[case testMultipleMetaclasses]
+import six
+class M1(type): pass
+
+@six.add_metaclass(M1)
+class A1(metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+class A2(six.with_metaclass(M1), metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+@six.add_metaclass(M1)
+class A3(six.with_metaclass(M1)): pass  # E: Multiple metaclass definitions  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidMetaclassStructure]
+class X(type): pass
+class Y(type): pass
+class A(metaclass=X): pass
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases  [metaclass] \
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
+
+
+
+
+[case testOverloadedFunctionSignature]
+from typing import overload, Union
+
+@overload
+def process(response1: float,response2: float) -> float:
+    ...
+@overload
+def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+    ...
+
+def process(response1,response2)-> Union[float,int]:
+   return response1 + response2

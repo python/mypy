@@ -1,5 +1,5 @@
 import sys
-from typing_extensions import Literal
+from typing import Final, Literal
 
 __all__ = [
     "cmp_op",
@@ -20,44 +20,28 @@ if sys.version_info >= (3, 12):
     __all__ += ["hasarg", "hasexc"]
 else:
     __all__ += ["hasnargs"]
+if sys.version_info >= (3, 13):
+    __all__ += ["hasjump"]
 
-if sys.version_info >= (3, 9):
-    cmp_op: tuple[Literal["<"], Literal["<="], Literal["=="], Literal["!="], Literal[">"], Literal[">="]]
-else:
-    cmp_op: tuple[
-        Literal["<"],
-        Literal["<="],
-        Literal["=="],
-        Literal["!="],
-        Literal[">"],
-        Literal[">="],
-        Literal["in"],
-        Literal["not in"],
-        Literal["is"],
-        Literal["is not"],
-        Literal["exception match"],
-        Literal["BAD"],
-    ]
-hasconst: list[int]
-hasname: list[int]
-hasjrel: list[int]
-hasjabs: list[int]
-haslocal: list[int]
-hascompare: list[int]
-hasfree: list[int]
+cmp_op: tuple[Literal["<"], Literal["<="], Literal["=="], Literal["!="], Literal[">"], Literal[">="]]
+hasconst: Final[list[int]]
+hasname: Final[list[int]]
+hasjrel: Final[list[int]]
+hasjabs: Final[list[int]]
+haslocal: Final[list[int]]
+hascompare: Final[list[int]]
+hasfree: Final[list[int]]
 if sys.version_info >= (3, 12):
-    hasarg: list[int]
-    hasexc: list[int]
+    hasarg: Final[list[int]]
+    hasexc: Final[list[int]]
 else:
-    hasnargs: list[int]
-opname: list[str]
+    hasnargs: Final[list[int]]
+if sys.version_info >= (3, 13):
+    hasjump: Final[list[int]]
+opname: Final[list[str]]
 
-opmap: dict[str, int]
-HAVE_ARGUMENT: Literal[90]
-EXTENDED_ARG: Literal[144]
+opmap: Final[dict[str, int]]
+HAVE_ARGUMENT: Final = 43
+EXTENDED_ARG: Final = 69
 
-if sys.version_info >= (3, 8):
-    def stack_effect(__opcode: int, __oparg: int | None = None, *, jump: bool | None = None) -> int: ...
-
-else:
-    def stack_effect(__opcode: int, __oparg: int | None = None) -> int: ...
+def stack_effect(opcode: int, oparg: int | None = None, /, *, jump: bool | None = None) -> int: ...

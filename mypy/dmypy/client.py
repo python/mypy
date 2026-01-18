@@ -14,11 +14,13 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Mapping, NoReturn
+from collections.abc import Callable, Mapping
+from typing import Any, NoReturn
 
+from mypy.defaults import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
-from mypy.ipc import IPCClient, IPCException
+from mypy.ipc import BadStatus, IPCClient, IPCException, read_status
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
@@ -27,8 +29,8 @@ from mypy.version import __version__
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=30)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
 parser = argparse.ArgumentParser(
@@ -254,19 +256,13 @@ help_parser = p = subparsers.add_parser("help")
 del p
 
 
-class BadStatus(Exception):
-    """Exception raised when there is something wrong with the status file.
-
-    For example:
-    - No status file found
-    - Status file malformed
-    - Process whose pid is in the status file does not exist
-    """
-
-
 def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
+
+    # set recursion limit consistent with mypy/main.py
+    sys.setrecursionlimit(RECURSION_LIMIT)
+
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
@@ -436,7 +432,7 @@ def do_status(args: argparse.Namespace) -> None:
     if args.verbose or "error" in response:
         show_stats(response)
     if "error" in response:
-        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
+        fail(f"Daemon may be busy processing; if this persists, consider {sys.argv[0]} kill")
     print("Daemon is up and running")
 
 
@@ -447,7 +443,7 @@ def do_stop(args: argparse.Namespace) -> None:
     response = request(args.status_file, "stop", timeout=5)
     if "error" in response:
         show_stats(response)
-        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
+        fail(f"Daemon may be busy processing; if this persists, consider {sys.argv[0]} kill")
     else:
         print("Daemon stopped")
 
@@ -553,6 +549,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:
@@ -573,7 +573,7 @@ def check_output(
         write_junit_xml(
             response["roundtrip_time"],
             bool(err),
-            messages,
+            {None: messages} if messages else {},
             junit_xml,
             response["python_version"],
             response["platform"],
@@ -715,24 +715,6 @@ def check_status(data: dict[str, Any]) -> tuple[int, str]:
     if not isinstance(connection_name, str):
         raise BadStatus("connection_name field is not a string")
     return pid, connection_name
-
-
-def read_status(status_file: str) -> dict[str, object]:
-    """Read status file.
-
-    Raise BadStatus if the status file doesn't exist or contains
-    invalid JSON or the JSON is not a dict.
-    """
-    if not os.path.isfile(status_file):
-        raise BadStatus("No status file found")
-    with open(status_file) as f:
-        try:
-            data = json.load(f)
-        except Exception as e:
-            raise BadStatus("Malformed status file (not JSON)") from e
-    if not isinstance(data, dict):
-        raise BadStatus("Invalid status file (not a dict)")
-    return data
 
 
 def is_running(status_file: str) -> bool:

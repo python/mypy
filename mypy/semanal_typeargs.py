@@ -7,14 +7,15 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from collections.abc import Callable
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
+from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
@@ -38,6 +39,7 @@ from mypy.types import (
     get_proper_types,
     split_with_prefix_and_suffix,
 )
+from mypy.typevartuples import erased_vars
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
@@ -81,21 +83,36 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         super().visit_type_alias_type(t)
-        if t in self.seen_aliases:
-            # Avoid infinite recursion on recursive type aliases.
-            # Note: it is fine to skip the aliases we have already seen in non-recursive
-            # types, since errors there have already been reported.
-            return
-        self.seen_aliases.add(t)
+        if t.is_recursive:
+            if t in self.seen_aliases:
+                # Avoid infinite recursion on recursive type aliases.
+                return
+            self.seen_aliases.add(t)
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
+        is_error, is_invalid = self.validate_args(
+            t.alias.name, tuple(t.args), t.alias.alias_tvars, t
+        )
+        if is_invalid:
+            # If there is an arity error (e.g. non-Parameters used for ParamSpec etc.),
+            # then it is safer to erase the arguments completely, to avoid crashes later.
+            # TODO: can we move this logic to typeanal.py?
+            t.args = erased_vars(t.alias.alias_tvars, TypeOfAny.from_error)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
-            get_proper_type(t).accept(self)
+            if t.args:
+                # Since we always allow unbounded type variables in alias definitions, we need
+                # to verify the arguments satisfy the upper bounds of the expansion as well.
+                get_proper_type(t).accept(self)
+        if t.is_recursive:
+            self.seen_aliases.discard(t)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         t.items = flatten_nested_tuples(t.items)
+        for i, it in enumerate(t.items):
+            if self.check_non_paramspec(it, "tuple", t):
+                t.items[i] = AnyType(TypeOfAny.from_error)
+
         # We could also normalize Tuple[*tuple[X, ...]] -> tuple[X, ...] like in
         # expand_type() but we can't do this here since it is not a translator visitor,
         # and we need to return an Instance instead of TupleType.
@@ -103,15 +120,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)
-        # Normalize trivial unpack in var args as *args: *tuple[X, ...] -> *args: X
-        if t.is_var_arg:
-            star_index = t.arg_kinds.index(ARG_STAR)
-            star_type = t.arg_types[star_index]
-            if isinstance(star_type, UnpackType):
-                p_type = get_proper_type(star_type.type)
-                if isinstance(p_type, Instance):
-                    assert p_type.type.fullname == "builtins.tuple"
-                    t.arg_types[star_index] = p_type.args[0]
+        t.normalize_trivial_unpack()
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)
@@ -120,7 +129,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
-        self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        _, is_invalid = self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        if is_invalid:
+            t.args = tuple(erased_vars(info.defn.type_vars, TypeOfAny.from_error))
         if t.type.fullname == "builtins.tuple" and len(t.args) == 1:
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = t.args[0]
@@ -130,9 +141,31 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     assert unpacked.type.fullname == "builtins.tuple"
                     t.args = unpacked.args
 
+    def check_non_paramspec(self, arg: Type, tv_kind: str, context: Context) -> bool:
+        if isinstance(arg, ParamSpecType):
+            self.fail(
+                INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
+                context,
+                code=codes.VALID_TYPE,
+            )
+            self.note(
+                INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name), context, code=codes.VALID_TYPE
+            )
+            return True
+        if isinstance(arg, Parameters):
+            self.fail(
+                f"Cannot use {format_type(arg, self.options)} for {tv_kind},"
+                " only for ParamSpec",
+                context,
+                code=codes.VALID_TYPE,
+            )
+            return True
+
+        return False
+
     def validate_args(
-        self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
-    ) -> bool:
+        self, name: str, args: tuple[Type, ...], type_vars: list[TypeVarLikeType], ctx: Context
+    ) -> tuple[bool, bool]:
         if any(isinstance(v, TypeVarTupleType) for v in type_vars):
             prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
             tvt = type_vars[prefix]
@@ -140,65 +173,76 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             start, middle, end = split_with_prefix_and_suffix(
                 tuple(args), prefix, len(type_vars) - prefix - 1
             )
-            args = list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+            args = start + (TupleType(list(middle), tvt.tuple_fallback),) + end
 
         is_error = False
-        for (i, arg), tvar in zip(enumerate(args), type_vars):
+        is_invalid = False
+        for arg, tvar in zip(args, type_vars):
+            context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
-                if isinstance(arg, ParamSpecType):
-                    # TODO: Better message
-                    is_error = True
-                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', ctx)
-                    self.note(
-                        "You can use ParamSpec as the first argument to Callable, e.g., "
-                        "'Callable[{}, int]'".format(arg.name),
-                        ctx,
-                    )
+                if self.check_non_paramspec(arg, "regular type variable", context):
+                    is_invalid = True
+                    continue
+
+                if self.in_type_alias_expr and isinstance(arg, TypeVarType):
+                    # Type aliases are allowed to use unconstrained type variables
+                    # error will be checked at substitution point.
                     continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
-                        if self.in_type_alias_expr:
-                            # Type aliases are allowed to use unconstrained type variables
-                            # error will be checked at substitution point.
-                            continue
                         arg_values = arg.values
                         if not arg_values:
                             is_error = True
                             self.fail(
                                 message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(arg.name, name),
-                                ctx,
+                                context,
                                 code=codes.TYPE_VAR,
                             )
                             continue
                     else:
                         arg_values = [arg]
-                    if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
+                    if self.check_type_var_values(
+                        name, arg_values, tvar.name, tvar.values, context
+                    ):
                         is_error = True
-                if not is_subtype(arg, tvar.upper_bound):
-                    if self.in_type_alias_expr and isinstance(arg, TypeVarType):
-                        # Type aliases are allowed to use unconstrained type variables
-                        # error will be checked at substitution point.
-                        continue
+                # Check against upper bound. Since it's object the vast majority of the time,
+                # add fast path to avoid a potentially slow subtype check.
+                upper_bound = tvar.upper_bound
+                object_upper_bound = (
+                    type(upper_bound) is Instance
+                    and upper_bound.type.fullname == "builtins.object"
+                )
+                if not object_upper_bound and not is_subtype(arg, upper_bound):
                     is_error = True
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
                             format_type(arg, self.options),
                             name,
-                            format_type(tvar.upper_bound, self.options),
+                            format_type(upper_bound, self.options),
                         ),
-                        ctx,
+                        context,
                         code=codes.TYPE_VAR,
                     )
             elif isinstance(tvar, ParamSpecType):
                 if not isinstance(
                     get_proper_type(arg), (ParamSpecType, Parameters, AnyType, UnboundType)
                 ):
+                    is_invalid = True
                     self.fail(
                         "Can only replace ParamSpec with a parameter types list or"
                         f" another ParamSpec, got {format_type(arg, self.options)}",
-                        ctx,
+                        context,
+                        code=codes.VALID_TYPE,
                     )
-        return is_error
+            elif isinstance(tvar, TypeVarTupleType):
+                p_arg = get_proper_type(arg)
+                assert isinstance(p_arg, TupleType)
+                for it in p_arg.items:
+                    if self.check_non_paramspec(it, "TypeVarTuple", context):
+                        is_invalid = True
+        if is_invalid:
+            is_error = True
+        return is_error, is_invalid
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         super().visit_unpack_type(typ)
@@ -224,6 +268,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
     ) -> bool:
+        if self.in_type_alias_expr:
+            # See testValidTypeAliasValues - we do not enforce typevar compatibility
+            # at the definition site. We check instantiation validity later.
+            return False
         is_error = False
         for actual in get_proper_types(actuals):
             # We skip UnboundType here, since they may appear in defn.bases,

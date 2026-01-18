@@ -280,8 +280,12 @@ class B(A):
 
 
 [case testSuperOutsideMethodNoCrash]
-class C:
-    a = super().whatever  # E: super() outside of a method is not supported
+class A:
+    x = 1
+class B(A): pass
+class C(B):
+    b = super(B, B).x
+    a = super().whatever  # E: "super()" outside of a method is not supported
 
 [case testSuperWithObjectClassAsFirstArgument]
 class A:
@@ -366,13 +370,22 @@ class C(B):
 [case testSuperInMethodWithNoArguments]
 class A:
     def f(self) -> None: pass
+    @staticmethod
+    def st() -> int:
+        return 1
 
 class B(A):
     def g() -> None: # E: Method must have at least one argument. Did you forget the "self" argument?
-        super().f() # E: super() requires one or more positional arguments in enclosing function
+        super().f() # E: "super()" requires one or two positional arguments in enclosing function
     def h(self) -> None:
         def a() -> None:
-            super().f() # E: super() requires one or more positional arguments in enclosing function
+            super().f() # E: "super()" requires one or two positional arguments in enclosing function
+    @staticmethod
+    def st() -> int:
+        reveal_type(super(B, B).st())  # N: Revealed type is "builtins.int"
+        super().st() # E: "super()" requires one or two positional arguments in enclosing function
+        return 2
+[builtins fixtures/staticmethod.pyi]
 
 [case testSuperWithUnsupportedTypeObject]
 from typing import Type

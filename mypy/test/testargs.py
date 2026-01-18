@@ -4,10 +4,12 @@ In particular, verify that the argparse defaults are the same as the Options
 defaults, and that argparse doesn't assign any new members to the Options
 object it creates.
 """
+
 from __future__ import annotations
 
 import argparse
 import sys
+from typing import Any, cast
 
 from mypy.main import infer_python_executable, process_options
 from mypy.options import Options
@@ -62,7 +64,7 @@ class ArgSuite(Suite):
 
         # first test inferring executable from version
         options = Options()
-        options.python_executable = None
+        options.python_executable = cast(Any, None)
         options.python_version = sys.version_info[:2]
         infer_python_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]

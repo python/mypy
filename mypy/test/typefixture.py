@@ -30,6 +30,7 @@ from mypy.types import (
     TypeAliasType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -57,7 +58,7 @@ class TypeFixture:
             return TypeVarType(
                 name,
                 name,
-                id,
+                TypeVarId(id),
                 values,
                 upper_bound,
                 AnyType(TypeOfAny.from_omitted_generics),
@@ -77,6 +78,8 @@ class TypeFixture:
         self.anyt = AnyType(TypeOfAny.special_form)
         self.nonet = NoneType()
         self.uninhabited = UninhabitedType()
+        self.a_uninhabited = UninhabitedType()
+        self.a_uninhabited.ambiguous = True
 
         # Abstract class TypeInfos
 
@@ -215,6 +218,7 @@ class TypeFixture:
         self.type_d = TypeType.make_normalized(self.d)
         self.type_t = TypeType.make_normalized(self.t)
         self.type_any = TypeType.make_normalized(self.anyt)
+        self.type_never = TypeType.make_normalized(UninhabitedType())
 
         self._add_bool_dunder(self.bool_type_info)
         self._add_bool_dunder(self.ai)
@@ -227,7 +231,7 @@ class TypeFixture:
             return TypeVarTupleType(
                 name,
                 name,
-                id,
+                TypeVarId(id),
                 upper_bound,
                 self.std_tuple,
                 AnyType(TypeOfAny.from_omitted_generics),
@@ -325,7 +329,7 @@ class TypeFixture:
                         TypeVarTupleType(
                             n,
                             n,
-                            id,
+                            TypeVarId(id),
                             self.std_tuple.copy_modified(args=[self.o]),
                             self.std_tuple.copy_modified(args=[self.o]),
                             AnyType(TypeOfAny.from_omitted_generics),
@@ -340,7 +344,7 @@ class TypeFixture:
                         TypeVarType(
                             n,
                             n,
-                            id,
+                            TypeVarId(id),
                             [],
                             self.o,
                             AnyType(TypeOfAny.from_omitted_generics),
@@ -370,7 +374,7 @@ class TypeFixture:
         target = Instance(
             self.std_tuplei, [UnionType([base, A])]
         )  # A = Tuple[Union[base, A], ...]
-        AN = TypeAlias(target, "__main__.A", -1, -1)
+        AN = TypeAlias(target, "__main__.A", "__main__", -1, -1)
         A.alias = AN
         return A, target
 
@@ -379,7 +383,7 @@ class TypeFixture:
         target = UnionType(
             [base, Instance(self.std_tuplei, [A])]
         )  # A = Union[base, Tuple[A, ...]]
-        AN = TypeAlias(target, "__main__.A", -1, -1)
+        AN = TypeAlias(target, "__main__.A", "__main__", -1, -1)
         A.alias = AN
         return A, target
 
@@ -389,7 +393,7 @@ class TypeFixture:
         alias_tvars: list[TypeVarLikeType] | None = None,
         args: list[Type] | None = None,
     ) -> TypeAliasType:
-        AN = TypeAlias(target, "__main__.A", -1, -1, alias_tvars=alias_tvars)
+        AN = TypeAlias(target, "__main__.A", "__main__", -1, -1, alias_tvars=alias_tvars)
         if args is None:
             args = []
         return TypeAliasType(AN, args)

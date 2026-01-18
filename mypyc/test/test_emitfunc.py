@@ -5,7 +5,7 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import PLATFORM_SIZE
+from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    CString,
     DecRef,
     Extend,
     GetAttr,
@@ -28,14 +29,17 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadAddress,
+    LoadLiteral,
     LoadMem,
     Op,
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     TupleGet,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -48,11 +52,13 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     c_int_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
+    none_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
@@ -109,11 +115,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "y": int_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
+            "t": RTuple([object_rprimitive, object_rprimitive]),
         }
         ir.bitmap_attrs = ["i1", "i2"]
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
+        self.none = add_local("none", none_rprimitive)
+
+        self.struct_type = RStruct(
+            "Foo", ["b", "x", "y"], [bool_rprimitive, int32_rprimitive, int64_rprimitive]
+        )
+        self.st = add_local("st", self.struct_type)
 
         self.context = EmitterContext(NameGenerator([["mod"]]))
 
@@ -134,7 +147,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), "cpy_r_r0 = cpy_r_t.f1;")
 
-    def test_load_None(self) -> None:
+    def test_load_None(self) -> None:  # noqa: N802
         self.assert_emit(
             LoadAddress(none_object_op.type, none_object_op.src, 0),
             "cpy_r_r0 = (PyObject *)&_Py_NoneStruct;",
@@ -154,6 +167,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_int_neg(self) -> None:
+        assert int_neg_op.c_function_name is not None
         self.assert_emit(
             CallC(
                 int_neg_op.c_function_name,
@@ -302,7 +316,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_get_item_op.c_function_name,
+                str(list_get_item_op.c_function_name),
                 [self.m, self.k],
                 list_get_item_op.return_type,
                 list_get_item_op.steals,
@@ -316,7 +330,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_set_item_op.c_function_name,
+                str(list_set_item_op.c_function_name),
                 [self.l, self.n, self.o],
                 list_set_item_op.return_type,
                 list_set_item_op.steals,
@@ -352,7 +366,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_append(self) -> None:
         self.assert_emit(
             CallC(
-                list_append_op.c_function_name,
+                str(list_append_op.c_function_name),
                 [self.l, self.o],
                 list_append_op.return_type,
                 list_append_op.steals,
@@ -410,6 +424,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
                if (unlikely(cpy_r_r0 == -113) && !(((mod___AObject *)cpy_r_r)->bitmap & 1)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }
+            """,
+        )
+
+    def test_get_attr_nullable_with_tuple(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "t", 1, allow_error_value=True),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+               if (cpy_r_r0.f0 != NULL) {
+                   CPy_INCREF(cpy_r_r0.f0);
+                   CPy_INCREF(cpy_r_r0.f1);
                }
             """,
         )
@@ -492,7 +517,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_get_item_op.c_function_name,
+                str(dict_get_item_op.c_function_name),
                 [self.d, self.o2],
                 dict_get_item_op.return_type,
                 dict_get_item_op.steals,
@@ -506,7 +531,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_set_item_op.c_function_name,
+                str(dict_set_item_op.c_function_name),
                 [self.d, self.o, self.o2],
                 dict_set_item_op.return_type,
                 dict_set_item_op.steals,
@@ -520,7 +545,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_update(self) -> None:
         self.assert_emit(
             CallC(
-                dict_update_op.c_function_name,
+                str(dict_update_op.c_function_name),
                 [self.d, self.o],
                 dict_update_op.return_type,
                 dict_update_op.steals,
@@ -654,6 +679,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             GetElementPtr(self.o, r, "i64"), """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i64;"""
+        )
+
+    def test_set_element(self) -> None:
+        # Use compact syntax when setting the initial element of an undefined value
+        self.assert_emit(
+            SetElement(Undef(self.struct_type), "b", self.b), """cpy_r_r0.b = cpy_r_b;"""
+        )
+        # We propagate the unchanged values in subsequent assignments
+        self.assert_emit(
+            SetElement(self.st, "x", self.i32),
+            """cpy_r_r0 = (Foo) { cpy_r_st.b, cpy_r_i32, cpy_r_st.y };""",
         )
 
     def test_load_address(self) -> None:
@@ -804,9 +840,49 @@ else {
                 Extend(a, int_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
             )
 
+    def test_inc_ref_none(self) -> None:
+        b = Box(self.none)
+        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+
+    def test_inc_ref_bool(self) -> None:
+        b = Box(self.b)
+        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+
+    def test_inc_ref_int_literal(self) -> None:
+        for x in -5, 0, 1, 5, 255, 256:
+            b = LoadLiteral(x, object_rprimitive)
+            self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        for x in -1123355, -6, 257, 123235345:
+            b = LoadLiteral(x, object_rprimitive)
+            self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")
+
+    def test_c_string(self) -> None:
+        s = Register(cstring_rprimitive, "s")
+        self.assert_emit(Assign(s, CString(b"foo")), """cpy_r_s = "foo";""")
+        self.assert_emit(Assign(s, CString(b'foo "o')), r"""cpy_r_s = "foo \"o";""")
+        self.assert_emit(Assign(s, CString(b"\x00")), r"""cpy_r_s = "\x00";""")
+        self.assert_emit(Assign(s, CString(b"\\")), r"""cpy_r_s = "\\";""")
+        for i in range(256):
+            b = bytes([i])
+            if b == b"\n":
+                target = "\\n"
+            elif b == b"\r":
+                target = "\\r"
+            elif b == b"\t":
+                target = "\\t"
+            elif b == b'"':
+                target = '\\"'
+            elif b == b"\\":
+                target = "\\\\"
+            elif i < 32 or i >= 127:
+                target = "\\x%.2x" % i
+            else:
+                target = b.decode("ascii")
+            self.assert_emit(Assign(s, CString(b)), f'cpy_r_s = "{target}";')
+
     def assert_emit(
         self,
-        op: Op,
+        op: Op | list[Op],
         expected: str,
         next_block: BasicBlock | None = None,
         *,
@@ -815,7 +891,11 @@ else {
         skip_next: bool = False,
     ) -> None:
         block = BasicBlock(0)
-        block.ops.append(op)
+        if isinstance(op, Op):
+            block.ops.append(op)
+        else:
+            block.ops.extend(op)
+            op = op[-1]
         value_names = generate_names_for_ir(self.registers, [block])
         emitter = Emitter(self.context, value_names)
         declarations = Emitter(self.context, value_names)
@@ -841,7 +921,9 @@ else {
         else:
             expected_lines = expected.rstrip().split("\n")
         expected_lines = [line.strip(" ") for line in expected_lines]
-        assert_string_arrays_equal(expected_lines, actual_lines, msg="Generated code unexpected")
+        assert_string_arrays_equal(
+            expected_lines, actual_lines, msg="Generated code unexpected", traceback=True
+        )
         if skip_next:
             assert visitor.op_index == 1
         else:
@@ -859,6 +941,8 @@ else {
                     args = [left, right]
                     if desc.ordering is not None:
                         args = [args[i] for i in desc.ordering]
+                    # This only supports primitives that map to C calls
+                    assert desc.c_function_name is not None
                     self.assert_emit(
                         CallC(
                             desc.c_function_name,

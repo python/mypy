@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import time
-from multiprocessing import Process, Queue
+from multiprocessing import Queue, get_context
 from unittest import TestCase, main
 
 import pytest
@@ -35,10 +35,17 @@ def server_multi_message_echo(q: Queue[str]) -> None:
 
 
 class IPCTests(TestCase):
+    def setUp(self) -> None:
+        if sys.platform == "linux":
+            # The default "fork" start method is potentially unsafe
+            self.ctx = get_context("forkserver")
+        else:
+            self.ctx = get_context("spawn")
+
     def test_transaction_large(self) -> None:
-        queue: Queue[str] = Queue()
+        queue: Queue[str] = self.ctx.Queue()
         msg = "t" * 200000  # longer than the max read size of 100_000
-        p = Process(target=server, args=(msg, queue), daemon=True)
+        p = self.ctx.Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
@@ -49,9 +56,9 @@ class IPCTests(TestCase):
         p.join()
 
     def test_connect_twice(self) -> None:
-        queue: Queue[str] = Queue()
+        queue: Queue[str] = self.ctx.Queue()
         msg = "this is a test message"
-        p = Process(target=server, args=(msg, queue), daemon=True)
+        p = self.ctx.Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
@@ -67,8 +74,8 @@ class IPCTests(TestCase):
         assert p.exitcode == 0
 
     def test_multiple_messages(self) -> None:
-        queue: Queue[str] = Queue()
-        p = Process(target=server_multi_message_echo, args=(queue,), daemon=True)
+        queue: Queue[str] = self.ctx.Queue()
+        p = self.ctx.Process(target=server_multi_message_echo, args=(queue,), daemon=True)
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:

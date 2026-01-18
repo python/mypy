@@ -4,5 +4,5 @@ version = '0.1'
 description = 'test'
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.18"]
 build-backend = "hatchling.build"

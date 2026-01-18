@@ -1,12 +1,11 @@
-import sys
 from tkinter import Event, Misc, Tk, Widget
-from typing import ClassVar, Protocol
+from typing import ClassVar, Protocol, type_check_only
 
-if sys.version_info >= (3, 9):
-    __all__ = ["dnd_start", "DndHandler"]
+__all__ = ["dnd_start", "DndHandler"]
 
+@type_check_only
 class _DndSource(Protocol):
-    def dnd_end(self, target: Widget | None, event: Event[Misc] | None) -> None: ...
+    def dnd_end(self, target: Widget | None, event: Event[Misc] | None, /) -> None: ...
 
 class DndHandler:
     root: ClassVar[Tk | None]
@@ -15,5 +14,6 @@ class DndHandler:
     def finish(self, event: Event[Misc] | None, commit: int = 0) -> None: ...
     def on_motion(self, event: Event[Misc]) -> None: ...
     def on_release(self, event: Event[Misc]) -> None: ...
+    def __del__(self) -> None: ...
 
 def dnd_start(source: _DndSource, event: Event[Misc]) -> DndHandler | None: ...

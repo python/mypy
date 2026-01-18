@@ -12,7 +12,7 @@ from abc import ABCMeta
 cast = 0
 assert_type = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -64,3 +64,5 @@ class _TypedDict(Mapping[str, object]):
     def __ror__(self, __value: dict[str, Any]) -> dict[str, object]: ...
     # supposedly incompatible definitions of __or__ and __ior__
     def __ior__(self, __value: Self) -> Self: ...  # type: ignore[misc]
+
+class _SpecialForm: pass

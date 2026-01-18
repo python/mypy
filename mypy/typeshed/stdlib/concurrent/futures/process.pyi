@@ -5,29 +5,32 @@ from multiprocessing.context import BaseContext, Process
 from multiprocessing.queues import Queue, SimpleQueue
 from threading import Lock, Semaphore, Thread
 from types import TracebackType
-from typing import Any, Generic, TypeVar
+from typing import Any, Final, Generic, TypeVar, overload
+from typing_extensions import TypeVarTuple, Unpack
 from weakref import ref
 
 from ._base import BrokenExecutor, Executor, Future
 
 _T = TypeVar("_T")
+_Ts = TypeVarTuple("_Ts")
 
 _threads_wakeups: MutableMapping[Any, Any]
 _global_shutdown: bool
 
 class _ThreadWakeup:
     _closed: bool
-    _reader: Connection
-    _writer: Connection
+    # Any: Unused send and recv methods
+    _reader: Connection[Any, Any]
+    _writer: Connection[Any, Any]
     def close(self) -> None: ...
     def wakeup(self) -> None: ...
     def clear(self) -> None: ...
 
 def _python_exit() -> None: ...
 
-EXTRA_QUEUED_CALLS: int
+EXTRA_QUEUED_CALLS: Final = 1
 
-_MAX_WINDOWS_WORKERS: int
+_MAX_WINDOWS_WORKERS: Final = 61
 
 class _RemoteTraceback(Exception):
     tb: str
@@ -69,9 +72,19 @@ class _CallItem:
 
 class _SafeQueue(Queue[Future[Any]]):
     pending_work_items: dict[int, _WorkItem[Any]]
-    shutdown_lock: Lock
+    if sys.version_info < (3, 12):
+        shutdown_lock: Lock
     thread_wakeup: _ThreadWakeup
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            max_size: int | None = 0,
+            *,
+            ctx: BaseContext,
+            pending_work_items: dict[int, _WorkItem[Any]],
+            thread_wakeup: _ThreadWakeup,
+        ) -> None: ...
+    else:
         def __init__(
             self,
             max_size: int | None = 0,
@@ -80,10 +93,6 @@ class _SafeQueue(Queue[Future[Any]]):
             pending_work_items: dict[int, _WorkItem[Any]],
             shutdown_lock: Lock,
             thread_wakeup: _ThreadWakeup,
-        ) -> None: ...
-    else:
-        def __init__(
-            self, max_size: int | None = 0, *, ctx: BaseContext, pending_work_items: dict[int, _WorkItem[Any]]
         ) -> None: ...
 
     def _on_queue_feeder_error(self, e: Exception, obj: _CallItem) -> None: ...
@@ -109,8 +118,8 @@ if sys.version_info >= (3, 11):
     def _process_worker(
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
-        initializer: Callable[..., object] | None,
-        initargs: tuple[Any, ...],
+        initializer: Callable[[Unpack[_Ts]], object] | None,
+        initargs: tuple[Unpack[_Ts]],
         max_tasks: int | None = None,
     ) -> None: ...
 
@@ -118,31 +127,30 @@ else:
     def _process_worker(
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
-        initializer: Callable[..., object] | None,
-        initargs: tuple[Any, ...],
+        initializer: Callable[[Unpack[_Ts]], object] | None,
+        initargs: tuple[Unpack[_Ts]],
     ) -> None: ...
 
-if sys.version_info >= (3, 9):
-    class _ExecutorManagerThread(Thread):
-        thread_wakeup: _ThreadWakeup
-        shutdown_lock: Lock
-        executor_reference: ref[Any]
-        processes: MutableMapping[int, Process]
-        call_queue: Queue[_CallItem]
-        result_queue: SimpleQueue[_ResultItem]
-        work_ids_queue: Queue[int]
-        pending_work_items: dict[int, _WorkItem[Any]]
-        def __init__(self, executor: ProcessPoolExecutor) -> None: ...
-        def run(self) -> None: ...
-        def add_call_item_to_queue(self) -> None: ...
-        def wait_result_broken_or_wakeup(self) -> tuple[Any, bool, str]: ...
-        def process_result_item(self, result_item: int | _ResultItem) -> None: ...
-        def is_shutting_down(self) -> bool: ...
-        def terminate_broken(self, cause: str) -> None: ...
-        def flag_executor_shutting_down(self) -> None: ...
-        def shutdown_workers(self) -> None: ...
-        def join_executor_internals(self) -> None: ...
-        def get_n_children_alive(self) -> int: ...
+class _ExecutorManagerThread(Thread):
+    thread_wakeup: _ThreadWakeup
+    shutdown_lock: Lock
+    executor_reference: ref[Any]
+    processes: MutableMapping[int, Process]
+    call_queue: Queue[_CallItem]
+    result_queue: SimpleQueue[_ResultItem]
+    work_ids_queue: Queue[int]
+    pending_work_items: dict[int, _WorkItem[Any]]
+    def __init__(self, executor: ProcessPoolExecutor) -> None: ...
+    def run(self) -> None: ...
+    def add_call_item_to_queue(self) -> None: ...
+    def wait_result_broken_or_wakeup(self) -> tuple[Any, bool, str]: ...
+    def process_result_item(self, result_item: int | _ResultItem) -> None: ...
+    def is_shutting_down(self) -> bool: ...
+    def terminate_broken(self, cause: str) -> None: ...
+    def flag_executor_shutting_down(self) -> None: ...
+    def shutdown_workers(self) -> None: ...
+    def join_executor_internals(self) -> None: ...
+    def get_n_children_alive(self) -> int: ...
 
 _system_limits_checked: bool
 _system_limited: bool | None
@@ -169,24 +177,66 @@ class ProcessPoolExecutor(Executor):
     _result_queue: SimpleQueue[Any]
     _work_ids: Queue[Any]
     if sys.version_info >= (3, 11):
+        @overload
         def __init__(
             self,
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
-            initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = (),
+            initializer: Callable[[], object] | None = None,
+            initargs: tuple[()] = (),
+            *,
+            max_tasks_per_child: int | None = None,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None = None,
+            mp_context: BaseContext | None = None,
+            *,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
+            max_tasks_per_child: int | None = None,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None,
+            mp_context: BaseContext | None,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
             *,
             max_tasks_per_child: int | None = None,
         ) -> None: ...
     else:
+        @overload
         def __init__(
             self,
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
-            initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = (),
+            initializer: Callable[[], object] | None = None,
+            initargs: tuple[()] = (),
         ) -> None: ...
-    if sys.version_info >= (3, 9):
-        def _start_executor_manager_thread(self) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None = None,
+            mp_context: BaseContext | None = None,
+            *,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None,
+            mp_context: BaseContext | None,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
+        ) -> None: ...
 
+    def _start_executor_manager_thread(self) -> None: ...
     def _adjust_process_count(self) -> None: ...
+
+    if sys.version_info >= (3, 14):
+        def kill_workers(self) -> None: ...
+        def terminate_workers(self) -> None: ...

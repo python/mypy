@@ -10,15 +10,16 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from re import Pattern
+from typing import Any, Final, NamedTuple, NoReturn, TypeAlias as _TypeAlias
 
 import pytest
 
 from mypy import defaults
-from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
+from mypy.test.config import PREFIX, mypyc_output_dir, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -41,7 +42,7 @@ class DeleteFile(NamedTuple):
     path: str
 
 
-FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
+FileOperation: _TypeAlias = UpdateFile | DeleteFile
 
 
 def _file_arg_to_module(filename: str) -> str:
@@ -244,7 +245,7 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent: DataSuiteCollector
+    parent: DataFileCollector
 
     input: list[str]
     output: list[str]  # Output for the first pass
@@ -275,7 +276,7 @@ class DataDrivenTestCase(pytest.Item):
 
     def __init__(
         self,
-        parent: DataSuiteCollector,
+        parent: DataFileCollector,
         suite: DataSuite,
         *,
         file: str,
@@ -289,6 +290,7 @@ class DataDrivenTestCase(pytest.Item):
         data: str,
         line: int,
     ) -> None:
+        assert isinstance(parent, DataFileCollector)
         super().__init__(name, parent)
         self.suite = suite
         self.file = file
@@ -304,7 +306,7 @@ class DataDrivenTestCase(pytest.Item):
         self.data = data
         self.line = line
         self.old_cwd: str | None = None
-        self.tmpdir: tempfile.TemporaryDirectory[str] | None = None
+        self.tmpdir: str | None = None
 
     def runtest(self) -> None:
         if self.skip:
@@ -312,6 +314,19 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
+
+        if (
+            not [line for line in self.input if line.strip()]
+            and "Empty" not in self.name
+            and not [
+                file
+                for file in self.files
+                # these files are added based on other things
+                if os.path.basename(file[0]) not in ("typing.pyi", "_typeshed.pyi", "builtins.pyi")
+            ]
+        ):
+            raise AssertionError(f"{self.name} is empty.")
+
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
         suite = parent.obj()
@@ -323,19 +338,19 @@ class DataDrivenTestCase(pytest.Item):
             save_dir: str | None = self.config.getoption("--save-failures-to", None)
             if save_dir:
                 assert self.tmpdir is not None
-                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
+                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir))
                 print(f"Copying data from test {self.name} to {target_dir}")
                 if not os.path.isabs(target_dir):
                     assert self.old_cwd
                     target_dir = os.path.join(self.old_cwd, target_dir)
-                shutil.copytree(self.tmpdir.name, target_dir)
+                shutil.copytree(self.tmpdir, target_dir)
             raise
 
     def setup(self) -> None:
         parse_test_case(case=self)
         self.old_cwd = os.getcwd()
-        self.tmpdir = tempfile.TemporaryDirectory(prefix="mypy-test-")
-        os.chdir(self.tmpdir.name)
+        self.tmpdir = tempfile.mkdtemp(prefix="mypy-test-")
+        os.chdir(self.tmpdir)
         os.mkdir(test_temp_dir)
 
         # Precalculate steps for find_steps()
@@ -371,10 +386,7 @@ class DataDrivenTestCase(pytest.Item):
         if self.old_cwd is not None:
             os.chdir(self.old_cwd)
         if self.tmpdir is not None:
-            try:
-                self.tmpdir.cleanup()
-            except OSError:
-                pass
+            shutil.rmtree(self.tmpdir, ignore_errors=True)
         self.old_cwd = None
         self.tmpdir = None
 
@@ -587,6 +599,13 @@ def fix_cobertura_filename(line: str) -> str:
 ##
 
 
+def pytest_sessionstart(session: Any) -> None:
+    # Clean up directory where mypyc tests write intermediate files on failure
+    # to avoid any confusion between test runs
+    if os.path.isdir(mypyc_output_dir):
+        shutil.rmtree(mypyc_output_dir)
+
+
 # This function name is special to pytest.  See
 # https://docs.pytest.org/en/latest/reference.html#initialization-hooks
 def pytest_addoption(parser: Any) -> None:
@@ -596,6 +615,12 @@ def pytest_addoption(parser: Any) -> None:
         action="store_true",
         default=False,
         help="Update test data to reflect actual output (supported only for certain tests)",
+    )
+    group.addoption(
+        "--mypy-num-workers",
+        type=int,
+        default=0,
+        help="Run tests using multiple worker processes for each test case",
     )
     group.addoption(
         "--save-failures-to",
@@ -620,11 +645,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
-        raise pytest.UsageError(
-            "--update-data incompatible with parallelized tests; re-run with -n 1"
-        )
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config: pytest.Config) -> None:
+    if config.getoption("--collectonly"):
+        return
+    # --update-data is not compatible with parallelized tests, disable parallelization
+    if config.getoption("--update-data"):
+        config.option.numprocesses = 0
 
 
 # This function name is special to pytest.  See
@@ -640,9 +667,7 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | N
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
-            )
+            return DataSuiteCollector.from_parent(parent=collector, name=name)
     return None
 
 

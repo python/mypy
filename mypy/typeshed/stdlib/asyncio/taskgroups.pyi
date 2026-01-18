@@ -8,6 +8,7 @@ from . import _CoroutineLike
 from .events import AbstractEventLoop
 from .tasks import Task
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 12):
     __all__ = ("TaskGroup",)
 else:
@@ -21,5 +22,18 @@ class TaskGroup:
 
     async def __aenter__(self) -> Self: ...
     async def __aexit__(self, et: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
-    def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
+    if sys.version_info >= (3, 14):
+        def create_task(
+            self,
+            coro: _CoroutineLike[_T],
+            *,
+            name: str | None = None,
+            context: Context | None = None,
+            eager_start: bool | None = None,
+        ) -> Task[_T]: ...
+    else:
+        def create_task(
+            self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
+        ) -> Task[_T]: ...
+
     def _on_task_done(self, task: Task[object]) -> None: ...

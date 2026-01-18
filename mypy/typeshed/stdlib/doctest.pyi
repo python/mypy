@@ -1,9 +1,10 @@
+import sys
 import types
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable
-from typing import Any, NamedTuple
-from typing_extensions import TypeAlias
+from typing import Any, Final, NamedTuple, type_check_only
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "register_optionflag",
@@ -41,33 +42,44 @@ __all__ = [
     "debug",
 ]
 
-class TestResults(NamedTuple):
-    failed: int
-    attempted: int
+if sys.version_info >= (3, 13):
+    @type_check_only
+    class _TestResultsBase(NamedTuple):
+        failed: int
+        attempted: int
 
-OPTIONFLAGS_BY_NAME: dict[str, int]
+    class TestResults(_TestResultsBase):
+        def __new__(cls, failed: int, attempted: int, *, skipped: int = 0) -> Self: ...
+        skipped: int
+
+else:
+    class TestResults(NamedTuple):
+        failed: int
+        attempted: int
+
+OPTIONFLAGS_BY_NAME: Final[dict[str, int]]
 
 def register_optionflag(name: str) -> int: ...
 
-DONT_ACCEPT_TRUE_FOR_1: int
-DONT_ACCEPT_BLANKLINE: int
-NORMALIZE_WHITESPACE: int
-ELLIPSIS: int
-SKIP: int
-IGNORE_EXCEPTION_DETAIL: int
+DONT_ACCEPT_TRUE_FOR_1: Final = 1
+DONT_ACCEPT_BLANKLINE: Final = 2
+NORMALIZE_WHITESPACE: Final = 4
+ELLIPSIS: Final = 8
+SKIP: Final = 16
+IGNORE_EXCEPTION_DETAIL: Final = 32
 
-COMPARISON_FLAGS: int
+COMPARISON_FLAGS: Final = 63
 
-REPORT_UDIFF: int
-REPORT_CDIFF: int
-REPORT_NDIFF: int
-REPORT_ONLY_FIRST_FAILURE: int
-FAIL_FAST: int
+REPORT_UDIFF: Final = 64
+REPORT_CDIFF: Final = 128
+REPORT_NDIFF: Final = 256
+REPORT_ONLY_FIRST_FAILURE: Final = 512
+FAIL_FAST: Final = 1024
 
-REPORTING_FLAGS: int
+REPORTING_FLAGS: Final = 1984
 
-BLANKLINE_MARKER: str
-ELLIPSIS_MARKER: str
+BLANKLINE_MARKER: Final = "<BLANKLINE>"
+ELLIPSIS_MARKER: Final = "..."
 
 class Example:
     source: str
@@ -134,6 +146,8 @@ class DocTestRunner:
     original_optionflags: int
     tries: int
     failures: int
+    if sys.version_info >= (3, 13):
+        skips: int
     test: DocTest
     def __init__(self, checker: OutputChecker | None = None, verbose: bool | None = None, optionflags: int = 0) -> None: ...
     def report_start(self, out: _Out, test: DocTest, example: Example) -> None: ...
@@ -206,8 +220,8 @@ class DocTestCase(unittest.TestCase):
         self,
         test: DocTest,
         optionflags: int = 0,
-        setUp: Callable[[DocTest], Any] | None = None,
-        tearDown: Callable[[DocTest], Any] | None = None,
+        setUp: Callable[[DocTest], object] | None = None,
+        tearDown: Callable[[DocTest], object] | None = None,
         checker: OutputChecker | None = None,
     ) -> None: ...
     def runTest(self) -> None: ...

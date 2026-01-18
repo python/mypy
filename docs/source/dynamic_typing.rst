@@ -1,6 +1,5 @@
 .. _dynamic-typing:
 
-
 Dynamically typed code
 ======================
 
@@ -81,20 +80,20 @@ treated as ``Any``:
 
 .. code-block:: python
 
-    from typing import List
-
-    def f(x: List) -> None:
+    def f(x: list) -> None:
         reveal_type(x)        # Revealed type is "builtins.list[Any]"
         reveal_type(x[0])     # Revealed type is "Any"
         x[0].anything_goes()  # OK
 
-You can make mypy warn you about untyped function parameters using the
+You can make mypy warn you about missing generic parameters using the
 :option:`--disallow-any-generics <mypy --disallow-any-generics>` flag.
 
 Finally, another major source of ``Any`` types leaking into your program is from
 third party libraries that mypy does not know about. This is particularly the case
 when using the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`
 flag. See :ref:`fix-missing-imports` for more information about this.
+
+.. _any-vs-object:
 
 Any vs. object
 --------------

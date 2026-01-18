@@ -8,7 +8,7 @@ import os
 import pkgutil
 import queue
 import sys
-from multiprocessing import Process, Queue
+from multiprocessing import Queue, get_context
 from types import ModuleType
 
 
@@ -123,9 +123,13 @@ class ModuleInspect:
         self._start()
 
     def _start(self) -> None:
-        self.tasks: Queue[str] = Queue()
-        self.results: Queue[ModuleProperties | str] = Queue()
-        self.proc = Process(target=worker, args=(self.tasks, self.results, sys.path))
+        if sys.platform == "linux":
+            ctx = get_context("forkserver")
+        else:
+            ctx = get_context("spawn")
+        self.tasks: Queue[str] = ctx.Queue()
+        self.results: Queue[ModuleProperties | str] = ctx.Queue()
+        self.proc = ctx.Process(target=worker, args=(self.tasks, self.results, sys.path))
         self.proc.start()
         self.counter = 0  # Number of successful roundtrips
 

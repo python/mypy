@@ -5,6 +5,7 @@ class object:
     def __init__(self) -> None: pass
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
+    def __hash__(self) -> int: ...
 
 class type: pass
 class bytes: pass
@@ -34,3 +35,5 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, x: int) -> Tco: pass
+
+property = object()  # Dummy definition

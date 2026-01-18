@@ -1,26 +1,25 @@
-import sys
 from _typeshed import Unused
-from typing import IO, Any, NamedTuple, NoReturn, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Final, Literal, NamedTuple, NoReturn, overload
+from typing_extensions import Self, TypeAlias
 
 _File: TypeAlias = str | IO[bytes]
 
 class Error(Exception): ...
 
-AUDIO_FILE_MAGIC: int
-AUDIO_FILE_ENCODING_MULAW_8: int
-AUDIO_FILE_ENCODING_LINEAR_8: int
-AUDIO_FILE_ENCODING_LINEAR_16: int
-AUDIO_FILE_ENCODING_LINEAR_24: int
-AUDIO_FILE_ENCODING_LINEAR_32: int
-AUDIO_FILE_ENCODING_FLOAT: int
-AUDIO_FILE_ENCODING_DOUBLE: int
-AUDIO_FILE_ENCODING_ADPCM_G721: int
-AUDIO_FILE_ENCODING_ADPCM_G722: int
-AUDIO_FILE_ENCODING_ADPCM_G723_3: int
-AUDIO_FILE_ENCODING_ADPCM_G723_5: int
-AUDIO_FILE_ENCODING_ALAW_8: int
-AUDIO_UNKNOWN_SIZE: int
+AUDIO_FILE_MAGIC: Final = 0x2E736E64
+AUDIO_FILE_ENCODING_MULAW_8: Final = 1
+AUDIO_FILE_ENCODING_LINEAR_8: Final = 2
+AUDIO_FILE_ENCODING_LINEAR_16: Final = 3
+AUDIO_FILE_ENCODING_LINEAR_24: Final = 4
+AUDIO_FILE_ENCODING_LINEAR_32: Final = 5
+AUDIO_FILE_ENCODING_FLOAT: Final = 6
+AUDIO_FILE_ENCODING_DOUBLE: Final = 7
+AUDIO_FILE_ENCODING_ADPCM_G721: Final = 23
+AUDIO_FILE_ENCODING_ADPCM_G722: Final = 24
+AUDIO_FILE_ENCODING_ADPCM_G723_3: Final = 25
+AUDIO_FILE_ENCODING_ADPCM_G723_5: Final = 26
+AUDIO_FILE_ENCODING_ALAW_8: Final = 27
+AUDIO_UNKNOWN_SIZE: Final = 0xFFFFFFFF
 
 class _sunau_params(NamedTuple):
     nchannels: int
@@ -34,6 +33,7 @@ class Au_read:
     def __init__(self, f: _File) -> None: ...
     def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
+    def __del__(self) -> None: ...
     def getfp(self) -> IO[bytes] | None: ...
     def rewind(self) -> None: ...
     def close(self) -> None: ...
@@ -54,6 +54,7 @@ class Au_write:
     def __init__(self, f: _File) -> None: ...
     def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
+    def __del__(self) -> None: ...
     def setnchannels(self, nchannels: int) -> None: ...
     def getnchannels(self) -> int: ...
     def setsampwidth(self, sampwidth: int) -> None: ...
@@ -79,6 +80,3 @@ def open(f: _File, mode: Literal["r", "rb"]) -> Au_read: ...
 def open(f: _File, mode: Literal["w", "wb"]) -> Au_write: ...
 @overload
 def open(f: _File, mode: str | None = None) -> Any: ...
-
-if sys.version_info < (3, 9):
-    openfp = open

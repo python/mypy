@@ -1,8 +1,7 @@
 from _typeshed import FileDescriptorOrPath
 from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
 from logging import _ExcInfoType
-from typing import AnyStr
-from typing_extensions import Literal
+from typing import AnyStr, Literal
 
 from . import refactor as refactor
 

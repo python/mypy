@@ -1,4 +1,7 @@
-# Builtins stub used in dictionary-related test cases.
+# Builtins stub used in dictionary-related test cases (stripped down).
+#
+# NOTE: Use dict-full.pyi if you need more builtins instead of adding here,
+#       if feasible.
 
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
@@ -14,11 +17,9 @@ VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
-    def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type:
-    __annotations__: Mapping[str, object]
+class type: pass
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -36,28 +37,10 @@ class dict(Mapping[KT, VT]):
     def get(self, k: KT, default: Union[VT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
 
-    # This was actually added in 3.9:
-    @overload
-    def __or__(self, __value: dict[KT, VT]) -> dict[KT, VT]: ...
-    @overload
-    def __or__(self, __value: dict[T, T2]) -> dict[Union[KT, T], Union[VT, T2]]: ...
-    @overload
-    def __ror__(self, __value: dict[KT, VT]) -> dict[KT, VT]: ...
-    @overload
-    def __ror__(self, __value: dict[T, T2]) -> dict[Union[KT, T], Union[VT, T2]]: ...
-    # dict.__ior__ should be kept roughly in line with MutableMapping.update()
-    @overload  # type: ignore[misc]
-    def __ior__(self, __value: _typeshed.SupportsKeysAndGetItem[KT, VT]) -> Self: ...
-    @overload
-    def __ior__(self, __value: Iterable[Tuple[KT, VT]]) -> Self: ...
-
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
     def __radd__(self, x: int) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
-    def __neg__(self) -> int: pass
-    real: int
-    imag: int
 
 class str: pass # for keyword argument key type
 class bytes: pass
@@ -74,10 +57,8 @@ class function: pass
 class float: pass
 class complex: pass
 class bool(int): pass
-
-class ellipsis:
-    __class__: object
-def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+class ellipsis: pass
 class BaseException: pass
 
+def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass
