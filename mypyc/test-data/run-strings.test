@@ -1255,6 +1255,5 @@ from typing import Final
 
 FMT: Final = "{} {}"
 
-def test_format() -> str:
+def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
-    return
