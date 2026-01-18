@@ -1537,6 +1537,7 @@ class DataEnum(Data, Enum):
 reveal_type(DataEnum.A)          # N: Revealed type is "Literal[__main__.DataEnum.A]?"
 reveal_type(DataEnum.A.value)    # N: Revealed type is "__main__.Data"
 reveal_type(DataEnum.A._value_)  # N: Revealed type is "__main__.Data"
+[builtins fixtures/tuple.pyi]
 
 [case testEnumNarrowedToTwoLiterals]
 # Regression test: two literals of an enum would be joined
