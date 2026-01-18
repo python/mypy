@@ -211,7 +211,6 @@ L0:
     r2 = ' '
     r3 = CPyStr_Build(3, r0, r2, r1)
     return r3
-
 def g():
     r0, r1, r2, r3 :: str
 L0:
@@ -220,7 +219,6 @@ L0:
     r2 = ' '
     r3 = CPyStr_Build(3, r0, r2, r1)
     return r3
-
 def h():
     r0, r1, r2, r3 :: str
 L0:
