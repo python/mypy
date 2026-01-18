@@ -150,6 +150,7 @@ from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
+from mypy.reachability import MYPY_FALSE, MYPY_TRUE, infer_condition_value
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -5070,21 +5071,61 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
-                # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)
                     self.accept(b)
+                    self._visit_if_stmt_redundant_expr_helper(
+                        s, e, b, if_map, else_map, self.binder.frames[-1].unreachable
+                    )
 
-                # XXX Issue a warning if condition is always True?
                 self.push_type_map(else_map, from_assignment=False)
 
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 if s.else_body:
                     self.accept(s.else_body)
 
+    def _visit_if_stmt_redundant_expr_helper(
+        self,
+        stmt: IfStmt,
+        expr: Expression,
+        body: Block,
+        if_map: TypeMap,
+        else_map: TypeMap,
+        else_reachable: bool,
+    ) -> None:
+        """Emits `redundant-expr` errors for if statements that are always true or always false.
+
+        We try to avoid emitting such errors if the redundancy seems to be intended as part of
+        dynamic type or exhaustiveness checking (risking to miss some unintended redundant if
+        statements).
+        """
+
+        if codes.REDUNDANT_EXPR not in self.options.enabled_error_codes:
+            return
+        if infer_condition_value(expr, self.options) in (MYPY_FALSE, MYPY_TRUE):
+            return
+
+        def _filter(body: Block | None) -> bool:
+            if body is None:
+                return False
+            return all(self.is_noop_for_reachability(s) for s in body.body)
+
+        if if_map is None:
+            if stmt.while_stmt:
+                self.msg.redundant_condition_in_while(False, expr)
+            elif not _filter(body):
+                self.msg.redundant_condition_in_if(False, expr)
+
+        if else_map is None:
+            if stmt.while_stmt:
+                if not is_true_literal(expr):
+                    self.msg.redundant_condition_in_while(True, expr)
+            elif not (else_reachable or _filter(stmt.else_body)):
+                self.msg.redundant_condition_in_if(True, expr)
+
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
-        if_stmt = IfStmt([s.expr], [s.body], None)
+        if_stmt = IfStmt([s.expr], [s.body], None, while_stmt=True)
         if_stmt.set_line(s)
         self.accept_loop(if_stmt, s.else_body, exit_condition=s.expr)
 

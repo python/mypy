@@ -3035,3 +3035,131 @@ if isinstance(a, B):
     c = a
 
 [builtins fixtures/isinstance.pyi]
+
+[case testRedundantExpressionWarningsForIfStatements]
+# flags: --enable-error-code=redundant-expr
+from typing import Literal
+
+if True:  # E: If condition is always true
+    x = 1
+
+if False:  # E: If condition is always false
+    x = 1
+
+class W:
+    ...
+if W():
+    x = 1
+
+class X:
+    def __bool__(self) -> bool: ...
+if X():
+    x = 1
+
+class Y:
+    def __bool__(self) -> Literal[True]: ...
+if Y():  # E: If condition is always true
+    x = 1
+
+class Z:
+    def __bool__(self) -> Literal[False]: ...
+if Z():  # E: If condition is always false
+    x = 1
+
+[builtins fixtures/bool.pyi]
+
+[case testRedundantExpressionWarningsForWhileStatements]
+# flags: --enable-error-code=redundant-expr
+
+x = None
+while True:
+    if x:
+        break
+    x = True
+
+while False:  # E: While condition is always false
+    ...
+
+y = None
+while y is None:  # E: While condition is always true
+    ...
+
+[builtins fixtures/bool.pyi]
+
+[case testNoRedundantExpressionWarningsForUsagesOfTYPECHECKING]
+# flags: --enable-error-code=redundant-expr
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    ...
+
+if not TYPE_CHECKING:
+    ...
+
+[case testNoRedundantExpressionWarningsForExhaustivenessChecks]
+# flags: --enable-error-code=redundant-expr
+from typing import Literal, Never, NoReturn
+
+def assert_never(x: Never) -> NoReturn:
+    ...
+def f1(x: Literal[1, 2]) -> str:
+    if x == 1:
+        y = "a"
+    elif x == 2:
+        y = "b"
+    else:
+        assert_never(x)
+    return y
+
+class ValueError: ...
+def f2(x: Literal[1]) -> str:
+    if x == 1:
+        y = "a"
+    else:
+        raise ValueError
+    return y
+
+def f3(x: Literal[1]) -> str:
+    if x == 1:
+        y = "a"
+    else:
+        assert False
+    return y
+
+def f4(x: Literal[1, 2]) -> int:
+    if x == 1:
+        return 1
+    if x == 2:
+        return 2
+
+def f5(x: Literal[1, 2]) -> int:
+    if x == 1:
+        return 1
+    if x == 2:
+        if bool():
+            return 2
+        else:
+            return 3
+
+def f6(x: Literal[1]) -> None:
+    if x != 1:
+        raise ValueError
+
+def f7(x: Literal[1, 2]) -> None:
+    if x == 1:
+        y = "a"
+    elif x == 2:
+        y = "b"
+    else:
+        pass
+
+def f8(x: Literal[1, 2]) -> None:
+    if x == 1:
+        y = "a"
+    elif x == 2:  # E: If condition is always true
+        y = "b"
+    else:
+        pass
+        y = "c"
+
+[builtins fixtures/bool.pyi]
