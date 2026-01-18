@@ -2401,3 +2401,19 @@ MypyFile:1(
     NameExpr(x)
     NameExpr(None)
     str? | None?))
+
+[case testNestedListAssignment]
+a1, [b1, c1] = a2, [b2, c2]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    TupleExpr:1(
+      NameExpr(a1)
+      TupleExpr:1(
+        NameExpr(b1)
+        NameExpr(c1)))
+    TupleExpr:1(
+      NameExpr(a2)
+      ListExpr:1(
+        NameExpr(b2)
+        NameExpr(c2)))))
