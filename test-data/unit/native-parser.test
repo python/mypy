@@ -2360,3 +2360,44 @@ MypyFile:1(
       CallExpr:1(
         NameExpr(super)
         Args()))))
+
+[case testTypeCommentSimple]
+x = []  # type: list[int]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListExpr:1()
+    list?[int?]))
+
+[case testTypeCommentMultiple]
+x = []  # type: list[int]
+y = {}  # type: dict[str, int]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListExpr:1()
+    list?[int?])
+  AssignmentStmt:2(
+    NameExpr(y)
+    DictExpr:2()
+    dict?[str?, int?]))
+
+[case testTypeCommentWithTrailingComment]
+x = []  # type: list[str]  # This is a comment
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListExpr:1()
+    list?[str?]))
+
+[case testTypeCommentUnion]
+x = None  # type: str | None
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    NameExpr(None)
+    str? | None?))
