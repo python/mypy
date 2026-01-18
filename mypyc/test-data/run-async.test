@@ -1493,7 +1493,7 @@ class T:
         return 3
 
 def is_coroutine(fn):
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # type: ignore[operator]
         return inspect.iscoroutinefunction(fn)
 
     # inspect on older python versions does not support function-like objects.
