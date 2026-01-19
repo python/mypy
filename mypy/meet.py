@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from mypy import join
-from mypy.erasetype import erase_type
-from mypy.maptype import map_instance_to_supertype
 from mypy.disallow_str_iteration_state import (
     disallow_str_iteration_state,
     is_subtype_relation_ignored_to_disallow_str_iteration,
 )
+from mypy.erasetype import erase_type
+from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
 from mypy.subtypes import (
     are_parameters_compatible,

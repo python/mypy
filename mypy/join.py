@@ -6,13 +6,13 @@ from collections.abc import Sequence
 from typing import overload
 
 import mypy.typeops
+from mypy.disallow_str_iteration_state import (
+    STR_ITERATION_PROTOCOL_BASES,
+    disallow_str_iteration_state,
+)
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY, TypeInfo
-from mypy.disallow_str_iteration_state import (
-    disallow_str_iteration_state,
-    STR_ITERATION_PROTOCOL_BASES,
-)
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,

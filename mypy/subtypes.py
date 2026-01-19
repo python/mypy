@@ -8,6 +8,10 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.checker_state import checker_state
+from mypy.disallow_str_iteration_state import (
+    disallow_str_iteration_state,
+    is_subtype_relation_ignored_to_disallow_str_iteration,
+)
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
     expand_self_type,
@@ -34,10 +38,6 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.disallow_str_iteration_state import (
-    disallow_str_iteration_state,
-    is_subtype_relation_ignored_to_disallow_str_iteration,
-)
 from mypy.state import state
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,

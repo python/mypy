@@ -32,6 +32,10 @@ from mypy.checkmember import (
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
+from mypy.disallow_str_iteration_state import (
+    STR_ITERATION_PROTOCOL_BASES,
+    disallow_str_iteration_state,
+)
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
@@ -155,10 +159,6 @@ from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
-from mypy.disallow_str_iteration_state import (
-    STR_ITERATION_PROTOCOL_BASES,
-    disallow_str_iteration_state,
-)
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
@@ -8003,13 +8003,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def _is_str_iteration_protocol_for_narrowing(self, typ: Type) -> bool:
         proper = get_proper_type(typ)
-        return isinstance(proper, Instance) and proper.type.fullname in STR_ITERATION_PROTOCOL_BASES
+        return (
+            isinstance(proper, Instance) and proper.type.fullname in STR_ITERATION_PROTOCOL_BASES
+        )
 
     def expand_narrowed_type(self, typ: Type) -> Type:
         if disallow_str_iteration_state.disallow_str_iteration:
             proper = get_proper_type(typ)
             if isinstance(proper, UnionType):
-                return make_simplified_union([self.expand_narrowed_type(item) for item in proper.items])
+                return make_simplified_union(
+                    [self.expand_narrowed_type(item) for item in proper.items]
+                )
             if self._is_str_iteration_protocol_for_narrowing(proper):
                 return make_simplified_union([typ, self.named_type("builtins.str")])
         return typ
