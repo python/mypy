@@ -89,7 +89,7 @@ else:
             Extension(
                 "librt.internal",
                 [
-                    "librt_internal.c",
+                    "internal/librt_internal.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
@@ -115,7 +115,7 @@ else:
             Extension(
                 "librt.base64",
                 [
-                    "librt_base64.c",
+                    "base64/librt_base64.c",
                     "base64/lib.c",
                     "base64/codec_choose.c",
                     "base64/tables/tables.c",

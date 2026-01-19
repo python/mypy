@@ -625,9 +625,9 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
-            ext_declarations.emit_line("#include <librt_internal.h>")
+            ext_declarations.emit_line("#include <internal/librt_internal.h>")
         if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <librt_base64.h>")
+            ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_strings.h>")
         # Include headers for conditional source files
