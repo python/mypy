@@ -277,49 +277,42 @@ def f(n: i64, l: List[i64]) -> vec[i64]:
 def f(n, l):
     n :: i64
     l :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: vec[i64]
-    r3 :: native_int
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: bit
-    r7 :: object
-    r8, x, r9 :: i64
-    r10 :: object
+    r0 :: native_int
+    r1 :: vec[i64]
+    r2, r3 :: native_int
+    r4 :: bit
+    r5 :: object
+    r6, x, r7 :: i64
+    r8 :: object
+    r9 :: ptr
+    r10 :: native_int
     r11 :: ptr
     r12 :: native_int
-    r13 :: ptr
-    r14 :: native_int
 L0:
-    r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive l
-    r2 = VecI64Api.alloc(r1, r1)
-    r3 = 0
+    r0 = var_object_size l
+    r1 = VecI64Api.alloc(r0, r0)
+    r2 = 0
 L1:
-    r4 = get_element_ptr l ob_size :: PyVarObject
-    r5 = load_mem r4 :: native_int*
-    keep_alive l
-    r6 = r3 < r5 :: signed
-    if r6 goto L2 else goto L4 :: bool
+    r3 = var_object_size l
+    r4 = r2 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r7 = CPyList_GetItemUnsafe(l, r3)
-    r8 = unbox(i64, r7)
-    x = r8
-    r9 = x + 1
-    r10 = r2.buf
-    r11 = get_element_ptr r10 items :: VecI64BufObject
-    r12 = r3 * 8
-    r13 = r11 + r12
-    set_mem r13, r9 :: i64*
-    keep_alive r2
+    r5 = list_get_item_unsafe l, r2
+    r6 = unbox(i64, r5)
+    x = r6
+    r7 = x + 1
+    r8 = r1.buf
+    r9 = get_element_ptr r8 items :: VecI64BufObject
+    r10 = r2 * 8
+    r11 = r9 + r10
+    set_mem r11, r7 :: i64*
+    keep_alive r1
 L3:
-    r14 = r3 + 1
-    r3 = r14
+    r12 = r2 + 1
+    r2 = r12
     goto L1
 L4:
-    return r2
+    return r1
 
 [case testVecI64FastComprehensionFromVec]
 from vecs import vec
@@ -398,7 +391,7 @@ L0:
     r3 = r2 >> 1
     ___tmp_5 = r3
 L1:
-    r4 = r2 < 14 :: signed
+    r4 = int_lt r2, 14
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = VecI64Api.append(r1, ___tmp_5)
