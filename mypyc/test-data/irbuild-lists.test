@@ -108,17 +108,15 @@ def f() -> None:
 def f():
     r0 :: list
     r1, r2 :: object
-    r3, r4, r5 :: ptr
+    r3 :: ptr
     x :: list
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2 :: builtins.object*
+    r3 = list_items r0
+    buf_init_item r3, 0, r1
+    buf_init_item r3, 1, r2
     keep_alive r0
     x = r0
     return 1
@@ -156,19 +154,18 @@ def f(a: List[int]) -> None:
 def f(a):
     a, r0, b, r1 :: list
     r2 :: object
-    r3, r4 :: ptr
-    r5 :: list
+    r3 :: ptr
+    r4 :: list
 L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
     r1 = PyList_New(1)
     r2 = object 4
-    r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, r2 :: builtins.object*
+    r3 = list_items r1
+    buf_init_item r3, 0, r2
     keep_alive r1
-    r5 = CPySequence_RMultiply(6, r1)
-    b = r5
+    r4 = CPySequence_RMultiply(6, r1)
+    b = r4
     return 1
 
 [case testListLen]
@@ -178,15 +175,12 @@ def f(a: List[int]) -> int:
 [out]
 def f(a):
     a :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
+    r0 :: native_int
+    r1 :: short_int
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    return r2
+    r0 = var_object_size a
+    r1 = r0 << 1
+    return r1
 
 [case testListAppend]
 from typing import List
@@ -214,33 +208,30 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2, r3 :: short_int
+    r0 :: native_int
+    r1, r2 :: short_int
     i :: int
-    r4 :: bit
-    r5, r6, r7 :: object
-    r8 :: bit
-    r9 :: short_int
+    r3 :: bit
+    r4, r5, r6 :: object
+    r7 :: bit
+    r8 :: short_int
 L0:
-    r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive l
-    r2 = r1 << 1
-    r3 = 0
-    i = r3
+    r0 = var_object_size l
+    r1 = r0 << 1
+    r2 = 0
+    i = r2
 L1:
-    r4 = r3 < r2 :: signed
-    if r4 goto L2 else goto L4 :: bool
+    r3 = int_lt r2, r1
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPyList_GetItem(l, i)
-    r6 = object 1
-    r7 = PyNumber_InPlaceAdd(r5, r6)
-    r8 = CPyList_SetItem(l, i, r7)
+    r4 = CPyList_GetItem(l, i)
+    r5 = object 1
+    r6 = PyNumber_InPlaceAdd(r4, r5)
+    r7 = CPyList_SetItem(l, i, r6)
 L3:
-    r9 = r3 + 2
-    r3 = r9
-    i = r9
+    r8 = r2 + 2
+    r2 = r8
+    i = r8
     goto L1
 L4:
     return l
@@ -253,25 +244,23 @@ def f(x: List[int], y: List[int]) -> List[int]:
 def f(x, y):
     x, y, r0 :: list
     r1, r2 :: object
-    r3, r4, r5 :: ptr
-    r6, r7, r8 :: object
-    r9 :: i32
-    r10 :: bit
+    r3 :: ptr
+    r4, r5, r6 :: object
+    r7 :: i32
+    r8 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2 :: builtins.object*
+    r3 = list_items r0
+    buf_init_item r3, 0, r1
+    buf_init_item r3, 1, r2
     keep_alive r0
-    r6 = CPyList_Extend(r0, x)
-    r7 = CPyList_Extend(r0, y)
-    r8 = object 3
-    r9 = PyList_Append(r0, r8)
-    r10 = r9 >= 0 :: signed
+    r4 = CPyList_Extend(r0, x)
+    r5 = CPyList_Extend(r0, y)
+    r6 = object 3
+    r7 = PyList_Append(r0, r6)
+    r8 = r7 >= 0 :: signed
     return r0
 
 [case testListIn]
@@ -318,79 +307,65 @@ def f(source: List[int]) -> None:
 [out]
 def f(source):
     source :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: list
-    r3 :: native_int
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: bit
-    r7 :: object
-    r8, x, r9 :: int
-    r10 :: object
-    r11 :: native_int
+    r0 :: native_int
+    r1 :: list
+    r2, r3 :: native_int
+    r4 :: bit
+    r5 :: object
+    r6, x, r7 :: int
+    r8 :: object
+    r9 :: native_int
     a :: list
-    r12 :: ptr
-    r13 :: native_int
-    r14 :: list
-    r15 :: native_int
-    r16 :: ptr
-    r17 :: native_int
-    r18 :: bit
-    r19 :: object
-    r20, x_2, r21 :: int
-    r22 :: object
-    r23 :: native_int
+    r10 :: native_int
+    r11 :: list
+    r12, r13 :: native_int
+    r14 :: bit
+    r15 :: object
+    r16, x_2, r17 :: int
+    r18 :: object
+    r19 :: native_int
     b :: list
 L0:
-    r0 = get_element_ptr source ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive source
-    r2 = PyList_New(r1)
-    r3 = 0
+    r0 = var_object_size source
+    r1 = PyList_New(r0)
+    r2 = 0
 L1:
-    r4 = get_element_ptr source ob_size :: PyVarObject
-    r5 = load_mem r4 :: native_int*
-    keep_alive source
-    r6 = r3 < r5 :: signed
-    if r6 goto L2 else goto L4 :: bool
+    r3 = var_object_size source
+    r4 = r2 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r7 = CPyList_GetItemUnsafe(source, r3)
-    r8 = unbox(int, r7)
-    x = r8
-    r9 = CPyTagged_Add(x, 2)
-    r10 = box(int, r9)
-    CPyList_SetItemUnsafe(r2, r3, r10)
+    r5 = list_get_item_unsafe source, r2
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = CPyTagged_Add(x, 2)
+    r8 = box(int, r7)
+    CPyList_SetItemUnsafe(r1, r2, r8)
 L3:
-    r11 = r3 + 1
-    r3 = r11
+    r9 = r2 + 1
+    r2 = r9
     goto L1
 L4:
-    a = r2
-    r12 = get_element_ptr source ob_size :: PyVarObject
-    r13 = load_mem r12 :: native_int*
-    keep_alive source
-    r14 = PyList_New(r13)
-    r15 = 0
+    a = r1
+    r10 = var_object_size source
+    r11 = PyList_New(r10)
+    r12 = 0
 L5:
-    r16 = get_element_ptr source ob_size :: PyVarObject
-    r17 = load_mem r16 :: native_int*
-    keep_alive source
-    r18 = r15 < r17 :: signed
-    if r18 goto L6 else goto L8 :: bool
+    r13 = var_object_size source
+    r14 = r12 < r13 :: signed
+    if r14 goto L6 else goto L8 :: bool
 L6:
-    r19 = CPyList_GetItemUnsafe(source, r15)
-    r20 = unbox(int, r19)
-    x_2 = r20
-    r21 = CPyTagged_Add(x_2, 2)
-    r22 = box(int, r21)
-    CPyList_SetItemUnsafe(r14, r15, r22)
+    r15 = list_get_item_unsafe source, r12
+    r16 = unbox(int, r15)
+    x_2 = r16
+    r17 = CPyTagged_Add(x_2, 2)
+    r18 = box(int, r17)
+    CPyList_SetItemUnsafe(r11, r12, r18)
 L7:
-    r23 = r15 + 1
-    r15 = r23
+    r19 = r12 + 1
+    r12 = r19
     goto L5
 L8:
-    b = r14
+    b = r11
     return 1
 
 [case testGeneratorNext]
@@ -401,41 +376,37 @@ def test(x: List[int]) -> None:
 [out]
 def test(x):
     x :: list
-    r0 :: native_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: bit
-    r4 :: object
-    r5, i :: int
-    r6 :: object
-    r7 :: union[int, None]
-    r8 :: native_int
-    r9 :: object
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, i :: int
+    r5 :: object
+    r6 :: union[int, None]
+    r7 :: native_int
+    r8 :: object
     res :: union[int, None]
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive x
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r1 = var_object_size x
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(x, r0)
-    r5 = unbox(int, r4)
-    i = r5
-    r6 = box(int, i)
-    r7 = r6
+    r3 = list_get_item_unsafe x, r0
+    r4 = unbox(int, r3)
+    i = r4
+    r5 = box(int, i)
+    r6 = r5
     goto L5
 L3:
-    r8 = r0 + 1
-    r0 = r8
+    r7 = r0 + 1
+    r0 = r7
     goto L1
 L4:
-    r9 = box(None, 1)
-    r7 = r9
+    r8 = box(None, 1)
+    r6 = r8
 L5:
-    res = r7
+    res = r6
     return 1
 
 [case testSimplifyListUnion]
@@ -454,83 +425,66 @@ def nested_union(a: Union[List[str], List[Optional[str]]]) -> None:
 [out]
 def narrow(a):
     a :: union[list, int]
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
-    r4 :: list
-    r5 :: ptr
-    r6 :: native_int
-    r7 :: short_int
-    r8 :: int
+    r0 :: bit
+    r1 :: list
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: int
 L0:
-    r0 = load_address PyList_Type
-    r1 = PyObject_IsInstance(a, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyList_Check(a)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = borrow cast(list, a)
-    r5 = get_element_ptr r4 ob_size :: PyVarObject
-    r6 = load_mem r5 :: native_int*
-    keep_alive r4
-    r7 = r6 << 1
+    r1 = borrow cast(list, a)
+    r2 = var_object_size r1
+    r3 = r2 << 1
     keep_alive a
-    return r7
+    return r3
 L2:
-    r8 = unbox(int, a)
-    return r8
+    r4 = unbox(int, a)
+    return r4
 def loop(a):
     a :: list
-    r0 :: native_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: bit
-    r4 :: object
-    r5, x :: union[str, bytes]
-    r6 :: native_int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x :: union[str, bytes]
+    r5 :: native_int
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr a ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive a
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r1 = var_object_size a
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(a, r0)
-    r5 = cast(union[str, bytes], r4)
-    x = r5
+    r3 = list_get_item_unsafe a, r0
+    r4 = cast(union[str, bytes], r3)
+    x = r4
 L3:
-    r6 = r0 + 1
-    r0 = r6
+    r5 = r0 + 1
+    r0 = r5
     goto L1
 L4:
     return 1
 def nested_union(a):
     a :: list
-    r0 :: native_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: bit
-    r4 :: object
-    r5, x :: union[str, None]
-    r6 :: native_int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x :: union[str, None]
+    r5 :: native_int
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr a ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive a
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r1 = var_object_size a
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(a, r0)
-    r5 = cast(union[str, None], r4)
-    x = r5
+    r3 = list_get_item_unsafe a, r0
+    r4 = cast(union[str, None], r3)
+    x = r4
 L3:
-    r6 = r0 + 1
-    r0 = r6
+    r5 = r0 + 1
+    r0 = r5
     goto L1
 L4:
     return 1

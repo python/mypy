@@ -184,7 +184,7 @@ L3:
     r13 = CPyDict_CheckSize(d, r1)
     goto L1
 L4:
-    r14 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccurred()
 L5:
     return d
 
@@ -290,7 +290,7 @@ L5:
     r12 = CPyDict_CheckSize(d1, r1)
     goto L1
 L6:
-    r13 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccurred()
 L7:
     r14 = 0
     r15 = PyDict_Size(d2)
@@ -319,7 +319,7 @@ L10:
     r31 = CPyDict_CheckSize(d2, r15)
     goto L8
 L11:
-    r32 = CPy_NoErrOccured()
+    r32 = CPy_NoErrOccurred()
 L12:
     return 1
 def union_of_dicts(d):
@@ -335,11 +335,14 @@ def union_of_dicts(d):
     r10 :: union[int, str]
     k :: str
     v :: union[int, str]
-    r11, r12 :: object
-    r13 :: int
+    r11 :: object
+    r12 :: object[1]
+    r13 :: object_ptr
     r14 :: object
-    r15 :: i32
-    r16, r17, r18 :: bit
+    r15 :: int
+    r16 :: object
+    r17 :: i32
+    r18, r19, r20 :: bit
 L0:
     r0 = PyDict_New()
     new = r0
@@ -360,16 +363,19 @@ L2:
     k = r9
     v = r10
     r11 = load_address PyLong_Type
-    r12 = PyObject_CallFunctionObjArgs(r11, v, 0)
-    r13 = unbox(int, r12)
-    r14 = box(int, r13)
-    r15 = CPyDict_SetItem(new, k, r14)
-    r16 = r15 >= 0 :: signed
+    r12 = [v]
+    r13 = load_address r12
+    r14 = PyObject_Vectorcall(r11, r13, 1, 0)
+    keep_alive v
+    r15 = unbox(int, r14)
+    r16 = box(int, r15)
+    r17 = CPyDict_SetItem(new, k, r16)
+    r18 = r17 >= 0 :: signed
 L3:
-    r17 = CPyDict_CheckSize(d, r2)
+    r19 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r18 = CPy_NoErrOccured()
+    r20 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
@@ -384,12 +390,9 @@ def typeddict(d):
     r8, k :: str
     v :: object
     r9 :: str
-    r10 :: i32
-    r11 :: bit
-    r12 :: object
-    r13, r14, r15 :: bit
+    r10 :: bool
     name :: object
-    r16, r17 :: bit
+    r11, r12 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
@@ -399,7 +402,7 @@ L1:
     r4 = r3[1]
     r0 = r4
     r5 = r3[0]
-    if r5 goto L2 else goto L9 :: bool
+    if r5 goto L2 else goto L6 :: bool
 L2:
     r6 = r3[2]
     r7 = r3[3]
@@ -407,27 +410,17 @@ L2:
     k = r8
     v = r7
     r9 = 'name'
-    r10 = PyUnicode_Compare(k, r9)
-    r11 = r10 == -1
-    if r11 goto L3 else goto L5 :: bool
+    r10 = CPyStr_EqualLiteral(k, r9, 4)
+    if r10 goto L3 else goto L4 :: bool
 L3:
-    r12 = PyErr_Occurred()
-    r13 = r12 != 0
-    if r13 goto L4 else goto L5 :: bool
-L4:
-    r14 = CPy_KeepPropagating()
-L5:
-    r15 = r10 == 0
-    if r15 goto L6 else goto L7 :: bool
-L6:
     name = v
-L7:
-L8:
-    r16 = CPyDict_CheckSize(d, r1)
+L4:
+L5:
+    r11 = CPyDict_CheckSize(d, r1)
     goto L1
-L9:
-    r17 = CPy_NoErrOccured()
-L10:
+L6:
+    r12 = CPy_NoErrOccurred()
+L7:
     return 1
 
 [case testDictLoadAddress]
@@ -527,8 +520,8 @@ def f3(d, flag):
     r2 :: str
     r3 :: list
     r4 :: object
-    r5, r6 :: ptr
-    r7, r8 :: object
+    r5 :: ptr
+    r6, r7 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
@@ -539,15 +532,14 @@ L2:
     r2 = 'a'
     r3 = PyList_New(1)
     r4 = object 1
-    r5 = get_element_ptr r3 ob_item :: PyListObject
-    r6 = load_mem r5 :: ptr*
-    set_mem r6, r4 :: builtins.object*
+    r5 = list_items r3
+    buf_init_item r5, 0, r4
     keep_alive r3
-    r7 = CPyDict_SetDefault(d, r2, r3)
-    return r7
+    r6 = CPyDict_SetDefault(d, r2, r3)
+    return r6
 L3:
-    r8 = box(None, 1)
-    return r8
+    r7 = box(None, 1)
+    return r7
 def f4(d, flag):
     d :: dict
     flag :: bool
@@ -573,3 +565,4 @@ L2:
 L3:
     r7 = box(None, 1)
     return r7
+
