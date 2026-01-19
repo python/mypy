@@ -286,7 +286,7 @@ def sequence_from_generator_preallocate_helper(
 
         def set_item(item_index: Value) -> None:
             e = builder.accept(gen.left_expr)
-            builder.call_c(set_item_op, [target_op, item_index, e], line)
+            set_item_op(target_op, item_index, e, line)
 
         for_loop_helper_with_index(
             builder, gen.indices[0], sequence_expr, sequence, set_item, line, length

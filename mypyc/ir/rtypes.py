@@ -1462,7 +1462,7 @@ vec_c_types: Final[dict[RType, str]] = {
     bool_rprimitive: "VecBool",
 }
 
-vec_api_fields: Final = {
+vec_api_fields: Final[dict[RType, str]] = {
     int64_rprimitive: "i64",
     int32_rprimitive: "i32",
     int16_rprimitive: "i16",

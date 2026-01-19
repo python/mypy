@@ -243,7 +243,7 @@ def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Val
     # TODO: Do we need to care about alignment?
     item_type = vecobj.type.item_type
     if isinstance(item_type, RPrimitive):
-        item_size = vecobj.type.item_type.size
+        item_size = item_type.size
     elif isinstance(item_type, RVec):
         # TODO: Support 32-bit platforms
         item_size = 16
