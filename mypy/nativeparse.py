@@ -250,18 +250,53 @@ def read_statement(data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.IF_STMT:
-        expr = [read_expression(data)]
-        body = [read_block(data)]
+        # Read the main if condition and body
+        expr = read_expression(data)
+        body = read_block(data)
+
+        # Read elif clauses
         num_elif = read_int(data)
+        elif_exprs = []
+        elif_bodies = []
         for i in range(num_elif):
-            expr.append(read_expression(data))
-            body.append(read_block(data))
+            elif_exprs.append(read_expression(data))
+            elif_bodies.append(read_block(data))
+
+        # Read else clause
         has_else = read_bool(data)
         if has_else:
             else_body = read_block(data)
         else:
             else_body = None
-        if_stmt = IfStmt(expr, body, else_body)
+
+        # Normalize elif into nested if/else statements
+        # Build from the bottom up, starting with the final else body
+        current_else = else_body
+
+        # Process elif clauses in reverse order
+        for i in range(len(elif_exprs) - 1, -1, -1):
+            # Create an IfStmt for this elif
+            elif_stmt = IfStmt([elif_exprs[i]], [elif_bodies[i]], current_else)
+            # Set location from the elif expression
+            elif_stmt.line = elif_exprs[i].line
+            elif_stmt.column = elif_exprs[i].column
+            # Set end location based on what follows
+            if current_else is not None:
+                elif_stmt.end_line = current_else.end_line
+                elif_stmt.end_column = current_else.end_column
+            else:
+                elif_stmt.end_line = elif_bodies[i].end_line
+                elif_stmt.end_column = elif_bodies[i].end_column
+
+            # Wrap in a Block to become the else clause for the outer if
+            current_else = Block([elif_stmt])
+            current_else.line = elif_stmt.line
+            current_else.column = elif_stmt.column
+            current_else.end_line = elif_stmt.end_line
+            current_else.end_column = elif_stmt.end_column
+
+        # Create the main if statement
+        if_stmt = IfStmt([expr], [body], current_else)
         read_loc(data, if_stmt)
         expect_end_tag(data)
         return if_stmt

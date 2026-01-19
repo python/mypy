@@ -129,14 +129,72 @@ MypyFile:1(
     Then(
       ExpressionStmt:2(
         NameExpr(b)))
-    If(
-      NameExpr(c))
-    Then(
-      ExpressionStmt:4(
-        NameExpr(d)))
     Else(
-      ExpressionStmt:6(
-        NameExpr(e)))))
+      IfStmt:3(
+        If(
+          NameExpr(c))
+        Then(
+          ExpressionStmt:4(
+            NameExpr(d)))
+        Else(
+          ExpressionStmt:6(
+            NameExpr(e)))))))
+
+[case testIfStmtMultipleElif]
+if 1:
+    2
+elif 3:
+    4
+elif 5:
+    6
+else:
+    7
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      ExpressionStmt:2(
+        IntExpr(2)))
+    Else(
+      IfStmt:3(
+        If(
+          IntExpr(3))
+        Then(
+          ExpressionStmt:4(
+            IntExpr(4)))
+        Else(
+          IfStmt:5(
+            If(
+              IntExpr(5))
+            Then(
+              ExpressionStmt:6(
+                IntExpr(6)))
+            Else(
+              ExpressionStmt:8(
+                IntExpr(7)))))))))
+
+[case testIfStmtElifNoElse]
+if a:
+    b
+elif c:
+    d
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(a))
+    Then(
+      ExpressionStmt:2(
+        NameExpr(b)))
+    Else(
+      IfStmt:3(
+        If(
+          NameExpr(c))
+        Then(
+          ExpressionStmt:4(
+            NameExpr(d)))))))
 
 [case testWhileStmt]
 while a:
