@@ -194,6 +194,22 @@ MypyFile:1(
         IntExpr(2)
         IntExpr(3)))))
 
+[case testNestedListAssignment]
+a1, [b1, c1] = a2, [b2, c2]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    TupleExpr:1(
+      NameExpr(a1)
+      TupleExpr:1(
+        NameExpr(b1)
+        NameExpr(c1)))
+    TupleExpr:1(
+      NameExpr(a2)
+      ListExpr:1(
+        NameExpr(b2)
+        NameExpr(c2)))))
+
 [case testSimpleFunction]
 def main():
   1
@@ -3862,3 +3878,25 @@ MypyFile:1(
         Args(
           Var(self))
         Block:7()))))
+
+[case testXXX]
+from functools import total_ordering
+from typing import Any, Callable, ClassVar
+
+@total_ordering
+class Ord:
+    __eq__: Callable[[Any, object], bool] = lambda self, other: False
+    __lt__: Callable[[Any, "Ord"], bool] = lambda self, other: False
+
+reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() > Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() >= Ord())  # N: Revealed type is "builtins.bool"
+
+Ord() < 1  # E: Argument 1 has incompatible type "int"; expected "Ord"
+Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
+Ord() == 1
+Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
+Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
+[out]
