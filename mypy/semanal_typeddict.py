@@ -162,7 +162,7 @@ class TypedDictAnalyzer:
             self.add_keys_and_types_from_base(
                 base, field_types, required_keys, readonly_keys, defn
             )
-        (new_field_types, new_statements, new_required_keys, new_readonly_keys) = (
+        new_field_types, new_statements, new_required_keys, new_readonly_keys = (
             self.analyze_typeddict_classdef_fields(defn, oldfields=field_types)
         )
         if new_field_types is None:

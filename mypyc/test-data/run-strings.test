@@ -1249,3 +1249,11 @@ def test_optional_ne() -> None:
     assert ne_s_opt_s_opt('y', 'x')
     assert ne_s_opt_s_opt(None, 'x')
     assert ne_s_opt_s_opt('x', None)
+
+[case testConstantFoldFormatArgs]
+from typing import Final
+
+FMT: Final = "{} {}"
+
+def test_format() -> None:
+    assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
