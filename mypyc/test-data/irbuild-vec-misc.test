@@ -170,17 +170,19 @@ def pop_float(v, i):
     v :: vec[float]
     i :: i64
     r0 :: tuple[vec[float], float]
-    r1, r2 :: vec[float]
-    r3, r4, x :: float
+    r1 :: vec[float]
+    r2 :: float
+    r3 :: vec[float]
+    r4, x :: float
 L0:
     r0 = VecFloatApi.pop(v, -1)
     r1 = borrow r0[0]
-    r2 = unborrow r1
-    v = r2
-    r3 = borrow r0[1]
-    r4 = unborrow r3
-    x = r4
+    r2 = borrow r0[1]
     keep_alive steal r0
+    r3 = unborrow r1
+    v = r3
+    r4 = unborrow r2
+    x = r4
     return x
 
 [case testVecMiscRemove]
@@ -321,8 +323,10 @@ def get_item_nested(v, i):
     r3, r4 :: VecNestedBufItem{len:native_int, buf:object_nrc}
     r5 :: vec[i32]
     r6 :: tuple[vec[vec[i32]], vec[i32]]
-    r7, r8 :: vec[vec[i32]]
-    r9, r10, x :: vec[i32]
+    r7 :: vec[vec[i32]]
+    r8 :: vec[i32]
+    r9 :: vec[vec[i32]]
+    r10, x :: vec[i32]
 L0:
     r0 = VecNestedApi.pop(v, i)
     r1 = borrow r0[0]
@@ -333,10 +337,11 @@ L0:
     r6 = (r2, r5)
     keep_alive steal r0
     r7 = borrow r6[0]
-    r8 = unborrow r7
-    v = r8
-    r9 = borrow r6[1]
-    r10 = unborrow r9
-    x = r10
+    r8 = borrow r6[1]
     keep_alive steal r6
+    r9 = unborrow r7
+    v = r9
+    r10 = unborrow r8
+    x = r10
     return x
+
