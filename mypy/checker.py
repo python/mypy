@@ -85,11 +85,13 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ConditionalExpr,
     Context,
     ContinueStmt,
     Decorator,
     DelStmt,
     DictExpr,
+    DictionaryComprehension,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
@@ -98,6 +100,7 @@ from mypy.nodes import (
     FuncBase,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     GlobalDecl,
     IfStmt,
     Import,
@@ -107,6 +110,7 @@ from mypy.nodes import (
     IndexExpr,
     IntExpr,
     LambdaExpr,
+    ListComprehension,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -124,7 +128,9 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetComprehension,
     SetExpr,
+    SliceExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -5132,11 +5138,54 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if expr.expr is not None:
                 return self.contains_assignment_expr(expr.expr)
             return False
-
-        # Conditional expressions (ternary operator)
-        # Note: ConditionalExpr might not be in imports, but if it exists, handle it
-        # For now, we'll skip it if it's not imported
-
+        
+        # Conditional expressions (ternary operator: x if cond else y)
+        if isinstance(expr, ConditionalExpr):
+            return (
+                self.contains_assignment_expr(expr.cond)
+                or self.contains_assignment_expr(expr.if_expr)
+                or self.contains_assignment_expr(expr.else_expr)
+            )
+        
+        # Slice expressions (x:y:z)
+        if isinstance(expr, SliceExpr):
+            return (
+                (expr.begin_index is not None and self.contains_assignment_expr(expr.begin_index))
+                or (expr.end_index is not None and self.contains_assignment_expr(expr.end_index))
+                or (expr.stride is not None and self.contains_assignment_expr(expr.stride))
+            )
+        
+        # Generator expressions and comprehensions
+        if isinstance(expr, GeneratorExpr):
+            if self.contains_assignment_expr(expr.left_expr):
+                return True
+            for seq in expr.sequences:
+                if self.contains_assignment_expr(seq):
+                    return True
+            for condlist in expr.condlists:
+                for cond in condlist:
+                    if self.contains_assignment_expr(cond):
+                        return True
+            return False
+        
+        if isinstance(expr, ListComprehension):
+            return self.contains_assignment_expr(expr.generator)
+        
+        if isinstance(expr, SetComprehension):
+            return self.contains_assignment_expr(expr.generator)
+        
+        if isinstance(expr, DictionaryComprehension):
+            if self.contains_assignment_expr(expr.key) or self.contains_assignment_expr(expr.value):
+                return True
+            for seq in expr.sequences:
+                if self.contains_assignment_expr(seq):
+                    return True
+            for condlist in expr.condlists:
+                for cond in condlist:
+                    if self.contains_assignment_expr(cond):
+                        return True
+            return False
+        
         # All other expression types (NameExpr, IntExpr, StrExpr, etc.) don't contain nested expressions
         return False
 
