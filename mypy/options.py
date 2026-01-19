@@ -460,9 +460,9 @@ class Options:
         disabled_code_names = set(self.disable_error_code)
         enabled_code_names = set(self.enable_error_code)
 
-        valid_error_code_namess = set(error_codes.keys())
+        valid_error_code_names = set(error_codes.keys())
 
-        invalid_code_names_here = (enabled_code_names | disabled_code_names) - valid_error_code_namess
+        invalid_code_names_here = (enabled_code_names | disabled_code_names) - valid_error_code_names
         if invalid_code_names_here:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
