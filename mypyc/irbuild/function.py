@@ -1093,7 +1093,8 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
 
         dispatch_func_obj = builder.load_global_str(fitem.name, line)
         builder.primitive_op(
-            py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line)
+            py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line
+        )
 
     for singledispatch_func, types in to_register.items():
         # TODO: avoid recomputing the native IDs for all the functions every time we find a new
@@ -1107,7 +1108,8 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
             to_insert = builder.add(load_literal)
         # TODO: avoid reloading the registry here if we just created it
         dispatch_func_obj = load_func(
-            builder, singledispatch_func.name, singledispatch_func.fullname, line)
+            builder, singledispatch_func.name, singledispatch_func.fullname, line
+        )
         registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, None, line)
