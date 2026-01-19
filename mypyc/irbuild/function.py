@@ -251,6 +251,8 @@ def gen_func_item(
         assert isinstance(fitem, FuncDef), fitem
         generator_class_ir = builder.mapper.fdef_to_generator[fitem]
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+        if builder.fn_info.can_merge_generator_and_env_classes():
+            builder.fn_info.generator_class.ir.is_environment = True
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -959,7 +961,6 @@ def gen_calls_to_correct_impl(
     typ, src = builtin_names["builtins.int"]
     int_type_obj = builder.add(LoadAddress(typ, src, line))
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
-
     native_call, non_native_call = BasicBlock(), BasicBlock()
     builder.add_bool_branch(is_int, native_call, non_native_call)
     builder.activate_block(native_call)
@@ -1092,8 +1093,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
 
         dispatch_func_obj = builder.load_global_str(fitem.name, line)
         builder.primitive_op(
-            py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line
-        )
+            py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line)
 
     for singledispatch_func, types in to_register.items():
         # TODO: avoid recomputing the native IDs for all the functions every time we find a new
@@ -1107,8 +1107,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
             to_insert = builder.add(load_literal)
         # TODO: avoid reloading the registry here if we just created it
         dispatch_func_obj = load_func(
-            builder, singledispatch_func.name, singledispatch_func.fullname, line
-        )
+            builder, singledispatch_func.name, singledispatch_func.fullname, line)
         registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, None, line)

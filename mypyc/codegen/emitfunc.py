@@ -420,8 +420,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 if not merged_branch:
                     var_name = op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
                     if cl.is_environment:
-                        # A generated class does not "exist" to the user, this is just an unbound
-                        # variable in their code, not a missing attribute on the generated class.
+                        # Environment classes represent locals, so missing attrs are unbound vars.
                         exc_class = "PyExc_UnboundLocalError"
                         exc_msg = f"local variable {var_name!r} referenced before assignment"
                     else:

@@ -100,7 +100,7 @@ class ClassIR:
         self.module_name = module_name
         self.is_trait = is_trait
         self.is_generated = is_generated
-        # True for env classes where attributes represent locals.
+        # Environment classes represent locals and should emit UnboundLocalError for missing vars.
         self.is_environment = is_environment
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
