@@ -456,7 +456,7 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
-        """Process `--enable-error-code` and `--disable-error-code` flags"""
+        """Process `--enable-error-code` and `--disable-error-code` flags."""
         disabled_code_names = set(self.disable_error_code)
         enabled_code_names = set(self.enable_error_code)
 
