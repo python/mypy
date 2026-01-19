@@ -5087,8 +5087,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if isinstance(expr, DictExpr):
             # Check both keys and values
-            for k, v in zip(expr.items, expr.values):
-                if self.contains_assignment_expr(k) or self.contains_assignment_expr(v):
+            # DictExpr.items is list[tuple[Expression | None, Expression]]
+            for key_expr, value_expr in expr.items:
+                if key_expr is not None and self.contains_assignment_expr(key_expr):
+                    return True
+                if self.contains_assignment_expr(value_expr):
                     return True
             return False
 
@@ -5117,9 +5120,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(expr, IndexExpr):
             if self.contains_assignment_expr(expr.base):
                 return True
-            if expr.index is not None:
-                return self.contains_assignment_expr(expr.index)
-            return False
+            return self.contains_assignment_expr(expr.index)
 
         # Member access
         if isinstance(expr, MemberExpr):
