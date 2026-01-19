@@ -5138,7 +5138,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if expr.expr is not None:
                 return self.contains_assignment_expr(expr.expr)
             return False
-        
+
         # Conditional expressions (ternary operator: x if cond else y)
         if isinstance(expr, ConditionalExpr):
             return (
@@ -5146,7 +5146,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 or self.contains_assignment_expr(expr.if_expr)
                 or self.contains_assignment_expr(expr.else_expr)
             )
-        
+
         # Slice expressions (x:y:z)
         if isinstance(expr, SliceExpr):
             return (
@@ -5154,7 +5154,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 or (expr.end_index is not None and self.contains_assignment_expr(expr.end_index))
                 or (expr.stride is not None and self.contains_assignment_expr(expr.stride))
             )
-        
+
         # Generator expressions and comprehensions
         if isinstance(expr, GeneratorExpr):
             if self.contains_assignment_expr(expr.left_expr):
@@ -5167,15 +5167,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if self.contains_assignment_expr(cond):
                         return True
             return False
-        
+
         if isinstance(expr, ListComprehension):
             return self.contains_assignment_expr(expr.generator)
-        
+
         if isinstance(expr, SetComprehension):
             return self.contains_assignment_expr(expr.generator)
-        
+
         if isinstance(expr, DictionaryComprehension):
-            if self.contains_assignment_expr(expr.key) or self.contains_assignment_expr(expr.value):
+            if self.contains_assignment_expr(expr.key) or self.contains_assignment_expr(
+                expr.value
+            ):
                 return True
             for seq in expr.sequences:
                 if self.contains_assignment_expr(seq):
@@ -5185,7 +5187,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if self.contains_assignment_expr(cond):
                         return True
             return False
-        
+
         # All other expression types (NameExpr, IntExpr, StrExpr, etc.) don't contain nested expressions
         return False
 
