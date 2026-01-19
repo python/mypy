@@ -462,7 +462,9 @@ class Options:
 
         valid_error_code_names = set(error_codes.keys())
 
-        invalid_code_names_here = (enabled_code_names | disabled_code_names) - valid_error_code_names
+        invalid_code_names_here = (
+            enabled_code_names | disabled_code_names
+        ) - valid_error_code_names
         if invalid_code_names_here:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
