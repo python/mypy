@@ -1444,7 +1444,7 @@ VecNestedPopResult = RStruct(
 )
 
 
-vec_buf_types: Final = {
+vec_buf_types: Final[dict[RType, RStruct]] = {
     int64_rprimitive: VecI64BufObject,
     int32_rprimitive: VecI32BufObject,
     int16_rprimitive: VecI16BufObject,
@@ -1453,7 +1453,7 @@ vec_buf_types: Final = {
     bool_rprimitive: VecBoolBufObject,
 }
 
-vec_c_types: Final = {
+vec_c_types: Final[dict[RType, str]] = {
     int64_rprimitive: "VecI64",
     int32_rprimitive: "VecI32",
     int16_rprimitive: "VecI16",
@@ -1471,7 +1471,7 @@ vec_api_fields: Final = {
     bool_rprimitive: "bool_",
 }
 
-vec_api_by_item_type: Final = {
+vec_api_by_item_type: Final[dict[RType, str]] = {
     int64_rprimitive: "VecI64Api",
     int32_rprimitive: "VecI32Api",
     int16_rprimitive: "VecI16Api",
@@ -1483,7 +1483,7 @@ vec_api_by_item_type: Final = {
 # These are special type item type contants used in nested vecs to represent
 # item types with specialized representations. These must match definitions
 # in the vecs module (see VEC_ITEM_TYPE_I64 etc.).
-vec_item_type_tags: Final = {
+vec_item_type_tags: Final[dict[RType, int]] = {
     int64_rprimitive: 2,
     int32_rprimitive: 6,
     int16_rprimitive: 10,
