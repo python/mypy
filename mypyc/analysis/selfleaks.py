@@ -191,9 +191,6 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_get_element(self, op: GetElement) -> GenAndKill:
         return CLEAN
 
-    def visit_set_element(self, op: SetElement) -> GenAndKill:
-        return CLEAN
-
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:
         return CLEAN
 

@@ -284,9 +284,6 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_get_element(self, op: GetElement) -> str:
         return self.format("%r = %r.%s", op, op.src, op.field)
 
-    def visit_set_element(self, op: SetElement) -> str:
-        return self.format("%r = set_element %r, %s, %r", op, op.src, op.field, op.item)
-
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
 

@@ -2045,10 +2045,6 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_set_element(self, op: SetElement) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
         raise NotImplementedError
 
