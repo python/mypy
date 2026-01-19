@@ -4928,6 +4928,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return typ
 
         # If there are errors with the original type context, try re-inferring in empty context.
+        # However, skip this fallback if the expression contains assignment expressions (walrus
+        # operator), as they can cause incorrect type inference when the context is removed.
         original_messages = msg.filtered_errors()
         original_type_map = type_map
         with self.msg.filter_errors(
@@ -4937,10 +4939,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 alt_typ = get_proper_type(
                     self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
                 )
-        if not msg.has_new_errors() and is_subtype(alt_typ, type_ctx):
+
+        if not msg.has_new_errors() and is_subtype(alt_typ, type_ctx) and not self.contains_assignment_expr(expr):
             self.store_types(type_map)
             return alt_typ
-
+        
         # If empty fallback didn't work, use results from the original type context.
         self.msg.add_errors(original_messages)
         self.store_types(original_type_map)
@@ -4979,7 +4982,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 # Return with a value.
                 if (
-                    isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr))
+                    isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr, AssignmentExpr))
                     or isinstance(s.expr, AwaitExpr)
                     and isinstance(s.expr.expr, CallExpr)
                 ):
@@ -5056,6 +5059,80 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if self.in_checked_function():
                     self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
+                    
+    def contains_assignment_expr(self, expr: Expression) -> bool:
+        """Check if expression contains any AssignmentExpr (walrus operator)."""
+        # Base case: found an assignment expression
+        if isinstance(expr, AssignmentExpr):
+            return True
+        
+        # Recursively check nested expressions in various expression types
+        
+        # Container expressions
+        if isinstance(expr, (TupleExpr, ListExpr, SetExpr)):
+            return any(self.contains_assignment_expr(item) for item in expr.items)
+        
+        if isinstance(expr, DictExpr):
+            # Check both keys and values
+            for k, v in zip(expr.items, expr.values):
+                if self.contains_assignment_expr(k) or self.contains_assignment_expr(v):
+                    return True
+            return False
+        
+        # Binary operations (left and right operands)
+        if isinstance(expr, OpExpr):
+            return (
+                self.contains_assignment_expr(expr.left)
+                or self.contains_assignment_expr(expr.right)
+            )
+        
+        # Unary operations
+        if isinstance(expr, UnaryExpr):
+            return self.contains_assignment_expr(expr.expr)
+        
+        # Comparison expressions (multiple operands)
+        if isinstance(expr, ComparisonExpr):
+            return any(self.contains_assignment_expr(operand) for operand in expr.operands)
+        
+        # Function calls (check arguments)
+        if isinstance(expr, CallExpr):
+            # Check callee and all arguments
+            if self.contains_assignment_expr(expr.callee):
+                return True
+            return any(self.contains_assignment_expr(arg) for arg in expr.args)
+        
+        # Index expressions (subscripts)
+        if isinstance(expr, IndexExpr):
+            if self.contains_assignment_expr(expr.base):
+                return True
+            if expr.index is not None:
+                return self.contains_assignment_expr(expr.index)
+            return False
+        
+        # Member access
+        if isinstance(expr, MemberExpr):
+            return self.contains_assignment_expr(expr.expr)
+        
+        # Starred expressions (unpacking)
+        if isinstance(expr, StarExpr):
+            return self.contains_assignment_expr(expr.expr)
+        
+        # Await expressions
+        if isinstance(expr, AwaitExpr):
+            return self.contains_assignment_expr(expr.expr)
+        
+        # Yield expressions
+        if isinstance(expr, YieldExpr):
+            if expr.expr is not None:
+                return self.contains_assignment_expr(expr.expr)
+            return False
+        
+        # Conditional expressions (ternary operator)
+        # Note: ConditionalExpr might not be in imports, but if it exists, handle it
+        # For now, we'll skip it if it's not imported
+        
+        # All other expression types (NameExpr, IntExpr, StrExpr, etc.) don't contain nested expressions
+        return False
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
