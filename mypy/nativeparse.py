@@ -18,6 +18,7 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
+import os
 from typing import Final, cast, Any
 
 import ast_serialize  # type: ignore[import-untyped]
@@ -135,6 +136,13 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
 def native_parse(
     filename: str, skip_function_bodies: bool = False
 ) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+    # If the path is a directory, return empty AST (matching fastparse behavior)
+    # This can happen for packages that only contain .pyc files without source
+    if os.path.isdir(filename):
+        node = MypyFile([], [])
+        node.path = filename
+        return node, [], []
+
     b, errors, ignores = parse_to_binary_ast(filename, skip_function_bodies)
     data = ReadBuffer(b)
     n = read_int(data)
