@@ -1509,7 +1509,7 @@ def translate_bytes_get_item(
 
 
 @specialize_function("vecs.append")
-def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
         vec_arg = expr.args[0]
         item_arg = expr.args[1]
@@ -1523,7 +1523,7 @@ def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("vecs.remove")
-def translate_vec_remove(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_vec_remove(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
         vec_arg = expr.args[0]
         item_arg = expr.args[1]
@@ -1537,7 +1537,7 @@ def translate_vec_remove(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("vecs.pop")
-def translate_vec_pop(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_vec_pop(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if 1 <= len(expr.args) <= 2 and all(kind == ARG_POS for kind in expr.arg_kinds):
         vec_arg = expr.args[0]
         vec_type = builder.node_type(vec_arg)

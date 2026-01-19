@@ -1991,7 +1991,7 @@ class LowLevelIRBuilder:
         self,
         base: Value,
         item: Value,
-        result_type: Optional[RType],
+        result_type: RType | None,
         line: int,
         *,
         can_borrow: bool = False,

@@ -1053,6 +1053,10 @@ class RVec(RType):
             self.struct_type = VecT
             self.buf_type = VecTBufObject
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def unwrap_item_type(self) -> RPrimitive | RInstance:
         """Return the non-optional value (non-vec) item type in a potentially nested vec."""
         item_type = self.item_type
