@@ -3391,7 +3391,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     inferred = None
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
-                # variables with explicit type Type[A], where A is protocol or abstract.
+                # variables with explicit type `Type[A]`, where A is protocol or abstract.
                 p_rvalue_type = get_proper_type(rvalue_type)
                 p_lvalue_type = get_proper_type(lvalue_type)
                 if (
@@ -4664,6 +4664,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 type_context = lvalue_type
             else:
                 type_context = None
+
+            # TODO: make assignment checking correct in presence of walrus in r.h.s.
+            # Right now we can accept the r.h.s. up to four(!) times. In presence of
+            # walrus this can result in weird false negatives and "back action". A proper
+            # solution would be to:
+            #   * Refactor the code to reduce number of times we accept the r.h.s.
+            #   (two should be enough: empty context + l.h.s. context).
+            #   * For each accept use binder.accumulate_type_assignments() and assign
+            #   the types inferred for context that is ultimately used.
+            # For now we simply disable some logic that is known to cause problems in
+            # presence of walrus, see e.g. testAssignToOptionalTupleWalrus.
+            binder_version = self.binder.version
+
             rvalue_type = self.expr_checker.accept(
                 rvalue, type_context=type_context, always_allow_any=always_allow_any
             )
@@ -4711,6 +4724,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Skip literal types, as they have special logic (for better errors).
                 and not is_literal_type_like(rvalue_type)
                 and not self.simple_rvalue(rvalue)
+                and binder_version == self.binder.version
             ):
                 # Try re-inferring r.h.s. in empty context, and use that if it
                 # results in a narrower type. We don't do this always because this
@@ -4913,11 +4927,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def infer_context_dependent(
         self, expr: Expression, type_ctx: Type, allow_none_func_call: bool
     ) -> ProperType:
-        """Infer type of an expression with fallback to empty type context."""
-        with self.msg.filter_errors(
-            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
-        ) as msg:
-            with self.local_type_map as type_map:
+        """Infer type of expression with fallback to empty type context."""
+        with self.msg.filter_errors(filter_deprecated=True, save_filtered_errors=True) as msg:
+            with (
+                self.local_type_map as type_map,
+                # Prevent any narrowing (e.g. from walrus) to have effect during second accept.
+                self.binder.frame_context(can_skip=False, discard=True),
+            ):
                 typ = get_proper_type(
                     self.expr_checker.accept(
                         expr, type_ctx, allow_none_return=allow_none_func_call
@@ -4930,9 +4946,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # If there are errors with the original type context, try re-inferring in empty context.
         original_messages = msg.filtered_errors()
         original_type_map = type_map
-        with self.msg.filter_errors(
-            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
-        ) as msg:
+        with self.msg.filter_errors(filter_deprecated=True, save_filtered_errors=True) as msg:
             with self.local_type_map as type_map:
                 alt_typ = get_proper_type(
                     self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
