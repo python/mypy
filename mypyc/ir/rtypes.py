@@ -522,10 +522,12 @@ KNOWN_NATIVE_TYPES: Final = {
         "librt.internal.WriteBuffer",
         "librt.internal.ReadBuffer",
         "librt.strings.BytesWriter",
+        "librt.strings.StringWriter",
     ]
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
+string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:

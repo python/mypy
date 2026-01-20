@@ -51,5 +51,6 @@ LIBRT_BASE64: Final = Capsule("librt.base64")
 
 BYTES_EXTRA_OPS: Final = SourceDep("bytes_extra_ops.c")
 BYTES_WRITER_EXTRA_OPS: Final = SourceDep("byteswriter_extra_ops.c")
+STRING_WRITER_EXTRA_OPS: Final = SourceDep("stringwriter_extra_ops.c")
 BYTEARRAY_EXTRA_OPS: Final = SourceDep("bytearray_extra_ops.c")
 STR_EXTRA_OPS: Final = SourceDep("str_extra_ops.c")

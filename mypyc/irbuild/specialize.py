@@ -80,6 +80,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    string_writer_rprimitive,
     uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -124,6 +125,9 @@ from mypyc.primitives.librt_strings_ops import (
     bytes_writer_get_item_unsafe_op,
     bytes_writer_range_check_op,
     bytes_writer_set_item_unsafe_op,
+    string_writer_adjust_index_op,
+    string_writer_get_item_unsafe_op,
+    string_writer_range_check_op,
 )
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -1445,6 +1449,22 @@ def translate_bytes_writer_set_item(
     )
 
     return builder.none()
+
+
+@specialize_dunder("__getitem__", string_writer_rprimitive)
+def translate_string_writer_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized StringWriter.__getitem__ implementation with bounds checking."""
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        string_writer_adjust_index_op,
+        string_writer_range_check_op,
+        string_writer_get_item_unsafe_op,
+    )
 
 
 @specialize_dunder("__getitem__", bytes_rprimitive)
