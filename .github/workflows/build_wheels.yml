@@ -6,12 +6,8 @@ on:
       - '**/*.py'
       - '**/*.pyi'
       - 'pyproject.toml'
-      - 'mypy.ini'
-      - 'setup.cfg'
       - 'setup.py'
-      - 'requirements*.txt'
       - 'tox.ini'
-      - 'poetry.lock'
       - '.pre-commit-config.yaml'
       - '.github/workflows/build_wheels.yml'
     branches: [main, master, 'release*']
