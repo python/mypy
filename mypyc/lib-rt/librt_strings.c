@@ -880,7 +880,6 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_truncate_internal,
         (void *)StringWriter_internal,
         (void *)StringWriter_getvalue_internal,
-        (void *)StringWriter_append_internal,
         (void *)string_append_slow_path,
         (void *)StringWriter_type_internal,
         (void *)StringWriter_write_internal,

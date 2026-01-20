@@ -26,7 +26,7 @@ import_librt_strings(void)
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 15
+#define LIBRT_STRINGS_API_LEN 14
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
@@ -60,11 +60,10 @@ typedef struct {
 #define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[7])
 #define LibRTStrings_StringWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[8])
 #define LibRTStrings_StringWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[9])
-#define LibRTStrings_StringWriter_append_internal (*(char (*)(StringWriterObject *source, int32_t value)) LibRTStrings_API[10])
-#define LibRTStrings_string_append_slow_path (*(char (*)(StringWriterObject *obj, int32_t value)) LibRTStrings_API[11])
-#define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[12])
-#define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[13])
-#define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[14])
+#define LibRTStrings_string_append_slow_path (*(char (*)(StringWriterObject *obj, int32_t value)) LibRTStrings_API[10])
+#define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[11])
+#define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[12])
+#define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[13])
 
 static int
 import_librt_strings(void)
