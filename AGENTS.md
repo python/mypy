@@ -7,14 +7,15 @@ All agents must follow these rules:
    - Common: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`, `perf:`
    - Support titles: `fix(docs):`, `fix(benchmarks):`, `fix(cicd):`
 3) Commit messages must follow the same Conventional Commits-style prefixes and include a short functional description plus a user-facing value proposition.
-4) PR descriptions must include `Summary`, `Rationale`, and `Details` sections.
+4) PR descriptions must include Summary, Rationale, and Details sections.
 5) Run relevant Python tests for changes (pytest/unittest or the repo's configured runner).
 6) Follow formatting/linting configured in pyproject.toml, setup.cfg, tox.ini, or ruff.toml.
 7) Update dependency lockfiles when adding or removing Python dependencies.
 8) If the repo uses mypyc, verify tests run against compiled extensions (not interpreted Python) and note how you confirmed.
-9) All mypy configuration (flags, overrides, per-module ignores, and file targets) should go in pyproject.toml. Do not split config across CLI args, mypy.ini, setup.cfg, or workflow steps.
-10) Centralize pytest settings (flags, markers, ignore patterns, and targets) in pyproject.toml, pytest.ini, setup.cfg, or tox.ini; workflows/hooks should call pytest without inline args.
-11) For unittest workflows, prefer python -m unittest without inline args; if discovery arguments are required, centralize them in a single script and call that from CI.
-12) Keep base image tags pinned.
+9) Maximize the use of caching in GitHub workflow files to minimize run duration.
+10) Use one of `paths` or `paths-ignore` in every workflow file to make sure workflows only run when required.
+11) All mypy configuration (flags, overrides, per-module ignores, and file targets) should go in pyproject.toml. Do not split config across CLI args, mypy.ini, setup.cfg, or workflow steps.
+12) Centralize pytest settings (flags, markers, ignore patterns, and targets) in pyproject.toml, pytest.ini, setup.cfg, or tox.ini; workflows/hooks should call pytest without inline args.
+13) Keep base image tags pinned.
 
 Reference: https://www.conventionalcommits.org/en/v1.0.0/
