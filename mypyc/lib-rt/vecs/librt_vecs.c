@@ -227,7 +227,8 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             }
         }
         if (item == (PyObject *)&PyLong_Type) {
-            PyErr_SetString(PyExc_ValueError, "unsupported type in vec[...]");
+            PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use i64, i32, i16, or u8)",
+                         ((PyTypeObject *)item)->tp_name);
             return NULL;
         }
         VecProxy *p;
@@ -474,7 +475,8 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL; // TODO: decref?
         return VecVec_Box(v);
     } else {
-        PyErr_SetString(PyExc_TypeError, "vec argument expected");
+        PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
+                     Py_TYPE(vec)->tp_name);
         return NULL;
     }
 }
@@ -574,7 +576,8 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL; // TODO: decref?
         return VecVec_Box(v);
     } else {
-        PyErr_SetString(PyExc_TypeError, "vec argument expected");
+        PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
+                     Py_TYPE(vec)->tp_name);
         return NULL;
     }
 }
@@ -675,7 +678,8 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
             return NULL;
         }
     } else {
-        PyErr_SetString(PyExc_TypeError, "vec argument expected");
+        PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
+                     Py_TYPE(vec)->tp_name);
         return NULL;
     }
 
