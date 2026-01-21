@@ -20,7 +20,6 @@ from mypy.nodes import (
     ArgKind,
     TypeInfo,
 )
-from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -397,13 +396,14 @@ def _infer_constraints(
     # be a supertype of the potential subtype, some item of the Union
     # must be a supertype of it.
     if direction == SUBTYPE_OF and isinstance(actual, UnionType):
-        # If some of items is not a complete type, disregard that.
-        items = simplify_away_incomplete_types(actual.items)
         # We infer constraints eagerly -- try to find constraints for a type
         # variable if possible. This seems to help with some real-world
         # use cases.
         return any_constraints(
-            [infer_constraints_if_possible(template, a_item, direction) for a_item in items],
+            [
+                infer_constraints_if_possible(template, a_item, direction)
+                for a_item in actual.items
+            ],
             eager=True,
         )
     if direction == SUPERTYPE_OF and isinstance(template, UnionType):
@@ -650,31 +650,6 @@ def _is_similar_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
         if not has_similar:
             return False
     return True
-
-
-def simplify_away_incomplete_types(types: Iterable[Type]) -> list[Type]:
-    complete = [typ for typ in types if is_complete_type(typ)]
-    if complete:
-        return complete
-    else:
-        return list(types)
-
-
-def is_complete_type(typ: Type) -> bool:
-    """Is a type complete?
-
-    A complete doesn't have uninhabited type components or (when not in strict
-    optional mode) None components.
-    """
-    return typ.accept(CompleteTypeVisitor())
-
-
-class CompleteTypeVisitor(BoolTypeQuery):
-    def __init__(self) -> None:
-        super().__init__(ALL_STRATEGY)
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
-        return False
 
 
 class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
