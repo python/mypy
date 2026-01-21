@@ -1,21 +1,84 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <time.h>
+#include <stdint.h>
 #include "librt_time.h"
 #include "pythoncapi_compat.h"
 #include "mypyc_util.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/time.h>
+#endif
+
 #ifdef MYPYC_EXPERIMENTAL
 
+// Helper to convert nanoseconds to double seconds (similar to PyTime_AsSecondsDouble)
+// Uses volatile to avoid compiler optimizations that could change rounding behavior
+static inline double
+ns_to_double(int64_t ns) {
+    volatile double d;
+
+    if (ns % 1000000000LL == 0) {
+        // Exact seconds: divide using integers to avoid floating-point rounding issues
+        // (1e-9 cannot be exactly represented in IEEE 754 double precision)
+        int64_t secs = ns / 1000000000LL;
+        d = (double)secs;
+    }
+    else {
+        // Has fractional seconds
+        d = (double)ns;
+        d /= 1e9;
+    }
+    return d;
+}
+
 // Internal function that returns a C double for mypyc primitives
+// Returns high-precision time in seconds (like time.time())
 static double
 time_time_internal(void) {
-    time_t t = time(NULL);
-    if (unlikely(t == (time_t)-1)) {
-        PyErr_SetString(PyExc_OSError, "time() failed");
+#ifdef _WIN32
+    // Windows: Use GetSystemTimePreciseAsFileTime for ~100ns precision
+    FILETIME ft;
+    ULARGE_INTEGER large;
+
+    GetSystemTimePreciseAsFileTime(&ft);
+    large.LowPart = ft.dwLowDateTime;
+    large.HighPart = ft.dwHighDateTime;
+
+    // Windows FILETIME is 100-nanosecond intervals since January 1, 1601
+    // Convert to nanoseconds since Unix epoch (January 1, 1970)
+    // 116444736000000000 = number of 100-ns intervals between 1601 and 1970
+    int64_t ns = (large.QuadPart - 116444736000000000LL) * 100LL;
+    return ns_to_double(ns);
+
+#else  // Unix-like systems (Linux, macOS, BSD, etc.)
+
+    // Try clock_gettime(CLOCK_REALTIME) for nanosecond precision
+    // This is available on POSIX.1-2001 and later (widely available on modern systems)
+#if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+        // Convert to nanoseconds
+        int64_t ns = (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+        return ns_to_double(ns);
+    }
+    // Fall through to gettimeofday if clock_gettime failed
+#endif
+
+    // Fallback: gettimeofday for microsecond precision
+    // This is widely available (POSIX.1-2001, BSD, etc.)
+    struct timeval tv;
+    if (unlikely(gettimeofday(&tv, NULL) != 0)) {
+        PyErr_SetFromErrno(PyExc_OSError);
         return CPY_FLOAT_ERROR;
     }
-    return (double)t;
+
+    // Convert to nanoseconds
+    int64_t ns = (int64_t)tv.tv_sec * 1000000000LL + (int64_t)tv.tv_usec * 1000LL;
+    return ns_to_double(ns);
+#endif
 }
 
 // Wrapper function for normal Python extension usage
