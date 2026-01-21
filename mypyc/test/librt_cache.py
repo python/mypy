@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import sysconfig
@@ -90,6 +91,7 @@ def _generate_setup_py(build_dir: str, experimental: bool) -> str:
     return f"""\
 import os
 from setuptools import setup, Extension
+import build_setup  # noqa: F401  # Monkey-patches compiler for per-file SIMD flags
 
 build_dir = {build_dir!r}
 lib_rt_dir = {lib_rt_dir!r}
@@ -169,8 +171,6 @@ def get_librt_path(experimental: bool = True) -> str:
 
         # Clean up any partial build
         if os.path.exists(build_dir):
-            import shutil
-
             shutil.rmtree(build_dir)
 
         os.makedirs(build_dir)
@@ -180,6 +180,13 @@ def get_librt_path(experimental: bool = True) -> str:
         os.makedirs(librt_pkg)
         with open(os.path.join(librt_pkg, "__init__.py"), "w") as f:
             pass
+
+        # Copy build_setup.py for per-file SIMD compiler flags
+        build_setup_src = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build_setup.py"
+        )
+        build_setup_dst = os.path.join(build_dir, "build_setup.py")
+        shutil.copy(build_setup_src, build_setup_dst)
 
         # Write setup.py
         setup_py = os.path.join(build_dir, "setup.py")
