@@ -186,7 +186,8 @@ def get_librt_path(experimental: bool = True) -> str:
         with open(setup_py, "w") as f:
             f.write(_generate_setup_py(build_dir, experimental))
 
-        # Build
+        # Build (parallel builds don't work well because multiple extensions
+        # share the same runtime C files, causing race conditions)
         result = subprocess.run(
             [sys.executable, setup_py, "build_ext", "--inplace"],
             cwd=build_dir,
