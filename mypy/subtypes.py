@@ -85,11 +85,6 @@ IS_CLASS_OR_STATIC: Final = 3
 IS_VAR: Final = 4
 IS_EXPLICIT_SETTER: Final = 5
 
-# Disallow datetime.datetime where datetime.date is expected when safe-datetime is enabled.
-# While datetime is a subclass of date at runtime, comparing them raises TypeError,
-# making this inheritance relationship problematic in practice.
-DATETIME_DATE_FULLNAMES: Final = ("datetime.datetime", "datetime.date")
-
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
 
@@ -536,13 +531,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
             lname = left.type.fullname
 
-            # Check if this is the datetime/date relationship that should be blocked
-            # when safe-datetime is enabled
+            # Disallow datetime.datetime where datetime.date is expected when safe-datetime is
+            # enabled. While datetime is a subclass of date at runtime, comparing them raises
+            # TypeError, making this inheritance relationship problematic in practice.
             if (
                 self.options
                 and codes.SAFE_DATETIME in self.options.enabled_error_codes
-                and lname == DATETIME_DATE_FULLNAMES[0]
-                and rname == DATETIME_DATE_FULLNAMES[1]
+                and lname == "datetime.datetime"
+                and rname == "datetime.date"
             ):
                 return False
 
