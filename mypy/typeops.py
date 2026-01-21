@@ -1004,6 +1004,16 @@ def is_singleton_identity_type(typ: ProperType) -> bool:
         )
     if isinstance(typ, LiteralType):
         return typ.is_enum_literal() or isinstance(typ.value, bool)
+    # Check if this is a type object of a final class
+    if isinstance(typ, TypeType):
+        item = typ.item
+        if isinstance(item, Instance) and item.type.is_final:
+            return True
+    # Check if this is a callable representing a final class constructor
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        type_obj = typ.type_object()
+        if type_obj.is_final:
+            return True
     return False
 
 

@@ -6567,6 +6567,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not (
                     isinstance(p_expr := get_proper_type(expr_type), CallableType)
                     and p_expr.is_type_obj()
+                    and not p_expr.type_object().is_final
                 )
             ):
                 h = literal_hash(expr)
@@ -6803,7 +6804,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         operands[i], *conditional_types(expr_type, [target])
                     )
                     if if_map:
-                        else_map = {}  # this is the big difference compared to the above
+                        # For final classes, we can narrow in the else branch too since
+                        # no subclasses can exist. Otherwise, clear the else_map.
+                        target_type = get_proper_type(target.item)
+                        if not (isinstance(target_type, CallableType) and target_type.is_type_obj() 
+                                and target_type.type_object().is_final):
+                            else_map = {}
                         partial_type_maps.append((if_map, else_map))
 
         # We will not have duplicate entries in our type maps if we only have two operands,
