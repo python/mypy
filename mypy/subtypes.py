@@ -538,10 +538,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             # Check if this is the datetime/date relationship that should be blocked
             # when safe-datetime is enabled
-            if (self.options
-                    and codes.SAFE_DATETIME in self.options.enabled_error_codes
-                    and lname == DATETIME_DATE_FULLNAMES[0]
-                    and rname == DATETIME_DATE_FULLNAMES[1]):
+            if (
+                self.options
+                and codes.SAFE_DATETIME in self.options.enabled_error_codes
+                and lname == DATETIME_DATE_FULLNAMES[0]
+                and rname == DATETIME_DATE_FULLNAMES[1]
+            ):
                 return False
 
             # Always try a nominal check if possible,
