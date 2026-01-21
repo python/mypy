@@ -6807,8 +6807,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # For final classes, we can narrow in the else branch too since
                         # no subclasses can exist. Otherwise, clear the else_map.
                         target_type = get_proper_type(target.item)
-                        if not (isinstance(target_type, CallableType) and target_type.is_type_obj() 
-                                and target_type.type_object().is_final):
+                        if not (
+                            isinstance(target_type, CallableType)
+                            and target_type.is_type_obj()
+                            and target_type.type_object().is_final
+                        ):
                             else_map = {}
                         partial_type_maps.append((if_map, else_map))
 
