@@ -9,7 +9,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "vecs.h"
+#include "librt_vecs.h"
 
 static inline VecT vec_error() {
     VecT v = { .len = -1 };
