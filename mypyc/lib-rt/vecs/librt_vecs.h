@@ -20,7 +20,7 @@
 #define VEC_ITEM_TYPE_FLOAT 18
 #define VEC_ITEM_TYPE_BOOL 22
 
-inline size_t Vec_IsMagicItemType(size_t item_type) {
+static inline size_t Vec_IsMagicItemType(size_t item_type) {
     return item_type & 2;
 }
 
