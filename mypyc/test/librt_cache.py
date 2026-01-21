@@ -23,7 +23,6 @@ import os
 import subprocess
 import sys
 import sysconfig
-import tempfile
 
 import filelock
 
@@ -139,9 +138,9 @@ setup(name='librt_cached', ext_modules=extensions)
 def get_librt_path(experimental: bool = True) -> str:
     """Get path to built librt, building and caching if necessary.
 
-    Uses a persistent cache in the system temp directory. The cache is
-    keyed by a hash of all librt source files, so it auto-invalidates
-    when sources change.
+    Uses build/librt-cache/ under the repo root (gitignored). The cache is
+    keyed by a hash of sources and build environment, so it auto-invalidates
+    when relevant factors change.
 
     Safe to call from multiple parallel pytest workers - uses file locking.
 
@@ -151,7 +150,9 @@ def get_librt_path(experimental: bool = True) -> str:
     Returns:
         Path to directory containing built librt modules.
     """
-    cache_root = os.path.join(tempfile.gettempdir(), "mypyc-librt-cache")
+    # Use build/librt-cache/ under the repo root (gitignored)
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    cache_root = os.path.join(repo_root, "build", "librt-cache")
     build_hash = _librt_build_hash(experimental)
     build_dir = os.path.join(cache_root, f"librt-{build_hash}")
     lock_file = os.path.join(cache_root, f"librt-{build_hash}.lock")
