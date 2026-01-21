@@ -26,7 +26,7 @@ import sysconfig
 
 import filelock
 
-from mypyc.build import LIBRT_MODULES, RUNTIME_C_FILES, include_dir
+from mypyc.build import LIBRT_MODULES, RUNTIME_C_FILES, get_cflags, include_dir
 
 
 def _librt_build_hash(experimental: bool) -> str:
@@ -65,18 +65,21 @@ def _librt_build_hash(experimental: bool) -> str:
 def _generate_setup_py(build_dir: str, experimental: bool) -> str:
     """Generate setup.py content for building librt directly.
 
-    We inline LIBRT_MODULES/RUNTIME_C_FILES/include_dir values to avoid
+    We inline LIBRT_MODULES/RUNTIME_C_FILES/include_dir/cflags values to avoid
     importing mypyc.build, which imports mypy.build, which imports librt
     (circular dependency when librt isn't built yet).
     """
-    exp_flag = "-DMYPYC_EXPERIMENTAL" if experimental else ""
     lib_rt_dir = include_dir()
 
-    # Serialize the module definitions
+    # Get compiler flags using the shared helper (with -O0 for faster builds)
+    cflags = get_cflags(opt_level="0", experimental_features=experimental)
+
+    # Serialize values to inline in generated setup.py
     librt_modules_repr = repr(
         [(m.module, m.c_files, m.other_files, m.include_dirs) for m in LIBRT_MODULES]
     )
     runtime_files_repr = repr(RUNTIME_C_FILES)
+    cflags_repr = repr(cflags)
 
     return f"""\
 import os
@@ -87,6 +90,7 @@ lib_rt_dir = {lib_rt_dir!r}
 
 RUNTIME_C_FILES = {runtime_files_repr}
 LIBRT_MODULES = {librt_modules_repr}
+CFLAGS = {cflags_repr}
 
 def write_file(path, contents):
     encoded = contents.encode("utf-8")
@@ -121,14 +125,7 @@ for mod, file_names, extra_files, includes in LIBRT_MODULES:
         mod,
         sources=[os.path.join(build_dir, f) for f in file_names + RUNTIME_C_FILES],
         include_dirs=[lib_rt_dir] + [os.path.join(lib_rt_dir, d) for d in includes],
-        extra_compile_args=[
-            "-O0",
-            "-Wno-unused-function", "-Wno-unused-label", "-Wno-unreachable-code",
-            "-Wno-unused-variable", "-Wno-unused-command-line-argument",
-            "-Wno-unknown-warning-option", "-Wno-unused-but-set-variable",
-            "-Wno-ignored-optimization-argument", "-Wno-cpp",
-            {exp_flag!r},
-        ],
+        extra_compile_args=CFLAGS,
     ))
 
 setup(name='librt_cached', ext_modules=extensions)
