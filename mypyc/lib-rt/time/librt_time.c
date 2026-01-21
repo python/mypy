@@ -2,8 +2,8 @@
 #include <Python.h>
 #include <time.h>
 #include "librt_time.h"
-#include "../pythoncapi_compat.h"
-#include "../mypyc_util.h"
+#include "pythoncapi_compat.h"
+#include "mypyc_util.h"
 
 #ifdef MYPYC_EXPERIMENTAL
 
