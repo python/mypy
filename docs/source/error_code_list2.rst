@@ -700,26 +700,22 @@ Example:
         def add_forty_two(value: int) -> int:
             return value + 42
 
-.. _code-unsafe-subtype:
+.. _code-safe-datetime:
 
-Check for unsafe subtype relationships [unsafe-subtype]
---------------------------------------------------------
+Disallow datetime where date is expected [safe-datetime]
+---------------------------------------------------------
 
-If enabled with :option:`--enable-error-code unsafe-subtype <mypy --enable-error-code>`,
-mypy will block certain subtype relationships that are unsafe at runtime despite
-being valid in Python's type system.
-
-The primary use case is blocking the ``datetime.datetime`` to ``datetime.date``
-inheritance relationship. While ``datetime`` is a subclass of ``date`` at runtime,
-comparing a ``datetime`` with a ``date`` raises a ``TypeError``. When this error
-code is enabled, mypy will prevent ``datetime`` objects from being used where
-``date`` is expected, catching these errors at type-check time.
+If enabled with :option:`--enable-error-code safe-datetime <mypy --enable-error-code>`,
+mypy will prevent ``datetime.datetime`` objects from being used where ``datetime.date``
+is expected. While ``datetime`` is a subclass of ``date`` at runtime, comparing a
+``datetime`` with a ``date`` raises a ``TypeError``. This error code catches these
+errors at type-check time.
 
 Example:
 
 .. code-block:: python
 
-    # mypy: enable-error-code="unsafe-subtype"
+    # mypy: enable-error-code="safe-datetime"
     from datetime import date, datetime
 
     # Error: Incompatible types in assignment (expression has type "datetime", variable has type "date")
@@ -746,7 +742,7 @@ runtime:
     if dt < d:
         print("never reached")
 
-When ``unsafe-subtype`` is enabled, assignment and parameter passing are blocked,
+When ``safe-datetime`` is enabled, assignment and parameter passing are blocked,
 preventing the runtime error.
 
 **Note:** Equality comparisons (``==`` and ``!=``) still work between these types,

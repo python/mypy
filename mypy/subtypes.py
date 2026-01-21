@@ -85,11 +85,10 @@ IS_CLASS_OR_STATIC: Final = 3
 IS_VAR: Final = 4
 IS_EXPLICIT_SETTER: Final = 5
 
-# Known unsafe subtyping relationships that should trigger warnings.
-# Each tuple is (subclass_fullname, superclass_fullname).
-# These are cases where a class is a subclass at runtime but treating it
-# as a subtype can cause runtime errors.
-UNSAFE_SUBTYPING_PAIRS: Final = [("datetime.datetime", "datetime.date")]
+# Disallow datetime.datetime where datetime.date is expected when safe-datetime is enabled.
+# While datetime is a subclass of date at runtime, comparing them raises TypeError,
+# making this inheritance relationship problematic in practice.
+DATETIME_DATE_FULLNAMES: Final = ("datetime.datetime", "datetime.date")
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
@@ -537,12 +536,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
             lname = left.type.fullname
 
-            # Check if this is an unsafe subtype relationship that should be blocked
-            if (
-                self.options
-                and codes.UNSAFE_SUBTYPE in self.options.enabled_error_codes
-                and (lname, rname) in UNSAFE_SUBTYPING_PAIRS
-            ):
+            # Check if this is the datetime/date relationship that should be blocked
+            # when safe-datetime is enabled
+            if (self.options
+                    and codes.SAFE_DATETIME in self.options.enabled_error_codes
+                    and lname == DATETIME_DATE_FULLNAMES[0]
+                    and rname == DATETIME_DATE_FULLNAMES[1]):
                 return False
 
             # Always try a nominal check if possible,
