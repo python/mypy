@@ -1,10 +1,11 @@
-"""Build and cache librt for use in non-compiled tests.
+"""Build and cache librt for use in tests.
 
 This module provides a way to build librt extension modules once and cache
-them across test runs. The cache is invalidated when source files change.
+them across test runs, and across different test cases in a single run. The
+cache is invalidated when source files or details of the build environment change.
 
-Note: Tests must run in a subprocess to use the built librt, since importing
-this module triggers the system librt import via mypyc.build -> mypy.build.
+Note: Tests must run in a subprocess to use the cached librt, since importing
+this module also triggers the import of the regular installed librt.
 
 Usage:
     from mypyc.test.librt_cache import get_librt_path, run_with_librt
@@ -24,10 +25,12 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+from typing import Any
 
 import filelock
 
-from mypyc.build import LIBRT_MODULES, RUNTIME_C_FILES, get_cflags, include_dir
+from mypyc.build import LIBRT_MODULES, get_cflags, include_dir
+from mypyc.common import RUNTIME_C_FILES
 
 
 def _librt_build_hash(experimental: bool) -> str:
@@ -46,8 +49,8 @@ def _librt_build_hash(experimental: bool) -> str:
     # Include free-threading status (Python 3.13+)
     is_free_threaded = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
     h.update(b"freethreaded" if is_free_threaded else b"gil")
-    # Include compiler type (e.g., "unix", "msvc")
-    compiler = ccompiler.new_compiler()
+    # Include compiler type (e.g., "unix" or "msvc")
+    compiler: Any = ccompiler.new_compiler()
     h.update(compiler.compiler_type.encode())
     # Include environment variables that affect C compilation
     for var in ("CC", "CXX", "CFLAGS", "CPPFLAGS", "LDFLAGS"):
@@ -56,16 +59,16 @@ def _librt_build_hash(experimental: bool) -> str:
     # Hash runtime files
     for name in RUNTIME_C_FILES:
         path = os.path.join(include_dir(), name)
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                h.update(f.read())
+        h.update(name.encode() + b"|")
+        with open(path, "rb") as f:
+            h.update(f.read())
     # Hash librt module files
     for mod, files, extra, includes in LIBRT_MODULES:
         for fname in files + extra:
             path = os.path.join(include_dir(), fname)
-            if os.path.exists(path):
-                with open(path, "rb") as f:
-                    h.update(f.read())
+            h.update(fname.encode() + b"|")
+            with open(path, "rb") as f:
+                h.update(f.read())
     return h.hexdigest()[:16]
 
 
@@ -73,8 +76,7 @@ def _generate_setup_py(build_dir: str, experimental: bool) -> str:
     """Generate setup.py content for building librt directly.
 
     We inline LIBRT_MODULES/RUNTIME_C_FILES/include_dir/cflags values to avoid
-    importing mypyc.build, which imports mypy.build, which imports librt
-    (circular dependency when librt isn't built yet).
+    importing mypyc.build, which recursively imports lots of things.
     """
     lib_rt_dir = include_dir()
 
@@ -101,22 +103,15 @@ LIBRT_MODULES = {librt_modules_repr}
 CFLAGS = {cflags_repr}
 
 def write_file(path, contents):
-    encoded = contents.encode("utf-8")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    try:
-        with open(path, "rb") as f:
-            if f.read() == encoded:
-                return
-    except OSError:
-        pass
     with open(path, "wb") as f:
-        f.write(encoded)
+        f.write(contents)
 
 # Copy runtime C files
 for name in RUNTIME_C_FILES:
     src = os.path.join(lib_rt_dir, name)
     dst = os.path.join(build_dir, name)
-    with open(src, encoding="utf-8") as f:
+    with open(src, "rb") as f:
         write_file(dst, f.read())
 
 # Build extensions for each librt module
@@ -126,7 +121,7 @@ for mod, file_names, extra_files, includes in LIBRT_MODULES:
     for fname in file_names + extra_files:
         src = os.path.join(lib_rt_dir, fname)
         dst = os.path.join(build_dir, fname)
-        with open(src, encoding="utf-8") as f:
+        with open(src, "rb") as f:
             write_file(dst, f.read())
 
     extensions.append(Extension(
@@ -141,7 +136,7 @@ setup(name='librt_cached', ext_modules=extensions)
 
 
 def get_librt_path(experimental: bool = True) -> str:
-    """Get path to built librt, building and caching if necessary.
+    """Get path to librt built from the repository, building and caching if necessary.
 
     Uses build/librt-cache/ under the repo root (gitignored). The cache is
     keyed by a hash of sources and build environment, so it auto-invalidates
@@ -234,9 +229,5 @@ def run_with_librt(
     env["PYTHONPATH"] = librt_path + (os.pathsep + existing if existing else "")
 
     return subprocess.run(
-        [sys.executable, file_path],
-        capture_output=True,
-        text=True,
-        check=check,
-        env=env,
+        [sys.executable, file_path], capture_output=True, text=True, check=check, env=env
     )

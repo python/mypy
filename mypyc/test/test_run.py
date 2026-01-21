@@ -26,8 +26,8 @@ from mypyc.codegen.emitmodule import collect_source_dependencies
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
-from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.librt_cache import get_librt_path
+from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     TESTUTIL_PATH,
