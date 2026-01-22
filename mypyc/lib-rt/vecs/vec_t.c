@@ -141,13 +141,13 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
         if (i == -1 && PyErr_Occurred())
             return NULL;
         if ((size_t)i < (size_t)vec.len) {
-            PyObject *item = vec.buf->items[i];
-            Py_INCREF(item);
-            return item;
+            PyObject *result = vec.buf->items[i];
+            Py_INCREF(result);
+            return result;
         } else if ((size_t)i + (size_t)vec.len < (size_t)vec.len) {
-            PyObject *item = vec.buf->items[i + vec.len];
-            Py_INCREF(item);
-            return item;
+            PyObject *result = vec.buf->items[i + vec.len];
+            Py_INCREF(result);
+            return result;
         } else {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
