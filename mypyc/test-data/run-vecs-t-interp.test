@@ -1,7 +1,8 @@
-[case testLibrtVecsI64Interpreted_librt_experimental]
+[case testLibrtVecsTInterpreted_librt_experimental]
 # Test cases for vec[<ref type>], using generic operations (simulates use from interpreted code).
 import sys
-from typing import cast, List, Optional, Any
+from typing import cast, List, Any
+import typing
 
 import librt.vecs
 import mypy_extensions
@@ -14,6 +15,8 @@ remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
+Optional: Any = typing.Optional
+version_info: Any = sys.version_info
 
 def assert_eq(x: object, y: object) -> None:
     assert x == y
@@ -48,7 +51,7 @@ def test_construct_empty() -> None:
     assert type(v) is type(v2)
 
 def test_construct_or_union() -> None:
-    if sys.version_info >= (3, 10):
+    if version_info >= (3, 10):
         v = vec[str | None]()
         assert len(v) == 0
         assert str(v) == 'vec[str | None]([])'
