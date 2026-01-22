@@ -8,6 +8,7 @@ import librt.vecs
 import mypy_extensions
 
 from testutil import assertRaises
+from helpers import ClassWithCustomMeta
 
 vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
@@ -15,8 +16,10 @@ remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
-Optional: Any = typing.Optional
 version_info: Any = sys.version_info
+
+# Work around test stub limitations
+Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
 
 def assert_eq(x: object, y: object) -> None:
     assert x == y
@@ -33,6 +36,14 @@ def assert_neq(x: object, y: object) -> None:
     assert not b
     b = y == x
     assert not b
+
+@mypy_extensions.mypyc_attr(native_class=False)
+class StringSubclass(str):
+    pass
+
+class ClassWithRaisingEq:
+    def __eq__(self, other):
+        raise RuntimeError()
 
 def test_vec_indexing() -> None:
     assert vec[str] is not vec[i64]
@@ -246,29 +257,20 @@ def test_nested_in_type() -> None:
     cast(List[vec[str]], [])
 
 def test_cannot_overload_isinstance() -> None:
-    class M(type):
-        def __instancecheck__(cls, instance):
-            return isinstance(instance, str)
-
-    class C(metaclass=M): pass
-
-    assert isinstance('', C)
-    v = vec[C]()
-    v = append(v, C())
+    assert isinstance('', ClassWithCustomMeta)
+    v = vec[ClassWithCustomMeta]()
+    v = append(v, ClassWithCustomMeta())
     with assertRaises(TypeError):
         v = append(v, '')
     with assertRaises(TypeError):
         v[0] = ''
 
 def test_add_subclass_instance() -> None:
-    class SS(str):
-        pass
-
     v = vec[str]()
-    v = append(v, SS())
-    v[0] = SS()
+    v = append(v, StringSubclass())
+    v[0] = StringSubclass()
 
-    v2 = vec[SS]()
+    v2 = vec[StringSubclass]()
     with assertRaises(TypeError):
         v2 = append(v2, '')
 
@@ -297,12 +299,8 @@ def test_equality_different_types() -> None:
     assert_neq(vec[str](), vec[Optional[str]]())
 
 def test_exception_from_eq() -> None:
-    class C:
-        def __eq__(self, other):
-            raise RuntimeError()
-
     with assertRaises(RuntimeError):
-        vec[C]([C()]) == vec[C]([C()])
+        vec[ClassWithRaisingEq]([ClassWithRaisingEq()]) == vec[ClassWithRaisingEq]([ClassWithRaisingEq()])
 
 def test_iteration() -> None:
     for x in vec[str]():
@@ -447,3 +445,13 @@ def test_pop_index() -> None:
     v, item = pop(v, 0)
     assert item == '15'
     assert v == vec[str]()
+
+[file helpers.py]
+# Test helper classes
+
+class MetaWithInstanceCheck(type):
+    def __instancecheck__(cls, instance):
+        return isinstance(instance, str)
+
+class ClassWithCustomMeta(metaclass=MetaWithInstanceCheck):
+    pass
