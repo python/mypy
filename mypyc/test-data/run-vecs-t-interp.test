@@ -198,7 +198,7 @@ def test_set_item_optional() -> None:
     v = append(v, None)
     v[0] = '3'
     assert v[0] == '3'
-    assert v[1] is None
+    assert v[1 + int()] is None  # TODO: The '+ int()' is due to mypy type narrowing bug
     v[1] = '5'
     assert v[0] == '3'
     assert v[1] == '5'
