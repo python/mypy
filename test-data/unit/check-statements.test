@@ -88,6 +88,29 @@ def f() -> Iterator[int]:
     return "foo" # E: No return value expected
 [out]
 
+[case testInferReturnTypeFromReturnStatements]
+# Test that mypy infers return type from return statements when function has no explicit return type annotation
+def f(x: int):
+    if x > 0:
+        return "positive"
+    else:
+        return 0
+
+reveal_type(f(1))  # N: Revealed type is "builtins.str | builtins.int"
+
+def g(x: bool):
+    return x
+
+reveal_type(g(True))  # N: Revealed type is "builtins.bool"
+
+def h(x: int):
+    if x > 0:
+        return "positive"
+    return None
+
+reveal_type(h(1))  # N: Revealed type is "builtins.str | None"
+
+[out]
 
 -- If statement
 -- ------------

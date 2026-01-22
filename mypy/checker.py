@@ -169,6 +169,7 @@ from mypy.subtypes import (
     unify_generic_callable,
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
+from mypy.suggestions import get_return_types
 from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
@@ -1599,6 +1600,38 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         and may_be_abstract
                     ):
                         self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
+
+            # Infer return type from return statements if function has no explicit return type annotation
+            if isinstance(item, FuncDef) and isinstance(typ, CallableType):
+                def is_unannotated_any(t: Type) -> bool:
+                    if not isinstance(t, ProperType):
+                        return False
+                    return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
+                
+                ret_type_proper = get_proper_type(typ.ret_type)
+                # Only infer for functions without explicit return type annotations
+                # Skip generators and coroutines as they have special return type handling
+                if (
+                    is_unannotated_any(ret_type_proper)
+                    and not defn.is_generator
+                    and not defn.is_coroutine
+                    and not self.dynamic_funcs[-1]
+                ):
+                    # Collect return types from return statements
+                    # Merge types from all type maps to get complete picture
+                    all_return_types: list[Type] = []
+                    for type_map in self._type_maps:
+                        return_types_list = get_return_types(type_map, item)
+                        all_return_types.extend(return_types_list)
+                    
+                    if all_return_types:
+                        # Create union of all return types
+                        inferred_ret_type = make_simplified_union(all_return_types)
+                        # Update the function's return type
+                        typ = typ.copy_modified(ret_type=inferred_ret_type)
+                        item.type = typ
+                        # Update the return_types stack as well
+                        self.return_types[-1] = inferred_ret_type
 
             self.return_types.pop()
 
