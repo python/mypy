@@ -7,6 +7,7 @@
 #include <Python.h>
 
 #include "strings/librt_strings.h"
+#include "strings/librt_strings_common.h"
 
 static inline CPyTagged
 CPyBytesWriter_Len(PyObject *obj) {
@@ -63,6 +64,24 @@ static inline uint8_t CPyBytesWriter_GetItem(PyObject *obj, int64_t index) {
 
 static inline void CPyBytesWriter_SetItem(PyObject *obj, int64_t index, uint8_t x) {
     (((BytesWriterObject *)obj)->buf)[index] = x;
+}
+
+static inline int16_t
+CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    if (unlikely(index < 0)) {
+        PyErr_SetString(PyExc_ValueError, "index must be non-negative");
+        return CPY_LL_INT_ERROR;
+    }
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index + 2 > size)) {
+        PyErr_Format(PyExc_IndexError,
+                     "index %lld out of range for bytes of length %zd",
+                     (long long)index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return read_i16_le_unchecked(data + index);
 }
 
 #endif // MYPYC_EXPERIMENTAL

@@ -1,6 +1,6 @@
 from typing import final
 
-from mypy_extensions import i64, i32, u8
+from mypy_extensions import i64, i32, i16, u8
 
 @final
 class BytesWriter:
@@ -21,3 +21,4 @@ class StringWriter:
     def __getitem__(self, i: i64, /) -> i32: ...
 
 def write_i16_le(b: BytesWriter, n: int, /) -> None: ...
+def read_i16_le(b: bytes, i: i64, /) -> i16: ...

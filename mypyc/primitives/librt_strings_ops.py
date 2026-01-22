@@ -88,6 +88,16 @@ function_op(
 )
 
 function_op(
+    name="librt.strings.read_i16_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyBytes_ReadI16LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
     name="builtins.len",
     arg_types=[bytes_writer_rprimitive],
     return_type=short_int_rprimitive,

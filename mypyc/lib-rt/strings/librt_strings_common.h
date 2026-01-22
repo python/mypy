@@ -33,4 +33,14 @@ BytesWriter_write_i16_le_unchecked(BytesWriterObject *self, int16_t value) {
     self->len = len + 2;
 }
 
+// Read a 16-bit signed integer in little-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int16_t
+read_i16_le_unchecked(const unsigned char *data) {
+    // Read in little-endian format
+    // Modern compilers optimize this pattern well, often to a single load on LE systems
+    uint16_t uval = (uint16_t)data[0] | ((uint16_t)data[1] << 8);
+    return (int16_t)uval;
+}
+
 #endif  // LIBRT_STRINGS_COMMON_H
