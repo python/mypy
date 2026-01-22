@@ -24,8 +24,9 @@ def test_time_comparable_to_stdlib() -> None:
     # Our time() should return similar values to stdlib time.time()
     our_time = time()
     std_time = stdlib_time.time()
-    # Should be within 1 second of each other (very generous)
-    assert abs(our_time - std_time) < 1.0
+    # Should be within 0.25 seconds of each other (usually should be much less,
+    # but keep it relatively high to avoid test flakiness in CI)
+    assert abs(our_time - std_time) < 0.25
 
 [case testTimeNotAvailableInNonExperimentalBuild_librt_time]
 # This also ensures librt.time can be built without experimental features
