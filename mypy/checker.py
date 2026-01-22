@@ -1635,7 +1635,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             pass
                     
                     finder = ReturnTypeFinder(self._type_maps[0])
-                    item.body.accept(finder)
+                    if item.body:
+                        item.body.accept(finder)
                     return_types_list = finder.return_types
 
                     if return_types_list:
