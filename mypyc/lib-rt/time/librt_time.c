@@ -14,26 +14,6 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
-// Helper to convert nanoseconds to double seconds (similar to PyTime_AsSecondsDouble)
-// Uses volatile to avoid compiler optimizations that could change rounding behavior
-static inline double
-ns_to_double(int64_t ns) {
-    volatile double d;
-
-    if (ns % 1000000000LL == 0) {
-        // Exact seconds: divide using integers to avoid floating-point rounding issues
-        // (1e-9 cannot be exactly represented in IEEE 754 double precision)
-        int64_t secs = ns / 1000000000LL;
-        d = (double)secs;
-    }
-    else {
-        // Has fractional seconds
-        d = (double)ns;
-        d /= 1e9;
-    }
-    return d;
-}
-
 // Internal function that returns a C double for mypyc primitives
 // Returns high-precision time in seconds (like time.time())
 static double
@@ -48,10 +28,10 @@ time_time_internal(void) {
     large.HighPart = ft.dwHighDateTime;
 
     // Windows FILETIME is 100-nanosecond intervals since January 1, 1601
-    // Convert to nanoseconds since Unix epoch (January 1, 1970)
     // 116444736000000000 = number of 100-ns intervals between 1601 and 1970
-    int64_t ns = (large.QuadPart - 116444736000000000LL) * 100LL;
-    return ns_to_double(ns);
+    // Convert directly to seconds: 100ns * 1e-9 = 1e-7
+    int64_t intervals = large.QuadPart - 116444736000000000LL;
+    return (double)intervals * 1e-7;
 
 #else  // Unix-like systems (Linux, macOS, BSD, etc.)
 
@@ -60,9 +40,8 @@ time_time_internal(void) {
 #if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        // Convert to nanoseconds
-        int64_t ns = (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
-        return ns_to_double(ns);
+        // Convert seconds and nanoseconds separately to avoid large integer operations
+        return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
     }
     // Fall through to gettimeofday if clock_gettime failed
 #endif
@@ -75,9 +54,8 @@ time_time_internal(void) {
         return CPY_FLOAT_ERROR;
     }
 
-    // Convert to nanoseconds
-    int64_t ns = (int64_t)tv.tv_sec * 1000000000LL + (int64_t)tv.tv_usec * 1000LL;
-    return ns_to_double(ns);
+    // Convert seconds and microseconds separately to avoid large integer operations
+    return (double)tv.tv_sec + (double)tv.tv_usec * 1e-6;
 #endif
 }
 
