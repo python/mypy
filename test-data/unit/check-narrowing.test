@@ -2922,7 +2922,7 @@ def f2(x: Any) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeEqualsCheck]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 y: Any
@@ -2930,7 +2930,7 @@ if type(y) == int:
     reveal_type(y) # N: Revealed type is "builtins.int"
 
 [case testMultipleTypeEqualsCheck]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 x: Any
@@ -2940,7 +2940,7 @@ if type(x) == type(y) == int:
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 [case testTypeEqualsCheckUsingIs]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 y: Any
@@ -2948,18 +2948,19 @@ if type(y) is int:
     reveal_type(y) # N: Revealed type is "builtins.int"
 
 [case testTypeEqualsCheckUsingIsNonOverlapping]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 y: str
-if type(y) is int:  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+if type(y) is int:  # E: Non-overlapping identity check (left operand type: "type[str]", right operand type: "type[int]") \
+                    # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
     y  # E: Statement is unreachable
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 class A: ...
@@ -2975,7 +2976,7 @@ def main(x: Union[B, C]):
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeEqualsNarrowingUnionWithElse]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 x: Union[int, str]
@@ -2985,22 +2986,20 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testTypeEqualsMultipleTypesShouldntNarrow]
-# flags: --warn-unreachable
-# make sure we don't do any narrowing if there are multiple types being compared
+# flags: --strict-equality --warn-unreachable
 
 from typing import Union
 
 x: Union[int, str]
-if type(x) == int == str:
+if type(x) == int == str:  # E: Non-overlapping equality check (left operand type: "type[int]", right operand type: "type[str]")
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
-# mypy thinks int isn't defined unless we include this
 [builtins fixtures/primitives.pyi]
 
 [case testTypeNotEqualsCheck]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 x: Union[int, str]
@@ -3013,7 +3012,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testTypeNotEqualsCheckUsingIsNot]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 x: Union[int, str]
@@ -3023,7 +3022,7 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [case testNarrowInElseCaseIfFinal]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import final, Union
 @final
 class C:
@@ -3038,7 +3037,7 @@ else:
     reveal_type(x)  # N: Revealed type is "__main__.D"
 
 [case testNarrowInIfCaseIfFinalUsingIsNot]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import final, Union
 @final
 class C:
