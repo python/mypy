@@ -1,0 +1,440 @@
+[case testLibrtVecsI64Interpreted_librt_experimental]
+# Test cases for vec[<ref type>], using generic operations (simulates use from interpreted code).
+import sys
+from typing import cast, List, Optional
+
+from vecs import vec, append, remove, pop
+
+from mypy_extensions import i64
+
+
+class TestVecT(unittest.TestCase):
+    def test_vec_indexing(self) -> None:
+        assert vec[str] is not vec[i64]
+        assert type(vec[str]) is not type
+        assert type(vec[Optional[str]]) is type(vec[str])
+
+    def test_type_str(self) -> None:
+        assert str(vec[str]) == "<class_proxy 'vec[str]'>"
+        assert str(vec[Optional[str]]) == "<class_proxy 'vec[str | None]'>"
+
+    def test_construct_empty(self) -> None:
+        v = vec[str]()
+        assert len(v) == 0
+        v2 = vec[Optional[str]]()
+        assert len(v2) == 0
+        assert type(v) is type(v2)
+
+    def test_construct_or_union(self) -> None:
+        if sys.version_info >= (3, 10):
+            v = vec[str | None]()
+            assert len(v) == 0
+            assert str(v) == 'vec[str | None]([])'
+
+    def test_construct_from_initializer(self) -> None:
+        v = vec[str](['xyz'])
+        assert len(v) == 1
+        assert v[0] == 'xyz'
+        v = vec[str](x + '!' for x in ['x', '', 'foo', 'bar'])
+        assert len(v) == 4
+        assert v[0] == 'x!'
+        assert v[1] == '!'
+        assert v[2] == 'foo!'
+        assert v[3] == 'bar!'
+        with self.assertRaises(TypeError):
+            vec[str](1)
+        with self.assertRaises(TypeError):
+            vec[str]([1])
+        with self.assertRaises(TypeError):
+            vec[str]([None])
+
+    def test_construct_from_initializer_optional(self) -> None:
+        v = vec[Optional[str]]([None, 'xyz'])
+        assert len(v) == 2
+        assert v[0] is None
+        assert v[1] == 'xyz'
+        v = vec[Optional[str]](x for x in ['x', None, 'foo', 'bar'])
+        assert len(v) == 4
+        assert v[0] == 'x'
+        assert v[1] is None
+        assert v[2] == 'foo'
+        assert v[3] == 'bar'
+        with self.assertRaises(TypeError):
+            vec[Optional[str]](1)
+        with self.assertRaises(TypeError):
+            vec[Optional[str]]([1])
+
+    def test_append(self) -> None:
+        v = vec[str]()
+        v = append(v, '1')
+        assert str(v) == "vec[str](['1'])"
+        for n in range(2, 10):
+            v = append(v, str(n))
+        assert str(v) == "vec[str](['1', '2', '3', '4', '5', '6', '7', '8', '9'])"
+
+        v2 = vec[Optional[str]]()
+        v2 = append(v2, 'x')
+        v2 = append(v2, None)
+        assert str(v2) == "vec[str | None](['x', None])"
+
+    def test_append_error(self) -> None:
+        v: Any = vec[str]()
+        with self.assertRaises(TypeError):
+            v = append(v, b'x')
+        with self.assertRaises(TypeError):
+            v = append(v, ['x'])
+        with self.assertRaises(TypeError):
+            v = append(v, None)
+        assert len(v) == 0
+
+        v2: Any = vec[Optional[str]]()
+        with self.assertRaises(TypeError):
+            v2 = append(v2, b'x')
+
+    def test_repr(self) -> None:
+        assert str(vec[str]()) == "vec[str]([])"
+        assert str(vec[Optional[str]]([None, 'x'])) == "vec[str | None]([None, 'x'])"
+
+    def test_size(self) -> None:
+        v = vec[str]()
+        assert sys.getsizeof(v) == 48
+        v = append(v, '123')
+        assert sys.getsizeof(v) == 48
+
+    def test_get_item(self) -> None:
+        v = append(vec[str](), '44')
+        assert v[0] == '44'
+        v = append(v, '56')
+        assert v[0] == '44'
+        assert v[1] == '56'
+
+        v2 = vec[Optional[str]]([None, '12'])
+        assert v2[0] is None
+        assert v2[1] == '12'
+
+    def test_get_item_error(self) -> None:
+        v = append(vec[str](), '1')
+        v = append(v, '2')
+        v = append(v, '3')
+        with self.assertRaises(IndexError):
+            v[3]
+        with self.assertRaises(IndexError):
+            v[-4]
+        n = 2 ** 100
+        with self.assertRaises(IndexError):
+            v[n]
+
+    def test_get_item_negative(self) -> None:
+        v = vec[str](['2', '5', '7'])
+        assert v[-1] == '7'
+        assert v[-2] == '5'
+        assert v[-3] == '2'
+        with self.assertRaises(IndexError):
+            v[-4]
+        with self.assertRaises(IndexError):
+            v[-2**62]
+
+    def test_len(self) -> None:
+        v = vec[str]()
+        assert len(v) == 0
+        v = append(v, '1')
+        assert len(v) == 1
+        v = append(v, '2')
+        assert len(v) == 2
+        for i in range(100):
+            v = append(v, 'i')
+            assert len(v) == i + 3
+
+    def test_set_item(self) -> None:
+        v = vec[str]()
+        v = append(v, '1')
+        v = append(v, '2')
+        v[0] = '3'
+        assert v[0] == '3'
+        assert v[1] == '2'
+        v[1] = '5'
+        assert v[0] == '3'
+        assert v[1] == '5'
+
+    def test_set_item_optional(self) -> None:
+        v = vec[Optional[str]]()
+        v = append(v, '1')
+        v = append(v, None)
+        v[0] = '3'
+        assert v[0] == '3'
+        assert v[1] is None
+        v[1] = '5'
+        assert v[0] == '3'
+        assert v[1] == '5'
+        v[1] = None
+        assert v[0] == '3'
+        assert v[1] is None
+
+    def test_set_item_error(self) -> None:
+        v = append(vec[str](), '1')
+        v = append(v, '2')
+        v = append(v, '3')
+        with self.assertRaises(IndexError):
+            v[3] = '1'
+        with self.assertRaises(TypeError):
+            v[0] = b'x'
+        with self.assertRaises(TypeError):
+            v[0] = vec[str]()
+        with self.assertRaises(TypeError):
+            v[0] = None
+        assert v[0] == '1'
+
+    def test_set_item_error_optional(self) -> None:
+        v = append(vec[Optional[str]](), '1')
+        v = append(v, None)
+        v = append(v, '3')
+        with self.assertRaises(IndexError):
+            v[3] = '1'
+        with self.assertRaises(IndexError):
+            v[3] = None
+        with self.assertRaises(IndexError):
+            v[-4] = '1'
+        with self.assertRaises(IndexError):
+            v[-4] = None
+        with self.assertRaises(TypeError):
+            v[0] = b'x'
+        with self.assertRaises(TypeError):
+            v[0] = vec[str]()
+        with self.assertRaises(TypeError):
+            v[0] = vec[Optional[str]]()
+        assert v[0] == '1'
+
+    def test_set_item_negative(self) -> None:
+        v = vec[str]()
+        v = append(v, '1')
+        v = append(v, '2')
+        v[-2] = '3'
+        assert v[0] == '3'
+        assert v[1] == '2'
+        v[-1] = '5'
+        assert v[0] == '3'
+        assert v[1] == '5'
+        with self.assertRaises(IndexError):
+            v[-3] = '1'
+
+    def test_nested_in_type(self) -> None:
+        cast(List[vec[str]], [])
+
+    def test_cannot_overload_isinstance(self) -> None:
+        class M(type):
+            def __instancecheck__(cls, instance):
+                return isinstance(instance, str)
+
+        class C(metaclass=M): pass
+
+        assert isinstance('', C)
+        v = vec[C]()
+        v = append(v, C())
+        with self.assertRaises(TypeError):
+            v = append(v, '')
+        with self.assertRaises(TypeError):
+            v[0] = ''
+
+    def test_add_subclass_instance(self) -> None:
+        class SS(str):
+            pass
+
+        v = vec[str]()
+        v = append(v, SS())
+        v[0] = SS()
+
+        v2 = vec[SS]()
+        with self.assertRaises(TypeError):
+            v2 = append(v2, '')
+
+    def test_equality(self) -> None:
+        self.assert_eq(vec[str](), vec[str]())
+        self.assert_eq(vec[str](['x']), vec[str](['x']))
+        v = vec[str](['x'])
+        self.assert_eq(v, v)
+        self.assert_eq(vec[str](['x', 'y']), vec[str](['x', 'y']))
+
+        self.assert_neq(vec[str](), vec[str](['x']))
+        self.assert_neq(vec[str](['x', 'y']), vec[str](['x']))
+        self.assert_neq(vec[str](['x']), vec[str](['y']))
+        self.assert_neq(vec[str](['x', 'y']), vec[str](['y', 'y']))
+        self.assert_neq(vec[str](['x', 'y']), vec[str](['x', 'x']))
+
+        self.assert_eq(vec[Optional[str]](), vec[Optional[str]]())
+        self.assert_eq(vec[Optional[str]](['x', None]), vec[Optional[str]](['x', None]))
+        self.assert_neq(vec[Optional[str]](['x', None]), vec[Optional[str]](['x', 'y']))
+
+    def test_equality_different_types(self) -> None:
+        self.assert_neq(vec[str](['x']), ['x'])
+        self.assert_neq(vec[str](['x']), ('x',))
+        self.assert_neq(vec[str](['x']), vec[object](['x']))
+        self.assert_neq(vec[str](), vec[object]())
+        self.assert_neq(vec[str](), vec[Optional[str]]())
+
+    def test_exception_from_eq(self) -> None:
+        class C:
+            def __eq__(self, other):
+                raise RuntimeError()
+
+        with self.assertRaises(RuntimeError):
+            vec[C]([C()]) == vec[C]([C()])
+
+    def assert_eq(self, x: object, y: object) -> None:
+        assert x == y
+        assert y == x
+        b = x != y
+        assert not b
+        b = y != x
+        assert not b
+
+    def assert_neq(self, x: object, y: object) -> None:
+        assert x != y
+        assert y != x
+        b = x == y
+        assert not b
+        b = y == x
+        assert not b
+
+    def test_iteration(self) -> None:
+        for x in vec[str]():
+            assert False
+        a = []
+        for x in vec[str](['x']):
+            a.append(x)
+        assert a == ['x']
+        a = []
+        for x in vec[str](['11', '23', '45', '64']):
+            a.append(x)
+        assert a == ['11', '23', '45', '64']
+        a = []
+        for x in vec[Optional[str]](['11', None, '45', '64']):
+            a.append(x)
+        assert a == ['11', None, '45', '64']
+
+    def test_slicing(self) -> None:
+        v = vec[str](str(i) for i in range(5))
+        assert v[1:4] == vec[str](['1', '2', '3'])
+        assert v[2:-1] == vec[str](['2', '3'])
+        assert v[-2:-1] == vec[str](['3'])
+        assert v[1:] == vec[str](['1', '2', '3', '4'])
+        assert v[:-1] == vec[str](['0', '1', '2', '3'])
+        assert v[:] == v
+        assert v[:] is not v
+        assert v[0:5] ==v
+        assert v[0:5] is not v
+        assert v[2:100] == vec[str](['2', '3', '4'])
+        assert v[-100:2] == vec[str](['0', '1'])
+        assert v[5:100] == vec[str]([])
+        assert v[50:100] == vec[str]([])
+        assert v[-100:-50] == vec[str]([])
+
+    def test_slicing_optional(self) -> None:
+        v = vec[Optional[str]](['x', None, 'y'])
+        assert v[:2] == vec[Optional[str]](['x', None])
+
+    def test_slicing_with_step(self) -> None:
+        v = vec[str](str(i) for i in range(10))
+        assert v[1:5:2] == vec[str](['1', '3'])
+        assert v[1:6:2] == vec[str](['1', '3', '5'])
+        assert v[5:1:-2] == vec[str](['5', '3'])
+        assert v[6:1:-2] == vec[str](['6', '4', '2'])
+        v = vec[str](str(i) for i in range(5))
+        assert v[::-1] == vec[str](['4', '3', '2', '1', '0'])
+        with self.assertRaises(ValueError):
+            v[1:3:0]
+
+    def test_contains(self) -> None:
+        v = vec[str](str(i) for i in range(2, 7))
+        for i in range(2, 7):
+            assert str(i) in v
+        assert 'x' not in v
+        assert '22' not in v
+        vv = vec[str]()
+        assert '3' not in vv
+
+        v2 = vec[Optional[str]]()
+        assert '3' not in v2
+        assert None not in v2
+        v2 = vec[Optional[str]](['3', None])
+        assert '3' in v2
+        assert None in v2
+        assert '4' not in v2
+
+    def test_remove(self) -> None:
+        a = ['4x', '7x', '9x']
+        for i in a:
+            v = vec[str](a)
+            v = remove(v, i)
+            assert v == vec[str]([j for j in a if j != i])
+            v = vec[str](a)
+            # Make sure we have a different id
+            v = remove(v, (i + 'x')[:-1])
+            assert v == vec[str]([j for j in a if j != i])
+        v = vec[str](a)
+        v = remove(v, '4x')
+        v = remove(v, '7x')
+        v = remove(v, '9x')
+        assert v == vec[str]()
+        with self.assertRaises(ValueError):
+            remove(v, '4')
+        v = append(v, '5')
+        with self.assertRaises(ValueError):
+            remove(v, '7')
+        v = remove(v, '5')
+        assert len(v) == 0
+        v = vec[str](['x', 'x', 'x'])
+        v = remove(v, 'x')
+        assert v == vec[str](['x', 'x'])
+        v = remove(v, 'x')
+        assert v == vec[str](['x'])
+        v = remove(v, 'x')
+        assert v == vec[str]()
+        b: Any = b'x'
+        with self.assertRaises(TypeError):
+            remove(v, b)
+
+    def test_remove_optional(self) -> None:
+        v = vec[Optional[str]](['x', None])
+        v = remove(v, 'x')
+        assert str(v) == "vec[str | None]([None])"
+        v = remove(v, None)
+        assert str(v) == "vec[str | None]([])"
+
+    def test_pop_last(self) -> None:
+        v = vec[str](['4', '7', '9'])
+        v, item = pop(v)
+        assert item == '9'
+        assert v == vec[str](['4', '7'])
+        v, item = pop(v)
+        assert item == '7'
+        assert v == vec[str](['4'])
+        v, item = pop(v)
+        assert item == '4'
+        assert v == vec[str]()
+        with self.assertRaises(IndexError):
+            pop(v)
+
+    def test_pop_index(self) -> None:
+        v = vec[str](['4', '7', '9', '15', '22'])
+        v, item = pop(v, 0)
+        assert item == '4'
+        assert v == vec[str](['7', '9', '15', '22'])
+        v, item = pop(v, -1)
+        assert item == '22'
+        assert v == vec[str](['7', '9', '15'])
+        v, item = pop(v, 1)
+        assert item == '9'
+        assert v == vec[str](['7', '15'])
+
+        with self.assertRaises(IndexError):
+            pop(v, 2)
+
+        with self.assertRaises(IndexError):
+            pop(v, -3)
+
+        v, item = pop(v, -2)
+        assert item == '7'
+        assert v == vec[str](['15'])
+        v, item = pop(v, 0)
+        assert item == '15'
+        assert v == vec[str]()
