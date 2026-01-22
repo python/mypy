@@ -181,12 +181,16 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     if (!VecT_ItemCheck(v, o, v.buf->item_type))
         return -1;
     if ((size_t)i < (size_t)v.len) {
+        PyObject *old = v.buf->items[i];
         Py_INCREF(o);
         v.buf->items[i] = o;
+        Py_XDECREF(old);
         return 0;
     } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        PyObject *old = v.buf->items[i + v.len];
         Py_INCREF(o);
         v.buf->items[i + v.len] = o;
+        Py_XDECREF(old);
         return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
