@@ -143,14 +143,14 @@ def test_bytes_writer_write_i16_le() -> None:
     assert result[3:5] == b"\x01\x00"  # i=1
     assert result[1999:2001] == b"\xe7\x03"  # i=999
 
-    # Test values that don't fit in i16
-    w = BytesWriter()
+    # Test values that don't fit in i16 (using Any to bypass compile-time checks)
+    w_any: Any = BytesWriter()
     with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w, 32768)
+        write_i16_le(w_any, 32768 + int())
     with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w, -32769)
+        write_i16_le(w_any, -32769 + int())
     with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w, 100000)
+        write_i16_le(w_any, 100000 + int())
 
 def test_write_bytearray() -> None:
     w = BytesWriter()

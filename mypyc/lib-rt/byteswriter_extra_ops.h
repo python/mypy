@@ -34,6 +34,15 @@ CPyBytesWriter_Append(PyObject *obj, uint8_t value) {
     return CPY_NONE;
 }
 
+static inline char
+CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 2))
+        return CPY_NONE_ERROR;
+    BytesWriter_write_i16_le_unchecked(self, value);
+    return CPY_NONE;
+}
+
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value);
 
 // If index is negative, convert to non-negative index (no range checking)
