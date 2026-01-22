@@ -149,6 +149,7 @@ from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.traverser import TraverserVisitor
+from mypy.traverser import TraverserVisitor
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
