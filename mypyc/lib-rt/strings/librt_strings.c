@@ -887,7 +887,7 @@ read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     int16_t value = read_i16_le_unchecked(data + index);
-    return CPyLong_FromInt16(value);
+    return PyLong_FromLong(value);
 }
 
 #endif
