@@ -473,19 +473,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                 -1,
             )
         )
-
-        builder.add(
-            Call(
-                FuncDecl(
-                    cdef.name + "_coroutine_setup",
-                    None,
-                    builder.module_name,
-                    FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
-                ),
-                [tp],
-                -1,
-            )
-        )
+        builder.add_coroutine_setup_call(cdef.name, tp)
 
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.primitive_op(
