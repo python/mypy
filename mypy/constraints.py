@@ -123,7 +123,7 @@ def infer_constraints_for_callable(
     param_spec = callee.param_spec()
     param_spec_arg_types = []
     param_spec_arg_names = []
-    param_spec_arg_kinds = []
+    param_spec_arg_kinds: list[ArgKind] = []
 
     incomplete_star_mapping = False
     for i, actuals in enumerate(formal_to_actual):  # TODO: isn't this `enumerate(arg_types)`?

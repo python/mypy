@@ -1373,13 +1373,13 @@ else:
     reveal_type(val)  # N: Revealed type is "None"
 
 if val in (None,):
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "__main__.A"
 if val not in (None,):
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 
 class Hmm:
     def __eq__(self, other) -> bool: ...
@@ -2315,9 +2315,8 @@ def f(x: str | int) -> None:
         y = x
 
     if x in ["x"]:
-        # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
-        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
-        y = x  # E: Incompatible types in assignment (expression has type "str | int", variable has type "str")
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+        y = x
         z = x
     z = y
 [builtins fixtures/primitives.pyi]
@@ -2838,3 +2837,86 @@ class X:
             reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
             self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
 [builtins fixtures/dict.pyi]
+
+
+[case testTypeNarrowingStringInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple(x: str, t: tuple[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_homo_tuple(x: str, t: tuple[Literal['a', 'b'], ...]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_list(x: str, t: list[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_set(x: str, t: set[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingLiteralInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple(x: Literal['c'], overlap: list[Literal['b', 'c']], no_overlap: list[Literal['a', 'b']]):
+    if x in overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+
+    if x in no_overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowingUnionInContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Union, Literal
+
+def f1(x: Union[str, float], t1: list[Literal['a', 'b']], t2: list[str]):
+    if x in t1:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+
+    if x in t2:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowAnyWithEqualityOrContainment]
+# https://github.com/python/mypy/issues/17841
+from typing import Any
+
+def f1(x: Any) -> None:
+    if x is not None and x not in ["x"]:
+        return
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f2(x: Any) -> None:
+    if x is not None and x != "x":
+        return
+    reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

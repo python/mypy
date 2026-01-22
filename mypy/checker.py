@@ -6599,6 +6599,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         partial_type_maps = []
         for operator, expr_indices in simplified_operator_list:
+            if_map: TypeMap
+            else_map: TypeMap
+
             if operator in {"is", "is not", "==", "!="}:
                 if_map, else_map = self.equality_type_narrowing_helper(
                     node,
@@ -6614,14 +6617,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 item_type = operand_types[left_index]
                 iterable_type = operand_types[right_index]
 
-                if_map, else_map = {}, {}
+                if_map = {}
+                else_map = {}
 
                 if left_index in narrowable_operand_index_to_hash:
-                    # We only try and narrow away 'None' for now
-                    if is_overlapping_none(item_type):
-                        collection_item_type = get_proper_type(builtin_item_type(iterable_type))
+                    collection_item_type = get_proper_type(builtin_item_type(iterable_type))
+                    if collection_item_type is not None:
+                        if_map, else_map = self.narrow_type_by_equality(
+                            "==",
+                            operands=[operands[left_index], operands[right_index]],
+                            operand_types=[item_type, collection_item_type],
+                            expr_indices=[left_index, right_index],
+                            narrowable_indices={0},
+                        )
+
+                        # We only try and narrow away 'None' for now
                         if (
-                            collection_item_type is not None
+                            if_map is not None
+                            and is_overlapping_none(item_type)
                             and not is_overlapping_none(collection_item_type)
                             and not (
                                 isinstance(collection_item_type, Instance)
@@ -6638,11 +6651,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     expr = operands[right_index]
                     if if_type is None:
                         if_map = None
-                    else:
+                    elif if_map is not None:
                         if_map[expr] = if_type
                     if else_type is None:
                         else_map = None
-                    else:
+                    elif else_map is not None:
                         else_map[expr] = else_type
 
             else:
