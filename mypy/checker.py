@@ -1637,13 +1637,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     and not defn.is_generator
                     and not defn.is_coroutine
                     and not self.dynamic_funcs[-1]
+                    and item.body is not None
                 ):
                     # Collect return types from return statements
                     # Use the master type map (first in stack) where final types are stored
                     # At this point in type checking, return statement types should be in the master map
                     finder = ReturnTypeFinder(self._type_maps[0])
-                    if item.body:
-                        item.body.accept(finder)
+                    item.body.accept(finder)
                     return_types_list = finder.return_types
 
                     if return_types_list:
