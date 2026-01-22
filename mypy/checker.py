@@ -1602,11 +1602,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             # Infer return type from return statements if function has no explicit return type annotation
             if isinstance(item, FuncDef) and isinstance(typ, CallableType):
+
                 def is_unannotated_any(t: Type) -> bool:
                     if not isinstance(t, ProperType):
                         return False
                     return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
-                
+
                 ret_type_proper = get_proper_type(typ.ret_type)
                 # Only infer for functions without explicit return type annotations
                 # Skip generators and coroutines as they have special return type handling
@@ -1636,7 +1637,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     finder = ReturnTypeFinder(self._type_maps[0])
                     item.body.accept(finder)
                     return_types_list = finder.return_types
-                    
+
                     if return_types_list:
                         # Create union of all return types
                         inferred_ret_type = make_simplified_union(return_types_list)
