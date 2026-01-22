@@ -208,7 +208,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         node = TempNode(current_type)
         # Value patterns are essentially a syntactic sugar on top of `if x == Value`.
         # They should be treated equivalently.
-        ok_map, rest_map = self.chk.narrow_type_by_equality(
+        ok_map, rest_map = self.chk.narrow_type_by_identity_equality(
             "==", [node, TempNode(typ)], [current_type, typ], [0, 1], {0}
         )
         ok_type = ok_map.get(node, current_type) if ok_map is not None else UninhabitedType()
