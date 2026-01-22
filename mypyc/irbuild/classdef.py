@@ -31,7 +31,7 @@ from mypy.nodes import (
 from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
     NAMESPACE_TYPE,
     BasicBlock,

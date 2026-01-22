@@ -1759,9 +1759,9 @@ def with_ctx_man():
         async def inner():
             async with ctx_man():
                 return await f()
-        
+
         return inner
-    
+
     return decorator
 
 async def func() -> int:

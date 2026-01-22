@@ -1462,7 +1462,7 @@ class IRBuilder:
     def get_current_class_ir(self) -> ClassIR | None:
         type_info = self.fn_info.fitem.info
         return self.mapper.type_to_ir.get(type_info)
-    
+
     def add_coroutine_setup_call(self, class_name: str, obj: Value) -> Value:
         return self.add(
             Call(

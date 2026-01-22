@@ -412,9 +412,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     if generate_full:
-        generate_setup_for_class(
-            cl, defaults_fn, vtable_name, shadow_vtable_name, emitter
-        )
+        generate_setup_for_class(cl, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
