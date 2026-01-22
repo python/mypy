@@ -831,14 +831,6 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
-static inline char
-BytesWriter_write_i16_le_internal(BytesWriterObject *self, int16_t value) {
-    if (unlikely(!ensure_bytes_writer_size(self, 2)))
-        return CPY_NONE_ERROR;
-    BytesWriter_write_i16_le_unchecked(self, value);
-    return CPY_NONE;
-}
-
 static PyObject*
 write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
     if (unlikely(nargs != 2)) {
@@ -856,9 +848,11 @@ write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
         // Error already set by CPyLong_AsInt16 (ValueError for overflow, TypeError for wrong type)
         return NULL;
     }
-    if (unlikely(BytesWriter_write_i16_le_internal((BytesWriterObject *)writer, unboxed) == CPY_NONE_ERROR)) {
+    BytesWriterObject *bw = (BytesWriterObject *)writer;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2))) {
         return NULL;
     }
+    BytesWriter_write_i16_le_unchecked(bw, unboxed);
     Py_INCREF(Py_None);
     return Py_None;
 }
