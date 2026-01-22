@@ -41,6 +41,7 @@ static void vec_dealloc(VEC_OBJECT *self) {
     PyObject_Del(self);
 }
 
+// Box a vec[<itemtype>] value, stealing the buffer reference.
 PyObject *FUNC(Box)(VEC vec) {
     VEC_OBJECT *obj = PyObject_New(VEC_OBJECT, &VEC_TYPE);
     if (obj == NULL)

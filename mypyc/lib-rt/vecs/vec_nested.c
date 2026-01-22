@@ -33,6 +33,7 @@ static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     return res;
 }
 
+// Box a nested vec value, stealing the buffer reference.
 PyObject *VecVec_Box(VecNested vec) {
     VecNestedObject *obj = PyObject_GC_New(VecNestedObject, &VecNestedType);
     if (obj == NULL)

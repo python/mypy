@@ -41,6 +41,7 @@ static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     return (VecT) { .buf = buf };
 }
 
+// Box a VecT value, stealing the buffer reference.
 PyObject *VecT_Box(VecT vec, size_t item_type) {
     // An unboxed empty vec may have a NULL buf, but a boxed vec must have it
     // allocated, since it contains the item type
@@ -50,8 +51,10 @@ PyObject *VecT_Box(VecT vec, size_t item_type) {
             return NULL;
     }
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
-    if (obj == NULL)
+    if (obj == NULL) {
+        Py_DECREF(vec.buf);
         return NULL;
+    }
     obj->vec = vec;
     PyObject_GC_Track(obj);
     return (PyObject *)obj;
@@ -168,7 +171,11 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
-        return VecT_Box(res, vec.buf->item_type);
+        PyObject *result = VecT_Box(res, vec.buf->item_type);
+        if (result == NULL) {
+            VEC_DECREF(res);
+        }
+        return result;
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -239,8 +246,10 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
         VecT new = vec_alloc(new_size, vec.buf->item_type);
-        if (VEC_IS_ERROR(new))
+        if (VEC_IS_ERROR(new)) {
+            Py_DECREF(x);
             return new;
+        }
         // Copy items to new vec.
         memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
         memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
@@ -271,6 +280,8 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
                 for (; i < v.len - 1; i++) {
                     items[i] = items[i + 1];
                 }
+                // Keep a duplicate item, since there could be another reference
+                // to the buffer with a longer length, and they expect a valid reference.
                 Py_XINCREF(items[v.len - 1]);
             }
             v.len--;
@@ -299,8 +310,9 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
     result.f1 = items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++)
         items[i] = items[i + 1];
-    if (v.len > 0)
-        Py_XINCREF(items[v.len - 1]);
+    // Keep duplicate item, since there could be another reference
+    // to the buffer with a longer length, and they expect a valid reference.
+    Py_XINCREF(items[v.len - 1]);
     v.len--;
     VEC_INCREF(v);
     result.f0 = v;
