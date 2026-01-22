@@ -1,4 +1,4 @@
-[case testLibrtVecsI64_librt_experimental]
+[case testLibrtVecsI64Interpreted_librt_experimental]
 # Test cases for vec[i64], using generic operations (simulates use from interpreted code).
 #
 # These also act as test cases for specialized vec types in general (e.g. vec[float]),
@@ -62,6 +62,11 @@ def test_append() -> None:
     v = append(v, -2**63)
     assert v[0] == 2**63 - 1
     assert v[1] == -2**63
+    v = vec[i64]()
+    for i in range(10000):
+        v = append(v, i)
+    for i in range(10000):
+        assert v[i] == i
 
 def test_append_error() -> None:
     v: Any = vec[i64]()
@@ -78,6 +83,8 @@ def test_append_error() -> None:
 
 def test_repr() -> None:
     assert str(vec[i64]()) == "vec[i64]([])"
+    assert str(vec[i64]([123])) == "vec[i64]([123])"
+    assert str(vec[i64]([123, -987654321])) == "vec[i64]([123, -987654321])"
 
 def test_size() -> None:
     v = vec[i64]()
@@ -181,12 +188,12 @@ def test_equality() -> None:
     assert_neq(vec[i64]([1, 2]), vec[i64]([2, 2]))
     assert_neq(vec[i64]([1, 2]), vec[i64]([1, 1]))
 
-if False:  # TODO
-    def test_equality_different_types() -> None:
-        assert_neq(vec[i64]([1]), [1])
-        assert_neq(vec[i64]([1]), (1,))
-        assert_neq(vec[i64]([1]), vec[object]([1]))
-        assert_neq(vec[i64](), vec[object]())
+def test_equality_different_types() -> None:
+    assert_neq(vec[i64]([1]), None)
+    assert_neq(vec[i64]([1]), [1])
+    assert_neq(vec[i64]([1]), (1,))
+    assert_neq(vec[i64]([1]), vec[object]([1]))
+    assert_neq(vec[i64](), vec[object]())
 
 def assert_eq(x: object, y: object) -> None:
     assert x == y
