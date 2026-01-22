@@ -78,7 +78,7 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-match.test",
-    "run-vecs-i64.test",
+    "run-vecs-i64-interp.test",
 ]
 
 if sys.version_info >= (3, 12):
