@@ -104,9 +104,9 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.primitives.exc_ops import (
+    err_occurred_op,
     error_catch_op,
     error_clear_op,
-    err_occurred_op,
     exc_matches_op,
     get_exc_info_op,
     get_exc_value_op,
@@ -1205,7 +1205,9 @@ def _transform_with_contextmanager(
 
         builder.activate_block(runtime_block)
         runtime_exc = builder.call_c(get_exc_value_op, [], line)
-        is_same_runtime = builder.binary_op(runtime_exc, builder.read(exc_value_target), "is", line)
+        is_same_runtime = builder.binary_op(
+            runtime_exc, builder.read(exc_value_target), "is", line
+        )
         runtime_same_block, runtime_cause_block = BasicBlock(), BasicBlock()
         builder.add(Branch(is_same_runtime, runtime_same_block, runtime_cause_block, Branch.BOOL))
 
