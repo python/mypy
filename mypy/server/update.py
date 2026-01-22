@@ -136,6 +136,7 @@ from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
+    Context,
     Decorator,
     FuncDef,
     ImportFrom,
@@ -295,7 +296,7 @@ class FineGrainedBuildManager:
                 if not changed_modules:
                     # Preserve state needed for the next update.
                     self.previous_targets_with_errors = self.manager.errors.targets()
-                    messages = self.manager.errors.new_messages()
+                    messages = self.manager.errors.new_messages(self.resolve_location_cb)
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
@@ -319,8 +320,11 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages().copy()
+        self.previous_messages = self.manager.errors.new_messages(self.resolve_location_cb).copy()
         return self.update(changed_modules, [])
+
+    def resolve_location_cb(self, fullname: str) -> Context | None:
+        return self.manager.resolve_location(self.graph, fullname)
 
     def flush_cache(self) -> None:
         """Flush AST cache.

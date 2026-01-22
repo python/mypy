@@ -2241,7 +2241,7 @@ class CallableType(FunctionLike):
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
-        definition: Bogus[SymbolNode] = _dummy,
+        definition: Bogus[SymbolNode | None] = _dummy,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         line: int = _dummy_int,
         column: int = _dummy_int,

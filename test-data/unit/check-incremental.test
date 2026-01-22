@@ -1090,7 +1090,7 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
-[case testIncrementalWithSilentImportsAndIgnore_no_parallel]
+[case testIncrementalWithSilentImportsAndIgnore]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
 # flags: --follow-imports=skip
@@ -6919,7 +6919,7 @@ class TheClass:
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
 
-
+-- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
 import a
 
@@ -7700,3 +7700,33 @@ tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definit
 [out2]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
 tmp/m.py:2: note: Revealed type is "Any"
+
+[case testCachedUnexpectedKeywordArgument]
+import m
+[file m.py]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[file b.py.3]
+# space
+def lol() -> None: pass
+[file m.py.4]
+import a  # touch
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out3]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
+[out4]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
