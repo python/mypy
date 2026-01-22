@@ -1,28 +1,23 @@
 [case testTime_experimental]
 from librt.time import time
+import librt.time
 
-def get_time() -> float:
+def t1() -> float:
     return time()
 
-def time_twice() -> float:
-    t1 = time()
-    t2 = time()
-    return t2 - t1
+def t2() -> float:
+    return librt.time.time()
 [out]
-def get_time():
+def t1():
     r0 :: float
 L0:
     r0 = LibRTTime_time()
     return r0
-def time_twice():
-    r0, t1, r1, t2, r2 :: float
+def t2():
+    r0 :: float
 L0:
     r0 = LibRTTime_time()
-    t1 = r0
-    r1 = LibRTTime_time()
-    t2 = r1
-    r2 = t2 - t1
-    return r2
+    return r0
 
 [case testTimeExperimentalDisabled]
 from librt.time import time
