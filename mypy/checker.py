@@ -1618,15 +1618,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     and not self.dynamic_funcs[-1]
                 ):
                     # Collect return types from return statements
-                    # Merge types from all type maps to get complete picture
-                    all_return_types: list[Type] = []
-                    for type_map in self._type_maps:
-                        return_types_list = get_return_types(type_map, item)
-                        all_return_types.extend(return_types_list)
+                    # Use the master type map (first in stack) where final types are stored
+                    # At this point in type checking, return statement types should be in the master map
+                    return_types_list = get_return_types(self._type_maps[0], item)
                     
-                    if all_return_types:
+                    if return_types_list:
                         # Create union of all return types
-                        inferred_ret_type = make_simplified_union(all_return_types)
+                        inferred_ret_type = make_simplified_union(return_types_list)
                         # Update the function's return type
                         typ = typ.copy_modified(ret_type=inferred_ret_type)
                         item.type = typ
