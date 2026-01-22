@@ -114,6 +114,7 @@ from mypyc.primitives.exc_ops import (
     no_err_occurred_op,
     propagate_if_error_op,
     raise_exception_op,
+    raise_exception_with_tb_op,
     reraise_exception_op,
     restore_exc_info_op,
 )
@@ -1053,7 +1054,7 @@ def _transform_with_contextmanager(
         expr.arg_names,
     )
     wrapped_call.line = line
-    gen = builder.accept(wrapped_call)
+    gen = builder.maybe_spill(builder.accept(wrapped_call))
 
     def raise_runtime_error_from_none(msg: str) -> None:
         runtime_error = builder.load_module_attr_by_fullname("builtins.RuntimeError", line)
@@ -1077,7 +1078,7 @@ def _transform_with_contextmanager(
     #   target = next(gen)
     # except StopIteration:
     #     raise RuntimeError("generator didn't yield") from None
-    mgr_target = builder.call_c(next_raw_op, [gen], line)
+    mgr_target = builder.call_c(next_raw_op, [builder.read(gen)], line)
 
     runtime_block, main_block = BasicBlock(), BasicBlock()
     builder.add(Branch(mgr_target, runtime_block, main_block, Branch.IS_ERROR))
@@ -1109,6 +1110,8 @@ def _transform_with_contextmanager(
 
     builder.activate_block(main_block)
 
+    exc = builder.maybe_spill_assignable(builder.true())
+
     # try:
     #     {body}
 
@@ -1117,33 +1120,58 @@ def _transform_with_contextmanager(
             builder.assign(builder.get_assignment_target(target), mgr_target, line)
         with_body()
 
-    # except Exception as e:
+    # except BaseException as e:
     #     try:
-    #         gen.throw(e)
+    #         gen.throw(type, value, traceback)
     #     except StopIteration as e2:
     #         if e2 is not e:
     #             raise
     #         return
     #     except RuntimeError:
-    #         # TODO: check the traceback munging
     #         raise
     #     except BaseException:
     #         # approximately
     #         raise
 
     def except_body() -> None:
-        exc_original = builder.call_c(get_exc_value_op, [], line)
+        builder.assign(exc, builder.false(), line)
+        exc_info = builder.call_c(get_exc_info_op, [], line)
+        exc_type = builder.add(TupleGet(exc_info, 0, line))
+        exc_value = builder.add(TupleGet(exc_info, 1, line))
+        exc_tb = builder.add(TupleGet(exc_info, 2, line))
+        exc_value_target = builder.maybe_spill_assignable(exc_value)
+
+        def reraise_original() -> None:
+            builder.call_c(
+                raise_exception_with_tb_op,
+                [exc_type, builder.read(exc_value_target), exc_tb],
+                line,
+            )
+            builder.add(Unreachable())
+
+        # Make sure we have an exception instance so identity comparisons are reliable.
+        none = builder.none_object()
+        is_none = builder.binary_op(builder.read(exc_value_target), none, "is", line)
+        value_block, value_done = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_none, value_block, value_done, Branch.BOOL))
+        builder.activate_block(value_block)
+        new_value = builder.py_call(exc_type, [], line)
+        builder.assign(exc_value_target, new_value, line)
+        builder.goto(value_done)
+        builder.activate_block(value_done)
 
         error_block, no_error_block = BasicBlock(), BasicBlock()
-
         builder.builder.push_error_handler(error_block)
         builder.goto_and_activate(BasicBlock())
-        builder.py_call(builder.py_get_attr(gen, "throw", line), [exc_original], line)
+        builder.py_call(
+            builder.py_get_attr(builder.read(gen), "throw", line),
+            [exc_type, builder.read(exc_value_target), exc_tb],
+            line,
+        )
         builder.goto(no_error_block)
         builder.builder.pop_error_handler()
 
         builder.activate_block(no_error_block)
-        builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
         builder.add(
             RaiseStandardError(
                 RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line
@@ -1155,21 +1183,67 @@ def _transform_with_contextmanager(
         throw_old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
         stop_iteration = builder.load_module_attr_by_fullname("builtins.StopIteration", line)
         is_stop_iteration = builder.call_c(exc_matches_op, [stop_iteration], line)
-        stop_block, propagate_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(is_stop_iteration, stop_block, propagate_block, Branch.BOOL))
+        stop_block, runtime_check_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_stop_iteration, stop_block, runtime_check_block, Branch.BOOL))
 
-        builder.activate_block(propagate_block)
-        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-        builder.add(Unreachable())
+        suppress_block = BasicBlock()
 
         builder.activate_block(stop_block)
         stop_exc = builder.call_c(get_exc_value_op, [], line)
-        is_same_exc = builder.binary_op(stop_exc, exc_original, "is", line)
+        is_same_exc = builder.binary_op(stop_exc, builder.read(exc_value_target), "is", line)
+        propagate_block = BasicBlock()
+        builder.add(Branch(is_same_exc, propagate_block, suppress_block, Branch.BOOL))
 
-        suppress_block, reraise_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(is_same_exc, reraise_block, suppress_block, Branch.BOOL))
+        builder.activate_block(propagate_block)
+        reraise_original()
 
-        builder.activate_block(reraise_block)
+        builder.activate_block(runtime_check_block)
+        runtime_error = builder.load_module_attr_by_fullname("builtins.RuntimeError", line)
+        is_runtime_error = builder.call_c(exc_matches_op, [runtime_error], line)
+        runtime_block, other_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_runtime_error, runtime_block, other_block, Branch.BOOL))
+
+        builder.activate_block(runtime_block)
+        runtime_exc = builder.call_c(get_exc_value_op, [], line)
+        is_same_runtime = builder.binary_op(runtime_exc, builder.read(exc_value_target), "is", line)
+        runtime_same_block, runtime_cause_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_same_runtime, runtime_same_block, runtime_cause_block, Branch.BOOL))
+
+        builder.activate_block(runtime_same_block)
+        reraise_original()
+
+        builder.activate_block(runtime_cause_block)
+        is_stop = builder.binary_op(exc_type, stop_iteration, "is", line)
+        cause_block, reraise_runtime_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_stop, cause_block, reraise_runtime_block, Branch.BOOL))
+
+        builder.activate_block(cause_block)
+        cause = builder.py_get_attr(runtime_exc, "__cause__", line)
+        is_cause = builder.binary_op(cause, builder.read(exc_value_target), "is", line)
+        cause_match_block, cause_miss_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_cause, cause_match_block, cause_miss_block, Branch.BOOL))
+
+        builder.activate_block(cause_match_block)
+        reraise_original()
+
+        builder.activate_block(cause_miss_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+
+        builder.activate_block(reraise_runtime_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+
+        builder.activate_block(other_block)
+        other_exc = builder.call_c(get_exc_value_op, [], line)
+        is_same_other = builder.binary_op(other_exc, builder.read(exc_value_target), "is", line)
+        other_same_block, other_reraise_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_same_other, other_same_block, other_reraise_block, Branch.BOOL))
+
+        builder.activate_block(other_same_block)
+        reraise_original()
+
+        builder.activate_block(other_reraise_block)
         builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
 
@@ -1177,28 +1251,22 @@ def _transform_with_contextmanager(
         builder.call_c(restore_exc_info_op, [builder.read(throw_old_exc)], line)
         builder.call_c(error_clear_op, [], -1)
 
-    # TODO: actually do the exceptions
     handlers = [(None, None, except_body)]
 
-    # else:
+    # finally (normal exit path):
     #     try:
     #         next(gen)
     #     except StopIteration:
     #         pass
     #     else:
-    #         try:
-    #             raise RuntimeError("generator didn't stop")
-    #         finally:
-    #             gen.close()
+    #         raise RuntimeError("generator didn't stop")
 
-    def else_body() -> None:
+    def normal_exit_body() -> None:
         value = builder.call_c(next_raw_op, [builder.read(gen)], line)
-        stop_block, close_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(value, stop_block, close_block, Branch.IS_ERROR))
+        stop_block, error_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(value, stop_block, error_block, Branch.IS_ERROR))
 
-        builder.activate_block(close_block)
-        # TODO: this isn't exactly the right order
-        builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
+        builder.activate_block(error_block)
         builder.add(
             RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop", line)
         )
@@ -1229,7 +1297,19 @@ def _transform_with_contextmanager(
         builder.activate_block(implicit_stop_block)
         builder.call_c(error_clear_op, [], -1)
 
-    transform_try_except(builder, try_body, handlers, else_body, line)
+    def finally_body() -> None:
+        out_block, exit_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
+        builder.activate_block(exit_block)
+        normal_exit_body()
+        builder.goto_and_activate(out_block)
+
+    transform_try_finally_stmt(
+        builder,
+        lambda: transform_try_except(builder, try_body, handlers, None, line),
+        finally_body,
+        line,
+    )
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
