@@ -57,6 +57,7 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
+    ComparisonOp,
     InitStatic,
     Integer,
     LoadAddress,
@@ -82,6 +83,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
@@ -103,6 +105,8 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.primitives.exc_ops import (
     error_catch_op,
+    error_clear_op,
+    err_occurred_op,
     exc_matches_op,
     get_exc_info_op,
     get_exc_value_op,
@@ -113,7 +117,7 @@ from mypyc.primitives.exc_ops import (
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op, py_setattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
@@ -940,6 +944,19 @@ def transform_with(
     is_async: bool,
     line: int,
 ) -> None:
+
+    if (
+        not is_async
+        and isinstance(expr, mypy.nodes.CallExpr)
+        and isinstance(expr.callee, mypy.nodes.RefExpr)
+        and isinstance(dec := expr.callee.node, mypy.nodes.Decorator)
+        and len(dec.decorators) == 1
+        and isinstance(dec1 := dec.decorators[0], mypy.nodes.RefExpr)
+        and dec1.node
+        and dec1.node.fullname == "contextlib.contextmanager"
+    ):
+        return _transform_with_contextmanager(builder, expr, target, body, line)
+
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
     # We could probably optimize the case where the manager is compiled by us,
@@ -1015,6 +1032,204 @@ def transform_with(
         finally_body,
         line,
     )
+
+
+def _transform_with_contextmanager(
+    builder: IRBuilder,
+    expr: mypy.nodes.CallExpr,
+    target: Lvalue | None,
+    with_body: GenFunc,
+    line: int,
+) -> None:
+    assert isinstance(expr.callee, mypy.nodes.RefExpr)
+    dec = expr.callee.node
+    assert isinstance(dec, mypy.nodes.Decorator)
+
+    # mgrv = ctx.__wrapped__(*args, **kwargs)
+    wrapped_call = mypy.nodes.CallExpr(
+        mypy.nodes.MemberExpr(expr.callee, "__wrapped__"),
+        expr.args,
+        expr.arg_kinds,
+        expr.arg_names,
+    )
+    wrapped_call.line = line
+    gen = builder.accept(wrapped_call)
+
+    def raise_runtime_error_from_none(msg: str) -> None:
+        runtime_error = builder.load_module_attr_by_fullname("builtins.RuntimeError", line)
+        exc = builder.py_call(runtime_error, [builder.load_str(msg)], line)
+        builder.primitive_op(
+            py_setattr_op, [exc, builder.load_str("__cause__"), builder.none_object()], line
+        )
+        builder.primitive_op(
+            py_setattr_op,
+            [
+                exc,
+                builder.load_str("__suppress_context__"),
+                builder.coerce(builder.true(), object_rprimitive, line),
+            ],
+            line,
+        )
+        builder.call_c(raise_exception_op, [exc], line)
+        builder.add(Unreachable())
+
+    # try:
+    #   target = next(gen)
+    # except StopIteration:
+    #     raise RuntimeError("generator didn't yield") from None
+    mgr_target = builder.call_c(next_raw_op, [gen], line)
+
+    runtime_block, main_block = BasicBlock(), BasicBlock()
+    builder.add(Branch(mgr_target, runtime_block, main_block, Branch.IS_ERROR))
+
+    builder.activate_block(runtime_block)
+    err_occurred = builder.call_c(err_occurred_op, [], line)
+    null = Integer(0, pointer_rprimitive, line)
+    has_error = builder.add(ComparisonOp(err_occurred, null, ComparisonOp.NEQ, line))
+    implicit_stop_block, error_exc_block = BasicBlock(), BasicBlock()
+    builder.add(Branch(has_error, error_exc_block, implicit_stop_block, Branch.BOOL))
+
+    builder.activate_block(error_exc_block)
+    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+    stop_iteration = builder.load_module_attr_by_fullname("builtins.StopIteration", line)
+    is_stop_iteration = builder.call_c(exc_matches_op, [stop_iteration], line)
+    stop_block, propagate_block = BasicBlock(), BasicBlock()
+    builder.add(Branch(is_stop_iteration, stop_block, propagate_block, Branch.BOOL))
+
+    builder.activate_block(propagate_block)
+    builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+    builder.add(Unreachable())
+
+    builder.activate_block(stop_block)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    raise_runtime_error_from_none("generator didn't yield")
+
+    builder.activate_block(implicit_stop_block)
+    raise_runtime_error_from_none("generator didn't yield")
+
+    builder.activate_block(main_block)
+
+    # try:
+    #     {body}
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), mgr_target, line)
+        with_body()
+
+    # except Exception as e:
+    #     try:
+    #         gen.throw(e)
+    #     except StopIteration as e2:
+    #         if e2 is not e:
+    #             raise
+    #         return
+    #     except RuntimeError:
+    #         # TODO: check the traceback munging
+    #         raise
+    #     except BaseException:
+    #         # approximately
+    #         raise
+
+    def except_body() -> None:
+        exc_original = builder.call_c(get_exc_value_op, [], line)
+
+        error_block, no_error_block = BasicBlock(), BasicBlock()
+
+        builder.builder.push_error_handler(error_block)
+        builder.goto_and_activate(BasicBlock())
+        builder.py_call(builder.py_get_attr(gen, "throw", line), [exc_original], line)
+        builder.goto(no_error_block)
+        builder.builder.pop_error_handler()
+
+        builder.activate_block(no_error_block)
+        builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
+        builder.add(
+            RaiseStandardError(
+                RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line
+            )
+        )
+        builder.add(Unreachable())
+
+        builder.activate_block(error_block)
+        throw_old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+        stop_iteration = builder.load_module_attr_by_fullname("builtins.StopIteration", line)
+        is_stop_iteration = builder.call_c(exc_matches_op, [stop_iteration], line)
+        stop_block, propagate_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_stop_iteration, stop_block, propagate_block, Branch.BOOL))
+
+        builder.activate_block(propagate_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+
+        builder.activate_block(stop_block)
+        stop_exc = builder.call_c(get_exc_value_op, [], line)
+        is_same_exc = builder.binary_op(stop_exc, exc_original, "is", line)
+
+        suppress_block, reraise_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_same_exc, reraise_block, suppress_block, Branch.BOOL))
+
+        builder.activate_block(reraise_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+
+        builder.activate_block(suppress_block)
+        builder.call_c(restore_exc_info_op, [builder.read(throw_old_exc)], line)
+        builder.call_c(error_clear_op, [], -1)
+
+    # TODO: actually do the exceptions
+    handlers = [(None, None, except_body)]
+
+    # else:
+    #     try:
+    #         next(gen)
+    #     except StopIteration:
+    #         pass
+    #     else:
+    #         try:
+    #             raise RuntimeError("generator didn't stop")
+    #         finally:
+    #             gen.close()
+
+    def else_body() -> None:
+        value = builder.call_c(next_raw_op, [builder.read(gen)], line)
+        stop_block, close_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(value, stop_block, close_block, Branch.IS_ERROR))
+
+        builder.activate_block(close_block)
+        # TODO: this isn't exactly the right order
+        builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
+        builder.add(
+            RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop", line)
+        )
+        builder.add(Unreachable())
+
+        builder.activate_block(stop_block)
+        err_occurred = builder.call_c(err_occurred_op, [], line)
+        null = Integer(0, pointer_rprimitive, line)
+        has_error = builder.add(ComparisonOp(err_occurred, null, ComparisonOp.NEQ, line))
+        implicit_stop_block, error_exc_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(has_error, error_exc_block, implicit_stop_block, Branch.BOOL))
+
+        builder.activate_block(error_exc_block)
+        old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+        stop_iteration = builder.load_module_attr_by_fullname("builtins.StopIteration", line)
+        is_stop_iteration = builder.call_c(exc_matches_op, [stop_iteration], line)
+        explicit_stop_block, propagate_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_stop_iteration, explicit_stop_block, propagate_block, Branch.BOOL))
+
+        builder.activate_block(propagate_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+
+        builder.activate_block(explicit_stop_block)
+        builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+        builder.goto(implicit_stop_block)
+
+        builder.activate_block(implicit_stop_block)
+        builder.call_c(error_clear_op, [], -1)
+
+    transform_try_except(builder, try_body, handlers, else_body, line)
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:

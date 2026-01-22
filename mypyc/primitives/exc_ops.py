@@ -80,6 +80,11 @@ error_catch_op = custom_op(
     arg_types=[], return_type=exc_rtuple, c_function_name="CPy_CatchError", error_kind=ERR_NEVER
 )
 
+# Clear the current exception.
+error_clear_op = custom_op(
+    arg_types=[], return_type=void_rtype, c_function_name="PyErr_Clear", error_kind=ERR_NEVER
+)
+
 # Restore an old "currently handled exception" returned from.
 # error_catch (by sticking it into sys.exc_info())
 restore_exc_info_op = custom_op(
