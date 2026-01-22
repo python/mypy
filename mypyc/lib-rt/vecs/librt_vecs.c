@@ -69,8 +69,10 @@ VecProxy_dealloc(VecProxy *self)
 }
 
 PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
-    PyObject *item;
-    if (depth == 0)
+    PyObject *item = NULL;
+    PyObject *result = NULL;
+
+    if (depth == 0) {
         if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
             item = PyUnicode_FromFormat("i64");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_U8) {
@@ -85,27 +87,69 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
             item = PyUnicode_FromFormat("bool");
         } else {
             item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
+            if (item == NULL) {
+                return NULL;
+            }
             if (item_type & 1) {
-                item = PyUnicode_FromFormat("%U | None", item);
+                PyObject *optional_item = PyUnicode_FromFormat("%U | None", item);
+                Py_DECREF(item);
+                if (optional_item == NULL) {
+                    return NULL;
+                }
+                item = optional_item;
             }
         }
-    else
+    } else {
         item = Vec_TypeToStr(item_type, depth - 1);
+    }
 
-    return PyUnicode_FromFormat("vec[%U]", item);
+    if (item == NULL) {
+        return NULL;
+    }
+
+    result = PyUnicode_FromFormat("vec[%U]", item);
+    Py_DECREF(item);
+    return result;
 }
 
 PyObject *VecProxy_repr(PyObject *self) {
-    // TODO: error handling, refcounting, etc.
-    PyObject *l = Py_BuildValue("[]");
-    PyObject *prefix = Py_BuildValue("s", "<class_proxy '");
-    PyObject *suffix = Py_BuildValue("s", "'>");
-    PyObject *sep = Py_BuildValue("s", "");
-    PyList_Append(l, prefix);
+    PyObject *l = NULL;
+    PyObject *prefix = NULL;
+    PyObject *suffix = NULL;
+    PyObject *sep = NULL;
+    PyObject *type_str = NULL;
+    PyObject *result = NULL;
+
+    l = PyList_New(0);
+    if (l == NULL) goto error;
+
+    prefix = PyUnicode_FromString("<class_proxy '");
+    if (prefix == NULL) goto error;
+
+    suffix = PyUnicode_FromString("'>");
+    if (suffix == NULL) goto error;
+
+    sep = PyUnicode_FromString("");
+    if (sep == NULL) goto error;
+
+    if (PyList_Append(l, prefix) < 0) goto error;
+
     VecProxy *v = (VecProxy *)self;
-    PyList_Append(l, Vec_TypeToStr(v->item_type, v->depth));
-    PyList_Append(l, suffix);
-    return PyUnicode_Join(sep, l);
+    type_str = Vec_TypeToStr(v->item_type, v->depth);
+    if (type_str == NULL) goto error;
+
+    if (PyList_Append(l, type_str) < 0) goto error;
+    if (PyList_Append(l, suffix) < 0) goto error;
+
+    result = PyUnicode_Join(sep, l);
+
+error:
+    Py_XDECREF(l);
+    Py_XDECREF(prefix);
+    Py_XDECREF(suffix);
+    Py_XDECREF(sep);
+    Py_XDECREF(type_str);
+    return result;
 }
 
 PyTypeObject VecProxyType = {
@@ -258,46 +302,86 @@ PyTypeObject VecGenericType = {
 };
 
 PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int verbose) {
-    // TODO: Check for errors
-    // TODO: Refcount handling
-    PyObject *l = Py_BuildValue("[]");
-    PyObject *prefix;
-    PyObject *mid;
-    PyObject *suffix;
-    PyObject *sep = Py_BuildValue("s", "");
-    PyObject *comma = Py_BuildValue("s", ", ");
+    PyObject *l = NULL;
+    PyObject *prefix = NULL;
+    PyObject *mid = NULL;
+    PyObject *suffix = NULL;
+    PyObject *sep = NULL;
+    PyObject *comma = NULL;
+    PyObject *result = NULL;
+
+    l = PyList_New(0);
+    if (l == NULL) goto error;
+
+    sep = PyUnicode_FromString("");
+    if (sep == NULL) goto error;
+
+    comma = PyUnicode_FromString(", ");
+    if (comma == NULL) goto error;
+
     if (verbose) {
         prefix = Vec_TypeToStr(item_type, depth);
-        mid = Py_BuildValue("s", "([");
-        suffix = Py_BuildValue("s", "])");
+        if (prefix == NULL) goto error;
+
+        mid = PyUnicode_FromString("([");
+        if (mid == NULL) goto error;
+
+        suffix = PyUnicode_FromString("])");
+        if (suffix == NULL) goto error;
     } else {
-        prefix = Py_BuildValue("s", "");
-        mid = Py_BuildValue("s", "[");
-        suffix = Py_BuildValue("s", "]");
+        prefix = PyUnicode_FromString("");
+        if (prefix == NULL) goto error;
+
+        mid = PyUnicode_FromString("[");
+        if (mid == NULL) goto error;
+
+        suffix = PyUnicode_FromString("]");
+        if (suffix == NULL) goto error;
     }
-    PyList_Append(l, prefix);
-    PyList_Append(l, mid);
+
+    if (PyList_Append(l, prefix) < 0) goto error;
+    if (PyList_Append(l, mid) < 0) goto error;
 
     Py_ssize_t len = PyObject_Length(vec);
+    if (len < 0) goto error;
 
     for (Py_ssize_t i = 0; i < len; i++) {
         PyObject *it = PySequence_GetItem(vec, i);
+        if (it == NULL) goto error;
+
         PyObject *r;
         if (depth == 0 || it == Py_None) {
             r = PyObject_Repr(it);
         } else {
             r = Vec_GenericRepr(it, item_type, depth - 1, 0);
         }
-        if (r == NULL)
-            return NULL;
-        PyList_Append(l, r);
-        if (i + 1 < len)
-            PyList_Append(l, comma);
+        Py_DECREF(it);
+
+        if (r == NULL) goto error;
+
+        if (PyList_Append(l, r) < 0) {
+            Py_DECREF(r);
+            goto error;
+        }
+        Py_DECREF(r);
+
+        if (i + 1 < len) {
+            if (PyList_Append(l, comma) < 0) goto error;
+        }
     }
 
-    PyList_Append(l, suffix);
+    if (PyList_Append(l, suffix) < 0) goto error;
 
-    return PyUnicode_Join(sep, l);
+    result = PyUnicode_Join(sep, l);
+
+error:
+    Py_XDECREF(l);
+    Py_XDECREF(prefix);
+    Py_XDECREF(mid);
+    Py_XDECREF(suffix);
+    Py_XDECREF(sep);
+    Py_XDECREF(comma);
+    return result;
 }
 
 // Generic comparison implementation for vecs with PyObject * items.
