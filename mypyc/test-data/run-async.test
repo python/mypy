@@ -1739,3 +1739,63 @@ async def m_future_with_reraised_exception(first_exc: Exception, second_exc: Exc
         return await make_future(first_exc)
     except type(first_exc):
         raise second_exc
+
+[case testCPyFunctionWithFreedInstance]
+import asyncio
+
+from functools import wraps
+from typing import Any
+
+class ctx_man:
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+def with_ctx_man():
+    def decorator(f):
+        @wraps(f)
+        async def inner():
+            async with ctx_man():
+                return await f()
+
+        return inner
+
+    return decorator
+
+async def func() -> int:
+    return 33
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_native():
+    assert asyncio.run(run_wrapped()) == 33
+
+[file driver.py]
+import asyncio
+
+from native import test_native, with_ctx_man
+
+async def func() -> int:
+    return 42
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_interpreted():
+    assert asyncio.run(run_wrapped()) == 42
+
+# Run multiple times to test that the CPyFunction attribute is still
+# set correctly after reusing a freed instance of the inner callable class object.
+for i in range(10):
+    test_interpreted()
+    test_native()
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
