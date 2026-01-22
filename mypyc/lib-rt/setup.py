@@ -96,20 +96,20 @@ else:
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "internal"],
                 extra_compile_args=cflags,
             ),
             Extension(
                 "librt.strings",
                 [
-                    "librt_strings.c",
+                    "strings/librt_strings.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "strings"],
                 extra_compile_args=cflags,
             ),
             Extension(

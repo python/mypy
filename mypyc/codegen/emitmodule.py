@@ -629,7 +629,7 @@ class GroupGenerator:
         if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <librt_strings.h>")
+            ext_declarations.emit_line("#include <strings/librt_strings.h>")
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
