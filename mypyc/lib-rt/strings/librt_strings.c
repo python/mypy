@@ -831,9 +831,49 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
+static inline char
+BytesWriter_write_i16_le_internal(BytesWriterObject *self, int16_t value) {
+    if (unlikely(!ensure_bytes_writer_size(self, 2)))
+        return CPY_NONE_ERROR;
+    // Write in little-endian format
+    self->buf[self->len] = (uint8_t)(value & 0xFF);
+    self->buf[self->len + 1] = (uint8_t)((value >> 8) & 0xFF);
+    self->len += 2;
+    return CPY_NONE;
+}
+
+static PyObject*
+write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_i16_le() takes exactly 2 arguments (%zu given)", nargs);
+        return NULL;
+    }
+    PyObject *writer = args[0];
+    if (!check_bytes_writer(writer)) {
+        return NULL;
+    }
+    PyObject *value = args[1];
+    int16_t unboxed = CPyLong_AsInt16(value);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        // Error already set by CPyLong_AsInt16 (ValueError for overflow, TypeError for wrong type)
+        return NULL;
+    }
+    if (unlikely(BytesWriter_write_i16_le_internal((BytesWriterObject *)writer, unboxed) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
+#ifdef MYPYC_EXPERIMENTAL
+    {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
+     PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
+    },
+#endif
     {NULL, NULL, 0, NULL}
 };
 
