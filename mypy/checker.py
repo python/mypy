@@ -169,7 +169,6 @@ from mypy.subtypes import (
     unify_generic_callable,
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
-from mypy.suggestions import get_return_types
 from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
@@ -1620,7 +1619,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # Collect return types from return statements
                     # Use the master type map (first in stack) where final types are stored
                     # At this point in type checking, return statement types should be in the master map
-                    return_types_list = get_return_types(self._type_maps[0], item)
+                    # Inline get_return_types to avoid circular import with mypy.suggestions
+                    class ReturnTypeFinder(TraverserVisitor):
+                        def __init__(self, typemap: dict[Expression, Type]) -> None:
+                            self.typemap = typemap
+                            self.return_types: list[Type] = []
+                        
+                        def visit_return_stmt(self, o: ReturnStmt) -> None:
+                            if o.expr is not None and o.expr in self.typemap:
+                                self.return_types.append(self.typemap[o.expr])
+                        
+                        def visit_func_def(self, o: FuncDef) -> None:
+                            # Skip nested functions
+                            pass
+                    
+                    finder = ReturnTypeFinder(self._type_maps[0])
+                    item.body.accept(finder)
+                    return_types_list = finder.return_types
                     
                     if return_types_list:
                         # Create union of all return types
