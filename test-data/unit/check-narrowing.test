@@ -2807,112 +2807,72 @@ class X:
 [builtins fixtures/dict.pyi]
 
 
-[case testTypeNarrowingStringInLiteralUnion]
-from typing import Literal, Tuple
-typ: Tuple[Literal['a', 'b'], ...] = ('a', 'b')
-x: str = "hi!"
-if x in typ:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/tuple.pyi]
-[typing fixtures/typing-medium.pyi]
+[case testTypeNarrowingStringInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
 
-[case testTypeNarrowingStringInLiteralUnionSubset]
-from typing import Literal, Tuple
-typeAlpha: Tuple[Literal['a', 'b', 'c'], ...] = ('a', 'b')
-strIn: str = "b"
-strOut: str = "c"
-if strIn in typeAlpha:
-    reveal_type(strIn)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
-else:
-    reveal_type(strIn)  # N: Revealed type is "builtins.str"
-if strOut in typeAlpha:
-    reveal_type(strOut)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
-else:
-    reveal_type(strOut)  # N: Revealed type is "builtins.str"
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testNarrowingStringNotInLiteralUnion]
-from typing import Literal, Tuple
-typeAlpha: Tuple[Literal['a', 'b', 'c'],...] = ('a', 'b', 'c')
-strIn: str = "c"
-strOut: str = "d"
-if strIn not in typeAlpha:
-    reveal_type(strIn)  # N: Revealed type is "builtins.str"
-else:
-    reveal_type(strIn)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
-if strOut in typeAlpha:
-    reveal_type(strOut)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
-else:
-    reveal_type(strOut)  # N: Revealed type is "builtins.str"
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testNarrowingStringInLiteralUnionDontExpand]
-from typing import Literal, Tuple
-typeAlpha: Tuple[Literal['a', 'b', 'c'], ...] = ('a', 'b', 'c')
-strIn: Literal['c'] = "c"
-reveal_type(strIn)  # N: Revealed type is "Literal['c']"
-#Check we don't expand a Literal into the Union type
-if strIn not in typeAlpha:
-    reveal_type(strIn)  # N: Revealed type is "Literal['c']"
-else:
-    reveal_type(strIn)  # N: Revealed type is "Literal['c']"
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testTypeNarrowingStringInMixedUnion]
-from typing import Literal, Tuple
-typ: Tuple[Literal['a', 'b'], ...] = ('a', 'b')
-x: str = "hi!"
-if x in typ:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/tuple.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testTypeNarrowingStringInSet]
-from typing import Literal, Set
-typ: Set[Literal['a', 'b']] = {'a', 'b'}
-x: str = "hi!"
-if x in typ:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-if x not in typ:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-else:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-[builtins fixtures/narrowing.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testTypeNarrowingStringInList]
-from typing import Literal, List
-typ: List[Literal['a', 'b']] = ['a', 'b']
-x: str = "hi!"
-if x in typ:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-if x not in typ:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-else:
-    reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
-[builtins fixtures/narrowing.pyi]
-[typing fixtures/typing-medium.pyi]
-
-[case testTypeNarrowingUnionStringFloat]
-from typing import Union
-def foobar(foo: Union[str, float]):
-    if foo in ['a', 'b']:
-        reveal_type(foo)  # N: Revealed type is "builtins.str"
+def narrow_tuple(x: str, t: tuple[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(foo)  # N: Revealed type is "builtins.str | builtins.float"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_homo_tuple(x: str, t: tuple[Literal['a', 'b'], ...]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_list(x: str, t: list[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_set(x: str, t: set[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
+
+
+[case testNarrowingLiteralInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple(x: Literal['c'], overlap: list[Literal['b', 'c']], no_overlap: list[Literal['a', 'b']]):
+    if x in overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+
+    if x in no_overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowingUnionInContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Union, Literal
+
+def f1(x: Union[str, float], t1: list[Literal['a', 'b']], t2: list[str]):
+    if x in t1:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+
+    if x in t2:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowAnyWithEqualityOrContainment]
 # https://github.com/python/mypy/issues/17841
