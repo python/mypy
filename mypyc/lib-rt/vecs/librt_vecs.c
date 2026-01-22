@@ -806,7 +806,7 @@ PyInit_vecs(void)
         return NULL;
     }
 
-    PyObject *c_api = PyCapsule_New(&Capsule, "vecs._C_API", NULL);
+    PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
         return NULL;
 
