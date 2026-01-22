@@ -27,6 +27,7 @@ def test_vec_indexing() -> None:
 
 def test_type_str() -> None:
     assert str(vec[i64]) == "<class 'vec[i64]'>"
+    assert repr(vec[i64]) == "<class 'vec[i64]'>"
 
 def test_construct_empty() -> None:
     v = vec[i64]()
