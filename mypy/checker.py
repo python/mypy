@@ -148,6 +148,7 @@ from mypy.nodes import (
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
+from mypy.traverser import TraverserVisitor
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
@@ -312,6 +313,25 @@ class LocalTypeMap:
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
         self.chk._type_maps.pop()
         return False
+
+
+class ReturnTypeFinder(TraverserVisitor):
+    """Visitor to collect return types from return statements in a function body.
+    
+    This is used to infer return types for functions without explicit return type annotations.
+    """
+    
+    def __init__(self, typemap: dict[Expression, Type]) -> None:
+        self.typemap = typemap
+        self.return_types: list[Type] = []
+    
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if o.expr is not None and o.expr in self.typemap:
+            self.return_types.append(self.typemap[o.expr])
+    
+    def visit_func_def(self, o: FuncDef) -> None:
+        # Skip nested functions
+        pass
 
 
 class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
@@ -1620,20 +1640,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # Collect return types from return statements
                     # Use the master type map (first in stack) where final types are stored
                     # At this point in type checking, return statement types should be in the master map
-                    # Inline get_return_types to avoid circular import with mypy.suggestions
-                    class ReturnTypeFinder(TraverserVisitor):
-                        def __init__(self, typemap: dict[Expression, Type]) -> None:
-                            self.typemap = typemap
-                            self.return_types: list[Type] = []
-                        
-                        def visit_return_stmt(self, o: ReturnStmt) -> None:
-                            if o.expr is not None and o.expr in self.typemap:
-                                self.return_types.append(self.typemap[o.expr])
-                        
-                        def visit_func_def(self, o: FuncDef) -> None:
-                            # Skip nested functions
-                            pass
-                    
                     finder = ReturnTypeFinder(self._type_maps[0])
                     if item.body:
                         item.body.accept(finder)
