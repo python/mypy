@@ -835,10 +835,7 @@ static inline char
 BytesWriter_write_i16_le_internal(BytesWriterObject *self, int16_t value) {
     if (unlikely(!ensure_bytes_writer_size(self, 2)))
         return CPY_NONE_ERROR;
-    // Write in little-endian format
-    self->buf[self->len] = (uint8_t)(value & 0xFF);
-    self->buf[self->len + 1] = (uint8_t)((value >> 8) & 0xFF);
-    self->len += 2;
+    BytesWriter_write_i16_le_unchecked(self, value);
     return CPY_NONE;
 }
 
