@@ -221,7 +221,7 @@ from mypy.reachability import (
     infer_reachability_of_match_statement,
 )
 from mypy.scope import Scope
-from mypy.semanal_enum import EnumCallAnalyzer
+from mypy.semanal_enum import ENUM_BASES, EnumCallAnalyzer
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.semanal_shared import (
@@ -6010,6 +6010,13 @@ class SemanticAnalyzer(
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, ENUM_BASES):
+            assert isinstance(expr.callee, RefExpr)
+            for a in expr.args:
+                a.accept(self)
+
+            # ensure we get analytics about enum.Enum, even if we don't assign it
+            self.enum_call_analyzer.parse_enum_call_args(expr, expr.callee.fullname.split(".")[-1])
         else:
             # Normal call expression.
             calculate_type_forms = TYPE_FORM in self.options.enable_incomplete_feature
