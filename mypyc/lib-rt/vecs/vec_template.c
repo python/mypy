@@ -58,8 +58,7 @@ VEC FUNC(Unbox)(PyObject *obj) {
         VEC_INCREF(result);  // TODO: Should we borrow instead?
         return result;
     } else {
-        // TODO: Better error message
-        PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
+        PyErr_SetString(PyExc_TypeError, "vec[" ITEM_TYPE_STR "] expected");
         return vec_error();
     }
 }
@@ -222,7 +221,6 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
 }
 
 static Py_ssize_t vec_length(PyObject *o) {
-    // TODO: Type check o
     return ((VEC_OBJECT *)o)->vec.len;
 }
 
