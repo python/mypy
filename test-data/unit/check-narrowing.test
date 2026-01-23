@@ -2939,6 +2939,10 @@ if type(x) == type(y) == int:
     reveal_type(y) # N: Revealed type is "builtins.int"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
+z: Any
+if int == type(z) == int:
+    reveal_type(z) # N: Revealed type is "builtins.int"
+
 [case testTypeEqualsCheckUsingIs]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
@@ -2972,7 +2976,63 @@ def main(x: Union[B, C]):
     if type(x) is A:
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
+        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheckUsingImplicitTypes-xfail]
+from typing import Any
+
+x: str
+y: Any
+z: object
+if type(y) is type(x):
+    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(y) # N: Revealed type is "builtins.str"
+
+if type(x) is type(z):
+    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(z) # N: Revealed type is "builtins.str"
+
+[case testTypeEqualsCheckUsingDifferentSpecializedTypes]
+# flags: --warn-unreachable
+from collections import defaultdict
+
+x: defaultdict
+y: dict
+z: object
+if type(x) is type(y) is type(z):
+    reveal_type(x) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(y) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(z) # N: Revealed type is "collections.defaultdict[Any, Any]"
+
+[case testUnionTypeEquality-xfail]
+# flags: --strict-equality --warn-unreachable
+from typing import Any, reveal_type
+
+x: Any = ()
+if type(x) == (int, str):
+    reveal_type(x) # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIntersectionWithConcreteTypes]
+# flags: --warn-unreachable
+class X: x = 1
+class Y: y = 1
+class Z(X, Y): ...
+
+z = Z()
+x: X = z
+y: Y = z
+if type(x) is type(y):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.Y" and "__main__.X">"
+    x.y + y.x
+
+if isinstance(x, type(y)) and isinstance(y, type(x)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    x.y + y.x
+
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeEqualsNarrowingUnionWithElse]
