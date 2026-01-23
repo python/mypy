@@ -261,6 +261,7 @@ class Options:
         # Error codes to enable
         self.enable_error_code: list[str] = []
         self.enabled_error_codes: set[ErrorCode] = set()
+        self.enable_all_error_codes = False
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
@@ -454,6 +455,13 @@ class Options:
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
+
+        # enable_all_error_codes codes can be countermanded by disabled_error_codes, which
+        # can in turn be countermanded by enabled_error_codes. But we've just computed the
+        # latter countermanding, so we can use the set of disabled_error_codes that weren't
+        # countermanded to figure out what to really turn off.
+        if self.enable_all_error_codes:
+            self.enabled_error_codes = set(error_codes.values()) - self.disabled_error_codes
 
     def process_incomplete_features(
         self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
