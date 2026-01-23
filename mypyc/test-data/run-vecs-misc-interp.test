@@ -64,20 +64,31 @@ def test_construct_empty() -> None:
         assert type(v) is vec[t]
         assert len(v) == 0
 
-def test_construct_from_int() -> None:
-    # All of the non-bool item types support int values 0 and 1
+def test_basic_int_operations() -> None:
+    # All of the non-bool item types support int values 0 to 255
     for t in ITEM_TYPES:
         if t is bool:
             continue
-        v = vec[t]([0, 1, 0])
+        v = vec[t]([0, 4, 255])
         assert len(v) == 3
         assert v[0] == 0
-        assert v[1] == 1
-        assert v[2] == 0
+        assert v[1] == 4
+        assert v[2] == 255
+        assert v[-1] == 255
+        assert v[-2] == 4
+        assert v[-3] == 0
+        for bad_index in 3, -4, 1 << 100, -1 << 100:
+            with assertRaises(IndexError):
+                v[bad_index]
+        with assertRaises(TypeError):
+            v["0"]
+        with assertRaises(TypeError):
+            append(v, "0")
 
 def test_equality() -> None:
     for t1 in ITEM_TYPES:
         for t2 in ITEM_TYPES:
+            assert vec[t1]() != []
             if t1 is t2:
                 assert vec[t1]() == vec[t2]()
             else:
