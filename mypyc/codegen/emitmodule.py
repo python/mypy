@@ -71,6 +71,7 @@ from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.log_trace import insert_event_trace_logging
 from mypyc.transform.lower import lower_ir
+from mypyc.transform.redundant_box_elimination import do_box_unbox_elimination
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
@@ -231,7 +232,6 @@ def compile_scc_to_ir(
 
     Returns the IR of the modules.
     """
-
     if compiler_options.verbose:
         print("Compiling {}".format(", ".join(x.name for x in scc)))
 
@@ -268,6 +268,10 @@ def compile_scc_to_ir(
             if deps is not None:
                 module.dependencies.update(deps)
             # Perform optimizations.
+            # once to remove redundant ops
+            do_box_unbox_elimination(fn, compiler_options)
+            # once to cleanup
+            do_box_unbox_elimination(fn, compiler_options)
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
 
