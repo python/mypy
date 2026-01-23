@@ -220,7 +220,7 @@ PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-// Steals reference to vec (but not x)
+// Append item to 'vec', stealing 'vec'. Return 'vec' with item appended.
 VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
     VEC_INCREF(x);
@@ -234,6 +234,9 @@ VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
         VecNested new = vec_alloc(new_size, vec.buf->item_type, vec.buf->depth);
         if (VEC_IS_ERROR(new)) {
             VEC_DECREF(x);
+            // The input vec is being consumed/stolen by this function, so on error
+            // we must decref it to avoid leaking the buffer.
+            VEC_DECREF(vec);
             return new;
         }
         // Copy items to new vec.
@@ -249,12 +252,17 @@ VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
     }
 }
 
+// Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
     VecNestedBufItem *items = self.buf->items;
 
     PyObject *boxed_arg = VecVec_BoxItem(self, arg);
-    if (boxed_arg == NULL)
+    if (boxed_arg == NULL) {
+        // The input self is being consumed/stolen by this function, so on error
+        // we must decref it to avoid leaking the buffer.
+        VEC_DECREF(self);
         return vec_error();
+    }
 
     for (Py_ssize_t i = 0; i < self.len; i++) {
         int match = 0;
@@ -264,12 +272,18 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
             PyObject *item = box_vec_item_by_index(self, i);
             if (item == NULL) {
                 Py_DECREF(boxed_arg);
+                // The input self is being consumed/stolen by this function, so on error
+                // we must decref it to avoid leaking the buffer.
+                VEC_DECREF(self);
                 return vec_error();
             }
             int itemcmp = PyObject_RichCompareBool(item, boxed_arg, Py_EQ);
             Py_DECREF(item);
             if (itemcmp < 0) {
                 Py_DECREF(boxed_arg);
+                // The input self is being consumed/stolen by this function, so on error
+                // we must decref it to avoid leaking the buffer.
+                VEC_DECREF(self);
                 return vec_error();
             }
             match = itemcmp;
@@ -290,9 +304,13 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
     }
     Py_DECREF(boxed_arg);
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    // The input self is being consumed/stolen by this function, so on error
+    // we must decref it to avoid leaking the buffer.
+    VEC_DECREF(self);
     return vec_error();
 }
 
+// Pop item from 'vec', stealing 'vec'. Return struct with modified 'vec' and the popped item.
 VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
     VecNestedPopResult result;
 
@@ -301,6 +319,9 @@ VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
+        // The input v is being consumed/stolen by this function, so on error
+        // we must decref it to avoid leaking the buffer.
+        VEC_DECREF(v);
         result.f0 = vec_error();
         result.f1.len = 0;
         result.f1.buf = NULL;
