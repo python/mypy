@@ -3040,6 +3040,11 @@ class A:
             reveal_type(self)  # N: Revealed type is "__main__.A"
             reveal_type(x)  # N: Revealed type is "builtins.object"
 
+class B:
+    y: int
+
+    def __eq__(self, other: object) -> bool:
+        return type(other) is type(self) and other.y == self.y
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowInElseCaseIfFinal]
