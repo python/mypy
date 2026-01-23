@@ -405,7 +405,6 @@ VecNestedBuf_dealloc(VecNestedBufObject *self)
 }
 
 static Py_ssize_t vec_ext_length(PyObject *o) {
-    // TODO: Type check o
     return ((VecNestedObject *)o)->vec.len;
 }
 
