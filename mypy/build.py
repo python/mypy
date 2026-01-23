@@ -2591,6 +2591,7 @@ class State:
                 self.xpath,
                 manager.plugin,
                 self.per_line_checking_time_ns,
+                manager.semantic_analyzer.delayed_errors,
             )
         return self._type_checker
 

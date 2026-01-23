@@ -410,6 +410,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         path: str,
         plugin: Plugin,
         per_line_checking_time_ns: dict[int, int],
+        semanal_delayed_errors: dict[tuple[str, int, int], list[ErrorInfo]],
     ) -> None:
         """Construct a type checker.
 
@@ -443,6 +444,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.inferred_attribute_types = None
         self.allow_constructor_cache = True
         self.local_type_map = LocalTypeMap(self)
+        self.semanal_delayed_errors = semanal_delayed_errors
 
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -528,7 +530,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 self.msg.unreachable_statement(d)
                                 break
                         else:
-                            self.accept(d)
+                            self.accept_with_delayed_errors(d)
 
                 assert not self.current_node_deferred
 
@@ -635,6 +637,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.current_node_deferred = True
         else:
             self.msg.cannot_determine_type(name, context)
+
+    def accept_with_delayed_errors(self, stmt: Statement) -> None:
+        curr_module = self.scope.stack[0]
+        if isinstance(curr_module, MypyFile):
+            key = (curr_module.fullname, stmt.line, stmt.column)
+            if key in self.semanal_delayed_errors:
+                self.msg.add_errors(self.semanal_delayed_errors[key])
+
+        self.accept(stmt)
 
     def accept(self, stmt: Statement) -> None:
         """Type check a node in the given type context."""
@@ -3157,7 +3168,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.unreachable_statement(s)
                     break
             else:
-                self.accept(s)
+                self.accept_with_delayed_errors(s)
                 # Clear expression cache after each statement to avoid unlimited growth.
                 self.expr_checker.expr_cache.clear()
 

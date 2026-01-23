@@ -5499,8 +5499,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # Lambdas can have more than one element in body,
                 # when we add "fictional" AssignmentStatement nodes, like in:
                 # `lambda (a, b): a`
-                for stmt in e.body.body[:-1]:
-                    stmt.accept(self.chk)
+                with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+                    self.chk.accept(e.body)
+
                 # Only type check the return expression, not the return statement.
                 # There's no useful type context.
                 ret_type = self.accept(e.expr(), allow_none_return=True)

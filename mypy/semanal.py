@@ -59,7 +59,7 @@ from typing_extensions import assert_never
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
-from mypy.errors import Errors, report_internal_error
+from mypy.errors import ErrorInfo, Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
@@ -544,6 +544,9 @@ class SemanticAnalyzer(
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
 
+        self.delayed_errors: dict[tuple[str, int, int], list[ErrorInfo]] = {}
+        self.associated_node: Statement | None = None
+
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
     @property
@@ -714,7 +717,7 @@ class SemanticAnalyzer(
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
-            self.accept(d)
+            self.accept_delaying_errors(d)
         if file_node.fullname == "typing":
             self.add_builtin_aliases(file_node)
         if file_node.fullname == "typing_extensions":
@@ -5397,7 +5400,7 @@ class SemanticAnalyzer(
             return
         self.block_depth[-1] += 1
         for s in b.body:
-            self.accept(s)
+            self.accept_delaying_errors(s)
         self.block_depth[-1] -= 1
 
     def visit_block_maybe(self, b: Block | None) -> None:
@@ -7123,6 +7126,7 @@ class SemanticAnalyzer(
     ) -> SymbolNode | None:
         if symbol_node is None:
             return None
+        # TODO: remove supposedly unnecessary `f`
         # I promise this type checks; I'm just making mypyc issues go away.
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
@@ -7581,7 +7585,7 @@ class SemanticAnalyzer(
             if code is None:
                 code = msg.code
             msg = msg.value
-        self.errors.report(
+        err_info = self.create_error_info(
             ctx.line,
             ctx.column,
             msg,
@@ -7590,11 +7594,86 @@ class SemanticAnalyzer(
             end_line=ctx.end_line,
             end_column=ctx.end_column,
         )
+        if self.errors._filter_error(self.errors.file, err_info):
+            return
+
+        if blocker or self.associated_node is None or self.options.semantic_analysis_only:
+            self.errors.add_error_info(err_info)
+        else:
+            node = self.associated_node
+            assign_to = (self.cur_mod_id, node.line, node.column)
+            self.delayed_errors.setdefault(assign_to, [])
+            self.delayed_errors[assign_to].append(err_info)
 
     def note(self, msg: str, ctx: Context, code: ErrorCode | None = None) -> None:
         if not self.in_checked_function():
             return
-        self.errors.report(ctx.line, ctx.column, msg, severity="note", code=code)
+        err_info = self.create_error_info(ctx.line, ctx.column, msg, severity="note", code=code)
+        if self.errors._filter_error(self.errors.file, err_info):
+            return
+
+        if self.associated_node is None or self.options.semantic_analysis_only:
+            self.errors.add_error_info(err_info)
+        else:
+            node = self.associated_node
+            assign_to = (self.cur_mod_id, node.line, node.column)
+            self.delayed_errors.setdefault(assign_to, [])
+            self.delayed_errors[assign_to].append(err_info)
+
+    def create_error_info(
+        self,
+        line: int,
+        column: int | None,
+        message: str,
+        code: ErrorCode | None = None,
+        *,
+        blocker: bool = False,
+        severity: str = "error",
+        end_line: int | None = None,
+        end_column: int | None = None,
+    ) -> ErrorInfo:
+        # TODO: move this into `errors.py`, probably
+        if self.errors.scope:
+            type = self.errors.scope.current_type_name()
+            if self.errors.scope.ignored > 0:
+                type = None  # Omit type context if nested function
+            function = self.errors.scope.current_function_name()
+        else:
+            type = None
+            function = None
+
+        if column is None:
+            column = -1
+        if end_column is None:
+            if column == -1:
+                end_column = -1
+            else:
+                end_column = column + 1
+
+        if end_line is None:
+            end_line = line
+
+        code = code or (codes.MISC if not blocker else None)
+
+        return ErrorInfo(
+            import_ctx=self.errors.import_context(),
+            file=self.errors.file,
+            module=self.errors.current_module(),
+            typ=type,
+            function_or_member=function,
+            line=line,
+            column=column,
+            end_line=end_line,
+            end_column=end_column,
+            severity=severity,
+            message=message,
+            code=code,
+            blocker=blocker,
+            only_once=False,
+            origin=(self.errors.file, [line]),
+            target=self.errors.current_target(),
+            parent_error=None,
+        )
 
     def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
         if feature not in self.options.enable_incomplete_feature:
@@ -7605,6 +7684,15 @@ class SemanticAnalyzer(
             )
             return False
         return True
+
+    def accept_delaying_errors(self, node: Statement) -> None:
+        previously_associated = self.associated_node
+        self.associated_node = node
+        try:
+            node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+        self.associated_node = previously_associated
 
     def accept(self, node: Node) -> None:
         try:
@@ -8097,6 +8185,8 @@ class SemanticAnalyzer(
         original_deferral_debug_context_len = len(self.deferral_debug_context)
 
         self.errors = Errors(Options())
+        previous_association = self.associated_node
+        self.associated_node = None
         try:
             yield
         finally:
@@ -8105,6 +8195,7 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = original_num_incomplete_refs
             self.progress = original_progress
             self.deferred = original_deferred
+            self.associated_node = previous_association
             del self.deferral_debug_context[original_deferral_debug_context_len:]
 
 
