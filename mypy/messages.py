@@ -1763,7 +1763,7 @@ class MessageBuilder:
             # The `reveal_type` statement might be visited iteratively due to being
             # placed in a loop or so. Hence, we collect the respective types of
             # individual iterations so that we can report them all in one step later:
-            if isinstance(watcher, IterationErrorWatcher):
+            if isinstance(watcher, IterationErrorWatcher) and watcher.collect_revealed_types:
                 watcher.iteration_dependent_errors.revealed_types[
                     (context.line, context.column, context.end_line, context.end_column)
                 ].append(typ)
