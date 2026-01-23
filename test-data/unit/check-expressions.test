@@ -2600,3 +2600,20 @@ f(random=[1,2,3]) # E: Unexpected keyword argument "random" for overloaded funct
                   # N: Possible overload variants: \
                   # N:     def f(foobar: int) -> None \
                   # N:     def f(foobar: str) -> None
+
+f(fobar=1, baz=2) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"? \
+                  # E: Unexpected keyword argument "baz" for overloaded function "f"
+
+f(foobar=1, invalid=2) # E: Unexpected keyword argument "invalid" for overloaded function "f"
+
+@overload
+def g(x: int, y: int) -> int: ...
+
+@overload
+def g(x: str, y: str) -> str: ...
+
+def g(x: Union[int, str], y: Union[int, str]) -> Union[int, str]:
+    return x
+
+g([1, 2], z=3) # E: Unexpected keyword argument "z" for overloaded function "g"
+[builtins fixtures/list.pyi]
