@@ -2595,7 +2595,7 @@ def f(foobar: str) -> None: ...
 def f(foobar: Union[int, str]) -> None:
     pass
 
-f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f" defined on line 4; did you mean "foobar"?
+f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"?
 f(random=[1,2,3]) # E: Unexpected keyword argument "random" for overloaded function "f" \
                   # N: Possible overload variants: \
                   # N:     def f(foobar: int) -> None \

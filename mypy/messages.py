@@ -44,7 +44,6 @@ from mypy.nodes import (
     ArgKind,
     CallExpr,
     Context,
-    Decorator,
     Expression,
     FuncDef,
     IndexExpr,
@@ -1149,14 +1148,6 @@ class MessageBuilder:
                     matches = best_matches(kwarg_name, not_matching_type_args, n=3)
 
                 msg = f'Unexpected keyword argument "{kwarg_name}"' + for_func
-
-                if matching_variant is not None and matching_variant.definition is not None:
-                    defn = matching_variant.definition
-                    if isinstance(defn, Decorator):
-                        func_line = defn.func.line
-                    else:
-                        func_line = defn.line
-                    msg += f" defined on line {func_line}"
 
                 if matches:
                     msg += f"; did you mean {pretty_seq(matches, 'or')}?"
