@@ -481,7 +481,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI64_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI64_Box(v);
     } else if (VecU8_Check(vec)) {
         uint8_t x = VecU8_UnboxItem(item);
@@ -492,7 +492,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecU8_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecU8_Box(v);
     } else if (VecFloat_Check(vec)) {
         double x = VecFloat_UnboxItem(item);
@@ -503,7 +503,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecFloat_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecFloat_Box(v);
     } else if (VecI32_Check(vec)) {
         int32_t x = VecI32_UnboxItem(item);
@@ -514,7 +514,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI32_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI32_Box(v);
     } else if (VecI16_Check(vec)) {
         int16_t x = VecI16_UnboxItem(item);
@@ -525,7 +525,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI16_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI16_Box(v);
     } else if (VecBool_Check(vec)) {
         double x = VecBool_UnboxItem(item);
@@ -536,7 +536,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecBool_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
@@ -556,7 +556,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecVec_Append(v, vecitem);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecVec_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
@@ -582,7 +582,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI64_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI64_Box(v);
     } else if (VecU8_Check(vec)) {
         uint8_t x = VecU8_UnboxItem(item);
@@ -593,7 +593,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecU8_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecU8_Box(v);
     } else if (VecFloat_Check(vec)) {
         double x = VecFloat_UnboxItem(item);
@@ -604,7 +604,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecFloat_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecFloat_Box(v);
     } else if (VecI32_Check(vec)) {
         int32_t x = VecI32_UnboxItem(item);
@@ -615,7 +615,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI32_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI32_Box(v);
     } else if (VecI16_Check(vec)) {
         int16_t x = VecI16_UnboxItem(item);
@@ -626,7 +626,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecI16_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecI16_Box(v);
     } else if (VecBool_Check(vec)) {
         char x = VecBool_UnboxItem(item);
@@ -637,7 +637,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecBool_Remove(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
@@ -657,7 +657,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = VecVec_Remove(v, vecitem);
         if (VEC_IS_ERROR(v))
-            return NULL; // TODO: decref?
+            return NULL;
         return VecVec_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
