@@ -3147,7 +3147,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # This block was marked as being unreachable during semantic analysis.
             # It turns out any blocks marked in this way are *intentionally* marked
             # as unreachable -- so we don't display an error.
-            self.binder.unreachable()
+            self.binder.unreachable(from_semanal=True)
             return
         for s in b.body:
             if self.binder.is_unreachable():
