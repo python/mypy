@@ -135,22 +135,22 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
                 RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
-        return builder.none()
+        return builder.none(expr.line)
     fullname = expr.node.fullname
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
         return builder.add(LoadAddress(typ, src, expr.line))
     # special cases
     if fullname == "builtins.None":
-        return builder.none()
+        return builder.none(expr.line)
     if fullname == "builtins.True":
-        return builder.true()
+        return builder.true(expr.line)
     if fullname == "builtins.False":
-        return builder.false()
+        return builder.false(expr.line)
     if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
-    math_literal = transform_math_literal(builder, fullname)
+    math_literal = transform_math_literal(builder, fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
@@ -208,7 +208,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     # Special Cases
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
@@ -223,7 +223,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         if value is not None:
             return value
 
-    math_literal = transform_math_literal(builder, expr.fullname)
+    math_literal = transform_math_literal(builder, expr.fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
@@ -685,13 +685,13 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.activate_block(if_body)
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
-    builder.add(Assign(target, true_value))
+    builder.add(Assign(target, true_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(else_body)
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
-    builder.add(Assign(target, false_value))
+    builder.add(Assign(target, false_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(next_block)
@@ -1124,16 +1124,16 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     return value
 
 
-def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+def transform_math_literal(builder: IRBuilder, fullname: str, line: int) -> Value | None:
     if fullname == "math.e":
-        return builder.load_float(math.e)
+        return builder.load_float(math.e, line)
     if fullname == "math.pi":
-        return builder.load_float(math.pi)
+        return builder.load_float(math.pi, line)
     if fullname == "math.inf":
-        return builder.load_float(math.inf)
+        return builder.load_float(math.inf, line)
     if fullname == "math.nan":
-        return builder.load_float(math.nan)
+        return builder.load_float(math.nan, line)
     if fullname == "math.tau":
-        return builder.load_float(math.tau)
+        return builder.load_float(math.tau, line)
 
     return None

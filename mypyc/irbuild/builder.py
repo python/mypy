@@ -289,7 +289,7 @@ class IRBuilder:
                     res = Register(self.node_type(node))
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
-                    self.flush_keep_alives()
+                    self.flush_keep_alives(node.line)
                 return res
             else:
                 try:
@@ -298,8 +298,8 @@ class IRBuilder:
                     pass
                 return None
 
-    def flush_keep_alives(self) -> None:
-        self.builder.flush_keep_alives()
+    def flush_keep_alives(self, line: int) -> None:
+        self.builder.flush_keep_alives(line)
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -321,23 +321,23 @@ class IRBuilder:
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
-    def load_str(self, value: str) -> Value:
-        return self.builder.load_str(value)
+    def load_str(self, value: str, line: int = -1) -> Value:
+        return self.builder.load_str(value, line)
 
-    def load_bytes_from_str_literal(self, value: str) -> Value:
+    def load_bytes_from_str_literal(self, value: str, line: int = -1) -> Value:
         """Load bytes object from a string literal.
 
         The literal characters of BytesExpr (the characters inside b'')
         are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
         Thus we perform a special conversion here.
         """
-        return self.builder.load_bytes(bytes_from_str(value))
+        return self.builder.load_bytes(bytes_from_str(value), line)
 
-    def load_int(self, value: int) -> Value:
-        return self.builder.load_int(value)
+    def load_int(self, value: int, line: int = -1) -> Value:
+        return self.builder.load_int(value, line)
 
-    def load_float(self, value: float) -> Value:
-        return self.builder.load_float(value)
+    def load_float(self, value: float, line: int = -1) -> Value:
+        return self.builder.load_float(value, line)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -348,17 +348,17 @@ class IRBuilder:
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
         return self.builder.coerce(src, target_type, line, force, can_borrow=self.can_borrow)
 
-    def none_object(self) -> Value:
-        return self.builder.none_object()
+    def none_object(self, line: int = -1) -> Value:
+        return self.builder.none_object(line)
 
-    def none(self) -> Value:
-        return self.builder.none()
+    def none(self, line: int = -1) -> Value:
+        return self.builder.none(line)
 
-    def true(self) -> Value:
-        return self.builder.true()
+    def true(self, line: int = -1) -> Value:
+        return self.builder.true(line)
 
-    def false(self) -> Value:
-        return self.builder.false()
+    def false(self, line: int = -1) -> Value:
+        return self.builder.false(line)
 
     def new_list_op(self, values: list[Value], line: int) -> Value:
         return self.builder.new_list_op(values, line)
@@ -439,7 +439,7 @@ class IRBuilder:
         self, non_ext: NonExtClassInfo, key: str, val: Value, line: int
     ) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        key_unicode = self.load_str(key)
+        key_unicode = self.load_str(key, line)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
         # It's important that accessing class dictionary items from multiple threads
@@ -453,7 +453,7 @@ class IRBuilder:
         self.check_if_module_loaded(id, line, needs_import, out)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_str(id)], line)
+        value = self.call_c(import_op, [self.load_str(id, line)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
@@ -468,14 +468,14 @@ class IRBuilder:
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
         first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(), "is not", line)
+        comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
         self.add_bool_branch(comparison, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = self.call_c(get_module_dict_op, [], line)
         # Get module object from modules dict.
-        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module)], line)
+        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module, line)], line)
 
     def get_module_attr(self, module: str, attr: str, line: int) -> Value:
         """Look up an attribute of a module without storing it in the local namespace.
@@ -492,9 +492,9 @@ class IRBuilder:
     def assign_if_null(self, target: Register, get_val: Callable[[], Value], line: int) -> None:
         """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
-        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
+        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR, line))
         self.activate_block(error_block)
-        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
+        self.add(Assign(target, self.coerce(get_val(), target.type, line), line))
         self.goto(body_block)
         self.activate_block(body_block)
 
@@ -509,7 +509,7 @@ class IRBuilder:
             IntOp.AND,
             line,
         )
-        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ))
+        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ, line))
         self.add(Branch(b, error_block, body_block, Branch.BOOL))
         self.activate_block(error_block)
         self.add(Assign(target, self.coerce(get_val(), target.type, line)))
@@ -607,13 +607,15 @@ class IRBuilder:
             )
         )
 
-    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+    def load_literal_value(
+        self, val: int | str | bytes | float | complex | bool, line: int = -1
+    ) -> Value:
         """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
-                return self.true()
+                return self.true(line)
             else:
-                return self.false()
+                return self.false(line)
         elif isinstance(val, int):
             return self.builder.load_int(val)
         elif isinstance(val, float):
@@ -671,7 +673,7 @@ class IRBuilder:
                     return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
-                name = self.load_str(lvalue.name)
+                name = self.load_str(lvalue.name, line)
                 return AssignmentTargetIndex(globals_dict, name)
             else:
                 assert False, lvalue.kind
@@ -749,7 +751,7 @@ class IRBuilder:
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
+            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line), line))
         elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg, line))
@@ -757,7 +759,7 @@ class IRBuilder:
             if isinstance(target.obj_type, RInstance):
                 setattr = target.obj_type.class_ir.get_method("__setattr__")
                 if setattr:
-                    key = self.load_str(target.attr)
+                    key = self.load_str(target.attr, line)
                     boxed_reg = self.builder.box(rvalue_reg)
                     call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
                     self.add(call)
@@ -765,7 +767,7 @@ class IRBuilder:
                     rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
                     self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                key = self.load_str(target.attr)
+                key = self.load_str(target.attr, line)
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
@@ -967,7 +969,7 @@ class IRBuilder:
 
         # Allocate a temporary register for the assignable value.
         reg = Register(value.type)
-        self.assign(reg, value, -1)
+        self.assign(reg, value, NO_TRACEBACK_LINE_NO)
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
@@ -1136,7 +1138,7 @@ class IRBuilder:
             line: line number where loading occurs
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_literal_value(final_var.final_value)
+            return self.load_literal_value(final_var.final_value, line)
         elif native and module_prefix(self.graph, fullname):
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
@@ -1413,7 +1415,7 @@ class IRBuilder:
 
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_str(name)
+        reg = self.load_str(name, line)
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
@@ -1575,13 +1577,13 @@ def create_type_params(
             # To match runtime semantics, pass infer_variance=True
             tv = builder.py_call(
                 tvt,
-                [builder.load_str(type_param.name), builder.true()],
+                [builder.load_str(type_param.name, line), builder.true(line)],
                 line,
                 arg_kinds=[ARG_POS, ARG_NAMED],
                 arg_names=[None, "infer_variance"],
             )
         else:
-            tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+            tv = builder.py_call(tvt, [builder.load_str(type_param.name, line)], line)
         builder.init_type_var(tv, type_param.name, line)
         tvs.append(tv)
     return tvs

@@ -187,7 +187,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
         comparison = builder.translate_is_op(
-            builder.read(instance), builder.none_object(), "is", line
+            builder.read(instance), builder.none_object(line), "is", line
         )
         builder.add_bool_branch(comparison, class_block, instance_block)
 

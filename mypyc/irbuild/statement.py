@@ -160,7 +160,7 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
     # call builder.accept here.
     stmt.expr.accept(builder.visitor)
-    builder.flush_keep_alives()
+    builder.flush_keep_alives(stmt.line)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -234,7 +234,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         for left, temp in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(stmt.line)
         return
 
     line = stmt.rvalue.line
@@ -254,11 +254,11 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     ):
         n = len(first_lvalue.items)
         borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
-        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.builder.keep_alive([rvalue_reg], line, steal=True)
         for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
             rvalue_item = builder.add(Unborrow(rvalue_item))
             builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
         return
 
     for lvalue in lvalues:
@@ -268,12 +268,12 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
                 builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
             )
             if specialized is not None:
-                builder.flush_keep_alives()
+                builder.flush_keep_alives(lvalue.line)
                 continue
 
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
 
 
 def is_simple_lvalue(expr: Expression) -> bool:
@@ -302,7 +302,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
-    builder.flush_keep_alives()
+    builder.flush_keep_alives(res.line)
 
 
 def import_globals_id_and_name(module_id: str, as_name: str | None) -> tuple[str, str]:

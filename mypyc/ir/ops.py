@@ -850,7 +850,8 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: LiteralValue, rtype: RType) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
         self.type = rtype
 
