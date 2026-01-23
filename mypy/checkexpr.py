@@ -2393,28 +2393,50 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     self.msg.fail(
                         f'Argument {shift_position} to "{func_name}" has incompatible type '
-                        f'{actual_str}; expected {expected_str} '
+                        f"{actual_str}; expected {expected_str} "
                         f'(did you forget argument "{param_name}"?)',
                         context,
                         code=codes.CALL_ARG,
                     )
                 else:
                     self.check_argument_count(
-                        callee, arg_types, arg_kinds, arg_names, formal_to_actual,
-                        context, object_type, callable_name,
+                        callee,
+                        arg_types,
+                        arg_kinds,
+                        arg_names,
+                        formal_to_actual,
+                        context,
+                        object_type,
+                        callable_name,
                     )
                     self.check_argument_types(
-                        arg_types, arg_kinds, args, callee, formal_to_actual, context,
-                        object_type=object_type
+                        arg_types,
+                        arg_kinds,
+                        args,
+                        callee,
+                        formal_to_actual,
+                        context,
+                        object_type=object_type,
                     )
             elif has_type_errors:
                 self.check_argument_count(
-                    callee, arg_types, arg_kinds, arg_names, formal_to_actual,
-                    context, object_type, callable_name,
+                    callee,
+                    arg_types,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    context,
+                    object_type,
+                    callable_name,
                 )
                 self.check_argument_types(
-                    arg_types, arg_kinds, args, callee, formal_to_actual, context,
-                    object_type=object_type
+                    arg_types,
+                    arg_kinds,
+                    args,
+                    callee,
+                    formal_to_actual,
+                    context,
+                    object_type=object_type,
                 )
             else:
                 self.check_argument_count(
