@@ -33,7 +33,7 @@ from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder, format_type
+from mypy.messages import MessageBuilder, format_type, format_type_distinctly
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -2382,12 +2382,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             has_type_errors = type_error_watcher.has_new_errors()
 
             if shift_info is not None:
-                _, param_name, expected_type, high_confidence = shift_info
+                shift_position, param_name, expected_type, high_confidence = shift_info
                 if high_confidence and param_name:
-                    type_str = format_type(expected_type, self.chk.options)
+                    positional_arg_types = [
+                        arg_types[i] for i, k in enumerate(arg_kinds) if k == nodes.ARG_POS
+                    ]
+                    actual_type = positional_arg_types[shift_position - 1]
+                    actual_str, expected_str = format_type_distinctly(
+                        actual_type, expected_type, options=self.chk.options
+                    )
                     self.msg.fail(
-                        f'Expected {type_str} for parameter "{param_name}"; '
-                        f'did you forget argument "{param_name}"?',
+                        f'Argument {shift_position} to "{func_name}" has incompatible type '
+                        f'{actual_str}; expected {expected_str} '
+                        f'(did you forget argument "{param_name}"?)',
                         context,
                         code=codes.CALL_ARG,
                     )
