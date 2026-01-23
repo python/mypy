@@ -3107,3 +3107,47 @@ def check(obj: A[Literal[1]]) -> None:
     reveal_type(g('', obj))  # E: Cannot infer value of type parameter "T" of "g" \
                              # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testEnumLiteralIsNotIntLiteral]
+# See https://discuss.python.org/t/amend-pep-586-to-make-enum-values-subtypes-of-literal/59456/4
+from enum import IntEnum
+from typing import Literal
+
+class X(IntEnum):
+    a = 1
+
+    def __add__(self, value: int, /) -> int:
+        return self.value + value + 42
+
+    def __eq__(self, other: object):
+        return False
+
+    def __bool__(self) -> bool:
+        return False
+
+def f(x: Literal[1]):
+    # 44 at runtime if you were to allow passing X.a
+    reveal_type(x + 1)  # N: Revealed type is "builtins.int"
+
+def g(x: Literal[1, 2]):
+    # false if you were to allow passing X.a
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[2]"
+
+def h(x: Literal[0, 1]):
+    # false if you were to allow passing X.a
+    if x:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[0]"
+
+f(X.a)  # E: Argument 1 to "f" has incompatible type "Literal[X.a]"; expected "Literal[1]"
+g(X.a)  # E: Argument 1 to "g" has incompatible type "Literal[X.a]"; expected "Literal[1, 2]"
+h(X.a)  # E: Argument 1 to "h" has incompatible type "Literal[X.a]"; expected "Literal[0, 1]"
+
+f(X.a.value)
+g(X.a.value)
+h(X.a.value)
+[builtins fixtures/primitives.pyi]

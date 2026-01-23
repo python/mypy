@@ -412,9 +412,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     if generate_full:
-        generate_setup_for_class(
-            cl, defaults_fn, vtable_name, shadow_vtable_name, coroutine_setup_name, emitter
-        )
+        generate_setup_for_class(cl, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
@@ -606,7 +604,6 @@ def generate_setup_for_class(
     defaults_fn: FuncIR | None,
     vtable_name: str,
     shadow_vtable_name: str | None,
-    coroutine_setup_name: str,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -661,13 +658,6 @@ def generate_setup_for_class(
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
         emit_attr_defaults_func_call(defaults_fn, "self", emitter)
-
-    # Initialize function wrapper for callable classes. As opposed to regular functions,
-    # each instance of a callable class needs its own wrapper because they might be instantiated
-    # inside other functions.
-    if cl.coroutine_name:
-        emitter.emit_line(f"if ({NATIVE_PREFIX}{coroutine_setup_name}((PyObject *)self) != 1)")
-        emitter.emit_line("  return NULL;")
 
     emitter.emit_line("return (PyObject *)self;")
     emitter.emit_line("}")

@@ -22,5 +22,18 @@ class TaskGroup:
 
     async def __aenter__(self) -> Self: ...
     async def __aexit__(self, et: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
-    def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
+    if sys.version_info >= (3, 14):
+        def create_task(
+            self,
+            coro: _CoroutineLike[_T],
+            *,
+            name: str | None = None,
+            context: Context | None = None,
+            eager_start: bool | None = None,
+        ) -> Task[_T]: ...
+    else:
+        def create_task(
+            self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
+        ) -> Task[_T]: ...
+
     def _on_task_done(self, task: Task[object]) -> None: ...

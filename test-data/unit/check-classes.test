@@ -1322,7 +1322,7 @@ main:2: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 from typing import Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x = None  # type: T
+    x: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
 [targets __main__]
@@ -1332,7 +1332,7 @@ from typing import Generic, List, TypeVar, Union
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x = None  # type: Union[T, List[U]]
+    x: Union[T, List[U]]
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/list.pyi]
@@ -4562,7 +4562,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 
 [case testVariableSubclassAssignment]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
     def __init__(self) -> None:
         self.a = "a"
@@ -4571,9 +4571,9 @@ main:5: error: Incompatible types in assignment (expression has type "str", vari
 
 [case testVariableSubclassTypeOverwrite]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
-    a = None  # type: str
+    a: str
 class C(B):
     a = "a"
 [out]
@@ -4583,7 +4583,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 class A:
     a = 1
 class B(A):
-    a = None  # type: str
+    a: str
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
@@ -4600,7 +4600,7 @@ class C(B):
 [case testClassAllBases]
 from typing import Union
 class A:
-    a = None  # type: Union[int, str]
+    a: Union[int, str]
 class B(A):
     a = 1
 class C(B):
@@ -4614,7 +4614,7 @@ main:7: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = 1
 
@@ -4622,7 +4622,7 @@ class B(A[int]):
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = "abc"
 [out]
@@ -4632,7 +4632,7 @@ main:6: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     pass
 class C(B):
@@ -4644,8 +4644,8 @@ main:8: error: Incompatible types in assignment (expression has type "str", base
 from typing import List, TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: List[T]
-    b = None  # type: List[T]
+    a: List[T]
+    b: List[T]
 class B(A[int]):
     a = [1]
     b = ['']
@@ -4670,7 +4670,7 @@ class A:
     @property
     def a(self) -> bool: pass
 class B(A):
-    a = None  # type: bool
+    a: bool
 class C(A):
     a = True
 class D(A):
@@ -4751,7 +4751,7 @@ main:7: error: Incompatible types in assignment (expression has type "Callable[[
 [case testClassSpec]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: int) -> int: pass
     b = c
@@ -4761,7 +4761,7 @@ reveal_type(B().b)  # N: Revealed type is "def (a: builtins.int) -> builtins.int
 [case testClassSpecError]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: str) -> int: pass
     b = c  # E: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")

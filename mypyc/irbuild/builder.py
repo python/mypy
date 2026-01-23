@@ -69,6 +69,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    Call,
     ComparisonOp,
     GetAttr,
     InitStatic,
@@ -91,6 +92,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
+    bool_rprimitive,
     bytes_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
@@ -1460,6 +1462,20 @@ class IRBuilder:
     def get_current_class_ir(self) -> ClassIR | None:
         type_info = self.fn_info.fitem.info
         return self.mapper.type_to_ir.get(type_info)
+
+    def add_coroutine_setup_call(self, class_name: str, obj: Value) -> Value:
+        return self.add(
+            Call(
+                FuncDecl(
+                    class_name + "_coroutine_setup",
+                    None,
+                    self.module_name,
+                    FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
+                ),
+                [obj],
+                -1,
+            )
+        )
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

@@ -499,6 +499,43 @@ def test_string_writer_append_grow_and_switch_kind() -> None:
         assert result3[i] == 'X'
     assert result3[300] == chr(0x10000)
 
+def test_string_writer_wrapper_functions() -> None:
+    cls: Any = StringWriter
+    s: Any = cls()
+    assert repr(s) == "StringWriter('')"
+    assert len(s) == 0
+    s.append(ord('a'))
+    s.append(0x100)
+    s.append(0x10000)
+    s.write("foo")
+    assert s.getvalue() == "a" + chr(0x100) + chr(0x10000) + "foo"
+    assert len(s) == 6
+
+    assert s[0] == ord('a')
+    assert s[1] == 0x100
+    assert s[2] == 0x10000
+    assert s[-1] == ord('o')
+    assert s[-6] == ord('a')
+
+    assert isinstance(s, cls)
+
+    with assertRaises(TypeError):
+        s.append("x")
+
+    with assertRaises(TypeError):
+        s.write(b"foo")
+
+    with assertRaises(ValueError):
+        s.append(0x110000)
+
+    with assertRaises(ValueError):
+        s.append(-1)
+
+    with assertRaises(IndexError):
+        s[6]
+    with assertRaises(IndexError):
+        s[-7]
+
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
 import librt.strings
