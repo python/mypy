@@ -227,6 +227,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+// Append item to 'vec', stealing 'vec'. Return 'vec' with item appended.
 VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
     if (vec.buf == NULL) {
         VecT new = vec_alloc(1, item_type);
@@ -249,6 +250,9 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         VecT new = vec_alloc(new_size, vec.buf->item_type);
         if (VEC_IS_ERROR(new)) {
             Py_DECREF(x);
+            // The input vec is being consumed/stolen by this function, so on error
+            // we must decref it to avoid leaking the buffer.
+            VEC_DECREF(vec);
             return new;
         }
         // Copy items to new vec.
@@ -263,6 +267,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
     }
 }
 
+// Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecT VecT_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
     for (Py_ssize_t i = 0; i < v.len; i++) {
@@ -271,8 +276,12 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
             match = 1;
         else {
             int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
-            if (itemcmp < 0)
+            if (itemcmp < 0) {
+                // The input v is being consumed/stolen by this function, so on error
+                // we must decref it to avoid leaking the buffer.
+                VEC_DECREF(v);
                 return vec_error();
+            }
             match = itemcmp;
         }
         if (match) {
@@ -291,9 +300,13 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    // The input v is being consumed/stolen by this function, so on error
+    // we must decref it to avoid leaking the buffer.
+    VEC_DECREF(v);
     return vec_error();
 }
 
+// Pop item from 'vec', stealing 'vec'. Return struct with modified 'vec' and the popped item.
 VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
     VecTPopResult result;
 
@@ -302,6 +315,9 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
+        // The input v is being consumed/stolen by this function, so on error
+        // we must decref it to avoid leaking the buffer.
+        VEC_DECREF(v);
         result.f0 = vec_error();
         result.f1 = NULL;
         return result;
