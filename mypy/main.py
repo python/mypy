@@ -938,6 +938,14 @@ def define_options(
     )
 
     add_invertible_flag(
+        "--disallow-str-iteration",
+        default=False,
+        strict_flag=False,
+        help="Disallow iterating over str instances",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
         "--extra-checks",
         default=False,
         strict_flag=True,

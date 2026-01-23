@@ -852,6 +852,14 @@ section of the command line docs.
    Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
    This will be enabled by default in *mypy 2.0*.
 
+.. confval:: disallow_str_iteration
+
+   :type: boolean
+   :default: False
+
+   Disallow iterating over ``str`` values.
+   This also rejects using ``str`` where an ``Iterable[str]`` or ``Sequence[str]`` is expected.
+
 .. confval:: strict
 
    :type: boolean

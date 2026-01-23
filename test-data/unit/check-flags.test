@@ -2451,6 +2451,127 @@ f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray";
 f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
 [builtins fixtures/primitives.pyi]
 
+[case testDisallowStrIteration]
+# flags: --disallow-str-iteration --warn-unreachable
+from abc import abstractmethod
+from typing import Collection, Container, Hashable, Iterable, Mapping, Protocol, Sequence, SupportsIndex, TypeGuard, TypeIs, TypeVar, Union, runtime_checkable
+
+def takes_str(x: str):
+    for ch in x:  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+    [ch for ch in x]  # E: Iterating over "str" is disallowed  # N: This is because --disallow-str-iteration is enabled
+
+s = "hello"
+
+def takes_seq_str(x: Sequence[str]) -> None: ...
+takes_seq_str(s)  # E: Argument 1 to "takes_seq_str" has incompatible type "str"; expected "Sequence[str]"
+
+def takes_iter_str(x: Iterable[str]) -> None: ...
+takes_iter_str(s)  # E: Argument 1 to "takes_iter_str" has incompatible type "str"; expected "Iterable[str]"
+
+def takes_collection_str(x: Collection[str]) -> None: ...
+takes_collection_str(s)  # E: Argument 1 to "takes_collection_str" has incompatible type "str"; expected "Collection[str]"
+
+seq: Sequence[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Sequence[str]")
+iterable: Iterable[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Iterable[str]")
+collection: Collection[str] = s  # E: Incompatible types in assignment (expression has type "str", variable has type "Collection[str]")
+
+def takes_maybe_seq(x: Union[str, Sequence[int]]) -> None:
+    for ch in x:  # E: Iterating over "str | Sequence[int]" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str | builtins.int"
+
+T = TypeVar('T', bound=str)
+_T_co = TypeVar('_T_co', covariant=True)
+
+def takes_str_upper_bound(x: T) -> None:
+    for ch in x:  # E: Iterating over "T" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+
+class StrSubclass(str):
+    def __contains__(self, x: object) -> bool: ...
+    def __getitem__(self, key: Union[SupportsIndex, slice], /) -> str: ...
+
+def takes_str_subclass(x: StrSubclass):
+    for ch in x:  # E: Iterating over "StrSubclass" is disallowed  # N: This is because --disallow-str-iteration is enabled
+        reveal_type(ch)  # N: Revealed type is "builtins.str"
+
+@runtime_checkable
+class CollectionSubclass(Collection[_T_co], Protocol[_T_co]):
+    @abstractmethod
+    def __missing_impl__(self): ...
+
+def takes_collection_subclass(x: CollectionSubclass[str]) -> None: ...
+
+takes_collection_subclass(s)  # E: Argument 1 to "takes_collection_subclass" has incompatible type "str"; expected "CollectionSubclass[str]" \
+                              # N: "str" is missing following "CollectionSubclass" protocol member: \
+                              # N:     __missing_impl__
+
+takes_collection_subclass(StrSubclass())  # E: Argument 1 to "takes_collection_subclass" has incompatible type "StrSubclass"; expected "CollectionSubclass[str]" \
+                                          # N: "StrSubclass" is missing following "CollectionSubclass" protocol member: \
+                                          # N:     __missing_impl__
+
+def dict_unpacking_unaffected_by_union_simplification(x: Mapping[str, Union[str, Sequence[str]]]) -> None:
+    x = {**x}
+
+def narrowing_str(x: Union[str, Sequence[str]]):
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
+
+def narrowing_iterable(x: Union[str, Iterable[str], Iterable[str]]):
+    if isinstance(x, Iterable):
+        reveal_type(x)  # N: Revealed type is "builtins.str | typing.Iterable[builtins.str]"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+def is_iterable_guard(x: object) -> TypeGuard[Iterable[str]]: ...
+
+def is_iterable_is(x: object) -> TypeIs[Iterable[str]]: ...
+
+def narrowing_typeguard_iterable(x: Union[str, Iterable[str]]):
+    if is_iterable_guard(x):
+        reveal_type(x)  # N: Revealed type is "builtins.str | typing.Iterable[builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | typing.Iterable[builtins.str]"
+
+def narrowing_typeis_iterable(x: Union[str, Iterable[str]]):
+    if is_iterable_is(x):
+        reveal_type(x)  # N: Revealed type is "builtins.str | typing.Iterable[builtins.str]"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+def narrowing_incompatible_collection_subclass(x: Union[str, CollectionSubclass[str]]):
+    if isinstance(x, CollectionSubclass):
+        reveal_type(x)  # N: Revealed type is "__main__.CollectionSubclass[builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrowing_object(x: object):
+    if isinstance(x, Iterable):
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any] | builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def narrowing_type(x: Union[type[str], type[int]]):
+    if issubclass(x, Iterable):
+        reveal_type(x)  # N: Revealed type is "type[builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "type[builtins.int]"
+
+Item = TypeVar("Item")
+def takes_generic_list(x: list[Item]) -> None: ...
+takes_generic_list(reveal_type([s, seq]))  # N: Revealed type is "builtins.list[builtins.object]"
+takes_generic_list(reveal_type([seq, s]))  # N: Revealed type is "builtins.list[builtins.object]"
+
+[builtins fixtures/str-iter.pyi]
+[typing fixtures/typing-str-iter.pyi]
+
+[case testIterStrOverload]
+# flags: --disallow-str-iteration
+reveal_type(iter("foo"))  # N: Revealed type is "typing.Iterable[builtins.str]"
+[builtins fixtures/dict.pyi]
+
 [case testNoCrashFollowImportsForStubs]
 # flags: --config-file tmp/mypy.ini
 {**{"x": "y"}}

@@ -61,4 +61,7 @@ class ellipsis: pass
 class BaseException: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+@overload
+def iter(__iterable: str) -> Iterable[str]: pass
+@overload
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

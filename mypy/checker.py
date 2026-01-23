@@ -32,6 +32,10 @@ from mypy.checkmember import (
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
+from mypy.disallow_str_iteration_state import (
+    STR_ITERATION_PROTOCOL_BASES,
+    disallow_str_iteration_state,
+)
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
@@ -514,7 +518,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
+        with (
+            state.strict_optional_set(self.options.strict_optional),
+            disallow_str_iteration_state.set(self.options.disallow_str_iteration),
+            checker_state.set(self),
+        ):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options
             )
@@ -559,7 +567,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """
         self.allow_constructor_cache = allow_constructor_cache
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
+        with (
+            state.strict_optional_set(self.options.strict_optional),
+            disallow_str_iteration_state.set(self.options.disallow_str_iteration),
+            checker_state.set(self),
+        ):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(
@@ -2206,7 +2218,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         )
         found_method_base_classes: list[TypeInfo] = []
+        is_str_or_has_str_base = defn.info.fullname == "builtins.str"
         for base in defn.info.mro[1:]:
+            if disallow_str_iteration_state.disallow_str_iteration:
+                if base.fullname == "builtins.str":
+                    is_str_or_has_str_base = True
+
+                if is_str_or_has_str_base and base.fullname in STR_ITERATION_PROTOCOL_BASES:
+                    continue
+
             result = self.check_method_or_accessor_override_for_base(
                 defn, base, check_override_compatibility
             )
@@ -5395,6 +5415,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         echk = self.expr_checker
         iterable: Type
         iterable = get_proper_type(type)
+
+        if disallow_str_iteration_state.disallow_str_iteration and self.is_str_iteration_type(
+            iterable
+        ):
+            self.msg.str_iteration_disallowed(context, iterable)
+
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
         if (
@@ -5406,6 +5432,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # Non-tuple iterable.
             iterable = echk.check_method_call_by_name("__next__", iterator, [], [], context)[0]
             return iterator, iterable
+
+    def is_str_iteration_type(self, typ: Type) -> bool:
+        typ = get_proper_type(typ)
+        if isinstance(typ, LiteralType):
+            return isinstance(typ.value, str)
+        if isinstance(typ, Instance):
+            return is_proper_subtype(typ, self.named_type("builtins.str"))
+        if isinstance(typ, UnionType):
+            return any(self.is_str_iteration_type(item) for item in typ.relevant_items())
+        if isinstance(typ, TypeVarType):
+            return self.is_str_iteration_type(typ.upper_bound)
+        return False
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
@@ -6334,6 +6372,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # If the callee is a RefExpr, extract TypeGuard/TypeIs directly.
                 if isinstance(node.callee, RefExpr):
                     type_is, type_guard = node.callee.type_is, node.callee.type_guard
+                if type_guard is not None:
+                    type_guard = self.expand_narrowed_type(type_guard)
+                if type_is is not None:
+                    type_is = self.expand_narrowed_type(type_is)
                 if type_guard is not None or type_is is not None:
                     # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
@@ -7854,7 +7896,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 for types, reason in errors:
                     self.msg.impossible_intersection(types, reason, ctx)
             return UninhabitedType(), expr_type
-        new_yes_type = make_simplified_union(out)
+        new_yes_type: Type = make_simplified_union(out)
         return new_yes_type, expr_type
 
     def is_writable_attribute(self, node: Node) -> bool:
@@ -7913,7 +7955,34 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
                 return None
+        return self.expand_isinstance_type_ranges(types)
+
+    def expand_isinstance_type_ranges(self, types: list[TypeRange]) -> list[TypeRange]:
+        if disallow_str_iteration_state.disallow_str_iteration:
+            str_type = self.named_type("builtins.str")
+            return types + [
+                TypeRange(str_type, is_upper_bound=type_range.is_upper_bound)
+                for type_range in types
+                if self._is_str_iteration_protocol_for_narrowing(type_range.item)
+            ]
         return types
+
+    def _is_str_iteration_protocol_for_narrowing(self, typ: Type) -> bool:
+        proper = get_proper_type(typ)
+        return (
+            isinstance(proper, Instance) and proper.type.fullname in STR_ITERATION_PROTOCOL_BASES
+        )
+
+    def expand_narrowed_type(self, typ: Type) -> Type:
+        if disallow_str_iteration_state.disallow_str_iteration:
+            proper = get_proper_type(typ)
+            if isinstance(proper, UnionType):
+                return make_simplified_union(
+                    [self.expand_narrowed_type(item) for item in proper.items]
+                )
+            if self._is_str_iteration_protocol_for_narrowing(proper):
+                return make_simplified_union([typ, self.named_type("builtins.str")])
+        return typ
 
     def is_literal_enum(self, n: Expression) -> bool:
         """Returns true if this expression (with the given type context) is an Enum literal.

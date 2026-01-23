@@ -774,6 +774,21 @@ of the above sections.
        f(memoryview(b""))  # Ok
 
 
+.. option:: --disallow-str-iteration
+
+    Disallow iterating over ``str`` values.
+    This also rejects using ``str`` where an ``Iterable[str]`` or ``Sequence[str]`` is expected.
+    To iterate over characters, call ``iter`` on the string explicitly.
+
+    .. code-block:: python
+
+       s = "hello"
+       for ch in s:  # error: Iterating over "str" is disallowed
+           print(ch)
+
+        for ch in iter(s):  # OK
+           print(ch)
+
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be

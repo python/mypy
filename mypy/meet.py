@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from mypy import join
+from mypy.disallow_str_iteration_state import (
+    disallow_str_iteration_state,
+    is_subtype_relation_ignored_to_disallow_str_iteration,
+)
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
@@ -595,6 +599,12 @@ def is_overlapping_types(
 
         if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
             return True
+
+        if disallow_str_iteration_state.disallow_str_iteration:
+            if is_subtype_relation_ignored_to_disallow_str_iteration(left, right):
+                return False
+            elif is_subtype_relation_ignored_to_disallow_str_iteration(right, left):
+                return False
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
         if left.type.has_base(right.type.fullname):
