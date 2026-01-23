@@ -1189,9 +1189,7 @@ class MessageBuilder:
                     code=code,
                 )
                 for item in overload.items:
-                    self.note(
-                        pretty_callable(item, self.options), context, offset=4, code=code
-                    )
+                    self.note(pretty_callable(item, self.options), context, offset=4, code=code)
 
             if all_kwargs_confident and len(unexpected_kwargs) == len(arg_types):
                 return
