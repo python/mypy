@@ -33,6 +33,8 @@ Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
 
 ITEM_TYPES = [i64, u8, i16, i32, float, bool]
 
+# Common tests for all item types
+
 def test_vec_indexing() -> None:
     for t in ITEM_TYPES:
         assert type(vec[t]) is type
@@ -85,3 +87,264 @@ def test_repr() -> None:
     for t in ITEM_TYPES:
         name = t.__name__
         assert repr(vec[t]()) == f"vec[{name}]([])"
+
+# vec[float] tests
+
+def test_float_construct_from_initializer() -> None:
+    v = vec[float]([123.5])
+    assert len(v) == 1
+    assert v[0] == 123.5
+    v = vec[float](x + 1 for x in [5, 7.5, -8.5, 10])
+    assert len(v) == 4
+    assert v[0] == 6
+    assert v[1] == 8.5
+    assert v[2] == -7.5
+    assert v[3] == 11
+    with assertRaises(TypeError):
+        vec[float](1)
+    with assertRaises(TypeError):
+        vec[float](['1'])
+    with assertRaises(TypeError):
+        vec[float]([None])
+
+def test_float_append() -> None:
+    v = vec[float]()
+    v = append(v, 1.5)
+    assert str(v) == "vec[float]([1.5])"
+    v = append(v, -2)
+    assert str(v) == "vec[float]([1.5, -2.0])"
+
+def test_float_get_item() -> None:
+    v = append(vec[float](), 44.5)
+    assert v[0] == 44.5
+    v = append(v, -56.5)
+    assert v[0] == 44.5
+    assert v[1] == -56.5
+
+def test_float_remove() -> None:
+    a = [4.5, 7, 9]
+    for x in a:
+        v = vec[float](a)
+        v = remove(v, x)
+        assert v == vec[float]([y for y in a if y != x])
+
+def test_float_pop() -> None:
+    v = vec[float]([4.5, 7, 9.5])
+    v, n = pop(v)
+    assert n == 9.5
+    assert v == vec[float]([4.5, 7])
+
+# vec[u8] tests
+
+def test_u8_construct_from_initializer() -> None:
+    v = vec[u8]([123])
+    assert len(v) == 1
+    assert v[0] == 123
+    v = vec[u8](x for x in [0, 5, 255, 10])
+    assert len(v) == 4
+    assert v[0] == 0
+    assert v[1] == 5
+    assert v[2] == 255
+    assert v[3] == 10
+    with assertRaises(TypeError):
+        vec[u8](1)
+    with assertRaises(TypeError):
+        vec[u8](['1'])
+    with assertRaises(TypeError):
+        vec[u8]([None])
+
+def test_u8_append() -> None:
+    v = vec[u8]()
+    v = append(v, 5)
+    assert str(v) == "vec[u8]([5])"
+    v = append(v, 255)
+    assert str(v) == "vec[u8]([5, 255])"
+
+def test_u8_item_overflow() -> None:
+    with assertRaises(OverflowError):
+        vec[u8]([256])
+    with assertRaises(OverflowError):
+        vec[u8]([-1])
+    with assertRaises(OverflowError):
+        vec[u8]([2**100])
+    with assertRaises(OverflowError):
+        vec[u8]([-2**100])
+
+def test_u8_get_item() -> None:
+    v = append(vec[u8](), 44)
+    assert v[0] == 44
+    v = append(v, 238)
+    assert v[0] == 44
+    assert v[1] == 238
+
+def test_u8_remove() -> None:
+    a = [0, 7, 255]
+    for x in a:
+        v = vec[u8](a)
+        v = remove(v, x)
+        assert v == vec[u8]([y for y in a if y != x])
+
+def test_u8_pop() -> None:
+    v = vec[u8]([0, 7, 255])
+    v, n = pop(v)
+    assert n == 255
+    assert v == vec[u8]([0, 7])
+
+# vec[i16] tests
+
+def test_i16_construct_from_initializer() -> None:
+    v = vec[i16]([123])
+    assert len(v) == 1
+    assert v[0] == 123
+    v = vec[i16](x for x in [0, 5, 32767, -32768])
+    assert len(v) == 4
+    assert v[0] == 0
+    assert v[1] == 5
+    assert v[2] == 32767
+    assert v[3] == -32768
+    with assertRaises(TypeError):
+        vec[i16](1)
+    with assertRaises(TypeError):
+        vec[i16](['1'])
+    with assertRaises(TypeError):
+        vec[i16]([None])
+
+def test_i16_append() -> None:
+    v = vec[i16]()
+    v = append(v, 5)
+    assert str(v) == "vec[i16]([5])"
+    v = append(v, 32767)
+    assert str(v) == "vec[i16]([5, 32767])"
+
+def test_i16_item_overflow() -> None:
+    with assertRaises(OverflowError):
+        vec[i16]([32768])
+    with assertRaises(OverflowError):
+        vec[i16]([-32769])
+    with assertRaises(OverflowError):
+        vec[i16]([2**100])
+    with assertRaises(OverflowError):
+        vec[i16]([-2**100])
+
+def test_i16_get_item() -> None:
+    v = append(vec[i16](), 44)
+    assert v[0] == 44
+    v = append(v, -238)
+    assert v[0] == 44
+    assert v[1] == -238
+
+def test_i16_remove() -> None:
+    a = [0, 7, -532, 32767]
+    for x in a:
+        v = vec[i16](a)
+        v = remove(v, x)
+        assert v == vec[i16]([y for y in a if y != x])
+
+def test_i16_pop() -> None:
+    v = vec[i16]([0, -7, 32767])
+    v, n = pop(v)
+    assert n == 32767
+    assert v == vec[i16]([0, -7])
+
+# vec[i32] tests
+
+def test_i32_construct_from_initializer() -> None:
+    v = vec[i32]([123])
+    assert len(v) == 1
+    assert v[0] == 123
+    v = vec[i32](x for x in [0, 5, 2**31 - 1, -2**31])
+    assert len(v) == 4
+    assert v[0] == 0
+    assert v[1] == 5
+    assert v[2] == 2**31 - 1
+    assert v[3] == -2**31
+    with assertRaises(TypeError):
+        vec[i32](1)
+    with assertRaises(TypeError):
+        vec[i32](['1'])
+    with assertRaises(TypeError):
+        vec[i32]([None])
+
+def test_i32_append() -> None:
+    v = vec[i32]()
+    v = append(v, 5)
+    assert str(v) == "vec[i32]([5])"
+    v = append(v, 2**31 - 1)
+    assert str(v) == "vec[i32]([5, 2147483647])"
+
+def test_i32_item_overflow() -> None:
+    with assertRaises(OverflowError):
+        vec[i32]([2**31])
+    with assertRaises(OverflowError):
+        vec[i32]([-2**31 - 1])
+    with assertRaises(OverflowError):
+        vec[i32]([2**100])
+    with assertRaises(OverflowError):
+        vec[i32]([-2**100])
+
+def test_i32_get_item() -> None:
+    v = append(vec[i32](), 44)
+    assert v[0] == 44
+    v = append(v, -238)
+    assert v[0] == 44
+    assert v[1] == -238
+
+def test_i32_remove() -> None:
+    a = [0, 7, -532, 2**31 - 1]
+    for x in a:
+        v = vec[i32](a)
+        v = remove(v, x)
+        assert v == vec[i32]([y for y in a if y != x])
+
+def test_i32_pop() -> None:
+    v = vec[i32]([0, -7, 2**31 - 1])
+    v, n = pop(v)
+    assert n == 2**31 - 1
+    assert v == vec[i32]([0, -7])
+
+# vec[bool] tests
+
+def test_bool_construct_from_initializer() -> None:
+    v = vec[bool]([True])
+    assert len(v) == 1
+    assert v[0] == True
+    v = vec[bool](x for x in [True, False, True])
+    assert len(v) == 3
+    assert v[0] is True
+    assert v[1] is False
+    assert v[2] is True
+    with assertRaises(TypeError):
+        vec[bool](1)
+    with assertRaises(TypeError):
+        vec[bool](['1'])
+    with assertRaises(TypeError):
+        vec[bool]([1])
+    with assertRaises(TypeError):
+        vec[bool]([None])
+
+def test_bool_append() -> None:
+    v = vec[bool]()
+    v = append(v, False)
+    assert str(v) == "vec[bool]([False])"
+    v = append(v, True)
+    assert str(v) == "vec[bool]([False, True])"
+
+def test_bool_get_item() -> None:
+    v = append(vec[bool](), True)
+    assert v[0] is True
+    v = append(v, False)
+    assert v[0] is True
+    assert v[1] is False
+
+def test_bool_remove() -> None:
+    a = [True, False]
+    for x in a:
+        v = vec[bool](a)
+        v = remove(v, x)
+        assert v == vec[bool]([y for y in a if y != x])
+
+def test_bool_pop() -> None:
+    v = vec[bool]([True, False, True])
+    v, n = pop(v)
+    assert n is True
+    assert v == vec[bool]([True, False])
