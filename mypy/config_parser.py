@@ -522,9 +522,9 @@ def parse_section(
                     if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = str(section[key])
                     else:
-                        print(f"{prefix}Unrecognized report type: {key}", file=stderr)
-                    continue
-                if key.startswith("x_"):
+                        msg = f"{prefix}Unrecognized report type: {key}"
+                        raise argparse.ArgumentTypeError(msg)
+                elif key.startswith("x_"):
                     pass  # Don't complain about `x_blah` flags
                 elif key.startswith("no_") and hasattr(template, key[3:]):
                     options_key = key[3:]
@@ -541,7 +541,8 @@ def parse_section(
                 elif key == "strict":
                     pass  # Special handling below
                 else:
-                    print(f"{prefix}Unrecognized option: {key} = {section[key]}", file=stderr)
+                    msg = f"{prefix}Unrecognized option: {key} = {section[key]}"
+                    raise argparse.ArgumentTypeError(msg)
                 if invert:
                     dv = getattr(template, options_key, None)
                 else:
@@ -566,14 +567,14 @@ def parse_section(
                     print(f"{prefix}{key}: {err_version}", file=stderr)
                     v = err_version.fallback
                 except argparse.ArgumentTypeError as err:
-                    print(f"{prefix}{key}: {err}", file=stderr)
-                    continue
+                    msg = f"{prefix}{key}: {err}"
+                    raise argparse.ArgumentTypeError(msg) from err
             else:
                 print(f"{prefix}Don't know what type {key} should have", file=stderr)
                 continue
         except ValueError as err:
-            print(f"{prefix}{key}: {err}", file=stderr)
-            continue
+            msg = f"{prefix}{key}: {err}"
+            raise ValueError(msg) from err
         if key == "strict":
             if v:
                 set_strict_flags()
