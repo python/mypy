@@ -972,6 +972,16 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 @dec2
 def f(x, y): pass
 
+[case testDecoratorFactoryApplicationErrorMessage]
+from typing import Callable
+
+def decorator(f: object) -> Callable[[Callable[[int], object]], None]: ...
+def f(a: int) -> None: ...
+
+@decorator(f)  # E: Decorated function "something" has incompatible type "Callable[[], None]"; expected "Callable[[int], object]"
+def something() -> None:
+    pass
+
 [case testNoTypeCheckDecoratorOnMethod1]
 from typing import no_type_check
 
@@ -3587,7 +3597,7 @@ def decorator2(f: Callable[P, None]) -> Callable[
 def key2(x: int) -> None:
     ...
 
-@decorator2(key2)  # E: Argument 1 has incompatible type "def foo2(y: int) -> Coroutine[Any, Any, None]"; expected "def (x: int) -> Awaitable[None]"
+@decorator2(key2)  # E: Decorated function "foo2" has incompatible type "def foo2(y: int) -> Coroutine[Any, Any, None]"; expected "def (x: int) -> Awaitable[None]"
 async def foo2(y: int) -> None:
     ...
 
