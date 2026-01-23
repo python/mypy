@@ -3021,6 +3021,15 @@ if type(x) is not int:
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
+[case testTypeNarrowingAgainstType]
+# flags: --strict-equality --warn-unreachable
+class A:
+    def foo(self, x: object) -> None:
+        reveal_type(self)  # N: Revealed type is "__main__.A"
+        if type(self) is type(x):
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
 [case testNarrowInElseCaseIfFinal]
 # flags: --strict-equality --warn-unreachable
 from typing import final, Union
