@@ -253,13 +253,16 @@ class TypedDictAnalyzer:
 
         for arg_expr in args:
             try:
-                type = expr_to_unanalyzed_type(arg_expr, self.options, self.api.is_stub_file)
+                type = expr_to_unanalyzed_type(
+                    arg_expr, self.options, self.api.is_stub_file, allow_unpack=True
+                )
             except TypeTranslationError:
                 self.fail("Invalid TypedDict type argument", ctx)
                 return None
             analyzed = self.api.anal_type(
                 type,
                 allow_typed_dict_special_forms=True,
+                allow_unpack=True,
                 allow_placeholder=not self.api.is_func_scope(),
             )
             if analyzed is None:
