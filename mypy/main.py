@@ -70,8 +70,8 @@ def stat_proxy(path: str) -> os.stat_result:
 def main(
     *,
     args: list[str] | None = None,
-    stdout: TextIO = sys.stdout,
-    stderr: TextIO = sys.stderr,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
     clean_exit: bool = False,
 ) -> None:
     """Main entry point to the type checker.
@@ -82,6 +82,15 @@ def main(
         clean_exit: Don't hard kill the process on exit. This allows catching
             SystemExit.
     """
+    # As a common pattern around the codebase, we tend to do this instead of
+    # using default arguments that are mutable objects (due to Python's
+    # famously counterintuitive behavior about those): use a sentinel, then
+    # set. If there is no `= None` after the type, we don't manipulate it thus.
+    stdout = stdout if stdout is not None else sys.stdout
+    stderr = stderr if stderr is not None else sys.stderr
+    # sys.stdout and sys.stderr might technically be None, but this fact isn't
+    # currently enforced by the stubs (they are marked as MaybeNone (=Any)).
+
     util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
@@ -158,11 +167,14 @@ def main(
             summary = formatter.format_error(
                 n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
             )
-            stdout.write(summary + "\n")
+            print(summary, file=stdout, flush=True)
         # Only notes should also output success
         elif not messages or n_notes == len(messages):
-            stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
-        stdout.flush()
+            print(
+                formatter.format_success(len(sources), options.color_output),
+                file=stdout,
+                flush=True,
+            )
 
     if options.install_types and not options.non_interactive:
         result = install_types(formatter, options, after_run=True, non_interactive=False)
@@ -188,13 +200,12 @@ def run_build(
     options: Options,
     fscache: FileSystemCache,
     t0: float,
-    stdout: TextIO,
-    stderr: TextIO,
+    stdout: TextIO | None,
+    stderr: TextIO | None,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
-
     messages = []
     messages_by_file = defaultdict(list)
 
@@ -246,13 +257,12 @@ def run_build(
 
 
 def show_messages(
-    messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options
+    messages: list[str], f: TextIO | None, formatter: util.FancyFormatter, options: Options
 ) -> None:
     for msg in messages:
         if options.color_output:
             msg = formatter.colorize(msg)
-        f.write(msg + "\n")
-    f.flush()
+        print(msg, file=f, flush=True)
 
 
 # Make the help output a little less jarring.
@@ -416,7 +426,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         if message:
             if file is None:
                 file = self.stderr
-            file.write(message)
+            print(message, file=file, end="")
 
     # ===============
     # Exiting methods
@@ -482,8 +492,8 @@ class CapturableVersionAction(argparse.Action):
 def define_options(
     program: str = "mypy",
     header: str = HEADER,
-    stdout: TextIO = sys.stdout,
-    stderr: TextIO = sys.stderr,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
     server_options: bool = False,
 ) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
     """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
@@ -1410,7 +1420,7 @@ def process_options(
             setattr(options, dest, value)
 
     # Parse config file first, so command line can override.
-    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    parse_config_file(options, set_strict_flags, config_file, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
@@ -1661,9 +1671,9 @@ def maybe_write_junit_xml(
             )
 
 
-def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
+def fail(msg: str, stderr: TextIO | None, options: Options) -> NoReturn:
     """Fail with a serious error."""
-    stderr.write(f"{msg}\n")
+    print(msg, file=stderr)
     maybe_write_junit_xml(
         0.0, serious=True, all_messages=[msg], messages_by_file={None: [msg]}, options=options
     )

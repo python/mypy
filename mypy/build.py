@@ -386,8 +386,8 @@ def build_inner(
     alt_lib_path: str | None,
     flush_errors: Callable[[str | None, list[str], bool], None],
     fscache: FileSystemCache | None,
-    stdout: TextIO,
-    stderr: TextIO,
+    stdout: TextIO | None,
+    stderr: TextIO | None,
     extra_plugins: Sequence[Plugin],
     workers: list[WorkerClient],
 ) -> BuildResult:
@@ -531,7 +531,7 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
 
 
 def load_plugins_from_config(
-    options: Options, errors: Errors, stdout: TextIO
+    options: Options, errors: Errors, stdout: TextIO | None
 ) -> tuple[list[Plugin], dict[str, str]]:
     """Load all configured plugins.
 
@@ -623,7 +623,7 @@ def load_plugins_from_config(
 
 
 def load_plugins(
-    options: Options, errors: Errors, stdout: TextIO, extra_plugins: Sequence[Plugin]
+    options: Options, errors: Errors, stdout: TextIO | None, extra_plugins: Sequence[Plugin]
 ) -> tuple[Plugin, dict[str, str]]:
     """Load all configured plugins.
 
@@ -739,8 +739,8 @@ class BuildManager:
         errors: Errors,
         flush_errors: Callable[[str | None, list[str], bool], None],
         fscache: FileSystemCache,
-        stdout: TextIO,
-        stderr: TextIO,
+        stdout: TextIO | None,
+        stderr: TextIO | None,
         error_formatter: ErrorFormatter | None = None,
         parallel_worker: bool = False,
     ) -> None:
@@ -1034,10 +1034,9 @@ class BuildManager:
     def log(self, *message: str) -> None:
         if self.verbosity() >= 1:
             if message:
-                print("LOG: ", *message, file=self.stderr)
+                print("LOG: ", *message, file=self.stderr, flush=True)
             else:
-                print(file=self.stderr)
-            self.stderr.flush()
+                print(file=self.stderr, flush=True)
 
     def log_fine_grained(self, *message: str) -> None:
         if self.verbosity() >= 1:
@@ -1045,15 +1044,13 @@ class BuildManager:
         elif mypy.build.DEBUG_FINE_GRAINED:
             # Output log in a simplified format that is quick to browse.
             if message:
-                print(*message, file=self.stderr)
+                print(*message, file=self.stderr, flush=True)
             else:
-                print(file=self.stderr)
-            self.stderr.flush()
+                print(file=self.stderr, flush=True)
 
     def trace(self, *message: str) -> None:
         if self.verbosity() >= 2:
-            print("TRACE:", *message, file=self.stderr)
-            self.stderr.flush()
+            print("TRACE:", *message, file=self.stderr, flush=True)
 
     def add_stats(self, **kwds: Any) -> None:
         for key, value in kwds.items():
@@ -1289,7 +1286,7 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
 
 
 def read_quickstart_file(
-    options: Options, stdout: TextIO
+    options: Options, stdout: TextIO | None
 ) -> dict[str, tuple[float, int, str]] | None:
     quickstart: dict[str, tuple[float, int, str]] | None = None
     if options.quickstart_file:
@@ -3129,7 +3126,7 @@ def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None
 # The driver
 
 
-def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) -> Graph:
+def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO | None) -> Graph:
     log_configuration(manager, sources)
 
     t0 = time.time()
