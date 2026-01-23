@@ -35,6 +35,12 @@ ITEM_TYPES = [i64, u8, i16, i32, float, bool]
 
 # Common tests for all item types
 
+def test_bare_vec_cannot_be_constructed() -> None:
+    with assertRaises(TypeError):
+        vec()
+    with assertRaises(TypeError):
+        vec([])
+
 def test_vec_indexing() -> None:
     for t in ITEM_TYPES:
         assert type(vec[t]) is type
