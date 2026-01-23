@@ -33,7 +33,6 @@ from mypy.nodes import (
     StrExpr,
     SuperExpr,
     TupleExpr,
-    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
@@ -831,18 +830,25 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         and expr.arg_kinds == [ARG_POS]
         and isinstance(expr.args[0], ListExpr)
     ):
-        for item in expr.args[0].items:
+        items = expr.args[0].items
+        for i, item in enumerate(items):
             if isinstance(item, StrExpr):
                 continue
+            elif (folded := constant_fold_expr(builder, item)) is not None:
+                items[i] = StrExpr(str(folded))
+                continue
             elif isinstance(item, CallExpr):
-                if not isinstance(item.callee, MemberExpr) or item.callee.name != "format":
-                    return None
-                elif (
-                    not isinstance(item.callee.expr, StrExpr) or item.callee.expr.value != "{:{}}"
+                if not (
+                    isinstance(callee := item.callee, MemberExpr)
+                    and callee.name == "format"
+                    and isinstance(callee.expr, StrExpr)
+                    # TODO: extend this to cover {!r:{}}
+                    and callee.expr.value == "{:{}}"
                 ):
                     return None
 
-                if not isinstance(item.args[1], StrExpr) or item.args[1].value != "":
+                format_spec = item.args[1]
+                if not isinstance(format_spec, StrExpr) or format_spec.value != "":
                     return None
             else:
                 return None
@@ -850,7 +856,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         format_ops = []
         exprs: list[Expression] = []
 
-        for item in expr.args[0].items:
+        for item in items:
             if isinstance(item, StrExpr) and item.value != "":
                 format_ops.append(FormatOp.STR)
                 exprs.append(item)
@@ -859,13 +865,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 exprs.append(item.args[0])
 
         def get_literal_str(expr: Expression) -> str | None:
-            if isinstance(expr, StrExpr):
-                return expr.value
-            elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
-                final_value = expr.node.final_value
-                if final_value is not None:
-                    return str(final_value)
-            return None
+            return expr.value if isinstance(expr, StrExpr) else None
 
         for i in range(len(exprs) - 1):
             while (
