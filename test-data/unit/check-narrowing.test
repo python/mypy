@@ -947,6 +947,34 @@ def f2(x: Custom | None):
         reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
 [builtins fixtures/dict.pyi]
 
+[case testNarrowingCustomEqualityUnion2]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f3(x: str | Custom, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+
+def f4(x: str | Any, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+
+
+[builtins fixtures/dict.pyi]
+
 [case testNarrowingCustomEqualityUnionTypeTarget]
 # flags: --strict-equality --warn-unreachable
 from __future__ import annotations
