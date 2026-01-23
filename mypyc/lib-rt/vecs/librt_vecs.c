@@ -833,23 +833,35 @@ PyInit_vecs(void)
     }
 
     I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
-    // TODO: Check that it's a type object!
     if (I64TypeObj == NULL) {
         return NULL;
     }
+    if (!PyType_Check(I64TypeObj)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
+        return NULL;
+    }
     I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
-    // TODO: Check that it's a type object!
     if (I32TypeObj == NULL) {
         return NULL;
     }
+    if (!PyType_Check(I32TypeObj)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
+        return NULL;
+    }
     I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
-    // TODO: Check that it's a type object!
     if (I16TypeObj == NULL) {
         return NULL;
     }
+    if (!PyType_Check(I16TypeObj)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
+        return NULL;
+    }
     U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
-    // TODO: Check that it's a type object!
     if (U8TypeObj == NULL) {
+        return NULL;
+    }
+    if (!PyType_Check(U8TypeObj)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
         return NULL;
     }
 
