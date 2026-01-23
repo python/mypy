@@ -100,7 +100,9 @@ from mypy.visitor import ExpressionVisitor
 
 
 Key: _TypeAlias = tuple[Any, ...]
-LITERAL_NAMES = frozenset(("builtins.True", "builtins.False", "builtins.None", "builtins.NotImplemented"))
+LITERAL_NAMES = frozenset(
+    ("builtins.True", "builtins.False", "builtins.None", "builtins.NotImplemented")
+)
 
 
 def literal_hash(e: Expression) -> Key | None:
