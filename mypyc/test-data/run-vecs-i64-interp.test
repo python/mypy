@@ -6,6 +6,7 @@
 
 import sys
 from typing import Any
+import typing
 
 import librt.vecs
 import mypy_extensions
@@ -20,10 +21,16 @@ pop: Any = librt.vecs.pop
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 
+# Work around test stub limitations
+Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
+
 def test_vec_indexing() -> None:
     assert type(vec[i64]) is type
     assert type(vec[i64]) is type(vec[i64])
     assert vec[i64] is not vec
+
+    with assertRaises(TypeError):
+        vec[Optional[i64]]  # Not supported
 
 def test_type_str() -> None:
     assert str(vec[i64]) == "<class 'vec[i64]'>"

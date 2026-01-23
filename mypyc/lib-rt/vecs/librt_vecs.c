@@ -197,6 +197,7 @@ static PyObject *extract_optional_item(PyObject *item) {
     return NULL;
 }
 
+// Evaluation vec[<type>] in interpreted code and produce a proxy type object.
 static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
 {
     if (item == (PyObject *)I64TypeObj) {
@@ -226,6 +227,17 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             if (it != NULL) {
                 optional = 1;
                 item = it;
+                // Check if this is a specialized value type that doesn't support None
+                if (item == (PyObject *)I64TypeObj ||
+                    item == (PyObject *)U8TypeObj ||
+                    item == (PyObject *)&PyFloat_Type ||
+                    item == (PyObject *)I32TypeObj ||
+                    item == (PyObject *)I16TypeObj ||
+                    item == (PyObject *)&PyBool_Type) {
+                    PyErr_SetString(PyExc_TypeError,
+                        "vec does not support optional value types (use vec[object] instead)");
+                    return NULL;
+                }
             }
             if (item->ob_type == &VecProxyType) {
                 if (optional) {
@@ -245,27 +257,21 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             if (item == (PyObject *)&VecI64Type) {
                 item_type = VEC_ITEM_TYPE_I64;
                 depth = 1;
-                // TODO: Check optionals?
             } else if (item == (PyObject *)&VecU8Type) {
                 item_type = VEC_ITEM_TYPE_U8;
                 depth = 1;
-                // TODO: Check optionals?
             } else if (item == (PyObject *)&VecFloatType) {
                 item_type = VEC_ITEM_TYPE_FLOAT;
                 depth = 1;
-                // TODO: Check optionals?
             } else if (item == (PyObject *)&VecI32Type) {
                 item_type = VEC_ITEM_TYPE_I32;
                 depth = 1;
-                // TODO: Check optionals?
             } else if (item == (PyObject *)&VecI16Type) {
                 item_type = VEC_ITEM_TYPE_I16;
                 depth = 1;
-                // TODO: Check optionals?
             } else if (item == (PyObject *)&VecBoolType) {
                 item_type = VEC_ITEM_TYPE_BOOL;
                 depth = 1;
-                // TODO: Check optionals?
             } else {
                 item_type = (size_t)item;
             }
