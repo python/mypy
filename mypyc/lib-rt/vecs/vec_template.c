@@ -255,6 +255,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+// Append item to 'vec', stealing 'vec'. Return 'vec' with item appended.
 VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
     if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
@@ -264,8 +265,12 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
         Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
         Py_ssize_t new_size = 2 * cap + 1;
         VEC new = vec_alloc(new_size);
-        if (VEC_IS_ERROR(new))
+        if (VEC_IS_ERROR(new)) {
+            // The input v is being consumed/stolen by this function, so on error
+            // we must decref it to avoid leaking the buffer.
+            VEC_DECREF(vec);
             return vec_error();
+        }
         new.len = vec.len + 1;
         if (vec.len > 0)
             memcpy(new.buf->items, vec.buf->items, sizeof(ITEM_C_TYPE) * vec.len);
@@ -275,6 +280,7 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
     }
 }
 
+// Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
@@ -287,9 +293,13 @@ VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    // The input v is being consumed/stolen by this function, so on error
+    // we must decref it to avoid leaking the buffer.
+    VEC_DECREF(v);
     return vec_error();
 }
 
+// Pop item from 'vec', stealing 'vec'. Return struct with modified 'vec' and the popped item.
 NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
     NAME(PopResult) result;
 
@@ -298,6 +308,9 @@ NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
+        // The input v is being consumed/stolen by this function, so on error
+        // we must decref it to avoid leaking the buffer.
+        VEC_DECREF(v);
         result.f0 = vec_error();
         result.f1 = 0;
         return result;
