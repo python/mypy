@@ -61,6 +61,12 @@ class float:
     def __rdiv__(self, x: 'float') -> 'float': pass
     def __truediv__(self, x: 'float') -> 'float': pass
     def __rtruediv__(self, x: 'float') -> 'float': pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: 'float') -> bool: pass
+    def __le__(self, x: 'float') -> bool: pass
+    def __gt__(self, x: 'float') -> bool: pass
+    def __ge__(self, x: 'float') -> bool: pass
 
 class complex:
     def __add__(self, x: complex) -> complex: pass

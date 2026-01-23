@@ -729,6 +729,86 @@ if int():
 class C:
     def __lt__(self, o: object, x: str = "") -> int: ...
 
+[case testReversibleOpOnTypeVarBound]
+from typing import TypeVar, Union
+
+class A:
+    def __lt__(self, a: A) -> bool: ...
+    def __gt__(self, a: A) -> bool: ...
+
+class B(A):
+    def __lt__(self, b: B) -> bool: ...  # type: ignore[override]
+    def __gt__(self, b: B) -> bool: ...  # type: ignore[override]
+
+_T = TypeVar("_T", bound=Union[A, B])
+
+def check(x: _T, y: _T) -> bool:
+    return x < y
+
+[case testReversibleOpOnTypeVarBoundPromotion]
+from typing import TypeVar, Union
+
+_T = TypeVar("_T", bound=Union[int, float])
+
+def check(x: _T, y: _T) -> bool:
+    return x < y
+[builtins fixtures/ops.pyi]
+
+[case testReversibleOpOnTypeVarProtocol]
+# https://github.com/python/mypy/issues/18203
+from typing import Protocol, TypeVar, Union
+from typing_extensions import Self, runtime_checkable
+
+class A(Protocol):
+    def __add__(self, other: Union[int, Self]) -> Self: ...
+    def __radd__(self, other: Union[int, Self]) -> Self: ...
+
+AT = TypeVar("AT", bound=Union[int, A])
+
+def f(a: AT, b: AT) -> None:
+    reveal_type(a + a)  # N: Revealed type is "Union[builtins.int, AT`-1]"
+    reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, AT`-1]"
+    if isinstance(a, int):
+        reveal_type(a)  # N: Revealed type is "AT`-1"
+        reveal_type(a + a)  # N: Revealed type is "builtins.int"
+        reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, AT`-1]"
+        reveal_type(b + a)  # N: Revealed type is "Union[builtins.int, AT`-1]"
+
+@runtime_checkable
+class B(Protocol):
+    def __radd__(self, other: Union[int, Self]) -> Self: ...
+
+BT = TypeVar("BT", bound=Union[int, B])
+
+def g(a: BT, b: BT) -> None:
+    reveal_type(a + a)  # E: Unsupported left operand type for + ("BT") \
+                        # N: Both left and right operands are unions \
+                        # N: Revealed type is "Union[builtins.int, BT`-1, Any]"
+    reveal_type(a + b)  # E: Unsupported left operand type for + ("BT") \
+                        # N: Both left and right operands are unions \
+                        # N: Revealed type is "Union[builtins.int, BT`-1, Any]"
+    if isinstance(a, int):
+        reveal_type(a)  # N: Revealed type is "BT`-1"
+        reveal_type(0 + a)  # N: Revealed type is "builtins.int"
+        reveal_type(a + 0)  # N: Revealed type is "builtins.int"
+        reveal_type(a + a)  # N: Revealed type is "builtins.int"
+        reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, BT`-1]"
+        reveal_type(b + a)  # E: Unsupported left operand type for + ("BT") \
+                            # N: Left operand is of type "BT" \
+                            # N: Revealed type is "Union[builtins.int, Any]"
+    if isinstance(a, B):
+        reveal_type(a)  # N: Revealed type is "BT`-1"
+        reveal_type(0 + a)  # N: Revealed type is "BT`-1"
+        reveal_type(a + 0)  # E: Unsupported left operand type for + ("BT") \
+                            # N: Revealed type is "Any"
+        reveal_type(a + a)  # E: Unsupported left operand type for + ("BT") \
+                            # N: Revealed type is "Any"
+        reveal_type(a + b)  # E: Unsupported left operand type for + ("BT") \
+                            # N: Right operand is of type "BT" \
+                            # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:
