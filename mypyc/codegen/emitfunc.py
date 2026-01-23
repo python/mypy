@@ -413,19 +413,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     ):
                         # Generate code for the following branch here to avoid
                         # redundant branches in the generated code.
-                        self.emit_attribute_error(branch, cl.name, op.attr)
+                        self.emit_attribute_error(branch, cl, op.attr)
                         self.emit_line("goto %s;" % self.label(branch.true))
                         merged_branch = branch
                         self.emitter.emit_line("}")
                 if not merged_branch:
-                    exc_class = "PyExc_AttributeError"
-                    self.emitter.emit_line(
-                        'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class,
-                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
-                            repr(cl.name),
-                        )
-                    )
+                    var_name = op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+                    if cl.is_environment:
+                        # Environment classes represent locals, so missing attrs are unbound vars.
+                        exc_class = "PyExc_UnboundLocalError"
+                        exc_msg = f"local variable {var_name!r} referenced before assignment"
+                    else:
+                        exc_class = "PyExc_AttributeError"
+                        exc_msg = f"attribute {var_name!r} of {cl.name!r} undefined"
+                    self.emitter.emit_line(f'PyErr_SetString({exc_class}, "{exc_msg}");')
 
             if attr_rtype.is_refcounted and not op.is_borrowed:
                 if not merged_branch and not always_defined:
@@ -919,20 +920,32 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.traceback_entry is not None:
             self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
-    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+    def emit_attribute_error(self, op: Branch, class_ir: ClassIR, attr: str) -> None:
         assert op.traceback_entry is not None
         globals_static = self.emitter.static_name("globals", self.module_name)
-        self.emit_line(
-            'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
-            % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                class_name,
-                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
-                op.traceback_entry[1],
-                globals_static,
+        if class_ir.is_environment:
+            self.emit_line(
+                'CPy_UnboundLocalError("%s", "%s", "%s", %d, %s);'
+                % (
+                    self.source_path.replace("\\", "\\\\"),
+                    op.traceback_entry[0],
+                    attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                    op.traceback_entry[1],
+                    globals_static,
+                )
             )
-        )
+        else:
+            self.emit_line(
+                'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
+                % (
+                    self.source_path.replace("\\", "\\\\"),
+                    op.traceback_entry[0],
+                    class_ir.name,
+                    attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                    op.traceback_entry[1],
+                    globals_static,
+                )
+            )
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
