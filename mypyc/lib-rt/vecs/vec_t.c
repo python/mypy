@@ -41,7 +41,7 @@ static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     return (VecT) { .buf = buf };
 }
 
-// Box a VecT value, stealing the buffer reference.
+// Box a VecT value, stealing 'vec'. On failure, return NULL and decref 'vec'.
 PyObject *VecT_Box(VecT vec, size_t item_type) {
     // An unboxed empty vec may have a NULL buf, but a boxed vec must have it
     // allocated, since it contains the item type
@@ -52,6 +52,7 @@ PyObject *VecT_Box(VecT vec, size_t item_type) {
     }
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
     if (obj == NULL) {
+        // vec.buf is always defined, so no need for a NULL heck
         Py_DECREF(vec.buf);
         return NULL;
     }

@@ -33,11 +33,13 @@ static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     return res;
 }
 
-// Box a nested vec value, stealing the buffer reference.
+// Box a nested vec value, stealing 'vec'. On error, decref 'vec'.
 PyObject *VecVec_Box(VecNested vec) {
     VecNestedObject *obj = PyObject_GC_New(VecNestedObject, &VecNestedType);
-    if (obj == NULL)
+    if (obj == NULL) {
+        VEC_DECREF(vec);
         return NULL;
+    }
     obj->vec = vec;
     PyObject_GC_Track(obj);
     return (PyObject *)obj;
