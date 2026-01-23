@@ -486,7 +486,12 @@ list_rprimitive: Final = RPrimitive(
     "builtins.list", is_unboxed=False, is_refcounted=True, may_be_immortal=False
 )
 
-# Python dict object (or an instance of a subclass of dict).
+# Python dict object.
+exact_dict_rprimitive: Final = RPrimitive(
+    "builtins.dict[exact]", is_unboxed=False, is_refcounted=True
+)
+
+# An instance of a subclass of dict.
 dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
@@ -620,7 +625,14 @@ def is_list_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
 
 
 def is_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
-    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.dict"
+    return isinstance(rtype, RPrimitive) and rtype.name in (
+        "builtins.dict",
+        "builtins.dict[exact]",
+    )
+
+
+def is_exact_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.dict[exact]"
 
 
 def is_set_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
