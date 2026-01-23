@@ -1123,48 +1123,78 @@ class MessageBuilder:
                             unexpected_kwargs.append((arg_name, arg_types[i]))
 
         if unexpected_kwargs:
+            all_kwargs_confident = True
+            kwargs_with_suggestions: list[tuple[str, list[str]]] = []
+            kwargs_without_suggestions: list[str] = []
+
+            # Find suggestions for each unexpected kwarg, prioritizing type-matching args
             for kwarg_name, kwarg_type in unexpected_kwargs:
                 matching_type_args: list[str] = []
                 not_matching_type_args: list[str] = []
-                matching_variant: CallableType | None = None
+                has_matching_variant = False
 
                 for item in overload.items:
-                    has_type_match = False
+                    item_has_type_match = False
                     for i, formal_type in enumerate(item.arg_types):
                         formal_name = item.arg_names[i]
                         if formal_name is not None and item.arg_kinds[i] != ARG_STAR:
                             if is_subtype(kwarg_type, formal_type):
                                 if formal_name not in matching_type_args:
                                     matching_type_args.append(formal_name)
-                                has_type_match = True
-                            else:
-                                if formal_name not in not_matching_type_args:
-                                    not_matching_type_args.append(formal_name)
-                    if has_type_match and matching_variant is None:
-                        matching_variant = item
+                                item_has_type_match = True
+                            elif formal_name not in not_matching_type_args:
+                                not_matching_type_args.append(formal_name)
+                    if item_has_type_match:
+                        has_matching_variant = True
 
                 matches = best_matches(kwarg_name, matching_type_args, n=3)
                 if not matches:
                     matches = best_matches(kwarg_name, not_matching_type_args, n=3)
 
-                msg = f'Unexpected keyword argument "{kwarg_name}"' + for_func
-
                 if matches:
-                    msg += f"; did you mean {pretty_seq(matches, 'or')}?"
-                self.fail(msg, context, code=code)
+                    kwargs_with_suggestions.append((kwarg_name, matches))
+                else:
+                    kwargs_without_suggestions.append(kwarg_name)
 
-                if matching_variant is None:
-                    self.note(
-                        f"Possible overload variant{plural_s(len(overload.items))}:",
+                if not has_matching_variant:
+                    all_kwargs_confident = False
+
+            for kwarg_name, matches in kwargs_with_suggestions:
+                self.fail(
+                    f'Unexpected keyword argument "{kwarg_name}"'
+                    f"{for_func}; did you mean {pretty_seq(matches, 'or')}?",
+                    context,
+                    code=code,
+                )
+
+            if kwargs_without_suggestions:
+                if len(kwargs_without_suggestions) == 1:
+                    self.fail(
+                        f'Unexpected keyword argument "{kwargs_without_suggestions[0]}"{for_func}',
                         context,
                         code=code,
                     )
-                    for item in overload.items:
-                        self.note(
-                            pretty_callable(item, self.options), context, offset=4, code=code
-                        )
+                else:
+                    quoted_names = ", ".join(f'"{n}"' for n in kwargs_without_suggestions)
+                    self.fail(
+                        f"Unexpected keyword arguments {quoted_names}{for_func}",
+                        context,
+                        code=code,
+                    )
 
-            return
+            if not all_kwargs_confident:
+                self.note(
+                    f"Possible overload variant{plural_s(len(overload.items))}:",
+                    context,
+                    code=code,
+                )
+                for item in overload.items:
+                    self.note(
+                        pretty_callable(item, self.options), context, offset=4, code=code
+                    )
+
+            if all_kwargs_confident and len(unexpected_kwargs) == len(arg_types):
+                return
 
         arg_types_str = ", ".join(format_type(arg, self.options) for arg in arg_types)
         num_args = len(arg_types)
