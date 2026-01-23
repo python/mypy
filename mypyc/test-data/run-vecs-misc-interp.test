@@ -365,3 +365,14 @@ def test_bool_pop() -> None:
     v, n = pop(v)
     assert n is True
     assert v == vec[bool]([True, False])
+
+[case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
+# This also ensures librt.vecs can be built without experimental features
+import librt.vecs
+
+def test_features_not_available() -> None:
+    vecs: object = getattr(librt, "vecs")
+    assert not hasattr(vecs, "vec")
+    assert not hasattr(vecs, "append")
+    assert not hasattr(vecs, "remove")
+    assert not hasattr(vecs, "pop")

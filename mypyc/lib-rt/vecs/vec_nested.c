@@ -1,3 +1,4 @@
+#ifdef MYPYC_EXPERIMENTAL
 // Implementation of nested vec[t], when t is a vec type.
 //
 // Examples of types supported:
@@ -503,3 +504,5 @@ VecNestedFeatures TExtFeatures = {
     VecVec_Remove,
     VecVec_Slice,
 };
+
+#endif  // MYPYC_EXPERIMENTAL

@@ -1,3 +1,4 @@
+#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecFloat
 #define VEC_TYPE VecFloatType
 #define VEC_OBJECT VecFloatObject
@@ -15,3 +16,5 @@
 #define IS_UNBOX_ERROR VecFloat_IsUnboxError
 
 #include "vec_template.c"
+
+#endif  // MYPYC_EXPERIMENTAL

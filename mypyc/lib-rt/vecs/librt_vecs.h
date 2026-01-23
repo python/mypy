@@ -1,6 +1,17 @@
 #ifndef VEC_H_INCL
 #define VEC_H_INCL
 
+#ifndef MYPYC_EXPERIMENTAL
+
+static int
+import_librt_vecs(void)
+{
+    // All librt.vecs features are experimental for now, so don't set up the API here
+    return 0;
+}
+
+#else  // MYPYC_EXPERIMENTAL
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
@@ -810,4 +821,6 @@ int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item);
 PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
 PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
 
-#endif
+#endif  // MYPYC_EXPERIMENTAL
+
+#endif  // VEC_H_INCL

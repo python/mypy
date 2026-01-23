@@ -1,3 +1,4 @@
+#ifdef MYPYC_EXPERIMENTAL
 // NOTE: This file can't be compiled on its own, it must be #included
 //       with certain #defines set, as described below.
 //
@@ -379,3 +380,5 @@ NAME(Features) FEATURES = {
     FUNC(Remove),
     FUNC(Slice),
 };
+
+#endif  // MYPYC_EXPERIMENTAL

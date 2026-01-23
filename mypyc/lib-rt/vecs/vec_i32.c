@@ -1,3 +1,4 @@
+#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecI32
 #define VEC_TYPE VecI32Type
 #define VEC_OBJECT VecI32Object
@@ -15,3 +16,5 @@
 #define IS_UNBOX_ERROR VecI32_IsUnboxError
 
 #include "vec_template.c"
+
+#endif  // MYPYC_EXPERIMENTAL

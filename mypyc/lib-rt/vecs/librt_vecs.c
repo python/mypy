@@ -2,6 +2,7 @@
 #include <Python.h>
 #include "librt_vecs.h"
 
+#ifdef MYPYC_EXPERIMENTAL
 
 PyTypeObject *I64TypeObj;
 PyTypeObject *I32TypeObj;
@@ -798,21 +799,6 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
     return res;
 }
 
-static PyMethodDef VecsMethods[] = {
-    {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
-    {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value"},
-    {"pop",  vec_pop, METH_VARARGS, "Remove and return item at index (default last)"},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
-static PyModuleDef vecsmodule = {
-    PyModuleDef_HEAD_INIT,
-    .m_name = "vecs",
-    .m_doc = "vecs doc",
-    .m_size = -1,
-    .m_methods = VecsMethods,
-};
-
 static VecCapsule Capsule = {
     &TFeatures,
     &TExtFeatures,
@@ -824,110 +810,139 @@ static VecCapsule Capsule = {
     &BoolFeatures,
 };
 
-PyMODINIT_FUNC
-PyInit_vecs(void)
+#endif  // MYPYC_EXPERIMENTAL
+
+static PyMethodDef VecsMethods[] = {
+#ifdef MYPYC_EXPERIMENTAL
+    {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
+    {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value"},
+    {"pop",  vec_pop, METH_VARARGS, "Remove and return item at index (default last)"},
+#endif
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+static int
+librt_vecs_module_exec(PyObject *m)
 {
+#ifdef MYPYC_EXPERIMENTAL
     PyObject *ext = PyImport_ImportModule("mypy_extensions");
     if (ext == NULL) {
-        return NULL;
+        return -1;
     }
 
     I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
     if (I64TypeObj == NULL) {
-        return NULL;
+        return -1;
     }
     if (!PyType_Check(I64TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
-        return NULL;
+        return -1;
     }
     I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
     if (I32TypeObj == NULL) {
-        return NULL;
+        return -1;
     }
     if (!PyType_Check(I32TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
-        return NULL;
+        return -1;
     }
     I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
     if (I16TypeObj == NULL) {
-        return NULL;
+        return -1;
     }
     if (!PyType_Check(I16TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
-        return NULL;
+        return -1;
     }
     U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
     if (U8TypeObj == NULL) {
-        return NULL;
+        return -1;
     }
     if (!PyType_Check(U8TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
-        return NULL;
+        return -1;
     }
 
     if (PyType_Ready(&VecGenericType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecProxyType) < 0)
-        return NULL;
+        return -1;
 
     if (PyType_Ready(&VecTType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecTBufType) < 0)
-        return NULL;
+        return -1;
 
     if (PyType_Ready(&VecNestedType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecNestedBufType) < 0)
-        return NULL;
+        return -1;
 
     if (PyType_Ready(&VecI64Type) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecI64BufType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecI32Type) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecI32BufType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecI16Type) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecI16BufType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecU8Type) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecU8BufType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecFloatType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecFloatBufType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecBoolType) < 0)
-        return NULL;
+        return -1;
     if (PyType_Ready(&VecBoolBufType) < 0)
-        return NULL;
-
-    PyObject *m = PyModule_Create(&vecsmodule);
-    if (m == NULL)
-        return NULL;
+        return -1;
 
     Py_INCREF(&VecGenericType);
     if (PyModule_AddObject(m, "vec", (PyObject *)&VecGenericType) < 0) {
         Py_DECREF(&VecGenericType);
-        Py_DECREF(m);
-        return NULL;
+        return -1;
     }
 
     PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
-        return NULL;
+        return -1;
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
         Py_XDECREF(c_api);
         Py_DECREF(&VecGenericType);
-        Py_DECREF(m);
-        return NULL;
+        return -1;
     }
 
     Py_DECREF(ext);
+#endif
+    return 0;
+}
 
-    return m;
+static PyModuleDef_Slot librt_vecs_module_slots[] = {
+    {Py_mod_exec, librt_vecs_module_exec},
+#ifdef Py_MOD_GIL_NOT_USED
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
+    {0, NULL}
+};
+
+static PyModuleDef vecsmodule = {
+    .m_base = PyModuleDef_HEAD_INIT,
+    .m_name = "vecs",
+    .m_doc = "vecs doc",
+    .m_size = 0,
+    .m_methods = VecsMethods,
+    .m_slots = librt_vecs_module_slots,
+};
+
+PyMODINIT_FUNC
+PyInit_vecs(void)
+{
+    return PyModuleDef_Init(&vecsmodule);
 }

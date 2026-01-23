@@ -1,3 +1,4 @@
+#ifdef MYPYC_EXPERIMENTAL
 // Implementation of generic vec[t], when t is a plain type object (possibly optional).
 //
 // Examples of types supported:
@@ -498,3 +499,5 @@ VecTFeatures TFeatures = {
     VecT_Remove,
     VecT_Slice,
 };
+
+#endif  // MYPYC_EXPERIMENTAL
