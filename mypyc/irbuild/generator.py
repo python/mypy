@@ -208,7 +208,7 @@ def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int)
     error_block = BasicBlock()
     ok_block = BasicBlock()
     comparison = builder.translate_is_op(exc_type, builder.none_object(), "is not", line)
-    builder.add_bool_branch(comparison, error_block, ok_block)
+    builder.add_bool_branch(comparison, error_block, ok_block, rare=True)
 
     builder.activate_block(error_block)
     builder.call_c(raise_exception_with_tb_op, [exc_type, exc_val, exc_tb], line)
