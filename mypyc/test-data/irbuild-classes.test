@@ -2895,3 +2895,40 @@ class InvalidKwarg:
 @mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.
 class InvalidLiteral:
     pass
+
+[case testIsInstanceInterpretedSubclasses]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class InterpSubclasses:
+    pass
+
+def isinstance_nonnative(x: Any) -> bool:
+    return isinstance(x, NonNative)
+def isinstance_interpreted_subclasses(x: Any) -> bool:
+    return isinstance(x, InterpSubclasses)
+[out]
+def isinstance_nonnative(x):
+    x, r0 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
+L0:
+    r0 = __main__.NonNative :: type
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = borrow load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    return r3
+def isinstance_interpreted_subclasses(x):
+    x, r0 :: object
+    r1 :: bool
+L0:
+    r0 = __main__.InterpSubclasses :: type
+    r1 = CPy_TypeCheck(x, r0)
+    return r1
