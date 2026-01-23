@@ -297,8 +297,8 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
                 Py_XINCREF(items[self.len - 1].buf);
             }
             self.len--;
-            Py_INCREF(self.buf);
             Py_DECREF(boxed_arg);
+            // Return the stolen reference without INCREF
             return self;
         }
     }
@@ -335,7 +335,7 @@ VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
     if (v.len > 0)
         Py_XINCREF(items[v.len - 1].buf);
     v.len--;
-    VEC_INCREF(v);
+    // Return the stolen reference without INCREF
     result.f0 = v;
     return result;
 }

@@ -295,7 +295,7 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
                 Py_XINCREF(items[v.len - 1]);
             }
             v.len--;
-            VEC_INCREF(v);
+            // Return the stolen reference without INCREF
             return v;
         }
     }
@@ -331,7 +331,7 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
     // to the buffer with a longer length, and they expect a valid reference.
     Py_XINCREF(items[v.len - 1]);
     v.len--;
-    VEC_INCREF(v);
+    // Return the stolen reference without INCREF
     result.f0 = v;
     return result;
 }

@@ -288,7 +288,7 @@ VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
                 v.buf->items[i] = v.buf->items[i + 1];
             }
             v.len--;
-            VEC_INCREF(v);
+            // Return the stolen reference without INCREF
             return v;
         }
     }
@@ -322,7 +322,7 @@ NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
     }
 
     v.len--;
-    VEC_INCREF(v);
+    // Return the stolen reference without INCREF
     result.f0 = v;
     return result;
 }
