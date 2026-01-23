@@ -3026,9 +3026,15 @@ else:
 class A:
     def foo(self, x: object) -> None:
         reveal_type(self)  # N: Revealed type is "__main__.A"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
         if type(self) is type(x):
             reveal_type(self)  # N: Revealed type is "__main__.A"
             reveal_type(x)  # N: Revealed type is "__main__.A"
+        if type(self) == type(x):
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowInElseCaseIfFinal]
 # flags: --strict-equality --warn-unreachable
