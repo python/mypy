@@ -486,6 +486,7 @@ def apply_class_plugin_hooks(graph: Graph, scc: list[str], errors: Errors) -> No
     """
     num_passes = 0
     incomplete = True
+    already_processed: dict[TypeInfo, set[int]] = {}
     # If we encounter a base class that has not been processed, we'll run another
     # pass. This should eventually reach a fixed point.
     while incomplete:
@@ -498,6 +499,13 @@ def apply_class_plugin_hooks(graph: Graph, scc: list[str], errors: Errors) -> No
             assert tree
             for _, node, _ in tree.local_definitions():
                 if isinstance(node.node, TypeInfo):
+                    if node.node in already_processed:
+                        pass_count = len(already_processed[node.node])
+                        if pass_count >= 3 and num_passes > 3:
+                            continue
+                    else:
+                        already_processed[node.node] = set()
+                    already_processed[node.node].add(num_passes)
                     if not apply_hooks_to_class(
                         state.manager.semantic_analyzer,
                         module,
