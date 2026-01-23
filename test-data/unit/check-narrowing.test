@@ -868,7 +868,7 @@ else:
     reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 [builtins fixtures/primitives.pyi]
 
-[case testNarrowingEqualityCustomEqualityDisabledChainedComparison]
+[case testNarrowingEqualityCustomEqualityChainedComparison]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
