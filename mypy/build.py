@@ -103,12 +103,12 @@ from mypy.nodes import (
     ImportBase,
     ImportFrom,
     MypyFile,
-    SymbolNode,
     SymbolTable,
 )
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.traverser import find_definitions
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
@@ -1085,22 +1085,20 @@ class BuildManager:
                 source = decode_python_encoding(state.manager.fscache.read(path))
             tree = parse(source, state.path, state.id, state.manager.errors, state.options)
             self.extra_trees[state.id] = tree
-        defs = tree.defs
+        statements = tree.defs
         while prefix:
             part = prefix.pop(0)
-            for defn in defs:
-                if not isinstance(defn, ClassDef):
+            for statement in statements:
+                defs = find_definitions(statement, part)
+                if not defs or not isinstance((defn := defs[0]), ClassDef):
                     continue
-                if defn.name == part:
-                    defs = defn.defs.body
-                    break
+                statements = defn.defs.body
+                break
             else:
                 return None
-        for defn in defs:
-            # TODO: support more kinds of locations (like assignment statements).
-            # the latter will be helpful for type old-style aliases.
-            if isinstance(defn, SymbolNode) and defn.name == name:
-                return defn
+        for statement in statements:
+            if defs := find_definitions(statement, name):
+                return defs[0]
         return None
 
     def verbosity(self) -> int:
