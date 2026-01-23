@@ -334,7 +334,7 @@ class LowLevelIRBuilder:
         if src.type.is_unboxed:
             if isinstance(src, Integer) and is_tagged(src.type):
                 return self.add(LoadLiteral(src.value >> 1, rtype=object_rprimitive))
-            return self.add(Box(src))
+            return self.add(Box(src, src.line))
         else:
             return src
 
@@ -1080,7 +1080,7 @@ class LowLevelIRBuilder:
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
                 coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
-                arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
+                arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, line, object_ptr=True)
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
             num_pos = num_positional_args(arg_values, arg_kinds)
@@ -1094,7 +1094,7 @@ class LowLevelIRBuilder:
                 # Make sure arguments won't be freed until after the call.
                 # We need this because RArray doesn't support automatic
                 # memory management.
-                self.add(KeepAlive(coerced_args))
+                self.add(KeepAlive(coerced_args, line))
             return value
         return None
 
@@ -1155,7 +1155,7 @@ class LowLevelIRBuilder:
             coerced_args = [
                 self.coerce(arg, object_rprimitive, line) for arg in [obj] + arg_values
             ]
-            arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
+            arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, line, object_ptr=True)
             num_pos = num_positional_args(arg_values, arg_kinds)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
@@ -1954,18 +1954,18 @@ class LowLevelIRBuilder:
             self.primitive_op(
                 buf_init_item, [ob_item_base, Integer(i, c_pyssize_t_rprimitive), args[i]], line
             )
-        self.add(KeepAlive([result_list]))
+        self.add(KeepAlive([result_list], line))
         return result_list
 
     def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.primitive_op(new_set_op, values, line)
 
     def setup_rarray(
-        self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
+        self, item_type: RType, values: Sequence[Value], line: int, *, object_ptr: bool = False
     ) -> Value:
         """Declare and initialize a new RArray, returning its address."""
         array = Register(RArray(item_type, len(values)))
-        self.add(AssignMulti(array, list(values)))
+        self.add(AssignMulti(array, list(values), line))
         return self.add(
             LoadAddress(object_pointer_rprimitive if object_ptr else c_pointer_rprimitive, array)
         )
@@ -1979,7 +1979,7 @@ class LowLevelIRBuilder:
         line: int,
     ) -> Value:
         # Having actual Phi nodes would be really nice here!
-        target = Register(expr_type)
+        target = Register(expr_type, line=line)
         # left_body takes the value of the left side, right_body the right
         left_body, right_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
         # true_body is taken if the left is true, false_body if it is false.
@@ -2075,11 +2075,11 @@ class LowLevelIRBuilder:
         opt_value_type = optional_value_type(value.type)
         if opt_value_type is None:
             bool_value = self.bool_value(value)
-            self.add(Branch(bool_value, true, false, Branch.BOOL))
+            self.add(Branch(bool_value, true, false, Branch.BOOL, value.line))
         else:
             # Special-case optional types
             is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
-            branch = Branch(is_none, true, false, Branch.BOOL)
+            branch = Branch(is_none, true, false, Branch.BOOL, value.line)
             self.add(branch)
             always_truthy = False
             if isinstance(opt_value_type, RInstance):
@@ -2392,7 +2392,7 @@ class LowLevelIRBuilder:
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, line=-1)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, lhs.line)
 
     def int_sub(self, lhs: Value, rhs: Value | int) -> Value:
         """Helper to subtract a native integer from another one.
@@ -2401,7 +2401,7 @@ class LowLevelIRBuilder:
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, line=-1)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, lhs.line)
 
     def int_mul(self, lhs: Value, rhs: Value | int) -> Value:
         """Helper to multiply two native integers.
@@ -2410,7 +2410,7 @@ class LowLevelIRBuilder:
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, line=-1)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, lhs.line)
 
     def fixed_width_int_op(
         self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int

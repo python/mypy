@@ -66,6 +66,7 @@ from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, 
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_TYPE_VAR,
+    NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
@@ -524,8 +525,9 @@ class IRBuilder:
     def add_implicit_return(self) -> None:
         block = self.builder.blocks[-1]
         if not block.terminated:
-            retval = self.coerce(self.builder.none(), self.ret_types[-1], -1)
-            self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
+            line = self.fn_info.fitem.line
+            retval = self.coerce(self.builder.none(), self.ret_types[-1], line)
+            self.nonlocal_control[-1].gen_return(self, retval, line)
 
     def add_implicit_unreachable(self) -> None:
         block = self.builder.blocks[-1]
@@ -711,6 +713,8 @@ class IRBuilder:
         allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
+            if line != -1:
+                target.line = line
             return target
         if isinstance(target, AssignmentTargetRegister):
             return target.register
@@ -748,7 +752,7 @@ class IRBuilder:
             self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-            self.add(Assign(target.register, rvalue_reg))
+            self.add(Assign(target.register, rvalue_reg, line))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
                 setattr = target.obj_type.class_ir.get_method("__setattr__")
@@ -931,8 +935,8 @@ class IRBuilder:
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
         target = self.make_spill_target(value.type)
-        # Shouldn't be able to fail, so -1 for line
-        self.assign(target, value, -1)
+        # Shouldn't be able to fail
+        self.assign(target, value, NO_TRACEBACK_LINE_NO)
         return target
 
     def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
@@ -1473,7 +1477,7 @@ class IRBuilder:
                     FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
                 ),
                 [obj],
-                -1,
+                obj.line,
             )
         )
 

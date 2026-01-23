@@ -130,6 +130,9 @@ def split_blocks_at_errors(
                 )
                 branch.negated = negated
                 if op.line != NO_TRACEBACK_LINE_NO and func_name is not None:
+                    assert (
+                        op.line >= 0
+                    ), f"Cannot add a traceback entry with a negative line number for op {op}"
                     branch.traceback_entry = (func_name, op.line)
                 cur_block.ops.append(branch)
                 cur_block = new_block

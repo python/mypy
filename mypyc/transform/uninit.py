@@ -104,6 +104,9 @@ def split_blocks_at_uninits(
                             op.line,
                         )
 
+                    assert (
+                        op.line >= 0
+                    ), f"Cannot raise an error with a negative line number for op {op}"
                     raise_std = RaiseStandardError(
                         RaiseStandardError.UNBOUND_LOCAL_ERROR,
                         f'local variable "{src.name}" referenced before assignment',

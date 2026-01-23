@@ -773,9 +773,10 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.error_kind = desc.error_kind
+        super().__init__(line)
         self.args = args
         self.type = desc.return_type
-        self.error_kind = desc.error_kind
         self.desc = desc
 
     def sources(self) -> list[Value]:
@@ -1214,6 +1215,7 @@ class RaiseStandardError(RegisterOp):
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
+        assert line >= 0, "RaiseStandardError cannot have a negative line number"
         self.class_name = class_name
         self.value = value
         self.type = bool_rprimitive
@@ -1800,7 +1802,8 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
+    def __init__(self, src: list[Value], line: int = -1, *, steal: bool = False) -> None:
+        super().__init__(line)
         assert src
         self.src = src
         self.steal = steal

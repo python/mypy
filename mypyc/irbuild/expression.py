@@ -587,7 +587,9 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
         return expr
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
-        return OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr = OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr.line = expr.line
+        return new_expr
     return expr
 
 
@@ -1090,10 +1092,10 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.call_c(exact_dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
-    return builder.read(d)
+    return builder.read(d, o.line)
 
 
 # Misc
