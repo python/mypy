@@ -1,0 +1,87 @@
+[case testLibrtVecsMiscInterpreted_librt_experimental]
+# Test cases for vec[<value primitive type>]. using generic operations.
+# This simulates use from interpreted code.
+#
+# All specialized vec types share most of the implementation, so we don't try to
+# duplicate all tests in run-vecs-i64-interp.test, which acts also as a more detailed
+# test suite for specialized vec types.
+
+import sys
+from typing import Any
+import typing
+
+import librt.vecs
+import mypy_extensions
+
+from testutil import assertRaises
+
+# Access via Any references to force generic operations
+vec: Any = librt.vecs.vec
+append: Any = librt.vecs.append
+remove: Any = librt.vecs.remove
+pop: Any = librt.vecs.pop
+getsizeof: Any = getattr(sys, "getsizeof")
+u8: Any = mypy_extensions.u8
+i16: Any = mypy_extensions.i16
+i32: Any = mypy_extensions.i32
+i64: Any = mypy_extensions.i64
+
+# Work around test stub limitations
+Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
+
+# TODO: Add some nested vec tests
+
+ITEM_TYPES = [i64, u8, i16, i32, float, bool]
+
+def test_vec_indexing() -> None:
+    for t in ITEM_TYPES:
+        assert type(vec[t]) is type
+        t1 = vec[t]
+        t2 = vec[t]
+        assert type(vec[t1]) is type(vec[t2])
+        _ = [t1, t2]  # Ensure t1 and t2 are live here
+
+        assert vec[t] is not vec
+        if t is not i64:
+            assert vec[t] is not vec[i64]
+        else:
+            assert vec[t] is not vec[i32]
+
+        with assertRaises(TypeError):
+            vec[Optional[t]]  # Not supported
+
+def test_type_str() -> None:
+    for t in ITEM_TYPES:
+        name = t.__name__
+        assert str(vec[t]) == f"<class 'vec[{name}]'>"
+        assert repr(vec[t]) == f"<class 'vec[{name}]'>"
+
+def test_construct_empty() -> None:
+    for t in ITEM_TYPES:
+        v = vec[t]()
+        assert type(v) is vec[t]
+        assert len(v) == 0
+
+def test_construct_from_int() -> None:
+    # All of the non-bool item types support int values 0 and 1
+    for t in ITEM_TYPES:
+        if t is bool:
+            continue
+        v = vec[t]([0, 1, 0])
+        assert len(v) == 3
+        assert v[0] == 0
+        assert v[1] == 1
+        assert v[2] == 0
+
+def test_equality() -> None:
+    for t1 in ITEM_TYPES:
+        for t2 in ITEM_TYPES:
+            if t1 is t2:
+                assert vec[t1]() == vec[t2]()
+            else:
+                assert vec[t1]() != vec[t2]()
+
+def test_repr() -> None:
+    for t in ITEM_TYPES:
+        name = t.__name__
+        assert repr(vec[t]()) == f"vec[{name}]([])"

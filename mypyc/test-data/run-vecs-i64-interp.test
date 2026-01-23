@@ -3,6 +3,8 @@
 #
 # These also act as test cases for specialized vec types in general (e.g. vec[float]),
 # since much of the implementation is shared between all of them.
+#
+# There is also run-vecs-misc-interp.test with limited test coverage for vec[float] etc.
 
 import sys
 from typing import Any
@@ -23,23 +25,6 @@ i64: Any = mypy_extensions.i64
 
 # Work around test stub limitations
 Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
-
-def test_vec_indexing() -> None:
-    assert type(vec[i64]) is type
-    assert type(vec[i64]) is type(vec[i64])
-    assert vec[i64] is not vec
-
-    with assertRaises(TypeError):
-        vec[Optional[i64]]  # Not supported
-
-def test_type_str() -> None:
-    assert str(vec[i64]) == "<class 'vec[i64]'>"
-    assert repr(vec[i64]) == "<class 'vec[i64]'>"
-
-def test_construct_empty() -> None:
-    v = vec[i64]()
-    assert type(v) is vec[i64]
-    assert len(v) == 0
 
 def test_construct_from_initializer() -> None:
     v = vec[i64]([123])
