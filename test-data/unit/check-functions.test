@@ -3790,7 +3790,9 @@ def f(x: int, y: str, z: bytes) -> None: ...
 f("wrong", 123)
 [builtins fixtures/primitives.pyi]
 [out]
-main:3: error: Incompatible arguments for "f"; check for missing arguments
+main:3: error: Missing positional argument "z" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [case testMissingPositionalArgumentShiftedTypesManyArgs]
 def f(a: int, b: str, c: float, d: list[int], e: tuple[str, ...]) -> None: ...
@@ -3806,7 +3808,8 @@ def f(x: int, y: str, z: bytes = b'default') -> None: ...
 f("hello")
 [builtins fixtures/primitives.pyi]
 [out]
-main:3: error: Incompatible arguments for "f"; check for missing arguments
+main:3: error: Missing positional argument "y" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMissingPositionalArgumentShiftedWithStarArgs]
 def f(x: int, y: str, z: bytes, *args: int) -> None: ...
@@ -3814,4 +3817,6 @@ def f(x: int, y: str, z: bytes, *args: int) -> None: ...
 f("hello", b'x')
 [builtins fixtures/primitives.pyi]
 [out]
-main:3: error: Incompatible arguments for "f"; check for missing arguments
+main:3: error: Missing positional argument "z" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "f" has incompatible type "bytes"; expected "str"

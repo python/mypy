@@ -2392,16 +2392,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         code=codes.CALL_ARG,
                     )
                 else:
-                    self.msg.fail(
-                        f'Incompatible arguments for "{func_name}"; check for missing arguments',
-                        context,
-                        code=codes.CALL_ARG,
+                    self.check_argument_count(
+                        callee, arg_types, arg_kinds, arg_names, formal_to_actual,
+                        context, object_type, callable_name,
+                    )
+                    self.check_argument_types(
+                        arg_types, arg_kinds, args, callee, formal_to_actual, context,
+                        object_type=object_type
                     )
             elif has_type_errors:
-                self.msg.fail(
-                    f'Incompatible arguments for "{func_name}"; check for missing arguments',
-                    context,
-                    code=codes.CALL_ARG,
+                self.check_argument_count(
+                    callee, arg_types, arg_kinds, arg_names, formal_to_actual,
+                    context, object_type, callable_name,
+                )
+                self.check_argument_types(
+                    arg_types, arg_kinds, args, callee, formal_to_actual, context,
+                    object_type=object_type
                 )
             else:
                 self.check_argument_count(
