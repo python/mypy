@@ -48,6 +48,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     tuple_rprimitive,
     uint8_rprimitive,
+    weakref_rprimitive,
 )
 
 
@@ -106,6 +107,8 @@ class Mapper:
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":
                 return range_rprimitive
+            elif typ.type.fullname == "weakref.ReferenceType":
+                return weakref_rprimitive
             elif typ.type in self.type_to_ir:
                 inst = RInstance(self.type_to_ir[typ.type])
                 # Treat protocols as Union[protocol, object], so that we can do fast

@@ -54,6 +54,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
+    is_weakref_rprimitive,
     object_rprimitive,
     optional_value_type,
 )
@@ -662,6 +663,16 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
+        elif is_weakref_rprimitive(typ):
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            check = "(PyWeakref_CheckRef({}))"
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check.format(src), optional)
             self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
