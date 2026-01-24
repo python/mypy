@@ -1677,6 +1677,7 @@ main:4: error: Statement is unreachable
 
 [case testReachableEqualityNarrowingAny]
 # flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20532
 from __future__ import annotations
 from typing import Any
 
