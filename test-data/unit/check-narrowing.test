@@ -971,11 +971,9 @@ def f4(x: str | Any, y: str | int):
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | Any"
         reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
-
-
 [builtins fixtures/dict.pyi]
 
-[case testNarrowingCustomEqualityUnionTypeTarget]
+[case testNarrowingCustomEqualityUnion3]
 # flags: --strict-equality --warn-unreachable
 from __future__ import annotations
 from typing import Any
