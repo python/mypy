@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from typing import Any, Final, cast
 
-import ast_serialize  # type: ignore[import-untyped]
+import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
