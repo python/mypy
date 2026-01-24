@@ -197,6 +197,7 @@ def read_statement(data: ReadBuffer) -> Statement:
         column = read_int(data)
         fdef = read_statement(data)
         assert isinstance(fdef, FuncDef)
+        fdef.is_decorated = True
         var = Var(fdef.name)
         var.line = fdef.line
         var.is_ready = False
