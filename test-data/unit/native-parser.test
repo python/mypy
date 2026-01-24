@@ -1794,21 +1794,6 @@ MypyFile:1(
             Args(
               NameExpr(x))))))))
 
-[case testSyntaxError]
-x = [1 2]
-y = 2
-[out]
-1:8: error: Expected ',', found int
-MypyFile:1(
-  AssignmentStmt:1(
-    NameExpr(x)
-    ListExpr:1(
-      IntExpr(1)
-      IntExpr(2)))
-  AssignmentStmt:2(
-    NameExpr(y)
-    IntExpr(2)))
-
 [case testFunctionOverload]
 @overload
 def f() -> x: pass
@@ -2475,3 +2460,74 @@ MypyFile:1(
       ListExpr:1(
         NameExpr(b2)
         NameExpr(c2)))))
+
+[case testSyntaxError1]
+x = [1 2]
+y = 2
+[out]
+1:8: error: Expected ',', found int
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListExpr:1(
+      IntExpr(1)
+      IntExpr(2)))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(2)))
+
+[case testSyntaxError2]
+f(a.)
+[out]
+1:5: error: Expected an identifier
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        MemberExpr:1(
+          NameExpr(a)
+          )))))
+
+[case testSyntaxError3]
+f(a[])
+[out]
+1:5: error: Expected index or slice expression
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        IndexExpr:1(
+          NameExpr(a)
+          NameExpr())))))
+
+[case testSyntaxError4]
+from m import
+1
+[out]
+1:14: error: Expected one or more symbol names after import
+MypyFile:1(
+  ImportFrom:1(m, [])
+  ExpressionStmt:2(
+    IntExpr(1)))
+
+[case testSyntaxError5]
+from m
+1
+[out]
+1:7: error: Expected 'import', found newline
+MypyFile:1(
+  ImportFrom:1(m, [])
+  ExpressionStmt:2(
+    IntExpr(1)))
+
+[case testSyntaxError6]
+from m
+1
+[out]
+1:7: error: Expected 'import', found newline
+MypyFile:1(
+  ImportFrom:1(m, [])
+  ExpressionStmt:2(
+    IntExpr(1)))
