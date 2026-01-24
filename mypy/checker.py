@@ -6829,8 +6829,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 expr = operands[j]
 
-                current_type_range = self.get_isinstance_type(expr)
-                if current_type_range is not None:
+                current_type_range = self.get_isinstance_type(expr, flatten_tuples=False)
+                if current_type_range is None:
+                    current_type_range = []
+                else:
                     target_type = make_simplified_union([tr.item for tr in current_type_range])
                     if isinstance(target_type, AnyType):
                         # Avoid widening to Any for checks like `type(x) is type(y: Any)`.
@@ -7921,22 +7923,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return first_item.var.is_settable_property
         return False
 
-    def get_isinstance_type(self, expr: Expression) -> list[TypeRange] | None:
+    def get_isinstance_type(
+        self, expr: Expression, flatten_tuples: bool = True
+    ) -> list[TypeRange] | None:
         """Get the type(s) resulting from an isinstance check.
 
         Returns an empty list for isinstance(x, ()).
         """
         if isinstance(expr, OpExpr) and expr.op == "|":
-            left = self.get_isinstance_type(expr.left)
+            left = self.get_isinstance_type(expr.left, flatten_tuples=False)
             if left is None and is_literal_none(expr.left):
                 left = [TypeRange(NoneType(), is_upper_bound=False)]
-            right = self.get_isinstance_type(expr.right)
+            right = self.get_isinstance_type(expr.right, flatten_tuples=False)
             if right is None and is_literal_none(expr.right):
                 right = [TypeRange(NoneType(), is_upper_bound=False)]
             if left is None or right is None:
                 return None
             return left + right
-        all_types = get_proper_types(flatten_types(self.lookup_type(expr)))
+
+        if flatten_tuples:
+            all_types = get_proper_types(flatten_types_if_tuple(self.lookup_type(expr)))
+        else:
+            all_types = [get_proper_type(self.lookup_type(expr))]
+
         types: list[TypeRange] = []
         for typ in all_types:
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
@@ -8640,11 +8649,11 @@ def flatten(t: Expression) -> list[Expression]:
         return [t]
 
 
-def flatten_types(t: Type) -> list[Type]:
+def flatten_types_if_tuple(t: Type) -> list[Type]:
     """Flatten a nested sequence of tuples into one list of nodes."""
     t = get_proper_type(t)
     if isinstance(t, TupleType):
-        return [b for a in t.items for b in flatten_types(a)]
+        return [b for a in t.items for b in flatten_types_if_tuple(a)]
     elif is_named_instance(t, "builtins.tuple"):
         return [t.args[0]]
     else:

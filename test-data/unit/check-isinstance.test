@@ -2938,3 +2938,21 @@ def foo(x: object, t: type[Any]):
     if isinstance(x, t):
         reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceUnionTuple]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def f1(x: object):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # E: Statement is unreachable
+
+def f2(x: Any):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "Any"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # E: Statement is unreachable
+
+[builtins fixtures/primitives.pyi]
