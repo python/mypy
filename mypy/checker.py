@@ -6620,7 +6620,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         ...then 'operands' and 'operand_types' would be lists of length 5 and 'chain_indices'
         would be the list [1, 2, 3].
 
-        The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
+        The 'narrowable_indices' parameter is the set of all indices we are allowed
         to refine the types of: that is, all operands that will potentially be a part of
         the output TypeMaps.
 
