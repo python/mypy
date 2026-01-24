@@ -8,7 +8,6 @@ import os
 import tempfile
 import unittest
 from collections.abc import Iterator
-
 from typing import Any
 
 from mypy import defaults, nodes

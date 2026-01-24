@@ -5,7 +5,7 @@ import re
 
 from mypy import errorcodes as codes
 from mypy.errors import Errors
-from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 
@@ -72,11 +72,7 @@ def parse(
                 # Standardize error message by capitalizing the first word
                 message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
                 errors.report(
-                    error["line"],
-                    error["column"],
-                    message,
-                    blocker=True,
-                    code=codes.SYNTAX,
+                    error["line"], error["column"], message, blocker=True, code=codes.SYNTAX
                 )
             if raise_on_error and errors.is_errors():
                 errors.raise_error()

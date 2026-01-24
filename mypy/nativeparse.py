@@ -19,9 +19,14 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-from typing import Final, cast, Any
+from typing import Any, Final, cast
 
 import ast_serialize  # type: ignore[import-untyped]
+from librt.internal import (
+    read_float as read_float_bare,
+    read_int as read_int_bare,
+    read_str as read_str_bare,
+)
 
 from mypy import nodes, types
 from mypy.cache import (
@@ -35,35 +40,30 @@ from mypy.cache import (
     LOCATION,
     ReadBuffer,
     Tag,
+    read_bool,
     read_int,
     read_str,
     read_tag,
-    read_bool,
 )
-from librt.internal import read_str as read_str_bare, read_float as read_float_bare, read_int as read_int_bare
 from mypy.nodes import (
-    ARG_POS,
-    ARG_OPT,
-    ARG_STAR,
-    ARG_NAMED,
-    ARG_STAR2,
-    ARG_NAMED_OPT,
     ARG_KINDS,
+    ARG_POS,
+    MISSING_FALLBACK,
     Argument,
     AssertStmt,
     AssignmentExpr,
-    AwaitExpr,
     AssignmentStmt,
+    AwaitExpr,
     Block,
     BreakStmt,
     BytesExpr,
     CallExpr,
     ClassDef,
     ComparisonExpr,
-    ConditionalExpr,
-    ContinueStmt,
     ComplexExpr,
+    ConditionalExpr,
     Context,
+    ContinueStmt,
     Decorator,
     DelStmt,
     DictExpr,
@@ -80,23 +80,22 @@ from mypy.nodes import (
     Import,
     ImportAll,
     ImportFrom,
-    ListComprehension,
-    SetComprehension,
     IndexExpr,
     IntExpr,
     LambdaExpr,
+    ListComprehension,
     ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
-    Node,
     NonlocalDecl,
-    OpExpr,
     OperatorAssignmentStmt,
+    OpExpr,
     OverloadedFuncDef,
     PassStmt,
     RaiseStmt,
     ReturnStmt,
+    SetComprehension,
     SetExpr,
     SliceExpr,
     StarExpr,
@@ -112,10 +111,21 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
-    MISSING_FALLBACK,
 )
-from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType, UnpackType, CallableArgument
-
+from mypy.types import (
+    AnyType,
+    CallableArgument,
+    CallableType,
+    EllipsisType,
+    Instance,
+    RawExpressionType,
+    Type,
+    TypeList,
+    TypeOfAny,
+    UnboundType,
+    UnionType,
+    UnpackType,
+)
 
 TypeIgnores = list[tuple[int, list[str]]]
 
@@ -562,13 +572,15 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
 
     if has_ann:
         typ = CallableType(
-            [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
-                for arg in arguments],
+            [
+                arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
+                for arg in arguments
+            ],
             [arg.kind for arg in arguments],
             [None if arg.pos_only else arg.variable.name for arg in arguments],
             return_type if return_type else AnyType(TypeOfAny.unannotated),
-            _dummy_fallback
-            )
+            _dummy_fallback,
+        )
     else:
         typ = None
 
@@ -618,7 +630,7 @@ def read_class_def(data: ReadBuffer) -> ClassDef:
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
-        keywords=filtered_keywords
+        keywords=filtered_keywords,
     )
     class_def.decorators = decorators
     read_loc(data, class_def)
@@ -703,8 +715,12 @@ def read_type(data: ReadBuffer) -> Type:
             original_str_fallback = read_str_bare(data)
         else:
             assert False, f"Unexpected tag for original_str_fallback: {t}"
-        unbound = UnboundType(name, args, original_str_expr=original_str_expr,
-                              original_str_fallback=original_str_fallback)
+        unbound = UnboundType(
+            name,
+            args,
+            original_str_expr=original_str_expr,
+            original_str_fallback=original_str_fallback,
+        )
         read_loc(data, unbound)
         expect_end_tag(data)
         return unbound
@@ -864,11 +880,7 @@ def read_expression(data: ReadBuffer) -> Expression:
         attr = read_str(data)
         m = MemberExpr(e, attr)
         # Check if this is a super() call - if so, convert to SuperExpr
-        if (
-            isinstance(e, CallExpr)
-            and isinstance(e.callee, NameExpr)
-            and e.callee.name == "super"
-        ):
+        if isinstance(e, CallExpr) and isinstance(e.callee, NameExpr) and e.callee.name == "super":
             result: Expression = SuperExpr(attr, e)
         else:
             result = m
@@ -1124,8 +1136,10 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Create lambda expression
         if has_ann:
             typ = CallableType(
-                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
-                 for arg in arguments],
+                [
+                    arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
+                    for arg in arguments
+                ],
                 [arg.kind for arg in arguments],
                 [None if arg.pos_only else arg.variable.name for arg in arguments],
                 AnyType(TypeOfAny.unannotated),
@@ -1148,7 +1162,9 @@ def read_expression(data: ReadBuffer) -> Expression:
         if not isinstance(target, NameExpr):
             # In case target is not a NameExpr, we need to handle this
             # For now, we'll assert since the grammar should ensure it's a NameExpr
-            assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
+            assert isinstance(
+                target, NameExpr
+            ), f"Expected NameExpr for target, got {type(target)}"
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
