@@ -6644,6 +6644,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # in the context of other type checker behaviour.
         should_coerce_literals: bool
 
+        # custom_eq_indices:
+        # Operands at these indices define a custom `__eq__`. These can do arbitrary things, so we
+        # have to be more careful about what narrowing we can conclude from a successful comparison
+        custom_eq_indices: set[int]
+
+        # enum_comparison_is_ambiguous:
+        # `if x is Fruits.APPLE` we know `x` is `Fruits.APPLE`, but `if x == Fruits.APPLE: ...`
+        # it could e.g. be an int or str if Fruits is an IntEnum or StrEnum.
+        # See ambiguous_enum_equality_keys for more details
+        enum_comparison_is_ambiguous: bool
+
         if operator in {"is", "is not"}:
             is_target_for_value_narrowing = is_singleton_identity_type
             should_coerce_literals = True
@@ -6665,91 +6676,101 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             raise AssertionError
 
-        value_targets = []
-        type_targets = []
-        for i in expr_indices:
-            expr_type = operand_types[i]
-            if should_coerce_literals:
-                # TODO: doing this prevents narrowing a single-member Enum to literal
-                # of its member, because we expand it here and then refuse to add equal
-                # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
-                # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
-                # See testMatchEnumSingleChoice
-                expr_type = coerce_to_literal(expr_type)
-            if i in custom_eq_indices:
-                # We can't use types with custom __eq__ as targets for narrowing
-                # E.g. if (x: int | None) == (y: CustomEq | None), we cannot narrow x to None
-                continue
-            if is_target_for_value_narrowing(get_proper_type(expr_type)):
-                value_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
-            else:
-                type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
-
         partial_type_maps = []
 
-        if value_targets:
-            for i in expr_indices:
-                if i not in narrowable_indices:
+        # For each narrowable index, we see what we can narrow based on each relevant target
+        for i in expr_indices:
+            if i not in narrowable_indices:
+                continue
+            if i in custom_eq_indices:
+                # Handled later
+                continue
+
+            expr_type = operand_types[i]
+            expanded_expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)
+            expr_enum_keys = ambiguous_enum_equality_keys(expr_type)
+            for j in expr_indices:
+                if i == j:
                     continue
-                if i in custom_eq_indices:
-                    # Handled later
+                if j in custom_eq_indices:
+                    # We can't use types with custom __eq__ as targets for narrowing
+                    # E.g. if (x: int | None) == (y: CustomEq | None), we cannot narrow x to None
                     continue
-                expr_type = operand_types[i]
-                expr_type = coerce_to_literal(expr_type)
-                expr_type = try_expanding_sum_type_to_union(expr_type, None)
-                expr_enum_keys = ambiguous_enum_equality_keys(expr_type)
-                for j, target in value_targets:
-                    if i == j:
-                        continue
-                    if (
-                        # See comments in ambiguous_enum_equality_keys
-                        enum_comparison_is_ambiguous
-                        and len(expr_enum_keys | ambiguous_enum_equality_keys(target.item)) > 1
-                    ):
-                        continue
+                target_type = operand_types[j]
+                if should_coerce_literals:
+                    # TODO: doing this prevents narrowing a single-member Enum to literal
+                    # of its member, because we expand it here and then refuse to add equal
+                    # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
+                    # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
+                    # See testMatchEnumSingleChoice
+                    target_type = coerce_to_literal(target_type)
+
+                if (
+                    # See comments in ambiguous_enum_equality_keys
+                    enum_comparison_is_ambiguous
+                    and len(expr_enum_keys | ambiguous_enum_equality_keys(target_type)) > 1
+                ):
+                    continue
+
+                target = TypeRange(target_type, is_upper_bound=False)
+                is_value_target = is_target_for_value_narrowing(get_proper_type(target_type))
+
+                if is_value_target:
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target])
+                        operands[i], *conditional_types(expanded_expr_type, [target])
                     )
                     partial_type_maps.append((if_map, else_map))
-
-        if type_targets:
-            for i in expr_indices:
-                if i not in narrowable_indices:
-                    continue
-                if i in custom_eq_indices:
-                    # Handled later
-                    continue
-                expr_type = operand_types[i]
-                for j, target in type_targets:
-                    if i == j:
-                        continue
+                else:
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i], *conditional_types(expr_type, [target])
                     )
+                    # For value targets, it is safe to narrow in the negative case.
+                    # e.g. if (x: Literal[5] | None) != (y: Literal[5]), we can narrow x to None
+                    # However, for non-value targets, we cannot do this narrowing,
+                    # and so we ignore else_map
+                    # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
                     if if_map:
-                        # For type_targets, we cannot narrow in the negative case
-                        # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
-                        else_map = {}
-                        partial_type_maps.append((if_map, else_map))
+                        partial_type_maps.append((if_map, {}))
 
+        # Handle narrowing for operands with custom __eq__ methods specially
+        # In most cases, we won't be able to do any narrowing
         for i in custom_eq_indices:
             if i not in narrowable_indices:
                 continue
             union_expr_type = get_proper_type(operand_types[i])
             if not isinstance(union_expr_type, UnionType):
+                # Here we won't be able to do any positive narrowing, because we can't conclude
+                # anything from a custom __eq__ returning True.
+                # But we might be able to do some negative narrowing, since we can assume
+                # a custom __eq__ is reflexive. This should only apply to custom __eq__ enums,
+                # see testNarrowingEqualityCustomEqualityEnum
                 expr_type = operand_types[i]
-                for j, target in value_targets:
-                    _if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target])
-                    )
-                    if else_map:
-                        partial_type_maps.append(({}, else_map))
+                for j in expr_indices:
+                    if j in custom_eq_indices:
+                        continue
+                    target_type = operand_types[j]
+                    if should_coerce_literals:
+                        target_type = coerce_to_literal(target_type)
+                    target = TypeRange(target_type, is_upper_bound=False)
+                    is_value_target = is_target_for_value_narrowing(get_proper_type(target_type))
+
+                    if is_value_target:
+                        if_map, else_map = conditional_types_to_typemaps(
+                            operands[i], *conditional_types(expr_type, [target])
+                        )
+                        if else_map:
+                            partial_type_maps.append(({}, else_map))
                 continue
 
+            # If our operand with custom __eq__ is a union, where only some members of the union
+            # implement custom __eq__, then we can narrow down the other members as usual.
+            # This is basically the same logic as the main narrowing loop above.
             or_if_maps: list[TypeMap] = []
             or_else_maps: list[TypeMap] = []
             for expr_type in union_expr_type.items:
                 if has_custom_eq_checks(expr_type):
+                    # Always include union items with custom __eq__ in the type
+                    # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
                 for j in expr_indices:
@@ -6784,6 +6805,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             partial_type_maps.append((final_if_map, final_else_map))
 
+        # Handle narrowing for comparisons that produce additional narrowing, like
+        # `type(x) == T` or `x.__class__ is T`
         for i in expr_indices:
             type_expr = operands[i]
             if (
