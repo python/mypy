@@ -1153,7 +1153,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generate_c_type_classmethod(self) -> None:
         class TestClass:
             @classmethod
-            def test(cls, arg0: str) -> None:  # type: ignore[no-redef]  # HAX
+            def test(cls, arg0: str) -> None:
                 pass
 
         output: list[str] = []
@@ -1171,7 +1171,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generate_c_type_classmethod_with_overloads(self) -> None:
         class TestClass:
             @classmethod
-            def test(cls, arg0: str) -> None:  # type: ignore[no-redef]  # HAX
+            def test(cls, arg0: str) -> None:
                 """
                 test(cls, arg0: str)
                 test(cls, arg0: int)
@@ -1370,11 +1370,11 @@ class StubgencSuite(unittest.TestCase):
                 self._attribute = 0
 
             @property
-            def attribute(self) -> int:  # type: ignore[no-redef]  # HAX
+            def attribute(self) -> int:
                 return self._attribute
 
             @attribute.setter
-            def attribute(self, value: int) -> None:  # type: ignore[no-redef]  # HAX
+            def attribute(self, value: int) -> None:
                 self._attribute = value
 
         readwrite_properties: list[str] = []
