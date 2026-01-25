@@ -619,7 +619,8 @@ check_string_writer(PyObject *data) {
 static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
 
 static char
-StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
+StringWriter_write_internal(PyObject *obj, PyObject *value) {
+    StringWriterObject *self = (StringWriterObject *)obj;
     Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
     if (str_len == 0) {
         return CPY_NONE;
@@ -675,7 +676,7 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a str object");
         return NULL;
     }
-    if (unlikely(StringWriter_write_internal((StringWriterObject *)self, value) == CPY_NONE_ERROR)) {
+    if (unlikely(StringWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -877,6 +878,12 @@ librt_strings_module_exec(PyObject *m)
         (void *)_grow_buffer,
         (void *)BytesWriter_type_internal,
         (void *)BytesWriter_truncate_internal,
+        (void *)StringWriter_internal,
+        (void *)StringWriter_getvalue_internal,
+        (void *)string_append_slow_path,
+        (void *)StringWriter_type_internal,
+        (void *)StringWriter_write_internal,
+        (void *)grow_string_buffer,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

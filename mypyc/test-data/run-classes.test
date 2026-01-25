@@ -852,7 +852,7 @@ def test_classmethod_with_allow_interpreted() -> None:
 
 [file interp.py]
 def make_interpreted_subclass(base):
-    class Sub(base):
+    class Sub(base):  # type: ignore[misc, valid-type]
         @classmethod
         def g(cls, x: int) -> int:
             return x + 3
@@ -2514,7 +2514,7 @@ def test_interpreted_subclass() -> None:
 from testutil import assertRaises
 
 def define_interpreted_subclass(b):
-    class DerivedInterpreted1(b):
+    class DerivedInterpreted1(b):  # type: ignore[misc, valid-type]
         def __init__(self):
             # Don't call base class __init__
             pass
@@ -2527,10 +2527,10 @@ def define_interpreted_subclass(b):
     with assertRaises(AttributeError):
         del d1.x
 
-    class DerivedInterpreted1(b):
+    class DerivedInterpreted2(b):  # type: ignore[misc, valid-type]
         def __init__(self):
             super().__init__('y')
-    d2 = DerivedInterpreted1()
+    d2 = DerivedInterpreted2()
     assert d2.x == 5
     assert d2.s == 'y'
     with assertRaises(AttributeError):

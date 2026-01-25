@@ -232,4 +232,9 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
         curr_env_reg = builder.fn_info.curr_env_reg
     if curr_env_reg:
         builder.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+    # Initialize function wrapper for callable classes. As opposed to regular functions,
+    # each instance of a callable class needs its own wrapper because they might be instantiated
+    # inside other functions.
+    if not fn_info.in_non_ext and fn_info.is_coroutine:
+        builder.add_coroutine_setup_call(fn_info.callable_class.ir.name, func_reg)
     return func_reg
