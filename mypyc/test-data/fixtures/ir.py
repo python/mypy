@@ -51,6 +51,7 @@ class object:
 class type:
     def __init__(self, o: object) -> None: ...
     def __or__(self, o: object) -> Any: ...
+    def __new__(cls, *args: object) -> Any: ...
     __name__ : str
     __annotations__: Dict[str, Any]
 
@@ -86,6 +87,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+    def to_bytes(self, length: int, order: str, *, signed: bool = False) -> bytes: pass
     def bit_length(self) -> int: pass
 
 class str:

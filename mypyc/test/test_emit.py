@@ -42,12 +42,9 @@ class TestEmitter(unittest.TestCase):
 
     def test_object_annotation(self) -> None:
         assert self.emitter.object_annotation("hello, world", "line;") == " /* 'hello, world' */"
-        assert (
-            self.emitter.object_annotation(list(range(30)), "line;")
-            == """\
+        assert self.emitter.object_annotation(list(range(30)), "line;") == """\
  /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
          23, 24, 25, 26, 27, 28, 29] */"""
-        )
 
     def test_emit_line(self) -> None:
         emitter = self.emitter
@@ -60,12 +57,9 @@ class TestEmitter(unittest.TestCase):
         emitter.emit_line("CPyStatics[0];", ann="hello, world")
         emitter.emit_line("CPyStatics[1];", ann=list(range(30)))
         assert emitter.fragments[0] == "CPyStatics[0]; /* 'hello, world' */\n"
-        assert (
-            emitter.fragments[1]
-            == """\
+        assert emitter.fragments[1] == """\
 CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                   21, 22, 23, 24, 25, 26, 27, 28, 29] */\n"""
-        )
 
     def test_emit_undefined_value_for_simple_type(self) -> None:
         emitter = self.emitter

@@ -1,7 +1,7 @@
 """
 This module contains high-level logic for fixed format serialization.
 
-Lower-level parts are implemented in C in mypyc/lib-rt/librt_internal.c
+Lower-level parts are implemented in C in mypyc/lib-rt/internal/librt_internal.c
 Short summary of low-level functionality:
 * integers are automatically serialized as 1, 2, or 4 bytes, or arbitrary length.
 * str/bytes are serialized as size (1, 2, or 4 bytes) followed by bytes buffer.
