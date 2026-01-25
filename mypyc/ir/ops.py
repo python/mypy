@@ -1547,7 +1547,7 @@ class FloatOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
@@ -1605,7 +1605,7 @@ class FloatComparisonOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
