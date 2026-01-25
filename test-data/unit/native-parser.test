@@ -2531,3 +2531,50 @@ MypyFile:1(
   ImportFrom:1(m, [])
   ExpressionStmt:2(
     IntExpr(1)))
+
+[case testSyntaxError7]
+def f():
+    g(
+    h()
+
+def g(): ...
+[out]
+3:8: error: Expected ')', found newline
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:2(
+      ExpressionStmt:2(
+        CallExpr:2(
+          NameExpr(g)
+          Args(
+            CallExpr:3(
+              NameExpr(h)
+              Args()))))))
+  FuncDef:5(
+    g
+    Block:5(
+      ExpressionStmt:5(
+        Ellipsis))))
+
+[case testSyntaxError8]
+def f(
+    x,
+    y
+
+def g(): ...
+[out]
+3:6: error: Expected ')', found newline
+5:1: error: Expected an indented block after function definition
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Block:1())
+  FuncDef:5(
+    g
+    Block:5(
+      ExpressionStmt:5(
+        Ellipsis))))
