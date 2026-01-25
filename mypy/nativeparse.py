@@ -28,7 +28,7 @@ from librt.internal import (
     read_str as read_str_bare,
 )
 
-from mypy import nodes, types
+from mypy import message_registry, nodes, types
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -136,7 +136,12 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 
 class State:
-    pass
+    def __init__(self) -> None:
+        self.errors: list[dict[str, Any]] = []
+
+    def add_error(self, message: str, line: int, column: int) -> None:
+        """Report an error at a specific location."""
+        self.errors.append({"line": line, "column": column, "message": message})
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -164,7 +169,9 @@ def native_parse(
     defs = read_statements(state, data, n)
     node = MypyFile(defs, [])
     node.path = filename
-    return node, errors, ignores
+    # Merge deserialization errors with parsing errors
+    all_errors = errors + state.errors
+    return node, all_errors, ignores
 
 
 def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
@@ -1329,14 +1336,7 @@ def extract_arg_name(typ: Type) -> str | None:
 def read_call_type(state: State, data: ReadBuffer) -> Type:
     """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
 
-    TODO: This deserialization is lenient and defers error handling to type analysis.
-    The following validations are missing (see mypy/fastparse.py:1948-1999 for reference):
-    - ARG_CONSTRUCTOR_NAME_EXPECTED: When constructor name cannot be extracted
-    - ARG_CONSTRUCTOR_TOO_MANY_ARGS: When more than 2 positional arguments
-    - MULTIPLE_VALUES_FOR_NAME_KWARG: When 'name' is specified multiple times
-    - MULTIPLE_VALUES_FOR_TYPE_KWARG: When 'type' is specified multiple times
-    - ARG_CONSTRUCTOR_UNEXPECTED_ARG: When keyword arg is not 'name' or 'type'
-    - Invalid argument name validation: When name is not a string literal or None
+    This performs validation and error reporting similar to mypy/fastparse.py.
     """
     # Read callee
     callee_type = read_type(state, data)
@@ -1364,44 +1364,71 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
     constructor = stringify_type_name(callee_type)
 
-    if constructor:
-        # Extract type and name from arguments
-        name: str | None = None
-        default_type = AnyType(TypeOfAny.special_form)
-        typ: Type = default_type
-
-        # Process positional arguments
-        for i, arg in enumerate(args):
-            if i == 0:
-                typ = arg
-            elif i == 1:
-                name = extract_arg_name(arg)
-            # TODO: Emit error for more than 2 positional args (ARG_CONSTRUCTOR_TOO_MANY_ARGS)
-
-        # Process keyword arguments
-        for kw_name, kw_value in kwargs:
-            if kw_name == "name":
-                # TODO: Emit error if name already set (MULTIPLE_VALUES_FOR_NAME_KWARG)
-                if name is not None:
-                    pass  # Duplicate, but defer to type analysis
-                name = extract_arg_name(kw_value)
-            elif kw_name == "type":
-                # TODO: Emit error if type already set (MULTIPLE_VALUES_FOR_TYPE_KWARG)
-                if typ is not default_type:
-                    pass  # Duplicate, but defer to type analysis
-                typ = kw_value
-            # TODO: Emit error for unexpected keyword arg (ARG_CONSTRUCTOR_UNEXPECTED_ARG)
-
-        # Create CallableArgument
-        call_arg = CallableArgument(typ, name, constructor)
-        read_loc(data, call_arg)
-        expect_end_tag(data)
-        return call_arg
-
-    # TODO: Emit error when constructor name is None (ARG_CONSTRUCTOR_NAME_EXPECTED)
-    # If not a valid constructor, fall back to creating an invalid type
-    # (validation will report error later)
+    # We'll read location before processing errors so we can report them correctly
     invalid = AnyType(TypeOfAny.from_error)
     read_loc(data, invalid)
     expect_end_tag(data)
-    return invalid
+
+    if not constructor:
+        # ARG_CONSTRUCTOR_NAME_EXPECTED
+        state.add_error(
+            message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value, invalid.line, invalid.column
+        )
+        return invalid
+
+    # Extract type and name from arguments
+    name: str | None = None
+    name_set_from_positional = False
+    default_type = AnyType(TypeOfAny.special_form)
+    typ: Type = default_type
+    typ_set_from_positional = False
+
+    # Process positional arguments
+    for i, arg in enumerate(args):
+        if i == 0:
+            typ = arg
+            typ_set_from_positional = True
+        elif i == 1:
+            name = extract_arg_name(arg)
+            name_set_from_positional = True
+        else:
+            # ARG_CONSTRUCTOR_TOO_MANY_ARGS
+            state.add_error(
+                message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value, invalid.line, invalid.column
+            )
+
+    # Process keyword arguments
+    for kw_name, kw_value in kwargs:
+        if kw_name == "name":
+            # MULTIPLE_VALUES_FOR_NAME_KWARG
+            if name is not None and name_set_from_positional:
+                state.add_error(
+                    message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
+                    invalid.line,
+                    invalid.column,
+                )
+            name = extract_arg_name(kw_value)
+        elif kw_name == "type":
+            # MULTIPLE_VALUES_FOR_TYPE_KWARG
+            if typ is not default_type and typ_set_from_positional:
+                state.add_error(
+                    message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
+                    invalid.line,
+                    invalid.column,
+                )
+            typ = kw_value
+        else:
+            # ARG_CONSTRUCTOR_UNEXPECTED_ARG
+            state.add_error(
+                message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
+                invalid.line,
+                invalid.column,
+            )
+
+    # Create CallableArgument
+    call_arg = CallableArgument(typ, name, constructor)
+    call_arg.line = invalid.line
+    call_arg.column = invalid.column
+    call_arg.end_line = invalid.end_line
+    call_arg.end_column = invalid.end_column
+    return call_arg

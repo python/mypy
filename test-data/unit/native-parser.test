@@ -2593,3 +2593,112 @@ MypyFile:1(
     f
     Block:3(
       PassStmt:3())))
+
+[case testArgConstructorTooManyArgs]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, 'x', 'extra')], bool]) -> None:
+    pass
+[out]
+3:19: error: Too many arguments for argument constructor
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?, x)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testArgConstructorMultipleValuesForName]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, 'x', name='y')], bool]) -> None:
+    pass
+[out]
+3:19: error: "Arg" gets multiple values for keyword argument "name"
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?, y)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testArgConstructorMultipleValuesForType]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, type=str)], bool]) -> None:
+    pass
+[out]
+3:19: error: "Arg" gets multiple values for keyword argument "type"
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(str?)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testArgConstructorUnexpectedArg]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, foo='bar')], bool]) -> None:
+    pass
+[out]
+3:19: error: Unexpected argument "foo" for argument constructor
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testArgConstructorMultipleErrors]
+from typing import Callable
+from mypy_extensions import Arg
+def f(x: Callable[[Arg(int, 'x', 'extra', foo='bar', name='y')], bool]) -> None:
+    pass
+[out]
+3:19: error: Too many arguments for argument constructor
+3:19: error: Unexpected argument "foo" for argument constructor
+3:19: error: "Arg" gets multiple values for keyword argument "name"
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?, y)>, bool?]) -> None?
+    Block:4(
+      PassStmt:4())))
+
+[case testArgConstructorValidSyntax]
+from typing import Callable
+from mypy_extensions import Arg, DefaultArg, VarArg, KwArg
+def f(x: Callable[[Arg(int, 'x'), DefaultArg(str, 'y'), VarArg(bool), KwArg(float)], None]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  ImportFrom:2(mypy_extensions, [Arg, DefaultArg, VarArg, KwArg])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Callable?[<TypeList Arg(int?, x), DefaultArg(str?, y), VarArg(bool?), KwArg(float?)>, None?]) -> None?
+    Block:4(
+      PassStmt:4())))
