@@ -598,6 +598,12 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         typ = None
 
     func_def = FuncDef(name, arguments, body, typ=typ)
+    if typ:
+        # TODO: This seems wasteful, can we avoid it?
+        func_def.unanalyzed_type = typ.copy_modified()
+
+        typ.definition = func_def
+        typ.line = func_def.line
     if is_async:
         func_def.is_coroutine = True
     read_loc(data, func_def)
