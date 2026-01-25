@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import NamedTuple, TypeAlias as _TypeAlias
+from typing import Literal, NamedTuple, TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
@@ -81,6 +81,61 @@ class Frame:
 
 
 Assigns = defaultdict[Expression, list[tuple[Type, Type | None]]]
+
+
+class FrameContext:
+    """Context manager pushing a Frame to ConditionalTypeBinder.
+
+    See frame_context() below for documentation on parameters. We use this class
+    instead of @contextmanager as a mypyc-specific performance optimization.
+    """
+
+    def __init__(
+        self,
+        binder: ConditionalTypeBinder,
+        can_skip: bool,
+        fall_through: int,
+        break_frame: int,
+        continue_frame: int,
+        conditional_frame: bool,
+        try_frame: bool,
+        discard: bool,
+    ) -> None:
+        self.binder = binder
+        self.can_skip = can_skip
+        self.fall_through = fall_through
+        self.break_frame = break_frame
+        self.continue_frame = continue_frame
+        self.conditional_frame = conditional_frame
+        self.try_frame = try_frame
+        self.discard = discard
+
+    def __enter__(self) -> Frame:
+        assert len(self.binder.frames) > 1
+
+        if self.break_frame:
+            self.binder.break_frames.append(len(self.binder.frames) - self.break_frame)
+        if self.continue_frame:
+            self.binder.continue_frames.append(len(self.binder.frames) - self.continue_frame)
+        if self.try_frame:
+            self.binder.try_frames.add(len(self.binder.frames) - 1)
+
+        new_frame = self.binder.push_frame(self.conditional_frame)
+        if self.try_frame:
+            # An exception may occur immediately
+            self.binder.allow_jump(-1)
+        return new_frame
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
+        self.binder.pop_frame(self.can_skip, self.fall_through, discard=self.discard)
+
+        if self.break_frame:
+            self.binder.break_frames.pop()
+        if self.continue_frame:
+            self.binder.continue_frames.pop()
+        if self.try_frame:
+            self.binder.try_frames.remove(len(self.binder.frames) - 1)
+        return False
 
 
 class ConditionalTypeBinder:
@@ -338,10 +393,10 @@ class ConditionalTypeBinder:
 
         return changed
 
-    def pop_frame(self, can_skip: bool, fall_through: int) -> Frame:
+    def pop_frame(self, can_skip: bool, fall_through: int, *, discard: bool = False) -> Frame:
         """Pop a frame and return it.
 
-        See frame_context() for documentation of fall_through.
+        See frame_context() for documentation of fall_through and discard.
         """
 
         if fall_through > 0:
@@ -349,6 +404,10 @@ class ConditionalTypeBinder:
 
         result = self.frames.pop()
         options = self.options_on_return.pop()
+
+        if discard:
+            self.last_pop_changed = False
+            return result
 
         if can_skip:
             options.insert(0, self.frames[-1])
@@ -484,7 +543,6 @@ class ConditionalTypeBinder:
         self.allow_jump(self.continue_frames[-1])
         self.unreachable()
 
-    @contextmanager
     def frame_context(
         self,
         *,
@@ -494,7 +552,8 @@ class ConditionalTypeBinder:
         continue_frame: int = 0,
         conditional_frame: bool = False,
         try_frame: bool = False,
-    ) -> Iterator[Frame]:
+        discard: bool = False,
+    ) -> FrameContext:
         """Return a context manager that pushes/pops frames on enter/exit.
 
         If can_skip is True, control flow is allowed to bypass the
@@ -502,12 +561,12 @@ class ConditionalTypeBinder:
 
         If fall_through > 0, then it will allow control flow that
         falls off the end of the frame to escape to its ancestor
-        `fall_through` levels higher. Otherwise control flow ends
+        `fall_through` levels higher. Otherwise, control flow ends
         at the end of the frame.
 
         If break_frame > 0, then 'break' statements within this frame
         will jump out to the frame break_frame levels higher than the
-        frame created by this call to frame_context. Similarly for
+        frame created by this call to frame_context. Similarly, for
         continue_frame and 'continue' statements.
 
         If try_frame is true, then execution is allowed to jump at any
@@ -515,32 +574,23 @@ class ConditionalTypeBinder:
         its parent (i.e., to the frame that was on top before this
         call to frame_context).
 
+        If discard is True, then this is a temporary throw-away frame
+        (used e.g. for isolation) and its effect will be discarded on pop.
+
         After the context manager exits, self.last_pop_changed indicates
         whether any types changed in the newly-topmost frame as a result
         of popping this frame.
         """
-        assert len(self.frames) > 1
-
-        if break_frame:
-            self.break_frames.append(len(self.frames) - break_frame)
-        if continue_frame:
-            self.continue_frames.append(len(self.frames) - continue_frame)
-        if try_frame:
-            self.try_frames.add(len(self.frames) - 1)
-
-        new_frame = self.push_frame(conditional_frame)
-        if try_frame:
-            # An exception may occur immediately
-            self.allow_jump(-1)
-        yield new_frame
-        self.pop_frame(can_skip, fall_through)
-
-        if break_frame:
-            self.break_frames.pop()
-        if continue_frame:
-            self.continue_frames.pop()
-        if try_frame:
-            self.try_frames.remove(len(self.frames) - 1)
+        return FrameContext(
+            self,
+            can_skip=can_skip,
+            fall_through=fall_through,
+            break_frame=break_frame,
+            continue_frame=continue_frame,
+            conditional_frame=conditional_frame,
+            try_frame=try_frame,
+            discard=discard,
+        )
 
     @contextmanager
     def top_frame_context(self) -> Iterator[Frame]:
