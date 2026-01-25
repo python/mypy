@@ -2825,24 +2825,16 @@ class StubtestMiscUnit(unittest.TestCase):
                 f.write("unused.*\n")
 
             output = run_stubtest(
-                stub=textwrap.dedent(
-                    """
+                stub=textwrap.dedent("""
                     def good() -> None: ...
                     def bad(number: int) -> None: ...
                     def also_bad(number: int) -> None: ...
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
-                runtime=textwrap.dedent(
-                    """
+                    """.lstrip("\n")),
+                runtime=textwrap.dedent("""
                     def good(): pass
                     def bad(asdf): pass
                     def also_bad(asdf): pass
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
+                    """.lstrip("\n")),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (

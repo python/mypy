@@ -89,33 +89,33 @@ else:
             Extension(
                 "librt.internal",
                 [
-                    "librt_internal.c",
+                    "internal/librt_internal.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "internal"],
                 extra_compile_args=cflags,
             ),
             Extension(
                 "librt.strings",
                 [
-                    "librt_strings.c",
+                    "strings/librt_strings.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "strings"],
                 extra_compile_args=cflags,
             ),
             Extension(
                 "librt.base64",
                 [
-                    "librt_base64.c",
+                    "base64/librt_base64.c",
                     "base64/lib.c",
                     "base64/codec_choose.c",
                     "base64/tables/tables.c",
