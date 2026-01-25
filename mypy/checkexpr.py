@@ -2116,7 +2116,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
-                (callee_type, inferred_args) = self.infer_function_type_arguments_pass2(
+                callee_type, inferred_args = self.infer_function_type_arguments_pass2(
                     callee_type,
                     args,
                     arg_kinds,
@@ -5941,7 +5941,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ctx_else_type = self.analyze_cond_branch(
                 else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
             )
-            ctx = make_simplified_union([ctx_if_type, ctx_else_type])
+            if has_ambiguous_uninhabited_component(ctx_if_type):
+                ctx = ctx_else_type
+            elif has_ambiguous_uninhabited_component(ctx_else_type):
+                ctx = ctx_if_type
+            else:
+                ctx = make_simplified_union([ctx_if_type, ctx_else_type])
 
         if_type = self.analyze_cond_branch(
             if_map, e.if_expr, context=ctx, allow_none_return=allow_none_return
@@ -6462,7 +6467,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Collect symbols targeted by NameExprs and MemberExprs,
         # to be looked up by TypeAnalyser when binding the
         # UnboundTypes corresponding to those expressions.
-        (name_exprs, member_exprs) = all_name_and_member_expressions(maybe_type_expr)
+        name_exprs, member_exprs = all_name_and_member_expressions(maybe_type_expr)
         sym_for_name = {e.name: SymbolTableNode(UNBOUND_IMPORTED, e.node) for e in name_exprs} | {
             e_name: SymbolTableNode(UNBOUND_IMPORTED, e.node)
             for e in member_exprs
@@ -6634,6 +6639,20 @@ class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True
+
+
+def has_ambiguous_uninhabited_component(t: Type) -> bool:
+    return t.accept(HasAmbiguousUninhabitedComponentsQuery())
+
+
+class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
+    """Visitor for querying whether a type has an ambiguous UninhabitedType component."""
+
+    def __init__(self) -> None:
+        super().__init__(types.ANY_STRATEGY)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return t.ambiguous
 
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
