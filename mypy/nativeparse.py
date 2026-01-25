@@ -547,7 +547,8 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
             default = None
         pos_only = read_bool(data)
 
-        var = Var(arg_name)
+        var = Var(arg_name, ann)
+        var.is_inferred = False
         arg = Argument(var, ann, default, arg_kind, pos_only)
         read_loc(data, arg)
         var.line = arg.line
