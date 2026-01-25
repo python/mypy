@@ -242,22 +242,26 @@ class WorkerClient:
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
+        last_exception: Exception | None = None
         while time.time() < end_time:
             try:
                 data = read_status(self.status_file)
-            except BadStatus:
+            except BadStatus as exc:
+                last_exception = exc
                 time.sleep(WORKER_START_INTERVAL)
                 continue
             try:
                 pid, connection_name = data["pid"], data["connection_name"]
-                assert isinstance(pid, int) and isinstance(connection_name, str)
+                assert isinstance(pid, int), f"Bad PID: {pid}"
+                assert isinstance(connection_name, str), f"Bad connection name: {connection_name}"
                 # Double-check this status file is created by us.
-                assert pid == self.proc.pid
+                assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
                 return
-            except Exception:
+            except Exception as exc:
+                last_exception = exc
                 break
-        print("Failed to establish connection with worker")
+        print("Failed to establish connection with worker:", last_exception)
         sys.exit(2)
 
     def close(self) -> None:
@@ -1428,12 +1432,10 @@ def exclude_from_backups(target_dir: str) -> None:
     cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
     try:
         with open(cachedir_tag, "x") as f:
-            f.write(
-                """Signature: 8a477f597d28d172789f06886806bc55
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
 # This file is a cache directory tag automatically created by mypy.
 # For information about cache directory tags see https://bford.info/cachedir/
-"""
-            )
+""")
     except FileExistsError:
         pass
 
