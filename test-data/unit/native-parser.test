@@ -2702,3 +2702,122 @@ MypyFile:1(
     def (x: Callable?[<TypeList Arg(int?, x), DefaultArg(str?, y), VarArg(bool?), KwArg(float?)>, None?]) -> None?
     Block:4(
       PassStmt:4())))
+[case testInvalidTypeFloatLiteral]
+x: 3.14
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeComplexLiteral]
+y: 1j
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(y)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeBinaryOperatorAdd]
+z: int + str
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(z)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeBinaryOperatorMul]
+a: int * str
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeUnaryOperatorNot]
+b: not int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(b)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeUnaryOperatorInvert]
+c: ~int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(c)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeSetExpression]
+f: {1, 2, 3}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(f)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeListComprehension]
+g: [x for x in range(10)]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(g)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeLambda]
+h: lambda x: x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(h)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeIfExpression]
+i: int if True else str
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(i)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypeComparisonExpression]
+j: int < str
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(j)
+    TempNode:1(
+      Any)
+    None))
+
+[case testInvalidTypePositiveUnaryOp]
+k: +5
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(k)
+    TempNode:1(
+      Any)
+    5))

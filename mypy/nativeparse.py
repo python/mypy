@@ -782,7 +782,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         return ellipsis_type
     elif tag == types.RAW_EXPRESSION_TYPE:
         type_name = read_str(data)
-        value: types.LiteralValue | str
+        value: types.LiteralValue | str | None
         if type_name == "builtins.bool":
             value = read_bool(data)
         elif type_name == "builtins.int":
@@ -792,6 +792,11 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         elif type_name == "builtins.bytes":
             # Bytes literals are serialized as escaped strings
             value = read_str(data)
+        elif type_name == "typing.Any":
+            # Invalid type - read None value
+            tag = read_tag(data)
+            assert tag == types.LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
+            value = None
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
         raw_type = RawExpressionType(value, type_name)
