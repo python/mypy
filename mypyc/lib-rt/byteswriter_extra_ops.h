@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <Python.h>
 
-#include "librt_strings.h"
+#include "strings/librt_strings.h"
 
 static inline CPyTagged
 CPyBytesWriter_Len(PyObject *obj) {
