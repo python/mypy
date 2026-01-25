@@ -1409,7 +1409,7 @@ if sys.platform == "win32":
 
 else:
     def socketpair(
-        family: int | AddressFamily | None = None, type: SocketType | int = ..., proto: int = 0
+        family: int | AddressFamily | None = None, type: SocketKind | int = ..., proto: int = 0
     ) -> tuple[socket, socket]: ...
 
 class SocketIO(RawIOBase):

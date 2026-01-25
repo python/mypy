@@ -437,18 +437,20 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
-        # Process `--enable-error-code` and `--disable-error-code` flags
-        disabled_codes = set(self.disable_error_code)
-        enabled_codes = set(self.enable_error_code)
+        """Process `--enable-error-code` and `--disable-error-code` flags."""
+        disabled_code_names = set(self.disable_error_code)
+        enabled_code_names = set(self.enable_error_code)
 
-        valid_error_codes = set(error_codes.keys())
+        valid_error_code_names = set(error_codes.keys())
 
-        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
-        if invalid_codes:
-            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+        invalid_code_names_here = (
+            enabled_code_names | disabled_code_names
+        ) - valid_error_code_names
+        if invalid_code_names_here:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
-        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_code_names}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_code_names}
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
