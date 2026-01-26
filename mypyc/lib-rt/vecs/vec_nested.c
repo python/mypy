@@ -342,21 +342,21 @@ VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index) {
 }
 
 static int
-VecNested_traverse(VecTObject *self, visitproc visit, void *arg)
+VecNested_traverse(VecNestedObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->vec.buf);
     return 0;
 }
 
 static int
-VecNested_clear(VecTObject *self)
+VecNested_clear(VecNestedObject *self)
 {
     Py_CLEAR(self->vec.buf);
     return 0;
 }
 
 static void
-VecNested_dealloc(VecTObject *self)
+VecNested_dealloc(VecNestedObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecNested_dealloc)
