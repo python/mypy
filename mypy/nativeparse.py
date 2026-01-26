@@ -29,6 +29,7 @@ from librt.internal import (
 )
 
 from mypy import message_registry, nodes, types
+from mypy.sharedparse import special_function_elide_names
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -566,6 +567,10 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
 
     # Parameters
     arguments, has_ann = read_parameters(state, data)
+
+    if special_function_elide_names(name):
+        for arg in arguments:
+            arg.pos_only = True
 
     body = read_block(state, data)
 
