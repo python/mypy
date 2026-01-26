@@ -10,7 +10,7 @@ PyTypeObject *I16TypeObj;
 PyTypeObject *U8TypeObj;
 
 
-// vec type proxy
+// vec generic alias
 //
 // Used for the result of generic vec[t] that must preserve knowledge of 't'.
 // These aren't really types. This only supports constructing instances.
@@ -20,16 +20,16 @@ typedef struct {
     // Can also be one of magic VEC_ITEM_TYPE_* constants
     size_t item_type;
     size_t depth;  // Number of nested VecNested or VecT types
-} VecProxy;
+} VecGenericAlias;
 
-static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
+static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject *kw)
 {
     static char *kwlist[] = {"", NULL};
     PyObject *init = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
         return NULL;
     }
-    VecProxy *p = (VecProxy *)self;
+    VecGenericAlias *p = (VecGenericAlias *)self;
     if (p->depth == 0) {
         if (init == NULL) {
             VecT vec = VecT_New(0, 0, p->item_type);
@@ -52,7 +52,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
 }
 
 static int
-VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
+VecGenericAlias_traverse(VecGenericAlias *self, visitproc visit, void *arg)
 {
     if (!Vec_IsMagicItemType(self->item_type))
         Py_VISIT((PyObject *)(self->item_type & ~1));
@@ -60,7 +60,7 @@ VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 }
 
 static void
-VecProxy_dealloc(VecProxy *self)
+VecGenericAlias_dealloc(VecGenericAlias *self)
 {
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
@@ -113,7 +113,7 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
     return result;
 }
 
-PyObject *VecProxy_repr(PyObject *self) {
+PyObject *VecGenericAlias_repr(PyObject *self) {
     PyObject *l = NULL;
     PyObject *prefix = NULL;
     PyObject *suffix = NULL;
@@ -135,7 +135,7 @@ PyObject *VecProxy_repr(PyObject *self) {
 
     if (PyList_Append(l, prefix) < 0) goto error;
 
-    VecProxy *v = (VecProxy *)self;
+    VecGenericAlias *v = (VecGenericAlias *)self;
     type_str = Vec_TypeToStr(v->item_type, v->depth);
     if (type_str == NULL) goto error;
 
@@ -153,16 +153,16 @@ error:
     return result;
 }
 
-PyTypeObject VecProxyType = {
+PyTypeObject VecGenericAliasType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vec_proxy",
-    .tp_basicsize = sizeof(VecProxy),
+    .tp_name = "vec_generic_alias",
+    .tp_basicsize = sizeof(VecGenericAlias),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_call = vec_proxy_call,
-    .tp_traverse = (traverseproc)VecProxy_traverse,
-    .tp_dealloc = (destructor)VecProxy_dealloc,
-    .tp_repr = (reprfunc)VecProxy_repr,
+    .tp_call = vec_generic_alias_call,
+    .tp_traverse = (traverseproc)VecGenericAlias_traverse,
+    .tp_dealloc = (destructor)VecGenericAlias_dealloc,
+    .tp_repr = (reprfunc)VecGenericAlias_repr,
 };
 
 
@@ -198,7 +198,7 @@ static PyObject *extract_optional_item(PyObject *item) {
     return NULL;
 }
 
-// Evaluation vec[<type>] in interpreted code and produce a proxy type object.
+// Evaluation vec[<type>] in interpreted code and produce a generic alias object.
 static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
 {
     if (item == (PyObject *)I64TypeObj) {
@@ -240,12 +240,12 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                     return NULL;
                 }
             }
-            if (item->ob_type == &VecProxyType) {
+            if (item->ob_type == &VecGenericAliasType) {
                 if (optional) {
                     PyErr_SetString(PyExc_TypeError, "optional type not expected in vec[...]");
                     return NULL;
                 }
-                VecProxy *p = (VecProxy *)item;
+                VecGenericAlias *p = (VecGenericAlias *)item;
                 item_type = p->item_type;
                 depth = p->depth + 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
@@ -282,8 +282,8 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                          ((PyTypeObject *)item)->tp_name);
             return NULL;
         }
-        VecProxy *p;
-        p = PyObject_GC_New(VecProxy, &VecProxyType);
+        VecGenericAlias *p;
+        p = PyObject_GC_New(VecGenericAlias, &VecGenericAliasType);
         if (p == NULL)
             return NULL;
         Py_INCREF(item);
@@ -865,7 +865,7 @@ librt_vecs_module_exec(PyObject *m)
 
     if (PyType_Ready(&VecGenericType) < 0)
         return -1;
-    if (PyType_Ready(&VecProxyType) < 0)
+    if (PyType_Ready(&VecGenericAliasType) < 0)
         return -1;
 
     if (PyType_Ready(&VecTType) < 0)
