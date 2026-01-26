@@ -1,6 +1,9 @@
 #ifndef VEC_H_INCL
 #define VEC_H_INCL
 
+// Header for the implementation of librt.vecs, which defines the 'vec' type.
+// Refer to librt_vecs.c for more detailed information.
+
 #ifndef MYPYC_EXPERIMENTAL
 
 static int

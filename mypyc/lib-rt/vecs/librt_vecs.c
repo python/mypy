@@ -1,3 +1,72 @@
+// Definition of the mypyc.vecs module, which implements 'vec' and related functionality.
+//
+// NOTE: This is still experimental and work in progress.
+//
+// vec[t] is a sequence type that is optimized for use in mypyc-compiled code.
+// Performance in interpreted code is a secondary concern. It's primarily optimized
+// to provide fast item get/set operations and fast len(), especially for primitive
+// value item types, such as 'i32', 'float' or 'bool'.
+//
+// Example:
+//
+//    from mypy_extensions import i64
+//
+//    v = vec[i64]()
+//    v = append(v, 123)
+//    print(v[0])
+//    v[-1] = 234
+//
+// Key properties:
+//
+//  * In native code, a vec instance is an immutable value type with two fields
+//    (length, item buffer).
+//  * The item buffer can only store types of a specific type (enforced at runtime).
+//  * There are specialized item buffer types for certain primitive value item types,
+//    such as 'i32', 'float' and 'bool'. These use a packed value encoding.
+//  * Since vec values are immutable (only the buffer is mutable), any operation
+//    that changes the length (such as append) must return the updated vec value.
+//  * Vec values can be boxed to PyObject *; this happens transparently and uses
+//    a wrapper object.
+//  * The item type can be a class type, or 't | None' if t is a class type. However,
+//    optional value item types such as 'float | None' are not supported, and 'int'
+//    is not valid as item type -- a native integer type such as `i64` or `u8` must
+//    be used instead.
+//  * Nested vecs are also supported (e.g. vec[vec[i32]]).
+//  * All features are also available in interpreted code, but often at some
+//    performance cost compared to using plain lists.
+//
+// Implementation summary:
+//
+//  * In a non-native context, instances are constructed via a temporary VecGenericAlias
+//    object, which is the result of 'vec[<t>]' (indexing the 'vec' type).
+//  * The module exports a C API via a capsule that mypyc compiled code uses for most
+//    operations.
+//  * There are multiple C structs that represent vec value objects with different item
+//    types, such as VecI64 and VecT. The latter is for arbitrary reference objects
+//    ('PyObject *' items internally).
+//  * There are also multiple buffer types, such as VecI64Buf and VecTBuf.
+//  * Similarly, there are multiple Python wrapper object types for boxed vecs, such as
+//    VecI64Type and VecTType.
+//  * An empty vec in compiled code can use a NULL pointer to represent the buffer,
+//    saving an object allocation in a common use case.
+//
+// Motivation:
+//  * A vec with value type items, such as vec[i64] or vec[vec[i32]], is very efficient
+//    compared to a list object, since values are not boxed, there is no need for runtime
+//    type checks on read, and index overflow checks are very fast due to the immutable
+//    value encoding.
+//  * A vec with a reference item type, such as vec[str], is often faster than a list,
+//    since there is no need for a cast on item read and the index checks are faster
+//    (among other things), but here the benefit is much smaller compared to using a
+//    value item type.
+//
+// Summary of files:
+//  * vec_t.c implements vec[t] and vec[t | None] for reference types
+//  * vec_nested.c implements nested vecs, such as vec[vec[str]]
+//  * vec_template.c is #included in multiples files (e.g. vec_i64.c) to produce
+//    specialized code for vecs with value item types (e.g. vec[i64])
+//  * This file defines the C extension and has some shared code
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "librt_vecs.h"
