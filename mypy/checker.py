@@ -808,7 +808,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             defn.type = Overloaded([var_type])
         # Check override validity after we analyzed current definition.
         if not self.can_skip_diagnostics and defn.info:
-            found_method_base_classes = self.pure_check_method_override(defn)
+            found_method_base_classes = self.check_method_override(defn)
             if (
                 defn.is_explicit_override
                 and not found_method_base_classes
@@ -818,8 +818,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not defn.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(defn.name, defn)
-            self.pure_check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
-            self.pure_check_inplace_operator_method(defn)
+            self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
+            self.check_inplace_operator_method(defn)
 
     @contextmanager
     def enter_overload_impl(self, impl: OverloadPart) -> Iterator[None]:
@@ -1202,11 +1202,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # overload, the legality of the override has already
                         # been typechecked, and decorated methods will be
                         # checked when the decorator is.
-                        found_method_base_classes = self.pure_check_method_override(defn)
-                        self.pure_check_explicit_override_decorator(
+                        found_method_base_classes = self.check_method_override(defn)
+                        self.check_explicit_override_decorator(
                             defn, found_method_base_classes
                         )
-                    self.pure_check_inplace_operator_method(defn)
+                    self.check_inplace_operator_method(defn)
             if defn.original_def:
                 # Override previous definition.
                 new_type = self.function_type(defn)
@@ -1315,7 +1315,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # function. In the first case, set up another reference with the
                 # precise type.
                 if not self.can_skip_diagnostics:
-                    self.pure_check_funcdef_item(
+                    self.check_funcdef_item(
                         item, typ, name, defn=defn, original_typ=original_typ
                     )
 
@@ -1386,7 +1386,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Type check initialization expressions.
                 body_is_trivial = is_trivial_body(defn.body)
                 if not self.can_skip_diagnostics:
-                    self.pure_check_default_args(item, body_is_trivial)
+                    self.check_default_args(item, body_is_trivial)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -1535,7 +1535,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             self.binder = old_binder
 
-    def pure_check_funcdef_item(
+    def check_funcdef_item(
         self,
         item: FuncItem,
         typ: CallableType,
@@ -1557,9 +1557,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             # Check validity of __new__ signature
             if fdef.info and fdef.name == "__new__":
-                self.pure_check___new___signature(fdef, typ)
+                self.check___new___signature(fdef, typ)
 
-            self.pure_check_for_missing_annotations(fdef)
+            self.check_for_missing_annotations(fdef)
             if self.options.disallow_any_unimported:
                 if fdef.type and isinstance(fdef.type, CallableType):
                     ret_type = fdef.type.ret_type
@@ -1579,21 +1579,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and self.is_reverse_op_method(name)
                 and defn not in self.overload_impl_stack
             ):
-                self.pure_check_reverse_op_method(item, typ, name, defn)
+                self.check_reverse_op_method(item, typ, name, defn)
             elif name in ("__getattr__", "__getattribute__"):
-                self.pure_check_getattr_method(typ, defn, name)
+                self.check_getattr_method(typ, defn, name)
             elif name == "__setattr__":
-                self.pure_check_setattr_method(typ, defn)
+                self.check_setattr_method(typ, defn)
 
         # Refuse contravariant return type variable
         if isinstance(typ.ret_type, TypeVarType):
             if typ.ret_type.variance == CONTRAVARIANT:
                 self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type)
-            self.pure_check_unbound_return_typevar(typ)
+            self.check_unbound_return_typevar(typ)
         elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
             # Since type vars with values are expanded, the return type is changed
             # to a raw value. This is a hack to get it back.
-            self.pure_check_unbound_return_typevar(original_typ)
+            self.check_unbound_return_typevar(original_typ)
 
         # Check that Generator functions have the appropriate return type.
         if defn.is_generator:
@@ -1691,7 +1691,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     return True
         return False
 
-    def pure_check_unbound_return_typevar(self, typ: CallableType) -> None:
+    def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
         if isinstance(typ.ret_type, TypeVarType) and typ.ret_type in typ.variables:
             arg_type_visitor = CollectArgTypeVarTypes()
@@ -1711,7 +1711,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         context=typ.ret_type,
                     )
 
-    def pure_check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
+    def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
             if arg.initializer is None:
                 continue
@@ -1752,7 +1752,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def is_reverse_op_method(self, method_name: str) -> bool:
         return method_name in operators.reverse_op_method_set
 
-    def pure_check_for_missing_annotations(self, fdef: FuncItem) -> None:
+    def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
         if not show_untyped:
             return
@@ -1798,7 +1798,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
-    def pure_check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
+    def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
         bound_type = bind_self(typ, self_type, is_classmethod=True)
         # Check that __new__ (after binding cls) returns an instance
@@ -1834,15 +1834,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 "but must return a subtype of",
             )
 
-    def pure_check_reverse_op_method(
+    def check_reverse_op_method(
         self, defn: FuncItem, reverse_type: CallableType, reverse_name: str, context: Context
     ) -> None:
         """Check a reverse operator method such as __radd__."""
-        # Decides whether it's worth calling pure_check_overlapping_op_methods().
+        # Decides whether it's worth calling check_overlapping_op_methods().
 
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
-        # pure_check_overlapping_op_methods().
+        # check_overlapping_op_methods().
 
         assert defn.info
 
@@ -1912,7 +1912,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         forward_type = self.expr_checker.analyze_external_member_access(
             forward_name, forward_base, context=defn
         )
-        self.pure_check_overlapping_op_methods(
+        self.check_overlapping_op_methods(
             reverse_type,
             reverse_name,
             defn.info,
@@ -1922,7 +1922,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             context=defn,
         )
 
-    def pure_check_overlapping_op_methods(
+    def check_overlapping_op_methods(
         self,
         reverse_type: CallableType,
         reverse_name: str,
@@ -2038,7 +2038,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             first, second, type_vars, partial_only=False
         )
 
-    def pure_check_inplace_operator_method(self, defn: FuncBase) -> None:
+    def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
 
         They cannot arbitrarily overlap with __add__.
@@ -2064,7 +2064,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def pure_check_getattr_method(self, typ: Type, context: Context, name: str) -> None:
+    def check_getattr_method(self, typ: Type, context: Context, name: str) -> None:
         if len(self.scope.stack) == 1:
             # module scope
             if name == "__getattribute__":
@@ -2093,7 +2093,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, name)
 
-    def pure_check_setattr_method(self, typ: Type, context: Context) -> None:
+    def check_setattr_method(self, typ: Type, context: Context) -> None:
         if not self.scope.active_class():
             return
         method_type = CallableType(
@@ -2165,7 +2165,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             return [(defn, typ)]
 
-    def pure_check_explicit_override_decorator(
+    def check_explicit_override_decorator(
         self,
         defn: FuncDef | OverloadedFuncDef,
         found_method_base_classes: list[TypeInfo] | None,
@@ -2188,7 +2188,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.name, found_method_base_classes[0].fullname, context or defn
             )
 
-    def pure_check_method_override(
+    def check_method_override(
         self, defn: FuncDef | OverloadedFuncDef | Decorator
     ) -> list[TypeInfo] | None:
         """Check if function definition is compatible with base classes.
@@ -2212,7 +2212,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         )
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
-            result = self.pure_check_method_or_accessor_override_for_base(
+            result = self.check_method_or_accessor_override_for_base(
                 defn, base, check_override_compatibility
             )
             if result is None:
@@ -2222,7 +2222,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 found_method_base_classes.append(base)
         return found_method_base_classes
 
-    def pure_check_method_or_accessor_override_for_base(
+    def check_method_or_accessor_override_for_base(
         self,
         defn: FuncDef | OverloadedFuncDef | Decorator,
         base: TypeInfo,
@@ -2245,12 +2245,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.cant_override_final(name, base.name, defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
-                    self.pure_check_if_final_var_override_writable(name, base_attr.node, defn)
+                    self.check_if_final_var_override_writable(name, base_attr.node, defn)
                 found_base_method = True
             if check_override_compatibility:
                 # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
-                if self.pure_check_method_override_for_base_with_name(defn, name, base):
+                if self.check_method_override_for_base_with_name(defn, name, base):
                     return None
                 if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
@@ -2259,7 +2259,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    if self.pure_check_method_override_for_base_with_name(defn, method, base):
+                    if self.check_method_override_for_base_with_name(defn, method, base):
                         return None
         return found_base_method
 
@@ -2278,7 +2278,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not is_subtype(original_type, typ):
             self.msg.incompatible_setter_override(defn.setter, typ, original_type, base)
 
-    def pure_check_method_override_for_base_with_name(
+    def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
     ) -> bool:
         """Check if overriding an attribute `name` of `base` with `defn` is valid.
@@ -2695,12 +2695,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if not self.can_skip_diagnostics:
                 if not (defn.info.typeddict_type or defn.info.tuple_type or defn.info.is_enum):
                     # If it is not a normal class (not a special form) check class keywords.
-                    self.pure_check_init_subclass(defn)
+                    self.check_init_subclass(defn)
                 if not defn.has_incompatible_baseclass:
                     # Otherwise we've already found errors; more errors are not useful
-                    self.pure_check_multiple_inheritance(typ)
-                self.pure_check_metaclass_compatibility(typ)
-                self.pure_check_final_deletable(typ)
+                    self.check_multiple_inheritance(typ)
+                self.check_metaclass_compatibility(typ)
+                self.check_final_deletable(typ)
 
             if defn.decorators:
                 sig: Type = type_object_type(defn.info, self.named_type)
@@ -2749,7 +2749,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_typevar_defaults(typ.defn.type_vars)
 
         if typ.is_protocol and typ.defn.type_vars:
-            self.pure_check_protocol_variance(defn)
+            self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
         infer_class_variances(defn.info)
@@ -2763,7 +2763,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         finally:
             self.type = original_type
 
-    def pure_check_final_deletable(self, typ: TypeInfo) -> None:
+    def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
         # to implement here than in mypyc.
         for attr in typ.deletable_attributes:
@@ -2771,7 +2771,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if node and isinstance(node.node, Var) and node.node.is_final:
                 self.fail(message_registry.CANNOT_MAKE_DELETABLE_FINAL, node.node)
 
-    def pure_check_init_subclass(self, defn: ClassDef) -> None:
+    def check_init_subclass(self, defn: ClassDef) -> None:
         """Check that keywords in a class definition are valid arguments for __init_subclass__().
 
         In this example:
@@ -2941,7 +2941,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             elif candidate:
                 has_new = True
 
-    def pure_check_protocol_variance(self, defn: ClassDef) -> None:
+    def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
         variances of type variables.
 
@@ -2982,7 +2982,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if expected != tvar.variance:
                 self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
-    def pure_check_multiple_inheritance(self, typ: TypeInfo) -> None:
+    def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
         if len(typ.bases) <= 1:
             # No multiple inheritance.
@@ -3002,9 +3002,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             i, base = next((i, base) for i, base in enumerate(mro) if name in base.names)
             for base2 in mro[i + 1 :]:
                 if name in base2.names and base2 not in base.mro:
-                    self.pure_check_compatibility(name, base, base2, typ)
+                    self.check_compatibility(name, base, base2, typ)
 
-    def pure_check_compatibility(
+    def check_compatibility(
         self, name: str, base1: TypeInfo, base2: TypeInfo, ctx: TypeInfo
     ) -> None:
         """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
@@ -3084,7 +3084,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if is_final_node(second.node) and not is_private(name):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
-            self.pure_check_if_final_var_override_writable(name, second.node, ctx)
+            self.check_if_final_var_override_writable(name, second.node, ctx)
         # Some attributes like __slots__ and __deletable__ are special, and the type can
         # vary across class hierarchy.
         if isinstance(second.node, Var) and second.node.allow_incompatible_override:
@@ -3092,7 +3092,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2, ctx)
 
-    def pure_check_metaclass_compatibility(self, typ: TypeInfo) -> None:
+    def check_metaclass_compatibility(self, typ: TypeInfo) -> None:
         """Ensures that metaclasses of all parent types are compatible."""
         if (
             typ.is_metaclass()
@@ -3290,9 +3290,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         signature = self.expr_checker.accept(rvalue)
                     if signature:
                         if name == "__setattr__":
-                            self.pure_check_setattr_method(signature, lvalue)
+                            self.check_setattr_method(signature, lvalue)
                         else:
-                            self.pure_check_getattr_method(signature, lvalue, name)
+                            self.check_getattr_method(signature, lvalue, name)
 
                 if name == "__slots__" and self.scope.active_class() is not None:
                     typ = lvalue_type or self.expr_checker.accept(rvalue)
@@ -3459,7 +3459,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # We check override here at the end after storing the inferred type, since
                 # override check will try to access the current attribute via symbol tables
                 # (like a regular attribute access).
-                self.pure_check_compatibility_all_supers(lvalue, rvalue)
+                self.check_compatibility_all_supers(lvalue, rvalue)
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops: Final = {("builtins.list", "+"), ("builtins.set", "|")}
@@ -3553,7 +3553,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 var.type = fill_typevars_with_any(typ.type)
                 del partial_types[var]
 
-    def pure_check_compatibility_all_supers(self, lvalue: RefExpr, rvalue: Expression) -> None:
+    def check_compatibility_all_supers(self, lvalue: RefExpr, rvalue: Expression) -> None:
         lvalue_node = lvalue.node
         # Check if we are a class variable with at least one base class
         if (
@@ -3572,13 +3572,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             for base in lvalue_node.info.mro[1:]:
                 tnode = base.names.get(lvalue_node.name)
                 if tnode is not None:
-                    if not self.pure_check_compatibility_classvar_super(
+                    if not self.check_compatibility_classvar_super(
                         lvalue_node, base, tnode.node
                     ):
                         # Show only one error per variable
                         break
 
-                    if not self.pure_check_compatibility_final_super(
+                    if not self.check_compatibility_final_super(
                         lvalue_node, base, tnode.node
                     ):
                         # Show only one error per variable
@@ -3747,7 +3747,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 base_type = analyze_instance_member_access(name, instance, mx, base)
         return base_type, base_node.node
 
-    def pure_check_compatibility_classvar_super(
+    def check_compatibility_classvar_super(
         self, node: Var, base: TypeInfo, base_node: Node | None
     ) -> bool:
         if not isinstance(base_node, Var):
@@ -3760,7 +3760,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return False
         return True
 
-    def pure_check_compatibility_final_super(
+    def check_compatibility_final_super(
         self, node: Var, base: TypeInfo, base_node: Node | None
     ) -> bool:
         """Check if an assignment overrides a final attribute in a base class.
@@ -3786,10 +3786,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if node.is_final:
             if base.fullname in ENUM_BASES or node.name in ENUM_SPECIAL_PROPS:
                 return True
-            self.pure_check_if_final_var_override_writable(node.name, base_node, node)
+            self.check_if_final_var_override_writable(node.name, base_node, node)
         return True
 
-    def pure_check_if_final_var_override_writable(
+    def check_if_final_var_override_writable(
         self, name: str, base_node: Node | None, ctx: Context
     ) -> None:
         """Check that a final variable doesn't override writeable attribute.
@@ -3868,7 +3868,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         sym = base.names.get(name)
                         # We only give this error if base node is variable,
                         # overriding final method will be caught in
-                        # `pure_check_compatibility_final_super()`.
+                        # `check_compatibility_final_super()`.
                         if sym and isinstance(sym.node, Var):
                             if sym.node.is_final and not is_final_decl:
                                 self.msg.cant_assign_to_final(name, sym.node.info is None, s)
@@ -5543,7 +5543,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if allow_empty or skip_first_item:
             return
         if e.func.info and not e.is_overload:
-            found_method_base_classes = self.pure_check_method_override(e)
+            found_method_base_classes = self.check_method_override(e)
             if (
                 e.func.is_explicit_override
                 and not found_method_base_classes
@@ -5553,7 +5553,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not e.func.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(e.func.name, e.func)
-            self.pure_check_explicit_override_decorator(e.func, found_method_base_classes)
+            self.check_explicit_override_decorator(e.func, found_method_base_classes)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
@@ -5966,7 +5966,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 base_classes, curr_module, self.options
             )
             with self.msg.filter_errors() as local_errors:
-                self.pure_check_multiple_inheritance(info)
+                self.check_multiple_inheritance(info)
             if local_errors.has_new_errors():
                 # "class A(B, C)" unsafe, now check "class A(C, B)":
                 base_classes = _get_base_classes(instances[::-1])
@@ -5974,7 +5974,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     base_classes, curr_module, self.options
                 )
                 with self.msg.filter_errors() as local_errors:
-                    self.pure_check_multiple_inheritance(info)
+                    self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
             errors.append((pretty_names_list, "would have inconsistent method resolution order"))
