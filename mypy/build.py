@@ -1084,6 +1084,8 @@ class BuildManager:
                 path = state.manager.maybe_swap_for_shadow_path(state.path)
                 source = decode_python_encoding(state.manager.fscache.read(path))
             tree = parse(source, state.path, state.id, state.manager.errors, state.options)
+            # TODO: run first pass of semantic analysis on freshly parsed trees,
+            # we need this to get correct reachability information.
             self.extra_trees[state.id] = tree
         statements = tree.defs
         while prefix:

@@ -1098,6 +1098,12 @@ def find_definitions(o: Statement, name: str) -> list[Statement]:
 
 
 class DefinitionSeeker(StatementVisitor[None]):
+    """Find only the topmost functions/classes with the given name.
+
+    To find a nested class or method, you should split fullname in parts,
+    and use this visitor for each part.
+    """
+
     def __init__(self, name: str) -> None:
         self.name = name
         self.found: list[Statement] = []
@@ -1150,6 +1156,8 @@ class DefinitionSeeker(StatementVisitor[None]):
         pass
 
     def visit_block(self, o: Block, /) -> None:
+        if o.is_unreachable:
+            return
         for s in o.body:
             s.accept(self)
 

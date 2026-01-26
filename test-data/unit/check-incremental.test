@@ -7749,3 +7749,48 @@ tmp/b.py:3: note: "lol" defined here
 [out2]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
 tmp/b.py:3: note: "lol" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod]
+import a
+[file a.py]
+import b
+b.B().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod2]
+import a
+[file a.py]
+import b
+b.B.BB().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B.BB().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    class BB:
+        def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here
