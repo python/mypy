@@ -266,6 +266,11 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
+        location_ref = None
+        if file is not None and file != self.errors.file:
+            assert isinstance(context, SymbolNode), "Only symbols can be locations in other files"
+            location_ref = context.fullname
+
         return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
@@ -278,6 +283,7 @@ class MessageBuilder:
             end_column=context.end_column if context else -1,
             code=code,
             parent_error=parent_error,
+            location_ref=location_ref,
         )
 
     def fail(
