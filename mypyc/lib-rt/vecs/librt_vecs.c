@@ -4,10 +4,10 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
-PyTypeObject *I64TypeObj;
-PyTypeObject *I32TypeObj;
-PyTypeObject *I16TypeObj;
-PyTypeObject *U8TypeObj;
+PyTypeObject *LibRTVecs_I64TypeObj;
+PyTypeObject *LibRTVecs_I32TypeObj;
+PyTypeObject *LibRTVecs_I16TypeObj;
+PyTypeObject *LibRTVecs_U8TypeObj;
 
 
 // vec generic alias
@@ -201,19 +201,19 @@ static PyObject *extract_optional_item(PyObject *item) {
 // Evaluation vec[<type>] in interpreted code and produce a generic alias object.
 static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
 {
-    if (item == (PyObject *)I64TypeObj) {
+    if (item == (PyObject *)LibRTVecs_I64TypeObj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
-    } else if (item == (PyObject *)U8TypeObj) {
+    } else if (item == (PyObject *)LibRTVecs_U8TypeObj) {
         Py_INCREF(&VecU8Type);
         return (PyObject *)&VecU8Type;
     } else if (item == (PyObject *)&PyFloat_Type) {
         Py_INCREF(&VecFloatType);
         return (PyObject *)&VecFloatType;
-    } else if (item == (PyObject *)I32TypeObj) {
+    } else if (item == (PyObject *)LibRTVecs_I32TypeObj) {
         Py_INCREF(&VecI32Type);
         return (PyObject *)&VecI32Type;
-    } else if (item == (PyObject *)I16TypeObj) {
+    } else if (item == (PyObject *)LibRTVecs_I16TypeObj) {
         Py_INCREF(&VecI16Type);
         return (PyObject *)&VecI16Type;
     } else if (item == (PyObject *)&PyBool_Type) {
@@ -229,11 +229,11 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                 optional = 1;
                 item = it;
                 // Check if this is a specialized value type that doesn't support None
-                if (item == (PyObject *)I64TypeObj ||
-                    item == (PyObject *)U8TypeObj ||
+                if (item == (PyObject *)LibRTVecs_I64TypeObj ||
+                    item == (PyObject *)LibRTVecs_U8TypeObj ||
                     item == (PyObject *)&PyFloat_Type ||
-                    item == (PyObject *)I32TypeObj ||
-                    item == (PyObject *)I16TypeObj ||
+                    item == (PyObject *)LibRTVecs_I32TypeObj ||
+                    item == (PyObject *)LibRTVecs_I16TypeObj ||
                     item == (PyObject *)&PyBool_Type) {
                     PyErr_SetString(PyExc_TypeError,
                         "vec does not support optional value types (use vec[object] instead)");
@@ -832,35 +832,35 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     }
 
-    I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
-    if (I64TypeObj == NULL) {
+    LibRTVecs_I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
+    if (LibRTVecs_I64TypeObj == NULL) {
         return -1;
     }
-    if (!PyType_Check(I64TypeObj)) {
+    if (!PyType_Check(LibRTVecs_I64TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
         return -1;
     }
-    I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
-    if (I32TypeObj == NULL) {
+    LibRTVecs_I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
+    if (LibRTVecs_I32TypeObj == NULL) {
         return -1;
     }
-    if (!PyType_Check(I32TypeObj)) {
+    if (!PyType_Check(LibRTVecs_I32TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
         return -1;
     }
-    I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
-    if (I16TypeObj == NULL) {
+    LibRTVecs_I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
+    if (LibRTVecs_I16TypeObj == NULL) {
         return -1;
     }
-    if (!PyType_Check(I16TypeObj)) {
+    if (!PyType_Check(LibRTVecs_I16TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
         return -1;
     }
-    U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
-    if (U8TypeObj == NULL) {
+    LibRTVecs_U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
+    if (LibRTVecs_U8TypeObj == NULL) {
         return -1;
     }
-    if (!PyType_Check(U8TypeObj)) {
+    if (!PyType_Check(LibRTVecs_U8TypeObj)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
         return -1;
     }

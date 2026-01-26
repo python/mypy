@@ -480,10 +480,10 @@ extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
 // Type objects correponding the 'i64', 'i32', 'i16, and 'u8' types
-extern PyTypeObject *I64TypeObj;
-extern PyTypeObject *I32TypeObj;
-extern PyTypeObject *I16TypeObj;
-extern PyTypeObject *U8TypeObj;
+extern PyTypeObject *LibRTVecs_I64TypeObj;
+extern PyTypeObject *LibRTVecs_I32TypeObj;
+extern PyTypeObject *LibRTVecs_I16TypeObj;
+extern PyTypeObject *LibRTVecs_U8TypeObj;
 
 extern VecI64Features I64Features;
 extern VecI32Features I32Features;
