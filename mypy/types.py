@@ -3252,6 +3252,7 @@ class LiteralType(ProperType):
         return visitor.visit_literal_type(self)
 
     def __hash__(self) -> int:
+        # Intentionally a subset of __eq__ for perf
         return hash(self.value)
 
     def __eq__(self, other: object) -> bool:
