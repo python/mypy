@@ -172,7 +172,7 @@ PyTypeObject VecGenericAliasType = {
 
 typedef struct {
     PyObject_HEAD
-} VecGeneric;
+} Vec;
 
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
@@ -299,10 +299,10 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
-PyTypeObject VecGenericType = {
+PyTypeObject VecType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
-    .tp_basicsize = sizeof(VecGeneric),
+    .tp_basicsize = sizeof(Vec),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_methods = vec_methods,
@@ -863,7 +863,7 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     }
 
-    if (PyType_Ready(&VecGenericType) < 0)
+    if (PyType_Ready(&VecType) < 0)
         return -1;
     if (PyType_Ready(&VecGenericAliasType) < 0)
         return -1;
@@ -903,9 +903,9 @@ librt_vecs_module_exec(PyObject *m)
     if (PyType_Ready(&VecBoolBufType) < 0)
         return -1;
 
-    Py_INCREF(&VecGenericType);
-    if (PyModule_AddObject(m, "vec", (PyObject *)&VecGenericType) < 0) {
-        Py_DECREF(&VecGenericType);
+    Py_INCREF(&VecType);
+    if (PyModule_AddObject(m, "vec", (PyObject *)&VecType) < 0) {
+        Py_DECREF(&VecType);
         return -1;
     }
 
@@ -915,7 +915,7 @@ librt_vecs_module_exec(PyObject *m)
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
         Py_XDECREF(c_api);
-        Py_DECREF(&VecGenericType);
+        Py_DECREF(&VecType);
         return -1;
     }
 
