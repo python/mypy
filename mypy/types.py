@@ -331,9 +331,6 @@ class Type(mypy.nodes.Context):
     def read(cls, data: ReadBuffer) -> Type:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
-    def is_singleton_type(self) -> bool:
-        return False
-
 
 class TypeAliasType(Type):
     """A type alias to another type.
@@ -1479,9 +1476,6 @@ class NoneType(ProperType):
         assert read_tag(data) == END_TAG
         return NoneType()
 
-    def is_singleton_type(self) -> bool:
-        return True
-
 
 # NoneType used to be called NoneTyp so to avoid needlessly breaking
 # external plugins we keep that alias here.
@@ -1847,15 +1841,6 @@ class Instance(ProperType):
         new = self.copy_modified()
         new.extra_attrs = existing_attrs
         return new
-
-    def is_singleton_type(self) -> bool:
-        # TODO:
-        # Also make this return True if the type corresponds to NotImplemented?
-        return (
-            self.type.is_enum
-            and len(self.type.enum_members) == 1
-            or self.type.fullname in ELLIPSIS_TYPE_NAMES
-        )
 
 
 class InstanceCache:
@@ -2256,7 +2241,7 @@ class CallableType(FunctionLike):
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
-        definition: Bogus[SymbolNode] = _dummy,
+        definition: Bogus[SymbolNode | None] = _dummy,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         line: int = _dummy_int,
         column: int = _dummy_int,
@@ -3080,11 +3065,11 @@ class TypedDictType(ProperType):
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
 
-    def as_anonymous(self) -> TypedDictType:
+    def create_anonymous_fallback(self) -> Instance:
         if self.is_anonymous():
-            return self
+            return self.fallback
         assert self.fallback.type.typeddict_type is not None
-        return self.fallback.type.typeddict_type.as_anonymous()
+        return self.fallback.type.typeddict_type.create_anonymous_fallback()
 
     def copy_modified(
         self,
@@ -3109,10 +3094,6 @@ class TypedDictType(ProperType):
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
         return TypedDictType(items, required_keys, readonly_keys, fallback, self.line, self.column)
-
-    def create_anonymous_fallback(self) -> Instance:
-        anonymous = self.as_anonymous()
-        return anonymous.fallback
 
     def names_are_wider_than(self, other: TypedDictType) -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -3332,9 +3313,6 @@ class LiteralType(ProperType):
         ret = LiteralType(read_literal(data, tag), fallback)
         assert read_tag(data) == END_TAG
         return ret
-
-    def is_singleton_type(self) -> bool:
-        return self.is_enum_literal() or isinstance(self.value, bool)
 
 
 class UnionType(ProperType):

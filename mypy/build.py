@@ -40,16 +40,40 @@ from typing import (
     TypedDict,
 )
 
-from librt.internal import cache_version
+from librt.internal import (
+    cache_version,
+    read_bool,
+    read_int as read_int_bare,
+    read_str as read_str_bare,
+    read_tag,
+    write_bool,
+    write_int as write_int_bare,
+    write_str as write_str_bare,
+    write_tag,
+)
 
 import mypy.semanal_main
 from mypy.cache import (
     CACHE_VERSION,
+    DICT_STR_GEN,
+    LITERAL_NONE,
     CacheMeta,
     ReadBuffer,
     SerializedError,
+    Tag,
     WriteBuffer,
-    write_json,
+    read_int,
+    read_int_list,
+    read_int_opt,
+    read_str,
+    read_str_list,
+    read_str_opt,
+    write_int,
+    write_int_list,
+    write_int_opt,
+    write_str,
+    write_str_list,
+    write_str_opt,
 )
 from mypy.checker import TypeChecker
 from mypy.defaults import (
@@ -59,15 +83,32 @@ from mypy.defaults import (
     WORKER_START_TIMEOUT,
 )
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
-from mypy.errors import CompileError, ErrorInfo, Errors, ErrorTuple, report_internal_error
+from mypy.errors import (
+    CompileError,
+    ErrorInfo,
+    Errors,
+    ErrorTuple,
+    ErrorTupleRaw,
+    report_internal_error,
+)
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.ipc import BadStatus, IPCClient, read_status, ready_to_read, receive, send
+from mypy.ipc import BadStatus, IPCClient, IPCMessage, read_status, ready_to_read, receive, send
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.nodes import (
+    ClassDef,
+    Context,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    SymbolTable,
+)
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.traverser import find_definitions
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
@@ -218,22 +259,26 @@ class WorkerClient:
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
+        last_exception: Exception | None = None
         while time.time() < end_time:
             try:
                 data = read_status(self.status_file)
-            except BadStatus:
+            except BadStatus as exc:
+                last_exception = exc
                 time.sleep(WORKER_START_INTERVAL)
                 continue
             try:
                 pid, connection_name = data["pid"], data["connection_name"]
-                assert isinstance(pid, int) and isinstance(connection_name, str)
+                assert isinstance(pid, int), f"Bad PID: {pid}"
+                assert isinstance(connection_name, str), f"Bad connection name: {connection_name}"
                 # Double-check this status file is created by us.
-                assert pid == self.proc.pid
+                assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
                 return
-            except Exception:
+            except Exception as exc:
+                last_exception = exc
                 break
-        print("Failed to establish connection with worker")
+        print("Failed to establish connection with worker:", last_exception)
         sys.exit(2)
 
     def close(self) -> None:
@@ -310,7 +355,10 @@ def build(
             WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
             for idx in range(options.num_workers)
         ]
-        sources_data = sources_to_bytes(sources)
+        sources_message = SourcesDataMessage(sources=sources)
+        buf = WriteBuffer()
+        sources_message.write(buf)
+        sources_data = buf.getvalue()
         for worker in workers:
             # Start loading graph in each worker as soon as it is up.
             worker.connect()
@@ -342,7 +390,7 @@ def build(
     finally:
         for worker in workers:
             try:
-                send(worker.conn, {"final": True})
+                send(worker.conn, SccRequestMessage(scc_id=None))
             except OSError:
                 pass
         for worker in workers:
@@ -835,6 +883,10 @@ class BuildManager:
         self.queue_order: int = 0
         # Is this an instance used by a parallel worker?
         self.parallel_worker = parallel_worker
+        # Cache for ASTs created during error message generation. Note these are
+        # raw parsed trees not analyzed with mypy. We use these to find absolute
+        # location of a symbol used as a location for an error message.
+        self.extra_trees: dict[str, MypyFile] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -997,6 +1049,60 @@ class BuildManager:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, self.modules, type_map, options)
 
+    def resolve_location(self, graph: dict[str, State], fullname: str) -> Context | None:
+        """Resolve an absolute location of a symbol with given fullname."""
+        rest = []
+        head = fullname
+        while True:
+            # TODO: this mimics the logic in lookup.py but it is actually wrong.
+            # This is because we don't distinguish between submodule and a local symbol
+            # with the same name.
+            head, tail = head.rsplit(".", maxsplit=1)
+            rest.append(tail)
+            if head in graph:
+                state = graph[head]
+                break
+            if "." not in head:
+                return None
+        *prefix, name = reversed(rest)
+        # If this happens something is wrong, but it is better to give slightly
+        # less helpful error message than crash.
+        if state.path is None:
+            return None
+        if state.tree is not None and state.tree.defs:
+            # We usually free ASTs after processing, but reuse an existing AST if
+            # it is still available.
+            tree = state.tree
+        elif state.id in self.extra_trees:
+            tree = self.extra_trees[state.id]
+        else:
+            if state.source is not None:
+                # Sources are usually discarded after processing as well, check
+                # if we still have one just in case.
+                source = state.source
+            else:
+                path = state.manager.maybe_swap_for_shadow_path(state.path)
+                source = decode_python_encoding(state.manager.fscache.read(path))
+            tree = parse(source, state.path, state.id, state.manager.errors, state.options)
+            # TODO: run first pass of semantic analysis on freshly parsed trees,
+            # we need this to get correct reachability information.
+            self.extra_trees[state.id] = tree
+        statements = tree.defs
+        while prefix:
+            part = prefix.pop(0)
+            for statement in statements:
+                defs = find_definitions(statement, part)
+                if not defs or not isinstance((defn := defs[0]), ClassDef):
+                    continue
+                statements = defn.defs.body
+                break
+            else:
+                return None
+        for statement in statements:
+            if defs := find_definitions(statement, name):
+                return defs[0]
+        return None
+
     def verbosity(self) -> int:
         return self.options.verbosity
 
@@ -1049,7 +1155,7 @@ class BuildManager:
         while self.scc_queue and self.free_workers:
             idx = self.free_workers.pop()
             _, _, scc = heappop(self.scc_queue)
-            send(self.workers[idx].conn, {"scc_id": scc.id})
+            send(self.workers[idx].conn, SccRequestMessage(scc_id=scc.id))
 
     def wait_for_done(
         self, graph: Graph
@@ -1077,15 +1183,13 @@ class BuildManager:
         done_sccs = []
         results = {}
         for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
-            data = receive(self.workers[idx].conn)
+            data = SccResponseMessage.read(receive(self.workers[idx].conn))
             self.free_workers.add(idx)
-            scc_id = data["scc_id"]
-            if "blocker" in data:
-                blocker = data["blocker"]
-                raise CompileError(
-                    blocker["messages"], blocker["use_stdout"], blocker["module_with_blocker"]
-                )
-            results.update({k: tuple(v) for k, v in data["result"].items()})
+            scc_id = data.scc_id
+            if data.blocker is not None:
+                raise data.blocker
+            assert data.result is not None
+            results.update(data.result)
             done_sccs.append(self.scc_by_id[scc_id])
         self.submit_to_workers()  # advance after some workers are free.
         return (
@@ -1403,12 +1507,10 @@ def exclude_from_backups(target_dir: str) -> None:
     cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
     try:
         with open(cachedir_tag, "x") as f:
-            f.write(
-                """Signature: 8a477f597d28d172789f06886806bc55
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
 # This file is a cache directory tag automatically created by mypy.
 # For information about cache directory tags see https://bford.info/cachedir/
-"""
-            )
+""")
     except FileExistsError:
         pass
 
@@ -2180,7 +2282,8 @@ class State:
             self.dep_hashes = {
                 k: v for (k, v) in zip(self.meta.dependencies, self.meta.dep_hashes)
             }
-            self.error_lines = self.meta.error_lines
+            # Only copy `error_lines` if the module is not silently imported.
+            self.error_lines = [] if self.ignore_all else self.meta.error_lines
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -2331,7 +2434,7 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        # We need to set allow_missing when doing a fine grained cache
+        # We need to set allow_missing when doing a fine-grained cache
         # load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
 
@@ -2396,6 +2499,8 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
+            self.check_for_invalid_options()
+
             self.size_hint = len(source)
             if not cached:
                 self.tree = manager.parse_file(
@@ -2445,6 +2550,13 @@ class State:
             self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
                 self.manager.errors.report(lineno, 0, error)
+
+    def check_for_invalid_options(self) -> None:
+        if self.options.mypyc and not self.options.strict_bytes:
+            self.manager.errors.set_file(self.xpath, self.id, options=self.options)
+            self.manager.errors.report(
+                1, 0, "Option --strict-bytes cannot be disabled when using mypyc", blocker=True
+            )
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.
@@ -3521,7 +3633,9 @@ def find_stale_sccs(
                     path = manager.errors.simplify_path(graph[id].xpath)
                     formatted = manager.errors.format_messages(
                         path,
-                        deserialize_codes(graph[id].error_lines),
+                        transform_error_tuples(
+                            manager, graph, deserialize_codes(graph[id].error_lines)
+                        ),
                         formatter=manager.error_formatter,
                     )
                     manager.flush_errors(path, formatted, False)
@@ -3548,14 +3662,15 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     manager.top_order = [scc.id for scc in sccs]
 
     # Broadcast SCC structure to the parallel workers, since they don't compute it.
-    sccs_data = sccs_to_bytes(sccs)
+    sccs_message = SccsDataMessage(sccs=sccs)
+    buf = WriteBuffer()
+    sccs_message.write(buf)
+    sccs_data = buf.getvalue()
     for worker in manager.workers:
-        data = receive(worker.conn)
-        assert data["status"] == "ok"
+        AckMessage.read(receive(worker.conn))
         worker.conn.write_bytes(sccs_data)
     for worker in manager.workers:
-        data = receive(worker.conn)
-        assert data["status"] == "ok"
+        AckMessage.read(receive(worker.conn))
 
     manager.free_workers = set(range(manager.options.num_workers))
 
@@ -3775,7 +3890,9 @@ def process_stale_scc(
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(graph[id].xpath)
             formatted = manager.errors.format_messages(
-                graph[id].xpath, errors, formatter=manager.error_formatter
+                graph[id].xpath,
+                transform_error_tuples(manager, graph, errors),
+                formatter=manager.error_formatter,
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
@@ -3934,28 +4051,37 @@ def write_undocumented_ref_info(
     metastore.write(ref_info_file, json_dumps(deps_json))
 
 
-def sources_to_bytes(sources: list[BuildSource]) -> bytes:
-    source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
-    buf = WriteBuffer()
-    write_json(buf, {"sources": source_tuples})
-    return buf.getvalue()
+def transform_error_tuples(
+    manager: BuildManager, graph: dict[str, State], error_tuples_rel: list[ErrorTupleRaw]
+) -> list[ErrorTuple]:
+    """Transform raw error tuples by resolving relative error locations."""
+    error_tuples = []
+    for e in error_tuples_rel:
+        file, line_rel, column, end_line, end_column, severity, message, code = e
+        if isinstance(line_rel, int):
+            line = line_rel
+        else:
+            assert file is not None
+            loc = manager.resolve_location(graph, line_rel)
+            if loc is not None:
+                line = loc.line
+                column = loc.column
+                end_line = loc.end_line or -1
+                end_column = loc.end_column or -1
+            else:
+                line = -1
+        error_tuples.append((file, line, column, end_line, end_column, severity, message, code))
+    return error_tuples
 
 
-def sccs_to_bytes(sccs: list[SCC]) -> bytes:
-    scc_tuples = [(list(scc.mod_ids), scc.id, list(scc.deps)) for scc in sccs]
-    buf = WriteBuffer()
-    write_json(buf, {"sccs": scc_tuples})
-    return buf.getvalue()
-
-
-def serialize_codes(errs: list[ErrorTuple]) -> list[SerializedError]:
+def serialize_codes(errs: list[ErrorTupleRaw]) -> list[SerializedError]:
     return [
         (path, line, column, end_line, end_column, severity, message, code.code if code else None)
         for path, line, column, end_line, end_column, severity, message, code in errs
     ]
 
 
-def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTuple]:
+def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTupleRaw]:
     return [
         (
             path,
@@ -3969,3 +4095,169 @@ def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTuple]:
         )
         for path, line, column, end_line, end_column, severity, message, code in errs
     ]
+
+
+# The IPC message classes and tags for communication with build workers are
+# in this file to avoid import cycles.
+# Note that we use a more compact fixed serialization format than in cache.py.
+# This is because the messages don't need to read by a generic tool, nor there
+# is any need for backwards compatibility. We still reuse some elements from
+# cache.py for convenience, and also some conventions (like using bare ints
+# to specify object size).
+# Note that we can use tags overlapping with cache.py, since they should never
+# appear on the same context.
+ACK_MESSAGE: Final[Tag] = 101
+SCC_REQUEST_MESSAGE: Final[Tag] = 102
+SCC_RESPONSE_MESSAGE: Final[Tag] = 103
+SOURCES_DATA_MESSAGE: Final[Tag] = 104
+SCCS_DATA_MESSAGE: Final[Tag] = 105
+
+
+class AckMessage(IPCMessage):
+    """An empty message used primarily for synchronization."""
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> AckMessage:
+        assert read_tag(buf) == ACK_MESSAGE
+        return AckMessage()
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_tag(buf, ACK_MESSAGE)
+
+
+class SccRequestMessage(IPCMessage):
+    """
+    A message representing a request to type check an SCC.
+
+    If scc_id is None, then it means that the coordinator requested a shutdown.
+    """
+
+    def __init__(self, *, scc_id: int | None) -> None:
+        self.scc_id = scc_id
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> SccRequestMessage:
+        assert read_tag(buf) == SCC_REQUEST_MESSAGE
+        return SccRequestMessage(scc_id=read_int_opt(buf))
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_tag(buf, SCC_REQUEST_MESSAGE)
+        write_int_opt(buf, self.scc_id)
+
+
+class SccResponseMessage(IPCMessage):
+    """
+    A message representing a result of type checking an SCC.
+
+    Only one of `result` or `blocker` can be non-None. The latter means there was
+    a blocking error while type checking the SCC.
+    """
+
+    def __init__(
+        self,
+        *,
+        scc_id: int,
+        result: dict[str, tuple[str, list[str]]] | None = None,
+        blocker: CompileError | None = None,
+    ) -> None:
+        if result is not None:
+            assert blocker is None
+        if blocker is not None:
+            assert result is None
+        self.scc_id = scc_id
+        self.result = result
+        self.blocker = blocker
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> SccResponseMessage:
+        assert read_tag(buf) == SCC_RESPONSE_MESSAGE
+        scc_id = read_int(buf)
+        tag = read_tag(buf)
+        if tag == LITERAL_NONE:
+            return SccResponseMessage(
+                scc_id=scc_id,
+                blocker=CompileError(read_str_list(buf), read_bool(buf), read_str_opt(buf)),
+            )
+        else:
+            assert tag == DICT_STR_GEN
+            return SccResponseMessage(
+                scc_id=scc_id,
+                result={
+                    read_str_bare(buf): (read_str(buf), read_str_list(buf))
+                    for _ in range(read_int_bare(buf))
+                },
+            )
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_tag(buf, SCC_RESPONSE_MESSAGE)
+        write_int(buf, self.scc_id)
+        if self.result is None:
+            assert self.blocker is not None
+            write_tag(buf, LITERAL_NONE)
+            write_str_list(buf, self.blocker.messages)
+            write_bool(buf, self.blocker.use_stdout)
+            write_str_opt(buf, self.blocker.module_with_blocker)
+        else:
+            write_tag(buf, DICT_STR_GEN)
+            write_int_bare(buf, len(self.result))
+            for mod_id in sorted(self.result):
+                write_str_bare(buf, mod_id)
+                hex_hash, errs = self.result[mod_id]
+                write_str(buf, hex_hash)
+                write_str_list(buf, errs)
+
+
+class SourcesDataMessage(IPCMessage):
+    """A message wrapping a list of build sources."""
+
+    def __init__(self, *, sources: list[BuildSource]) -> None:
+        self.sources = sources
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> SourcesDataMessage:
+        assert read_tag(buf) == SOURCES_DATA_MESSAGE
+        sources = [
+            BuildSource(
+                read_str_opt(buf),
+                read_str_opt(buf),
+                read_str_opt(buf),
+                read_str_opt(buf),
+                read_bool(buf),
+            )
+            for _ in range(read_int_bare(buf))
+        ]
+        return SourcesDataMessage(sources=sources)
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_tag(buf, SOURCES_DATA_MESSAGE)
+        write_int_bare(buf, len(self.sources))
+        for bs in self.sources:
+            write_str_opt(buf, bs.path)
+            write_str_opt(buf, bs.module)
+            write_str_opt(buf, bs.text)
+            write_str_opt(buf, bs.base_dir)
+            write_bool(buf, bs.followed)
+
+
+class SccsDataMessage(IPCMessage):
+    """A message wrapping the SCC structure computed by the coordinator."""
+
+    def __init__(self, *, sccs: list[SCC]) -> None:
+        self.sccs = sccs
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> SccsDataMessage:
+        assert read_tag(buf) == SCCS_DATA_MESSAGE
+        sccs = [
+            SCC(set(read_str_list(buf)), read_int(buf), read_int_list(buf))
+            for _ in range(read_int_bare(buf))
+        ]
+        return SccsDataMessage(sccs=sccs)
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_tag(buf, SCCS_DATA_MESSAGE)
+        write_int_bare(buf, len(self.sccs))
+        for scc in self.sccs:
+            write_str_list(buf, sorted(scc.mod_ids))
+            write_int(buf, scc.id)
+            write_int_list(buf, sorted(scc.deps))

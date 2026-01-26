@@ -49,7 +49,15 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    TypeOfAny,
+    TypeType,
+    get_proper_type,
+)
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -97,6 +105,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import (
+    apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
@@ -146,13 +155,11 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
+        final_type = builder.types.get(expr) or expr.node.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            expr.node,
-            fullname,
-            expr.name,
-            builder.is_native_ref_expr(expr),
-            builder.types[expr],
-            expr.line,
+            expr.node, fullname, expr.name, builder.is_native_ref_expr(expr), final_type, expr.line
         )
         if value is not None:
             return value
@@ -207,8 +214,11 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
+        final_type = builder.types.get(expr) or final_var.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            final_var, fullname, final_var.name, native, builder.types[expr], expr.line
+            final_var, fullname, final_var.name, native, final_type, expr.line
         )
         if value is not None:
             return value
@@ -586,6 +596,12 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base_type = builder.node_type(expr.base)
     is_list = is_list_rprimitive(base_type)
     can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    # Check for dunder specialization for non-slice indexing
+    if not isinstance(index, SliceExpr):
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
+        if specialized is not None:
+            return specialized
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 

@@ -141,6 +141,7 @@ class TypeCheckSuite(DataSuite):
             options.fixed_format_cache = True
             if testcase.output_files:
                 raise pytest.skip("Reports are not supported in parallel mode")
+            # Note: do not use this unless really needed!
             if testcase.name.endswith("_no_parallel"):
                 raise pytest.skip("Test not supported in parallel mode yet")
 
@@ -163,7 +164,7 @@ class TypeCheckSuite(DataSuite):
 
         sources = []
         for module_name, program_path, program_text in module_data:
-            # Always set to none so we're forced to reread the module in incremental mode
+            # Always set to None, so we're forced to reread the module in incremental mode
             sources.append(
                 BuildSource(program_path, module_name, None if incremental_step else program_text)
             )

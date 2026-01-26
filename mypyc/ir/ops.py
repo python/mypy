@@ -1210,6 +1210,7 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
     ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
+    INDEX_ERROR: Final = "IndexError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
@@ -1546,7 +1547,7 @@ class FloatOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
@@ -1604,7 +1605,7 @@ class FloatComparisonOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
