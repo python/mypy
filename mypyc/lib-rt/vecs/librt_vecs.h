@@ -492,7 +492,7 @@ extern VecU8Features U8Features;
 extern VecFloatFeatures FloatFeatures;
 extern VecBoolFeatures BoolFeatures;
 extern VecTFeatures TFeatures;
-extern VecNestedFeatures TExtFeatures;
+extern VecNestedFeatures NestedFeatures;
 
 static inline int Vec_CheckFloatError(PyObject *o) {
     if (PyFloat_Check(o)) {

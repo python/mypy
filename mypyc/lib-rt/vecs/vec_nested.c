@@ -492,7 +492,7 @@ PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *itera
     return VecNested_Box(v);
 }
 
-VecNestedFeatures TExtFeatures = {
+VecNestedFeatures NestedFeatures = {
     &VecNestedType,
     &VecNestedBufType,
     VecNested_New,

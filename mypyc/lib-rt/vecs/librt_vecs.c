@@ -803,7 +803,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
 
 static VecCapsule Capsule = {
     &TFeatures,
-    &TExtFeatures,
+    &NestedFeatures,
     &I64Features,
     &I32Features,
     &I16Features,
