@@ -1203,9 +1203,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # been typechecked, and decorated methods will be
                         # checked when the decorator is.
                         found_method_base_classes = self.check_method_override(defn)
-                        self.check_explicit_override_decorator(
-                            defn, found_method_base_classes
-                        )
+                        self.check_explicit_override_decorator(defn, found_method_base_classes)
                     self.check_inplace_operator_method(defn)
             if defn.original_def:
                 # Override previous definition.
@@ -1315,9 +1313,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # function. In the first case, set up another reference with the
                 # precise type.
                 if not self.can_skip_diagnostics:
-                    self.check_funcdef_item(
-                        item, typ, name, defn=defn, original_typ=original_typ
-                    )
+                    self.check_funcdef_item(item, typ, name, defn=defn, original_typ=original_typ)
 
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
                 if defn.is_awaitable_coroutine:
@@ -3572,15 +3568,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             for base in lvalue_node.info.mro[1:]:
                 tnode = base.names.get(lvalue_node.name)
                 if tnode is not None:
-                    if not self.check_compatibility_classvar_super(
-                        lvalue_node, base, tnode.node
-                    ):
+                    if not self.check_compatibility_classvar_super(lvalue_node, base, tnode.node):
                         # Show only one error per variable
                         break
 
-                    if not self.check_compatibility_final_super(
-                        lvalue_node, base, tnode.node
-                    ):
+                    if not self.check_compatibility_final_super(lvalue_node, base, tnode.node):
                         # Show only one error per variable
                         break
 
