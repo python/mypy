@@ -37,7 +37,7 @@ def insert_uninit_checks(ir: FuncIR, strict_traceback_checks: bool) -> None:
 
 
 def split_blocks_at_uninits(
-    blocks: list[BasicBlock], pre_must_defined: AnalysisDict[Value], strict_traceback_checks: bool,
+    blocks: list[BasicBlock], pre_must_defined: AnalysisDict[Value], strict_traceback_checks: bool
 ) -> list[BasicBlock]:
     new_blocks: list[BasicBlock] = []
 

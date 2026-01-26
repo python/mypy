@@ -535,7 +535,9 @@ class GroupGenerator:
         """
         self.modules = modules
         self.source_paths = source_paths
-        self.context = EmitterContext(names, compiler_options.strict_traceback_checks, group_name, group_map)
+        self.context = EmitterContext(
+            names, compiler_options.strict_traceback_checks, group_name, group_map
+        )
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.

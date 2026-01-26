@@ -49,7 +49,9 @@ def insert_exception_handling(ir: FuncIR, strict_traceback_checks: bool) -> None
         if error_label is None and any(op.can_raise() for op in block.ops):
             error_label = add_default_handler_block(ir)
     if error_label:
-        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name, strict_traceback_checks)
+        ir.blocks = split_blocks_at_errors(
+            ir.blocks, error_label, ir.traceback_name, strict_traceback_checks
+        )
 
 
 def add_default_handler_block(ir: FuncIR) -> BasicBlock:
@@ -62,7 +64,10 @@ def add_default_handler_block(ir: FuncIR) -> BasicBlock:
 
 
 def split_blocks_at_errors(
-    blocks: list[BasicBlock], default_error_handler: BasicBlock, func_name: str | None, strict_traceback_checks: bool,
+    blocks: list[BasicBlock],
+    default_error_handler: BasicBlock,
+    func_name: str | None,
+    strict_traceback_checks: bool,
 ) -> list[BasicBlock]:
     new_blocks: list[BasicBlock] = []
 
