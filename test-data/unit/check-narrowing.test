@@ -3252,7 +3252,7 @@ def foo(y: object):
 
 def bar(y: Any):
     if y.__class__ == int:
-        reveal_type(y) # N: Revealed type is "Any"
+        reveal_type(y) # N: Revealed type is "builtins.int"
     else:
         reveal_type(y) # N: Revealed type is "Any"
 
