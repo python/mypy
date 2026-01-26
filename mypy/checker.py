@@ -1315,7 +1315,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # function. In the first case, set up another reference with the
                 # precise type.
                 if not self.can_skip_diagnostics:
-                    self.pure_check_func_item(
+                    self.pure_check_funcdef_item(
                         item, typ, name, defn=defn, original_typ=original_typ
                     )
 
@@ -1535,7 +1535,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             self.binder = old_binder
 
-    def pure_check_func_item(
+    def pure_check_funcdef_item(
         self,
         item: FuncItem,
         typ: CallableType,
