@@ -3136,3 +3136,31 @@ if type(x) is not C:
     reveal_type(x)  # N: Revealed type is "__main__.D"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case testDunderClassNarrowing]
+# flags: --warn-unreachable
+from typing import Any
+
+def foo(y: object):
+    if y.__class__ == int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "builtins.object"
+
+    if y.__class__ is int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "builtins.object"
+
+
+def bar(y: Any):
+    if y.__class__ == int:
+        reveal_type(y) # N: Revealed type is "Any"
+    else:
+        reveal_type(y) # N: Revealed type is "Any"
+
+    if y.__class__ is int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "Any"
+[builtins fixtures/dict-full.pyi]
