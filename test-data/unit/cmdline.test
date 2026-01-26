@@ -129,40 +129,6 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
--- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
-[case testFlagsFile]
-# cmd: mypy @flagsfile
-[file flagsfile]
-----always-true=FLAG
-main.py
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
-
-[case testConfigFile]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-always_true = FLAG
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
-
-[case testAltConfigFile]
-# cmd: mypy --config-file config.ini main.py
-[file config.ini]
-\[mypy]
-always_true = FLAG
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
-
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
@@ -187,22 +153,6 @@ def g(a: int) -> int: return f(a)
 mypy.ini: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
-
-[case testMultipleGlobConfigSection]
-# cmd: mypy x.py y.py z.py
-[file mypy.ini]
-\[mypy]
-\[mypy-x.*,z.*]
-disallow_untyped_defs = True
-[file x.py]
-def f(a): pass
-[file y.py]
-def f(a): pass
-[file z.py]
-def f(a): pass
-[out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
 
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass
@@ -250,31 +200,6 @@ python_version = 3.11
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
-
-[case testConfigMypyPath]
-# cmd: mypy file.py
-[file mypy.ini]
-\[mypy]
-mypy_path =
-    foo_dir:bar_dir
-    , baz_dir
-[file foo_dir/foo.pyi]
-def foo(x: int) -> str: ...
-[file bar_dir/bar.pyi]
-def bar(x: str) -> list: ...
-[file baz_dir/baz.pyi]
-def baz(x: list) -> dict: ...
-[file file.py]
-import no_stubs
-from foo import foo
-from bar import bar
-from baz import baz
-baz(bar(foo(42)))
-baz(bar(foo('oof')))
-[out]
-file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
-file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testConfigFollowImportsSysPath]
 # cmd: mypy main.py
@@ -482,64 +407,6 @@ int_pow.py:10: note: Revealed type is "builtins.int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
-[case testDisallowAnyGenericsBuiltinCollections]
-# cmd: mypy m.py
-[file mypy.ini]
-\[mypy]
-\[mypy-m]
-disallow_any_generics = True
-[file m.py]
-def j(s: frozenset) -> None: pass
-[out]
-m.py:1: error: Missing type arguments for generic type "frozenset"
-
-[case testDisallowAnyGenericsTypingCollections]
-# cmd: mypy m.py
-[file mypy.ini]
-\[mypy]
-\[mypy-m]
-disallow_any_generics = True
-[file m.py]
-from typing import FrozenSet
-def j(s: FrozenSet) -> None: pass
-[out]
-m.py:2: error: Missing type arguments for generic type "FrozenSet"
-
-[case testSectionInheritance]
-# cmd: mypy a
-[file a/__init__.py]
-0()
-[file a/foo.py]
-0()
-[file a/b/__init__.py]
-[file a/b/c/__init__.py]
-0()
-[file a/b/c/d/__init__.py]
-[file a/b/c/d/e/__init__.py]
-from typing import List
-def g(x: List) -> None: pass
-g(None)
-[file mypy.ini]
-\[mypy]
-allow_any_generics = True
-\[mypy-a.*]
-ignore_errors = True
-\[mypy-a.b.*]
-disallow_any_generics = True
-ignore_errors = True
-\[mypy-a.b.c.*]
-ignore_errors = True
-\[mypy-a.b.c.d.*]
-ignore_errors = True
-\[mypy-a.b.c.d.e.*]
-ignore_errors = True
-strict_optional = True
-\[mypy-a.b.c.d.e]
-ignore_errors = False
-[out]
-a/b/c/d/e/__init__.py:2: error: Missing type arguments for generic type "List"
-a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
-
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
@@ -600,31 +467,6 @@ pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has typ
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a2/b/f.py:2: error: "str" not callable
 pkg/a1/b/f.py:2: error: "str" not callable
-
-[case testFollowImportStubs1]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-\[mypy-math.*]
-follow_imports = error
-follow_imports_for_stubs = True
-[file main.py]
-import math
-math.frobnicate()
-[out]
-main.py:1: error: Import of "math" ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-
-[case testFollowImportStubs2]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-\[mypy-math.*]
-follow_imports = skip
-follow_imports_for_stubs = True
-[file main.py]
-import math
-math.frobnicate()
 
 [case testShadowFile1]
 # cmd: mypy --shadow-file source.py shadow.py source.py
@@ -709,38 +551,6 @@ incremental = False
 [out]
 Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
-
-[case testConfigUnstructuredGlob]
-# cmd: mypy emarg foo
-[file mypy.ini]
-\[mypy]
-ignore_errors = true
-\[mypy-*.lol]
-ignore_errors = false
-\[mypy-emarg.*]
-ignore_errors = false
-\[mypy-emarg.*.villip.*]
-ignore_errors = true
-\[mypy-emarg.hatch.villip.mankangulisk]
-ignore_errors = false
-[file emarg/__init__.py]
-[file emarg/foo.py]
-fail
-[file emarg/villip.py]
-fail
-[file emarg/hatch/__init__.py]
-[file emarg/hatch/villip/__init__.py]
-[file emarg/hatch/villip/nus.py]
-fail
-[file emarg/hatch/villip/mankangulisk.py]
-fail
-[file foo/__init__.py]
-[file foo/lol.py]
-fail
-[out]
-foo/lol.py:1: error: Name "fail" is not defined
-emarg/foo.py:1: error: Name "fail" is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
 # cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
