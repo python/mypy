@@ -260,6 +260,7 @@ class TestRun(MypycDataSuite):
                 strict_dunder_typing=self.strict_dunder_typing,
                 depends_on_librt_internal=librt_internal,
                 experimental_features=experimental_features,
+                strict_traceback_checks=True,
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,

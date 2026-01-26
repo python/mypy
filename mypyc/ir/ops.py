@@ -1216,7 +1216,6 @@ class RaiseStandardError(RegisterOp):
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
-        assert line >= 0, "RaiseStandardError cannot have a negative line number"
         self.class_name = class_name
         self.value = value
         self.type = bool_rprimitive
