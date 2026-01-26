@@ -200,7 +200,7 @@ def add_args_to_env(
             builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
-            if is_free_variable(builder, arg.variable) or fn_info.is_generator:
+            if is_free_variable(builder, arg.variable) or fn_info.is_generator or fn_info.is_coroutine:
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(
@@ -240,7 +240,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
-                if nested_fn.is_generator:
+                if nested_fn.is_generator or nested_fn.is_coroutine:
                     prefix = GENERATOR_ATTRIBUTE_PREFIX
                 builder.add_var_to_env_class(
                     nested_fn, object_rprimitive, env_for_func, reassign=False, prefix=prefix

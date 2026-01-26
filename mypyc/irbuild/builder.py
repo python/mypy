@@ -657,7 +657,7 @@ class IRBuilder:
                     # refers to the newly defined variable in that environment class. Add the
                     # target to the table containing class environment variables, as well as the
                     # current environment.
-                    if self.fn_info.is_generator:
+                    if self.fn_info.is_generator or self.fn_info.is_coroutine:
                         return self.add_var_to_env_class(
                             symbol,
                             reg_type,
