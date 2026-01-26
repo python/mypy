@@ -401,7 +401,6 @@ VecTBuf_dealloc(VecTBufObject *self)
 }
 
 static Py_ssize_t vec_length(PyObject *o) {
-    // TODO: Type check o
     return ((VecTObject *)o)->vec.len;
 }
 
