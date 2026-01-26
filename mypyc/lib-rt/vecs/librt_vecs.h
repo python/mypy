@@ -264,7 +264,7 @@ typedef tuple_T2VFF VecFloatPopResult;
 typedef tuple_T2VCC VecBoolPopResult;
 
 // vec[i64] operations + type objects (stored in a capsule)
-typedef struct _VecI64Features {
+typedef struct _VecI64API {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecI64 (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -280,10 +280,10 @@ typedef struct _VecI64Features {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
     // iter?
-} VecI64Features;
+} VecI64API;
 
 // vec[i32] operations + type objects (stored in a capsule)
-typedef struct _VecI32Features {
+typedef struct _VecI32API {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecI32 (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -299,10 +299,10 @@ typedef struct _VecI32Features {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int32_t);
     // iter?
-} VecI32Features;
+} VecI32API;
 
 // vec[i16] operations + type objects (stored in a capsule)
-typedef struct _VecI16Features {
+typedef struct _VecI16API {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecI16 (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -318,10 +318,10 @@ typedef struct _VecI16Features {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int16_t);
     // iter?
-} VecI16Features;
+} VecI16API;
 
 // vec[u8] operations + type objects (stored in a capsule)
-typedef struct _VecU8Features {
+typedef struct _VecU8API {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecU8 (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -337,10 +337,10 @@ typedef struct _VecU8Features {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, uint8_t);
     // iter?
-} VecU8Features;
+} VecU8API;
 
 // vec[float] operations + type objects (stored in a capsule)
-typedef struct _VecFloatFeatures {
+typedef struct _VecFloatAPI {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecFloat (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -356,10 +356,10 @@ typedef struct _VecFloatFeatures {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, double);
     // iter?
-} VecFloatFeatures;
+} VecFloatAPI;
 
 // vec[bool] operations + type objects (stored in a capsule)
-typedef struct _VecBoolFeatures {
+typedef struct _VecBoolAPI {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecBool (*alloc)(Py_ssize_t, Py_ssize_t);
@@ -375,7 +375,7 @@ typedef struct _VecBoolFeatures {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, char);
     // iter?
-} VecBoolFeatures;
+} VecBoolAPI;
 
 #ifndef MYPYC_DECLARED_tuple_T2VOO
 #define MYPYC_DECLARED_tuple_T2VOO
@@ -391,7 +391,7 @@ typedef tuple_T2VOO VecTPopResult;
 // vec[T] operations + type objects (stored in a capsule)
 //
 // T is a class type or class type | None
-typedef struct _VecTFeatures {
+typedef struct _VecTAPI {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecT (*alloc)(Py_ssize_t, Py_ssize_t, size_t);
@@ -407,7 +407,7 @@ typedef struct _VecTFeatures {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
     // iter?
-} VecTFeatures;
+} VecTAPI;
 
 
 #ifndef MYPYC_DECLARED_tuple_T2VvVi
@@ -422,7 +422,7 @@ static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
 typedef tuple_T2VvVi VecNestedPopResult;
 
 // Nested vec operations + type objects (stored in a capsule)
-typedef struct _VecNestedFeatures {
+typedef struct _VecNestedAPI {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecNested (*alloc)(Py_ssize_t, Py_ssize_t, size_t, size_t depth);
@@ -438,17 +438,17 @@ typedef struct _VecNestedFeatures {
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
     // iter?
-} VecNestedFeatures;
+} VecNestedAPI;
 
 typedef struct {
-    VecTFeatures *t;
-    VecNestedFeatures *nested;
-    VecI64Features *i64;
-    VecI32Features *i32;
-    VecI16Features *i16;
-    VecU8Features *u8;
-    VecFloatFeatures *float_;
-    VecBoolFeatures *bool_;
+    VecTAPI *t;
+    VecNestedAPI *nested;
+    VecI64API *i64;
+    VecI32API *i32;
+    VecI16API *i16;
+    VecU8API *u8;
+    VecFloatAPI *float_;
+    VecBoolAPI *bool_;
 } VecCapsule;
 
 #define VEC_BUF_SIZE(b) ((b)->ob_base.ob_size)
@@ -461,6 +461,7 @@ typedef struct {
 
 // Type objects
 
+// Buffer type objects that store vec items
 extern PyTypeObject VecI64BufType;
 extern PyTypeObject VecI32BufType;
 extern PyTypeObject VecI16BufType;
@@ -470,6 +471,7 @@ extern PyTypeObject VecBoolBufType;
 extern PyTypeObject VecTBufType;
 extern PyTypeObject VecNestedBufType;
 
+// Wrapper type objects for boxed vec values
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecI32Type;
 extern PyTypeObject VecI16Type;
@@ -485,14 +487,14 @@ extern PyTypeObject *LibRTVecs_I32TypeObj;
 extern PyTypeObject *LibRTVecs_I16TypeObj;
 extern PyTypeObject *LibRTVecs_U8TypeObj;
 
-extern VecI64Features I64Features;
-extern VecI32Features I32Features;
-extern VecI16Features I16Features;
-extern VecU8Features U8Features;
-extern VecFloatFeatures FloatFeatures;
-extern VecBoolFeatures BoolFeatures;
-extern VecTFeatures TFeatures;
-extern VecNestedFeatures NestedFeatures;
+extern VecI64API Vec_I64API;
+extern VecI32API Vec_I32API;
+extern VecI16API Vec_I16API;
+extern VecU8API Vec_U8API;
+extern VecFloatAPI Vec_FloatAPI;
+extern VecBoolAPI Vec_BoolAPI;
+extern VecTAPI Vec_TAPI;
+extern VecNestedAPI Vec_NestedAPI;
 
 static inline int Vec_CheckFloatError(PyObject *o) {
     if (PyFloat_Check(o)) {

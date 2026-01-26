@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "float"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_FLOAT
 #define ITEM_C_TYPE double
-#define FEATURES FloatFeatures
+#define FEATURES Vec_FloatAPI
 
 #define BOX_ITEM VecFloat_BoxItem
 #define UNBOX_ITEM VecFloat_UnboxItem

@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "i16"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_I16
 #define ITEM_C_TYPE int16_t
-#define FEATURES I16Features
+#define FEATURES Vec_I16API
 
 #define BOX_ITEM VecI16_BoxItem
 #define UNBOX_ITEM VecI16_UnboxItem

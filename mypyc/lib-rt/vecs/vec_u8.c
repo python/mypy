@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "u8"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_U8
 #define ITEM_C_TYPE uint8_t
-#define FEATURES U8Features
+#define FEATURES Vec_U8API
 
 #define BOX_ITEM VecU8_BoxItem
 #define UNBOX_ITEM VecU8_UnboxItem

@@ -486,7 +486,7 @@ PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
     return VecT_Box(v, item_type);
 }
 
-VecTFeatures TFeatures = {
+VecTAPI Vec_TAPI = {
     &VecTType,
     &VecTBufType,
     VecT_New,

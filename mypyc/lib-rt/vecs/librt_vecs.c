@@ -802,14 +802,14 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
 }
 
 static VecCapsule Capsule = {
-    &TFeatures,
-    &NestedFeatures,
-    &I64Features,
-    &I32Features,
-    &I16Features,
-    &U8Features,
-    &FloatFeatures,
-    &BoolFeatures,
+    &Vec_TAPI,
+    &Vec_NestedAPI,
+    &Vec_I64API,
+    &Vec_I32API,
+    &Vec_I16API,
+    &Vec_U8API,
+    &Vec_FloatAPI,
+    &Vec_BoolAPI,
 };
 
 #endif  // MYPYC_EXPERIMENTAL

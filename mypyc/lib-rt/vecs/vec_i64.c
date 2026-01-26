@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "i64"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_I64
 #define ITEM_C_TYPE int64_t
-#define FEATURES I64Features
+#define FEATURES Vec_I64API
 
 #define BOX_ITEM VecI64_BoxItem
 #define UNBOX_ITEM VecI64_UnboxItem

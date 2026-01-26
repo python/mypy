@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "bool"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_BOOL
 #define ITEM_C_TYPE char
-#define FEATURES BoolFeatures
+#define FEATURES Vec_BoolAPI
 
 #define BOX_ITEM VecBool_BoxItem
 #define UNBOX_ITEM VecBool_UnboxItem

@@ -368,7 +368,7 @@ PyTypeObject VEC_TYPE = {
     .tp_methods = vec_methods,
 };
 
-NAME(Features) FEATURES = {
+NAME(API) FEATURES = {
     &VEC_TYPE,
     &BUF_TYPE,
     FUNC(New),

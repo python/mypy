@@ -9,7 +9,7 @@
 #define ITEM_TYPE_STR "i32"
 #define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_I32
 #define ITEM_C_TYPE int32_t
-#define FEATURES I32Features
+#define FEATURES Vec_I32API
 
 #define BOX_ITEM VecI32_BoxItem
 #define UNBOX_ITEM VecI32_UnboxItem
