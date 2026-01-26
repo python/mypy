@@ -817,8 +817,8 @@ static VecCapsule Capsule = {
 static PyMethodDef VecsMethods[] = {
 #ifdef MYPYC_EXPERIMENTAL
     {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
-    {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value"},
-    {"pop",  vec_pop, METH_VARARGS, "Remove and return item at index (default last)"},
+    {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value from a vec"},
+    {"pop",  vec_pop, METH_VARARGS, "Remove and return vec item at index (default last)"},
 #endif
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
