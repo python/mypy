@@ -1009,6 +1009,8 @@ class Errors:
         if self.file in self.ignored_files:
             # Errors ignored, so no point generating fancy messages
             return True
+        if self.options.ignore_errors:
+            return True
         if self._watchers:
             _watcher = self._watchers[-1]
             if _watcher._filter is True and _watcher._filtered is None:
