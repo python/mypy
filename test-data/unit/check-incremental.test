@@ -1090,7 +1090,9 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
-[case testIncrementalWithSilentImportsAndIgnore]
+-- Order of processing of files is not stable in this test, skip it in parallel mode.
+-- Note: do not use _no_parallel unless really needed!
+[case testIncrementalWithSilentImportsAndIgnore_no_parallel]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
 # flags: --follow-imports=skip
