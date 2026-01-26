@@ -11518,3 +11518,17 @@ class Sub(Base[Concatenate[str, P]]): ...
 [out]
 ==
 impl.py:7: error: Argument 1 to "meth" of "Base" has incompatible type "int"; expected "str"
+
+[case testFineGrainedUnexpectedKeywordArgument]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[out]
+==
+a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+b.py:1: note: "lol" defined here
