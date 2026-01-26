@@ -715,8 +715,6 @@ class IRBuilder:
         allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
-            if line != -1:
-                target.line = line
             return target
         if isinstance(target, AssignmentTargetRegister):
             return target.register

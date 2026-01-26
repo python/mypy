@@ -1123,9 +1123,9 @@ def emit_yield_from_or_await(
     # This is basically an implementation of the code in PEP 380.
 
     # TODO: do we want to use the right types here?
-    result = Register(object_rprimitive)
-    to_yield_reg = Register(object_rprimitive)
-    received_reg = Register(object_rprimitive)
+    result = Register(object_rprimitive, line=line)
+    to_yield_reg = Register(object_rprimitive, line=line)
+    received_reg = Register(object_rprimitive, line=line)
 
     helper_method = GENERATOR_HELPER_NAME
     if (
