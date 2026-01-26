@@ -736,6 +736,7 @@ g(None)  # E: Argument 1 to "g" has incompatible type "None"; expected "list[Any
 [file mypy.ini]
 \[mypy]
 allow_any_generics = True
+strict_optional = False
 \[mypy-a.*]
 ignore_errors = True
 \[mypy-a.b.*]
