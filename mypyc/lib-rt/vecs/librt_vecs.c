@@ -41,12 +41,12 @@ static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject
         }
     } else {
         if (init == NULL) {
-            VecNested vec = VecVec_New(0, 0, p->item_type, p->depth);
+            VecNested vec = VecNested_New(0, 0, p->item_type, p->depth);
             if (VEC_IS_ERROR(vec))
                 return NULL;
-            return VecVec_Box(vec);
+            return VecNested_Box(vec);
         } else {
-            return VecVec_FromIterable(p->item_type, p->depth, init);
+            return VecNested_FromIterable(p->item_type, p->depth, init);
         }
     }
 }
@@ -557,16 +557,16 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecT_Box(v, v.buf->item_type);
-    } else if (VecVec_Check(vec)) {
+    } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VecNestedBufItem vecitem;
-        if (VecVec_UnboxItem(v, item, &vecitem) < 0)
+        if (VecNested_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
-        v = VecVec_Append(v, vecitem);
+        v = VecNested_Append(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return VecVec_Box(v);
+        return VecNested_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -658,16 +658,16 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecT_Box(v, v.buf->item_type);
-    } else if (VecVec_Check(vec)) {
+    } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VecNestedBufItem vecitem;
-        if (VecVec_UnboxItem(v, item, &vecitem) < 0)
+        if (VecNested_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
-        v = VecVec_Remove(v, vecitem);
+        v = VecNested_Remove(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return VecVec_Box(v);
+        return VecNested_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -759,20 +759,20 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
             return NULL;
         }
         result_item1 = r.f1;
-    } else if (VecVec_Check(vec)) {
+    } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VEC_INCREF(v);
         VecNestedPopResult r;
-        r = VecVec_Pop(v, index);
+        r = VecNested_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-        result_item0 = VecVec_Box(r.f0);
+        result_item0 = VecNested_Box(r.f0);
         if (result_item0 == NULL) {
             Py_DECREF(r.f0.buf);
             Py_DECREF(r.f1.buf);
             return NULL;
         }
-        result_item1 = VecVec_BoxItem(r.f0, r.f1);
+        result_item1 = VecNested_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
             Py_DECREF(r.f1.buf);

@@ -706,20 +706,20 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
 
 // Nested vec operations
 
-static inline int VecVec_Check(PyObject *o) {
+static inline int VecNested_Check(PyObject *o) {
     return o->ob_type == &VecNestedType;
 }
 
-VecNested VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
-PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
-PyObject *VecVec_Box(VecNested);
-VecNested VecVec_Append(VecNested vec, VecNestedBufItem x);
-VecNested VecVec_Remove(VecNested vec, VecNestedBufItem x);
-VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index);
+VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
+PyObject *VecNested_Box(VecNested);
+VecNested VecNested_Append(VecNested vec, VecNestedBufItem x);
+VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
+VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
-static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem *unboxed) {
+static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem *unboxed) {
     size_t depth = v.buf->depth;
     if (depth == 1) {
         if (item->ob_type == &VecTType) {
@@ -774,14 +774,14 @@ static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem
     return -1;
 }
 
-static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
+static inline PyObject *VecNested_BoxItem(VecNested v, VecNestedBufItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
     Py_XINCREF(item.buf);
     if (v.buf->depth > 1) {
         // Item is a nested vec
         VecNested v = { .len = item.len, .buf = (VecNestedBufObject *)item.buf };
-        return VecVec_Box(v);
+        return VecNested_Box(v);
     } else {
         // Item is a non-nested vec
         size_t item_type = v.buf->item_type;

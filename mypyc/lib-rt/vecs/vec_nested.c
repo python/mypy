@@ -16,7 +16,7 @@ static inline VecNested vec_error() {
 }
 
 static inline PyObject *box_vec_item_by_index(VecNested v, Py_ssize_t index) {
-    return VecVec_BoxItem(v, v.buf->items[index]);
+    return VecNested_BoxItem(v, v.buf->items[index]);
 }
 
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items of the
@@ -35,7 +35,7 @@ static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
 }
 
 // Box a nested vec value, stealing 'vec'. On error, decref 'vec'.
-PyObject *VecVec_Box(VecNested vec) {
+PyObject *VecNested_Box(VecNested vec) {
     VecNestedObject *obj = PyObject_GC_New(VecNestedObject, &VecNestedType);
     if (obj == NULL) {
         VEC_DECREF(vec);
@@ -46,7 +46,7 @@ PyObject *VecVec_Box(VecNested vec) {
     return (PyObject *)obj;
 }
 
-VecNested VecVec_Unbox(PyObject *obj, size_t item_type, size_t depth) {
+VecNested VecNested_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     if (obj->ob_type == &VecNestedType) {
         VecNested result = ((VecNestedObject *)obj)->vec;
         if (result.buf->item_type == item_type && result.buf->depth == depth) {
@@ -59,11 +59,11 @@ VecNested VecVec_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     return vec_error();
 }
 
-VecNested VecVec_ConvertFromNested(VecNestedBufItem item) {
+VecNested VecNested_ConvertFromNested(VecNestedBufItem item) {
     return (VecNested) { item.len, (VecNestedBufObject *)item.buf };
 }
 
-VecNested VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
     if (cap < size)
         cap = size;
     VecNested vec = vec_alloc(cap, item_type, depth);
@@ -94,7 +94,7 @@ static PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecNested VecVec_Slice(VecNested vec, int64_t start, int64_t end) {
+VecNested VecNested_Slice(VecNested vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -150,7 +150,7 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
-        return VecVec_Box(res);
+        return VecNested_Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -165,7 +165,7 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
     if ((size_t)i < (size_t)v.len) {
         VecNestedBufItem item;
-        if (VecVec_UnboxItem(v, o, &item) < 0)
+        if (VecNested_UnboxItem(v, o, &item) < 0)
             return -1;
         VEC_INCREF(item);
         VEC_DECREF(v.buf->items[i]);
@@ -222,7 +222,7 @@ PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
 }
 
 // Append item to 'vec', stealing 'vec'. Return 'vec' with item appended.
-VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
+VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
     VEC_INCREF(x);
     if (vec.len < cap) {
@@ -254,10 +254,10 @@ VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
 }
 
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
-VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
+VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
     VecNestedBufItem *items = self.buf->items;
 
-    PyObject *boxed_arg = VecVec_BoxItem(self, arg);
+    PyObject *boxed_arg = VecNested_BoxItem(self, arg);
     if (boxed_arg == NULL) {
         // The input self is being consumed/stolen by this function, so on error
         // we must decref it to avoid leaking the buffer.
@@ -312,7 +312,7 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
 }
 
 // Pop item from 'vec', stealing 'vec'. Return struct with modified 'vec' and the popped item.
-VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
+VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index) {
     VecNestedPopResult result;
 
     if (index < 0)
@@ -342,24 +342,24 @@ VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
 }
 
 static int
-VecVec_traverse(VecTObject *self, visitproc visit, void *arg)
+VecNested_traverse(VecTObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->vec.buf);
     return 0;
 }
 
 static int
-VecVec_clear(VecTObject *self)
+VecNested_clear(VecTObject *self)
 {
     Py_CLEAR(self->vec.buf);
     return 0;
 }
 
 static void
-VecVec_dealloc(VecTObject *self)
+VecNested_dealloc(VecTObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecVec_dealloc)
+    Py_TRASHCAN_BEGIN(self, VecNested_dealloc)
     Py_CLEAR(self->vec.buf);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
@@ -444,9 +444,9 @@ PyTypeObject VecNestedType = {
     .tp_basicsize = sizeof(VecNestedObject) - sizeof(PyObject *),
     .tp_itemsize = sizeof(PyObject *),
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_traverse = (traverseproc)VecVec_traverse,
-    .tp_clear = (inquiry)VecVec_clear,
-    .tp_dealloc = (destructor)VecVec_dealloc,
+    .tp_traverse = (traverseproc)VecNested_traverse,
+    .tp_clear = (inquiry)VecNested_clear,
+    .tp_dealloc = (destructor)VecNested_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
     .tp_as_sequence = &VecNestedSequence,
@@ -456,7 +456,7 @@ PyTypeObject VecNestedType = {
     // TODO: free
 };
 
-PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
     VecNested v = vec_alloc(0, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -470,13 +470,13 @@ PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
         VecNestedBufItem vecitem;
-        if (VecVec_UnboxItem(v, item, &vecitem) < 0) {
+        if (VecNested_UnboxItem(v, item, &vecitem) < 0) {
             Py_DECREF(iter);
             VEC_DECREF(v);
             Py_DECREF(item);
             return NULL;
         }
-        v = VecVec_Append(v, vecitem);
+        v = VecNested_Append(v, vecitem);
         Py_DECREF(item);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
@@ -489,20 +489,20 @@ PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable
         VEC_DECREF(v);
         return NULL;
     }
-    return VecVec_Box(v);
+    return VecNested_Box(v);
 }
 
 VecNestedFeatures TExtFeatures = {
     &VecNestedType,
     &VecNestedBufType,
-    VecVec_New,
-    VecVec_Box,
-    VecVec_Unbox,
-    VecVec_ConvertFromNested,
-    VecVec_Append,
-    VecVec_Pop,
-    VecVec_Remove,
-    VecVec_Slice,
+    VecNested_New,
+    VecNested_Box,
+    VecNested_Unbox,
+    VecNested_ConvertFromNested,
+    VecNested_Append,
+    VecNested_Pop,
+    VecNested_Remove,
+    VecNested_Slice,
 };
 
 #endif  // MYPYC_EXPERIMENTAL
