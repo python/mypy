@@ -22,7 +22,7 @@ static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
     if (buf == NULL)
         return NULL;
     buf->item_type = item_type;
-    Py_INCREF(BUF_ITEM_TYPE(buf));
+    Py_INCREF(VEC_BUF_ITEM_TYPE(buf));
     PyObject_GC_Track(buf);
     return buf;
 }
@@ -364,8 +364,8 @@ VecT_dealloc(VecTObject *self)
 static int
 VecTBuf_traverse(VecTBufObject *self, visitproc visit, void *arg)
 {
-    Py_VISIT(BUF_ITEM_TYPE(self));
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+    Py_VISIT(VEC_BUF_ITEM_TYPE(self));
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_VISIT(self->items[i]);
     }
     return 0;
@@ -375,10 +375,10 @@ static int
 VecTBuf_clear(VecTBufObject *self)
 {
     if (self->item_type) {
-        Py_DECREF(BUF_ITEM_TYPE(self));
+        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_CLEAR(self->items[i]);
     }
     return 0;
@@ -390,10 +390,10 @@ VecTBuf_dealloc(VecTBufObject *self)
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecTBuf_dealloc)
     if (self->item_type) {
-        Py_DECREF(BUF_ITEM_TYPE(self));
+        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_CLEAR(self->items[i]);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);

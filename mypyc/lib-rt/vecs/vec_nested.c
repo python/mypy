@@ -28,7 +28,7 @@ static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     buf->item_type = item_type;
     buf->depth = depth;
     if (!Vec_IsMagicItemType(item_type))
-        Py_INCREF(BUF_ITEM_TYPE(buf));
+        Py_INCREF(VEC_BUF_ITEM_TYPE(buf));
     VecNested res = { .buf = buf };
     PyObject_GC_Track(buf);
     return res;
@@ -369,8 +369,8 @@ static int
 VecNestedBuf_traverse(VecNestedBufObject *self, visitproc visit, void *arg)
 {
     if (!Vec_IsMagicItemType(self->item_type))
-        Py_VISIT(BUF_ITEM_TYPE(self));
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+        Py_VISIT(VEC_BUF_ITEM_TYPE(self));
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_VISIT(self->items[i].buf);
     }
     return 0;
@@ -380,10 +380,10 @@ static int
 VecNestedBuf_clear(VecNestedBufObject *self)
 {
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
-        Py_DECREF(BUF_ITEM_TYPE(self));
+        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_CLEAR(self->items[i].buf);
     }
     return 0;
@@ -395,10 +395,10 @@ VecNestedBuf_dealloc(VecNestedBufObject *self)
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecNestedBuf_dealloc)
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
-        Py_DECREF(BUF_ITEM_TYPE(self));
+        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }
-    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
         Py_CLEAR(self->items[i].buf);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);

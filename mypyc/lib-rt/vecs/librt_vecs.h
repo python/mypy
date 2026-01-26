@@ -451,9 +451,9 @@ typedef struct {
     VecBoolFeatures *bool_;
 } VecCapsule;
 
-#define BUF_SIZE(b) ((b)->ob_base.ob_size)
-#define ITEM_TYPE(t) ((PyTypeObject *)((t) & ~1))
-#define BUF_ITEM_TYPE(b) ITEM_TYPE((b)->item_type)
+#define VEC_BUF_SIZE(b) ((b)->ob_base.ob_size)
+#define VEC_ITEM_TYPE(t) ((PyTypeObject *)((t) & ~1))
+#define VEC_BUF_ITEM_TYPE(b) VEC_ITEM_TYPE((b)->item_type)
 #define VEC_CAP(v) ((v).buf->ob_base.ob_size)
 #define VEC_IS_ERROR(v) ((v).len < 0)
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
@@ -479,6 +479,7 @@ extern PyTypeObject VecBoolType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
+// Type objects correponding the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *I64TypeObj;
 extern PyTypeObject *I32TypeObj;
 extern PyTypeObject *I16TypeObj;
@@ -685,7 +686,7 @@ static inline int VecT_Check(PyObject *o) {
 }
 
 static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
-    if (PyObject_TypeCheck(item, ITEM_TYPE(item_type))) {
+    if (PyObject_TypeCheck(item, VEC_ITEM_TYPE(item_type))) {
         return 1;
     } else if ((item_type & 1) && item == Py_None) {
         return 1;
