@@ -200,7 +200,11 @@ def add_args_to_env(
             builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
-            if is_free_variable(builder, arg.variable) or fn_info.is_generator or fn_info.is_coroutine:
+            if (
+                is_free_variable(builder, arg.variable)
+                or fn_info.is_generator
+                or fn_info.is_coroutine
+            ):
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(
