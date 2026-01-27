@@ -421,7 +421,7 @@ static PyMethodDef vec_methods[] = {
 PyTypeObject VecTBufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf",
-    .tp_doc = "vec doc",
+    .tp_doc = "Internal data buffer used by vec objects",
     .tp_basicsize = sizeof(VecTBufObject) - sizeof(PyObject *),
     .tp_itemsize = sizeof(PyObject *),
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
@@ -435,7 +435,7 @@ PyTypeObject VecTBufType = {
 PyTypeObject VecTType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
-    .tp_doc = "vec doc",
+    .tp_doc = "Mutable sequence-like container optimized for compilation with mypyc",
     .tp_basicsize = sizeof(VecTObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
