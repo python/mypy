@@ -25,6 +25,9 @@
 //    such as 'i32', 'float' and 'bool'. These use a packed value encoding.
 //  * Since vec values are immutable (only the buffer is mutable), any operation
 //    that changes the length (such as append) must return the updated vec value.
+//  * The buffer often a has higher capacity than the length of a vec. Append
+//    operations only allocate a new buffer if the capacity is exhausted, for O(1)
+//    amortized time complexity for appends.
 //  * Vec values can be boxed to PyObject *; this happens transparently and uses
 //    a wrapper object.
 //  * The item type can be a class type, or 't | None' if t is a class type. However,
