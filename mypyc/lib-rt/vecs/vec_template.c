@@ -6,7 +6,20 @@
 // as vec[i64] or vec[float]. Assume that certain #defines are provided that
 // provide all the item type specific definitions:
 //
-//   VEC      vec C type (e.g. VecI64)
+//   VEC             vec C type (e.g. VecI32)
+//   VEC_TYPE        boxed vec type object (e.g. VecI32Type)
+//   VEC_OBJECT      boxed Python object struct (e.g. VecI32Object)
+//   BUF_OBJECT      buffer Python object struct (e.g. VecI32BufObject)
+//   BUF_TYPE        buffer type object (e.g. VecI32BufType)
+//   NAME(suffix)    macro to create prefixed name with given suffix (e.g. VecI32##suffix)
+//   FUNC(suffix)    macro to create prefixed function name with suffix (e.g. VecI32_##suffix)
+//   ITEM_TYPE_STR   vec item type as C string literal (e.g. "i32")
+//   ITEM_TYPE_MAGIC integer constant corresponding to the item type (e.g. VEC_ITEM_TYPE_I32)
+//   ITEM_C_TYPE     C type used for items (e.g. int32_t)
+//   FEATURES        capsule API struct name (e.g. Vec_I32API)
+//   BOX_ITEM        C function to box item (e.g. VecI32_BoxItem)
+//   UNBOX_ITEM      C function to unbox item (e.g. VecI32_UnboxItem)
+//   IS_UNBOX_ERROR  C function to check for unbox error (e.g. VecI32_IsUnboxError)
 
 #ifndef VEC
 #error "VEC must be defined"
