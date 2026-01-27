@@ -7,7 +7,7 @@ import typing
 import librt.vecs
 import mypy_extensions
 
-from testutil import assertRaises
+from testutil import assertRaises, is_gil_disabled, is_64_bit_platform
 from helpers import ClassWithCustomMeta
 
 vec: Any = librt.vecs.vec
@@ -132,10 +132,12 @@ def test_repr() -> None:
     assert str(vec[Optional[str]]([None, 'x'])) == "vec[str | None]([None, 'x'])"
 
 def test_size() -> None:
-    v = vec[str]()
-    assert getsizeof(v) == 48
-    v = append(v, '123')
-    assert getsizeof(v) == 48
+    # Only test on 64-bit, non-free-threading builds
+    if not is_gil_disabled() and is_64_bit_platform():
+        v = vec[str]()
+        assert getsizeof(v) == 48
+        v = append(v, '123')
+        assert getsizeof(v) == 48
 
 def test_get_item() -> None:
     v = append(vec[str](), '44')

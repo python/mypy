@@ -20,7 +20,6 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
-getsizeof: Any = getattr(sys, "getsizeof")
 u8: Any = mypy_extensions.u8
 i16: Any = mypy_extensions.i16
 i32: Any = mypy_extensions.i32

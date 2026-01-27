@@ -8,7 +8,7 @@ import typing
 import librt.vecs
 import mypy_extensions
 
-from testutil import assertRaises
+from testutil import assertRaises, is_gil_disabled, is_64_bit_platform
 
 vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
@@ -97,10 +97,12 @@ def test_append_nested_optional() -> None:
     assert str(v) == "vec[vec[str | None]]([[], ['x', None]])"
 
 def test_size() -> None:
-    v = vec[vec[str]]()
-    assert getsizeof(v) == 40
-    v = append(v, vec[str]())
-    assert getsizeof(v) == 48  # TODO: Why different size?
+    # Only test on 64-bit, non-free-threading builds
+    if not is_gil_disabled() and is_64_bit_platform():
+        v = vec[vec[str]]()
+        assert getsizeof(v) == 40
+        v = append(v, vec[str]())
+        assert getsizeof(v) == 48  # TODO: Why different size?
 
 def test_get_item() -> None:
     v = append(vec[vec[str]](), append(vec[str](), 'x'))
