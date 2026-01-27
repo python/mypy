@@ -84,7 +84,7 @@ PyTypeObject *LibRTVecs_U8TypeObj;
 
 // vec generic alias
 //
-// Used for the result of vec[t] (indexing) in interpeted context that must preserve
+// Used for the result of vec[t] (indexing) in interpreted context that must preserve
 // knowledge of 't'. These aren't real types. This only supports constructing instances.
 typedef struct {
     PyObject_HEAD

@@ -415,7 +415,7 @@ extern PyTypeObject VecU8Type;
 extern PyTypeObject VecFloatType;
 extern PyTypeObject VecBoolType;
 
-// Type objects correponding the 'i64', 'i32', 'i16, and 'u8' types
+// Type objects corresponding to the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *LibRTVecs_I64TypeObj;
 extern PyTypeObject *LibRTVecs_I32TypeObj;
 extern PyTypeObject *LibRTVecs_I16TypeObj;
