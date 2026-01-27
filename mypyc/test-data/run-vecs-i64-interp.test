@@ -13,7 +13,7 @@ import typing
 import librt.vecs
 import mypy_extensions
 
-from testutil import assertRaises
+from testutil import assertRaises, is_gil_disabled
 
 # Access via Any references to force generic operations
 vec: Any = librt.vecs.vec
@@ -81,9 +81,10 @@ def test_repr() -> None:
 
 def test_size() -> None:
     v = vec[i64]()
-    assert getsizeof(v) == 32
-    v = append(v, 123)
-    assert getsizeof(v) == 32
+    if not is_gil_disabled():
+        assert getsizeof(v) == 32
+        v = append(v, 123)
+        assert getsizeof(v) == 32
 
 def test_get_item() -> None:
     v = append(vec[i64](), 44)
