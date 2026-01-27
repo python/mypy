@@ -1799,3 +1799,49 @@ for i in range(10):
 from typing import Any, Generator
 
 def run(x: object) -> object: ...
+
+[case testNestedCoroutineCallsAnotherNestedFunction]
+import asyncio
+import functools
+import inspect
+from typing import Any, Callable, TypeVar, cast
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def mult(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper_async(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+            wrapper = wrapper_async
+        else:
+            @functools.wraps(fn)
+            def wrapper_non_async(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+            wrapper = wrapper_non_async
+
+        return cast(F, wrapper)
+
+    return decorate
+
+@mult(3)
+def identity(x: int):
+    return x
+
+@mult(5)
+async def async_identity(x: int):
+    return x
+
+def test_nested_coroutine_calls_another_nested_function():
+    assert identity(1) == 3
+    assert asyncio.run(async_identity(2)) == 10
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
