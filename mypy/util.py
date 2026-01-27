@@ -926,13 +926,13 @@ def quote_docstring(docstr: str) -> str:
 
 def json_dumps(obj: object, debug: bool = False) -> bytes:
     """Serialize an object to JSON bytes.
-    
+
     Keys are always sorted to ensure deterministic output. This is critical for
     incremental type checking: the JSON output is used to compute cache hashes
     (via hash_digest/hash_digest_bytes in build.py). Without key sorting, dictionaries
     with the same content but different key insertion order would produce different
     JSON strings, leading to different hashes and incorrect cache invalidation.
-    
+
     For example, in testIncrementalInternalScramble, the test verifies that mypy
     correctly handles incremental updates. If keys weren't sorted, the cache hash
     would change even when the actual content is the same, causing unnecessary
