@@ -81,7 +81,8 @@ def test_repr() -> None:
 
 def test_size() -> None:
     v = vec[i64]()
-    if not is_gil_disabled():
+    # Only test on 64-bit, non-free-threading builds
+    if not is_gil_disabled() and sys.maxsize > 2**32:
         assert getsizeof(v) == 32
         v = append(v, 123)
         assert getsizeof(v) == 32
