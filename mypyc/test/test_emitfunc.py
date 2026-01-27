@@ -128,7 +128,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.st = add_local("st", self.struct_type)
 
-        self.context = EmitterContext(NameGenerator([["mod"]]))
+        self.context = EmitterContext(NameGenerator([["mod"]]), True)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)), "goto CPyL2;")
@@ -974,7 +974,7 @@ class TestGenerateFunction(unittest.TestCase):
             [self.block],
         )
         value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
-        emitter = Emitter(EmitterContext(NameGenerator([["mod"]])), value_names)
+        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True), value_names)
         generate_native_function(fn, emitter, "prog.py", "prog")
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -994,7 +994,7 @@ class TestGenerateFunction(unittest.TestCase):
             [self.block],
         )
         value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
-        emitter = Emitter(EmitterContext(NameGenerator([["mod"]])), value_names)
+        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True), value_names)
         generate_native_function(fn, emitter, "prog.py", "prog")
         result = emitter.fragments
         assert_string_arrays_equal(

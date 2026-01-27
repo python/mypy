@@ -261,20 +261,21 @@ def setup_func_for_recursive_call(
     prev_env = builder.fn_infos[-2].env_class
     attr_name = prefix + fdef.name
     prev_env.attributes[attr_name] = builder.type_to_rtype(fdef.type)
+    line = fdef.line
 
     if isinstance(base, GeneratorClass):
         # If we are dealing with a generator class, then we need to first get the register
         # holding the current environment class, and load the previous environment class from
         # there.
-        prev_env_reg = builder.add(GetAttr(base.curr_env_reg, ENV_ATTR_NAME, -1))
+        prev_env_reg = builder.add(GetAttr(base.curr_env_reg, ENV_ATTR_NAME, line))
     else:
         prev_env_reg = base.prev_env_reg
 
     # Obtain the instance of the callable class representing the FuncDef, and add it to the
     # current environment.
-    val = builder.add(GetAttr(prev_env_reg, attr_name, -1))
+    val = builder.add(GetAttr(prev_env_reg, attr_name, line))
     target = builder.add_local_reg(fdef, object_rprimitive)
-    builder.assign(target, val, -1)
+    builder.assign(target, val, line)
 
 
 def is_free_variable(builder: IRBuilder, symbol: SymbolNode) -> bool:
