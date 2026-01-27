@@ -104,6 +104,20 @@ LIBRT_MODULES = [
         ],
         ["base64"],
     ),
+    ModDesc(
+        "librt.vecs",
+        [
+            "vecs/librt_vecs.c",
+            "vecs/vec_i64.c",
+            "vecs/vec_i32.c",
+            "vecs/vec_i16.c",
+            "vecs/vec_u8.c",
+            "vecs/vec_float.c",
+            "vecs/vec_bool.c",
+        ],
+        ["vecs/librt_vecs.h", "vecs/vec_template.c"],
+        ["vecs"],
+    ),
 ]
 
 try:

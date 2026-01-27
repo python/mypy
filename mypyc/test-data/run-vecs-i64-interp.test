@@ -1,0 +1,343 @@
+[case testLibrtVecsI64Interpreted_librt_experimental]
+# Test cases for vec[i64], using generic operations (simulates use from interpreted code).
+#
+# These also act as test cases for specialized vec types in general (e.g. vec[float]),
+# since much of the implementation is shared between all of them.
+#
+# There is also run-vecs-misc-interp.test with limited test coverage for vec[float] etc.
+
+import sys
+from typing import Any
+import typing
+
+import librt.vecs
+import mypy_extensions
+
+from testutil import assertRaises, is_gil_disabled, is_64_bit_platform
+
+# Access via Any references to force generic operations
+vec: Any = librt.vecs.vec
+append: Any = librt.vecs.append
+remove: Any = librt.vecs.remove
+pop: Any = librt.vecs.pop
+getsizeof: Any = getattr(sys, "getsizeof")
+i64: Any = mypy_extensions.i64
+
+# Work around test stub limitations
+Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
+
+def test_construct_from_initializer() -> None:
+    v = vec[i64]([123])
+    assert len(v) == 1
+    assert v[0] == 123
+    v = vec[i64](x + 1 for x in [5, 7, -8, 10])
+    assert len(v) == 4
+    assert v[0] == 6
+    assert v[1] == 8
+    assert v[2] == -7
+    assert v[3] == 11
+    with assertRaises(TypeError):
+        vec[i64](1)
+    with assertRaises(TypeError):
+        vec[i64](['1'])
+    with assertRaises(TypeError):
+        vec[i64]([None])
+
+def test_append() -> None:
+    v = vec[i64]()
+    v = append(v, 1)
+    assert str(v) == "vec[i64]([1])"
+    for n in range(2, 10):
+        v = append(v, n)
+    assert str(v) == "vec[i64]([1, 2, 3, 4, 5, 6, 7, 8, 9])"
+    v = vec[i64]()
+    v = append(v, 2**63 - 1)
+    v = append(v, -2**63)
+    assert v[0] == 2**63 - 1
+    assert v[1] == -2**63
+    v = vec[i64]()
+    for i in range(10000):
+        v = append(v, i)
+    for i in range(10000):
+        assert v[i] == i
+
+def test_append_error() -> None:
+    v: Any = vec[i64]()
+    with assertRaises(OverflowError):
+        v = append(v, 2**63)
+    with assertRaises(OverflowError):
+        v = append(v, -2**63 - 1)
+    assert len(v) == 0
+    with assertRaises(TypeError):
+        v = append(v, 'x')
+    with assertRaises(TypeError):
+        v = append(v, 1.5)
+    assert len(v) == 0
+
+def test_repr() -> None:
+    assert str(vec[i64]()) == "vec[i64]([])"
+    assert str(vec[i64]([123])) == "vec[i64]([123])"
+    assert str(vec[i64]([123, -987654321])) == "vec[i64]([123, -987654321])"
+
+def test_size() -> None:
+    v = vec[i64]()
+    # Only test on 64-bit, non-free-threading builds
+    if not is_gil_disabled() and is_64_bit_platform():
+        assert getsizeof(v) == 32
+        v = append(v, 123)
+        assert getsizeof(v) == 32
+
+def test_get_item() -> None:
+    v = append(vec[i64](), 44)
+    assert v[0] == 44
+    v = append(v, 56)
+    assert v[0] == 44
+    assert v[1] == 56
+
+def test_get_item_error() -> None:
+    v = append(vec[i64](), 1)
+    v = append(v, 2)
+    v = append(v, 3)
+    with assertRaises(IndexError):
+        v[3]
+    with assertRaises(IndexError):
+        v[-4]
+    n = 2 ** 100
+    with assertRaises(IndexError):
+        v[n]
+
+def test_get_item_negative() -> None:
+    v = vec[i64]([2, 5, 7])
+    assert v[-1] == 7
+    assert v[-2] == 5
+    assert v[-3] == 2
+    with assertRaises(IndexError):
+        v[-4]
+    with assertRaises(IndexError):
+        v[-2**62]
+
+def test_len() -> None:
+    v = vec[i64]()
+    assert len(v) == 0
+    v = append(v, 1)
+    assert len(v) == 1
+    v = append(v, 2)
+    assert len(v) == 2
+    for i in range(100):
+        v = append(v, i)
+        assert len(v) == i + 3
+
+def test_set_item() -> None:
+    v = vec[i64]()
+    v = append(v, 1)
+    v = append(v, 2)
+    v[0] = 3
+    assert v[0] == 3
+    assert v[1] == 2
+    v[1] = 5
+    assert v[0] == 3
+    assert v[1] == 5
+
+def test_set_item_error() -> None:
+    v = append(vec[i64](), 1)
+    v = append(v, 2)
+    v = append(v, 3)
+    with assertRaises(IndexError):
+        v[3] = 1
+    v[0] = 2**63 - 1
+    assert v[0] == 2**63 - 1
+    with assertRaises(OverflowError):
+        v[0] = 2**63
+    v[0] = -2**63
+    assert v[0] == -2**63
+    with assertRaises(OverflowError):
+        v[0] = -2**63 - 1
+    with assertRaises(TypeError):
+        v[0] = "x"
+    with assertRaises(TypeError):
+        v[0] = 1.5
+
+def test_set_item_negative() -> None:
+    v = vec[i64]()
+    v = append(v, 1)
+    v = append(v, 2)
+    v[-2] = 3
+    assert v[0] == 3
+    assert v[1] == 2
+    v[-1] = 5
+    assert v[0] == 3
+    assert v[1] == 5
+    with assertRaises(IndexError):
+        v[-3] = 1
+
+def test_equality() -> None:
+    assert_eq(vec[i64](), vec[i64]())
+    assert_eq(vec[i64]([1]), vec[i64]([1]))
+    v = vec[i64]([1])
+    assert_eq(v, v)
+    assert_eq(vec[i64]([1, 2]), vec[i64]([1, 2]))
+
+    assert_neq(vec[i64](), vec[i64]([1]))
+    assert_neq(vec[i64]([1, 2]), vec[i64]([1]))
+    assert_neq(vec[i64]([1]), vec[i64]([2]))
+    assert_neq(vec[i64]([1, 2]), vec[i64]([2, 2]))
+    assert_neq(vec[i64]([1, 2]), vec[i64]([1, 1]))
+
+def test_equality_different_types() -> None:
+    assert_neq(vec[i64]([1]), None)
+    assert_neq(vec[i64]([1]), [1])
+    assert_neq(vec[i64]([1]), (1,))
+
+def assert_eq(x: object, y: object) -> None:
+    assert x == y
+    assert y == x
+    b = x != y
+    assert not b
+    b = y != x
+    assert not b
+
+def assert_neq(x: object, y: object) -> None:
+    assert x != y
+    assert y != x
+    b = x == y
+    assert not b
+    b = y == x
+    assert not b
+
+def test_iteration() -> None:
+    for x in vec[i64]():
+        assert False
+    a = []
+    for x in vec[i64]([11]):
+        a.append(x)
+    assert a == [11]
+    a = []
+    for x in vec[i64]([11, 23, 45, 64]):
+        a.append(x)
+    assert a == [11, 23, 45, 64]
+
+def test_iteration_nested() -> None:
+    v = vec[i64]()
+    v = append(v, 2)
+    v = append(v, 5)
+    v = append(v, 7)
+    a = []
+    for x in v:
+        for y in v:
+            a.append((x, y))
+    assert a == [(2, 2), (2, 5), (2, 7),
+                 (5, 2), (5, 5), (5, 7),
+                 (7, 2), (7, 5), (7, 7)]
+
+def test_slicing() -> None:
+    v = vec[i64](range(5))
+    assert v[1:4] == vec[i64]([1, 2, 3])
+    assert v[2:-1] == vec[i64]([2, 3])
+    assert v[-2:-1] == vec[i64]([3])
+    assert v[1:] == vec[i64]([1, 2, 3, 4])
+    assert v[:-1] == vec[i64]([0, 1, 2, 3])
+    assert v[:] == v
+    assert v[:] is not v
+    assert v[5:] == vec[i64]()
+    assert v[100:] == vec[i64]()
+    assert v[0:5] ==v
+    assert v[0:5] is not v
+    assert v[2:100] == vec[i64]([2, 3, 4])
+    assert v[-100:2] == vec[i64]([0, 1])
+    assert v[5:100] == vec[i64]([])
+    assert v[50:100] == vec[i64]([])
+    assert v[-100:-50] == vec[i64]([])
+
+def test_slicing_with_step() -> None:
+    v = vec[i64](range(10))
+    assert v[1:5:2] == vec[i64]([1, 3])
+    assert v[1:6:2] == vec[i64]([1, 3, 5])
+    assert v[5:1:-2] == vec[i64]([5, 3])
+    assert v[6:1:-2] == vec[i64]([6, 4, 2])
+    v = vec[i64](range(5))
+    assert v[::-1] == vec[i64]([4, 3, 2, 1, 0])
+    with assertRaises(ValueError):
+        v[1:3:0]
+
+def test_contains() -> None:
+    v = vec[i64](range(2, 7))
+    for i in range(2, 7):
+        assert i in v
+    assert 1 not in v
+    assert 7 not in v
+    assert -1 not in v
+    assert 1233453452 not in v
+    assert -1233453452 not in v
+    vv = vec[i64]()
+    assert 3 not in vv
+
+def test_remove() -> None:
+    a = [4, 7, 9]
+    for i in a:
+        v = vec[i64](a)
+        v = remove(v, i)
+        assert v == vec[i64]([j for j in a if j != i])
+    v = vec[i64](a)
+    v = remove(v, 4)
+    v = remove(v, 7)
+    v = remove(v, 9)
+    assert v == vec[i64]()
+    with assertRaises(ValueError):
+        remove(v, 4)
+    v = append(v, 5)
+    with assertRaises(ValueError):
+        remove(v, 7)
+    v = remove(v, 5)
+    assert len(v) == 0
+    v = vec[i64]([1, 1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1])
+    v = remove(v, 1)
+    assert v == vec[i64]()
+    f: Any = 1.1
+    with assertRaises(TypeError):
+        remove(v, f)
+    s: Any = 'x'
+    with assertRaises(TypeError):
+        remove(v, s)
+
+def test_pop_last() -> None:
+    v = vec[i64]([4, 7, 9])
+    v, n = pop(v)
+    assert n == 9
+    assert v == vec[i64]([4, 7])
+    v, n = pop(v)
+    assert n == 7
+    assert v == vec[i64]([4])
+    v, n = pop(v)
+    assert n == 4
+    assert v == vec[i64]()
+    with assertRaises(IndexError):
+       pop(v)
+
+def test_pop_index() -> None:
+    v = vec[i64]([4, 7, 9, 15, 22])
+    v, n = pop(v, 0)
+    assert n == 4
+    assert v == vec[i64]([7, 9, 15, 22])
+    v, n = pop(v, -1)
+    assert n == 22
+    assert v == vec[i64]([7, 9, 15])
+    v, n = pop(v, 1)
+    assert n == 9
+    assert v == vec[i64]([7, 15])
+
+    with assertRaises(IndexError):
+       pop(v, 2)
+
+    with assertRaises(IndexError):
+       pop(v, -3)
+
+    v, n = pop(v, -2)
+    assert n == 7
+    assert v == vec[i64]([15])
+    v, n = pop(v, 0)
+    assert n == 15
+    assert v == vec[i64]()
