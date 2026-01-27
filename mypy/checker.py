@@ -6687,7 +6687,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
 
             expr_type = operand_types[i]
-            expanded_expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)
+            expanded_expr_type = try_expanding_sum_type_to_union(
+                coerce_to_literal(expr_type), None
+            )
             expr_enum_keys = ambiguous_enum_equality_keys(expr_type)
             for j in expr_indices:
                 if i == j:
