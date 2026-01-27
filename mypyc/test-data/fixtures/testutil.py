@@ -106,3 +106,7 @@ def make_python_function(f: F) -> F:
 
 def is_gil_disabled() -> bool:
     return hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+
+def is_64_bit_platform() -> bool:
+    return getattr(sys, "maxsize") > 2**32
