@@ -117,10 +117,7 @@ LIBRT_MODULES = [
             "vecs/vec_t.c",
             "vecs/vec_nested.c",
         ],
-        [
-            "vecs/librt_vecs.h",
-            "vecs/vec_template.c",
-        ],
+        ["vecs/librt_vecs.h", "vecs/vec_template.c"],
         ["vecs"],
     ),
 ]
