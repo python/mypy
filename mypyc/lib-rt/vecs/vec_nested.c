@@ -441,8 +441,8 @@ PyTypeObject VecNestedType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
     .tp_doc = "Mutable sequence-like container optimized for compilation with mypyc",
-    .tp_basicsize = sizeof(VecNestedObject) - sizeof(PyObject *),
-    .tp_itemsize = sizeof(PyObject *),
+    .tp_basicsize = sizeof(VecNestedObject),
+    .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)VecNested_traverse,
     .tp_clear = (inquiry)VecNested_clear,

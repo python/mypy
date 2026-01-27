@@ -100,9 +100,9 @@ def test_size() -> None:
     # Only test on 64-bit, non-free-threading builds
     if not is_gil_disabled() and is_64_bit_platform():
         v = vec[vec[str]]()
-        assert getsizeof(v) == 40
+        assert getsizeof(v) == 48
         v = append(v, vec[str]())
-        assert getsizeof(v) == 48  # TODO: Why different size?
+        assert getsizeof(v) == 48
 
 def test_get_item() -> None:
     v = append(vec[vec[str]](), append(vec[str](), 'x'))
