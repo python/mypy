@@ -2361,7 +2361,15 @@ class State:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We need to set allow_missing when doing a fine grained cache
         # load because we need to gracefully handle missing modules.
-        fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
+        # We also pass missing_modules so that cross-refs pointing to
+        # suppressed modules can be replaced with placeholders instead of
+        # failing lookup.
+        fixup_module(
+            self.tree,
+            self.manager.modules,
+            self.options.use_fine_grained_cache,
+            self.manager.missing_modules,
+        )
 
     # Methods for processing modules from source code.
 

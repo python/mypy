@@ -22,6 +22,12 @@ def lookup_fully_qualified(
     This function should *not* be used to find a module. Those should be looked
     in the modules dictionary.
     """
+    # Reject synthetic/placeholder names (they always start with "<").
+    # These can appear in cached data when placeholders (e.g., from suppressed
+    # modules) are serialized and then reloaded. Return None so callers can
+    # substitute a fresh placeholder.
+    if name.startswith("<"):
+        return None
     # 1. Exclude the names of ad hoc instance intersections from step 2.
     i = name.find("<subclass ")
     head = name if i == -1 else name[:i]
