@@ -357,7 +357,7 @@ PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf[" ITEM_TYPE_STR "]",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(ITEM_C_TYPE),
+    .tp_basicsize = sizeof(BUF_OBJECT) - sizeof(ITEM_C_TYPE),
     .tp_itemsize = sizeof(ITEM_C_TYPE),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     //.tp_new = ??
