@@ -823,9 +823,8 @@ def bar(x: Union[SingletonFoo, Foo], y: SingletonFoo) -> None:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.SingletonFoo.A]"
 [builtins fixtures/primitives.pyi]
 
-[case testNarrowingEqualityDisabledForCustomEquality]
+[case testNarrowingEqualityCustomEqualityDisabled]
 from typing import Literal, Union
-from enum import Enum
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
@@ -834,15 +833,20 @@ class Default: pass
 
 x1: Union[Custom, Literal[1], Literal[2]]
 if x1 == 1:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1] | Literal[2]"
+    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1]"
 else:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1] | Literal[2]"
+    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[2]"
 
 x2: Union[Default, Literal[1], Literal[2]]
 if x2 == 1:
     reveal_type(x2)  # N: Revealed type is "Literal[1]"
 else:
     reveal_type(x2)  # N: Revealed type is "__main__.Default | Literal[2]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingEqualityCustomEqualityEnum]
+from typing import Literal, Union
+from enum import Enum
 
 class CustomEnum(Enum):
     A = 1
@@ -855,7 +859,7 @@ key: Literal[CustomEnum.A]
 if x3 == key:
     reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
 else:
-    reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
+    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 
 # For comparison, this narrows since we bypass __eq__
 if x3 is key:
@@ -864,7 +868,7 @@ else:
     reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 [builtins fixtures/primitives.pyi]
 
-[case testNarrowingEqualityDisabledForCustomEqualityChain]
+[case testNarrowingEqualityCustomEqualityChainedComparison]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
@@ -877,27 +881,114 @@ x: Literal[1, 2, None]
 y: Custom
 z: Default
 
-# We could maybe try doing something clever, but for simplicity we
-# treat the whole chain as contaminated and mostly disable narrowing.
-#
-# The only exception is that we do at least strip away the 'None'. We
-# (perhaps optimistically) assume no custom class would be pathological
-# enough to declare itself to be equal to None and so permit this narrowing,
-# since it's often convenient in practice.
 if 1 == x == y:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2]"
+    reveal_type(x)   # N: Revealed type is "Literal[1]"
     reveal_type(y)   # N: Revealed type is "__main__.Custom"
 else:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
+    reveal_type(x)   # N: Revealed type is "Literal[2] | None"
     reveal_type(y)   # N: Revealed type is "__main__.Custom"
 
-# No contamination here
 if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Literal[1, 2] | None", right operand type: "Default")
     reveal_type(x)   # E: Statement is unreachable
     reveal_type(z)
 else:
     reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
     reveal_type(z)   # N: Revealed type is "__main__.Default"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualityLiteralElseBranch]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Literal
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(v: Custom | Literal["text"]) -> Custom | None:
+    if v == "text":
+        reveal_type(v)  # N: Revealed type is "__main__.Custom | Literal['text']"
+        return None
+    else:
+        reveal_type(v)  # N: Revealed type is "__main__.Custom"
+        return v
+
+def g(v: Custom | Literal["text"]) -> Custom | None:
+    if v != "text":
+        reveal_type(v)  # N: Revealed type is "__main__.Custom"
+        return None
+    else:
+        reveal_type(v)  # N: Revealed type is "__main__.Custom | Literal['text']"
+        return v  # E: Incompatible return value type (got "Custom | Literal['text']", expected "Custom | None")
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualityUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+def realistic(x: dict[str, Any]):
+    val = x.get("hey")
+    if val == 12:
+        reveal_type(val)  # N: Revealed type is "Any | Literal[12]?"
+
+def f1(x: Any | None):
+    if x == 12:
+        reveal_type(x)  # N: Revealed type is "Any | Literal[12]?"
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f2(x: Custom | None):
+    if x == 12:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+[builtins fixtures/dict.pyi]
+
+[case testNarrowingCustomEqualityUnion2]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f3(x: str | Custom, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+
+def f4(x: str | Any, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testNarrowingCustomEqualityUnion3]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom | None, y: int | None):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases]
@@ -2157,7 +2248,7 @@ def f3(x: object) -> None:
 
 def f4(x: int | Any) -> None:
     if x == IE.X:
-        reveal_type(x)  # N: Revealed type is "builtins.int | Any"
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | Any"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | Any"
 
@@ -2232,9 +2323,9 @@ def f5(x: E | str | int) -> None:
 
 def f6(x: IE | Any) -> None:
      if x == IE.X:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | Any"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | Any"
      else:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | Any"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y] | Any"
 
 def f7(x: IE | None) -> None:
      if x == IE.X:
@@ -2321,7 +2412,7 @@ def f(x: str | int) -> None:
     z = y
 [builtins fixtures/primitives.pyi]
 
-[case testConsistentNarrowingInWithCustomEq]
+[case testConsistentNarrowingEqAndInWithCustomEq]
 # flags: --python-version 3.10
 
 # https://github.com/python/mypy/issues/17864
@@ -2339,11 +2430,17 @@ class C:
 class D(C):
     pass
 
-def f(x: C) -> None:
+def f1(x: C) -> None:
     if x in [D(5)]:
         reveal_type(x)  # D  # N: Revealed type is "__main__.C"
 
-f(C(5))
+f1(C(5))
+
+def f2(x: C) -> None:
+    if x == D(5):
+        reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+
+f2(C(5))
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypeVarNone]
@@ -3155,7 +3252,7 @@ def foo(y: object):
 
 def bar(y: Any):
     if y.__class__ == int:
-        reveal_type(y) # N: Revealed type is "Any"
+        reveal_type(y) # N: Revealed type is "builtins.int"
     else:
         reveal_type(y) # N: Revealed type is "Any"
 
