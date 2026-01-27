@@ -17,6 +17,7 @@ import_librt_vecs(void)
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdint.h>
 
 // Magic (native) integer return value on exception. Caller must also
 // use PyErr_Occurred() since this overlaps with valid integer values.
@@ -475,7 +476,7 @@ static inline int32_t VecI32_UnboxItem(PyObject *o) {
     if (Vec_CheckFloatError(o))
         return -1;
     long x = PyLong_AsLong(o);
-    if (x >= 0x80000000L || x < -0x80000000L) {
+    if (x > INT32_MAX || x < INT32_MIN) {
         PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to i32");
         return -1;
     }
