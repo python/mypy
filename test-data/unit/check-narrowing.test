@@ -3327,6 +3327,7 @@ def bar(y: Any):
 [builtins fixtures/dict-full.pyi]
 
 [case testNarrowTypeVarType]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -3347,6 +3348,8 @@ def bar(X: type[T]) -> T:
 [builtins fixtures/type.pyi]
 
 [case testNarrowingAnyNegativeIntersection-xfail]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/20597
 from __future__ import annotations
 from typing import Any
 

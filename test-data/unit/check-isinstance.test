@@ -2887,6 +2887,7 @@ def __getattr__(attr: str) -> str: ...
 
 [case testMultipleHasAttr-xfail]
 # flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20596
 from __future__ import annotations
 from typing import Any
 
