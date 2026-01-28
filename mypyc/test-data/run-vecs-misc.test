@@ -2,7 +2,7 @@
 -- vec[i32] and vec[float]. Since many of the code paths are the same as for
 -- vec[i64], only test a subset of functionality.
 --
--- vec[i64] test cases are in run-vec-i64.test.
+-- vec[i64] test cases are in run-vecs-i64.test.
 
 [case testVecMiscBasicOps_librt_experimental]
 # mypy: allow-redefinition
