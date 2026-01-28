@@ -37,6 +37,24 @@ def f() -> StringWriter:
 [out]
 Capsule(name='librt.strings')
 
+[case testStringsCapsuleDepFromUnion_experimental]
+from typing import Union
+
+from librt.strings import StringWriter
+
+def f(s: Union[StringWriter, str]) -> None:
+    pass
+[out]
+Capsule(name='librt.strings')
+
+[case testStringsCapsuleDepFromTuple_experimental]
+from librt.strings import StringWriter
+
+def f(s: tuple[int, StringWriter]) -> None:
+    pass
+[out]
+Capsule(name='librt.strings')
+
 [case testExtraFileDep_experimental]
 from librt.strings import StringWriter
 
