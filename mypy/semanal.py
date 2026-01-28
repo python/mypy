@@ -6178,8 +6178,7 @@ class SemanticAnalyzer(
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
-        n = self.lookup_type_node(base)
-        if n and n.fullname == "librt.vecs.vec":
+        if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
             check_vec_type_args(types, expr, self)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
