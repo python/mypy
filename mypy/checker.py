@@ -6830,6 +6830,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 expr = operands[j]
 
                 current_type_range = self.get_isinstance_type(expr)
+                if current_type_range is not None:
+                    target_type = make_simplified_union([tr.item for tr in current_type_range])
+                    if isinstance(target_type, AnyType):
+                        # Avoid widening to Any for checks like `type(x) is type(y: Any)`.
+                        # We patch this here because it is desirable to widen to any for cases like
+                        # isinstance(x, (y: Any))
+                        continue
                 if_map, else_map = conditional_types_to_typemaps(
                     expr_in_type_expr,
                     *self.conditional_types_with_intersection(

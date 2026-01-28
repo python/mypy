@@ -3094,6 +3094,28 @@ z: Any
 if int == type(z) == int:
     reveal_type(z) # N: Revealed type is "builtins.int"
 
+[case testTypeEqualsCheckWidening]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def f(x: str, y: Any, z: object):
+    if type(x) is type(y):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(y) # N: Revealed type is "builtins.str"
+
+    if type(x) == type(y):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(y) # N: Revealed type is "builtins.str"
+
+    if type(x) is type(z):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(z) # N: Revealed type is "builtins.str"
+
+    if type(x) == type(z):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(z) # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
 [case testTypeEqualsCheckUsingIs]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
@@ -3129,20 +3151,6 @@ def main(x: Union[B, C]):
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/isinstance.pyi]
-
-[case testTypeEqualsCheckUsingImplicitTypes-xfail]
-from typing import Any
-
-x: str
-y: Any
-z: object
-if type(y) is type(x):
-    reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(y) # N: Revealed type is "builtins.str"
-
-if type(x) is type(z):
-    reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(z) # N: Revealed type is "builtins.str"
 
 [case testTypeEqualsCheckUsingDifferentSpecializedTypes]
 # flags: --warn-unreachable
