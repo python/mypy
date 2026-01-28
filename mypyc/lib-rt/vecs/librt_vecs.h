@@ -381,7 +381,72 @@ typedef struct _VecBoolAPI {
     // iter?
 } VecBoolAPI;
 
+#ifndef MYPYC_DECLARED_tuple_T2VOO
+#define MYPYC_DECLARED_tuple_T2VOO
+typedef struct tuple_T2VOO {
+    VecT f0;
+    PyObject *f1;
+} tuple_T2VOO;
+static tuple_T2VOO tuple_undefined_T2VOO = { { -1, NULL } , NULL };
+#endif
+
+typedef tuple_T2VOO VecTPopResult;
+
+// vec[T] operations + type objects (stored in a capsule)
+//
+// T is a class type or class type | None
+typedef struct _VecTAPI {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecT (*alloc)(Py_ssize_t, Py_ssize_t, size_t);
+    PyObject *(*box)(VecT, size_t);
+    VecT (*unbox)(PyObject *, size_t);
+    VecT (*convert_from_nested)(VecNestedBufItem);
+    VecT (*append)(VecT, PyObject *, size_t);
+    VecTPopResult (*pop)(VecT, Py_ssize_t);
+    VecT (*remove)(VecT, PyObject *);
+    // TODO: Py_ssize_t
+    VecT (*slice)(VecT, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, PyObject *);
+    // iter?
+} VecTAPI;
+
+
+#ifndef MYPYC_DECLARED_tuple_T2VvVi
+#define MYPYC_DECLARED_tuple_T2VvVi
+typedef struct tuple_T2VvVi {
+    VecNested f0;
+    VecNestedBufItem f1;
+} tuple_T2VvVi;
+static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
+#endif
+
+typedef tuple_T2VvVi VecNestedPopResult;
+
+// Nested vec operations + type objects (stored in a capsule)
+typedef struct _VecNestedAPI {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecNested (*alloc)(Py_ssize_t, Py_ssize_t, size_t, size_t depth);
+    PyObject *(*box)(VecNested);
+    VecNested (*unbox)(PyObject *, size_t, size_t depth);
+    VecNested (*convert_from_nested)(VecNestedBufItem);
+    VecNested (*append)(VecNested, VecNestedBufItem);
+    VecNestedPopResult (*pop)(VecNested, Py_ssize_t);
+    VecNested (*remove)(VecNested, VecNestedBufItem);
+    // TODO: Py_ssize_t
+    VecNested (*slice)(VecNested, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, PyObject *);
+    // iter?
+} VecNestedAPI;
+
 typedef struct {
+    VecTAPI *t;
+    VecNestedAPI *nested;
     VecI64API *i64;
     VecI32API *i32;
     VecI16API *i16;
@@ -407,6 +472,8 @@ extern PyTypeObject VecI16BufType;
 extern PyTypeObject VecU8BufType;
 extern PyTypeObject VecFloatBufType;
 extern PyTypeObject VecBoolBufType;
+extern PyTypeObject VecTBufType;
+extern PyTypeObject VecNestedBufType;
 
 // Wrapper type objects for boxed vec values
 extern PyTypeObject VecI64Type;
@@ -415,6 +482,8 @@ extern PyTypeObject VecI16Type;
 extern PyTypeObject VecU8Type;
 extern PyTypeObject VecFloatType;
 extern PyTypeObject VecBoolType;
+extern PyTypeObject VecTType;
+extern PyTypeObject VecNestedType;
 
 // Type objects corresponding to the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *LibRTVecs_I64TypeObj;
@@ -428,6 +497,8 @@ extern VecI16API Vec_I16API;
 extern VecU8API Vec_U8API;
 extern VecFloatAPI Vec_FloatAPI;
 extern VecBoolAPI Vec_BoolAPI;
+extern VecTAPI Vec_TAPI;
+extern VecNestedAPI Vec_NestedAPI;
 
 static inline int Vec_CheckFloatError(PyObject *o) {
     if (PyFloat_Check(o)) {
@@ -613,6 +684,138 @@ PyObject *VecBool_Box(VecBool);
 VecBool VecBool_Append(VecBool, char x);
 VecBool VecBool_Remove(VecBool, char x);
 VecBoolPopResult VecBool_Pop(VecBool v, Py_ssize_t index);
+
+// vec[t] operations
+
+static inline int VecT_Check(PyObject *o) {
+    return o->ob_type == &VecTType;
+}
+
+static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
+    if (PyObject_TypeCheck(item, VEC_ITEM_TYPE(item_type))) {
+        return 1;
+    } else if ((item_type & 1) && item == Py_None) {
+        return 1;
+    } else {
+        // TODO: better error message
+        PyErr_SetString(PyExc_TypeError, "invalid item type");
+        return 0;
+    }
+}
+
+VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable);
+PyObject *VecT_Box(VecT vec, size_t item_type);
+VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
+VecT VecT_Remove(VecT vec, PyObject *x);
+VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
+
+// Nested vec operations
+
+static inline int VecNested_Check(PyObject *o) {
+    return o->ob_type == &VecNestedType;
+}
+
+VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
+PyObject *VecNested_Box(VecNested);
+VecNested VecNested_Append(VecNested vec, VecNestedBufItem x);
+VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
+VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index);
+
+// Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
+// Return a *borrowed* reference.
+static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem *unboxed) {
+    size_t depth = v.buf->depth;
+    if (depth == 1) {
+        if (item->ob_type == &VecTType) {
+            VecNestedObject *o = (VecNestedObject *)item;
+            if (o->vec.buf->item_type == v.buf->item_type) {
+                unboxed->len = o->vec.len;
+                unboxed->buf = (PyObject *)o->vec.buf;
+                return 0;
+            }
+        } else if (item->ob_type == &VecI64Type && v.buf->item_type == VEC_ITEM_TYPE_I64) {
+            VecI64Object *o = (VecI64Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecU8Type && v.buf->item_type == VEC_ITEM_TYPE_U8) {
+            VecU8Object *o = (VecU8Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecFloatType && v.buf->item_type == VEC_ITEM_TYPE_FLOAT) {
+            VecFloatObject *o = (VecFloatObject *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecI32Type && v.buf->item_type == VEC_ITEM_TYPE_I32) {
+            VecI32Object *o = (VecI32Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecI16Type && v.buf->item_type == VEC_ITEM_TYPE_I16) {
+            VecI16Object *o = (VecI16Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecBoolType && v.buf->item_type == VEC_ITEM_TYPE_BOOL) {
+            VecBoolObject *o = (VecBoolObject *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        }
+    } else if (item->ob_type == &VecNestedType) {
+        VecNestedObject *o = (VecNestedObject *)item;
+        if (o->vec.buf->depth == v.buf->depth - 1
+            && o->vec.buf->item_type == v.buf->item_type) {
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        }
+    }
+    // TODO: better error message
+    PyErr_SetString(PyExc_TypeError, "invalid item type");
+    return -1;
+}
+
+static inline PyObject *VecNested_BoxItem(VecNested v, VecNestedBufItem item) {
+    if (item.len < 0)
+        Py_RETURN_NONE;
+    Py_XINCREF(item.buf);
+    if (v.buf->depth > 1) {
+        // Item is a nested vec
+        VecNested v = { .len = item.len, .buf = (VecNestedBufObject *)item.buf };
+        return VecNested_Box(v);
+    } else {
+        // Item is a non-nested vec
+        size_t item_type = v.buf->item_type;
+        if (item_type == VEC_ITEM_TYPE_I64) {
+            VecI64 v = { .len = item.len, .buf = (VecI64BufObject *)item.buf };
+            return VecI64_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_U8) {
+            VecU8 v = { .len = item.len, .buf = (VecU8BufObject *)item.buf };
+            return VecU8_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_FLOAT) {
+            VecFloat v = { .len = item.len, .buf = (VecFloatBufObject *)item.buf };
+            return VecFloat_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_I32) {
+            VecI32 v = { .len = item.len, .buf = (VecI32BufObject *)item.buf };
+            return VecI32_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_I16) {
+            VecI16 v = { .len = item.len, .buf = (VecI16BufObject *)item.buf };
+            return VecI16_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_BOOL) {
+            VecBool v = { .len = item.len, .buf = (VecBoolBufObject *)item.buf };
+            return VecBool_Box(v);
+        } else {
+            // Generic vec[t]
+            VecT v = { .len = item.len, .buf = (VecTBufObject *)item.buf };
+            return VecT_Box(v, item_type);
+        }
+    }
+}
 
 // Misc helpers
 
