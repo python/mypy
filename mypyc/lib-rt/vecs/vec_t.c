@@ -242,7 +242,8 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
     Py_ssize_t cap = VEC_CAP(vec);
     Py_INCREF(x);
     if (vec.len < cap) {
-        vec.buf->items[vec.len] = x;
+        // Slot may have duplicate ref from prior remove/pop
+        Py_XSETREF(vec.buf->items[vec.len], x);
         vec.len++;
         return vec;
     } else {

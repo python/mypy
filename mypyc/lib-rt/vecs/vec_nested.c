@@ -226,6 +226,8 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
     VEC_INCREF(x);
     if (vec.len < cap) {
+        // Slot may have duplicate ref from prior remove/pop
+        Py_XDECREF(vec.buf->items[vec.len].buf);
         vec.buf->items[vec.len] = x;
         vec.len++;
         return vec;
