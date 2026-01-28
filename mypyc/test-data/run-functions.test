@@ -1240,6 +1240,200 @@ def test_special_case() -> None:
     with f():
         a.pop()
 
+[case testContextManagerSpecialCaseSemantics]
+from contextlib import contextmanager
+from typing import Any, Generator, Iterator, cast
+import traceback
+
+@contextmanager
+def cm_no_yield() -> Iterator[None]:
+    if False:
+        yield
+    return
+
+@contextmanager
+def cm_no_stop() -> Iterator[str]:
+    print("enter cm_no_stop")
+    yield "first"
+    print("after first")
+    yield "second"
+
+@contextmanager
+def cm_value_error_suppress() -> Iterator[None]:
+    try:
+        yield
+    except ValueError as e:
+        print("suppress", str(e))
+
+@contextmanager
+def cm_throw_twice() -> Iterator[None]:
+    try:
+        yield
+    except ValueError:
+        print("throw yield")
+        yield
+
+@contextmanager
+def cm_stop_passthrough() -> Iterator[None]:
+    yield
+
+@contextmanager
+def cm_stop_suppress() -> Iterator[None]:
+    try:
+        yield
+    except StopIteration as e:
+        print("suppress stop", str(e))
+
+@contextmanager
+def cm_value() -> Iterator[int]:
+    print("enter cm_value")
+    try:
+        yield 1
+    finally:
+        print("exit cm_value")
+
+@contextmanager
+def cm_gen() -> Iterator[int]:
+    print("cm enter")
+    try:
+        yield 1
+    finally:
+        print("cm exit")
+
+@contextmanager
+def cm_log(tag: str) -> Iterator[None]:
+    print(tag, "enter")
+    try:
+        yield
+    finally:
+        print(tag, "exit")
+
+def test_no_yield() -> None:
+    try:
+        with cm_no_yield():
+            print("body no yield")
+    except RuntimeError as e:
+        e_any = cast(Any, e)
+        print(
+            "no_yield",
+            str(e),
+            e_any.__cause__ is None,
+            e_any.__suppress_context__,
+        )
+
+def test_no_stop() -> None:
+    try:
+        with cm_no_stop() as v:
+            print("body", v)
+    except RuntimeError as e:
+        print("no_stop", str(e))
+
+def test_suppress_value_error() -> None:
+    with cm_value_error_suppress():
+        raise ValueError("boom")
+    print("after suppress value")
+
+def test_throw_twice() -> None:
+    try:
+        with cm_throw_twice():
+            raise ValueError("oops")
+    except RuntimeError as e:
+        print("throw_twice", str(e))
+
+def test_stop_iteration_passthrough() -> None:
+    try:
+        with cm_stop_passthrough():
+            raise StopIteration("stop")
+    except Exception as e:
+        print("stop passthrough", type(e).__name__, str(e))
+
+def test_stop_iteration_suppress() -> None:
+    with cm_stop_suppress():
+        raise StopIteration("stop2")
+    print("after suppress stop")
+
+def test_traceback() -> None:
+    try:
+        with cm_value():
+            raise ValueError("trace")
+    except Exception as e:
+        e_any = cast(Any, e)
+        tb = e_any.__traceback__
+        assert tb is not None
+        tb_mod = cast(Any, traceback)
+        names = [frame.name for frame in tb_mod.extract_tb(tb)]
+        print("traceback_has_cm_value", "cm_value" in names)
+
+def test_generator_with_yield() -> None:
+    def gen() -> Generator[int, None, None]:
+        with cm_gen() as v:
+            yield v
+            print("after yield in with")
+
+    g = gen()
+    print(next(g))
+    try:
+        next(g)
+    except StopIteration:
+        print("gen done")
+
+def test_return_in_with() -> None:
+    def inner() -> int:
+        with cm_log("ret"):
+            print("ret body")
+            return 5
+        return 0
+
+    print("ret result", inner())
+
+[file driver.py]
+from native import (
+    test_no_yield,
+    test_no_stop,
+    test_suppress_value_error,
+    test_throw_twice,
+    test_stop_iteration_passthrough,
+    test_stop_iteration_suppress,
+    test_traceback,
+    test_generator_with_yield,
+    test_return_in_with,
+)
+
+test_no_yield()
+test_no_stop()
+test_suppress_value_error()
+test_throw_twice()
+test_stop_iteration_passthrough()
+test_stop_iteration_suppress()
+test_traceback()
+test_generator_with_yield()
+test_return_in_with()
+[out]
+no_yield generator didn't yield True True
+enter cm_no_stop
+body first
+after first
+no_stop generator didn't stop
+suppress boom
+after suppress value
+throw yield
+throw_twice generator didn't stop after throw()
+stop passthrough StopIteration stop
+suppress stop stop2
+after suppress stop
+enter cm_value
+exit cm_value
+traceback_has_cm_value False
+cm enter
+1
+after yield in with
+cm exit
+gen done
+ret enter
+ret body
+ret exit
+ret result 5
+
 [case testUnpackKwargsCompiled]
 from typing import TypedDict
 from typing_extensions import Unpack
