@@ -3287,28 +3287,38 @@ from typing import Literal
 
 def f1(number: float, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
 
 def f2(number: float, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
 
-def f3(number: float | None, i: int):
+def f3(number: float | int, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+
+def f4(number: float | None, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
 
-def f4(number: float | int, i: int):
+def f5(number: float | int, i: int):
     if number == i:
         reveal_type(number)  # N: Revealed type is "builtins.float | builtins.int"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
 
-def f5(number: float | complex, i: int):
+def f6(number: float | complex, i: int):
     if number == i:
         reveal_type(number)  # N: Revealed type is "builtins.float | builtins.complex"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
-def f6(number: float, x: Custom | int):
+def f7(number: float, x: Custom | int):
     if number == x:
         reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"
