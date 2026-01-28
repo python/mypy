@@ -2747,15 +2747,18 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
 def check_vec_type_args(
     args: tuple[Type, ...] | list[Type], ctx: Context, api: SemanticAnalyzerCoreInterface
 ) -> bool:
+    """Report an error if type args for 'vec' are invalid.
+
+    Return False on error.
+    """
     ok = True
     if len(args) != 1:
         ok = False
     else:
         arg = get_proper_type(args[0])
-        if isinstance(arg, TupleType):
-            ok = False
-        elif isinstance(arg, Instance):
+        if isinstance(arg, Instance):
             if arg.type.fullname == "builtins.int":
+                # A fixed-width integer such as 'i64' must be used instead of plain 'int'
                 ok = False
         elif isinstance(arg, UnionType):
             non_optional = None
