@@ -1,6 +1,7 @@
 [case testVecBasics]
 # flags: --python-version 3.10
-from typing import Optional
+from typing import Optional, Any, TypeVar
+
 from librt.vecs import vec
 from mypy_extensions import i64, i32, i16, u8
 
@@ -24,4 +25,16 @@ vec_str_opt1: vec[str | None]
 vec_str_opt2: vec[Optional[str]]
 vec_nested1: vec[vec[i32]]
 vec_nested2: vec[vec[vec[str | None]]]
+vec_list: vec[list[int]]
+vec_var_tuple: vec[tuple[int, ...]]
+vec_object: vec[object]
+
+vec_bad_int: vec[int]  # E: Invalid item type for "vec"
+vec_bad_tuple: vec[tuple[int, str]]  # E: Invalid item type for "vec"
+vec_bad_union: vec[str | ellipsis]  # E: Invalid item type for "vec"
+vec_bad_any: vec[Any]  # E: Invalid item type for "vec"
+
+T = TypeVar("T")
+
+def bad_generic_func(v: vec[T]) -> None: ...  # E: Invalid item type for "vec"
 [builtins fixtures/len.pyi]
