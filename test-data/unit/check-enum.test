@@ -2778,13 +2778,13 @@ from typing import Literal
 class Foo(enum.StrEnum):
     FOO = 'a'
 
-# Behaviour here is not yet ideal
-
 def f1(a: Foo | Literal['foo']) -> Foo:
     if a == 'foo':
+        # Ideally this is narrowed to just Literal['foo'] (if we learn to narrow based on enum value)
         reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
         return Foo.FOO
 
+    # Ideally this passes
     reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
     return a  # E: Incompatible return value type (got "Foo | Literal['foo']", expected "Foo")
 [builtins fixtures/primitives.pyi]
@@ -2804,7 +2804,7 @@ class TrafficLight(Enum):
 
     YELLOW = AMBER  # alias
 
-# Behaviour here is not yet ideal
+# Behaviour here is not yet ideal, because we don't model enum aliases
 
 def demo1(inst: TrafficLight) -> None:
     if inst is TrafficLight.AMBER:
@@ -2847,8 +2847,6 @@ class SE(StrEnum):
     B = "b"
     C = "c"
 
-# Behaviour here is not yet ideal
-
 def f1(x: int | str | E):
     if x == E.A:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.E.A]"
@@ -2881,7 +2879,12 @@ def f2(x: int | Custom | E):
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.E"
 
+def f3_simple(x: str | SE):
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.SE"
+
 def f3(x: int | str | SE):
+    # Ideally we filter out some of these ints
     if x == SE.A:
         reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
     else:
@@ -2912,7 +2915,6 @@ def f4(x: int | Custom | SE):
         reveal_type(x)  # N: Revealed type is "__main__.Custom | __main__.SE"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.SE"
-
 
 def f5(x: str | Custom | SE):
     if x == SE.A:
