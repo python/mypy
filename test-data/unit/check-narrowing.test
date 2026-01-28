@@ -2902,7 +2902,7 @@ def main(key: str):
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingCollections]
-# flags: --warn-unreachable
+# flags: --warn-unreachable --strict-equality
 from typing import cast
 
 class X:
@@ -2919,7 +2919,7 @@ class X:
             reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
             self.x["asdf"]
 
-        if self.x == cast(dict[int, int], {}):
+        if self.x == cast(dict[int, int], {}):  # E: Non-overlapping equality check (left operand type: "dict[str, str]", right operand type: "dict[int, int]")
             reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
             self.x["asdf"]
 
@@ -2932,7 +2932,7 @@ class X:
             reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
             self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
 
-        if self.y == cast(list[int], []):
+        if self.y == cast(list[int], []):  # E: Non-overlapping equality check (left operand type: "list[str]", right operand type: "list[int]")
             reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
             self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
 [builtins fixtures/dict.pyi]
