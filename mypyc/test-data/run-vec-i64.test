@@ -1,11 +1,11 @@
 -- Test cases for vec[i64]. These also partially cover other unboxed item types,
 -- which use a similar runtime representation.
 
-[case testVecI64BasicOps]
+[case testVecI64BasicOps_librt_experimental]
 from typing import Final, Any, Iterable, Tuple
 
 from mypy_extensions import i64
-from vecs import vec, append, remove, pop
+from librt.vecs import vec, append, remove, pop
 
 from testutil import assertRaises
 
