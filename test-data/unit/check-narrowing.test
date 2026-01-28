@@ -2982,7 +2982,7 @@ def narrow_tuple(x: Literal['c'], overlap: list[Literal['b', 'c']], no_overlap: 
         reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in no_overlap:
-        reveal_type(x)  # N: Revealed type is "Literal['c']"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "Literal['c']"
 [builtins fixtures/tuple.pyi]

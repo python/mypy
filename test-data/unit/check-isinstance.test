@@ -1995,17 +1995,17 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
+# flags: --warn-unreachable
 from typing import List, Optional
 
 x: List[str]
 y: Optional[int]
 
 if y in x:
-    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+    reveal_type(y)  # E: Statement is unreachable
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListNested]
 from typing import List, Optional, Any

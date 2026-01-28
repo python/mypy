@@ -368,7 +368,7 @@ python_version = 3.14
 # cmd: mypy main.py
 [file main.py]
 import sys
-if sys.version_info == (3, 9):  # Update here when bumping the min Python version!
+if sys.version_info < (3, 10):  # Update here when bumping the min Python version!
     reveal_type("good")
 [file mypy.ini]
 \[mypy]
