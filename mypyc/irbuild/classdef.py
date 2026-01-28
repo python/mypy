@@ -470,7 +470,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                     FuncSignature([], bool_rprimitive),
                 ),
                 [],
-                -1,
+                cdef.line,
             )
         )
         builder.add_coroutine_setup_call(cdef.name, tp)
@@ -784,7 +784,7 @@ def generate_attr_defaults_init(
 
             attr_type = cls.attr_type(lvalue.name)
             val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
-            init = SetAttr(self_var, lvalue.name, val, -1)
+            init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
             init.mark_as_initializer()
             builder.add(init)
 

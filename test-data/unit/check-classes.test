@@ -7683,7 +7683,7 @@ class Child(metaclass=M, thing=0):
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 
-[case testTooManyArgsForObject_no_parallel]
+[case testTooManyArgsForObject]
 class A(thing=5):
     pass
 [out]

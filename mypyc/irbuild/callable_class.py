@@ -113,13 +113,15 @@ def add_coroutine_properties(
         "__annotations__": cpyfunction_set_annotations,
     }
 
+    line = builder.fn_info.fitem.line
+
     def get_func_wrapper() -> Value:
-        return builder.add(GetAttr(builder.self(), CPYFUNCTION_NAME, -1))
+        return builder.add(GetAttr(builder.self(), CPYFUNCTION_NAME, line))
 
     for name, primitive in properties.items():
         with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
             func = get_func_wrapper()
-            val = builder.primitive_op(primitive, [func, Integer(0, c_pointer_rprimitive)], -1)
+            val = builder.primitive_op(primitive, [func, Integer(0, c_pointer_rprimitive)], line)
             builder.add(Return(val))
 
     for name, primitive in writable_props.items():
@@ -129,7 +131,7 @@ def add_coroutine_properties(
             value = builder.add_argument("value", object_rprimitive)
             func = get_func_wrapper()
             rv = builder.primitive_op(
-                primitive, [func, value, Integer(0, c_pointer_rprimitive)], -1
+                primitive, [func, value, Integer(0, c_pointer_rprimitive)], line
             )
             builder.add(Return(rv))
 
@@ -185,7 +187,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
         comparison = builder.translate_is_op(
-            builder.read(instance), builder.none_object(), "is", line
+            builder.read(instance), builder.none_object(line), "is", line
         )
         builder.add_bool_branch(comparison, class_block, instance_block)
 

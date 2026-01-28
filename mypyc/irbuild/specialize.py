@@ -530,8 +530,9 @@ def any_all_helper(
     modify: Callable[[Value], Value],
     new_value: Callable[[], Value],
 ) -> Value:
-    retval = Register(bool_rprimitive)
-    builder.assign(retval, initial_value(), -1)
+    init_val = initial_value()
+    retval = Register(bool_rprimitive, line=init_val.line)
+    builder.assign(retval, init_val, init_val.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
@@ -539,7 +540,8 @@ def any_all_helper(
         comparison = modify(builder.accept(gen.left_expr))
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(true_block)
-        builder.assign(retval, new_value(), -1)
+        new_val = new_value()
+        builder.assign(retval, new_val, new_val.line)
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
@@ -573,12 +575,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
 
     gen_expr = expr.args[0]
     target_type = builder.node_type(expr)
-    retval = Register(target_type)
-    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+    retval = Register(target_type, line=expr.line)
+    builder.assign(
+        retval, builder.coerce(builder.accept(start_expr), target_type, expr.line), expr.line
+    )
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
-        builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
+        builder.assign(
+            retval, builder.binary_op(retval, call_expr, "+", call_expr.line), call_expr.line
+        )
 
     loop_params = list(
         zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)

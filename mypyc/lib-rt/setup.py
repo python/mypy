@@ -132,5 +132,19 @@ else:
                 include_dirs=[".", "base64"],
                 extra_compile_args=cflags,
             ),
+            Extension(
+                "librt.vecs",
+                [
+                    "vecs/librt_vecs.c",
+                    "vecs/vec_i64.c",
+                    "vecs/vec_i32.c",
+                    "vecs/vec_i16.c",
+                    "vecs/vec_u8.c",
+                    "vecs/vec_float.c",
+                    "vecs/vec_bool.c",
+                ],
+                include_dirs=[".", "vecs"],
+                extra_compile_args=cflags,
+            ),
         ]
     )

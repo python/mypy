@@ -1674,3 +1674,21 @@ def x() -> None:
 main:4: error: Statement is unreachable
         if 5:
         ^~~~~
+
+[case testReachableEqualityNarrowingAny]
+# flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20532
+from __future__ import annotations
+from typing import Any
+
+def print(s: str): pass
+
+def main(contents: Any, commit: str | None) -> None:
+    if (
+        contents.get("commit") == commit
+        and (commit is not None or print("can_be_reached"))
+    ):
+        pass
+
+main({"commit": None}, None)
+[builtins fixtures/tuple.pyi]

@@ -83,15 +83,32 @@ from mypy.defaults import (
     WORKER_START_TIMEOUT,
 )
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
-from mypy.errors import CompileError, ErrorInfo, Errors, ErrorTuple, report_internal_error
+from mypy.errors import (
+    CompileError,
+    ErrorInfo,
+    Errors,
+    ErrorTuple,
+    ErrorTupleRaw,
+    report_internal_error,
+)
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.ipc import BadStatus, IPCClient, IPCMessage, read_status, ready_to_read, receive, send
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.nodes import (
+    ClassDef,
+    Context,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    SymbolTable,
+)
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.traverser import find_definitions
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
@@ -866,6 +883,10 @@ class BuildManager:
         self.queue_order: int = 0
         # Is this an instance used by a parallel worker?
         self.parallel_worker = parallel_worker
+        # Cache for ASTs created during error message generation. Note these are
+        # raw parsed trees not analyzed with mypy. We use these to find absolute
+        # location of a symbol used as a location for an error message.
+        self.extra_trees: dict[str, MypyFile] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1027,6 +1048,60 @@ class BuildManager:
     ) -> None:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, self.modules, type_map, options)
+
+    def resolve_location(self, graph: dict[str, State], fullname: str) -> Context | None:
+        """Resolve an absolute location of a symbol with given fullname."""
+        rest = []
+        head = fullname
+        while True:
+            # TODO: this mimics the logic in lookup.py but it is actually wrong.
+            # This is because we don't distinguish between submodule and a local symbol
+            # with the same name.
+            head, tail = head.rsplit(".", maxsplit=1)
+            rest.append(tail)
+            if head in graph:
+                state = graph[head]
+                break
+            if "." not in head:
+                return None
+        *prefix, name = reversed(rest)
+        # If this happens something is wrong, but it is better to give slightly
+        # less helpful error message than crash.
+        if state.path is None:
+            return None
+        if state.tree is not None and state.tree.defs:
+            # We usually free ASTs after processing, but reuse an existing AST if
+            # it is still available.
+            tree = state.tree
+        elif state.id in self.extra_trees:
+            tree = self.extra_trees[state.id]
+        else:
+            if state.source is not None:
+                # Sources are usually discarded after processing as well, check
+                # if we still have one just in case.
+                source = state.source
+            else:
+                path = state.manager.maybe_swap_for_shadow_path(state.path)
+                source = decode_python_encoding(state.manager.fscache.read(path))
+            tree = parse(source, state.path, state.id, state.manager.errors, state.options)
+            # TODO: run first pass of semantic analysis on freshly parsed trees,
+            # we need this to get correct reachability information.
+            self.extra_trees[state.id] = tree
+        statements = tree.defs
+        while prefix:
+            part = prefix.pop(0)
+            for statement in statements:
+                defs = find_definitions(statement, part)
+                if not defs or not isinstance((defn := defs[0]), ClassDef):
+                    continue
+                statements = defn.defs.body
+                break
+            else:
+                return None
+        for statement in statements:
+            if defs := find_definitions(statement, name):
+                return defs[0]
+        return None
 
     def verbosity(self) -> int:
         return self.options.verbosity
@@ -2359,7 +2434,7 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        # We need to set allow_missing when doing a fine grained cache
+        # We need to set allow_missing when doing a fine-grained cache
         # load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
 
@@ -3558,7 +3633,9 @@ def find_stale_sccs(
                     path = manager.errors.simplify_path(graph[id].xpath)
                     formatted = manager.errors.format_messages(
                         path,
-                        deserialize_codes(graph[id].error_lines),
+                        transform_error_tuples(
+                            manager, graph, deserialize_codes(graph[id].error_lines)
+                        ),
                         formatter=manager.error_formatter,
                     )
                     manager.flush_errors(path, formatted, False)
@@ -3813,7 +3890,9 @@ def process_stale_scc(
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(graph[id].xpath)
             formatted = manager.errors.format_messages(
-                graph[id].xpath, errors, formatter=manager.error_formatter
+                graph[id].xpath,
+                transform_error_tuples(manager, graph, errors),
+                formatter=manager.error_formatter,
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
@@ -3972,14 +4051,37 @@ def write_undocumented_ref_info(
     metastore.write(ref_info_file, json_dumps(deps_json))
 
 
-def serialize_codes(errs: list[ErrorTuple]) -> list[SerializedError]:
+def transform_error_tuples(
+    manager: BuildManager, graph: dict[str, State], error_tuples_rel: list[ErrorTupleRaw]
+) -> list[ErrorTuple]:
+    """Transform raw error tuples by resolving relative error locations."""
+    error_tuples = []
+    for e in error_tuples_rel:
+        file, line_rel, column, end_line, end_column, severity, message, code = e
+        if isinstance(line_rel, int):
+            line = line_rel
+        else:
+            assert file is not None
+            loc = manager.resolve_location(graph, line_rel)
+            if loc is not None:
+                line = loc.line
+                column = loc.column
+                end_line = loc.end_line or -1
+                end_column = loc.end_column or -1
+            else:
+                line = -1
+        error_tuples.append((file, line, column, end_line, end_column, severity, message, code))
+    return error_tuples
+
+
+def serialize_codes(errs: list[ErrorTupleRaw]) -> list[SerializedError]:
     return [
         (path, line, column, end_line, end_column, severity, message, code.code if code else None)
         for path, line, column, end_line, end_column, severity, message, code in errs
     ]
 
 
-def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTuple]:
+def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTupleRaw]:
     return [
         (
             path,

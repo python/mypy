@@ -1090,6 +1090,8 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
+-- Order of processing of files is not stable in this test, skip it in parallel mode.
+-- Note: do not use _no_parallel unless really needed!
 [case testIncrementalWithSilentImportsAndIgnore_no_parallel]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
@@ -6919,7 +6921,7 @@ class TheClass:
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
 
-
+-- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
 import a
 
@@ -7700,3 +7702,97 @@ tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definit
 [out2]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
 tmp/m.py:2: note: Revealed type is "Any"
+
+[case testCachedUnexpectedKeywordArgument]
+import m
+[file m.py]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[file b.py.3]
+# space
+def lol() -> None: pass
+[file m.py.4]
+import a  # touch
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out3]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
+[out4]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
+
+[case testCachedUnexpectedKeywordArgumentNested]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+while True:
+    if True:
+        def lol() -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:3: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:3: note: "lol" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod]
+import a
+[file a.py]
+import b
+b.B().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod2]
+import a
+[file a.py]
+import b
+b.B.BB().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B.BB().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    class BB:
+        def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here

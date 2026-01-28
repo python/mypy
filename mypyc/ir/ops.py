@@ -773,9 +773,10 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.error_kind = desc.error_kind
+        super().__init__(line)
         self.args = args
         self.type = desc.return_type
-        self.error_kind = desc.error_kind
         self.desc = desc
 
     def sources(self) -> list[Value]:
@@ -849,7 +850,8 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: LiteralValue, rtype: RType) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
         self.type = rtype
 
@@ -1800,7 +1802,8 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
+    def __init__(self, src: list[Value], line: int = -1, *, steal: bool = False) -> None:
+        super().__init__(line)
         assert src
         self.src = src
         self.steal = steal

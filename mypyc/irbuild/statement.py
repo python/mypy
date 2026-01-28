@@ -160,7 +160,7 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
     # call builder.accept here.
     stmt.expr.accept(builder.visitor)
-    builder.flush_keep_alives()
+    builder.flush_keep_alives(stmt.line)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -234,7 +234,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         for left, temp in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(stmt.line)
         return
 
     line = stmt.rvalue.line
@@ -254,11 +254,11 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     ):
         n = len(first_lvalue.items)
         borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
-        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.builder.keep_alive([rvalue_reg], line, steal=True)
         for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
             rvalue_item = builder.add(Unborrow(rvalue_item))
             builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
         return
 
     for lvalue in lvalues:
@@ -268,12 +268,12 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
                 builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
             )
             if specialized is not None:
-                builder.flush_keep_alives()
+                builder.flush_keep_alives(lvalue.line)
                 continue
 
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
 
 
 def is_simple_lvalue(expr: Expression) -> bool:
@@ -302,7 +302,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
-    builder.flush_keep_alives()
+    builder.flush_keep_alives(res.line)
 
 
 def import_globals_id_and_name(module_id: str, as_name: str | None) -> tuple[str, str]:
@@ -378,8 +378,10 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
             mod_lines.append(Integer(import_node.line, c_pyssize_t_rprimitive))
 
-    static_array_ptr = builder.builder.setup_rarray(object_pointer_rprimitive, static_ptrs)
-    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines)
+    static_array_ptr = builder.builder.setup_rarray(
+        object_pointer_rprimitive, static_ptrs, node.line
+    )
+    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, node.line)
     builder.call_c(
         import_many_op,
         [
@@ -552,7 +554,7 @@ def transform_try_except(
             type_f, type_line = type
             next_block, body_block = BasicBlock(), BasicBlock()
             matches = builder.call_c(exc_matches_op, [type_f()], type_line)
-            builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
+            builder.add(Branch(matches, body_block, next_block, Branch.BOOL, type_line))
             builder.activate_block(body_block)
         if var:
             target = builder.get_assignment_target(var)
@@ -574,14 +576,14 @@ def transform_try_except(
     # restore the saved exc_info information and continue propagating
     # the exception if it exists.
     builder.activate_block(cleanup_block)
-    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc, line)], line)
     builder.goto(exit_block)
 
     # Cleanup for if we leave except through a raised exception:
     # restore the saved exc_info information and continue propagating
     # the exception.
     builder.activate_block(double_except_block)
-    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc, line)], line)
     builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
@@ -644,23 +646,24 @@ def try_finally_entry_blocks(
     finally_block: BasicBlock,
     ret_reg: Register | AssignmentTarget | None,
 ) -> Value:
-    old_exc = Register(exc_rtuple)
+    line = builder.fn_info.fitem.line
+    old_exc = Register(exc_rtuple, line=line)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)
     if ret_reg:
-        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1], line)), line)
     builder.goto(return_entry)
 
     builder.activate_block(return_entry)
-    builder.add(Assign(old_exc, builder.add(LoadErrorValue(exc_rtuple))))
+    builder.add(Assign(old_exc, builder.add(LoadErrorValue(exc_rtuple, line)), line))
     builder.goto(finally_block)
 
     # Entry block for errors
     builder.activate_block(err_handler)
     if ret_reg:
-        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
-    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1], line)), line)
+    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], line), line))
     builder.goto(finally_block)
 
     return old_exc
@@ -693,13 +696,14 @@ def try_finally_resolve_control(
     This means returning if there was a return, propagating
     exceptions, break/continue (soon), or just continuing on.
     """
+    line = builder.fn_info.fitem.line
     reraise, rest = BasicBlock(), BasicBlock()
-    builder.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR))
+    builder.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR, line))
 
     # Reraise the exception if there was one
     builder.activate_block(reraise)
     builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-    builder.add(Unreachable())
+    builder.add(Unreachable(line))
     builder.builder.pop_error_handler()
 
     # If there was a return, keep returning
@@ -708,13 +712,13 @@ def try_finally_resolve_control(
         return_block, rest = BasicBlock(), BasicBlock()
         # For spill targets in try/finally, use nullable read to avoid AttributeError
         if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
-            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, -1)
+            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, line)
         else:
-            ret_val = builder.read(ret_reg)
-        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR))
+            ret_val = builder.read(ret_reg, line)
+        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR, line))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, -1)
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -723,7 +727,7 @@ def try_finally_resolve_control(
 
     # If there was an exception, restore again
     builder.activate_block(cleanup_block)
-    finally_control.gen_cleanup(builder, -1)
+    finally_control.gen_cleanup(builder, line)
     builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
@@ -843,7 +847,7 @@ def transform_try_finally_stmt_async(
         return_block, check_old_exc = BasicBlock(), BasicBlock()
         builder.add(
             Branch(
-                builder.read(ret_reg, allow_error_value=True),
+                builder.read(ret_reg, line, allow_error_value=True),
                 check_old_exc,
                 return_block,
                 Branch.IS_ERROR,
@@ -851,7 +855,7 @@ def transform_try_finally_stmt_async(
         )
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg, line), line)
 
         builder.activate_block(check_old_exc)
 
@@ -928,8 +932,9 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
 
 def get_sys_exc_info(builder: IRBuilder) -> list[Value]:
-    exc_info = builder.call_c(get_exc_info_op, [], -1)
-    return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
+    line = builder.fn_info.fitem.line
+    exc_info = builder.call_c(get_exc_info_op, [], line)
+    return [builder.add(TupleGet(exc_info, i, line)) for i in range(3)]
 
 
 def transform_with(
@@ -972,7 +977,7 @@ def transform_with(
         if is_native:
             assert isinstance(mgr_v.type, RInstance), mgr_v.type
             exit_val = builder.gen_method_call(
-                builder.read(mgr),
+                builder.read(mgr, line),
                 f"__{al}exit__",
                 arg_values=args,
                 line=line,
@@ -980,7 +985,9 @@ def transform_with(
             )
         else:
             assert exit_ is not None
-            exit_val = builder.py_call(builder.read(exit_), [builder.read(mgr)] + args, line)
+            exit_val = builder.py_call(
+                builder.read(exit_, line), [builder.read(mgr, line)] + args, line
+            )
 
         if is_async:
             return emit_await(builder, exit_val, line)
@@ -1003,7 +1010,7 @@ def transform_with(
 
     def finally_body() -> None:
         out_block, exit_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
+        builder.add(Branch(builder.read(exc, line), exit_block, out_block, Branch.BOOL))
         builder.activate_block(exit_block)
 
         maybe_natively_call_exit(exc_info=False)
@@ -1116,9 +1123,9 @@ def emit_yield_from_or_await(
     # This is basically an implementation of the code in PEP 380.
 
     # TODO: do we want to use the right types here?
-    result = Register(object_rprimitive)
-    to_yield_reg = Register(object_rprimitive)
-    received_reg = Register(object_rprimitive)
+    result = Register(object_rprimitive, line=line)
+    to_yield_reg = Register(object_rprimitive, line=line)
+    received_reg = Register(object_rprimitive, line=line)
 
     helper_method = GENERATOR_HELPER_NAME
     if (
@@ -1150,7 +1157,7 @@ def emit_yield_from_or_await(
         # Calling a generated generator, so avoid raising StopIteration by passing
         # an extra PyObject ** argument to helper where the stop iteration value is stored.
         fast_path = True
-        obj = builder.read(iter_reg)
+        obj = builder.read(iter_reg, line)
         nn = builder.none_object()
         stop_iter_val = Register(object_rprimitive)
         err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
@@ -1162,7 +1169,7 @@ def emit_yield_from_or_await(
         _y_init = builder.add(m)
     else:
         fast_path = False
-        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg, line)], line)
 
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
@@ -1188,7 +1195,9 @@ def emit_yield_from_or_await(
     builder.goto_and_activate(loop_block)
 
     def try_body() -> None:
-        builder.assign(received_reg, emit_yield(builder, builder.read(to_yield_reg), line), line)
+        builder.assign(
+            received_reg, emit_yield(builder, builder.read(to_yield_reg, line), line), line
+        )
 
     def except_body() -> None:
         # The body of the except is all implemented in a C function to
@@ -1196,7 +1205,9 @@ def emit_yield_from_or_await(
         # indicating whether to break or yield (or raise an exception).
         val = Register(object_rprimitive)
         val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
-        to_stop = builder.call_c(yield_from_except_op, [builder.read(iter_reg), val_address], line)
+        to_stop = builder.call_c(
+            yield_from_except_op, [builder.read(iter_reg, line), val_address], line
+        )
 
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(to_stop, stop, ok, Branch.BOOL))
@@ -1214,7 +1225,9 @@ def emit_yield_from_or_await(
     def else_body() -> None:
         # Do a next() or a .send(). It will return NULL on exception
         # but it won't automatically propagate.
-        _y = builder.call_c(send_op, [builder.read(iter_reg), builder.read(received_reg)], line)
+        _y = builder.call_c(
+            send_op, [builder.read(iter_reg, line), builder.read(received_reg, line)], line
+        )
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(_y, stop, ok, Branch.IS_ERROR))
 
@@ -1234,7 +1247,7 @@ def emit_yield_from_or_await(
     builder.pop_loop_stack()
 
     builder.goto_and_activate(done_block)
-    return builder.read(result)
+    return builder.read(result, line)
 
 
 def emit_await(builder: IRBuilder, val: Value, line: int) -> Value:
