@@ -3287,15 +3287,15 @@ from typing import Literal
 
 def f1(number: float, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
 
 def f2(number: float, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
 
 def f3(number: float | None, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
