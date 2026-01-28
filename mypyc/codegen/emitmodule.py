@@ -646,8 +646,8 @@ class GroupGenerator:
         for source_dep in sorted(source_deps, key=lambda d: d.path):
             ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
         if self.use_vec_capsule:
-            ext_declarations.emit_line('#include "vecs.h"')
-
+            ext_declarations.emit_line('#include "vecs/librt_vecs.h"')
+            
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line(f"#define MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
