@@ -3152,7 +3152,7 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
-[case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
+[case testTypeEqualsCheckUsingIsNonOverlappingChild]
 # flags: --strict-equality --warn-unreachable
 from typing import Union
 
