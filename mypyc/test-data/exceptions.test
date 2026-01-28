@@ -733,6 +733,7 @@ def f(v, i, n):
     r0 :: vec[i64]
     r1 :: None
 L0:
+    inc_ref v
     r0 = VecI64Api.remove(v, n)
     if is_error(r0) goto L2 (error at f:5) else goto L1
 L1:

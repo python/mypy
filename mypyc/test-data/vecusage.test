@@ -10,7 +10,7 @@ def f() -> None:
 False
 
 [case testVecUsedInFunction]
-from vecs import vec
+from librt.vecs import vec
 
 def f() -> None:
     vec[str]()
@@ -18,7 +18,7 @@ def f() -> None:
 True
 
 [case testVecUsedInMethod]
-from vecs import vec
+from librt.vecs import vec
 
 class C:
     def m(self) -> None:
@@ -27,14 +27,14 @@ class C:
 True
 
 [case testVecUsedAtTopLevel]
-from vecs import vec
+from librt.vecs import vec
 
 vec[str]()
 [out]
 True
 
 [case testVecUsedInArgTypeOnly]
-from vecs import vec
+from librt.vecs import vec
 
 def f(v: vec[str]) -> None:
     pass
@@ -42,7 +42,7 @@ def f(v: vec[str]) -> None:
 True
 
 [case testVecUsedInReturnTypeOnly]
-from vecs import vec
+from librt.vecs import vec
 
 def f() -> vec[str]:
     assert False
@@ -50,7 +50,7 @@ def f() -> vec[str]:
 True
 
 [case testVecUsedInAttributeTypeOnly]
-from vecs import vec
+from librt.vecs import vec
 
 class C:
     v: vec[str]
@@ -58,7 +58,7 @@ class C:
 True
 
 [case testVecUsedInPropertyTypeOnly]
-from vecs import vec
+from librt.vecs import vec
 
 class C:
     @property
