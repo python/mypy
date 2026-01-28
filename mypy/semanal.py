@@ -6180,7 +6180,7 @@ class SemanticAnalyzer(
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
         n = self.lookup_type_node(base)
-        if n and n.fullname == "vecs.vec":
+        if n and n.fullname == "librt.vecs.vec":
             check_vec_type_args(types, expr, self)
 
         if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
