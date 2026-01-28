@@ -3275,7 +3275,7 @@ def convert_type(target_type: Type[TargetType]) -> TargetType:
     if target_type == int:
         return int()
     if target_type == float:
-        return float()
+        return float()  # E: Incompatible return value type (got "float", expected "int")
     raise
 [builtins fixtures/primitives.pyi]
 
