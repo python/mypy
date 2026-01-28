@@ -829,19 +829,19 @@ from typing import Literal, Union
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
+def f1(x: Union[Custom, Literal[1], Literal[2]]):
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[2]"
+
 class Default: pass
 
-x1: Union[Custom, Literal[1], Literal[2]]
-if x1 == 1:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1]"
-else:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[2]"
-
-x2: Union[Default, Literal[1], Literal[2]]
-if x2 == 1:
-    reveal_type(x2)  # N: Revealed type is "Literal[1]"
-else:
-    reveal_type(x2)  # N: Revealed type is "__main__.Default | Literal[2]"
+def f2(x: Union[Default, Literal[1], Literal[2]]):
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Default | Literal[2]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityCustomEqualityEnum]
@@ -875,25 +875,23 @@ from typing import Literal, Union
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
+def f1(x: Literal[1, 2, None], y: Custom):
+    if 1 == x == y:
+        reveal_type(x)   # N: Revealed type is "Literal[1]"
+        reveal_type(y)   # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)   # N: Revealed type is "Literal[2] | None"
+        reveal_type(y)   # N: Revealed type is "__main__.Custom"
+
 class Default: pass
 
-x: Literal[1, 2, None]
-y: Custom
-z: Default
-
-if 1 == x == y:
-    reveal_type(x)   # N: Revealed type is "Literal[1]"
-    reveal_type(y)   # N: Revealed type is "__main__.Custom"
-else:
-    reveal_type(x)   # N: Revealed type is "Literal[2] | None"
-    reveal_type(y)   # N: Revealed type is "__main__.Custom"
-
-if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Literal[1, 2] | None", right operand type: "Default")
-    reveal_type(x)   # E: Statement is unreachable
-    reveal_type(z)
-else:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
-    reveal_type(z)   # N: Revealed type is "__main__.Default"
+def f2(x: Literal[1, 2, None], z: Default):
+    if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Literal[1, 2] | None", right operand type: "Default")
+        reveal_type(x)   # E: Statement is unreachable
+        reveal_type(z)
+    else:
+        reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
+        reveal_type(z)   # N: Revealed type is "__main__.Default"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingCustomEqualityLiteralElseBranch]
@@ -1471,19 +1469,23 @@ if val not in (None,):
     reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
     reveal_type(val)  # N: Revealed type is "None"
+[builtins fixtures/primitives.pyi]
 
-class Hmm:
+[case testNarrowingCustomEqualityOptionalEqualsNone]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+class Custom:
     def __eq__(self, other) -> bool: ...
 
-hmm: Optional[Hmm]
-if hmm == None:
-    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
-else:
-    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
-if hmm != None:
-    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
-else:
-    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
+def f(x: Custom | None):
+    if x == None:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    if x != None:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithTupleOfTypes]
@@ -3325,6 +3327,7 @@ def bar(y: Any):
 [builtins fixtures/dict-full.pyi]
 
 [case testNarrowTypeVarType]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -3343,3 +3346,23 @@ def bar(X: type[T]) -> T:
         return A()  # E: Incompatible return value type (got "A", expected "T")
     raise
 [builtins fixtures/type.pyi]
+
+[case testNarrowingAnyNegativeIntersection-xfail]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/20597
+from __future__ import annotations
+from typing import Any
+
+class array: ...
+
+def get_result() -> Any: ...
+
+def foo(x: str | array) -> str:
+    result = get_result()
+    if isinstance(result, array):
+        return "asdf"
+    if result is x:
+        reveal_type(result)  # N: Revealed type is "Any"
+        return result
+    raise
+[builtins fixtures/tuple.pyi]

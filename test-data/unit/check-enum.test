@@ -2743,3 +2743,193 @@ reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper
 reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
 reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
 [builtins fixtures/enum.pyi]
+
+[case testStrEnumEqualityReachability]
+# flags: --strict-equality --warn-unreachable
+
+from __future__ import annotations
+import enum
+
+# https://github.com/python/mypy/issues/17162
+
+class MyEnum(str, enum.Enum):
+    A = 'a'
+
+class MyEnum2(enum.StrEnum):
+    A = 'a'
+
+def f1():
+    if MyEnum.A == 'a':
+        1 + ''
+
+    if MyEnum2.A == 'a':
+        1 + ''
+[builtins fixtures/primitives.pyi]
+
+[case testStrEnumEqualityNarrowing]
+# flags: --strict-equality --warn-unreachable
+
+from __future__ import annotations
+import enum
+from typing import Literal
+
+# https://github.com/python/mypy/issues/18029
+
+class Foo(enum.StrEnum):
+    FOO = 'a'
+
+def f1(a: Foo | Literal['foo']) -> Foo:
+    if a == 'foo':
+        # Ideally this is narrowed to just Literal['foo'] (if we learn to narrow based on enum value)
+        reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
+        return Foo.FOO
+
+    # Ideally this passes
+    reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
+    return a  # E: Incompatible return value type (got "Foo | Literal['foo']", expected "Foo")
+[builtins fixtures/primitives.pyi]
+
+[case testStrEnumEqualityAlias]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/16830
+from __future__ import annotations
+from enum import Enum, auto
+
+# https://github.com/python/mypy/issues/16830
+
+class TrafficLight(Enum):
+    RED = auto()
+    AMBER = auto()
+    GREEN = auto()
+
+    YELLOW = AMBER  # alias
+
+# Behaviour here is not yet ideal, because we don't model enum aliases
+
+def demo1(inst: TrafficLight) -> None:
+    if inst is TrafficLight.AMBER:
+        reveal_type(inst)  # N: Revealed type is "Literal[__main__.TrafficLight.AMBER]"
+    else:
+        reveal_type(inst)  # N: Revealed type is "Literal[__main__.TrafficLight.RED] | Literal[__main__.TrafficLight.GREEN] | Literal[__main__.TrafficLight.YELLOW]"
+
+    if inst == TrafficLight.AMBER:
+        reveal_type(inst)  # N: Revealed type is "Literal[__main__.TrafficLight.AMBER]"
+    else:
+        reveal_type(inst)  # N: Revealed type is "Literal[__main__.TrafficLight.RED] | Literal[__main__.TrafficLight.GREEN] | Literal[__main__.TrafficLight.YELLOW]"
+
+def demo2() -> None:
+    if TrafficLight.AMBER is TrafficLight.YELLOW:  # E: Non-overlapping identity check (left operand type: "Literal[TrafficLight.AMBER]", right operand type: "Literal[TrafficLight.YELLOW]")
+        1 + ''  # E: Unsupported operand types for + ("int" and "str")
+    else:
+        1 + ''  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/primitives.pyi]
+
+
+[case testEnumEqualityNarrowing]
+# flags: --strict-equality --warn-unreachable
+
+from __future__ import annotations
+from typing import cast
+from enum import Enum, StrEnum
+
+# https://github.com/python/mypy/issues/16830
+
+class E(Enum):
+    A = "a"
+    B = "b"
+    C = "c"
+
+class Custom:
+    def __eq__(self, other: object) -> bool: return True
+
+class SE(StrEnum):
+    A = "a"
+    B = "b"
+    C = "c"
+
+def f1(x: int | str | E):
+    if x == E.A:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.E.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | Literal[__main__.E.B] | Literal[__main__.E.C]"
+
+    if x in cast(list[E], []):
+        reveal_type(x)  # N: Revealed type is "__main__.E"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.E"
+
+    if x == str():
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.E"
+
+def f2(x: int | Custom | E):
+    if x == E.A:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[__main__.E.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | Literal[__main__.E.B] | Literal[__main__.E.C]"
+
+    if x in cast(list[E], []):
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | __main__.E"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.E"
+
+    if x == str():
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.E"
+
+def f3_simple(x: str | SE):
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.SE"
+
+def f3(x: int | str | SE):
+    # Ideally we filter out some of these ints
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+
+    if x in cast(list[SE], []):
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+
+    if x == str():
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+
+def f4(x: int | Custom | SE):
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[__main__.SE.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | Literal[__main__.SE.B] | Literal[__main__.SE.C]"
+
+    if x in cast(list[SE], []):
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | __main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.SE"
+
+    if x == str():
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | __main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.Custom | __main__.SE"
+
+def f5(x: str | Custom | SE):
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.A] | __main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+
+    if x in cast(list[SE], []):
+        reveal_type(x)  # N: Revealed type is "__main__.SE | __main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom | __main__.SE"
+
+    if x == str():
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom | __main__.SE"
+
+[builtins fixtures/primitives.pyi]
