@@ -53,7 +53,7 @@ PyObject *VecT_Box(VecT vec, size_t item_type) {
     }
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
     if (obj == NULL) {
-        // vec.buf is always defined, so no need for a NULL heck
+        // vec.buf is always defined, so no need for a NULL check
         Py_DECREF(vec.buf);
         return NULL;
     }
@@ -371,7 +371,7 @@ VecTBuf_traverse(VecTBufObject *self, visitproc visit, void *arg)
     return 0;
 }
 
-static int
+static inline int
 VecTBuf_clear(VecTBufObject *self)
 {
     if (self->item_type) {
@@ -389,13 +389,7 @@ VecTBuf_dealloc(VecTBufObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecTBuf_dealloc)
-    if (self->item_type) {
-        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
-        self->item_type = 0;
-    }
-    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
-        Py_CLEAR(self->items[i]);
-    }
+    VecTBuf_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }

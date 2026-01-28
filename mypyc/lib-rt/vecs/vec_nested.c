@@ -376,7 +376,7 @@ VecNestedBuf_traverse(VecNestedBufObject *self, visitproc visit, void *arg)
     return 0;
 }
 
-static int
+static inline int
 VecNestedBuf_clear(VecNestedBufObject *self)
 {
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
@@ -394,13 +394,7 @@ VecNestedBuf_dealloc(VecNestedBufObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecNestedBuf_dealloc)
-    if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
-        Py_DECREF(VEC_BUF_ITEM_TYPE(self));
-        self->item_type = 0;
-    }
-    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
-        Py_CLEAR(self->items[i].buf);
-    }
+    VecNestedBuf_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }
