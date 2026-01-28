@@ -33,6 +33,9 @@ Example:
     def foo(a):
         return '(' + a.split() + ')'  # No error!
 
+    This often surprises beginners, because mypy only checks functions that have type annotations by default.
+
+
 This gives no error even though ``a.split()`` is "obviously" a list
 (the author probably meant ``a.strip()``).  The error is reported
 once you add annotations:
