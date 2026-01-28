@@ -295,8 +295,6 @@ class OpChecker(OpVisitor[None]):
             expected_type = "builtins.str"
         elif isinstance(op.value, bytes):
             expected_type = "builtins.bytes"
-        elif isinstance(op.value, bool):
-            expected_type = "builtins.object"
         elif isinstance(op.value, float):
             expected_type = "builtins.float"
         elif isinstance(op.value, complex):
