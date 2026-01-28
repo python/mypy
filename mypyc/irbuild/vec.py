@@ -1,4 +1,4 @@
-"""Generate IR for vecs.vec operations"""
+"""Generate IR for librt.vecs.vec operations"""
 
 from __future__ import annotations
 

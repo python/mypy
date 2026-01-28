@@ -351,7 +351,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         analyzed = callee.analyzed
         if (
             isinstance(analyzed.expr, RefExpr)
-            and analyzed.expr.fullname == "vecs.vec"
+            and analyzed.expr.fullname == "librt.vecs.vec"
             and len(analyzed.types) == 1
         ):
             item_type = builder.type_to_rtype(analyzed.types[0])

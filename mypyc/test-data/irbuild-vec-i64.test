@@ -2,7 +2,7 @@
 -- which use a similar runtime representation.
 
 [case testVecI64CreateEmpty]
-from vecs import vec, append
+from librt.vecs import vec, append
 from mypy_extensions import i64
 
 def f() -> vec[i64]:

@@ -1025,7 +1025,7 @@ class RInstance(RType):
 
 @final
 class RVec(RType):
-    """vecs.vec[T]"""
+    """librt.vecs.vec[T]"""
 
     is_unboxed = True
 

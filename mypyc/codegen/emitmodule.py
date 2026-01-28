@@ -647,7 +647,7 @@ class GroupGenerator:
             ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
         if self.use_vec_capsule:
             ext_declarations.emit_line('#include "vecs/librt_vecs.h"')
-            
+
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line(f"#define MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -977,7 +977,7 @@ class GroupGenerator:
 
         if self.use_vec_capsule:
             emitter.emit_lines(
-                'VecApi = PyCapsule_Import("vecs._C_API", 0);',
+                'VecApi = PyCapsule_Import("librt.vecs._C_API", 0);',
                 "if (!VecApi) return -1;",
                 "VecTApi = *VecApi->t;",
                 "VecNestedApi = *VecApi->nested;",
