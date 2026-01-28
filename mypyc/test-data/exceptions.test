@@ -721,7 +721,7 @@ L3:
     return r5
 
 [case testVecNestedRemove]
-from vecs import vec, remove
+from librt.vecs import vec, remove
 from mypy_extensions import i64
 
 def f(v: vec[i64], i: i64, n: i64) -> None:

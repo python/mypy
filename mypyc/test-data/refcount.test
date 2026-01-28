@@ -1501,7 +1501,7 @@ L3:
     return r4
 
 [case testVecTSetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[str], i: i64, x: str) -> None:
@@ -1551,7 +1551,7 @@ L5:
 
 [case testVecTConstructFromListMultiply]
 from typing import Optional
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(n: i64) -> vec[Optional[str]]:
@@ -1592,7 +1592,7 @@ L3:
     return r4
 
 [case testVecTForLoop]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[str]) -> i64:
@@ -1643,7 +1643,7 @@ L0:
     return 1
 
 [case testVecTConstructFromListExpr]
-from vecs import vec
+from librt.vecs import vec
 
 def f() -> vec[str]:
     return vec[str](['x', 'y'])
@@ -1672,7 +1672,7 @@ L0:
     return r4
 
 [case testVecI64GetItemBorrowVec]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 class C:
@@ -1722,7 +1722,7 @@ L5:
     return r11
 
 [case testVecI64LenBorrowVec]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 class C:
@@ -1742,7 +1742,7 @@ L0:
     return r1
 
 [case testVecNestedAppend]
-from vecs import vec, append
+from librt.vecs import vec, append
 
 def f(vv: vec[vec[str]], v: vec[str]) -> vec[vec[str]]:
     return append(vv, v)
@@ -1764,7 +1764,7 @@ L0:
     return r4
 
 [case testVecTGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[str], n: i64) -> str:
@@ -1809,7 +1809,7 @@ L5:
     return r10
 
 [case testVecNestedGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[vec[str]], n: i64) -> None:
@@ -1865,8 +1865,39 @@ L6:
     dec_ref r2
     goto L2
 
+[case testVecPop]
+from librt.vecs import vec, pop, append
+from mypy_extensions import i64
+
+def f() -> vec[i64]:
+    v = vec[i64]()
+    v = append(v, 7)
+    v, x = pop(v)
+    return v
+[out]
+def f():
+    r0, v, r1 :: vec[i64]
+    r2 :: tuple[vec[i64], i64]
+    r3 :: vec[i64]
+    r4 :: i64
+    r5 :: vec[i64]
+    r6, x :: i64
+L0:
+    r0 = VecI64Api.alloc(0, 0)
+    v = r0
+    r1 = VecI64Api.append(v, 7)
+    v = r1
+    r2 = VecI64Api.pop(v, -1)
+    r3 = borrow r2[0]
+    r4 = borrow r2[1]
+    r5 = unborrow r3
+    v = r5
+    r6 = unborrow r4
+    x = r6
+    return v
+
 [case testVecNestedPop]
-from vecs import vec, pop
+from librt.vecs import vec, pop
 
 def f(v: vec[vec[str]]) -> vec[str]:
     vv, x = pop(v)
@@ -1884,6 +1915,7 @@ def f(v):
     r9, vv :: vec[vec[str]]
     r10, x :: vec[str]
 L0:
+    inc_ref v
     r0 = VecNestedApi.pop(v, -1)
     r1 = borrow r0[0]
     r2 = unborrow r1
