@@ -3261,3 +3261,21 @@ def bar(y: Any):
     else:
         reveal_type(y) # N: Revealed type is "Any"
 [builtins fixtures/dict-full.pyi]
+
+
+[case testNarrowingConstrainedTypeVarType]
+from __future__ import annotations
+from typing import TypeVar, Any, Type
+
+TargetType = TypeVar("TargetType", int, float, str)
+
+def convert_type(target_type: Type[TargetType]) -> TargetType:
+    if target_type == str:
+        return str()
+    if target_type == int:
+        return int()
+    if target_type == float:
+        return float()
+    raise
+
+[builtins fixtures/primitives.pyi]
