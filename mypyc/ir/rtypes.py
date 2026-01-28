@@ -41,8 +41,8 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.ir.deps import LIBRT_STRINGS, Dependency
 from mypyc.namegen import NameGenerator
-from mypyc.ir.deps import Dependency, LIBRT_STRINGS
 
 if TYPE_CHECKING:
     from mypyc.ir.class_ir import ClassIR

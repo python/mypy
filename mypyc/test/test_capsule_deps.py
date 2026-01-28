@@ -7,6 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
+from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.options import CompilerOptions
 from mypyc.test.testutil import (
@@ -18,7 +19,6 @@ from mypyc.test.testutil import (
     use_custom_builtins,
 )
 from mypyc.transform.lower import lower_ir
-from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
 
 files = ["capsule-deps.test"]
 

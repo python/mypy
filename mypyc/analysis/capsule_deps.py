@@ -3,7 +3,7 @@ from __future__ import annotations
 from mypyc.ir.deps import Dependency
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import Assign, CallC, PrimitiveOp
-from mypyc.ir.rtypes import RType, RUnion, RTuple, RStruct
+from mypyc.ir.rtypes import RStruct, RTuple, RType, RUnion
 
 
 def find_implicit_op_dependencies(fn: FuncIR) -> set[Dependency] | None:
