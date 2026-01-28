@@ -6719,13 +6719,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expanded_expr_type, [target])
+                        operands[i],
+                        *conditional_types(expanded_expr_type, [target], ignore_promotions=False),
                     )
                     all_if_maps.append(if_map)
                     all_else_maps.append(else_map)
                 else:
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target])
+                        operands[i],
+                        *conditional_types(expr_type, [target], ignore_promotions=False),
                     )
                     # For value targets, it is safe to narrow in the negative case.
                     # e.g. if (x: Literal[5] | None) != (y: Literal[5]), we can narrow x to None
@@ -6756,7 +6758,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target = TypeRange(target_type, is_upper_bound=False)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
-                            operands[i], *conditional_types(expr_type, [target])
+                            operands[i],
+                            *conditional_types(expr_type, [target], ignore_promotions=False),
                         )
                         if else_map:
                             all_else_maps.append(else_map)
@@ -6786,7 +6789,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         expr_type = coerce_to_literal(expr_type)
                         expr_type = try_expanding_sum_type_to_union(expr_type, None)
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target], default=expr_type)
+                        operands[i],
+                        *conditional_types(
+                            expr_type, [target], default=expr_type, ignore_promotions=False
+                        ),
                     )
                     or_if_maps.append(if_map)
                     if is_value_target:
@@ -8244,6 +8250,7 @@ def conditional_types(
     default: None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    ignore_promotions: bool = True,
 ) -> tuple[Type | None, Type | None]: ...
 
 
@@ -8254,6 +8261,7 @@ def conditional_types(
     default: Type,
     *,
     consider_runtime_isinstance: bool = True,
+    ignore_promotions: bool = True,
 ) -> tuple[Type, Type]: ...
 
 
@@ -8263,6 +8271,7 @@ def conditional_types(
     default: Type | None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    ignore_promotions: bool = True,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -8321,14 +8330,14 @@ def conditional_types(
         return proposed_type, default
     if not any(type_range.is_upper_bound for type_range in proposed_type_ranges):
         # concrete subtype
-        if is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+        if is_proper_subtype(current_type, proposed_type, ignore_promotions=ignore_promotions):
             return default, UninhabitedType()
 
         # structural subtypes
         if (
             isinstance(proposed_type, CallableType)
             or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
-        ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
+        ) and is_subtype(current_type, proposed_type, ignore_promotions=ignore_promotions):
             # Note: It's possible that current_type=`Any | Proto` while proposed_type=`Proto`
             #  so we cannot return `Never` for the else branch
             remainder = restrict_subtype_away(
@@ -8337,7 +8346,7 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=ignore_promotions):
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
     # we can only restrict when the type is precise, not bounded

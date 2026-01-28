@@ -3264,7 +3264,7 @@ def bar(y: Any):
 
 
 [case testNarrowingConstrainedTypeVarType]
-from __future__ import annotations
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar, Any, Type
 
 TargetType = TypeVar("TargetType", int, float, str)
@@ -3277,5 +3277,27 @@ def convert_type(target_type: Type[TargetType]) -> TargetType:
     if target_type == float:
         return float()
     raise
+[builtins fixtures/primitives.pyi]
 
+
+[case testNarrowingEqualityWithPromotions]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Literal
+
+def f1(number: float, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.int"
+
+def f2(number: float, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "Literal[5]"
+
+class Custom:
+    def __eq__(self, other: object) -> bool: return True
+
+def f3(number: float, x: Custom | int):
+    if number == x:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"
 [builtins fixtures/primitives.pyi]
