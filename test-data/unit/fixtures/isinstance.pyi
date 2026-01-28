@@ -22,6 +22,7 @@ class int:
 class float: pass
 class bool(int): pass
 class str:
+    def __new__(cls, o: object = ...) -> str: pass
     def __add__(self, other: 'str') -> 'str': pass
 class ellipsis: pass
 
