@@ -1,0 +1,14 @@
+[case testVecBasics]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[i64]) -> None:
+    x: i64 = v[0]
+    x = v[x]
+    v[x] = x
+
+v = vec[i64]()
+reveal_type(v)  # N: Revealed type is "librt.vecs.vec[mypy_extensions.i64]"
+f(v)
+reveal_type(len(v))  # N: Revealed type is "mypy_extensions.i64"
+[builtins fixtures/dict.pyi]
