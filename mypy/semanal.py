@@ -245,12 +245,12 @@ from mypy.typeanal import (
     TypeVarLikeList,
     analyze_type_alias,
     check_for_explicit_any,
+    check_vec_type_args,
     detect_diverging_alias,
     find_self_type,
     fix_instance,
     has_any_from_unimported_type,
     type_constructors,
-    check_vec_type_args,
     validate_instance,
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type

@@ -878,7 +878,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(info.type_vars) == 1 and info.has_param_spec_type:
             instance.args = tuple(self.pack_paramspec_args(instance.args, empty_tuple_index))
 
-        if info.fullname == "librt.vecs.vec" and not check_vec_type_args(instance.args, ctx, self.api):
+        if info.fullname == "librt.vecs.vec" and not check_vec_type_args(
+            instance.args, ctx, self.api
+        ):
             return AnyType(TypeOfAny.from_error)
 
         # Check type argument count.
@@ -2742,8 +2744,9 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
         return t
 
 
-def check_vec_type_args(args: tuple[Type, ...] | list[Type], ctx: Context,
-                        api: SemanticAnalyzerCoreInterface) -> bool:
+def check_vec_type_args(
+    args: tuple[Type, ...] | list[Type], ctx: Context, api: SemanticAnalyzerCoreInterface
+) -> bool:
     ok = True
     if len(args) != 1:
         ok = False
@@ -2772,9 +2775,10 @@ def check_vec_type_args(args: tuple[Type, ...] | list[Type], ctx: Context,
             else:
                 ok = False
             if isinstance(non_optional, Instance) and (
-                    non_optional.type.fullname in MYPYC_NATIVE_INT_NAMES
-                    or non_optional.type.fullname in ("builtins.int", "builtins.float",
-                                                      "builtins.bool", "librt.vecs.vec")):
+                non_optional.type.fullname in MYPYC_NATIVE_INT_NAMES
+                or non_optional.type.fullname
+                in ("builtins.int", "builtins.float", "builtins.bool", "librt.vecs.vec")
+            ):
                 ok = False
         elif isinstance(arg, TypeVarType):
             # Generic vec types aren't supported in type checked Python code, but
