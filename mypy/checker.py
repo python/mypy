@@ -6720,7 +6720,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i],
-                        *conditional_types(expanded_expr_type, [target], consider_promotion_overlap=True),
+                        *conditional_types(
+                            expanded_expr_type, [target], consider_promotion_overlap=True
+                        ),
                     )
                     all_if_maps.append(if_map)
                     all_else_maps.append(else_map)
@@ -6759,7 +6761,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
                             operands[i],
-                            *conditional_types(expr_type, [target], consider_promotion_overlap=True),
+                            *conditional_types(
+                                expr_type, [target], consider_promotion_overlap=True
+                            ),
                         )
                         if else_map:
                             all_else_maps.append(else_map)
@@ -8347,10 +8351,14 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=not consider_promotion_overlap):
+    if not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=not consider_promotion_overlap
+    ):
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
-    if consider_promotion_overlap and not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+    if consider_promotion_overlap and not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=True
+    ):
         return default, default
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
