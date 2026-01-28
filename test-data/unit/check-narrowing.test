@@ -3293,10 +3293,14 @@ def f2(number: float, five: Literal[5]):
     if number == five:
         reveal_type(number)  # N: Revealed type is "Literal[5]"
 
+def f3(number: float | None, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.int"
+
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
-def f3(number: float, x: Custom | int):
+def f4(number: float, x: Custom | int):
     if number == x:
         reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"

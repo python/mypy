@@ -8311,6 +8311,7 @@ def conditional_types(
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
+                ignore_promotions=ignore_promotions,
             )
             for union_item in get_proper_types(proper_type.items)
         ]
