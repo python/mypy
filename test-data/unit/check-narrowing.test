@@ -3030,7 +3030,7 @@ def f1(cls: type):
         reveal_type(cls(5))  # N: Revealed type is "builtins.str"
 
     if issubclass(cls, int):
-        pass
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
     elif cls is str:
         reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
         reveal_type(cls(5))  # N: Revealed type is "builtins.str"
@@ -3041,7 +3041,7 @@ def f2(cls: type[object]):
         reveal_type(cls(5))  # N: Revealed type is "builtins.str"
 
     if issubclass(cls, int):
-        pass
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
     elif cls is str:
         reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
         reveal_type(cls(5))  # N: Revealed type is "builtins.str"
@@ -3052,7 +3052,7 @@ def f3(cls: type[Any]):
         reveal_type(cls(5))  # N: Revealed type is "Any"
 
     if issubclass(cls, int):
-        pass
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
     elif cls is str:
         reveal_type(cls)  # N: Revealed type is "type[Any]"
         reveal_type(cls(5))  # N: Revealed type is "Any"
