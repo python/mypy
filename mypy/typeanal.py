@@ -881,17 +881,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if info.fullname == "librt.vecs.vec" and not check_vec_type_args(instance.args, ctx, self.api):
             return AnyType(TypeOfAny.from_error)
 
-        if info.has_type_var_tuple_type:
-            if instance.args:
-                # -1 to account for empty tuple
-                valid_arg_length = len(instance.args) >= len(info.type_vars) - 1
-            # Empty case is special cased and we want to infer a Tuple[Any, ...]
-            # instead of the empty tuple, so no - 1 here.
-            else:
-                valid_arg_length = False
-        else:
-            valid_arg_length = len(instance.args) == len(info.type_vars)
-
         # Check type argument count.
         instance.args = tuple(flatten_nested_tuples(instance.args))
         if not (self.defining_alias and self.nesting_level == 0) and not validate_instance(
