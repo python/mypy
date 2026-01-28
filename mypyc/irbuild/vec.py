@@ -168,7 +168,7 @@ def vec_create_initialized(
     builder.set_mem(for_loop.index, item_type, init)
     for_loop.finish()
 
-    builder.keep_alive([vec])
+    builder.keep_alive([vec], line)
     return vec
 
 
@@ -182,7 +182,7 @@ def vec_create_from_values(
     for value in values:
         builder.set_mem(ptr, item_type, value)
         ptr = builder.int_add(ptr, step)
-    builder.keep_alive([vec])
+    builder.keep_alive([vec], line)
     return vec
 
 
@@ -311,7 +311,7 @@ def vec_get_item_unsafe(
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
     result = builder.load_mem(item_addr, vtype.item_type)
-    builder.keep_alive([base])
+    builder.keep_alive([base], line)
     return result
 
 
@@ -332,7 +332,7 @@ def vec_set_item(
         old_item = builder.load_mem(item_addr, item_type, borrow=True)
         builder.add(DecRef(old_item))
     builder.set_mem(item_addr, item_type, item)
-    builder.keep_alive([base])
+    builder.keep_alive([base], line)
 
 
 def vec_init_item_unsafe(
@@ -345,7 +345,7 @@ def vec_init_item_unsafe(
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
     builder.set_mem(item_addr, item_type, item)
-    builder.keep_alive([base])
+    builder.keep_alive([base], line)
 
 
 def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
@@ -414,7 +414,7 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
         )
     )
     if vec_depth(vec_type) > 0:
-        builder.keep_alive([item])
+        builder.keep_alive([item], line)
     return call
 
 
@@ -453,7 +453,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
         assert isinstance(vec_type.item_type, RVec)
         z = convert_from_t_ext_item(builder, y, vec_type.item_type)
         result = builder.add(TupleSet([x, z], line))
-        builder.keep_alive([orig], steal=True)
+        builder.keep_alive([orig], line, steal=True)
     return result
 
 
@@ -482,7 +482,7 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
         )
     )
     if vec_depth(vec_type) > 0:
-        builder.keep_alive([item])
+        builder.keep_alive([item], line)
     return call
 
 
@@ -509,7 +509,7 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     builder.activate_block(false)
     for_loop.finish()
 
-    builder.keep_alive([vec])
+    builder.keep_alive([vec], line)
 
     res = Register(bool_rprimitive)
     builder.assign(res, Integer(0, bool_rprimitive))
