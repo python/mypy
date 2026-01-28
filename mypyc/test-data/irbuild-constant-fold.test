@@ -200,7 +200,7 @@ def f() -> str:
 def g() -> str:
     return FMT_D.format(400 + 20, "roll" + "up")
 def h() -> str:
-    return FMT_S.format(400 + 20, "roll" + "up")
+    return FMT_S.format("4" + "20", "roll" + "up")
 
 [out]
 def f():
@@ -222,7 +222,7 @@ L0:
 def h():
     r0, r1, r2, r3 :: str
 L0:
-    r0 = CPyTagged_Str(840)
+    r0 = '420'
     r1 = 'rollup'
     r2 = ' '
     r3 = CPyStr_Build(3, r0, r2, r1)
