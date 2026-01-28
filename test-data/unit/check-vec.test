@@ -1,6 +1,8 @@
 [case testVecBasics]
-from vecs import vec
-from mypy_extensions import i64
+# flags: --python-version 3.10
+from typing import Optional
+from librt.vecs import vec
+from mypy_extensions import i64, i32, i16, u8
 
 def f(v: vec[i64]) -> None:
     x: i64 = v[0]
@@ -11,4 +13,15 @@ v = vec[i64]()
 reveal_type(v)  # N: Revealed type is "librt.vecs.vec[mypy_extensions.i64]"
 f(v)
 reveal_type(len(v))  # N: Revealed type is "mypy_extensions.i64"
-[builtins fixtures/dict.pyi]
+
+vec_i32: vec[i32]
+vec_i16: vec[i16]
+vec_u8: vec[u8]
+vec_bool: vec[bool]
+vec_float: vec[float]
+vec_str: vec[str]
+vec_str_opt1: vec[str | None]
+vec_str_opt2: vec[Optional[str]]
+vec_nested1: vec[vec[i32]]
+vec_nested2: vec[vec[vec[str | None]]]
+[builtins fixtures/len.pyi]
