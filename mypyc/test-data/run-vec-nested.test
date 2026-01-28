@@ -1,9 +1,9 @@
-[case testVecNestedBasicOps]
+[case testVecNestedBasicOps_librt_experimental]
 from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 
 from mypy_extensions import i64
-from vecs import vec, append, remove, pop
+from librt.vecs import vec, append, remove, pop
 
 from testutil import assertRaises
 
