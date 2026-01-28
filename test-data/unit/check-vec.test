@@ -33,6 +33,11 @@ vec_bad_int: vec[int]  # E: Invalid item type for "vec"
 vec_bad_tuple: vec[tuple[int, str]]  # E: Invalid item type for "vec"
 vec_bad_union: vec[str | ellipsis]  # E: Invalid item type for "vec"
 vec_bad_any: vec[Any]  # E: Invalid item type for "vec"
+vec_bad_two_args: vec[i32, i32]  # E: Invalid item type for "vec"
+vec_bad_optional1: vec[int | None]  # E: Invalid item type for "vec"
+vec_bad_optional2: vec[i64 | None]  # E: Invalid item type for "vec"
+vec_bad_optional3: vec[bool | None]  # E: Invalid item type for "vec"
+vec_bad_optional4: vec[float | None]  # E: Invalid item type for "vec"
 
 T = TypeVar("T")
 
