@@ -1,7 +1,7 @@
 -- Test cases for nested vecs
 
 [case testVecNestedCreateEmpty]
-from vecs import vec, append
+from librt.vecs import vec, append
 from mypy_extensions import i64
 
 def f() -> vec[vec[str]]:
@@ -26,7 +26,7 @@ L0:
     return r0
 
 [case testVecNestedAppend]
-from vecs import vec, append
+from librt.vecs import vec, append
 
 def f(v: vec[vec[str]], vv: vec[str]) -> vec[vec[str]]:
     return append(v, vv)
@@ -48,7 +48,7 @@ L0:
     return r4
 
 [case testVecNestedVecI64Append]
-from vecs import vec, append
+from librt.vecs import vec, append
 from mypy_extensions import i64
 
 def f(v: vec[vec[i64]], vv: vec[i64]) -> vec[vec[i64]]:
@@ -71,7 +71,7 @@ L0:
     return r4
 
 [case testVecNestedLen]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 from typing import Optional
 
@@ -95,7 +95,7 @@ L0:
     return r0
 
 [case testVecNestedGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[vec[str]], n: i64) -> vec[str]:
@@ -141,7 +141,7 @@ L5:
     return r10
 
 [case testVecNestedI64GetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[vec[i64]], n: i64) -> vec[i64]:
@@ -187,7 +187,7 @@ L5:
     return r10
 
 [case testVecNestedI64GetItemWithBorrow]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[vec[i64]], n: i64) -> i64:
@@ -265,7 +265,7 @@ L10:
     return r21
 
 [case testVecDoublyNestedGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[vec[vec[str]]], n: i64) -> vec[vec[str]]:

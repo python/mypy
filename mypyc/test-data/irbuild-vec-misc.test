@@ -5,7 +5,7 @@
 -- vec[i64] test cases are in irbuild-vec-i64.test.
 
 [case testVecMiscCreateEmpty]
-from vecs import vec
+from librt.vecs import vec
 
 from mypy_extensions import i32, i16, u8
 
@@ -51,7 +51,7 @@ L0:
     return r0
 
 [case testVecMiscCreateFromList]
-from vecs import vec
+from librt.vecs import vec
 
 from mypy_extensions import i64, i32
 
@@ -74,7 +74,7 @@ L0:
     return r0
 
 [case testVecMiscLen]
-from vecs import vec
+from librt.vecs import vec
 
 from mypy_extensions import i64, i32
 
@@ -89,7 +89,7 @@ L0:
     return r0
 
 [case testVecMiscAppend]
-from vecs import vec, append
+from librt.vecs import vec, append
 
 from mypy_extensions import i32
 
@@ -111,7 +111,7 @@ L0:
     return r0
 
 [case testVecMiscGetItem]
-from vecs import vec
+from librt.vecs import vec
 
 from mypy_extensions import i64
 
@@ -158,7 +158,7 @@ L5:
     return r10
 
 [case testVecMiscPop]
-from vecs import vec, pop
+from librt.vecs import vec, pop
 
 from mypy_extensions import i64
 
@@ -186,7 +186,7 @@ L0:
     return x
 
 [case testVecMiscRemove]
-from vecs import vec, remove
+from librt.vecs import vec, remove
 
 def remove_float(v: vec[float]) -> vec[float]:
     return remove(v, 1.5)
@@ -198,7 +198,7 @@ L0:
     return r0
 
 [case testVecMiscSlice]
-from vecs import vec, remove
+from librt.vecs import vec, remove
 
 from mypy_extensions import i64
 
@@ -214,7 +214,7 @@ L0:
     return r0
 
 [case testVecMiscForLoop]
-from vecs import vec, remove
+from librt.vecs import vec, remove
 
 from mypy_extensions import i64, i16
 
@@ -260,7 +260,7 @@ L4:
     return s
 
 [case testVecMiscNestedGetItem]
-from vecs import vec
+from librt.vecs import vec
 
 from mypy_extensions import i64, i32
 
@@ -307,7 +307,7 @@ L5:
     return r10
 
 [case testVecMiscNestedPop]
-from vecs import vec, pop
+from librt.vecs import vec, pop
 
 from mypy_extensions import i64, i32
 

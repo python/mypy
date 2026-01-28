@@ -2,7 +2,7 @@
 -- Also tests for vec[t | None], which uses the same representation.
 
 [case testVecTCreateEmpty]
-from vecs import vec, append
+from librt.vecs import vec, append
 
 class C: pass
 
@@ -32,7 +32,7 @@ L0:
     return r2
 
 [case testVecTAppend]
-from vecs import vec, append
+from librt.vecs import vec, append
 
 def f(v: vec[str]) -> vec[str]:
     return append(v, 'x')
@@ -51,7 +51,7 @@ L0:
     return r3
 
 [case testVecTOptionalCreateEmpty]
-from vecs import vec, append
+from librt.vecs import vec, append
 from typing import Optional
 
 class C: pass
@@ -84,7 +84,7 @@ L0:
     return r3
 
 [case testVecTOptionalAppend]
-from vecs import vec, append
+from librt.vecs import vec, append
 from typing import Optional
 
 def f(v: vec[Optional[str]]) -> vec[Optional[str]]:
@@ -115,7 +115,7 @@ L0:
     return r9
 
 [case testVecTLen]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 from typing import Optional
 
@@ -139,7 +139,7 @@ L0:
     return r0
 
 [case testVecTGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(v: vec[str], n: i64) -> str:
@@ -185,7 +185,7 @@ L5:
     return r10
 
 [case testVecTOptionalGetItem]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 from typing import Optional
 
@@ -233,7 +233,7 @@ L5:
 
 [case testNewTPopLast]
 from typing import Tuple
-from vecs import vec, pop
+from librt.vecs import vec, pop
 
 def pop_last(v: vec[str]) -> Tuple[vec[str], str]:
     return pop(v)
@@ -246,7 +246,7 @@ L0:
     return r0
 
 [case testVecTConstructFromListComprehension]
-from vecs import vec
+from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(n: i64) -> vec[str]:
@@ -289,7 +289,7 @@ L4:
     return r3
 
 [case testVecTCheckItemType]
-from vecs import vec
+from librt.vecs import vec
 from typing import Tuple, Any, List, TypeVar
 
 def bad1(v: vec[Tuple[str, str]]) -> None: pass
@@ -312,7 +312,7 @@ main:7: error: Invalid item type for "vec"
 main:9: error: Invalid item type for "vec"
 
 [case testVecTCheckItemTypeUnion]
-from vecs import vec
+from librt.vecs import vec
 from typing import Tuple, Union, Optional, Any, TypeVar
 from mypy_extensions import i64
 
@@ -347,7 +347,7 @@ main:15: error: Invalid item type for "vec"
 main:17: error: Invalid item type for "vec"
 
 [case testVecTCheckItemTypeDuringConstruction]
-from vecs import vec
+from librt.vecs import vec
 from typing import Optional, Union
 
 def f() -> None:
