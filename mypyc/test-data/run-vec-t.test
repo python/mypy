@@ -1,11 +1,11 @@
 -- Test cases for vec[t] where t is a boxed, non-vec type (PyObject *).
 -- Also tests for vec[t | None], which uses the same representation.
 
-[case testVecTBasicOps]
+[case testVecTBasicOps_librt_experimental]
 from typing import Final, Any, Iterable, Optional, Tuple
 
 from mypy_extensions import i64
-from vecs import vec, append, remove, pop
+from librt.vecs import vec, append, remove, pop
 
 from testutil import assertRaises
 
@@ -383,9 +383,6 @@ def test_tuple() -> None:
     assert t == t2
     with assertRaises(RuntimeError):
         f_any(True)
-
-[case testVecTBasicOps_python_3_10]
-from vecs import vec, append, remove, pop
 
 def test_optional_item_new_syntax() -> None:
     v = vec[str | None]()
