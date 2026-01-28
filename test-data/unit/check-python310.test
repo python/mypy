@@ -1749,7 +1749,10 @@ def f(m: Medal) -> None:
     match m:
         case Medal.GOLD:
             always_assigned = 1
-            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            # Ideally, this should narrow to literal
+            # However `expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)`
+            # in checker.py means we expand the type to a LiteralType and then because there is no
+            # net change we don't end up inserting the LiteralType into the type map
             reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
