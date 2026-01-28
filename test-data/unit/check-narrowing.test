@@ -3297,10 +3297,18 @@ def f3(number: float | None, i: int):
     if number == i:
         reveal_type(number)  # N: Revealed type is "builtins.float"
 
+def f4(number: float | int, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.int"
+
+def f5(number: float | complex, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.complex"
+
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
-def f4(number: float, x: Custom | int):
+def f6(number: float, x: Custom | int):
     if number == x:
         reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"
