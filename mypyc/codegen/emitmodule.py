@@ -588,9 +588,9 @@ class GroupGenerator:
         if self.use_vec_capsule:
             self.declare_global("VecCapsule *", "VecApi")
             for vec_type in sorted(vec_c_types.values()):
-                self.declare_global(f"{vec_type}Features ", f"{vec_type}Api")
-            self.declare_global("VecTFeatures ", "VecTApi")
-            self.declare_global("VecNestedFeatures ", "VecNestedApi")
+                self.declare_global(f"{vec_type}API ", f"{vec_type}Api")
+            self.declare_global("VecTAPI ", "VecTApi")
+            self.declare_global("VecNestedAPI ", "VecNestedApi")
 
         for module_name, module in self.modules.items():
             if multi_file:
@@ -977,6 +977,8 @@ class GroupGenerator:
 
         if self.use_vec_capsule:
             emitter.emit_lines(
+                'PyObject *mod = PyImport_ImportModule("librt.vecs");',
+                'if (mod == NULL) return -1;',
                 'VecApi = PyCapsule_Import("librt.vecs._C_API", 0);',
                 "if (!VecApi) return -1;",
                 "VecTApi = *VecApi->t;",
