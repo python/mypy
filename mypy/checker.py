@@ -8338,11 +8338,6 @@ def conditional_types(
             )
             return default, remainder
     if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-        if is_overlapping_types(current_type, proposed_type, ignore_promotions=False):
-            # Run the check again, taking into account promotions. If the types do overlap,
-            # then don't narrow to uninhabited
-            return current_type, default
-
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
     # we can only restrict when the type is precise, not bounded
