@@ -1451,6 +1451,48 @@ class TestOverload:
     def __mypyc_generator_helper__(self, x: Any) -> Any:
         return x
 
+[case testMypycAttrSupportsWeakref]
+import weakref
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(supports_weakref=True)
+class WeakrefClass:
+    pass
+
+obj = WeakrefClass()
+ref = weakref.ref(obj)
+assert ref() is obj
+
+[case testMypycAttrSupportsWeakrefInheritance]
+import weakref
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(supports_weakref=True)
+class WeakrefClass:
+    pass
+
+class WeakrefInheritor(WeakrefClass):
+    pass
+
+obj = WeakrefInheritor()
+ref = weakref.ref(obj)
+assert ref() is obj
+
+[case testMypycAttrSupportsWeakrefSubclass]
+import weakref
+from mypy_extensions import mypyc_attr
+
+class NativeClass:
+    pass
+
+@mypyc_attr(supports_weakref=True)
+class WeakrefSubclass(NativeClass):
+    pass
+
+obj = WeakrefSubclass()
+ref = weakref.ref(obj)
+assert ref() is obj
+
 [case testNativeBufferFastPath]
 from typing import Final
 from mypy_extensions import u8
@@ -2885,11 +2927,11 @@ L0:
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: "invalid_arg" is not a supported "mypyc_attr" \
-                                                            # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+                                                            # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable", "supports_weakref"
 class InvalidArg:
     pass
 @mypyc_attr(invalid_kwarg=True)  # E: "invalid_kwarg" is not a supported "mypyc_attr" \
-                                 # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+                                 # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable", "supports_weakref"
 class InvalidKwarg:
     pass
 @mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.

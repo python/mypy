@@ -33,14 +33,24 @@ from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 
 MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
-    ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"]
+    [
+        "native_class",
+        "allow_interpreted_subclasses",
+        "serializable",
+        "supports_weakref",
+        "free_list_len",
+    ]
 )
 
 DATACLASS_DECORATORS: Final = frozenset(["dataclasses.dataclass", "attr.s", "attr.attrs"])
 
 
 MypycAttr = Literal[
-    "native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"
+    "native_class",
+    "allow_interpreted_subclasses",
+    "serializable",
+    "supports_weakref",
+    "free_list_len",
 ]
 
 
@@ -48,6 +58,7 @@ class MypycAttrs(TypedDict):
     native_class: NotRequired[bool]
     allow_interpreted_subclasses: NotRequired[bool]
     serializable: NotRequired[bool]
+    supports_weakref: NotRequired[bool]
     free_list_len: NotRequired[int]
 
 
