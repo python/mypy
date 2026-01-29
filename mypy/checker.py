@@ -7963,7 +7963,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def get_type_range_of_type(self, typ: Type) -> TypeRange | None:
         typ = get_proper_type(typ)
         if isinstance(typ, TypeVarType):
-            typ = typ.upper_bound
+            typ = get_proper_type(typ.upper_bound)
 
         if isinstance(typ, UnionType):
             type_ranges = [self.get_type_range_of_type(item) for item in typ.items]
