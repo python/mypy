@@ -2932,11 +2932,21 @@ if isinstance(a, B):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceTypeAny]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 def foo(x: object, t: type[Any]):
     if isinstance(x, t):
         reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceObject]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(x: object, t: object):
+    if isinstance(x, t):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type[object] | tuple[type[object], ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceUnionTuple]

@@ -7984,20 +7984,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # except for Type[None], because "'NoneType' is not an acceptable base type"
                 is_upper_bound = False
             return TypeRange(typ.item, is_upper_bound=is_upper_bound)
+        if isinstance(typ, AnyType):
+            return TypeRange(typ, is_upper_bound=False)
         if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
             object_type = Instance(typ.type.mro[-1], [])
             return TypeRange(object_type, is_upper_bound=True)
         if isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
             return TypeRange(UnionType(typ.args), is_upper_bound=False)
-        if isinstance(typ, AnyType):
-            return TypeRange(typ, is_upper_bound=False)
-        if not is_subtype(self.named_type("builtins.type"), typ) and not (
-            isinstance(typ, Instance) and typ.type.fullname == "typing._SpecialForm"
-        ):
+        if isinstance(typ, Instance) and typ.type.fullname == "typing._SpecialForm":
+            # This is probably an alias to a Union object. We don't have the args here so we can't
+            # conclude anything
+            return None
+        if not is_subtype(self.named_type("builtins.type"), typ):
             # We saw something, but it couldn't possibly be valid
             return TypeRange(UninhabitedType(), is_upper_bound=False)
 
-        # Here we e.g. saw a variable with unknown value
+        # This is e.g. a variable of type object, so we can't conclude anything
         return None
 
     def is_literal_enum(self, n: Expression) -> bool:
