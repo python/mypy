@@ -8646,12 +8646,13 @@ def flatten(t: Expression) -> list[Expression]:
 def flatten_types(t: Type) -> list[Type]:
     """Flatten a nested sequence of tuples into one list of nodes."""
     t = get_proper_type(t)
+    if isinstance(t, UnionType):
+        return [b for a in t.items for b in flatten_types(a)]
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types(a)]
     elif is_named_instance(t, "builtins.tuple"):
         return [t.args[0]]
-    else:
-        return [t]
+    return [t]
 
 
 def expand_func(defn: FuncItem, map: dict[TypeVarId, Type]) -> FuncItem:

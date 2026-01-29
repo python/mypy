@@ -2938,3 +2938,26 @@ def foo(x: object, t: type[Any]):
     if isinstance(x, t):
         reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceUnionOfTuples]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Iterator
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+def extract(
+    values: object,
+    ts: (
+        tuple[type[T1]]
+        | tuple[type[T1], type[T2]]
+        | tuple[type[T1], type[T2], type[T3]]
+    )
+) -> Iterator[T1 | T2 | T3]:
+    if isinstance(values, ts):
+        reveal_type(values)  # N: Revealed type is "T1`-1 | T2`-2 | T3`-3"
+        yield values
+    raise
+[builtins fixtures/primitives.pyi]
