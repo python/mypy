@@ -3003,3 +3003,20 @@ def extract(
         yield values
     raise
 [builtins fixtures/primitives.pyi]
+
+
+[case testIsInstanceTypeVarBoundToType]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Protocol
+
+class A(Protocol):
+    x: int
+
+T = TypeVar("T", bound=type[A])
+
+def foo(x: object, t: T):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
