@@ -1471,7 +1471,7 @@ class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only u
 def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack
     pass
 
-def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** argument must be a TypedDict
+def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** parameter must be a TypedDict
     pass
 
 [builtins fixtures/dict.pyi]
