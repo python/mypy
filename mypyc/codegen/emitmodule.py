@@ -27,7 +27,7 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
-from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
+from mypyc.analysis.capsule_deps import find_class_dependencies, find_implicit_op_dependencies
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,
@@ -270,6 +270,12 @@ def compile_scc_to_ir(
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
+
+        # Calculate implicit dependencies from class attribute types
+        for cl in module.classes:
+            deps = find_class_dependencies(cl)
+            if deps is not None:
+                module.dependencies.update(deps)
 
     return modules
 

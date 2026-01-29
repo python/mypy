@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.deps import Dependency
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import Assign, CallC, PrimitiveOp
@@ -45,6 +46,15 @@ def find_type_dependencies(fn: FuncIR, deps: set[Dependency] | None) -> set[Depe
         deps = collect_type_deps(arg.type, deps)
     # Check return type
     deps = collect_type_deps(fn.decl.sig.ret_type, deps)
+    return deps
+
+
+def find_class_dependencies(cl: ClassIR) -> set[Dependency] | None:
+    """Find dependencies from class attribute types."""
+    deps: set[Dependency] | None = None
+    for base in cl.mro:
+        for attr_type in base.attributes.values():
+            deps = collect_type_deps(attr_type, deps)
     return deps
 
 
