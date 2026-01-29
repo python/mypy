@@ -2688,7 +2688,7 @@ class SemanticAnalyzer(
         if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(base):
             self.process_placeholder(
                 None, "tuple base", defn, force_progress=base != info.tuple_type
             )
