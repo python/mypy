@@ -2945,14 +2945,14 @@ from typing import Any
 
 def f1(x: object):
     if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
-        reveal_type(x)  # N: Revealed type is "builtins.object"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
     if type(x) == str | (int, dict):
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # N: Revealed type is "builtins.object"
 
 def f2(x: Any):
     if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
-        reveal_type(x)  # N: Revealed type is "Any"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
     if type(x) == str | (int, dict):
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # N: Revealed type is "Any"
 
 [builtins fixtures/primitives.pyi]

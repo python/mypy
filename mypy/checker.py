@@ -6829,20 +6829,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 expr = operands[j]
 
-                current_type_range = self.get_isinstance_type(expr, flatten_tuples=False)
+                current_type_range = self.get_type_range_of_type(get_proper_type(operand_types[j]))
                 if current_type_range is None:
-                    current_type_range = []
-                else:
-                    target_type = make_simplified_union([tr.item for tr in current_type_range])
-                    if isinstance(target_type, AnyType):
-                        # Avoid widening to Any for checks like `type(x) is type(y: Any)`.
-                        # We patch this here because it is desirable to widen to any for cases like
-                        # isinstance(x, (y: Any))
-                        continue
+                    continue
+                if isinstance(get_proper_type(current_type_range.item), AnyType):
+                    # Avoid widening to Any for checks like `type(x) is type(y: Any)`.
+                    # We patch this here because it is desirable to widen to any for cases like
+                    # isinstance(x, (y: Any))
+                    continue
                 if_map, else_map = conditional_types_to_typemaps(
                     expr_in_type_expr,
                     *self.conditional_types_with_intersection(
-                        self.lookup_type(expr_in_type_expr), current_type_range, expr_in_type_expr
+                        self.lookup_type(expr_in_type_expr), [current_type_range], expr_in_type_expr
                     ),
                 )
 
@@ -7931,50 +7929,67 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Returns an empty list for isinstance(x, ()).
         """
         if isinstance(expr, OpExpr) and expr.op == "|":
-            left = self.get_isinstance_type(expr.left, flatten_tuples=False)
-            if left is None and is_literal_none(expr.left):
+            left: list[TypeRange] | None
+            right: list[TypeRange] | None
+            if is_literal_none(expr.left):
                 left = [TypeRange(NoneType(), is_upper_bound=False)]
-            right = self.get_isinstance_type(expr.right, flatten_tuples=False)
-            if right is None and is_literal_none(expr.right):
+            else:
+                left = self.get_isinstance_type(expr.left, flatten_tuples=False)
+            if is_literal_none(expr.right):
                 right = [TypeRange(NoneType(), is_upper_bound=False)]
+            else:
+                right = self.get_isinstance_type(expr.right, flatten_tuples=False)
             if left is None or right is None:
                 return None
             return left + right
 
         if flatten_tuples:
-            all_types = get_proper_types(flatten_types_if_tuple(self.lookup_type(expr)))
-        else:
-            all_types = [get_proper_type(self.lookup_type(expr))]
+            type_ranges = []
+            for typ in get_proper_types(flatten_types_if_tuple(self.lookup_type(expr))):
+                type_range = self.get_type_range_of_type(typ)
+                if type_range is None:
+                    return None
+                type_ranges.append(type_range)
+            return type_ranges
 
-        types: list[TypeRange] = []
-        for typ in all_types:
-            if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # If a type is generic, `isinstance` can only narrow its variables to Any.
-                any_parameterized = fill_typevars_with_any(typ.type_object())
-                # Tuples may have unattended type variables among their items
-                if isinstance(any_parameterized, TupleType):
-                    erased_type = erase_typevars(any_parameterized)
-                else:
-                    erased_type = any_parameterized
-                types.append(TypeRange(erased_type, is_upper_bound=False))
-            elif isinstance(typ, TypeType):
-                # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
-                # we indicate this by setting is_upper_bound flag
-                is_upper_bound = True
-                if isinstance(typ.item, NoneType):
-                    # except for Type[None], because "'NoneType' is not an acceptable base type"
-                    is_upper_bound = False
-                types.append(TypeRange(typ.item, is_upper_bound=is_upper_bound))
-            elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
-                object_type = Instance(typ.type.mro[-1], [])
-                types.append(TypeRange(object_type, is_upper_bound=True))
-            elif isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
-                types.append(TypeRange(UnionType(typ.args), is_upper_bound=False))
-            elif isinstance(typ, AnyType):
-                types.append(TypeRange(typ, is_upper_bound=False))
-            else:  # we didn't see an actual type, but rather a variable with unknown value
+        else:
+            type_range = self.get_type_range_of_type(get_proper_type(self.lookup_type(expr)))
+            if type_range is None:
                 return None
-        return types
+            return [type_range]
+
+
+    def get_type_range_of_type(self, typ: ProperType) -> TypeRange | None:
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
+            # If a type is generic, `isinstance` can only narrow its variables to Any.
+            any_parameterized = fill_typevars_with_any(typ.type_object())
+            # Tuples may have unattended type variables among their items
+            if isinstance(any_parameterized, TupleType):
+                erased_type = erase_typevars(any_parameterized)
+            else:
+                erased_type = any_parameterized
+            return TypeRange(erased_type, is_upper_bound=False)
+        if isinstance(typ, TypeType):
+            # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
+            # we indicate this by setting is_upper_bound flag
+            is_upper_bound = True
+            if isinstance(typ.item, NoneType):
+                # except for Type[None], because "'NoneType' is not an acceptable base type"
+                is_upper_bound = False
+            return TypeRange(typ.item, is_upper_bound=is_upper_bound)
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
+            object_type = Instance(typ.type.mro[-1], [])
+            return TypeRange(object_type, is_upper_bound=True)
+        if isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
+            return TypeRange(UnionType(typ.args), is_upper_bound=False)
+        if isinstance(typ, AnyType):
+            return TypeRange(typ, is_upper_bound=False)
+        if not is_subtype(self.named_type("builtins.type"), typ) and not (isinstance(typ, Instance) and typ.type.fullname == "typing._SpecialForm"):
+            # We saw something, but it couldn't possibly be valid
+            return TypeRange(UninhabitedType(), is_upper_bound=False)
+
+        # Here we e.g. saw a variable with unknown value
+        return None
 
     def is_literal_enum(self, n: Expression) -> bool:
         """Returns true if this expression (with the given type context) is an Enum literal.
