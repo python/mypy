@@ -6557,7 +6557,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             "==",
                             operands=[operands[left_index], operands[right_index]],
                             operand_types=[item_type, collection_item_type],
-                            expr_indices=[left_index, right_index],
+                            expr_indices=[0, 1],
                             narrowable_indices={0},
                         )
 

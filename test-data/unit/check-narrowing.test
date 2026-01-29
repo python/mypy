@@ -3020,6 +3020,20 @@ def f2(x: Any) -> None:
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testNarrowChainedContainment]
+# flags: --strict-equality --warn-unreachable
+
+def bad_compare_has_key(has_key: bool, key: str, s: tuple[str, ...]) -> None:
+    if has_key == key in s:  # E: Non-overlapping equality check (left operand type: "bool", right operand type: "str")
+        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
+        reveal_type(key)  # N: Revealed type is "builtins.str"
+
+def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
+    if has_key == key in s:
+        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
+        reveal_type(key)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowTypeObject]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
