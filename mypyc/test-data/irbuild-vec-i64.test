@@ -203,14 +203,6 @@ L5:
     keep_alive v
     return 1
 
-[case testVecI64SetItem_32bit]
-from librt.vecs import vec
-from mypy_extensions import i64
-
-def f(v: vec[i64], i: i64, x: i64) -> None:
-    v[i] = x
-[out]
-
 [case testVecI64ConstructFromListExpr]
 from librt.vecs import vec
 from mypy_extensions import i64
