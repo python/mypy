@@ -1721,7 +1721,7 @@ L5:
     r11 = load_mem r10 :: i64*
     return r11
 
-[case testVecI64LenBorrowVec]
+[case testVecI64LenBorrowVec_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 

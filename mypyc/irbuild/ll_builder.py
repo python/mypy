@@ -128,7 +128,7 @@ from mypyc.ir.rtypes import (
     optional_value_type,
     pointer_rprimitive,
     short_int_rprimitive,
-    str_rprimitive,
+    str_rprimitive, is_c_py_ssize_t_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len

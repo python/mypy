@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, cast
 
-from mypyc.common import PLATFORM_SIZE
+from mypyc.common import PLATFORM_SIZE, IS_32_BIT_PLATFORM
 from mypyc.ir.ops import (
     ERR_MAGIC,
     ERR_NEVER,
@@ -210,12 +210,15 @@ def vec_item_type_info(
 
 
 def vec_len(builder: LowLevelIRBuilder, val: Value) -> Value:
-    # TODO: what about 32-bit archs?
-    # TODO: merge vec_len and vec_len_native
-    return vec_len_native(builder, val)
+    """Return len(<vec>) as i64."""
+    len_val = vec_len_native(builder, val)
+    if IS_32_BIT_PLATFORM:
+        return builder.coerce(len_val, int64_rprimitive, -1)
+    return len_val
 
 
 def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
+    """Return len(<vec>) as platform integer type (32-bit/64-bit)."""
     return builder.get_element(val, "len")
 
 
@@ -283,7 +286,7 @@ def vec_get_item(
     vtype = base.type
     # TODO: Support more item types
     # TODO: Support more index types
-    len_val = vec_len_native(builder, base)
+    len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
     item_addr = vec_item_ptr(builder, base, index)
     result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)

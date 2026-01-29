@@ -14,7 +14,7 @@ L0:
     r0 = VecI64Api.alloc(0, 0)
     return r0
 
-[case testVecI64Len]
+[case testVecI64Len_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -31,7 +31,25 @@ L0:
     l = r0
     return l
 
-[case testVecI64GetItem]
+[case testVecI64Len_32bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[i64]) -> i64:
+    l = len(v)
+    return l
+[out]
+def f(v):
+    v :: vec[i64]
+    r0 :: native_int
+    r1, l :: i64
+L0:
+    r0 = v.len
+    r1 = extend signed r0: native_int to i64
+    l = r1
+    return l
+
+[case testVecI64GetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -76,6 +94,54 @@ L5:
     r10 = load_mem r9 :: i64*
     keep_alive v
     return r10
+
+[case testVecI64GetItem_32bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[i64], i: i64) -> i64:
+    return v[i]
+[out]
+def f(v, i):
+    v :: vec[i64]
+    i :: i64
+    r0 :: native_int
+    r1 :: i64
+    r2 :: bit
+    r3 :: i64
+    r4 :: bit
+    r5 :: bool
+    r6 :: i64
+    r7 :: object
+    r8 :: ptr
+    r9 :: i64
+    r10 :: ptr
+    r11 :: i64
+L0:
+    r0 = v.len
+    r1 = extend signed r0: native_int to i64
+    r2 = i < r1 :: unsigned
+    if r2 goto L4 else goto L1 :: bool
+L1:
+    r3 = i + r1
+    r4 = r3 < r1 :: unsigned
+    if r4 goto L3 else goto L2 :: bool
+L2:
+    r5 = raise IndexError
+    unreachable
+L3:
+    r6 = r3
+    goto L5
+L4:
+    r6 = i
+L5:
+    r7 = v.buf
+    r8 = get_element_ptr r7 items :: VecI64BufObject
+    r9 = r6 * 8
+    r10 = r8 + r9
+    r11 = load_mem r10 :: i64*
+    keep_alive v
+    return r11
 
 [case testVecI64Append]
 from librt.vecs import vec, append
