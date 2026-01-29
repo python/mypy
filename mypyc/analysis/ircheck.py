@@ -417,12 +417,20 @@ class OpChecker(OpVisitor[None]):
                 or (op_str not in ("<<", ">>") and left.size != right.size)
             )
         ):
-            self.fail(op, f"Operand types have incompatible signs: {op.lhs.type}, {op.rhs.type}")
+            self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)
         self.expect_non_float(op, op.lhs)
         self.expect_non_float(op, op.rhs)
+        left = op.lhs.type
+        right = op.rhs.type
+        if (
+            isinstance(left, RPrimitive)
+            and isinstance(right, RPrimitive)
+            and left.is_signed != right.is_signed
+        ):
+            self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
 
     def visit_float_op(self, op: FloatOp) -> None:
         self.expect_float(op, op.lhs)
