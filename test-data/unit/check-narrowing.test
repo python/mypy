@@ -3025,8 +3025,8 @@ def f2(x: Any) -> None:
 
 def bad_compare_has_key(has_key: bool, key: str, s: tuple[str, ...]) -> None:
     if has_key == key in s:  # E: Non-overlapping equality check (left operand type: "bool", right operand type: "str")
-        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
-        reveal_type(key)  # N: Revealed type is "builtins.str"
+        reveal_type(has_key)  # E: Statement is unreachable
+        reveal_type(key)
 
 def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
     if has_key == key in s:
