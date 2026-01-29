@@ -1748,6 +1748,21 @@ def f(cls: Type[object]) -> None:
         cls()[0] + 1
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIssubclassTypeVar]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar
+
+ClassT = TypeVar("ClassT", bound=type)
+
+def directed_meet(cls0: ClassT, cls1: ClassT) -> ClassT | None:
+    if issubclass(cls1, cls0):
+        return cls1
+    if issubclass(cls0, cls1):
+        return cls0
+    return None
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsinstanceTypeArgs]
 from typing import Iterable, TypeVar
 x = 1
