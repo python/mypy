@@ -241,6 +241,10 @@ class OpChecker(OpVisitor[None]):
         if is_float_rprimitive(v.type):
             self.fail(op, "Float not expected")
 
+    def expect_primitive_type(self, op: Op, v: Value) -> None:
+        if not isinstance(v.type, RPrimitive):
+            self.fail(op, f"RPrimitive expected, got {type(v.type).__name__}")
+
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
 
@@ -397,8 +401,23 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_int_op(self, op: IntOp) -> None:
+        self.expect_primitive_type(op, op.lhs)
+        self.expect_primitive_type(op, op.rhs)
         self.expect_non_float(op, op.lhs)
         self.expect_non_float(op, op.rhs)
+        left = op.lhs.type
+        right = op.rhs.type
+        op_str = op.op_str[op.op]
+        if (
+            isinstance(left, RPrimitive)
+            and isinstance(right, RPrimitive)
+            and left.is_signed != right.is_signed
+            and (
+                op_str in ("+", "-", "*", "/", "%")
+                or (op_str not in ("<<", ">>") and left.size != right.size)
+            )
+        ):
+            self.fail(op, f"Operand types have incompatible signs: {op.lhs.type}, {op.rhs.type}")
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)
