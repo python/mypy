@@ -6494,7 +6494,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not self.is_literal_enum(expr)
                 # CallableType type objects are usually already maximally specific
                 and not (
-                    isinstance(p_expr := get_proper_type(expr_type), CallableType)
+                    isinstance(p_expr := get_proper_type(expr_type), FunctionLike)
                     and p_expr.is_type_obj()
                 )
                 # This is a little ad hoc, in the absence of intersection types
