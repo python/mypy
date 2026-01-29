@@ -312,6 +312,7 @@ def vec_set_item(
     vtype = base.type
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
+    index = builder.coerce(index, c_pyssize_t_rprimitive, line)
     item_addr = vec_item_ptr(builder, base, index)
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
