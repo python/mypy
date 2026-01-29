@@ -243,7 +243,7 @@ class OpChecker(OpVisitor[None]):
 
     def expect_primitive_type(self, op: Op, v: Value) -> None:
         if not isinstance(v.type, RPrimitive):
-            self.fail(op, f"RPrimitive expected, got {v.type.__name__}")
+            self.fail(op, f"RPrimitive expected, got {type(v.type).__name__}")
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
