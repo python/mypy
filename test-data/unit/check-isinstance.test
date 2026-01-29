@@ -2964,7 +2964,7 @@ def foo(x: object, t: object):
         reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/isinstance.pyi]
 
-[case testIsInstanceUnionTuple]
+[case testIsInstanceOrExprInTuple]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
 
@@ -2984,7 +2984,7 @@ def f2(x: Any):
 [case testIsInstanceUnionOfTuples]
 # flags: --strict-equality --warn-unreachable
 from __future__ import annotations
-from typing import TypeVar, Iterator
+from typing import TypeVar, Iterator, final
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
@@ -3002,6 +3002,38 @@ def extract(
         reveal_type(values)  # N: Revealed type is "T1`-1 | T2`-2 | T3`-3"
         yield values
     raise
+
+class A: ...
+class B: ...
+
+def f1(x: A | B, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+def f2(x: object, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+@final
+class FA: ...
+@final
+class FB: ...
+
+def g1(x: FA | FB, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+
+def g2(x: object, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/primitives.pyi]
 
 
