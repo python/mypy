@@ -2007,7 +2007,6 @@ class LowLevelIRBuilder:
             base, "__getitem__", [item], result_type, line, can_borrow=can_borrow
         )
 
-
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
         keys: list[Value] = []
@@ -2734,7 +2733,7 @@ class LowLevelIRBuilder:
 
     # Loop helpers
 
-    def begin_for(self, start: Value, end: Value, step: Value, *, signed: bool) -> "ForBuilder":
+    def begin_for(self, start: Value, end: Value, step: Value, *, signed: bool) -> ForBuilder:
         """Generate for loop over a pointer or native int range.
 
         Roughly corresponds to "for i in range(start, end, step): ....". Only
@@ -2755,7 +2754,6 @@ class LowLevelIRBuilder:
         b = ForBuilder(self, start, end, step, signed=signed)
         b.begin()
         return b
-
 
     # Internal helpers
 
@@ -2840,7 +2838,8 @@ class LowLevelIRBuilder:
         Return None if no translation found; otherwise return the target register.
         """
         low_level_op = self._translate_special_low_level_method_call(
-            base_reg, name, args, result_type, line, can_borrow)
+            base_reg, name, args, result_type, line, can_borrow
+        )
         if low_level_op is not None:
             return low_level_op
         primitive_ops_candidates = method_call_ops.get(name, [])
@@ -2860,8 +2859,9 @@ class LowLevelIRBuilder:
     ) -> Value | None:
         if name == "__getitem__" and len(args) == 1:
             arg = args[0]
-            if isinstance(base_reg.type, RVec) and (is_int64_rprimitive(arg.type) or
-                                                    is_tagged(arg.type)):
+            if isinstance(base_reg.type, RVec) and (
+                is_int64_rprimitive(arg.type) or is_tagged(arg.type)
+            ):
                 if is_tagged(arg.type):
                     arg = self.coerce(arg, int64_rprimitive, line)
                 return vec_get_item(self, base_reg, arg, line)

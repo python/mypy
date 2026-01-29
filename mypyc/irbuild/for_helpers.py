@@ -174,7 +174,10 @@ def for_loop_helper_with_index(
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    assert is_sequence_rprimitive(expr_reg.type) or isinstance(expr_reg.type, RVec), (expr_reg, expr_reg.type)
+    assert is_sequence_rprimitive(expr_reg.type) or isinstance(expr_reg.type, RVec), (
+        expr_reg,
+        expr_reg.type,
+    )
     target_type = builder.get_sequence_type(expr)
 
     body_block = BasicBlock()
@@ -213,7 +216,7 @@ def sequence_from_generator_preallocate_helper(
     builder: IRBuilder,
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
-    set_item_op: Callable[[Value, Value, Value, int], None], # CFunctionDescription,
+    set_item_op: Callable[[Value, Value, Value, int], None],  # CFunctionDescription,
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
@@ -241,7 +244,7 @@ def sequence_from_generator_preallocate_helper(
         line = gen.line
         sequence_expr = gen.sequences[0]
         rtype = builder.node_type(sequence_expr)
-        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple) or isinstance(rtype, RVec)):
+        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, (RTuple, RVec))):
             return None
 
         if isinstance(rtype, RTuple):
@@ -368,8 +371,9 @@ def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: Generat
     val = sequence_from_generator_preallocate_helper(
         builder,
         gen,
-        empty_op_llbuilder=lambda length, line: vec_create(builder.builder,
-                                                           vec_type, length, line),
+        empty_op_llbuilder=lambda length, line: vec_create(
+            builder.builder, vec_type, length, line
+        ),
         set_item_op=set_item,
     )
     if val is not None:
@@ -881,7 +885,9 @@ class ForSequence(ForGenerator):
         self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
     ) -> None:
         assert is_sequence_rprimitive(expr_reg.type) or isinstance(expr_reg.type, RVec), (
-            expr_reg, expr_reg.type)
+            expr_reg,
+            expr_reg.type,
+        )
         builder = self.builder
         # Record a Value indicating the length of the sequence, if known at compile time.
         self.length = length

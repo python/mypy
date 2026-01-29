@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, cast
 
 from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.ops import (
-    ERR_FALSE,
     ERR_MAGIC,
     ERR_NEVER,
     Assign,
@@ -20,17 +18,15 @@ from mypyc.ir.ops import (
     GetElementPtr,
     Integer,
     IntOp,
-    KeepAlive,
-    LoadAddress,
     RaiseStandardError,
     Register,
     SetElement,
-    Undef,
-    Unreachable,
-    Value,
     TupleGet,
     TupleSet,
     Unborrow,
+    Undef,
+    Unreachable,
+    Value,
 )
 from mypyc.ir.rtypes import (
     RInstance,
@@ -41,26 +37,20 @@ from mypyc.ir.rtypes import (
     RVec,
     VecNestedBufItem,
     bool_rprimitive,
-    c_int_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
-    int64_rprimitive,
     int32_rprimitive,
-    int16_rprimitive,
-    uint8_rprimitive,
-    float_rprimitive,
+    int64_rprimitive,
     is_c_py_ssize_t_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
-    is_none_rprimitive,
     is_short_int_rprimitive,
-    object_pointer_rprimitive,
     object_rprimitive,
     optional_value_type,
     pointer_rprimitive,
-    vec_depth,
     vec_api_by_item_type,
+    vec_depth,
     vec_item_type_tags,
 )
 from mypyc.primitives.registry import builtin_names
@@ -85,9 +75,7 @@ def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
     return builder.coerce(v, c_pyssize_t_rprimitive, line)
 
 
-def vec_create(
-    builder: LowLevelIRBuilder, vtype: RVec, length: Union[int, Value], line: int
-) -> Value:
+def vec_create(builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, line: int) -> Value:
     if isinstance(length, int):
         length = Integer(length, c_pyssize_t_rprimitive)
     length = as_platform_int(builder, length, line)
@@ -96,8 +84,13 @@ def vec_create(
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         call = CallC(
-            f"{api_name}.alloc", [length, length], vtype, False, False, error_kind=ERR_MAGIC,
-            line=line
+            f"{api_name}.alloc",
+            [length, length],
+            vtype,
+            False,
+            False,
+            error_kind=ERR_MAGIC,
+            line=line,
         )
         return builder.add(call)
 
@@ -129,12 +122,7 @@ def vec_create(
         else:
             call = CallC(
                 "VecNestedApi.alloc",
-                [
-                    length,
-                    length,
-                    typeval,
-                    Integer(depth, int32_rprimitive),
-                ],
+                [length, length, typeval, Integer(depth, int32_rprimitive)],
                 vtype,
                 False,
                 False,
@@ -147,7 +135,7 @@ def vec_create(
 
 
 def vec_create_initialized(
-    builder: LowLevelIRBuilder, vtype: RVec, length: Union[int, Value], init: Value, line: int
+    builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, init: Value, line: int
 ) -> Value:
     """Create vec with items initialized to the given value."""
     if isinstance(length, int):
@@ -173,7 +161,7 @@ def vec_create_initialized(
 
 
 def vec_create_from_values(
-    builder: LowLevelIRBuilder, vtype: RVec, values: List[Value], line: int
+    builder: LowLevelIRBuilder, vtype: RVec, values: list[Value], line: int
 ) -> Value:
     vec = vec_create(builder, vtype, len(values), line)
     ptr = vec_items(builder, vec)
@@ -200,7 +188,7 @@ VEC_TYPE_INFO_I64: Final = 2
 
 def vec_item_type_info(
     builder: LowLevelIRBuilder, typ: RType, line: int
-) -> Tuple[Optional[Value], bool, int]:
+) -> tuple[Value | None, bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
         typ, src = builtin_names[typ.name]
         return builder.load_address(src, typ), False, 0
@@ -254,7 +242,8 @@ def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Val
 
 
 def vec_check_and_adjust_index(
-        builder: LowLevelIRBuilder, lenv: Value, index: Value, line: int) -> Value:
+    builder: LowLevelIRBuilder, lenv: Value, index: Value, line: int
+) -> Value:
     r = Register(int64_rprimitive)
     ok, ok2, ok3 = BasicBlock(), BasicBlock(), BasicBlock()
     fail, fail2 = BasicBlock(), BasicBlock()
@@ -302,9 +291,7 @@ def vec_get_item(
     return result
 
 
-def vec_get_item_unsafe(
-    builder: LowLevelIRBuilder, base: Value, index: Value, line: int
-) -> Value:
+def vec_get_item_unsafe(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) -> Value:
     """Get vec item, assuming index is non-negative and within bounds."""
     assert isinstance(base.type, RVec)
     index = as_platform_int(builder, index, line)
@@ -365,8 +352,11 @@ def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: R
     else:
         name = "VecTApi.convert_from_nested"
 
-    return builder.add(CallC(
-        name, [item], vec_type, steals=[True], is_borrowed=False, error_kind=ERR_NEVER, line=-1))
+    return builder.add(
+        CallC(
+            name, [item], vec_type, steals=[True], is_borrowed=False, error_kind=ERR_NEVER, line=-1
+        )
+    )
 
 
 def vec_item_type(builder: LowLevelIRBuilder, item_type: RType, line: int) -> Value:
@@ -427,7 +417,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.pop"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion): # TODO fix union
+    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):  # TODO fix union
         name = "VecTApi.pop"
     else:
         name = "VecNestedApi.pop"

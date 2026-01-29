@@ -7,6 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
+from mypyc.analysis.vecusage import needs_vec_capsule
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
@@ -15,7 +16,6 @@ from mypyc.test.testutil import (
     infer_ir_build_options_from_test_name,
     use_custom_builtins,
 )
-from mypyc.analysis.vecusage import needs_vec_capsule
 
 files = ["vecusage.test"]
 

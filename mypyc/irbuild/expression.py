@@ -80,7 +80,6 @@ from mypyc.ir.rtypes import (
     RTuple,
     RVec,
     bool_rprimitive,
-    c_pyssize_t_rprimitive,
     int_rprimitive,
     is_any_int,
     is_fixed_width_rtype,
@@ -117,13 +116,11 @@ from mypyc.irbuild.specialize import (
     translate_object_setattr,
 )
 from mypyc.irbuild.vec import (
+    vec_append,
     vec_create,
     vec_create_from_values,
     vec_create_initialized,
-    vec_pop,
-    vec_remove,
     vec_slice,
-    vec_append,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
@@ -586,8 +583,9 @@ def translate_vec_create_from_iterable(
     return vec_from_iterable(builder, vec_type, arg, line)
 
 
-def vec_from_iterable(builder: IRBuilder, vec_type: RVec, iterable: Expression,
-                      line: int) -> Value:
+def vec_from_iterable(
+    builder: IRBuilder, vec_type: RVec, iterable: Expression, line: int
+) -> Value:
     """Construct a vec from an arbitrary iterable."""
     # Translate it as a vec comprehension vec[t]([<name> for <name> in
     # iterable]). This way we can use various special casing supported
@@ -601,7 +599,8 @@ def vec_from_iterable(builder: IRBuilder, vec_type: RVec, iterable: Expression,
     index.kind = LDEF
     index.node = var
     loop_params: list[tuple[Expression, Expression, list[Expression], bool]] = [
-        (index, iterable, [], False)]
+        (index, iterable, [], False)
+    ]
 
     def gen_inner_stmts() -> None:
         builder.assign(vec, vec_append(builder.builder, vec, reg, line), line)

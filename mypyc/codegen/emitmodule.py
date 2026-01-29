@@ -28,6 +28,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
 from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
+from mypyc.analysis.vecusage import needs_vec_capsule
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,
@@ -60,7 +61,7 @@ from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RType, vec_c_types, vec_api_fields, vec_api_by_item_type
+from mypyc.ir.rtypes import RType, vec_api_by_item_type, vec_api_fields, vec_c_types
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
@@ -74,7 +75,6 @@ from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
-from mypyc.analysis.vecusage import needs_vec_capsule
 
 # All the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
@@ -978,7 +978,7 @@ class GroupGenerator:
         if self.use_vec_capsule:
             emitter.emit_lines(
                 'PyObject *mod = PyImport_ImportModule("librt.vecs");',
-                'if (mod == NULL) return -1;',
+                "if (mod == NULL) return -1;",
                 'VecApi = PyCapsule_Import("librt.vecs._C_API", 0);',
                 "if (!VecApi) return -1;",
                 "VecTApi = *VecApi->t;",

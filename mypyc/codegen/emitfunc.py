@@ -12,22 +12,12 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
-from mypyc.common import (
-    GENERATOR_ATTRIBUTE_PREFIX,
-    HAVE_IMMORTAL,
-    MODULE_PREFIX,
-    NATIVE_PREFIX,
-    REG_PREFIX,
-    STATIC_PREFIX,
-    TYPE_PREFIX,
-    TYPE_VAR_PREFIX,
-)
+from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_TYPE,
-    NAMESPACE_TYPE_VAR,
     Assign,
     AssignMulti,
     BasicBlock,

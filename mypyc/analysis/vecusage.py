@@ -1,8 +1,8 @@
 """Analysis to decide whether a module needs the vec capsule."""
 
-from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.rtypes import RType, RVec, RUnion, RTuple, RStruct
+from mypyc.ir.module_ir import ModuleIR
+from mypyc.ir.rtypes import RStruct, RTuple, RType, RUnion, RVec
 
 
 def needs_vec_capsule(module: ModuleIR) -> bool:

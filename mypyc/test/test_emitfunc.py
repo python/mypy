@@ -374,10 +374,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_box_vec(self) -> None:
         self.assert_emit(Box(self.vi64), """cpy_r_r0 = VecI64Api.box(cpy_r_vi64);""")
         self.assert_emit(Box(self.vi32), """cpy_r_r0 = VecI32Api.box(cpy_r_vi32);""")
-        self.assert_emit(Box(self.vs),
-                         """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);""")
-        self.assert_emit(Box(self.vs_opt),
-                         """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type | 1);""")
+        self.assert_emit(
+            Box(self.vs), """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);"""
+        )
+        self.assert_emit(
+            Box(self.vs_opt), """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type | 1);"""
+        )
         self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecNestedApi.box(cpy_r_vvs);""")
 
     def test_unbox_vec(self) -> None:
@@ -387,7 +389,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[i64]", cpy_r_o); cpy_r_r0 = (VecI64) { -1, NULL };
                }
-               """
+               """,
         )
         self.assert_emit(
             Unbox(self.o, RVec(int32_rprimitive), 55),
@@ -395,7 +397,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[i32]", cpy_r_o); cpy_r_r0 = (VecI32) { -1, NULL };
                }
-               """
+               """,
         )
         self.assert_emit(
             Unbox(self.o, RVec(str_rprimitive), 55),
@@ -429,21 +431,24 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[vec[str]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
-               """)
+               """,
+        )
         self.assert_emit(
             Unbox(self.o, RVec(RVec(RUnion([str_rprimitive, none_rprimitive]))), 55),
             """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[vec[str | None]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
-               """)
+               """,
+        )
         self.assert_emit(
             Unbox(self.o, RVec(RVec(int64_rprimitive)), 55),
             """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, 2, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[vec[i64]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
-               """)
+               """,
+        )
 
     def test_list_append(self) -> None:
         self.assert_emit(
@@ -773,7 +778,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             SetElement(self.st, "x", self.i32),
             """cpy_r_r0 = (Foo) { cpy_r_st.b, cpy_r_i32, cpy_r_st.y };""",
         )
-
 
     def test_load_address(self) -> None:
         self.assert_emit(

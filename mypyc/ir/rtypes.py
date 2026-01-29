@@ -1097,7 +1097,7 @@ class RVec(RType):
             return object_rprimitive
         assert False, f"RVec has no field '{name}'"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvec(self)
 
     def __str__(self) -> str:
@@ -1365,9 +1365,7 @@ VecI16BufObject = RStruct(
 )
 
 VecU8BufObject = RStruct(
-    name="VecU8BufObject",
-    names=["ob_base", "len", "items"],
-    types=[PyVarObject, int64_rprimitive],
+    name="VecU8BufObject", names=["ob_base", "len", "items"], types=[PyVarObject, int64_rprimitive]
 )
 
 VecFloatBufObject = RStruct(
@@ -1438,9 +1436,7 @@ VecNestedBufObject_rprimitive = RPrimitive(
 )
 
 VecNestedPopResult = RStruct(
-    name="VecNestedPopResult",
-    names=["vec", "item"],
-    types=[VecNested, VecNestedBufItem],
+    name="VecNestedPopResult", names=["vec", "item"], types=[VecNested, VecNestedBufItem]
 )
 
 

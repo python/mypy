@@ -269,7 +269,6 @@ class Undef(Value):
         self.type = rtype
 
 
-
 class Op(Value):
     """Abstract base class for all IR operations.
 

@@ -37,10 +37,8 @@ from mypy.nodes import (
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
-    ERR_MAGIC,
     BasicBlock,
     Call,
-    CallC,
     Extend,
     Integer,
     PrimitiveDescription,
@@ -56,7 +54,6 @@ from mypyc.ir.rtypes import (
     RPrimitive,
     RTuple,
     RType,
-    RUnion,
     RVec,
     bool_rprimitive,
     bytes_rprimitive,
@@ -86,8 +83,6 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     string_writer_rprimitive,
     uint8_rprimitive,
-    is_float_rprimitive,
-    vec_depth,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -152,7 +147,6 @@ from mypyc.primitives.str_ops import (
     str_range_check_op,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
-from mypyc.rt_subtype import is_runtime_subtype
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -321,7 +315,9 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
         # NOTE (?) I'm not sure if my handling of can_borrow is correct here
-        obj = builder.accept(arg, can_borrow=is_list_rprimitive(expr_rtype) or isinstance(expr_rtype, RVec))
+        obj = builder.accept(
+            arg, can_borrow=is_list_rprimitive(expr_rtype) or isinstance(expr_rtype, RVec)
+        )
         if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
             return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
@@ -380,6 +376,7 @@ def translate_list_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_list_set_item_op, [x, y, z], line)
 
@@ -408,6 +405,7 @@ def translate_tuple_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
 
@@ -1195,7 +1193,6 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     return None
 
 
-
 def is_object(callee: RefExpr) -> bool:
     """Returns True for object.<name> calls."""
     return (
@@ -1508,13 +1505,12 @@ def translate_bytes_get_item(
     )
 
 
-@specialize_function("librt.vecs.append")   
+@specialize_function("librt.vecs.append")
 def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
         vec_arg = expr.args[0]
         item_arg = expr.args[1]
         vec_type = builder.node_type(vec_arg)
-        item_type = builder.node_type(item_arg)
         if isinstance(vec_type, RVec):
             vec_value = builder.accept(vec_arg)
             arg_value = builder.accept(item_arg)
@@ -1528,7 +1524,6 @@ def translate_vec_remove(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         vec_arg = expr.args[0]
         item_arg = expr.args[1]
         vec_type = builder.node_type(vec_arg)
-        item_type = builder.node_type(item_arg)
         if isinstance(vec_type, RVec):
             vec_value = builder.accept(vec_arg)
             arg_value = builder.accept(item_arg)

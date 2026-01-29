@@ -96,7 +96,6 @@ from mypyc.ir.rtypes import (
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
-    c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,

@@ -65,7 +65,6 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
-    vec_depth,
     vec_api_by_item_type,
     vec_item_type_tags,
 )
@@ -1106,8 +1105,7 @@ class Emitter:
                 if depth == 0:
                     self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
                 else:
-                    self.emit_line(
-                        f"{dest} = VecNestedApi.unbox({src}, {type_value}, {depth});")
+                    self.emit_line(f"{dest} = VecNestedApi.unbox({src}, {type_value}, {depth});")
 
             self.emit_line(f"if (VEC_IS_ERROR({dest})) {{")
             self.emit_line(failure)
