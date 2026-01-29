@@ -288,6 +288,7 @@ def vec_get_item(
     # TODO: Support more index types
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
+    index = builder.coerce(index, c_pyssize_t_rprimitive, line)
     item_addr = vec_item_ptr(builder, base, index)
     result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
     builder.keep_alives.append(base)
