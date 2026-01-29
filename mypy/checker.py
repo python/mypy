@@ -6829,7 +6829,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 expr = operands[j]
 
-                current_type_range = self.get_type_range_of_type(get_proper_type(operand_types[j]))
+                current_type_range = self.get_type_range_of_type(operand_types[j])
                 if current_type_range is None:
                     continue
                 if isinstance(get_proper_type(current_type_range.item), AnyType):
@@ -6840,7 +6840,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if_map, else_map = conditional_types_to_typemaps(
                     expr_in_type_expr,
                     *self.conditional_types_with_intersection(
-                        self.lookup_type(expr_in_type_expr), [current_type_range], expr_in_type_expr
+                        self.lookup_type(expr_in_type_expr),
+                        [current_type_range],
+                        expr_in_type_expr,
                     ),
                 )
 
@@ -7945,7 +7947,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if flatten_tuples:
             type_ranges = []
-            for typ in get_proper_types(flatten_types_if_tuple(self.lookup_type(expr))):
+            for typ in flatten_types_if_tuple(self.lookup_type(expr)):
                 type_range = self.get_type_range_of_type(typ)
                 if type_range is None:
                     return None
@@ -7953,13 +7955,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return type_ranges
 
         else:
-            type_range = self.get_type_range_of_type(get_proper_type(self.lookup_type(expr)))
+            type_range = self.get_type_range_of_type(self.lookup_type(expr))
             if type_range is None:
                 return None
             return [type_range]
 
-
-    def get_type_range_of_type(self, typ: ProperType) -> TypeRange | None:
+    def get_type_range_of_type(self, typ: Type) -> TypeRange | None:
+        typ = get_proper_type(typ)
+        if isinstance(typ, UnionType):
+            type_ranges = [self.get_type_range_of_type(item) for item in typ.items]
+            is_upper_bound = any(t.is_upper_bound for t in type_ranges if t is not None)
+            item = make_simplified_union([t.item for t in type_ranges if t is not None])
+            return TypeRange(item, is_upper_bound=is_upper_bound)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # If a type is generic, `isinstance` can only narrow its variables to Any.
             any_parameterized = fill_typevars_with_any(typ.type_object())
@@ -7984,7 +7991,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return TypeRange(UnionType(typ.args), is_upper_bound=False)
         if isinstance(typ, AnyType):
             return TypeRange(typ, is_upper_bound=False)
-        if not is_subtype(self.named_type("builtins.type"), typ) and not (isinstance(typ, Instance) and typ.type.fullname == "typing._SpecialForm"):
+        if not is_subtype(self.named_type("builtins.type"), typ) and not (
+            isinstance(typ, Instance) and typ.type.fullname == "typing._SpecialForm"
+        ):
             # We saw something, but it couldn't possibly be valid
             return TypeRange(UninhabitedType(), is_upper_bound=False)
 
