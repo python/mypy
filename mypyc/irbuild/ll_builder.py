@@ -682,6 +682,32 @@ class LowLevelIRBuilder:
         self.activate_block(end)
         return res
 
+    def coerce_i64_to_ssize_t(self, src: Value, line: int) -> Value:
+        """Coerce int64 to c_pyssize_t with range check on 32-bit platforms.
+
+        On 64-bit platforms, this is a no-op since the types have the same size.
+        On 32-bit platforms, raises OverflowError if the value doesn't fit in 32 bits.
+        """
+        if PLATFORM_SIZE == 8:
+            return src
+
+        # 32-bit platform: need range check
+        overflow, end = BasicBlock(), BasicBlock()
+
+        self.check_fixed_width_range(src, c_pyssize_t_rprimitive, overflow, line)
+
+        # Value is in range - truncate to 32 bits
+        res = self.add(Truncate(src, c_pyssize_t_rprimitive, line))
+        self.goto(end)
+
+        # Handle overflow case
+        self.activate_block(overflow)
+        self.call_c(int32_overflow, [], line)
+        self.add(Unreachable())
+
+        self.activate_block(end)
+        return res
+
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
