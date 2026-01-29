@@ -1104,7 +1104,7 @@ class SemanticAnalyzer(
             return typ
         p_last_type = get_proper_type(last_type.type)
         if not isinstance(p_last_type, TypedDictType):
-            self.fail("Unpack item in ** argument must be a TypedDict", last_type)
+            self.fail("Unpack item in ** parameter must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         overlap = set(typ.arg_names) & set(p_last_type.items)
