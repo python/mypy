@@ -6492,10 +6492,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not is_false_literal(expr)
                 and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
+                # CallableType type objects are usually already maximally specific
                 and not (
-                    isinstance(p_expr := get_proper_type(expr_type), CallableType)
+                    isinstance(p_expr := get_proper_type(expr_type), FunctionLike)
                     and p_expr.is_type_obj()
                 )
+                # This is a little ad hoc, in the absence of intersection types
+                and not (isinstance(p_expr, TypeType) and isinstance(p_expr.item, TypeVarType))
             ):
                 h = literal_hash(expr)
                 if h is not None:
@@ -6688,10 +6691,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
 
             expr_type = operand_types[i]
-            expanded_expr_type = try_expanding_sum_type_to_union(
-                coerce_to_literal(expr_type), None
-            )
             expr_enum_keys = ambiguous_enum_equality_keys(expr_type)
+            expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)
             for j in expr_indices:
                 if i == j:
                     continue
@@ -6701,11 +6702,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 target_type = operand_types[j]
                 if should_coerce_literals:
-                    # TODO: doing this prevents narrowing a single-member Enum to literal
-                    # of its member, because we expand it here and then refuse to add equal
-                    # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
-                    # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
-                    # See testMatchEnumSingleChoice
                     target_type = coerce_to_literal(target_type)
 
                 if (
@@ -6717,20 +6713,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 target = TypeRange(target_type, is_upper_bound=False)
 
+                if_map, else_map = conditional_types_to_typemaps(
+                    operands[i], *conditional_types(expr_type, [target], consider_promotion_overlap=True)
+                )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
-                    if_map, else_map = conditional_types_to_typemaps(
-                        operands[i],
-                        *conditional_types(
-                            expanded_expr_type, [target], consider_promotion_overlap=True
-                        ),
-                    )
                     all_if_maps.append(if_map)
                     all_else_maps.append(else_map)
                 else:
-                    if_map, else_map = conditional_types_to_typemaps(
-                        operands[i],
-                        *conditional_types(expr_type, [target], consider_promotion_overlap=True),
-                    )
                     # For value targets, it is safe to narrow in the negative case.
                     # e.g. if (x: Literal[5] | None) != (y: Literal[5]), we can narrow x to None
                     # However, for non-value targets, we cannot do this narrowing,
@@ -6780,6 +6769,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
+                expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
                 for j in expr_indices:
                     if j in custom_eq_indices:
                         continue
@@ -6787,11 +6777,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if should_coerce_literals:
                         target_type = coerce_to_literal(target_type)
                     target = TypeRange(target_type, is_upper_bound=False)
-                    is_value_target = is_target_for_value_narrowing(get_proper_type(target_type))
 
-                    if is_value_target:
-                        expr_type = coerce_to_literal(expr_type)
-                        expr_type = try_expanding_sum_type_to_union(expr_type, None)
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i],
                         *conditional_types(
@@ -6799,7 +6785,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         ),
                     )
                     or_if_maps.append(if_map)
-                    if is_value_target:
+                    if is_target_for_value_narrowing(get_proper_type(target_type)):
                         or_else_maps.append(else_map)
 
             all_if_maps.append(reduce_or_conditional_type_maps(or_if_maps))
@@ -6825,6 +6811,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 expr = operands[j]
 
                 current_type_range = self.get_isinstance_type(expr)
+                if current_type_range is not None:
+                    target_type = make_simplified_union([tr.item for tr in current_type_range])
+                    if isinstance(target_type, AnyType):
+                        # Avoid widening to Any for checks like `type(x) is type(y: Any)`.
+                        # We patch this here because it is desirable to widen to any for cases like
+                        # isinstance(x, (y: Any))
+                        continue
                 if_map, else_map = conditional_types_to_typemaps(
                     expr_in_type_expr,
                     *self.conditional_types_with_intersection(
@@ -8668,12 +8661,13 @@ def flatten(t: Expression) -> list[Expression]:
 def flatten_types(t: Type) -> list[Type]:
     """Flatten a nested sequence of tuples into one list of nodes."""
     t = get_proper_type(t)
+    if isinstance(t, UnionType):
+        return [b for a in t.items for b in flatten_types(a)]
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types(a)]
     elif is_named_instance(t, "builtins.tuple"):
         return [t.args[0]]
-    else:
-        return [t]
+    return [t]
 
 
 def expand_func(defn: FuncItem, map: dict[TypeVarId, Type]) -> FuncItem:

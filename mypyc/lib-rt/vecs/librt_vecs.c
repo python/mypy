@@ -96,9 +96,31 @@ typedef struct {
 
 static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject *kw)
 {
-    PyErr_SetString(PyExc_NotImplementedError,
-                    "non-specialized vec construction not yet supported");
-    return NULL;
+    static char *kwlist[] = {"", NULL};
+    PyObject *init = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
+        return NULL;
+    }
+    VecGenericAlias *p = (VecGenericAlias *)self;
+    if (p->depth == 0) {
+        if (init == NULL) {
+            VecT vec = VecT_New(0, 0, p->item_type);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return VecT_Box(vec, p->item_type);
+        } else {
+            return VecT_FromIterable(p->item_type, init);
+        }
+    } else {
+        if (init == NULL) {
+            VecNested vec = VecNested_New(0, 0, p->item_type, p->depth);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return VecNested_Box(vec);
+        } else {
+            return VecNested_FromIterable(p->item_type, p->depth, init);
+        }
+    }
 }
 
 static int
@@ -597,6 +619,26 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecBool_Box(v);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
+            return NULL;
+        }
+        VEC_INCREF(v);
+        v = VecT_Append(v, item, v.buf->item_type);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecT_Box(v, v.buf->item_type);
+    } else if (VecNested_Check(vec)) {
+        VecNested v = ((VecNestedObject *)vec)->vec;
+        VecNestedBufItem vecitem;
+        if (VecNested_UnboxItem(v, item, &vecitem) < 0)
+            return NULL;
+        VEC_INCREF(v);
+        v = VecNested_Append(v, vecitem);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecNested_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -678,6 +720,26 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecBool_Box(v);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
+            return NULL;
+        }
+        VEC_INCREF(v);
+        v = VecT_Remove(v, item);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecT_Box(v, v.buf->item_type);
+    } else if (VecNested_Check(vec)) {
+        VecNested v = ((VecNestedObject *)vec)->vec;
+        VecNestedBufItem vecitem;
+        if (VecNested_UnboxItem(v, item, &vecitem) < 0)
+            return NULL;
+        VEC_INCREF(v);
+        v = VecNested_Remove(v, vecitem);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecNested_Box(v);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -756,6 +818,38 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if ((result_item0 = VecBool_Box(r.f0)) == NULL)
             return NULL;
         result_item1 = VecBool_BoxItem(r.f1);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        VEC_INCREF(v);
+        VecTPopResult r;
+        r = VecT_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        result_item0 = VecT_Box(r.f0, v.buf->item_type);
+        if (result_item0 == NULL) {
+            Py_DECREF(r.f1);
+            return NULL;
+        }
+        result_item1 = r.f1;
+    } else if (VecNested_Check(vec)) {
+        VecNested v = ((VecNestedObject *)vec)->vec;
+        VEC_INCREF(v);
+        VecNestedPopResult r;
+        r = VecNested_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        result_item0 = VecNested_Box(r.f0);
+        if (result_item0 == NULL) {
+            Py_DECREF(r.f0.buf);
+            Py_DECREF(r.f1.buf);
+            return NULL;
+        }
+        result_item1 = VecNested_BoxItem(r.f0, r.f1);
+        if (result_item1 == NULL) {
+            Py_DECREF(result_item0);
+            Py_DECREF(r.f1.buf);
+            return NULL;
+        }
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -780,6 +874,8 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
 }
 
 static VecCapsule Capsule = {
+    &Vec_TAPI,
+    &Vec_NestedAPI,
     &Vec_I64API,
     &Vec_I32API,
     &Vec_I16API,
@@ -844,6 +940,16 @@ librt_vecs_module_exec(PyObject *m)
     if (PyType_Ready(&VecType) < 0)
         return -1;
     if (PyType_Ready(&VecGenericAliasType) < 0)
+        return -1;
+
+    if (PyType_Ready(&VecTType) < 0)
+        return -1;
+    if (PyType_Ready(&VecTBufType) < 0)
+        return -1;
+
+    if (PyType_Ready(&VecNestedType) < 0)
+        return -1;
+    if (PyType_Ready(&VecNestedBufType) < 0)
         return -1;
 
     if (PyType_Ready(&VecI64Type) < 0)

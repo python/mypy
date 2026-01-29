@@ -187,6 +187,8 @@ def test_equality_different_types() -> None:
     assert_neq(vec[i64]([1]), None)
     assert_neq(vec[i64]([1]), [1])
     assert_neq(vec[i64]([1]), (1,))
+    assert_neq(vec[i64]([1]), vec[object]([1]))
+    assert_neq(vec[i64](), vec[object]())
 
 def assert_eq(x: object, y: object) -> None:
     assert x == y

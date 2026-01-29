@@ -245,6 +245,7 @@ from mypy.typeanal import (
     TypeVarLikeList,
     analyze_type_alias,
     check_for_explicit_any,
+    check_vec_type_args,
     detect_diverging_alias,
     find_self_type,
     fix_instance,
@@ -2687,7 +2688,7 @@ class SemanticAnalyzer(
         if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(base):
             self.process_placeholder(
                 None, "tuple base", defn, force_progress=base != info.tuple_type
             )
@@ -6177,6 +6178,10 @@ class SemanticAnalyzer(
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
+
+        if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
+            # Apply restrictions specific to vec
+            check_vec_type_args(types, expr, self)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.

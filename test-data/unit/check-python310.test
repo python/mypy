@@ -1752,7 +1752,10 @@ def f(m: Medal) -> None:
     match m:
         case Medal.GOLD:
             always_assigned = 1
-            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            # Ideally, this should narrow to literal
+            # However `expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)`
+            # in checker.py means we expand the type to a LiteralType and then because there is no
+            # net change we don't end up inserting the LiteralType into the type map
             reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
@@ -3314,3 +3317,44 @@ def type_object(field_type: type[object]) -> str:
             return "bar"
     return ret
 [builtins fixtures/dict.pyi]
+
+
+[case testMatchFinalClass]
+from typing import final, NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+class Types:
+
+    @final
+    class A:
+        pass
+
+    @final
+    class B:
+        pass
+
+def foo(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case Types.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case Types.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+
+
+class TypeTypes:
+    A: type[Types.A] = Types.A
+    B: type[Types.B] = Types.B
+
+
+def bar(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case TypeTypes.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case TypeTypes.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+[builtins fixtures/tuple.pyi]

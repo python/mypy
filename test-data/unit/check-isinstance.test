@@ -2008,6 +2008,7 @@ else:
 [builtins fixtures/list.pyi]
 
 [case testNarrowTypeAfterInListNested]
+# flags: --warn-unreachable
 from typing import List, Optional, Any
 
 x: Optional[int]
@@ -2019,7 +2020,6 @@ if lst in nested_any:
 if x in nested_any:
     reveal_type(x) # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInTuple]
 from typing import Optional
@@ -2885,6 +2885,24 @@ if hasattr(mod, "y"):
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
 
+[case testMultipleHasAttr-xfail]
+# flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20596
+from __future__ import annotations
+from typing import Any
+
+def len(obj: object) -> Any: ...
+
+def f(x: type | str):
+    if (
+        hasattr(x, "__origin__")
+        and x.__origin__ is list
+        and hasattr(x, "__args__")
+        and len(x.__args__) == 1
+    ):
+        reveal_type(x.__args__[0])  # N: Revealed type is "Any"
+[builtins fixtures/module.pyi]
+
 [case testTypeIsntLostAfterNarrowing]
 from typing import Any
 
@@ -2912,3 +2930,34 @@ if isinstance(a, B):
     c = a
 
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceTypeAny]
+from typing import Any
+
+def foo(x: object, t: type[Any]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceUnionOfTuples]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Iterator
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+def extract(
+    values: object,
+    ts: (
+        tuple[type[T1]]
+        | tuple[type[T1], type[T2]]
+        | tuple[type[T1], type[T2], type[T3]]
+    )
+) -> Iterator[T1 | T2 | T3]:
+    if isinstance(values, ts):
+        reveal_type(values)  # N: Revealed type is "T1`-1 | T2`-2 | T3`-3"
+        yield values
+    raise
+[builtins fixtures/primitives.pyi]

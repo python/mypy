@@ -414,7 +414,7 @@ def format_blocks(
         lines.append("L%d:%s" % (block.label, handler_msg))
         if block in source_to_error:
             for error in source_to_error[block]:
-                lines.append(f"  ERR: {error}")
+                lines.append(f"  ERROR: {error}")
         ops = block.ops
         if (
             isinstance(ops[-1], Goto)
@@ -429,8 +429,11 @@ def format_blocks(
             line = "    " + op.accept(visitor)
             lines.append(line)
             if op in source_to_error:
+                first = len(lines) - 1
+                # Use emojis to highlight the error
                 for error in source_to_error[op]:
-                    lines.append(f"  ERR: {error}")
+                    lines.append(f"    \U0001f446 ERROR: {error}")
+                lines[first] = " \U0000274c " + lines[first][4:]
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.

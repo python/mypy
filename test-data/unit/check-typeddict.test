@@ -4581,3 +4581,31 @@ bad({"x": "foo"})  # E: Dict entry 0 has incompatible type "str": "str"; expecte
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackImportCycle]
+import mre
+
+[file mre.py]
+from mre_pkg.model import Callback
+Callback(callback=1)  # E: Argument "callback" to "Callback" has incompatible type "int"; expected "Callback"
+
+[file mre_pkg/model.pyi]
+from typing_extensions import Unpack, TYPE_CHECKING, TypedDict
+from .callbacks import Callback as Callback
+
+class _ModelInit(TypedDict, total=False):
+    callback: Callback
+
+class Model:
+    def __init__(self, **kwargs: Unpack[_ModelInit]) -> None: ...
+
+[file mre_pkg/callbacks.pyi]
+from typing_extensions import Unpack, TYPE_CHECKING, TypedDict
+from .model import Model, _ModelInit
+
+class _CallbackInit(_ModelInit, total=False): ...
+
+class Callback(Model):
+    def __init__(self, **kwargs: Unpack[_CallbackInit]) -> None: ...
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

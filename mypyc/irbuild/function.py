@@ -852,9 +852,11 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     If the function was not already defined somewhere, then define it
     and add it to the current environment.
     """
-    if fdef.original_def:
+    if orig := fdef.original_def:
+        if isinstance(orig, Decorator):
+            orig = orig.func
         # Get the target associated with the previously defined FuncDef.
-        return builder.lookup(fdef.original_def)
+        return builder.lookup(orig)
 
     if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)

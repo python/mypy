@@ -142,6 +142,8 @@ else:
                     "vecs/vec_u8.c",
                     "vecs/vec_float.c",
                     "vecs/vec_bool.c",
+                    "vecs/vec_t.c",
+                    "vecs/vec_nested.c",
                 ],
                 include_dirs=[".", "vecs"],
                 extra_compile_args=cflags,
