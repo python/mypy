@@ -41,7 +41,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
-from mypyc.ir.deps import LIBRT_STRINGS, Dependency
+from mypyc.ir.deps import LIBRT_STRINGS, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -1033,6 +1033,7 @@ class RVec(RType):
         self.name = "vec[%s]" % item_type
         self.item_type = item_type
         self.names = ["len", "buf"]
+        self.dependencies = (LIBRT_VECS,)
         if isinstance(item_type, RUnion):
             non_opt = optional_value_type(item_type)
         else:

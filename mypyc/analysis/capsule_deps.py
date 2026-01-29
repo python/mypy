@@ -3,7 +3,7 @@ from __future__ import annotations
 from mypyc.ir.deps import Dependency
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import Assign, CallC, PrimitiveOp
-from mypyc.ir.rtypes import RStruct, RTuple, RType, RUnion
+from mypyc.ir.rtypes import RStruct, RTuple, RType, RUnion, RVec
 
 
 def find_implicit_op_dependencies(fn: FuncIR) -> set[Dependency] | None:
@@ -64,4 +64,6 @@ def collect_type_deps(typ: RType, deps: set[Dependency] | None) -> set[Dependenc
     elif isinstance(typ, RStruct):
         for item in typ.types:
             deps = collect_type_deps(item, deps)
+    elif isinstance(typ, RVec):
+        deps = collect_type_deps(typ.item_type, deps)
     return deps

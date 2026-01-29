@@ -309,4 +309,3 @@ L5:
     r10 = load_mem r9 :: vec[vec[str]]*
     keep_alive v
     return r10
-

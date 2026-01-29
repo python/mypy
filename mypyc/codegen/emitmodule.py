@@ -28,7 +28,6 @@ from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
 from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
-from mypyc.analysis.vecusage import needs_vec_capsule
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,
@@ -57,11 +56,11 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, LIBRT_VECS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RType, vec_api_by_item_type, vec_api_fields, vec_c_types
+from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
@@ -550,7 +549,6 @@ class GroupGenerator:
         # Multi-phase init is needed to enable free-threading. In the future we'll
         # probably want to enable it always, but we'll wait until it's stable.
         self.multi_phase_init = IS_FREE_THREADED
-        self.use_vec_capsule = any(needs_vec_capsule(m) for m in self.modules.values())
 
     @property
     def group_suffix(self) -> str:
@@ -584,13 +582,6 @@ class GroupGenerator:
         emitter = base_emitter
 
         self.generate_literal_tables()
-
-        if self.use_vec_capsule:
-            self.declare_global("VecCapsule *", "VecApi")
-            for vec_type in sorted(vec_c_types.values()):
-                self.declare_global(f"{vec_type}API ", f"{vec_type}Api")
-            self.declare_global("VecTAPI ", "VecTApi")
-            self.declare_global("VecNestedAPI ", "VecNestedApi")
 
         for module_name, module in self.modules.items():
             if multi_file:
@@ -641,12 +632,12 @@ class GroupGenerator:
             ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <strings/librt_strings.h>")
+        if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
+            ext_declarations.emit_line('#include "vecs/librt_vecs.h"')
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
             ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
-        if self.use_vec_capsule:
-            ext_declarations.emit_line('#include "vecs/librt_vecs.h"')
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -975,19 +966,6 @@ class GroupGenerator:
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )
 
-        if self.use_vec_capsule:
-            emitter.emit_lines(
-                'PyObject *mod = PyImport_ImportModule("librt.vecs");',
-                "if (mod == NULL) return -1;",
-                'VecApi = PyCapsule_Import("librt.vecs._C_API", 0);',
-                "if (!VecApi) return -1;",
-                "VecTApi = *VecApi->t;",
-                "VecNestedApi = *VecApi->nested;",
-            )
-            for item_type, api_name in vec_api_by_item_type.items():
-                field_name = vec_api_fields[item_type]
-                emitter.emit_line(f"{api_name} = *VecApi->{field_name};")
-
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
@@ -1124,6 +1102,10 @@ class GroupGenerator:
             emitter.emit_line("}")
         if LIBRT_STRINGS in module.dependencies:
             emitter.emit_line("if (import_librt_strings() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_VECS in module.dependencies:
+            emitter.emit_line("if (import_librt_vecs() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
