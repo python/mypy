@@ -6714,7 +6714,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
-                    operands[i], *conditional_types(expr_type, [target], consider_promotion_overlap=True)
+                    operands[i],
+                    *conditional_types(expr_type, [target], consider_promotion_overlap=True),
                 )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
