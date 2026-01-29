@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, cast
 
-from mypyc.common import PLATFORM_SIZE, IS_32_BIT_PLATFORM
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_MAGIC,
     ERR_NEVER,
