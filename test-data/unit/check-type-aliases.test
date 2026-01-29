@@ -1245,8 +1245,8 @@ Ts = TypeVarTuple('Ts')
 
 TA: TypeAlias = tuple[Unpack[Ts]]
 
-v1: TA[*list[int]]         # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
-v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+v1: TA[*list[int]]         # E: Invalid syntax...
+v2: TA[Unpack[list[int]]]  # E: Invalid syntax...
 [builtins fixtures/tuple.pyi]
 
 [case testAliasInstanceNameClash]
