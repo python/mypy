@@ -1748,6 +1748,21 @@ def f(cls: Type[object]) -> None:
         cls()[0] + 1
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIssubclassTypeVar]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar
+
+ClassT = TypeVar("ClassT", bound=type)
+
+def directed_meet(cls0: ClassT, cls1: ClassT) -> ClassT | None:
+    if issubclass(cls1, cls0):
+        return cls1
+    if issubclass(cls0, cls1):
+        return cls0
+    return None
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsinstanceTypeArgs]
 from typing import Iterable, TypeVar
 x = 1
@@ -2932,6 +2947,7 @@ if isinstance(a, B):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceTypeAny]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 def foo(x: object, t: type[Any]):
@@ -2939,10 +2955,36 @@ def foo(x: object, t: type[Any]):
         reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsInstanceObject]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(x: object, t: object):
+    if isinstance(x, t):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type[object] | tuple[type[object], ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceOrExprInTuple]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def f1(x: object):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f2(x: Any):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/primitives.pyi]
+
 [case testIsInstanceUnionOfTuples]
 # flags: --strict-equality --warn-unreachable
 from __future__ import annotations
-from typing import TypeVar, Iterator
+from typing import TypeVar, Iterator, final
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
@@ -2960,4 +3002,53 @@ def extract(
         reveal_type(values)  # N: Revealed type is "T1`-1 | T2`-2 | T3`-3"
         yield values
     raise
+
+class A: ...
+class B: ...
+
+def f1(x: A | B, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+def f2(x: object, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+@final
+class FA: ...
+@final
+class FB: ...
+
+def g1(x: FA | FB, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+
+def g2(x: object, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/primitives.pyi]
+
+
+[case testIsInstanceTypeVarBoundToType]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Protocol
+
+class A(Protocol):
+    x: int
+
+T = TypeVar("T", bound=type[A])
+
+def foo(x: object, t: T):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
