@@ -1160,7 +1160,7 @@ def analyze_class_attribute_access(
         if info.fallback_to_any or info.meta_fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         # For enum types, report missing member with fuzzy matching suggestions
-        if info.is_enum and info.enum_members:
+        if info.is_enum and info.enum_members and not (name.startswith("__") and name.endswith("__"):
             return report_missing_attribute(mx.original_type, itype, name, mx)
         return None
 
