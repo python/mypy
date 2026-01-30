@@ -24,6 +24,7 @@ class TypeExportSuite(DataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         error = False
         src = "\n".join(testcase.input)
+        is_meta = testcase.name.endswith("_meta")
         try:
             options = Options()
             options.use_builtins_fixtures = True
@@ -50,10 +51,10 @@ class TypeExportSuite(DataSuite):
                     "__future__",
                     "typing_extensions",
                     "sys",
+                    "collections",
                 ):
                     continue
                 fnam = os.path.join(cache_dir, f"{module}.data.ff")
-                is_meta = testcase.name.endswith("_meta")
                 if not is_meta:
                     with open(fnam, "rb") as f:
                         json_data = convert_binary_cache_to_json(f.read(), implicit_names=False)
@@ -81,6 +82,15 @@ class TypeExportSuite(DataSuite):
             a = e.messages
             error = True
         if error or "\n".join(testcase.output).strip() != "<not checked>":
+            if is_meta and sys.platform == "win32":
+                out = filter_platform_specific(testcase.output)
+                a = filter_platform_specific(a)
+            else:
+                out = testcase.output
             assert_string_arrays_equal(
-                testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
+                out, a, f"Invalid output ({testcase.file}, line {testcase.line})"
             )
+
+
+def filter_platform_specific(lines: list[str]) -> list[str]:
+    return [l for l in lines if '"size":' not in l and '"hash":' not in l]
