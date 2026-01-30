@@ -1671,7 +1671,7 @@ L0:
     r8 = r7 + 8
     return r4
 
-[case testVecI64GetItemBorrowVec]
+[case testVecI64GetItemBorrowVec_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 

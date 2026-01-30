@@ -242,7 +242,7 @@ L0:
     keep_alive r0
     return r0
 
-[case testVecI64ConstructFromListMultiply]
+[case testVecI64ConstructFromListMultiply_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -578,7 +578,7 @@ L5:
 L6:
     return r10
 
-[case testVecI64GetItemWithInt]
+[case testVecI64GetItemWithInt_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -623,7 +623,7 @@ L5:
     keep_alive v
     return r10
 
-[case testVecI64Slicing]
+[case testVecI64Slicing_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -682,7 +682,7 @@ L0:
     r0 = VecI64Api.pop(v, -1)
     return r0
 
-[case testVecI64PopNth]
+[case testVecI64PopNth_64bit]
 from typing import Tuple
 from librt.vecs import vec, pop
 from mypy_extensions import i64
@@ -698,7 +698,7 @@ L0:
     r0 = VecI64Api.pop(v, n)
     return r0
 
-[case testVecI64InPlaceOp]
+[case testVecI64InPlaceOp_64bit]
 from librt.vecs import vec, remove
 from mypy_extensions import i64
 
