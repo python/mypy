@@ -113,7 +113,7 @@ def is_foo(a: Union[int, str]) -> TypeGuard[str]: pass
 def main(a: Union[str, int]) -> None:
     if is_foo(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(a)  # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardUnionOut]
@@ -122,7 +122,7 @@ from typing_extensions import TypeGuard
 def is_foo(a: object) -> TypeGuard[Union[int, str]]: pass
 def main(a: object) -> None:
     if is_foo(a):
-        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardNonzeroFloat]
@@ -221,14 +221,14 @@ def is_int(a: object) -> TypeGuard[int]: pass
 def is_str(a: object) -> TypeGuard[str]: pass
 def intmain(a: Union[int, str]) -> None:
     if not is_int(a):
-        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.int"
 def strmain(a: Union[int, str]) -> None:
     if is_str(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
     else:
-        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardClassMethod]
@@ -286,12 +286,12 @@ def is_int_bool(a: object) -> bool: pass
 
 def main(a: List[Optional[int]]) -> None:
     bb = filter(lambda x: x is not None, a)
-    reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    reveal_type(bb)  # N: Revealed type is "typing.Iterator[builtins.int | None]"
     # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
     cc = filter(is_int_typeguard, a)
     reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
     dd = filter(is_int_bool, a)
-    reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    reveal_type(dd)  # N: Revealed type is "typing.Iterator[builtins.int | None]"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
@@ -402,7 +402,7 @@ def g(x: object) -> None: ...
 def test(x: Any) -> None:
     if not(f(x) or x):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, Any]"
+    g(reveal_type(x))  # N: Revealed type is "__main__.A | Any"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardNestedRestrictionUnionOther]
@@ -418,7 +418,7 @@ def g(x: object) -> None: ...
 def test(x: object) -> None:
     if not(f(x) or f2(x)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    g(reveal_type(x))  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardComprehensionSubtype]
@@ -452,7 +452,7 @@ def g(x: object) -> None: ...
 def test(x: List[object]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "builtins.list[builtins.object]" and "__main__.A">]"
+    g(reveal_type(x))  # N: Revealed type is "builtins.list[builtins.str] | __main__.<subclass of "builtins.list[builtins.object]" and "__main__.A">"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardMultipleCondition-xfail]
@@ -859,7 +859,7 @@ def is_b(x: object) -> TypeGuard[B]: ...
 T = TypeVar("T")
 def test(x: T) -> T:
     if isinstance(x, A) or is_b(x):
-        reveal_type(x.x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int | builtins.str"
     return x
 [builtins fixtures/isinstance.pyi]
 
@@ -895,5 +895,5 @@ def main(x: Union[A, B]) -> None:
     if is_a(x):
         reveal_type(x)  # N: Revealed type is "__main__.A"
     else:
-        reveal_type(x)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/tuple.pyi]

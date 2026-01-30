@@ -14,6 +14,7 @@ class type:
     def __init__(self, *a: object) -> None: pass
     def __call__(self, *a: object) -> object: pass
 class tuple(Sequence[_Tco], Generic[_Tco]):
+    def __hash__(self) -> int: ...
     def __new__(cls: Type[_T], iterable: Iterable[_Tco] = ...) -> _T: ...
     def __iter__(self) -> Iterator[_Tco]: pass
     def __contains__(self, item: object) -> bool: pass

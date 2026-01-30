@@ -9,8 +9,9 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from collections.abc import Iterator
-from typing import Any, Callable
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from typing import Any
 
 from pytest import raises
 
@@ -309,6 +310,29 @@ class StubtestUnit(unittest.TestCase):
                 mistyped_var = 1
             """,
             error="X.mistyped_var",
+        )
+
+    @collect_cases
+    def test_transparent_type_check_only_subclasses(self) -> Iterator[Case]:
+        # See https://github.com/python/mypy/issues/20223
+        yield Case(
+            stub="""
+            from typing import type_check_only
+
+            class UFunc: ...
+
+            @type_check_only
+            class _BinaryUFunc(UFunc): ...
+
+            equal: _BinaryUFunc
+            """,
+            runtime="""
+            class UFunc:
+                pass
+
+            equal = UFunc()
+            """,
+            error=None,
         )
 
     @collect_cases
@@ -1306,38 +1330,37 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        if sys.version_info >= (3, 10):
-            yield Case(
-                stub="""
-                Q = Dict[str, str]
-                R = dict[int, int]
-                S = Tuple[int, int]
-                T = tuple[str, str]
-                U = int | str
-                V = Union[int, str]
-                W = typing.Callable[[str], bool]
-                Z = collections.abc.Callable[[str], bool]
-                QQ = typing.Iterable[str]
-                RR = collections.abc.Iterable[str]
-                MM = typing.Match[str]
-                MMM = re.Match[str]
-                """,
-                runtime="""
-                Q = dict[str, str]
-                R = dict[int, int]
-                S = tuple[int, int]
-                T = tuple[str, str]
-                U = int | str
-                V = int | str
-                W = collections.abc.Callable[[str], bool]
-                Z = collections.abc.Callable[[str], bool]
-                QQ = collections.abc.Iterable[str]
-                RR = collections.abc.Iterable[str]
-                MM = re.Match[str]
-                MMM = re.Match[str]
-                """,
-                error=None,
-            )
+        yield Case(
+            stub="""
+            Q = Dict[str, str]
+            R = dict[int, int]
+            S = Tuple[int, int]
+            T = tuple[str, str]
+            U = int | str
+            V = Union[int, str]
+            W = typing.Callable[[str], bool]
+            Z = collections.abc.Callable[[str], bool]
+            QQ = typing.Iterable[str]
+            RR = collections.abc.Iterable[str]
+            MM = typing.Match[str]
+            MMM = re.Match[str]
+            """,
+            runtime="""
+            Q = dict[str, str]
+            R = dict[int, int]
+            S = tuple[int, int]
+            T = tuple[str, str]
+            U = int | str
+            V = int | str
+            W = collections.abc.Callable[[str], bool]
+            Z = collections.abc.Callable[[str], bool]
+            QQ = collections.abc.Iterable[str]
+            RR = collections.abc.Iterable[str]
+            MM = re.Match[str]
+            MMM = re.Match[str]
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
@@ -1482,6 +1505,30 @@ class StubtestUnit(unittest.TestCase):
                 __slots__ = ()
             """,
             error=None,
+        )
+        yield Case(
+            stub="""
+            class HasCompatibleValue(enum.Enum):
+                _value_: str
+                FOO = ...
+            """,
+            runtime="""
+            class HasCompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasIncompatibleValue(enum.Enum):
+                _value_: int
+                FOO = ...
+            """,
+            runtime="""
+            class HasIncompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error="HasIncompatibleValue.FOO",
         )
 
     @collect_cases
@@ -2332,13 +2379,10 @@ assert annotations
         )
         yield Case(stub="A = TypeVar('A')", runtime="A = TypeVar('A')", error=None)
         yield Case(stub="B = TypeVar('B')", runtime="B = 5", error="B")
-        if sys.version_info >= (3, 10):
-            yield Case(
-                stub="from typing import ParamSpec",
-                runtime="from typing import ParamSpec",
-                error=None,
-            )
-            yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
+        yield Case(
+            stub="from typing import ParamSpec", runtime="from typing import ParamSpec", error=None
+        )
+        yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
     @collect_cases
     def test_metaclass_match(self) -> Iterator[Case]:
@@ -2705,6 +2749,33 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         assert output == expected
 
+    def test_reexport_reports_import_location(self) -> None:
+        with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
+            Path("builtins.pyi").write_text(stubtest_builtins_stub)
+            Path("typing.pyi").write_text(stubtest_typing_stub)
+            Path("enum.pyi").write_text(stubtest_enum_stub)
+
+            os.makedirs("test_module", exist_ok=True)
+            Path("test_module/__init__.pyi").write_text("from .mod import f")
+            Path("test_module/__init__.py").write_text("from .mod import f")
+            Path("test_module/mod.pyi").write_text("def f(self) -> None: ...")
+            Path("test_module/mod.py").write_text("def f(self, x): pass")
+
+            output = io.StringIO()
+            outerr = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
+                test_stubs(parse_options([TEST_MODULE_NAME]), use_builtins_fixtures=True)
+
+            filtered_output = remove_color_code(
+                output.getvalue()
+                .replace(os.path.realpath(tmp_dir) + os.sep, "")
+                .replace(tmp_dir + os.sep, "")
+            )
+
+        assert filtered_output.count('stub does not have parameter "x"') == 1
+        assert "__init__.pyi" not in filtered_output
+        assert "mod.py:1" in filtered_output
+
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
             stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
@@ -2754,24 +2825,16 @@ class StubtestMiscUnit(unittest.TestCase):
                 f.write("unused.*\n")
 
             output = run_stubtest(
-                stub=textwrap.dedent(
-                    """
+                stub=textwrap.dedent("""
                     def good() -> None: ...
                     def bad(number: int) -> None: ...
                     def also_bad(number: int) -> None: ...
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
-                runtime=textwrap.dedent(
-                    """
+                    """.lstrip("\n")),
+                runtime=textwrap.dedent("""
                     def good(): pass
                     def bad(asdf): pass
                     def also_bad(asdf): pass
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
+                    """.lstrip("\n")),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (
@@ -2862,10 +2925,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        if sys.version_info >= (3, 10):
-            assert str(sig) == "def (arg: builtins.int | builtins.str)"
-        else:
-            assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
+        assert str(sig) == "def (arg: builtins.int | builtins.str)"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"

@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Sequence
-from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
+from collections.abc import Callable, Sequence
+from typing import Any, Final, Literal, TypeVar, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -135,40 +135,21 @@ from ast import AST, Attribute, Call, FunctionType, Name, Starred, UAdd, UnaryOp
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
-    return ast3.parse(
-        source,
-        filename,
-        mode,
-        type_comments=True,  # This works the magic
-        feature_version=feature_version,
-    )
+    # Ignore warnings that look like:
+    #     <type_comment>:1: SyntaxWarning: invalid escape sequence '\.'
+    # because `source` could be anything, including literals like r'(re\.match)'
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast3.parse(
+            source,
+            filename,
+            mode,
+            type_comments=True,  # This works the magic
+            feature_version=feature_version,
+        )
 
 
-NamedExpr = ast3.NamedExpr
-Constant = ast3.Constant
-
-if sys.version_info >= (3, 10):
-    Match = ast3.Match
-    MatchValue = ast3.MatchValue
-    MatchSingleton = ast3.MatchSingleton
-    MatchSequence = ast3.MatchSequence
-    MatchStar = ast3.MatchStar
-    MatchMapping = ast3.MatchMapping
-    MatchClass = ast3.MatchClass
-    MatchAs = ast3.MatchAs
-    MatchOr = ast3.MatchOr
-    AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
-else:
-    Match = Any
-    MatchValue = Any
-    MatchSingleton = Any
-    MatchSequence = Any
-    MatchStar = Any
-    MatchMapping = Any
-    MatchClass = Any
-    MatchAs = Any
-    MatchOr = Any
-    AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
+AstNode = ast3.expr | ast3.stmt | ast3.pattern | ast3.ExceptHandler
 
 if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
@@ -305,7 +286,7 @@ def parse_type_ignore_tag(tag: str | None) -> list[str] | None:
     if m is None:
         # Invalid "# type: ignore" comment.
         return None
-    return [code.strip() for code in m.group(1).split(",")]
+    return [stripped_code for code in m.group(1).split(",") if (stripped_code := code.strip())]
 
 
 def parse_type_comment(
@@ -445,8 +426,8 @@ class ASTConverter:
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
-        node.end_line = getattr(n, "end_lineno", None)
-        node.end_column = getattr(n, "end_col_offset", None)
+        node.end_line = n.end_lineno
+        node.end_column = n.end_col_offset
 
         return node
 
@@ -605,8 +586,8 @@ class ASTConverter:
         first, last = stmts[0], stmts[-1]
         b.line = first.lineno
         b.column = first.col_offset
-        b.end_line = getattr(last, "end_lineno", None)
-        b.end_column = getattr(last, "end_col_offset", None)
+        b.end_line = last.end_lineno
+        b.end_column = last.end_col_offset
         if not b.body:
             return
         new_first = b.body[0]
@@ -653,7 +634,7 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (if_block_with_overload, if_unknown_truth_value) = (
+                    if_block_with_overload, if_unknown_truth_value = (
                         self._get_executable_if_block_with_overloads(stmt)
                     )
 
@@ -712,7 +693,7 @@ class ASTConverter:
                     current_overload.extend(if_block_with_overload.body[-1].items)
                 else:
                     current_overload.append(
-                        cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
+                        cast(Decorator | FuncDef, if_block_with_overload.body[0])
                     )
             else:
                 if last_if_stmt is not None:
@@ -758,7 +739,7 @@ class ASTConverter:
                             cast(list[IfStmt], if_block_with_overload.body[:-1])
                         )
                         last_if_overload = cast(
-                            Union[Decorator, FuncDef, OverloadedFuncDef],
+                            Decorator | FuncDef | OverloadedFuncDef,
                             if_block_with_overload.body[-1],
                         )
                     last_if_unknown_truth_value = if_unknown_truth_value
@@ -804,9 +785,7 @@ class ASTConverter:
         ):
             return None
 
-        overload_name = cast(
-            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]
-        ).name
+        overload_name = cast(Decorator | FuncDef | OverloadedFuncDef, stmt.body[0].body[-1]).name
         if stmt.else_body is None:
             return overload_name
 
@@ -957,7 +936,7 @@ class ASTConverter:
                 # for ellipsis arg
                 if (
                     len(func_type_ast.argtypes) == 1
-                    and isinstance(func_type_ast.argtypes[0], Constant)
+                    and isinstance(func_type_ast.argtypes[0], ast3.Constant)
                     and func_type_ast.argtypes[0].value is Ellipsis
                 ):
                     if n.returns:
@@ -989,7 +968,7 @@ class ASTConverter:
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
-                    arg_types = cast(list[Optional[Type]], translated_args)
+                    arg_types = cast(list[Type | None], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -1051,8 +1030,8 @@ class ASTConverter:
                 )
 
         # End position is always the same.
-        end_line = getattr(n, "end_lineno", None)
-        end_column = getattr(n, "end_col_offset", None)
+        end_line = n.end_lineno
+        end_column = n.end_col_offset
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
@@ -1100,7 +1079,7 @@ class ASTConverter:
     ) -> list[Argument]:
         new_args = []
         names: list[ast3.arg] = []
-        posonlyargs = getattr(args, "posonlyargs", cast(list[ast3.arg], []))
+        posonlyargs = args.posonlyargs
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
@@ -1170,12 +1149,7 @@ class ASTConverter:
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
-        argument.set_line(
-            arg.lineno,
-            arg.col_offset,
-            getattr(arg, "end_lineno", None),
-            getattr(arg, "end_col_offset", None),
-        )
+        argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
@@ -1211,8 +1185,8 @@ class ASTConverter:
         if self.options.include_docstrings:
             cdef.docstring = ast3.get_docstring(n, clean=False)
         cdef.column = n.col_offset
-        cdef.end_line = getattr(n, "end_lineno", None)
-        cdef.end_column = getattr(n, "end_col_offset", None)
+        cdef.end_line = n.end_lineno
+        cdef.end_column = n.end_col_offset
         self.class_and_function_stack.pop()
         return cdef
 
@@ -1492,7 +1466,7 @@ class ASTConverter:
 
     # --- expr ---
 
-    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+    def visit_NamedExpr(self, n: ast3.NamedExpr) -> AssignmentExpr:
         s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
         return self.set_line(s, n)
 
@@ -1644,12 +1618,12 @@ class ASTConverter:
             self.visit(n.func),
             arg_types,
             arg_kinds,
-            cast("list[Optional[str]]", [None] * len(args)) + keyword_names,
+            cast("list[str | None]", [None] * len(args)) + keyword_names,
         )
         return self.set_line(e, n)
 
-    # Constant(object value) -- a constant, in Python 3.8.
-    def visit_Constant(self, n: Constant) -> Any:
+    # Constant(object value)
+    def visit_Constant(self, n: ast3.Constant) -> Any:
         val = n.value
         e: Any = None
         if val is None:
@@ -1773,15 +1747,13 @@ class ASTConverter:
         e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
 
-    # --- slice ---
-
     # Slice(expr? lower, expr? upper, expr? step)
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
         e = SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
         return self.set_line(e, n)
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
-    def visit_Match(self, n: Match) -> MatchStmt:
+    def visit_Match(self, n: ast3.Match) -> MatchStmt:
         node = MatchStmt(
             self.visit(n.subject),
             [self.visit(c.pattern) for c in n.cases],
@@ -1790,15 +1762,15 @@ class ASTConverter:
         )
         return self.set_line(node, n)
 
-    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+    def visit_MatchValue(self, n: ast3.MatchValue) -> ValuePattern:
         node = ValuePattern(self.visit(n.value))
         return self.set_line(node, n)
 
-    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+    def visit_MatchSingleton(self, n: ast3.MatchSingleton) -> SingletonPattern:
         node = SingletonPattern(n.value)
         return self.set_line(node, n)
 
-    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+    def visit_MatchSequence(self, n: ast3.MatchSequence) -> SequencePattern:
         patterns = [self.visit(p) for p in n.patterns]
         stars = [p for p in patterns if isinstance(p, StarredPattern)]
         assert len(stars) < 2
@@ -1806,7 +1778,7 @@ class ASTConverter:
         node = SequencePattern(patterns)
         return self.set_line(node, n)
 
-    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+    def visit_MatchStar(self, n: ast3.MatchStar) -> StarredPattern:
         if n.name is None:
             node = StarredPattern(None)
         else:
@@ -1815,19 +1787,19 @@ class ASTConverter:
 
         return self.set_line(node, n)
 
-    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+    def visit_MatchMapping(self, n: ast3.MatchMapping) -> MappingPattern:
         keys = [self.visit(k) for k in n.keys]
         values = [self.visit(v) for v in n.patterns]
 
         if n.rest is None:
             rest = None
         else:
-            rest = NameExpr(n.rest)
+            rest = self.set_line(NameExpr(n.rest), n)
 
         node = MappingPattern(keys, values, rest)
         return self.set_line(node, n)
 
-    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+    def visit_MatchClass(self, n: ast3.MatchClass) -> ClassPattern:
         class_ref = self.visit(n.cls)
         assert isinstance(class_ref, RefExpr)
         positionals = [self.visit(p) for p in n.patterns]
@@ -1838,7 +1810,7 @@ class ASTConverter:
         return self.set_line(node, n)
 
     # MatchAs(expr pattern, identifier name)
-    def visit_MatchAs(self, n: MatchAs) -> AsPattern:
+    def visit_MatchAs(self, n: ast3.MatchAs) -> AsPattern:
         if n.name is None:
             name = None
         else:
@@ -1848,7 +1820,7 @@ class ASTConverter:
         return self.set_line(node, n)
 
     # MatchOr(expr* pattern)
-    def visit_MatchOr(self, n: MatchOr) -> OrPattern:
+    def visit_MatchOr(self, n: ast3.MatchOr) -> OrPattern:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
@@ -2030,9 +2002,9 @@ class TypeConverter:
         return TypeList([self.visit(e) for e in l], line=self.line)
 
     def _extract_argument_name(self, n: ast3.expr) -> str | None:
-        if isinstance(n, Constant) and isinstance(n.value, str):
+        if isinstance(n, ast3.Constant) and isinstance(n.value, str):
             return n.value.strip()
-        elif isinstance(n, Constant) and n.value is None:
+        elif isinstance(n, ast3.Constant) and n.value is None:
             return None
         self.fail(
             message_registry.ARG_NAME_EXPECTED_STRING_LITERAL.format(type(n).__name__),
@@ -2058,7 +2030,7 @@ class TypeConverter:
             uses_pep604_syntax=True,
         )
 
-    def visit_Constant(self, n: Constant) -> Type:
+    def visit_Constant(self, n: ast3.Constant) -> Type:
         val = n.value
         if val is None:
             # None is a type.
@@ -2114,16 +2086,10 @@ class TypeConverter:
             numeric_value, type_name, line=self.line, column=getattr(n, "col_offset", -1)
         )
 
-    def visit_Index(self, n: ast3.Index) -> Type:
-        # cast for mypyc's benefit on Python 3.9
-        value = self.visit(cast(Any, n).value)
-        assert isinstance(value, Type)
-        return value
-
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")
 
-    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
+    # Subscript(expr value, expr slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         empty_tuple_index = False
         if isinstance(n.slice, ast3.Tuple):
@@ -2142,8 +2108,8 @@ class TypeConverter:
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
-            result.end_column = getattr(n, "end_col_offset", None)
-            result.end_line = getattr(n, "end_lineno", None)
+            result.end_column = n.end_col_offset
+            result.end_line = n.end_lineno
             return result
         else:
             return self.invalid_type(n)

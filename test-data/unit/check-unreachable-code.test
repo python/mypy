@@ -546,8 +546,8 @@ import sys
 
 unary_minus = -(sys.platform == 'linux') and str()
 binary_minus = ((sys.platform == 'linux') - (sys.platform == 'linux')) and str()
-reveal_type(unary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
-reveal_type(binary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+reveal_type(unary_minus) # N: Revealed type is "Literal[0] | builtins.str"
+reveal_type(binary_minus) # N: Revealed type is "Literal[0] | builtins.str"
 [builtins fixtures/ops.pyi]
 
 [case testMypyFalseValuesInBinaryOps_no_empty]
@@ -657,7 +657,7 @@ COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
 a = COMPILE_TIME_FALSE or indeterminate
 reveal_type(a)  # N: Revealed type is "builtins.str"
 b = indeterminate or COMPILE_TIME_FALSE
-reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[True]]"
+reveal_type(b)  # N: Revealed type is "builtins.str | Literal[True]"
 [typing fixtures/typing-medium.pyi]
 
 [case testSemanticAnalysisTrueButTypeNarrowingFalse]
@@ -669,7 +669,7 @@ COMPILE_TIME_TRUE: Literal[False]  # type narrowed to `else` only
 a = COMPILE_TIME_TRUE or indeterminate
 reveal_type(a)  # N: Revealed type is "Literal[False]"
 b = indeterminate or COMPILE_TIME_TRUE
-reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+reveal_type(b)  # N: Revealed type is "builtins.str | Literal[False]"
 
 [typing fixtures/typing-medium.pyi]
 [case testConditionalAssertWithoutElse]
@@ -1637,7 +1637,31 @@ class C:
             return C()
         else:
             return NotImplemented
+[builtins fixtures/isinstance.pyi]
 
+[case testIgnoreReturningNotImplementedSimple]
+# flags: --warn-unreachable
+-- This behavior may or may not actually be desirable.
+-- This test just serves to document mypy's current behavior.
+-- And mypy's handling of NotImplemented has long been known
+-- to be suboptimal, eg https://github.com/python/mypy/issues/363.
+-- If you change this behavior, please change the corresponding docs
+-- https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-warn-unreachable
+def foo() -> None:
+    return None
+    return NotImplemented #no error
+    return None # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testPassAndEllipsisUnreachable]
+# flags: --warn-unreachable
+def f() -> None:
+    return
+    pass  # E: Statement is unreachable
+
+def g() -> None:
+    return
+    ...  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableStatementPrettyHighlighting]
@@ -1650,3 +1674,21 @@ def x() -> None:
 main:4: error: Statement is unreachable
         if 5:
         ^~~~~
+
+[case testReachableEqualityNarrowingAny]
+# flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20532
+from __future__ import annotations
+from typing import Any
+
+def print(s: str): pass
+
+def main(contents: Any, commit: str | None) -> None:
+    if (
+        contents.get("commit") == commit
+        and (commit is not None or print("can_be_reached"))
+    ):
+        pass
+
+main({"commit": None}, None)
+[builtins fixtures/tuple.pyi]

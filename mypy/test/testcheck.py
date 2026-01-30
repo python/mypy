@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
@@ -22,11 +23,16 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
+    remove_typevar_ids,
 )
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -38,8 +44,6 @@ import pytest
 typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python version specific features:
-if sys.version_info < (3, 10):
-    typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
 if sys.version_info < (3, 12):
@@ -133,6 +137,14 @@ class TypeCheckSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
 
+        if options.num_workers:
+            options.fixed_format_cache = True
+            if testcase.output_files:
+                raise pytest.skip("Reports are not supported in parallel mode")
+            # Note: do not use this unless really needed!
+            if testcase.name.endswith("_no_parallel"):
+                raise pytest.skip("Test not supported in parallel mode yet")
+
         # Enable some options automatically based on test file name.
         if "columns" in testcase.file:
             options.show_column_numbers = True
@@ -140,10 +152,8 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "union-error" not in testcase.file:
-            options.force_union_syntax = True
 
-        if incremental_step and options.incremental:
+        if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
@@ -154,18 +164,30 @@ class TypeCheckSuite(DataSuite):
 
         sources = []
         for module_name, program_path, program_text in module_data:
-            # Always set to none so we're forced to reread the module in incremental mode
+            # Always set to None, so we're forced to reread the module in incremental mode
             sources.append(
                 BuildSource(program_path, module_name, None if incremental_step else program_text)
             )
 
         plugin_dir = os.path.join(test_data_prefix, "plugins")
-        sys.path.insert(0, plugin_dir)
 
+        worker_env = None
+        if options.num_workers > 0:
+            worker_env = os.environ.copy()
+            # Make sure we are running tests with current worktree files, *not* with
+            # an installed version of mypy.
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            worker_env["PYTHONPATH"] = os.pathsep.join([root_dir, plugin_dir])
+            worker_env["MYPY_TEST_PREFIX"] = root_dir
+            worker_env["MYPY_ALT_LIB_PATH"] = test_temp_dir
+
+        sys.path.insert(0, plugin_dir)
         res = None
         blocker = False
         try:
-            res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
+            res = build.build(
+                sources=sources, options=options, alt_lib_path=test_temp_dir, worker_env=worker_env
+            )
             a = res.errors
         except CompileError as e:
             a = e.messages
@@ -196,6 +218,10 @@ class TypeCheckSuite(DataSuite):
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a, incremental_step=incremental_step)
 
+        if options.num_workers > 0:
+            # TypeVarIds are not stable in parallel checking, normalize.
+            a = remove_typevar_ids(a)
+            output = remove_typevar_ids(output)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
@@ -211,7 +237,8 @@ class TypeCheckSuite(DataSuite):
                 for module, target in res.manager.processed_targets
                 if module in testcase.test_modules
             ]
-            if expected is not None:
+            # TODO: check targets in parallel mode (e.g. per SCC).
+            if options.num_workers == 0 and expected is not None:
                 assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = "" if incremental_step == 2 else str(incremental_step - 1)

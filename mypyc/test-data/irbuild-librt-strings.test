@@ -1,0 +1,147 @@
+[case testLibrtStrings_experimental_64bit]
+from librt.strings import BytesWriter
+from mypy_extensions import u8, i64
+
+def bytes_writer_basics() -> bytes:
+    b = BytesWriter()
+    b.append(1)
+    b.write(b'foo')
+    n = 2
+    b.truncate(n)
+    return b.getvalue()
+def bytes_writer_len(b: BytesWriter) -> i64:
+    return len(b)
+def bytes_writer_get_item(b: BytesWriter, i: i64) -> u8:
+    return b[i]
+def bytes_writer_set_item(b: BytesWriter, i: i64, x: u8) -> None:
+    b[i] = x
+[out]
+def bytes_writer_basics():
+    r0, b :: librt.strings.BytesWriter
+    r1 :: None
+    r2 :: bytes
+    r3 :: None
+    n :: int
+    r4 :: native_int
+    r5 :: bit
+    r6, r7 :: i64
+    r8 :: ptr
+    r9 :: c_ptr
+    r10 :: i64
+    r11 :: None
+    r12 :: bytes
+L0:
+    r0 = LibRTStrings_BytesWriter_internal()
+    b = r0
+    r1 = CPyBytesWriter_Append(b, 1)
+    r2 = b'foo'
+    r3 = CPyBytesWriter_Write(b, r2)
+    n = 4
+    r4 = n & 1
+    r5 = r4 == 0
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = n >> 1
+    r7 = r6
+    goto L3
+L2:
+    r8 = n ^ 1
+    r9 = r8
+    r10 = CPyLong_AsInt64(r9)
+    r7 = r10
+    keep_alive n
+L3:
+    r11 = LibRTStrings_BytesWriter_truncate_internal(b, r7)
+    r12 = LibRTStrings_BytesWriter_getvalue_internal(b)
+    return r12
+def bytes_writer_len(b):
+    b :: librt.strings.BytesWriter
+    r0 :: short_int
+    r1 :: i64
+L0:
+    r0 = CPyBytesWriter_Len(b)
+    r1 = r0 >> 1
+    return r1
+def bytes_writer_get_item(b, i):
+    b :: librt.strings.BytesWriter
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: u8
+L0:
+    r0 = CPyBytesWriter_AdjustIndex(b, i)
+    r1 = CPyBytesWriter_RangeCheck(b, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytesWriter_GetItem(b, r0)
+    return r3
+def bytes_writer_set_item(b, i, x):
+    b :: librt.strings.BytesWriter
+    i :: i64
+    x :: u8
+    r0 :: i64
+    r1, r2 :: bool
+L0:
+    r0 = CPyBytesWriter_AdjustIndex(b, i)
+    r1 = CPyBytesWriter_RangeCheck(b, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    CPyBytesWriter_SetItem(b, r0, x)
+    return 1
+
+[case testLibrtStrings_StringWriter_experimental_64bit]
+from librt.strings import StringWriter
+from mypy_extensions import i32, i64
+
+def string_writer_basics() -> str:
+    s = StringWriter()
+    s.append(65)
+    s.write('foo')
+    return s.getvalue()
+def string_writer_len(s: StringWriter) -> i64:
+    return len(s)
+def string_writer_get_item(s: StringWriter, i: i64) -> i32:
+    return s[i]
+[out]
+def string_writer_basics():
+    r0, s :: librt.strings.StringWriter
+    r1 :: None
+    r2 :: str
+    r3 :: None
+    r4 :: str
+L0:
+    r0 = LibRTStrings_StringWriter_internal()
+    s = r0
+    r1 = CPyStringWriter_Append(s, 65)
+    r2 = 'foo'
+    r3 = LibRTStrings_StringWriter_write_internal(s, r2)
+    r4 = LibRTStrings_StringWriter_getvalue_internal(s)
+    return r4
+def string_writer_len(s):
+    s :: librt.strings.StringWriter
+    r0 :: short_int
+    r1 :: i64
+L0:
+    r0 = CPyStringWriter_Len(s)
+    r1 = r0 >> 1
+    return r1
+def string_writer_get_item(s, i):
+    s :: librt.strings.StringWriter
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: i32
+L0:
+    r0 = CPyStringWriter_AdjustIndex(s, i)
+    r1 = CPyStringWriter_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStringWriter_GetItem(s, r0)
+    return r3

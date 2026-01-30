@@ -16,10 +16,9 @@ down mypy development).
 import argparse
 import json
 import sys
-from typing import Any, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, TypeAlias as _TypeAlias
 
-from librt.internal import Buffer
+from librt.internal import ReadBuffer
 
 from mypy.cache import CacheMeta
 from mypy.nodes import (
@@ -70,7 +69,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-Json: _TypeAlias = Union[dict[str, Any], str]
+Json: _TypeAlias = dict[str, Any] | str
 
 
 class Config:
@@ -79,7 +78,7 @@ class Config:
 
 
 def convert_binary_cache_to_json(data: bytes, *, implicit_names: bool = True) -> Json:
-    tree = MypyFile.read(Buffer(data))
+    tree = MypyFile.read(ReadBuffer(data))
     return convert_mypy_file_to_json(tree, Config(implicit_names=implicit_names))
 
 

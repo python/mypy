@@ -631,6 +631,177 @@ bla bla
 [file error.py]
 bla bla
 
+[case testFlagsFile]
+# flags: @tmp/flagsfile
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
+[file flagsfile]
+----always-true=FLAG
+
+[case testConfigFile]
+# flags: --config-file tmp/mypy.ini
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
+[file mypy.ini]
+\[mypy]
+always_true = FLAG
+
+[case testAltConfigFile]
+# flags: --config-file tmp/config.ini
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
+[file config.ini]
+\[mypy]
+always_true = FLAG
+
+[case testMultipleGlobConfigSection]
+# flags: --config-file tmp/mypy.ini
+import x, y, z
+[file mypy.ini]
+\[mypy]
+\[mypy-x.*,z.*]
+disallow_untyped_defs = True
+[file x.py]
+def f(a): pass  # E: Function is missing a type annotation
+[file y.py]
+def f(a): pass
+[file z.py]
+def f(a): pass  # E: Function is missing a type annotation
+
+[case testConfigMypyPath]
+# flags: --config-file tmp/mypy.ini
+import no_stubs  # E: Cannot find implementation or library stub for module named "no_stubs" \
+                 # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+from foo import foo
+from bar import bar
+from baz import baz
+baz(bar(foo(42)))
+baz(bar(foo('oof')))  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+[file mypy.ini]
+\[mypy]
+mypy_path =
+    $MYPY_CONFIG_FILE_DIR/foo_dir:$MYPY_CONFIG_FILE_DIR/bar_dir
+    , $MYPY_CONFIG_FILE_DIR/baz_dir
+[file foo_dir/foo.pyi]
+def foo(x: int) -> str: ...
+[file bar_dir/bar.pyi]
+def bar(x: str) -> list: ...
+[file baz_dir/baz.pyi]
+def baz(x: list) -> dict: ...
+
+[case testDisallowAnyGenericsBuiltinCollections]
+# flags: --config-file tmp/mypy.ini
+import m
+[file mypy.ini]
+\[mypy]
+\[mypy-m]
+disallow_any_generics = True
+[file m.py]
+def j(s: set) -> None: pass  # E: Missing type arguments for generic type "set"
+[builtins fixtures/set.pyi]
+
+[case testDisallowAnyGenericsTypingCollections]
+# flags: --config-file tmp/mypy.ini
+import m
+[file mypy.ini]
+\[mypy]
+\[mypy-m]
+disallow_any_generics = True
+[file m.py]
+from typing import Set
+def j(s: Set) -> None: pass  # E: Missing type arguments for generic type "Set"
+[builtins fixtures/set.pyi]
+
+[case testSectionInheritance]
+# flags: --config-file tmp/mypy.ini
+import a, a.foo, a.b.c, a.b.c.d.e
+[file a/__init__.py]
+0()
+[file a/foo.py]
+0()
+[file a/b/__init__.py]
+[file a/b/c/__init__.py]
+0()
+[file a/b/c/d/__init__.py]
+[file a/b/c/d/e/__init__.py]
+from typing import List
+def g(x: List) -> None: pass  # E: Missing type arguments for generic type "List"
+g(None)  # E: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
+[file mypy.ini]
+\[mypy]
+allow_any_generics = True
+strict_optional = False
+\[mypy-a.*]
+ignore_errors = True
+\[mypy-a.b.*]
+disallow_any_generics = True
+ignore_errors = True
+\[mypy-a.b.c.*]
+ignore_errors = True
+\[mypy-a.b.c.d.*]
+ignore_errors = True
+\[mypy-a.b.c.d.e.*]
+ignore_errors = True
+strict_optional = True
+\[mypy-a.b.c.d.e]
+ignore_errors = False
+
+[case testFollowImportStubs1]
+# flags: --config-file tmp/mypy.ini
+import math  # E: Import of "math" ignored \
+             # N: (Using --follow-imports=error, module not passed on command line)
+math.frobnicate()
+[file mypy.ini]
+\[mypy]
+\[mypy-math.*]
+follow_imports = error
+follow_imports_for_stubs = True
+
+[case testFollowImportStubs2]
+# flags: --config-file tmp/mypy.ini
+import math
+math.frobnicate()
+[file mypy.ini]
+\[mypy]
+\[mypy-math.*]
+follow_imports = skip
+follow_imports_for_stubs = True
+
+[case testConfigUnstructuredGlob]
+# flags: --config-file tmp/mypy.ini
+import emarg.foo, emarg.villip, emarg.hatch.villip.nus, emarg.hatch.villip.mankangulisk, foo.lol
+[file mypy.ini]
+\[mypy]
+ignore_errors = true
+\[mypy-*.lol]
+ignore_errors = false
+\[mypy-emarg.*]
+ignore_errors = false
+\[mypy-emarg.*.villip.*]
+ignore_errors = true
+\[mypy-emarg.hatch.villip.mankangulisk]
+ignore_errors = false
+[file emarg/__init__.py]
+[file emarg/foo.py]
+fail  # E: Name "fail" is not defined
+[file emarg/villip.py]
+fail
+[file emarg/hatch/__init__.py]
+[file emarg/hatch/villip/__init__.py]
+[file emarg/hatch/villip/nus.py]
+fail
+[file emarg/hatch/villip/mankangulisk.py]
+fail  # E: Name "fail" is not defined
+[file foo/__init__.py]
+[file foo/lol.py]
+fail  # E: Name "fail" is not defined
+
 [case testIgnoreMissingImportsFalse]
 from mod import x
 [out]
@@ -1540,8 +1711,8 @@ from queue import Queue
 x: Future[str]
 y: Queue[int]
 
-p: Future  # E: Missing type parameters for generic type "Future"
-q: Queue  # E: Missing type parameters for generic type "Queue"
+p: Future  # E: Missing type arguments for generic type "Future"
+q: Queue  # E: Missing type arguments for generic type "Queue"
 [file asyncio/__init__.pyi]
 from asyncio.futures import Future as Future
 [file asyncio/futures.pyi]
@@ -1558,25 +1729,25 @@ class Queue(Generic[_T]): ...
 [case testDisallowAnyGenericsBuiltinTuple]
 # flags: --disallow-any-generics
 s = tuple([1, 2, 3])
-def f(t: tuple) -> None: pass  # E: Missing type parameters for generic type "tuple"
+def f(t: tuple) -> None: pass  # E: Missing type arguments for generic type "tuple"
 [builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsBuiltinList]
 # flags: --disallow-any-generics
 l = list([1, 2, 3])
-def f(t: list) -> None: pass  # E: Missing type parameters for generic type "list"
+def f(t: list) -> None: pass  # E: Missing type arguments for generic type "list"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsBuiltinSet]
 # flags: --disallow-any-generics
 l = set({1, 2, 3})
-def f(s: set) -> None: pass  # E: Missing type parameters for generic type "set"
+def f(s: set) -> None: pass  # E: Missing type arguments for generic type "set"
 [builtins fixtures/set.pyi]
 
 [case testDisallowAnyGenericsBuiltinDict]
 # flags: --disallow-any-generics
 l = dict([('a', 1)])
-def f(d: dict) -> None: pass  # E: Missing type parameters for generic type "dict"
+def f(d: dict) -> None: pass  # E: Missing type arguments for generic type "dict"
 [builtins fixtures/dict.pyi]
 
 [case testCheckDefaultAllowAnyGeneric]
@@ -1607,9 +1778,8 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):  # E: Missing type parameters for generic type "C"
+def f(c: C):  # E: Missing type arguments for generic type "C"
     pass
-[out]
 
 [case testStrictAnyGeneric]
 # flags: --strict
@@ -1620,9 +1790,8 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
+def f(c: A) -> None:  # E: Missing type arguments for generic type "A"
     pass
-[out]
 
 [case testStrictInConfigAnyGeneric]
 # flags: --config-file tmp/mypy.ini
@@ -1633,12 +1802,11 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
+def f(c: A) -> None:  # E: Missing type arguments for generic type "A"
     pass
 [file mypy.ini]
 \[mypy]
 strict = True
-[out]
 
 
 [case testStrictInConfigAnyGenericPyProjectTOML]
@@ -1650,14 +1818,12 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
+def f(c: A) -> None:  # E: Missing type arguments for generic type "A"
     pass
 
 [file pyproject.toml]
 \[tool.mypy]
 strict = true
-
-[out]
 
 
 [case testStrictFalseInConfigAnyGeneric]
@@ -1856,8 +2022,8 @@ main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 from typing import List
 
 A = List  # OK
-B = List[A]  # E:10: Missing type parameters for generic type "A"
-x: A  # E:4: Missing type parameters for generic type "A"
+B = List[A]  # E:10: Missing type arguments for generic type "A"
+x: A  # E:4: Missing type arguments for generic type "A"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitDefSignature]
@@ -1982,20 +2148,20 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 # flags: --disallow-any-generics
 from typing import Tuple
 
-def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
-def g(s) -> Tuple:  # E: Missing type parameters for generic type "Tuple"
+def f(s: Tuple) -> None: pass  # E: Missing type arguments for generic type "Tuple"
+def g(s) -> Tuple:  # E: Missing type arguments for generic type "Tuple"
     return 'a', 'b'
 def h(s) -> Tuple[str, str]:  # no error
     return 'a', 'b'
-x: Tuple = ()  # E: Missing type parameters for generic type "Tuple"
+x: Tuple = ()  # E: Missing type arguments for generic type "Tuple"
 [builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # flags: --disallow-any-generics
 from typing import Tuple, List
 
-def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
-def g(s: List[Tuple]) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def f(s: Tuple) -> None: pass  # E: Missing type arguments for generic type "Tuple"
+def g(s: List[Tuple]) -> None: pass  # E: Missing type arguments for generic type "Tuple"
 def h(s: List[Tuple[str, str]]) -> None: pass  # no error
 [builtins fixtures/list.pyi]
 
@@ -2004,11 +2170,11 @@ def h(s: List[Tuple[str, str]]) -> None: pass  # no error
 from typing import Type, Any
 
 def f(s: Type[Any]) -> None: pass  # no error
-def g(s) -> Type:  # E: Missing type parameters for generic type "Type"
+def g(s) -> Type:  # E: Missing type arguments for generic type "Type"
     return s
 def h(s) -> Type[str]:  # no error
     return s
-x: Type = g(0)  # E: Missing type parameters for generic type "Type"
+x: Type = g(0)  # E: Missing type arguments for generic type "Type"
 
 [case testDisallowAnyGenericsAliasGenericType]
 # flags: --disallow-any-generics
@@ -2016,7 +2182,7 @@ from typing import List
 
 L = List  # no error
 
-def f(l: L) -> None: pass  # E: Missing type parameters for generic type "L"
+def f(l: L) -> None: pass  # E: Missing type arguments for generic type "L"
 def g(l: L[str]) -> None: pass  # no error
 [builtins fixtures/list.pyi]
 
@@ -2027,47 +2193,47 @@ from typing import TypeVar, Tuple
 T = TypeVar('T')
 A = Tuple[T, str, T]
 
-def f(s: A) -> None: pass  # E: Missing type parameters for generic type "A"
-def g(s) -> A:  # E: Missing type parameters for generic type "A"
+def f(s: A) -> None: pass  # E: Missing type arguments for generic type "A"
+def g(s) -> A:  # E: Missing type arguments for generic type "A"
     return 'a', 'b', 1
 def h(s) -> A[str]:  # no error
     return 'a', 'b', 'c'
-x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
+x: A = ('a', 'b', 1)  # E: Missing type arguments for generic type "A"
 [builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsPlainList]
 # flags: --disallow-any-generics
 from typing import List
 
-def f(l: List) -> None: pass  # E: Missing type parameters for generic type "List"
+def f(l: List) -> None: pass  # E: Missing type arguments for generic type "List"
 def g(l: List[str]) -> None: pass
-def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic type "List"
-def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
-def j() -> List: pass  # E: Missing type parameters for generic type "List"
+def h(l: List[List]) -> None: pass   # E: Missing type arguments for generic type "List"
+def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type arguments for generic type "List"
+def j() -> List: pass  # E: Missing type arguments for generic type "List"
 
 x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
-y: List = []  # E: Missing type parameters for generic type "List"
+y: List = []  # E: Missing type arguments for generic type "List"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsPlainDict]
 # flags: --disallow-any-generics
 from typing import List, Dict
 
-def f(d: Dict) -> None: pass  # E: Missing type parameters for generic type "Dict"
-def g(d: Dict[str, Dict]) -> None: pass  # E: Missing type parameters for generic type "Dict"
-def h(d: List[Dict]) -> None: pass  # E: Missing type parameters for generic type "Dict"
+def f(d: Dict) -> None: pass  # E: Missing type arguments for generic type "Dict"
+def g(d: Dict[str, Dict]) -> None: pass  # E: Missing type arguments for generic type "Dict"
+def h(d: List[Dict]) -> None: pass  # E: Missing type arguments for generic type "Dict"
 
-d: Dict = {}  # E: Missing type parameters for generic type "Dict"
+d: Dict = {}  # E: Missing type arguments for generic type "Dict"
 [builtins fixtures/dict.pyi]
 
 [case testDisallowAnyGenericsPlainSet]
 # flags: --disallow-any-generics
 from typing import Set
 
-def f(s: Set) -> None: pass  # E: Missing type parameters for generic type "Set"
-def g(s: Set[Set]) -> None: pass  # E: Missing type parameters for generic type "Set"
+def f(s: Set) -> None: pass  # E: Missing type arguments for generic type "Set"
+def g(s: Set[Set]) -> None: pass  # E: Missing type arguments for generic type "Set"
 
-s: Set = set()  # E: Missing type parameters for generic type "Set"
+s: Set = set()  # E: Missing type arguments for generic type "Set"
 [builtins fixtures/set.pyi]
 
 [case testDisallowAnyGenericsCustomGenericClass]
@@ -2077,11 +2243,11 @@ from typing import Generic, TypeVar, Any
 T = TypeVar('T')
 class G(Generic[T]): pass
 
-def f() -> G:  # E: Missing type parameters for generic type "G"
+def f() -> G:  # E: Missing type arguments for generic type "G"
     return G()
 
 x: G[Any] = G()  # no error
-y: G = x  # E: Missing type parameters for generic type "G"
+y: G = x  # E: Missing type arguments for generic type "G"
 
 [case testDisallowAnyGenericsForAliasesInRuntimeContext]
 # flags: --disallow-any-generics
@@ -2093,8 +2259,8 @@ class G(Generic[T]):
     def foo(cls) -> T: ...
 
 A = G[Tuple[T, T]]
-A()  # E: Missing type parameters for generic type "A"
-A.foo()  # E: Missing type parameters for generic type "A"
+A()  # E: Missing type arguments for generic type "A"
+A.foo()  # E: Missing type arguments for generic type "A"
 
 B = G
 B()
@@ -2377,7 +2543,7 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDisableBytearrayPromotion]
-# flags: --disable-bytearray-promotion --strict-equality
+# flags: --disable-bytearray-promotion --strict-equality --warn-unreachable
 def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 f(memoryview(b"asdf"))
@@ -2483,13 +2649,13 @@ cb(fn)
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 list(1)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] __init__(self) -> list[T] \
-         # N:     def [T] __init__(self, x: Iterable[T]) -> list[T] \
+         # N:     def [T] list() -> list[T] \
+         # N:     def [T] list(x: Iterable[T]) -> list[T] \
          # N: See https://mypy.rtfd.io/en/stable/_refs.html#code-call-overload for more info
 list(2)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] __init__(self) -> list[T] \
-         # N:     def [T] __init__(self, x: Iterable[T]) -> list[T]
+         # N:     def [T] list() -> list[T] \
+         # N:     def [T] list(x: Iterable[T]) -> list[T]
 [builtins fixtures/list.pyi]
 
 [case testNestedGenericInAliasDisallow]
@@ -2498,8 +2664,9 @@ from typing import TypeVar, Generic, List, Union
 
 class C(Generic[T]): ...
 
-A = Union[C, List]  # E: Missing type parameters for generic type "C" \
-                    # E: Missing type parameters for generic type "List"
+A = Union[C, List]  # E: Missing type arguments for generic type "C" \
+                    # E: Missing type arguments for generic type "List"
+
 [builtins fixtures/list.pyi]
 
 [case testNestedGenericInAliasAllow]

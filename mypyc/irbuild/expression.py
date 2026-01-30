@@ -7,8 +7,7 @@ and mypyc.irbuild.builder.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -50,7 +49,15 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    TypeOfAny,
+    TypeType,
+    get_proper_type,
+)
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -98,6 +105,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import (
+    apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
@@ -127,33 +135,31 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
                 RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
-        return builder.none()
+        return builder.none(expr.line)
     fullname = expr.node.fullname
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
         return builder.add(LoadAddress(typ, src, expr.line))
     # special cases
     if fullname == "builtins.None":
-        return builder.none()
+        return builder.none(expr.line)
     if fullname == "builtins.True":
-        return builder.true()
+        return builder.true(expr.line)
     if fullname == "builtins.False":
-        return builder.false()
+        return builder.false(expr.line)
     if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
-    math_literal = transform_math_literal(builder, fullname)
+    math_literal = transform_math_literal(builder, fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
+        final_type = builder.types.get(expr) or expr.node.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            expr.node,
-            fullname,
-            expr.name,
-            builder.is_native_ref_expr(expr),
-            builder.types[expr],
-            expr.line,
+            expr.node, fullname, expr.name, builder.is_native_ref_expr(expr), final_type, expr.line
         )
         if value is not None:
             return value
@@ -202,19 +208,22 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     # Special Cases
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
+        final_type = builder.types.get(expr) or final_var.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            final_var, fullname, final_var.name, native, builder.types[expr], expr.line
+            final_var, fullname, final_var.name, native, final_type, expr.line
         )
         if value is not None:
             return value
 
-    math_literal = transform_math_literal(builder, expr.fullname)
+    math_literal = transform_math_literal(builder, expr.fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
@@ -296,8 +305,8 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         # Grab first argument
         vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
-            # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[6]
+            # grab seventh argument (see comment in translate_super_method_call)
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -504,12 +513,12 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 6th value
+            # For generator classes, the self target is the 7th value
             # in the symbol table (which is an ordered dict). This is sort
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[6]
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)
@@ -578,7 +587,9 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
         return expr
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
-        return OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr = OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr.line = expr.line
+        return new_expr
     return expr
 
 
@@ -587,6 +598,12 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base_type = builder.node_type(expr.base)
     is_list = is_list_rprimitive(base_type)
     can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    # Check for dunder specialization for non-slice indexing
+    if not isinstance(index, SliceExpr):
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
+        if specialized is not None:
+            return specialized
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
@@ -668,13 +685,13 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.activate_block(if_body)
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
-    builder.add(Assign(target, true_value))
+    builder.add(Assign(target, true_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(else_body)
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
-    builder.add(Assign(target, false_value))
+    builder.add(Assign(target, false_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(next_block)
@@ -1075,10 +1092,10 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.call_c(exact_dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
-    return builder.read(d)
+    return builder.read(d, o.line)
 
 
 # Misc
@@ -1107,16 +1124,16 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     return value
 
 
-def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+def transform_math_literal(builder: IRBuilder, fullname: str, line: int) -> Value | None:
     if fullname == "math.e":
-        return builder.load_float(math.e)
+        return builder.load_float(math.e, line)
     if fullname == "math.pi":
-        return builder.load_float(math.pi)
+        return builder.load_float(math.pi, line)
     if fullname == "math.inf":
-        return builder.load_float(math.inf)
+        return builder.load_float(math.inf, line)
     if fullname == "math.nan":
-        return builder.load_float(math.nan)
+        return builder.load_float(math.nan, line)
     if fullname == "math.tau":
-        return builder.load_float(math.tau)
+        return builder.load_float(math.tau, line)
 
     return None

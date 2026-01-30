@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TempNode, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -39,13 +39,13 @@ from mypy.types import (
     AnyType,
     FunctionLike,
     Instance,
-    LiteralType,
     NoneType,
     ProperType,
     TupleType,
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeType,
     TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
@@ -205,12 +205,15 @@ class PatternChecker(PatternVisitor[PatternType]):
         current_type = self.type_context[-1]
         typ = self.chk.expr_checker.accept(o.expr)
         typ = coerce_to_literal(typ)
-        narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type, [get_type_range(typ)], o, default=get_proper_type(typ)
+        node = TempNode(current_type)
+        # Value patterns are essentially a syntactic sugar on top of `if x == Value`.
+        # They should be treated equivalently.
+        ok_map, rest_map = self.chk.narrow_type_by_identity_equality(
+            "==", [node, TempNode(typ)], [current_type, typ], [0, 1], {0}
         )
-        if not isinstance(get_proper_type(narrowed_type), (LiteralType, UninhabitedType)):
-            return PatternType(narrowed_type, UnionType.make_union([narrowed_type, rest_type]), {})
-        return PatternType(narrowed_type, rest_type, {})
+        ok_type = ok_map.get(node, current_type) if ok_map is not None else UninhabitedType()
+        rest_type = rest_map.get(node, current_type) if rest_map is not None else UninhabitedType()
+        return PatternType(ok_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
         current_type = self.type_context[-1]
@@ -309,7 +312,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                (narrowed_inner_type, inner_rest_type) = (
+                narrowed_inner_type, inner_rest_type = (
                     self.chk.conditional_types_with_intersection(
                         inner_type, [get_type_range(new_inner_type)], o, default=inner_type
                     )
@@ -556,6 +559,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             fallback = self.chk.named_type("builtins.function")
             any_type = AnyType(TypeOfAny.unannotated)
             typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
+        elif isinstance(p_typ, TypeType) and isinstance(p_typ.item, NoneType):
+            typ = p_typ.item
         elif not isinstance(p_typ, AnyType):
             self.msg.fail(
                 message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(

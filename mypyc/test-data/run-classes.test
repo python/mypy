@@ -95,6 +95,36 @@ print(C.__annotations__["spam"] is JSONDecoder)
 True
 True
 
+[case testTypedDictWithFieldsAs]
+import json as _json
+from typing import TypedDict
+
+class C(TypedDict):
+    spam: _json.JSONDecoder
+[file driver.py]
+from native import C
+from json import JSONDecoder
+
+print(C.__annotations__["spam"] is JSONDecoder)
+[typing fixtures/typing-full.pyi]
+[out]
+True
+
+[case testTypedDictWithFieldsFrom]
+from json import decoder
+from typing import TypedDict
+
+class C(TypedDict):
+    spam: decoder.JSONDecoder
+[file driver.py]
+from native import C
+from json import JSONDecoder
+
+print(C.__annotations__["spam"] is JSONDecoder)
+[typing fixtures/typing-full.pyi]
+[out]
+True
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
@@ -321,6 +351,17 @@ if sys.version_info[:2] > (3, 5):
     assert TestEnum.a.value == 1
     assert TestEnum.b.name == 'b'
     assert TestEnum.b.value == 2
+
+[case testRunSuperYieldFromDict]
+from typing import Any, Iterator
+
+class DictSubclass(dict):
+    def items(self) -> Iterator[Any]:
+        yield 1
+        yield from super().items()
+
+def test_sub_dict() -> None:
+    assert list(DictSubclass().items()) == [1]
 
 [case testGetAttribute]
 class C:
@@ -811,7 +852,7 @@ def test_classmethod_with_allow_interpreted() -> None:
 
 [file interp.py]
 def make_interpreted_subclass(base):
-    class Sub(base):
+    class Sub(base):  # type: ignore[misc, valid-type]
         @classmethod
         def g(cls, x: int) -> int:
             return x + 3
@@ -2473,7 +2514,7 @@ def test_interpreted_subclass() -> None:
 from testutil import assertRaises
 
 def define_interpreted_subclass(b):
-    class DerivedInterpreted1(b):
+    class DerivedInterpreted1(b):  # type: ignore[misc, valid-type]
         def __init__(self):
             # Don't call base class __init__
             pass
@@ -2486,10 +2527,10 @@ def define_interpreted_subclass(b):
     with assertRaises(AttributeError):
         del d1.x
 
-    class DerivedInterpreted1(b):
+    class DerivedInterpreted2(b):  # type: ignore[misc, valid-type]
         def __init__(self):
             super().__init__('y')
-    d2 = DerivedInterpreted1()
+    d2 = DerivedInterpreted2()
     assert d2.x == 5
     assert d2.s == 'y'
     with assertRaises(AttributeError):
@@ -2711,12 +2752,17 @@ from native import Player
 Player.MIN = <Player.MIN: 1>
 
 [case testBufferRoundTrip_librt_internal]
-from typing import Final
+from __future__ import annotations
+
+from typing import Final, Any
 from mypy_extensions import u8
 from librt.internal import (
-    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
-    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes
+    ReadBuffer, WriteBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
+    cache_version,
 )
+
+from testutil import assertRaises
 
 Tag = u8
 TAG_A: Final[Tag] = 33
@@ -2724,11 +2770,90 @@ TAG_B: Final[Tag] = 255
 TAG_SPECIAL: Final[Tag] = 239
 
 def test_buffer_basic() -> None:
-    b = Buffer(b"foo")
-    assert b.getvalue() == b"foo"
+    assert cache_version() == 0
+    w = WriteBuffer()
+    write_str(w, "foo")
+    r = ReadBuffer(w.getvalue())
+    assert read_str(r) == "foo"
+
+def test_buffer_grow() -> None:
+    w = WriteBuffer()
+    n = 100 * 1000
+    for i in range(n):
+        write_int(w, i & 63)
+    r = ReadBuffer(w.getvalue())
+    for i in range(n):
+        assert read_int(r) == (i & 63)
+    with assertRaises(ValueError):
+        read_int(r)
+
+def test_buffer_primitive_types() -> None:
+    a1: Any = WriteBuffer()
+    w: WriteBuffer = a1
+    write_str(w, "foo")
+    data = w.getvalue()
+    assert read_str(ReadBuffer(data)) == "foo"
+    a2: Any = ReadBuffer(b"foo")
+    with assertRaises(TypeError):
+        w2: WriteBuffer = a2
+
+    a3: Any = ReadBuffer(data)
+    r: ReadBuffer = a3
+    assert read_str(r) == "foo"
+    a4: Any = WriteBuffer()
+    with assertRaises(TypeError):
+        r2: ReadBuffer = a4
+
+def test_type_check_args_in_write_functions() -> None:
+    # Test calling wrapper functions with invalid arg types
+    from librt import internal
+    alias: Any = internal
+    w = WriteBuffer()
+    with assertRaises(TypeError):
+        alias.write_str(None, "foo")
+    with assertRaises(TypeError):
+        alias.write_str(w, None)
+    with assertRaises(TypeError):
+        alias.write_bool(None, True)
+    with assertRaises(TypeError):
+        alias.write_bool(w, None)
+    with assertRaises(TypeError):
+        alias.write_bytes(None, b"foo")
+    with assertRaises(TypeError):
+        alias.write_bytes(w, None)
+    with assertRaises(TypeError):
+        alias.write_float(None, 1.5)
+    with assertRaises(TypeError):
+        alias.write_float(w, None)
+    with assertRaises(TypeError):
+        alias.write_int(None, 15)
+    with assertRaises(TypeError):
+        alias.write_int(w, None)
+    with assertRaises(TypeError):
+        alias.write_tag(None, 15)
+    with assertRaises(TypeError):
+        alias.write_tag(w, None)
+
+def test_type_check_buffer_in_read_functions() -> None:
+    # Test calling wrapper functions with invalid arg types
+    from librt import internal
+    alias: Any = internal
+    with assertRaises(TypeError):
+        alias.read_str(None)
+    with assertRaises(TypeError):
+        alias.read_bool(None)
+    with assertRaises(TypeError):
+        alias.read_bytes(None)
+    with assertRaises(TypeError):
+        alias.read_float(None)
+    with assertRaises(TypeError):
+        alias.read_int(None)
+    with assertRaises(TypeError):
+        alias.read_tag(None)
 
 def test_buffer_roundtrip() -> None:
-    b = Buffer()
+    b: WriteBuffer | ReadBuffer
+    b = WriteBuffer()
     write_str(b, "foo")
     write_bool(b, True)
     write_str(b, "bar" * 1000)
@@ -2736,9 +2861,11 @@ def test_buffer_roundtrip() -> None:
     write_bytes(b, b"bar")
     write_bytes(b, b"bar" * 100)
     write_bytes(b, b"")
-    write_bytes(b, b"a" * 127)
-    write_bytes(b, b"a" * 128)
+    write_bytes(b, b"a" * 117)
+    write_bytes(b, b"a" * 118)
     write_float(b, 0.1)
+    write_float(b, -1.0)
+    write_float(b, -113.0)
     write_int(b, 0)
     write_int(b, 1)
     write_tag(b, TAG_A)
@@ -2749,10 +2876,11 @@ def test_buffer_roundtrip() -> None:
     write_int(b, 255)
     write_int(b, -1)
     write_int(b, -255)
-    write_int(b, 1234512344)
-    write_int(b, 1234512345)
+    write_int(b, 536860911)
+    write_int(b, 536860912)
+    write_int(b, 1234567891)
 
-    b = Buffer(b.getvalue())
+    b = ReadBuffer(b.getvalue())
     assert read_str(b) == "foo"
     assert read_bool(b) is True
     assert read_str(b) == "bar" * 1000
@@ -2760,9 +2888,11 @@ def test_buffer_roundtrip() -> None:
     assert read_bytes(b) == b"bar"
     assert read_bytes(b) == b"bar" * 100
     assert read_bytes(b) == b""
-    assert read_bytes(b) == b"a" * 127
-    assert read_bytes(b) == b"a" * 128
+    assert read_bytes(b) == b"a" * 117
+    assert read_bytes(b) == b"a" * 118
     assert read_float(b) == 0.1
+    assert read_float(b) == -1.0
+    assert read_float(b) == -113.0
     assert read_int(b) == 0
     assert read_int(b) == 1
     assert read_tag(b) == TAG_A
@@ -2773,45 +2903,103 @@ def test_buffer_roundtrip() -> None:
     assert read_int(b) == 255
     assert read_int(b) == -1
     assert read_int(b) == -255
-    assert read_int(b) == 1234512344
-    assert read_int(b) == 1234512345
+    assert read_int(b) == 536860911
+    assert read_int(b) == 536860912
+    assert read_int(b) == 1234567891
 
 def test_buffer_int_size() -> None:
+    b: WriteBuffer | ReadBuffer
     for i in (-10, -9, 0, 116, 117):
-        b = Buffer()
+        b = WriteBuffer()
         write_int(b, i)
         assert len(b.getvalue()) == 1
-        b = Buffer(b.getvalue())
+        b = ReadBuffer(b.getvalue())
         assert read_int(b) == i
-    for i in (-12345, -12344, -11, 118, 12344, 12345):
-        b = Buffer()
+    for i in (-100, -11, 118, 12344, 16283):
+        b = WriteBuffer()
         write_int(b, i)
-        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
-        b = Buffer(b.getvalue())
+        assert len(b.getvalue()) == 2
+        b = ReadBuffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-10000, 16284, 123456789):
+        b = WriteBuffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 4
+        b = ReadBuffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 200):
+        b = WriteBuffer()
+        write_int(b, 1 << p)
+        write_int(b, (1 << p) - 1)
+        write_int(b, -1 << p)
+        write_int(b, (-1 << p) + 1)
+        rb = ReadBuffer(b.getvalue())
+        assert read_int(rb) == 1 << p
+        assert read_int(rb) == (1 << p) - 1
+        assert read_int(rb) == -1 << p
+        assert read_int(rb) == (-1 << p) + 1
+
+def test_positive_long_int_serialized_bytes() -> None:
+    b = WriteBuffer()
+    n = 0x123456789ab
+    write_int(b, n)
+    x = b.getvalue()
+    # Two prefix bytes, followed by little endian encoded integer in variable-length format
+    assert x == b"\x0f\x2c\xab\x89\x67\x45\x23\x01"
+    rb = ReadBuffer(x)
+    assert read_int(rb) == n
+
+def test_negative_long_int_serialized_bytes() -> None:
+    b = WriteBuffer()
+    n = -0x123456789abcde
+    write_int(b, n)
+    x = b.getvalue()
+    assert x == b"\x0f\x32\xde\xbc\x9a\x78\x56\x34\x12"
+    rb = ReadBuffer(x)
+    assert read_int(rb) == n
+
 def test_buffer_str_size() -> None:
-    for s in ("", "a", "a" * 127):
-        b = Buffer()
+    b: WriteBuffer | ReadBuffer
+    for s in ("", "a", "a" * 117):
+        b = WriteBuffer()
         write_str(b, s)
         assert len(b.getvalue()) == len(s) + 1
-        b = Buffer(b.getvalue())
+        b = ReadBuffer(b.getvalue())
+        assert read_str(b) == s
+
+    for s in ("a" * 118, "a" * 16283):
+        b = WriteBuffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 2
+        b = ReadBuffer(b.getvalue())
         assert read_str(b) == s
 
 [file driver.py]
 from native import *
 
 test_buffer_basic()
+test_buffer_grow()
+test_buffer_primitive_types()
+test_type_check_args_in_write_functions()
+test_type_check_buffer_in_read_functions()
 test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
+test_buffer_int_powers()
+test_positive_long_int_serialized_bytes()
+test_negative_long_int_serialized_bytes()
 
 def test_buffer_basic_interpreted() -> None:
-    b = Buffer(b"foo")
-    assert b.getvalue() == b"foo"
+    b = WriteBuffer()
+    write_str(b, "foo")
+    b = ReadBuffer(b.getvalue())
+    assert read_str(b) == "foo"
 
 def test_buffer_roundtrip_interpreted() -> None:
-    b = Buffer()
+    b = WriteBuffer()
     write_str(b, "foo")
     write_bool(b, True)
     write_str(b, "bar" * 1000)
@@ -2819,8 +3007,8 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_bytes(b, b"bar")
     write_bytes(b, b"bar" * 100)
     write_bytes(b, b"")
-    write_bytes(b, b"a" * 127)
-    write_bytes(b, b"a" * 128)
+    write_bytes(b, b"a" * 117)
+    write_bytes(b, b"a" * 118)
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
@@ -2832,10 +3020,11 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_int(b, 255)
     write_int(b, -1)
     write_int(b, -255)
-    write_int(b, 1234512344)
-    write_int(b, 1234512345)
+    write_int(b, 536860911)
+    write_int(b, 536860912)
+    write_int(b, 1234567891)
 
-    b = Buffer(b.getvalue())
+    b = ReadBuffer(b.getvalue())
     assert read_str(b) == "foo"
     assert read_bool(b) is True
     assert read_str(b) == "bar" * 1000
@@ -2843,8 +3032,8 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_bytes(b) == b"bar"
     assert read_bytes(b) == b"bar" * 100
     assert read_bytes(b) == b""
-    assert read_bytes(b) == b"a" * 127
-    assert read_bytes(b) == b"a" * 128
+    assert read_bytes(b) == b"a" * 117
+    assert read_bytes(b) == b"a" * 118
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
@@ -2856,43 +3045,68 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_int(b) == 255
     assert read_int(b) == -1
     assert read_int(b) == -255
-    assert read_int(b) == 1234512344
-    assert read_int(b) == 1234512345
+    assert read_int(b) == 536860911
+    assert read_int(b) == 536860912
+    assert read_int(b) == 1234567891
 
 def test_buffer_int_size_interpreted() -> None:
     for i in (-10, -9, 0, 116, 117):
-        b = Buffer()
+        b = WriteBuffer()
         write_int(b, i)
         assert len(b.getvalue()) == 1
-        b = Buffer(b.getvalue())
+        b = ReadBuffer(b.getvalue())
         assert read_int(b) == i
-    for i in (-12345, -12344, -11, 118, 12344, 12345):
-        b = Buffer()
+    for i in (-100, -11, 118, 12344, 16283):
+        b = WriteBuffer()
         write_int(b, i)
-        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
-        b = Buffer(b.getvalue())
+        assert len(b.getvalue()) == 2
+        b = ReadBuffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-10000, 16284, 123456789):
+        b = WriteBuffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 4
+        b = ReadBuffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers_interpreted() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 9):
+        b = WriteBuffer()
+        write_int(b, 1 << p)
+        write_int(b, -1 << p)
+        b = ReadBuffer(b.getvalue())
+        assert read_int(b) == 1 << p
+        assert read_int(b) == -1 << p
+
 def test_buffer_str_size_interpreted() -> None:
-    for s in ("", "a", "a" * 127):
-        b = Buffer()
+    for s in ("", "a", "a" * 117):
+        b = WriteBuffer()
         write_str(b, s)
         assert len(b.getvalue()) == len(s) + 1
-        b = Buffer(b.getvalue())
+        b = ReadBuffer(b.getvalue())
+        assert read_str(b) == s
+
+    for s in ("a" * 118, "a" * 16283):
+        b = WriteBuffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 2
+        b = ReadBuffer(b.getvalue())
         assert read_str(b) == s
 
 test_buffer_basic_interpreted()
 test_buffer_roundtrip_interpreted()
 test_buffer_int_size_interpreted()
 test_buffer_str_size_interpreted()
+test_buffer_int_powers_interpreted()
 
 [case testBufferEmpty_librt_internal]
-from librt.internal import Buffer, write_int, read_int
+from librt.internal import WriteBuffer, ReadBuffer, write_int, read_int
 
 def test_empty() -> None:
-    b = Buffer(b"")
+    b = WriteBuffer()
     write_int(b, 42)
-    b1 = Buffer(b.getvalue())
+    b1 = ReadBuffer(b.getvalue())
     assert read_int(b1) == 42
 
 [case testEnumMethodCalls]
@@ -3675,6 +3889,7 @@ Add(1, 0)=1
 [case testInheritedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
+from testutil import assertRaises
 from typing_extensions import Self
 
 from m import interpreted_subclass
@@ -3691,7 +3906,11 @@ class Base:
     def __init__(self, val: int) -> None:
         self.init_val = val
 
+    def method(self) -> int:
+        raise NotImplementedError
+
 class Sub(Base):
+
     def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
 
@@ -3699,10 +3918,19 @@ class Sub(Base):
         super().__init__(val)
         self.init_val = self.init_val * 2
 
+    def method(self) -> int:
+        return 0
+
 class SubWithoutNew(Base):
+    sub_only_str = ""
+    sub_only_int: int
+
     def __init__(self, val: int) -> None:
         super().__init__(val)
         self.init_val = self.init_val * 2
+
+    def method(self) -> int:
+        return 1
 
 class BaseWithoutInterpretedSubclasses:
     val: int
@@ -3715,6 +3943,9 @@ class BaseWithoutInterpretedSubclasses:
     def __init__(self, val: int) -> None:
         self.init_val = val
 
+    def method(self) -> int:
+        raise NotImplementedError
+
 class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
     def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
@@ -3723,48 +3954,68 @@ class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
         super().__init__(val)
         self.init_val = self.init_val * 2
 
+    def method(self) -> int:
+        return 0
+
 class SubNoInterpretedWithoutNew(BaseWithoutInterpretedSubclasses):
     def __init__(self, val: int) -> None:
         super().__init__(val)
         self.init_val = self.init_val * 2
+
+    def method(self) -> int:
+        return 1
 
 def test_inherited_dunder_new() -> None:
     b = Base(42)
     assert type(b) == Base
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     s = Sub(42)
     assert type(s) == Sub
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 0
 
     s2 = SubWithoutNew(42)
     assert type(s2) == SubWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 1
+    assert s2.sub_only_str == ""
+    with assertRaises(AttributeError):
+        s2.sub_only_int
+    s2.sub_only_int = 11
+    assert s2.sub_only_int == 11
 
 def test_inherited_dunder_new_without_interpreted_subclasses() -> None:
     b = BaseWithoutInterpretedSubclasses(42)
     assert type(b) == BaseWithoutInterpretedSubclasses
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     s = SubNoInterpreted(42)
     assert type(s) == SubNoInterpreted
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 0
 
     s2 = SubNoInterpretedWithoutNew(42)
     assert type(s2) == SubNoInterpretedWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 1
 
 def test_interpreted_subclass() -> None:
     interpreted_subclass(Base)
 
 [file m.py]
 from __future__ import annotations
+from testutil import assertRaises
 from typing_extensions import Self
 
 def interpreted_subclass(base) -> None:
@@ -3772,6 +4023,8 @@ def interpreted_subclass(base) -> None:
     assert type(b) == base
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     class InterpretedSub(base):
         def __new__(cls, val: int) -> Self:
@@ -3781,20 +4034,36 @@ def interpreted_subclass(base) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
 
+        def method(self) -> int:
+            return 3
+
     s = InterpretedSub(42)
     assert type(s) == InterpretedSub
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 3
 
     class InterpretedSubWithoutNew(base):
+        sub_only_str = ""
+        sub_only_int: int
+
         def __init__(self, val: int) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
+
+        def method(self) -> int:
+            return 4
 
     s2 = InterpretedSubWithoutNew(42)
     assert type(s2) == InterpretedSubWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 4
+    assert s2.sub_only_str == ""
+    with assertRaises(AttributeError):
+        s2.sub_only_int
+    s2.sub_only_int = 11
+    assert s2.sub_only_int == 11
 
 [typing fixtures/typing-full.pyi]
 
@@ -4651,6 +4920,7 @@ def test_setattr() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4688,6 +4958,7 @@ def test_setattr_inherited() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4727,6 +4998,7 @@ def test_setattr_overridden() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4795,6 +5067,7 @@ def test_setattr_nonnative() -> None:
     assert i.one == 1
     assert i.two == None
     assert i.const == 42
+    i = i
 
     i.__setattr__("two", "2")
     assert i.two == "2"
@@ -4864,6 +5137,8 @@ def test_no_setattr_nonnative() -> None:
 
     object.__setattr__(i, "three", 102)
     assert i.three == 102
+
+    i = i
 
     del i.three
     assert i.three == None
@@ -5276,3 +5551,71 @@ def test_deletable_attr() -> None:
     assert i.del_counter == 1
 
 test_deletable_attr()
+
+[case testBufferCorruptedData_librt_internal]
+from librt.internal import (
+    ReadBuffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes
+)
+from random import randbytes
+
+def check(data: bytes) -> None:
+    b = ReadBuffer(data)
+    try:
+        while True:
+            read_bool(b)
+    except ValueError:
+        pass
+    b = ReadBuffer(data)
+    read_tag(b)  # Always succeeds
+    try:
+        while True:
+            read_int(b)
+    except ValueError:
+        pass
+    b = ReadBuffer(data)
+    try:
+        while True:
+            read_str(b)
+    except ValueError:
+        pass
+    b = ReadBuffer(data)
+    try:
+        while True:
+            read_bytes(b)
+    except ValueError:
+        pass
+    b = ReadBuffer(data)
+    try:
+        while True:
+            read_float(b)
+    except ValueError:
+        pass
+
+import time
+
+def test_read_corrupted_data() -> None:
+    # Test various deterministic byte sequences (1 to 4 bytes).
+    t0 = time.time()
+    for a in range(256):
+        check(bytes([a]))
+    for a in range(256):
+        for b in range(256):
+            check(bytes([a, b]))
+    for a in range(32):
+        for b in range(48):
+            for c in range(48):
+                check(bytes([a, b, c]))
+    for a in range(32):
+        for b in (0, 5, 17, 34):
+            for c in (0, 5, 17, 34):
+                for d in (0, 5, 17, 34):
+                    check(bytes([a, b, c, d]))
+    # Also test some random data.
+    for i in range(20000):
+        data = randbytes(16)
+        try:
+            check(data)
+        except BaseException as e:
+            print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
+            print(">>>", e, data)
+            raise

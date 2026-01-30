@@ -158,7 +158,7 @@ def f(__x: int) -> None: pass
 [out2]
 tmp/a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 tmp/a.py:4: error: Unexpected keyword argument "__x" for "f"
-tmp/b.py: note: "f" defined here
+tmp/b.py:1: note: "f" defined here
 
 [case testSerializeArgumentKindsErrors]
 import a
@@ -224,7 +224,7 @@ def f(x: int) -> int: pass
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.str"
 tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
-tmp/b.py: note: "f" defined here
+tmp/b.py:3: note: "f" defined here
 
 [case testSerializeTypeGuardFunction]
 import a
@@ -312,8 +312,8 @@ class A:
 [out2]
 tmp/a.py:2: error: No overload variant of "A" matches argument type "object"
 tmp/a.py:2: note: Possible overload variants:
-tmp/a.py:2: note:     def A(self, x: int) -> A
-tmp/a.py:2: note:     def A(self, x: str) -> A
+tmp/a.py:2: note:     def A(x: int) -> A
+tmp/a.py:2: note:     def A(x: str) -> A
 tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument type "object"
 tmp/a.py:7: note: Possible overload variants:
 tmp/a.py:7: note:     def __init__(self, x: int) -> None
@@ -754,8 +754,8 @@ from typing import Optional
 x: Optional[int]
 def f(x: int) -> None: pass
 [out2]
-tmp/a.py:2: note: Revealed type is "Union[builtins.int, None]"
-tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
+tmp/a.py:2: note: Revealed type is "builtins.int | None"
+tmp/a.py:3: error: Argument 1 to "f" has incompatible type "int | None"; expected "int"
 
 --
 -- # type: ignore
@@ -993,7 +993,7 @@ Ty2 = type
 [out2]
 tmp/a.py:9: note: Revealed type is "b.DD"
 tmp/a.py:10: note: Revealed type is "Any"
-tmp/a.py:11: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:11: note: Revealed type is "builtins.int | builtins.str"
 tmp/a.py:12: note: Revealed type is "builtins.list[builtins.int]"
 tmp/a.py:13: note: Revealed type is "tuple[builtins.int, builtins.str]"
 tmp/a.py:14: note: Revealed type is "def (builtins.int) -> builtins.str"
