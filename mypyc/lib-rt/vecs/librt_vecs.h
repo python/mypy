@@ -460,6 +460,7 @@ typedef struct {
     VecU8API *u8;
     VecFloatAPI *float_;
     VecBoolAPI *bool_;
+    PyTypeObject *(*get_vec_type)(void);  // Function to get base VecType for isinstance checks
 } VecCapsule;
 
 #define VEC_BUF_SIZE(b) ((b)->ob_base.ob_size)
@@ -845,6 +846,11 @@ static VecFloatAPI VecFloatApi;
 static VecBoolAPI VecBoolApi;
 static VecTAPI VecTApi;
 static VecNestedAPI VecNestedApi;
+
+// Check if obj is an instance of vec (any vec type)
+static inline int CPyVec_Check(PyObject *obj) {
+    return PyObject_TypeCheck(obj, VecApi->get_vec_type());
+}
 
 static int
 import_librt_vecs(void)

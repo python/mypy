@@ -63,6 +63,7 @@ from mypyc.ir.rtypes import (
     RPrimitive,
     RType,
     RUnion,
+    RVec,
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -204,7 +205,7 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
             if src.name in disjoint_types and dest.name in disjoint_types:
                 return src.name == dest.name
             return src.size == dest.size
-        if isinstance(src, RInstance):
+        if isinstance(src, (RInstance, RVec)):
             return is_object_rprimitive(dest)
         if isinstance(src, RUnion):
             # IR doesn't have the ability to narrow unions based on

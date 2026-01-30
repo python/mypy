@@ -776,3 +776,45 @@ L10:
     set_mem r21, r11 :: i64*
     keep_alive v
     return 1
+
+[case testVecI64Narrow]
+from librt.vecs import vec
+from mypy_extensions import i64
+from typing import Optional, Union
+
+def f(x: Optional[vec[i64]]) -> None:
+    if x is not None:
+        len(x)
+
+def g(x: Union[vec[i64], str]) -> None:
+    if isinstance(x, vec):
+        len(x)
+[out]
+def f(x):
+    x :: union[vec[i64], None]
+    r0 :: object
+    r1 :: bit
+    r2 :: vec[i64]
+    r3 :: native_int
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x != r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = unbox(vec[i64], x)
+    r3 = r2.len
+L2:
+    return 1
+def g(x):
+    x :: union[vec[i64], str]
+    r0 :: bit
+    r1 :: vec[i64]
+    r2 :: native_int
+L0:
+    r0 = CPyVec_Check(x)
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = unbox(vec[i64], x)
+    r2 = r1.len
+L2:
+    return 1

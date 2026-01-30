@@ -131,6 +131,7 @@ from mypyc.primitives.librt_strings_ops import (
     string_writer_get_item_unsafe_op,
     string_writer_range_check_op,
 )
+from mypyc.primitives.librt_vecs_ops import isinstance_vec
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -683,6 +684,7 @@ isinstance_primitives: Final = {
     "builtins.set": isinstance_set,
     "builtins.str": isinstance_str,
     "builtins.tuple": isinstance_tuple,
+    "librt.vecs.vec": isinstance_vec,
 }
 
 
