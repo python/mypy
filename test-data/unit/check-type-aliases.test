@@ -1245,7 +1245,10 @@ from typing import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 TA: TypeAlias = tuple[Unpack[Ts]]
 
-v1: TA[*list[int]]         # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+v1: TA[*list[int]]
+# python3.10: Invalid syntax; you likely need to run mypy using Python 3.11 or newer
+# E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+
 v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
@@ -1257,7 +1260,10 @@ from typing import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 TA: TypeAlias = tuple[Unpack[Ts]]
 
-v1: TA[*list[int]]         # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+v1: TA[*list[int]]
+# python3.10: Invalid syntax
+# E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+
 v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
