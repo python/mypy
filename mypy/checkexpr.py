@@ -2393,8 +2393,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     self.msg.fail(
                         f'Argument {shift_position} to "{func_name}" has incompatible type '
-                        f"{actual_str}; expected {expected_str} "
-                        f'(did you forget argument "{param_name}"?)',
+                        f"{actual_str}; expected {expected_str}",
                         context,
                         code=codes.CALL_ARG,
                     )
@@ -2486,13 +2485,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if not missing_positional:
             return None
 
+        # Only attempt shift detection when exactly one argument is missing.
+        # When multiple arguments are missing, we should fall back to the original behavior.
+        if len(missing_positional) != 1:
+            return None
+
         has_star_args = any(k == nodes.ARG_STAR for k in callee.arg_kinds)
         has_star_kwargs = any(k == nodes.ARG_STAR2 for k in callee.arg_kinds)
         has_defaults = any(k == nodes.ARG_OPT for k in callee.arg_kinds)
-        single_missing = len(missing_positional) == 1
-        high_confidence = (
-            single_missing and not has_star_args and not has_star_kwargs and not has_defaults
-        )
+        high_confidence = not has_star_args and not has_star_kwargs and not has_defaults
 
         positional_actual_types = [
             actual_types[i] for i, k in enumerate(actual_kinds) if k == nodes.ARG_POS
