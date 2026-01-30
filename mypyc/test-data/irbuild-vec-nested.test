@@ -70,7 +70,7 @@ L0:
     keep_alive vv
     return r4
 
-[case testVecNestedLen]
+[case testVecNestedLen_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 from typing import Optional
@@ -94,7 +94,7 @@ L0:
     r0 = v.len
     return r0
 
-[case testVecNestedGetItem]
+[case testVecNestedGetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -140,7 +140,7 @@ L5:
     keep_alive v
     return r10
 
-[case testVecNestedI64GetItem]
+[case testVecNestedI64GetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -186,7 +186,7 @@ L5:
     keep_alive v
     return r10
 
-[case testVecNestedI64GetItemWithBorrow]
+[case testVecNestedI64GetItemWithBorrow_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -264,7 +264,7 @@ L10:
     keep_alive v, r10
     return r21
 
-[case testVecDoublyNestedGetItem]
+[case testVecDoublyNestedGetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 

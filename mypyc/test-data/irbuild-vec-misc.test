@@ -73,7 +73,7 @@ L0:
     keep_alive r0
     return r0
 
-[case testVecMiscLen]
+[case testVecMiscLen_64bit]
 from librt.vecs import vec
 
 from mypy_extensions import i64, i32
@@ -110,7 +110,7 @@ L0:
     r0 = VecI32Api.append(v, 123)
     return r0
 
-[case testVecMiscGetItem]
+[case testVecMiscGetItem_64bit]
 from librt.vecs import vec
 
 from mypy_extensions import i64
@@ -259,7 +259,7 @@ L3:
 L4:
     return s
 
-[case testVecMiscNestedGetItem]
+[case testVecMiscNestedGetItem_64bit]
 from librt.vecs import vec
 
 from mypy_extensions import i64, i32
@@ -306,7 +306,7 @@ L5:
     keep_alive v
     return r10
 
-[case testVecMiscNestedPop]
+[case testVecMiscNestedPop_64bit]
 from librt.vecs import vec, pop
 
 from mypy_extensions import i64, i32
