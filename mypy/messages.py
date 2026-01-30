@@ -510,12 +510,12 @@ class MessageBuilder:
                                 code=codes.ATTR_DEFINED,
                             )
                             failed = True
-                elif isinstance(typ, Instance) and typ.type.names: 
+                elif isinstance(typ, Instance) and typ.type.names:
                     alternatives = set(typ.type.names.keys())
                     alternatives.discard(member)
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives, n=3))
-                    if matches: 
+                    if matches:
                         self.fail(
                             '{} has no attribute "{}"; maybe {}?{}'.format(
                                 format_type(original_type, self.options),
