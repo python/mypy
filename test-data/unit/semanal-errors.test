@@ -296,6 +296,26 @@ main:2: error: Cannot find implementation or library stub for module named "m.n"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
 
+[case testMissingModuleFuzzyMatchThirdParty]
+import numpyy
+[out]
+main:1: error: Cannot find implementation or library stub for module named "numpyy"
+main:1: note: Did you mean "numpy"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchStdlib]
+import ittertools
+[out]
+main:1: error: Cannot find implementation or library stub for module named "ittertools"
+main:1: note: Did you mean "itertools"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchNoSuggestion]
+import xyzabc123
+[out]
+main:1: error: Cannot find implementation or library stub for module named "xyzabc123"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testErrorInImportedModule]
 import m
 [file m.py]
