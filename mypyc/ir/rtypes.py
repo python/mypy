@@ -1042,16 +1042,13 @@ class RVec(RType):
             self._ctype = vec_c_types[item_type]
             self.buf_type = vec_buf_types[item_type]
             self.types = [c_pyssize_t_rprimitive, self.buf_type]
-            self.struct_type = VecI64  # TODO
         elif isinstance(non_opt, RVec):
             self._ctype = "VecNested"
             self.types = [c_pyssize_t_rprimitive, VecTBufObject]
-            self.struct_type = VecNested
             self.buf_type = VecNestedBufObject
         else:
             self._ctype = "VecT"
             self.types = [c_pyssize_t_rprimitive, VecTBufObject]
-            self.struct_type = VecT
             self.buf_type = VecTBufObject
 
     @property
