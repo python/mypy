@@ -109,6 +109,8 @@ class ClassIR:
         self.inherits_python = False
         # Do instances of this class have __dict__?
         self.has_dict = False
+        # Do instances of this class have __weakref__?
+        self.supports_weakref = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
         # Does this class need getseters to be generated for its attributes? (getseters are also
@@ -384,6 +386,7 @@ class ClassIR:
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
+            "supports_weakref": self.supports_weakref,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
             "_serializable": self._serializable,
@@ -444,6 +447,7 @@ class ClassIR:
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
+        ir.supports_weakref = data.get("supports_weakref", False)
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
         ir.needs_getseters = data["needs_getseters"]
         ir._serializable = data["_serializable"]

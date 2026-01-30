@@ -331,6 +331,20 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         if emitter.capi_version < (3, 12):
             fields["tp_dictoffset"] = base_size
             fields["tp_weaklistoffset"] = weak_offset
+    elif cl.supports_weakref and emitter.capi_version < (3, 12):
+        # __weakref__ lives right after the struct
+        # TODO: It should get a member in the struct instead of doing this nonsense.
+        emitter.emit_lines(
+            f"PyMemberDef {members_name}[] = {{",
+            f'{{"__weakref__", T_OBJECT_EX, {base_size}, 0, NULL}},',
+            "{0}",
+            "};",
+        )
+        fields["tp_members"] = members_name
+        fields["tp_basicsize"] = f"{base_size} + sizeof(PyObject *)"
+        # versions >= 3.12 set Py_TPFLAGS_MANAGED_WEAKREF flag instead
+        # https://docs.python.org/3.12/extending/newtypes.html#weak-reference-support
+        fields["tp_weaklistoffset"] = base_size
     else:
         fields["tp_basicsize"] = base_size
 
@@ -391,6 +405,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             fields["tp_call"] = "PyVectorcall_Call"
     if has_managed_dict(cl, emitter):
         flags.append("Py_TPFLAGS_MANAGED_DICT")
+    if cl.supports_weakref and emitter.capi_version >= (3, 12):
+        flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
+
     fields["tp_flags"] = " | ".join(flags)
 
     fields["tp_doc"] = f"PyDoc_STR({native_class_doc_initializer(cl)})"
@@ -876,6 +893,12 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
             f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
+    elif cl.supports_weakref and emitter.capi_version < (3, 12):
+        struct_name = cl.struct_name(emitter.names)
+        # __weakref__ lives right after the struct
+        emitter.emit_gc_visit(
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
+        )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -899,6 +922,12 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
             f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
+    elif cl.supports_weakref and emitter.capi_version < (3, 12):
+        struct_name = cl.struct_name(emitter.names)
+        # __weakref__ lives right after the struct
+        emitter.emit_gc_clear(
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
+        )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -913,6 +942,8 @@ def generate_dealloc_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
+    if cl.supports_weakref:
+        emitter.emit_line("PyObject_ClearWeakRefs((PyObject *) self);")
     if has_tp_finalize:
         emitter.emit_line("PyObject *type, *value, *traceback;")
         emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
