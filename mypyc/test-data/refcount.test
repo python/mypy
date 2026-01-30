@@ -1500,7 +1500,7 @@ L2:
 L3:
     return r4
 
-[case testVecTSetItem]
+[case testVecTSetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -1549,7 +1549,7 @@ L5:
     set_mem r9, x :: builtins.str*
     return 1
 
-[case testVecTConstructFromListMultiply]
+[case testVecTConstructFromListMultiply_64bit]
 from typing import Optional
 from librt.vecs import vec
 from mypy_extensions import i64
@@ -1591,7 +1591,7 @@ L2:
 L3:
     return r4
 
-[case testVecTForLoop]
+[case testVecTForLoop_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -1642,7 +1642,7 @@ def g(s):
 L0:
     return 1
 
-[case testVecTConstructFromListExpr]
+[case testVecTConstructFromListExpr_64bit]
 from librt.vecs import vec
 
 def f() -> vec[str]:
@@ -1763,7 +1763,7 @@ L0:
     r4 = VecNestedApi.append(vv, r3)
     return r4
 
-[case testVecTGetItem]
+[case testVecTGetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -1808,7 +1808,7 @@ L5:
     r10 = load_mem r9 :: builtins.str*
     return r10
 
-[case testVecNestedGetItem]
+[case testVecNestedGetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
