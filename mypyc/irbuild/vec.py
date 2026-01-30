@@ -248,6 +248,8 @@ def vec_check_and_adjust_index(
     builder: LowLevelIRBuilder, lenv: Value, index: Value, line: int
 ) -> Value:
     r = Register(int64_rprimitive)
+    index = builder.coerce(index, int64_rprimitive, line)
+    lenv = builder.coerce(lenv, int64_rprimitive, line)
     ok, ok2, ok3 = BasicBlock(), BasicBlock(), BasicBlock()
     fail, fail2 = BasicBlock(), BasicBlock()
     is_less = builder.comparison_op(index, lenv, ComparisonOp.ULT, line)
