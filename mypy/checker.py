@@ -4754,7 +4754,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
-            elif lvalue_type:
+            elif lvalue_type and not self.can_skip_diagnostics:
                 self.check_subtype(
                     # Preserve original aliases for error messages when possible.
                     rvalue_type,
