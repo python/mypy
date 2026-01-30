@@ -6752,8 +6752,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         if_map, else_map = conditional_types_to_typemaps(
                             operands[i], *conditional_types(expr_type, [target])
                         )
-                        if else_map:
-                            all_else_maps.append(else_map)
+                        all_else_maps.append(else_map)
                 continue
 
             # If our operand with custom __eq__ is a union, where only some members of the union
