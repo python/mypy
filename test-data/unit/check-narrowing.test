@@ -3175,23 +3175,30 @@ from typing import TypeVar
 class A: ...
 class B: ...
 
-T = TypeVar("T", A, B)
+T = TypeVar("T")
 
-def bad(self, obj: T) -> T:
+def bad1(self, obj: T) -> T:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif isinstance(obj, B):
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+def f1(self, obj: T) -> T:
+    if type(obj) == A:
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif type(obj) == B:
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+T_value = TypeVar("T_value", A, B)
+
+def bad2(self, obj: T_value) -> T_value:
     if isinstance(obj, A):
         return A()  # E: Incompatible return value type (got "A", expected "B")
     elif isinstance(obj, B):
         return B()
     raise
-
-def f1(self, obj: T) -> T:
-    if type(obj) == A:
-        return A()
-    elif type(obj) == B:
-        return B()
-    raise
-
-T_value = TypeVar("T_value", A, B)
 
 def f2(self, obj: T_value) -> T_value:
     if type(obj) == A:
