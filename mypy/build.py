@@ -150,6 +150,8 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
+from mypy.known_modules import get_known_modules
+from mypy.messages import best_matches, pretty_seq
 from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
@@ -3188,6 +3190,23 @@ def module_not_found(
         else:
             code = codes.IMPORT
         errors.report(line, 0, msg.format(module=target), code=code)
+
+        if reason == ModuleNotFoundReason.NOT_FOUND:
+            top_level_target = target.split(".")[0]
+            known_modules = get_known_modules(
+                manager.find_module_cache.stdlib_py_versions,
+                manager.options.python_version,
+            )
+            matches = best_matches(top_level_target, known_modules, n=3)
+            matches = [m for m in matches if m.lower() != top_level_target.lower()]
+            if matches:
+                errors.report(
+                    line,
+                    0,
+                    f'Did you mean {pretty_seq(matches, "or")}?',
+                    severity="note",
+                    code=code,
+                )
 
         dist = stub_distribution_name(target)
         for note in notes:
