@@ -18,9 +18,9 @@ import json
 import sys
 from typing import Any, TypeAlias as _TypeAlias
 
-from librt.internal import ReadBuffer
+from librt.internal import ReadBuffer, cache_version
 
-from mypy.cache import CacheMeta
+from mypy.cache import CACHE_VERSION, CacheMeta
 from mypy.nodes import (
     FUNCBASE_FLAGS,
     FUNCDEF_FLAGS,
@@ -553,7 +553,10 @@ def convert_unbound_type(self: UnboundType) -> Json:
 
 
 def convert_binary_cache_meta_to_json(data: bytes, data_file: str) -> Json:
-    meta = CacheMeta.read(ReadBuffer(data), data_file)
+    assert (
+        data[0] == cache_version() and data[1] == CACHE_VERSION
+    ), "Cache file created by an incompatible mypy version"
+    meta = CacheMeta.read(ReadBuffer(data[2:]), data_file)
     assert meta is not None, f"Error reading meta cache file associated with {data_file}"
     return {
         "id": meta.id,
