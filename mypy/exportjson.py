@@ -553,7 +553,7 @@ def convert_unbound_type(self: UnboundType) -> Json:
 
 
 def convert_binary_cache_meta_to_json(data: bytes, data_file: str) -> Json:
-    meta = CacheMeta.read(Buffer(data), data_file)
+    meta = CacheMeta.read(ReadBuffer(data), data_file)
     assert meta is not None, f"Error reading meta cache file associated with {data_file}"
     return {
         "id": meta.id,
