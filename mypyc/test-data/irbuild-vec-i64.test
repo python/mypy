@@ -96,6 +96,7 @@ L5:
     return r10
 
 [case testVecI64GetItem_32bit]
+# The IR is quite verbose, but it's acceptable since 32-bit targets are not common any more
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -112,11 +113,13 @@ def f(v, i):
     r4 :: bit
     r5 :: bool
     r6 :: i64
-    r7 :: object
-    r8 :: ptr
-    r9 :: i64
-    r10 :: ptr
-    r11 :: i64
+    r7, r8 :: bit
+    r9 :: native_int
+    r10 :: object
+    r11 :: ptr
+    r12 :: native_int
+    r13 :: ptr
+    r14 :: i64
 L0:
     r0 = v.len
     r1 = extend signed r0: native_int to i64
@@ -135,13 +138,25 @@ L3:
 L4:
     r6 = i
 L5:
-    r7 = v.buf
-    r8 = get_element_ptr r7 items :: VecI64BufObject
-    r9 = r6 * 8
-    r10 = r8 + r9
-    r11 = load_mem r10 :: i64*
+    r7 = r6 < 2147483648 :: signed
+    if r7 goto L6 else goto L8 :: bool
+L6:
+    r8 = r6 >= -2147483648 :: signed
+    if r8 goto L7 else goto L8 :: bool
+L7:
+    r9 = truncate r6: i64 to native_int
+    goto L9
+L8:
+    CPyInt32_Overflow()
+    unreachable
+L9:
+    r10 = v.buf
+    r11 = get_element_ptr r10 items :: VecI64BufObject
+    r12 = r9 * 8
+    r13 = r11 + r12
+    r14 = load_mem r13 :: i64*
     keep_alive v
-    return r11
+    return r14
 
 [case testVecI64Append]
 from librt.vecs import vec, append
