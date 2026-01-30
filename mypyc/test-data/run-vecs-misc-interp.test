@@ -73,8 +73,8 @@ def test_isinstance() -> None:
     for t in ITEM_TYPES:
         v = vec[t]()
         assert isinstance(v, vec)
+        assert not isinstance(vec[t], vec)
     assert not isinstance("x", vec)
-    assert not isinstance(vec[t], vec)
     assert not isinstance(vec, vec)
 
 def test_basic_int_operations() -> None:
