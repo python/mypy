@@ -3177,6 +3177,13 @@ class B: ...
 
 T = TypeVar("T", A, B)
 
+def bad(self, obj: T) -> T:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "B")
+    elif isinstance(obj, B):
+        return B()
+    raise
+
 def f1(self, obj: T) -> T:
     if type(obj) == A:
         return A()
