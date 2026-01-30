@@ -48,18 +48,41 @@ from mypy.visitor import NodeVisitor
 # N.B: we do a allow_missing fixup when fixing up a fine-grained
 # incremental cache load (since there may be cross-refs into deleted
 # modules)
-def fixup_module(tree: MypyFile, modules: dict[str, MypyFile], allow_missing: bool) -> None:
-    node_fixer = NodeFixer(modules, allow_missing)
+def fixup_module(
+    tree: MypyFile,
+    modules: dict[str, MypyFile],
+    allow_missing: bool,
+    suppressed_modules: set[str] | None = None,
+) -> None:
+    node_fixer = NodeFixer(modules, allow_missing, suppressed_modules or set())
     node_fixer.visit_symbol_table(tree.names, tree.fullname)
+
+
+def is_suppressed_module(name: str, suppressed: set[str]) -> bool:
+    """Check if name or any of its prefixes is a suppressed module.
+
+    For example, if name is "google.protobuf.descriptor" and suppressed
+    contains "google", returns True. But if name is "google" and suppressed
+    only contains "google.protobuf", returns False.
+    """
+    parts = name.split(".")
+    for i in range(len(parts), 0, -1):
+        prefix = ".".join(parts[:i])
+        if prefix in suppressed:
+            return True
+    return False
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
     current_info: TypeInfo | None = None
 
-    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
+    def __init__(
+        self, modules: dict[str, MypyFile], allow_missing: bool, suppressed_modules: set[str]
+    ) -> None:
         self.modules = modules
         self.allow_missing = allow_missing
+        self.suppressed_modules = suppressed_modules
         self.type_fixer = TypeFixer(self.modules, allow_missing)
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
@@ -127,6 +150,13 @@ class NodeFixer(NodeVisitor[None]):
                 value.cross_ref = None
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
+                elif is_suppressed_module(cross_ref, self.suppressed_modules):
+                    # The cross-ref points to a module whose import was suppressed,
+                    # so it was never loaded. This can happen when stubs import from
+                    # a module without stubs (e.g., protobuf stubs importing from
+                    # google.protobuf when protobuf is not installed).
+                    # See https://github.com/python/mypy/issues/16214
+                    value.node = missing_info(self.modules)
                 else:
                     stnode = lookup_fully_qualified(
                         cross_ref, self.modules, raise_on_missing=not self.allow_missing
@@ -384,14 +414,18 @@ def lookup_fully_qualified_typeinfo(
     node = stnode.node if stnode else None
     if isinstance(node, TypeInfo):
         return node
-    else:
-        # Looks like a missing TypeInfo during an initial daemon load, put something there
-        assert (
-            allow_missing
-        ), "Should never get here in normal mode, got {}:{} instead of TypeInfo".format(
-            type(node).__name__, node.fullname if node else ""
-        )
+    # Synthetic names (starting with "<") can appear in cached data regardless of
+    # allow_missing mode. Return a placeholder for them.
+    if name.startswith("<"):
         return missing_info(modules)
+    # Missing TypeInfo - can occur when loading cached data that contains placeholders
+    # from a previous run (e.g., fine-grained mode, daemon, or suppressed modules).
+    assert (
+        allow_missing
+    ), "Should never get here in normal mode, got {}:{} instead of TypeInfo".format(
+        type(node).__name__, node.fullname if node else ""
+    )
+    return missing_info(modules)
 
 
 def lookup_fully_qualified_alias(
@@ -414,14 +448,18 @@ def lookup_fully_qualified_alias(
             return missing_alias()
         node.special_alias = alias
         return alias
-    else:
-        # Looks like a missing TypeAlias during an initial daemon load, put something there
-        assert (
-            allow_missing
-        ), "Should never get here in normal mode, got {}:{} instead of TypeAlias".format(
-            type(node).__name__, node.fullname if node else ""
-        )
+    # Synthetic names (starting with "<") can appear in cached data regardless of
+    # allow_missing mode. Return a placeholder for them.
+    if name.startswith("<"):
         return missing_alias()
+    # Missing TypeAlias - can occur when loading cached data that contains placeholders
+    # from a previous run (e.g., fine-grained mode, daemon, or suppressed modules).
+    assert (
+        allow_missing
+    ), "Should never get here in normal mode, got {}:{} instead of TypeAlias".format(
+        type(node).__name__, node.fullname if node else ""
+    )
+    return missing_alias()
 
 
 _SUGGESTION: Final = "<missing {}: *should* have gone away during fine-grained update>"
