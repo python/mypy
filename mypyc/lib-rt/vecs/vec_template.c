@@ -365,6 +365,9 @@ PyTypeObject BUF_TYPE = {
     .tp_free = PyObject_Del,
 };
 
+// Forward declaration of base vec type (defined in librt_vecs.c)
+extern PyTypeObject VecType;
+
 PyTypeObject VEC_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec[" ITEM_TYPE_STR "]",
