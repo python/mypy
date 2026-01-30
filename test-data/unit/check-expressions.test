@@ -2583,7 +2583,7 @@ def last_known_value() -> None:
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 
-[case testInvalidArgumentInOverloadError]
+[case testOverloadUnexpectedKeywordArgWithTypoSuggestion]
 from typing import overload, Union
 
 @overload
@@ -2595,20 +2595,80 @@ def f(foobar: str) -> None: ...
 def f(foobar: Union[int, str]) -> None: pass
 
 f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"?
+[builtins fixtures/list.pyi]
+
+[case testOverloadUnexpectedKeywordArgNoMatch]
+from typing import overload, Union
+
+@overload
+def f(foobar: int) -> None: ...
+
+@overload
+def f(foobar: str) -> None: ...
+
+def f(foobar: Union[int, str]) -> None: pass
+
 f(random=[1,2,3]) # E: Unexpected keyword argument "random" for overloaded function "f" \
                   # N: Possible overload variants: \
                   # N:     def f(foobar: int) -> None \
                   # N:     def f(foobar: str) -> None \
                   # E: No overload variant of "f" matches argument type "list[int]"
+[builtins fixtures/list.pyi]
+
+[case testOverloadMultipleUnexpectedKeywordArgs]
+from typing import overload, Union
+
+@overload
+def f(foobar: int) -> None: ...
+
+@overload
+def f(foobar: str) -> None: ...
+
+def f(foobar: Union[int, str]) -> None: pass
 
 f(fobar=1, baz=2) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"? \
                   # E: Unexpected keyword argument "baz" for overloaded function "f"
+[builtins fixtures/list.pyi]
+
+[case testOverloadManyUnexpectedKeywordArgs]
+from typing import overload, Union
+
+@overload
+def f(foobar: int) -> None: ...
+
+@overload
+def f(foobar: str) -> None: ...
+
+def f(foobar: Union[int, str]) -> None: pass
 
 f(foobar=1, a=2, b=3, c=4, d=5, e=6) # E: Unexpected keyword arguments "a", "b", "c", "d", "e" for overloaded function "f" \
                                      # E: No overload variant of "f" matches argument types "int", "int", "int", "int", "int", "int" \
                                      # N: Possible overload variants: \
                                      # N:     def f(foobar: int) -> None \
                                      # N:     def f(foobar: str) -> None
+[builtins fixtures/list.pyi]
+
+[case testOverloadUnexpectedKeywordArgsWithTypeMismatch]
+from typing import overload, Union
+
+@overload
+def f(foobar: int) -> None: ...
+
+@overload
+def f(foobar: str) -> None: ...
+
+def f(foobar: Union[int, str]) -> None: pass
+
+f(fobar=1, other=[1,2,3]) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"? \
+                          # E: Unexpected keyword argument "other" for overloaded function "f" \
+                          # N: Possible overload variants: \
+                          # N:     def f(foobar: int) -> None \
+                          # N:     def f(foobar: str) -> None \
+                          # E: No overload variant of "f" matches argument types "int", "list[int]"
+[builtins fixtures/list.pyi]
+
+[case testOverloadPositionalArgTypeMismatch]
+from typing import overload, Union
 
 @overload
 def g(x: int, y: int) -> int: ...
@@ -2619,23 +2679,42 @@ def g(x: str, y: str) -> str: ...
 def g(x: Union[int, str], y: Union[int, str]) -> Union[int, str]:
     return x
 
-f(fobar=1, other=[1,2,3]) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"? \
-                          # E: Unexpected keyword argument "other" for overloaded function "f" \
-                          # N: Possible overload variants: \
-                          # N:     def f(foobar: int) -> None \
-                          # N:     def f(foobar: str) -> None \
-                          # E: No overload variant of "f" matches argument types "int", "list[int]"
-
 g([1, 2], 3) # E: No overload variant of "g" matches argument types "list[int]", "int" \
              # N: Possible overload variants: \
              # N:     def g(x: int, y: int) -> int \
              # N:     def g(x: str, y: str) -> str
+[builtins fixtures/list.pyi]
+
+[case testOverloadUnexpectedKeywordWithPositionalMismatch]
+from typing import overload, Union
+
+@overload
+def g(x: int, y: int) -> int: ...
+
+@overload
+def g(x: str, y: str) -> str: ...
+
+def g(x: Union[int, str], y: Union[int, str]) -> Union[int, str]:
+    return x
 
 g([1, 2], z=3) # E: Unexpected keyword argument "z" for overloaded function "g" \
                # E: No overload variant of "g" matches argument types "list[int]", "int" \
                # N: Possible overload variants: \
                # N:     def g(x: int, y: int) -> int \
                # N:     def g(x: str, y: str) -> str
+[builtins fixtures/list.pyi]
+
+[case testOverloadNamedArgTypeMismatch]
+from typing import overload, Union
+
+@overload
+def g(x: int, y: int) -> int: ...
+
+@overload
+def g(x: str, y: str) -> str: ...
+
+def g(x: Union[int, str], y: Union[int, str]) -> Union[int, str]:
+    return x
 
 g(x="hello", y=1) # E: No overload variant of "g" matches argument types "str", "int" \
                   # N: Possible overload variants: \
