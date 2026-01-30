@@ -59,7 +59,7 @@ pytest-xdist==3.8.0
     # via -r test-requirements.in
 pyyaml==6.0.3
     # via pre-commit
-tomli==2.3.0 ; python_version < "3.11"
+tomli==2.3.0
     # via
     #   -r mypy-requirements.txt
     #   -r test-requirements.in
