@@ -3753,3 +3753,66 @@ foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expe
 kwargs: dict[str, object]
 foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
 [builtins fixtures/dict.pyi]
+
+[case testMissingPositionalArgumentTypeMismatch]
+def f(x: int, y: str, z: bytes, aa: int) -> None: ...
+
+f(1, b'x', 1)
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Argument 2 to "f" has incompatible type "bytes"; expected "str"
+
+[case testMissingPositionalArgumentTypeMismatchFirst]
+def f(x: int, y: str, z: bytes) -> None: ...
+
+f("hello", b'x')
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testMissingPositionalArgumentManyArgs]
+def f(a: int, b: str, c: float, d: list[int], e: tuple[str, ...]) -> None: ...
+
+f(1, 1.5, [1, 2, 3], ("a", "b"))
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Argument 2 to "f" has incompatible type "float"; expected "str"
+
+[case testMissingPositionalArgumentNoPattern]
+def f(x: int, y: str, z: bytes) -> None: ...
+
+f("wrong", 123)
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Missing positional argument "z" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+
+[case testMissingMultiplePositionalArguments]
+def f(a: int, b: str, c: float, d: list[int]) -> None: ...
+
+f(1.5, [1, 2, 3])
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Missing positional arguments "c", "d" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "float"; expected "int"
+main:3: error: Argument 2 to "f" has incompatible type "list[int]"; expected "str"
+
+[case testMissingPositionalArgumentWithDefaults]
+def f(x: int, y: str, z: bytes = b'default') -> None: ...
+
+f("hello")
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Missing positional argument "y" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testMissingPositionalArgumentWithStarArgs]
+def f(x: int, y: str, z: bytes, *args: int) -> None: ...
+
+f("hello", b'x')
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Missing positional argument "z" in call to "f"
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "f" has incompatible type "bytes"; expected "str"
