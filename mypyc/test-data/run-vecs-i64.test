@@ -4,7 +4,7 @@
 [case testVecI64BasicOps_librt_experimental]
 from typing import Final, Any, Iterable, Tuple
 
-from mypy_extensions import i64
+from mypy_extensions import i64, i32
 from librt.vecs import vec, append, remove, pop
 
 from testutil import assertRaises
@@ -162,6 +162,71 @@ def test_box_and_unbox() -> None:
     # TODO: Better message
     with assertRaises(TypeError, "vec[i64] object expected; got vec"):
         v2 = o3
+
+def check_opt(x: vec[i64] | None, is_none: bool) -> None:
+    if is_none:
+        assert x is None
+    else:
+        if int() + 1:
+            assert x is not None
+            assert len(x) == 1
+            assert x[0] == 5
+        if int() + 2:
+            assert isinstance(x, vec)
+            assert len(x) == 1
+            assert x[0] == 5
+    if isinstance(x, vec):
+        assert x[0] == 5
+        assert not is_none
+    else:
+        assert is_none
+
+def test_vec_optional() -> None:
+    v = vec[i64]([5])
+    check_opt(None, True)
+    check_opt(v, False)
+    a1: Any = None
+    check_opt(a1, True)
+    a2: Any = v
+    check_opt(a2, False)
+    a3: Any = str
+    with assertRaises(TypeError):
+        check_opt(a3, False)
+
+def check_union(x: vec[i64] | str, is_str: bool) -> None:
+    if is_str:
+        assert isinstance(x, str)
+        assert x == "ss"
+    else:
+        if int() + 1:
+            assert not isinstance(x, str)
+            assert len(x) == 1
+            assert x[0] == 5
+        if int() + 2:
+            assert isinstance(x, vec)
+            assert len(x) == 1
+            assert x[0] == 5
+    if isinstance(x, vec):
+        assert x[0] == 5
+        assert not is_str
+    else:
+        assert is_str
+        assert x == "ss"
+
+def test_vec_union() -> None:
+    v = vec[i64]([5])
+    check_union("ss", True)
+    check_union(v, False)
+    a1: Any = "ss"
+    check_union(a1, True)
+    a2: Any = v
+    check_union(a2, False)
+    a3: Any = b"ss"
+    with assertRaises(TypeError):
+        check_union(a3, False)
+    a4: Any = vec[i32]()
+    with assertRaises(TypeError, 'vec[i64] object expected; got vec[i32]'):
+        check_union(a4, False)
 
 def test_construct_from_list_multiply() -> None:
     for i in range(50):
