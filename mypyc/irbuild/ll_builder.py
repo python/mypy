@@ -131,7 +131,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
-from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len
+from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len, vec_len_native
 from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
@@ -2712,10 +2712,10 @@ class LowLevelIRBuilder:
             return length
 
         elif isinstance(typ, RVec):
-            len_value = vec_len(self, val)
+            len_value = vec_len_native(self, val)
             if use_pyssize_t:
                 return len_value
-            count = Integer(1, int64_rprimitive, line)
+            count = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, len_value, count, IntOp.LEFT_SHIFT, line)
 
         op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
