@@ -241,10 +241,8 @@ PyTypeObject VecGenericAliasType = {
 // The 'vec' type
 //
 // This cannot be instantiated, and it's only used for isinstance and indexing: vec[T].
-
-typedef struct {
-    PyObject_HEAD
-} Vec;
+// All specialized vec types (VecI64Type, VecI32Type, etc.) inherit from this base type,
+// so isinstance(v, vec) returns True for any specialized vec instance.
 
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
@@ -374,9 +372,9 @@ static PyMethodDef vec_methods[] = {
 PyTypeObject VecType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
-    .tp_basicsize = sizeof(Vec),
+    .tp_basicsize = sizeof(VecBaseObject),
     .tp_itemsize = 0,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_flags = Py_TPFLAGS_DEFAULT,  // No Py_TPFLAGS_BASETYPE - prevent Python subclassing
     .tp_methods = vec_methods,
 };
 

@@ -28,6 +28,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "librt_vecs.h"
+#include "vecs_internal.h"
 
 inline static VEC vec_error() {
     VEC v = { .len = -1 };
@@ -370,6 +371,7 @@ PyTypeObject VEC_TYPE = {
     .tp_doc = "Mutable sequence-like container optimized for compilation with mypyc",
     .tp_basicsize = sizeof(VEC_OBJECT),
     .tp_itemsize = 0,
+    .tp_base = &VecType,  // Inherit from base vec type for isinstance() support
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = vec_new,
     //.tp_free = PyObject_Del,
