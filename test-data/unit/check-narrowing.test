@@ -880,7 +880,7 @@ def f1(x: Literal[1, 2, None], y: Custom):
         reveal_type(x)   # N: Revealed type is "Literal[1]"
         reveal_type(y)   # N: Revealed type is "__main__.Custom"
     else:
-        reveal_type(x)   # N: Revealed type is "Literal[2] | None"
+        reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
         reveal_type(y)   # N: Revealed type is "__main__.Custom"
 
 class Default: pass
