@@ -11,6 +11,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "librt_vecs.h"
+#include "vecs_internal.h"
 
 static inline VecT vec_error() {
     VecT v = { .len = -1 };
@@ -433,6 +434,7 @@ PyTypeObject VecTType = {
     .tp_doc = "Mutable sequence-like container optimized for compilation with mypyc",
     .tp_basicsize = sizeof(VecTObject),
     .tp_itemsize = 0,
+    .tp_base = &VecType,  // Inherit from base vec type for isinstance() support
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)VecT_traverse,
     .tp_clear = (inquiry)VecT_clear,
