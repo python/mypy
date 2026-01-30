@@ -2550,6 +2550,20 @@ class Pet(Enum):
                     # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
 [builtins fixtures/enum.pyi]
 
+[case testEnumMemberFuzzyMatch]
+from enum import Enum
+
+class Color(Enum):
+    GREEN = 1
+    RED = 2
+    YELLOW = 3
+
+Color.GREN  # E: "type[Color]" has no attribute "GREN"; maybe "GREEN"?
+Color.YELOW # E: "type[Color]" has no attribute "YELOW"; maybe "YELLOW"?
+Color.RDE   # E: "type[Color]" has no attribute "RDE"
+Color.BLUE  # E: "type[Color]" has no attribute "BLUE"
+[builtins fixtures/enum.pyi]
+
 [case testEnumValueWithPlaceholderNodeType]
 # https://github.com/python/mypy/issues/11971
 from enum import Enum
