@@ -2141,7 +2141,6 @@ if y in x:
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListNested]
 # flags: --warn-unreachable

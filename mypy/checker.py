@@ -282,7 +282,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = dict[Expression, Type] | None
+TypeMap: _TypeAlias = dict[Expression, Type]
 
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
@@ -5090,7 +5090,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
-                s.unreachable_else = else_map is None
+                s.unreachable_else = is_unreachable_map(else_map)
 
                 # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -5699,39 +5699,33 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
-            unmatched_types: TypeMap = None
+            unmatched_types: TypeMap = {s.subject: UninhabitedType()}
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
                 )
                 pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    if b.is_unreachable or isinstance(
-                        get_proper_type(pattern_type.type), UninhabitedType
-                    ):
-                        self.push_type_map(None, from_assignment=False)
-                        else_map: TypeMap = {}
-                    else:
-                        pattern_map, else_map = conditional_types_to_typemaps(
-                            named_subject, pattern_type.type, pattern_type.rest_type
-                        )
-                        # Maybe the subject type can be inferred from constraints on
-                        # its attribute/item?
-                        if pattern_map and named_subject in pattern_map:
-                            pattern_map[unwrapped_subject] = pattern_map[named_subject]
-                        if else_map and named_subject in else_map:
-                            else_map[unwrapped_subject] = else_map[named_subject]
-                        pattern_map = self.propagate_up_typemap_info(pattern_map)
-                        else_map = self.propagate_up_typemap_info(else_map)
-                        self.remove_capture_conflicts(pattern_type.captures, inferred_types)
-                        self.push_type_map(pattern_map, from_assignment=False)
-                        if pattern_map:
-                            for expr, typ in pattern_map.items():
-                                self.push_type_map(
-                                    self._get_recursive_sub_patterns_map(expr, typ),
-                                    from_assignment=False,
-                                )
-                        self.push_type_map(pattern_type.captures, from_assignment=False)
+                    pattern_map, else_map = conditional_types_to_typemaps(
+                        named_subject, pattern_type.type, pattern_type.rest_type
+                    )
+                    # Maybe the subject type can be inferred from constraints on
+                    # its attribute/item?
+                    if named_subject in pattern_map:
+                        pattern_map[unwrapped_subject] = pattern_map[named_subject]
+                    if named_subject in else_map:
+                        else_map[unwrapped_subject] = else_map[named_subject]
+                    pattern_map = self.propagate_up_typemap_info(pattern_map)
+                    else_map = self.propagate_up_typemap_info(else_map)
+                    self.remove_capture_conflicts(pattern_type.captures, inferred_types)
+                    self.push_type_map(pattern_map, from_assignment=False)
+                    if pattern_map:
+                        for expr, typ in pattern_map.items():
+                            self.push_type_map(
+                                self._get_recursive_sub_patterns_map(expr, typ),
+                                from_assignment=False,
+                            )
+                    self.push_type_map(pattern_type.captures, from_assignment=False)
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
@@ -5747,8 +5741,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 case_target = p.pattern or p.name
                                 if isinstance(case_target, NameExpr):
                                     for type_map in (guard_map, else_map):
-                                        if not type_map:
-                                            continue
                                         for expr in list(type_map):
                                             if not (
                                                 isinstance(expr, NameExpr)
@@ -5764,7 +5756,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.push_type_map(else_map, from_assignment=False)
                 unmatched_types = else_map
 
-            if unmatched_types is not None and not self.current_node_deferred:
+            if not is_unreachable_map(unmatched_types) and not self.current_node_deferred:
                 for typ in unmatched_types.values():
                     self.msg.match_statement_inexhaustive_match(typ, s)
 
@@ -5812,7 +5804,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # necessary `Var`s (e.g. a function defined earlier with the same name).
         all_captures: dict[SymbolNode, list[tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
-            if tm is not None:
+            if not is_unreachable_map(tm):
                 for expr, typ in tm.items():
                     if isinstance(expr, NameExpr):
                         node = expr.node
@@ -5854,7 +5846,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def remove_capture_conflicts(
         self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
     ) -> None:
-        if type_map:
+        if not is_unreachable_map(type_map):
             for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
@@ -6140,18 +6132,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         callables, uncallables = self.partition_by_callable(current_type, unsound_partition=False)
 
         if callables and uncallables:
-            callable_map = {expr: UnionType.make_union(callables)} if callables else None
-            uncallable_map = {expr: UnionType.make_union(uncallables)} if uncallables else None
+            callable_map = {expr: UnionType.make_union(callables)}
+            uncallable_map = {expr: UnionType.make_union(uncallables)}
             return callable_map, uncallable_map
 
         elif callables:
-            return {}, None
+            return {}, {expr: UninhabitedType()}
 
-        return None, {}
+        return {expr: UninhabitedType()}, {}
 
     def conditional_types_for_iterable(
         self, item_type: Type, iterable_type: Type
-    ) -> tuple[Type | None, Type | None]:
+    ) -> tuple[Type, Type]:
         """
         Narrows the type of `iterable_type` based on the type of `item_type`.
         For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
@@ -6183,10 +6175,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if_types.append(possible_iterable_type)
                 else_types.append(possible_iterable_type)
 
-        return (
-            UnionType.make_union(if_types) if if_types else None,
-            UnionType.make_union(else_types) if else_types else None,
-        )
+        return UnionType.make_union(if_types), UnionType.make_union(else_types)
 
     def _is_truthy_type(self, t: ProperType) -> bool:
         return (
@@ -6290,9 +6279,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self, node: Expression, *, in_boolean_context: bool = True
     ) -> tuple[TypeMap, TypeMap]:
         if is_true_literal(node):
-            return {}, None
+            return {}, {node: UninhabitedType()}
         if is_false_literal(node):
-            return None, {}
+            return {node: UninhabitedType()}, {}
 
         if isinstance(node, CallExpr) and len(node.args) != 0:
             expr = collapse_walrus(node.args[0])
@@ -6382,31 +6371,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         elif isinstance(node, ComparisonExpr):
             return self.comparison_type_narrowing_helper(node)
         elif isinstance(node, AssignmentExpr):
-            if_map: dict[Expression, Type] | None
-            else_map: dict[Expression, Type] | None
+            if_map: TypeMap
+            else_map: TypeMap
             if_map = {}
             else_map = {}
 
             if_assignment_map, else_assignment_map = self.find_isinstance_check(node.target)
-
-            if if_assignment_map is not None:
-                if_map.update(if_assignment_map)
-            if else_assignment_map is not None:
-                else_map.update(else_assignment_map)
+            if_map.update(if_assignment_map)
+            else_map.update(else_assignment_map)
 
             if_condition_map, else_condition_map = self.find_isinstance_check(
                 node.value, in_boolean_context=False
             )
 
-            if if_condition_map is not None:
-                if_map.update(if_condition_map)
-            if else_condition_map is not None:
-                else_map.update(else_condition_map)
+            if_map.update(if_condition_map)
+            else_map.update(else_condition_map)
 
-            return (
-                (None if if_assignment_map is None or if_condition_map is None else if_map),
-                (None if else_assignment_map is None or else_condition_map is None else else_map),
-            )
+            return if_map, else_map
         elif isinstance(node, OpExpr) and node.op == "and":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
@@ -6443,16 +6424,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         ):
             # Combine a `len(x) > 0` check with the default logic below.
             yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
-            if yes_type is not None:
-                yes_type = true_only(yes_type)
-            else:
-                yes_type = UninhabitedType()
-            if no_type is not None:
-                no_type = false_only(no_type)
-            else:
-                no_type = UninhabitedType()
-            if_map = {node: yes_type} if not isinstance(yes_type, UninhabitedType) else None
-            else_map = {node: no_type} if not isinstance(no_type, UninhabitedType) else None
+            if_map = {node: true_only(yes_type)}
+            else_map = {node: false_only(no_type)}
             return if_map, else_map
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
@@ -6464,10 +6437,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
-        if_type = true_only(vartype)
-        else_type = false_only(vartype)
-        if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
-        else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        if_map = {node: true_only(vartype)}
+        else_map = {node: false_only(vartype)}
         return if_map, else_map
 
     def comparison_type_narrowing_helper(self, node: ComparisonExpr) -> tuple[TypeMap, TypeMap]:
@@ -6563,7 +6534,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                         # We only try and narrow away 'None' for now
                         if (
-                            if_map is not None
+                            not is_unreachable_map(if_map)
                             and is_overlapping_none(item_type)
                             and not is_overlapping_none(collection_item_type)
                             and not (
@@ -6579,14 +6550,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         item_type, iterable_type
                     )
                     expr = operands[right_index]
-                    if if_type is None:
-                        if_map = None
-                    elif if_map is not None:
-                        if_map[expr] = if_type
-                    if else_type is None:
-                        else_map = None
-                    elif else_map is not None:
-                        else_map[expr] = else_type
+                    if_map[expr] = if_type
+                    else_map[expr] = else_type
 
             else:
                 if_map = {}
@@ -6725,7 +6690,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # However, for non-value targets, we cannot do this narrowing,
                     # and so we ignore else_map
                     # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
-                    if if_map is not None:  # TODO: this gate is incorrect and should be removed
+                    # TODO: this reachability gate is incorrect and should be removed
+                    if not is_unreachable_map(if_map):
                         all_if_maps.append(if_map)
 
         # Handle narrowing for operands with custom __eq__ methods specially
@@ -6862,8 +6828,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
-        if new_types is None:
-            return None
         output_map = {}
         for expr, expr_type in new_types.items():
             # The original inferred type should always be present in the output map, of course
@@ -7110,6 +7074,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if last_group:
             chained.append(("==", list(last_group)))
 
+        yes_map: TypeMap
+        no_map: TypeMap
+
         # Second step: infer type restrictions from each group found above.
         type_maps = []
         for op, items in chained:
@@ -7134,15 +7101,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if len(literal_values) > 1:
                     # More than one different literal value found, like 1 == len(x) == 2,
                     # so the corresponding branch is unreachable.
-                    return [(None, {})]
+                    yes_map = {tpl: UninhabitedType() for tpl in tuples}
+                    return [(yes_map, {})]
                 size = literal_values.pop()
                 if size > MAX_PRECISE_TUPLE_SIZE:
                     # Avoid creating huge tuples from checks like if len(x) == 300.
                     continue
                 for tpl in tuples:
                     yes_type, no_type = self.narrow_with_len(self.lookup_type(tpl), op, size)
-                    yes_map = None if yes_type is None else {tpl: yes_type}
-                    no_map = None if no_type is None else {tpl: no_type}
+                    yes_map = {tpl: yes_type}
+                    no_map = {tpl: no_type}
                     type_maps.append((yes_map, no_map))
             else:
                 left, right = items
@@ -7159,12 +7127,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 yes_type, no_type = self.narrow_with_len(
                     self.lookup_type(left.args[0]), op, r_size
                 )
-                yes_map = None if yes_type is None else {left.args[0]: yes_type}
-                no_map = None if no_type is None else {left.args[0]: no_type}
+                yes_map = {left.args[0]: yes_type}
+                no_map = {left.args[0]: no_type}
                 type_maps.append((yes_map, no_map))
         return type_maps
 
-    def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type | None, Type | None]:
+    def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type, Type]:
         """Dispatch tuple type narrowing logic depending on the kind of type we got."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
@@ -7180,27 +7148,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     other_types.append(t)
                     continue
                 yt, nt = self.narrow_with_len(t, op, size)
-                if yt is not None:
-                    yes_types.append(yt)
-                if nt is not None:
-                    no_types.append(nt)
+                yes_types.append(yt)
+                no_types.append(nt)
             yes_types += other_types
             no_types += other_types
-            if yes_types:
-                yes_type = make_simplified_union(yes_types)
-            else:
-                yes_type = None
-            if no_types:
-                no_type = make_simplified_union(no_types)
-            else:
-                no_type = None
+            yes_type = make_simplified_union(yes_types)
+            no_type = make_simplified_union(no_types)
             return yes_type, no_type
         else:
             assert False, "Unsupported type for len narrowing"
 
-    def refine_tuple_type_with_len(
-        self, typ: TupleType, op: str, size: int
-    ) -> tuple[Type | None, Type | None]:
+    def refine_tuple_type_with_len(self, typ: TupleType, op: str, size: int) -> tuple[Type, Type]:
         """Narrow a TupleType using length restrictions."""
         unpack_index = find_unpack_in_list(typ.items)
         if unpack_index is None:
@@ -7208,8 +7166,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # depending on the current length, expected length, and the comparison op.
             method = int_op_to_method[op]
             if method(typ.length(), size):
-                return typ, None
-            return None, typ
+                return typ, UninhabitedType()
+            return UninhabitedType(), typ
         unpack = typ.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
@@ -7221,7 +7179,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if op in ("==", "is"):
                 if min_len <= size:
                     return typ, typ
-                return None, typ
+                return UninhabitedType(), typ
             elif op in ("<", "<="):
                 if op == "<=":
                     size += 1
@@ -7231,7 +7189,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # TODO: also record max_len to avoid false negatives?
                     unpack = UnpackType(unpacked.copy_modified(min_len=size - typ.length() + 1))
                     return typ, typ.copy_modified(items=prefix + [unpack] + suffix)
-                return None, typ
+                return UninhabitedType(), typ
             else:
                 yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
                 return no_type, yes_type
@@ -7246,7 +7204,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if min_len <= size:
                 # TODO: return fixed union + prefixed variadic tuple for no_type?
                 return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix), typ
-            return None, typ
+            return UninhabitedType(), typ
         elif op in ("<", "<="):
             if op == "<=":
                 size += 1
@@ -7261,14 +7219,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 for n in range(size - min_len):
                     yes_items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
                 return UnionType.make_union(yes_items, typ.line, typ.column), no_type
-            return None, typ
+            return UninhabitedType(), typ
         else:
             yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
             return no_type, yes_type
 
     def refine_instance_type_with_len(
         self, typ: Instance, op: str, size: int
-    ) -> tuple[Type | None, Type | None]:
+    ) -> tuple[Type, Type]:
         """Narrow a homogeneous tuple using length restrictions."""
         base = map_instance_to_supertype(typ, self.lookup_typeinfo("builtins.tuple"))
         arg = base.args[0]
@@ -7284,14 +7242,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 size += 1
             if allow_precise:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
-                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
+                no_type: Type = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
             if allow_precise:
                 items = []
                 for n in range(size):
                     items.append(TupleType([arg] * n, fallback=typ))
-                yes_type: Type | None = UnionType.make_union(items, typ.line, typ.column)
+                yes_type: Type = UnionType.make_union(items, typ.line, typ.column)
             else:
                 yes_type = typ
             return yes_type, no_type
@@ -7768,7 +7726,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return function_type(func, self.named_type("builtins.function"))
 
     def push_type_map(self, type_map: TypeMap, *, from_assignment: bool = True) -> None:
-        if type_map is None:
+        if is_unreachable_map(type_map):
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
@@ -8391,18 +8349,10 @@ def conditional_types_to_typemaps(
     expr: Expression, yes_type: Type | None, no_type: Type | None
 ) -> tuple[TypeMap, TypeMap]:
     expr = collapse_walrus(expr)
-    maps: list[TypeMap] = []
-    for typ in (yes_type, no_type):
-        proper_type = get_proper_type(typ)
-        if isinstance(proper_type, UninhabitedType):
-            maps.append(None)
-        elif proper_type is None:
-            maps.append({})
-        else:
-            assert typ is not None
-            maps.append({expr: typ})
 
-    return cast(tuple[TypeMap, TypeMap], tuple(maps))
+    yes_map = {} if yes_type is None else {expr: yes_type}
+    no_map = {} if no_type is None else {expr: no_type}
+    return yes_map, no_map
 
 
 def gen_unique_name(base: str, table: SymbolTable) -> str:
@@ -8507,15 +8457,15 @@ def builtin_item_type(tp: Type) -> Type | None:
     return None
 
 
+def is_unreachable_map(map: TypeMap) -> bool:
+    return any(isinstance(get_proper_type(v), UninhabitedType) for v in map.values())
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
     the truth of e2.
     """
-
-    if m1 is None or m2 is None:
-        # One of the conditions can never be true.
-        return None
     # Both conditions can be true; combine the information. Anything
     # we learn from either conditions' truth is valid. If the same
     # expression's type is refined by both conditions, we somewhat
@@ -8524,7 +8474,9 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
     result = m2.copy()
     m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
-        if literal_hash(n1) not in m2_keys or isinstance(get_proper_type(m1[n1]), AnyType):
+        if literal_hash(n1) not in m2_keys or isinstance(
+            get_proper_type(m1[n1]), (AnyType, UninhabitedType)
+        ):
             result[n1] = m1[n1]
     if use_meet:
         # For now, meet common keys only if specifically requested.
@@ -8533,10 +8485,7 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
         for n1 in m1:
             for n2 in m2:
                 if literal_hash(n1) == literal_hash(n2):
-                    meet_result = meet_types(m1[n1], m2[n2])
-                    if isinstance(meet_result, UninhabitedType):
-                        return None
-                    result[n1] = meet_result
+                    result[n1] = meet_types(m1[n1], m2[n2])
     return result
 
 
@@ -8547,9 +8496,9 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap, *, coalesce_any: bool = False)
     joining restrictions.
     """
 
-    if m1 is None:
+    if is_unreachable_map(m1):
         return m2
-    if m2 is None:
+    if is_unreachable_map(m2):
         return m1
     # Both conditions can be true. Combine information about
     # expressions whose type is refined by both conditions. (We do not
@@ -8656,17 +8605,20 @@ def has_custom_eq_checks(t: Type) -> bool:
 
 def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     converted_type_map: dict[Expression, Type] = {}
-    if type_map is None:
-        return None
     for expr, typ in type_map.items():
         t = typ
         if isinstance(t, TypeVarType):
             t = t.upper_bound
+        t = get_proper_type(t)
+
         # TODO: should we only allow unions of instances as per PEP 484?
-        if not isinstance(get_proper_type(t), (UnionType, Instance, NoneType)):
+        if isinstance(t, UninhabitedType):
+            converted_type_map[expr] = typ
+        elif isinstance(t, (UnionType, Instance, NoneType)):
+            converted_type_map[expr] = TypeType.make_normalized(typ)
+        else:
             # unknown type; error was likely reported earlier
             return {}
-        converted_type_map[expr] = TypeType.make_normalized(typ)
     return converted_type_map
 
 
