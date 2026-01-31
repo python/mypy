@@ -53,6 +53,9 @@ from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
     MISSING_FALLBACK,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     Argument,
     AssertStmt,
     AssignmentExpr,
@@ -111,6 +114,8 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
+    TypeParam,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -511,6 +516,8 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         return stmt
     elif tag == nodes.CLASS_DEF:
         return read_class_def(state, data)
+    elif tag == nodes.TYPE_ALIAS_STMT:
+        return read_type_alias_stmt(state, data)
     elif tag == nodes.TRY_STMT:
         return read_try_stmt(state, data)
     elif tag == nodes.DEL_STMT:
@@ -619,6 +626,41 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
     return arguments, has_ann
 
 
+def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
+    """Read type parameters (PEP 695 generics)."""
+    type_params: list[TypeParam] = []
+    n = read_int_bare(data)
+    for _ in range(n):
+        # Read type param kind
+        kind = read_int(data)
+
+        # Read name
+        name = read_str(data)
+
+        # Read upper bound
+        has_bound = read_bool(data)
+        if has_bound:
+            upper_bound = read_type(state, data)
+        else:
+            upper_bound = None
+
+        # Read values (for constrained TypeVar)
+        expect_tag(data, LIST_GEN)
+        n_values = read_int_bare(data)
+        values = [read_type(state, data) for _ in range(n_values)]
+
+        # Read default
+        has_default = read_bool(data)
+        if has_default:
+            default = read_type(state, data)
+        else:
+            default = None
+
+        type_params.append(TypeParam(name, kind, upper_bound, values, default))
+
+    return type_params
+
+
 def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     state.num_funcs += 1
 
@@ -636,11 +678,14 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
 
     is_async = read_bool(data)
 
-    # TODO: type_params
+    # Type parameters (PEP 695)
     has_type_params = read_bool(data)
-    assert not has_type_params, "Type params not yet supported"
+    if has_type_params:
+        type_params = read_type_params(state, data)
+    else:
+        type_params = None
 
-    # TODO: Return type annotation
+    # Return type annotation
     has_return_type = read_bool(data)
     if has_return_type:
         return_type = read_type(state, data)
@@ -662,7 +707,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     else:
         typ = None
 
-    func_def = FuncDef(name, arguments, body, typ=typ)
+    func_def = FuncDef(name, arguments, body, typ=typ, type_args=type_params)
     if typ:
         # TODO: This seems wasteful, can we avoid it?
         func_def.unanalyzed_type = typ.copy_modified()
@@ -691,9 +736,12 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     n_decorators = read_int_bare(data)
     decorators = [read_expression(state, data) for _ in range(n_decorators)]
 
-    # TODO: Type parameters (skip for now)
+    # Type parameters (PEP 695)
     has_type_params = read_bool(data)
-    assert not has_type_params, "Type parameters not yet supported"
+    if has_type_params:
+        type_params = read_type_params(state, data)
+    else:
+        type_params = None
 
     # Keywords (all keyword arguments including metaclass)
     expect_tag(data, DICT_STR_GEN)
@@ -715,11 +763,81 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
         keywords=filtered_keywords,
+        type_args=type_params,
     )
     class_def.decorators = decorators
     read_loc(data, class_def)
     expect_end_tag(data)
     return class_def
+
+
+def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
+    """Read PEP 695 type alias statement."""
+    # Read name (NameExpr)
+    name = read_expression(state, data)
+    assert isinstance(name, NameExpr), f"Expected NameExpr for type alias name, got {type(name)}"
+
+    # Read type parameters
+    n_type_params = read_int_bare(data)
+    if n_type_params > 0:
+        type_params = []
+        for _ in range(n_type_params):
+            # Read type param kind
+            kind = read_int(data)
+
+            # Read name
+            param_name = read_str(data)
+
+            # Read upper bound
+            has_bound = read_bool(data)
+            if has_bound:
+                upper_bound = read_type(state, data)
+            else:
+                upper_bound = None
+
+            # Read values (for constrained TypeVar)
+            expect_tag(data, LIST_GEN)
+            n_values = read_int_bare(data)
+            values = [read_type(state, data) for _ in range(n_values)]
+
+            # Read default
+            has_default = read_bool(data)
+            if has_default:
+                default = read_type(state, data)
+            else:
+                default = None
+
+            type_params.append(TypeParam(param_name, kind, upper_bound, values, default))
+    else:
+        type_params = []
+
+    # Read value expression (the type on RHS of type alias)
+    value_expr = read_expression(state, data)
+
+    # Wrap the value expression in a LambdaExpr as expected by TypeAliasStmt
+    # The LambdaExpr body is a Block with a single ReturnStmt
+    return_stmt = ReturnStmt(value_expr)
+    return_stmt.line = value_expr.line
+    return_stmt.column = value_expr.column
+    return_stmt.end_line = value_expr.end_line
+    return_stmt.end_column = value_expr.end_column
+
+    block = Block([return_stmt])
+    block.line = -1  # Synthetic block
+    block.column = 0
+    block.end_line = -1
+    block.end_column = 0
+
+    lambda_expr = LambdaExpr([], block)
+    lambda_expr.line = value_expr.line
+    lambda_expr.column = value_expr.column
+    lambda_expr.end_line = value_expr.end_line
+    lambda_expr.end_column = value_expr.end_column
+
+    stmt = TypeAliasStmt(name, type_params, lambda_expr)
+    read_loc(data, stmt)
+    expect_end_tag(data)
+    return stmt
 
 
 def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:

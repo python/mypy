@@ -5082,6 +5082,7 @@ SEQUENCE_PATTERN: Final[Tag] = 221
 STARRED_PATTERN: Final[Tag] = 222
 MAPPING_PATTERN: Final[Tag] = 223
 CLASS_PATTERN: Final[Tag] = 224
+TYPE_ALIAS_STMT: Final[Tag] = 225
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
