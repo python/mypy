@@ -36,12 +36,17 @@ match m:
     case other:
         reveal_type(other)  # N: Revealed type is "Any"
 
-[case testMatchLiteralPatternAlreadyNarrower-skip]
-m: bool
+[case testMatchLiteralPatternBoolIntAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 
-match m:
-    case 1:
-        reveal_type(m)  # This should probably be unreachable, but isn't detected as such.
+def foo(m: bool, x: int):
+    match m:
+        case 1:
+            reveal_type(m)  # N: Revealed type is "Literal[1]"
+
+    match m:
+        case x:
+            reveal_type(m)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testMatchLiteralPatternUnreachable]
@@ -402,7 +407,7 @@ match d.tag:
         reveal_type(d)  # N: Revealed type is "__main__.B"
         reveal_type(d.num)  # N: Revealed type is "builtins.int"
 
-[case testMatchSequenceUnion-skip]
+[case testMatchSequenceUnion]
 from typing import List, Union
 m: Union[List[List[str]], str]
 
@@ -1878,7 +1883,8 @@ match m:
         assert_never(unreachable)
 [builtins fixtures/enum.pyi]
 
-[case testMatchLiteralPatternEnumCustomEquals-skip]
+[case testMatchLiteralPatternEnumCustomEquals]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -1891,9 +1897,9 @@ m: Medal
 
 match m:
     case Medal.gold:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
-    case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
+    case _:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver] | Literal[__main__.Medal.bronze]"
 [builtins fixtures/enum.pyi]
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
@@ -2035,7 +2041,8 @@ match c:
         assert_never(c) # E: Argument 1 to "assert_never" has incompatible type "Literal['red']"; expected "Never"
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMatchAsPatternIntersection-skip]
+[case testMatchAsPatternIntersection]
+# flags: --strict-equality --warn-unreachable
 class A: pass
 class B: pass
 class C: pass
@@ -2046,7 +2053,7 @@ def f(x: A) -> None:
             reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
         case C() as y:
             reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C">"
-    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B"> | __main__.<subclass of "__main__.A" and "__main__.C">"
 
 [case testMatchWithBreakAndContinue]
 def f(x: int | str | None) -> None:
