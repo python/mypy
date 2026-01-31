@@ -382,7 +382,7 @@ def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
 def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     pass
 
-def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+def h(x) -> None:  # E: Function is missing a type annotation for one or more parameters  [no-untyped-def]
     pass
 
 def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
