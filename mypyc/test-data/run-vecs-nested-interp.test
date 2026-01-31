@@ -62,6 +62,10 @@ def test_construct_from_initializer_nested() -> None:
     with assertRaises(TypeError):
         vec[str]([vec[bytes]()])
 
+def test_isinstance() -> None:
+    assert isinstance(vec[vec[str]](), vec)
+    assert isinstance(vec[vec[Optional[str]]](), vec)
+
 def test_repr() -> None:
     assert str(vec[vec[str]]()) == "vec[vec[str]]([])"
     assert str(vec[vec[Optional[str]]]()) == "vec[vec[str | None]]([])"

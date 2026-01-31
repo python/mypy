@@ -2122,7 +2122,7 @@ class State:
     """The state for a module.
 
     The source is only used for the -c command line option; in that
-    case path is None.  Otherwise source is None and path isn't.
+    case path is None.  Otherwise, source is None and path isn't.
     """
 
     manager: BuildManager
@@ -2136,7 +2136,6 @@ class State:
     source_hash: str | None = None  # Hash calculated based on the source code
     meta_source_hash: str | None = None  # Hash of the source given in the meta, if any
     meta: CacheMeta | None = None
-    data: str | None = None
     tree: MypyFile | None = None
     # We keep both a list and set of dependencies. A set because it makes it efficient to
     # prevent duplicates and the list because I am afraid of changing the order of
@@ -2152,10 +2151,10 @@ class State:
     dep_line_map: dict[str, int]
 
     # Map from dependency id to its last observed interface hash
-    dep_hashes: dict[str, bytes] = {}
+    dep_hashes: dict[str, bytes]
 
     # List of errors reported for this file last time.
-    error_lines: list[SerializedError] = []
+    error_lines: list[SerializedError]
 
     # Parent package, its parent, etc.
     ancestors: list[str] | None = None
@@ -2196,8 +2195,9 @@ class State:
     # we use file size as a proxy for complexity.
     size_hint: int
 
-    def __init__(
-        self,
+    @classmethod
+    def new_state(
+        cls,
         id: str | None,
         path: str | None,
         source: str | None,
@@ -2211,29 +2211,26 @@ class State:
         # process it. With this flag, any changes to external state as well
         # as error reporting should be avoided.
         temporary: bool = False,
-    ) -> None:
+    ) -> State:
         if not temporary:
             assert id or path or source is not None, "Neither id, path nor source given"
-        self.manager = manager
         State.order_counter += 1
-        self.order = State.order_counter
-        self.caller_line = caller_line
         if caller_state:
-            self.import_context = caller_state.import_context.copy()
-            self.import_context.append((caller_state.xpath, caller_line))
+            import_context = caller_state.import_context.copy()
+            import_context.append((caller_state.xpath, caller_line))
         else:
-            self.import_context = []
-        self.id = id or "__main__"
-        self.options = manager.options.clone_for_module(self.id)
-        self.early_errors = []
-        self._type_checker = None
+            import_context = []
+        id = id or "__main__"
+        options = manager.options.clone_for_module(id)
+
+        ignore_all = False
         if not path and source is None:
             assert id is not None
             try:
                 path, follow_imports = find_module_and_diagnose(
                     manager,
                     id,
-                    self.options,
+                    options,
                     caller_state,
                     caller_line,
                     ancestor_for,
@@ -2245,47 +2242,72 @@ class State:
                     manager.missing_modules.add(id)
                 raise
             if follow_imports == "silent":
-                self.ignore_all = True
+                ignore_all = True
         elif path and is_silent_import_module(manager, path) and not root_source:
-            self.ignore_all = True
-        self.path = path
-        if path:
-            self.abspath = os.path.abspath(path)
-        self.xpath = path or "<string>"
-        if path and source is None and self.manager.cache_enabled:
-            self.meta = find_cache_meta(self.id, path, manager)
+            ignore_all = True
+
+        meta = None
+        interface_hash = b""
+        meta_source_hash = None
+        if path and source is None and manager.cache_enabled:
+            meta = find_cache_meta(id, path, manager)
             # TODO: Get mtime if not cached.
-            if self.meta is not None:
-                self.interface_hash = self.meta.interface_hash
-                self.meta_source_hash = self.meta.hash
-        if path and source is None and self.manager.fscache.isdir(path):
+            if meta is not None:
+                interface_hash = meta.interface_hash
+                meta_source_hash = meta.hash
+        if path and source is None and manager.fscache.isdir(path):
             source = ""
-        self.source = source
-        self.add_ancestors()
-        self.per_line_checking_time_ns = collections.defaultdict(int)
+
         t0 = time.time()
-        self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
-        self.manager.add_stats(validate_meta_time=time.time() - t0)
-        if self.meta:
+        meta = validate_meta(meta, id, path, ignore_all, manager)
+        manager.add_stats(validate_meta_time=time.time() - t0)
+
+        if meta:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
-            self.dependencies = list(self.meta.dependencies)
-            self.dependencies_set = set(self.dependencies)
-            self.suppressed = list(self.meta.suppressed)
-            self.suppressed_set = set(self.suppressed)
-            all_deps = self.dependencies + self.suppressed
-            assert len(all_deps) == len(self.meta.dep_prios)
-            self.priorities = {id: pri for id, pri in zip(all_deps, self.meta.dep_prios)}
-            assert len(all_deps) == len(self.meta.dep_lines)
-            self.dep_line_map = {id: line for id, line in zip(all_deps, self.meta.dep_lines)}
-            assert len(self.meta.dep_hashes) == len(self.meta.dependencies)
-            self.dep_hashes = {
-                k: v for (k, v) in zip(self.meta.dependencies, self.meta.dep_hashes)
-            }
+            dependencies = list(meta.dependencies)
+            suppressed = list(meta.suppressed)
+            all_deps = dependencies + suppressed
+            assert len(all_deps) == len(meta.dep_prios)
+            priorities = {id: pri for id, pri in zip(all_deps, meta.dep_prios)}
+            assert len(all_deps) == len(meta.dep_lines)
+            dep_line_map = {id: line for id, line in zip(all_deps, meta.dep_lines)}
+            assert len(meta.dep_hashes) == len(meta.dependencies)
+            dep_hashes = {k: v for (k, v) in zip(meta.dependencies, meta.dep_hashes)}
             # Only copy `error_lines` if the module is not silently imported.
-            self.error_lines = [] if self.ignore_all else self.meta.error_lines
+            error_lines = [] if ignore_all else meta.error_lines
+        else:
+            dependencies = []
+            suppressed = []
+            priorities = {}
+            dep_line_map = {}
+            dep_hashes = {}
+            error_lines = []
+
+        state = cls(
+            manager=manager,
+            order=State.order_counter,
+            id=id,
+            path=path,
+            source=source,
+            options=options,
+            ignore_all=ignore_all,
+            caller_line=caller_line,
+            import_context=import_context,
+            meta=meta,
+            interface_hash=interface_hash,
+            meta_source_hash=meta_source_hash,
+            dependencies=dependencies,
+            suppressed=suppressed,
+            priorities=priorities,
+            dep_line_map=dep_line_map,
+            dep_hashes=dep_hashes,
+            error_lines=error_lines,
+        )
+
+        if meta:
             if temporary:
-                self.load_tree(temporary=True)
+                state.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
                 # Special case: if there were a previously missing package imported here
                 # and it is not present, then we need to re-calculate dependencies.
@@ -2296,10 +2318,10 @@ class State:
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine grained mode.
-                if exist_added_packages(self.suppressed, manager, self.options):
-                    self.parse_file()  # This is safe because the cache is anyway stale.
-                    self.compute_dependencies()
-            self.size_hint = self.meta.size
+                if exist_added_packages(suppressed, manager, options):
+                    state.parse_file()  # This is safe because the cache is anyway stale.
+                    state.compute_dependencies()
+            state.size_hint = meta.size
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -2309,12 +2331,65 @@ class State:
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
-            self.parse_file(temporary=temporary)
-            self.compute_dependencies()
-            if self.manager.workers:
+            state.parse_file(temporary=temporary)
+            state.compute_dependencies()
+            if manager.workers:
                 # We don't need parsed trees in coordinator process, we parse only to
                 # compute dependencies.
-                self.tree = None
+                state.tree = None
+
+        return state
+
+    def __init__(
+        self,
+        manager: BuildManager,
+        order: int,
+        id: str,
+        path: str | None,
+        source: str | None,
+        options: Options,
+        ignore_all: bool,
+        caller_line: int,
+        import_context: list[tuple[str, int]],
+        meta: CacheMeta | None,
+        interface_hash: bytes,
+        meta_source_hash: str | None,
+        dependencies: list[str],
+        suppressed: list[str],
+        priorities: dict[str, int],
+        dep_line_map: dict[str, int],
+        dep_hashes: dict[str, bytes],
+        error_lines: list[SerializedError],
+        size_hint: int = 0,
+    ) -> None:
+        self.manager = manager
+        self.order = order
+        self.id = id
+        self.path = path
+        if path:
+            self.abspath = os.path.abspath(path)
+        self.xpath = path or "<string>"
+        self.source = source
+        self.options = options
+        self.ignore_all = ignore_all
+        self.caller_line = caller_line
+        self.import_context = import_context
+        self.meta = meta
+        self.interface_hash = interface_hash
+        self.meta_source_hash = meta_source_hash
+        self.dependencies = dependencies
+        self.suppressed = suppressed
+        self.dependencies_set = set(dependencies)
+        self.suppressed_set = set(suppressed)
+        self.priorities = priorities
+        self.dep_line_map = dep_line_map
+        self.dep_hashes = dep_hashes
+        self.error_lines = error_lines
+        self.per_line_checking_time_ns = collections.defaultdict(int)
+        self.early_errors = []
+        self._type_checker = None
+        self.add_ancestors()
+        self.size_hint = size_hint
 
     def reload_meta(self) -> None:
         """Force reload of cache meta.
@@ -3070,7 +3145,7 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
         else:
             # Parent is not in build, try quickly if we can find it.
             try:
-                parent_st = State(
+                parent_st = State.new_state(
                     id=parent, path=None, source=None, manager=manager, temporary=True
                 )
             except (ModuleNotFound, CompileError):
@@ -3419,7 +3494,7 @@ def load_graph(
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
-            st = State(
+            st = State.new_state(
                 id=bs.module,
                 path=bs.path,
                 source=bs.text,
@@ -3497,11 +3572,11 @@ def load_graph(
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
                         # Ancestors don't have import context.
-                        newst = State(
+                        newst = State.new_state(
                             id=dep, path=None, source=None, manager=manager, ancestor_for=st
                         )
                     else:
-                        newst = State(
+                        newst = State.new_state(
                             id=dep,
                             path=None,
                             source=None,

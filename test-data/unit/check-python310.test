@@ -45,17 +45,18 @@ match m:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchLiteralPatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 m: int
 
 match m:
     case "str":
-        reveal_type(m)
+        reveal_type(m)  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 -- Value Pattern --
 
 [case testMatchValuePatternNarrows]
+# flags: --strict-equality --warn-unreachable
 import b
 m: object
 
@@ -66,6 +67,7 @@ match m:
 b: int
 
 [case testMatchValuePatternAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 import b
 m: bool
 
@@ -76,6 +78,7 @@ match m:
 b: int
 
 [case testMatchValuePatternIntersect]
+# flags: --strict-equality --warn-unreachable
 import b
 
 class A: ...
@@ -89,7 +92,7 @@ class B: ...
 b: B
 
 [case testMatchValuePatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 import b
 
 m: int
@@ -491,6 +494,7 @@ b: str
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternCapturesWrongKeyType]
+# flags: --strict-equality --warn-unreachable
 # This is not actually unreachable, as a subclass of dict could accept keys with different types
 from typing import Dict
 import b
@@ -572,6 +576,7 @@ a: str
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictUnreachable]
+# flags: --strict-equality --warn-unreachable
 # TypedDict keys are always str, so this is actually unreachable
 from typing import TypedDict
 import b
@@ -584,9 +589,9 @@ m: A
 
 match m:
     case {1: v}:
-        reveal_type(v)
+        reveal_type(v)  # E: Statement is unreachable
     case {b.b: v2}:
-        reveal_type(v2)
+        reveal_type(v2)  # E: Statement is unreachable
 [file b.py]
 b: int
 [typing fixtures/typing-typeddict.pyi]
@@ -1099,7 +1104,7 @@ match m:
         pass
 
 [case testMatchClassPatternCallable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Callable, Any
 
 class FnImpl:
@@ -1542,11 +1547,12 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
-    case a if isinstance(a, int):
-        reveal_type(a)
+    case a if isinstance(a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+        reveal_type(a)  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchSubjectAssignExprWithGuard]

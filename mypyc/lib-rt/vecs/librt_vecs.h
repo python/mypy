@@ -157,6 +157,13 @@ typedef struct _VecObject {
     Py_ssize_t len;
 } VecObject;
 
+// Base vec type object (for isinstance checks)
+// This is an abstract base type that all specialized vec types inherit from.
+// It cannot be instantiated directly - only used for isinstance(x, vec).
+typedef struct _VecBaseObject {
+    PyObject_HEAD
+} VecBaseObject;
+
 // Boxed vec[i64]
 typedef struct _VecI64Object {
     PyObject_HEAD
