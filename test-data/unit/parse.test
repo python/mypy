@@ -2476,6 +2476,7 @@ class Foo(metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2485,6 +2486,9 @@ class Foo(metaclass=foo.Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=MemberExpr:1(
+      NameExpr(foo)
+      Bar))
     Metaclass(MemberExpr:1(
       NameExpr(foo)
       Bar))
@@ -2496,6 +2500,7 @@ class Foo(foo.bar[x], metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     BaseTypeExpr(
       IndexExpr:1(
@@ -2511,6 +2516,7 @@ class Foo(_root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(_root=NameExpr(None))
     PassStmt:1()))
 
 [case testClassKeywordArgsBeforeMeta]
@@ -2519,6 +2525,7 @@ class Foo(_root=None, metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(_root=NameExpr(None), metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2528,6 +2535,7 @@ class Foo(metaclass=Bar, _root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar), _root=NameExpr(None))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
