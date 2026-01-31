@@ -146,9 +146,31 @@ class State:
         self.errors: list[dict[str, Any]] = []
         self.num_funcs = 0
 
-    def add_error(self, message: str, line: int, column: int) -> None:
-        """Report an error at a specific location."""
-        self.errors.append({"line": line, "column": column, "message": message})
+    def add_error(
+        self,
+        message: str,
+        line: int,
+        column: int,
+        *,
+        blocker: bool = False,
+        code: str | None = None,
+    ) -> None:
+        """Report an error at a specific location.
+
+        Args:
+            message: Error message to display
+            line: Line number where error occurred
+            column: Column number where error occurred
+            blocker: If True, this error blocks further analysis
+            code: Error code for categorization
+        """
+        self.errors.append({
+            "line": line,
+            "column": column,
+            "message": message,
+            "blocker": blocker,
+            "code": code,
+        })
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -1383,7 +1405,11 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     if not constructor:
         # ARG_CONSTRUCTOR_NAME_EXPECTED
         state.add_error(
-            message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value, invalid.line, invalid.column
+            message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value,
+            invalid.line,
+            invalid.column,
+            blocker=True,
+            code="misc",
         )
         return invalid
 
@@ -1405,7 +1431,11 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
         else:
             # ARG_CONSTRUCTOR_TOO_MANY_ARGS
             state.add_error(
-                message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value, invalid.line, invalid.column
+                message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value,
+                invalid.line,
+                invalid.column,
+                blocker=True,
+                code="misc",
             )
 
     # Process keyword arguments
@@ -1417,6 +1447,8 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
                     invalid.line,
                     invalid.column,
+                    blocker=True,
+                    code="misc",
                 )
             name = extract_arg_name(kw_value)
         elif kw_name == "type":
@@ -1426,6 +1458,8 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
                     invalid.line,
                     invalid.column,
+                    blocker=True,
+                    code="misc",
                 )
             typ = kw_value
         else:
@@ -1434,6 +1468,8 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
                 invalid.line,
                 invalid.column,
+                blocker=True,
+                code="misc",
             )
 
     # Create CallableArgument
@@ -1486,6 +1522,8 @@ def fail_merge_overload(state: State, node: IfStmt) -> None:
         message_registry.FAILED_TO_MERGE_OVERLOADS.value,
         node.line,
         node.column,
+        blocker=False,
+        code="misc",
     )
 
 

@@ -71,8 +71,13 @@ def parse(
                 message = error["message"]
                 # Standardize error message by capitalizing the first word
                 message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
+                # Respect blocker status from error, default to True for syntax errors
+                is_blocker = error.get("blocker", True)
+                error_code = error.get("code")
+                if error_code is None:
+                    error_code = codes.SYNTAX
                 errors.report(
-                    error["line"], error["column"], message, blocker=True, code=codes.SYNTAX
+                    error["line"], error["column"], message, blocker=is_blocker, code=error_code
                 )
             if raise_on_error and errors.is_errors():
                 errors.raise_error()
