@@ -2821,3 +2821,142 @@ MypyFile:1(
     TempNode:1(
       Any)
     5))
+
+[case testConditionalOverload1]
+@overload
+def foo(x: int): ...
+if sys.version_info[0] > 2:
+    @overload
+    def foo(x: str): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:3(
+    If(
+      ComparisonExpr:3(
+        >
+        IndexExpr:3(
+          MemberExpr:3(
+            NameExpr(sys)
+            version_info)
+          IntExpr(0))
+        IntExpr(2)))
+    Then()
+    Else())
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:2(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:2(
+          ExpressionStmt:2(
+            Ellipsis))))
+    Decorator:4(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:5(
+        foo
+        Args(
+          Var(x))
+        def (x: str?) -> Any
+        Block:5(
+          ExpressionStmt:5(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))
+
+[case testConditionalOverload2]
+@overload
+def foo(x: int): ...
+if sys.platform == "foo":
+    @overload
+    def foo(x: str): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:3(
+    If(
+      ComparisonExpr:3(
+        ==
+        MemberExpr:3(
+          NameExpr(sys)
+          platform)
+        StrExpr(foo)))
+    Then())
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:2(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:2(
+          ExpressionStmt:2(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))
+
+[case testConditionalOverload3]
+if sys.version_info[0] > 2:
+    @overload
+    def foo(x: str): ...
+@overload
+def foo(x: int): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      ComparisonExpr:1(
+        >
+        IndexExpr:1(
+          MemberExpr:1(
+            NameExpr(sys)
+            version_info)
+          IntExpr(0))
+        IntExpr(2)))
+    Then()
+    Else())
+  OverloadedFuncDef:2(
+    Decorator:2(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:3(
+        foo
+        Args(
+          Var(x))
+        def (x: str?) -> Any
+        Block:3(
+          ExpressionStmt:3(
+            Ellipsis))))
+    Decorator:4(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:5(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:5(
+          ExpressionStmt:5(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))

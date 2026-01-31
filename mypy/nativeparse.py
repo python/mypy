@@ -144,6 +144,7 @@ class State:
     def __init__(self, options: Options) -> None:
         self.options = options
         self.errors: list[dict[str, Any]] = []
+        self.num_funcs = 0
 
     def add_error(self, message: str, line: int, column: int) -> None:
         """Report an error at a specific location."""
@@ -182,27 +183,13 @@ def native_parse(
 
 def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
     defs: list[Statement] = []
-    prev_func = False
-    prev_name = ""
+    old_num_funcs = state.num_funcs
     for _ in range(n):
         stmt = read_statement(state, data)
-        if isinstance(stmt, (FuncDef, Decorator)):
-            if prev_func and stmt.name == prev_name:
-                # Merge into overloaded function definition
-                prev = defs[-1]
-                if isinstance(prev, OverloadedFuncDef):
-                    prev.items.append(stmt)
-                    prev.unanalyzed_items.append(stmt)
-                else:
-                    assert isinstance(prev, (FuncDef, Decorator))
-                    defs[-1] = OverloadedFuncDef([prev, stmt])
-            else:
-                defs.append(stmt)
-                prev_name = stmt.name
-            prev_func = True
-        else:
-            defs.append(stmt)
-            prev_func = False
+        defs.append(stmt)
+    if state.num_funcs > old_num_funcs + 1:
+        # There were at least two functions, so we may need to merge overloads.
+        defs = fix_function_overloads(state, defs)
     return defs
 
 
@@ -567,6 +554,8 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
 
 
 def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
+    state.num_funcs += 1
+
     # Function name
     name = read_str(data)
 
@@ -1576,7 +1565,7 @@ def get_executable_if_block_with_overloads(
 
 
 def fix_function_overloads(
-    state: State, options: Options, stmts: list[Statement]
+    state: State, stmts: list[Statement]
 ) -> list[Statement]:
     """Merge consecutive function overloads into OverloadedFuncDef nodes.
 
@@ -1603,7 +1592,7 @@ def fix_function_overloads(
             if_overload_name = check_ifstmt_for_overloads(stmt, current_overload_name)
             if if_overload_name is not None:
                 (if_block_with_overload, if_unknown_truth_value) = (
-                    get_executable_if_block_with_overloads(stmt, options)
+                    get_executable_if_block_with_overloads(stmt, state.options)
                 )
 
         if (
