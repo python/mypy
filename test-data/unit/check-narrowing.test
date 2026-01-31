@@ -3221,7 +3221,7 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
-[case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
+[case testTypeEqualsCheckUsingIsNonOverlappingChild]
 # flags: --strict-equality --warn-unreachable
 from typing import Union
 
@@ -3236,6 +3236,46 @@ def main(x: Union[B, C]):
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheckTypeVar]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+
+class A: ...
+class B: ...
+
+T = TypeVar("T")
+
+def forgets_about_subclasses1(self, obj: T) -> T:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif isinstance(obj, B):
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+def correct1(self, obj: T) -> T:
+    if type(obj) == A:
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif type(obj) == B:
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+T_value = TypeVar("T_value", A, B)
+
+def forgets_about_subclasses2(self, obj: T_value) -> T_value:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "B")
+    elif isinstance(obj, B):
+        return B()
+    raise
+
+def correct2(self, obj: T_value) -> T_value:
+    if type(obj) == A:
+        return A()
+    elif type(obj) == B:
+        return B()
+    raise
+[builtins fixtures/primitives.pyi]
 
 [case testTypeEqualsCheckUsingDifferentSpecializedTypes]
 # flags: --strict-equality --warn-unreachable

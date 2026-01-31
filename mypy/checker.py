@@ -6812,13 +6812,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # We patch this here because it is desirable to widen to any for cases like
                     # isinstance(x, (y: Any))
                     continue
+
+                arg_type = self.lookup_type(expr_in_type_expr)
+                if_type, else_type = self.conditional_types_with_intersection(
+                    arg_type, [current_type_range], expr_in_type_expr
+                )
+                if if_type is not None and (
+                    not current_type_range.is_upper_bound
+                    and not is_equivalent(if_type, current_type_range.item)
+                ):
+                    # type(x) and x.__class__ checks must exact match
+                    if_type = UninhabitedType()
+
                 if_map, else_map = conditional_types_to_typemaps(
-                    expr_in_type_expr,
-                    *self.conditional_types_with_intersection(
-                        self.lookup_type(expr_in_type_expr),
-                        [current_type_range],
-                        expr_in_type_expr,
-                    ),
+                    expr_in_type_expr, if_type, else_type
                 )
 
                 is_final = (
