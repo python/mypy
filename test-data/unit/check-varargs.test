@@ -792,7 +792,7 @@ def baz(**kwargs: Unpack[Person]) -> None:  # OK
 [case testUnpackWithoutTypedDict]
 from typing_extensions import Unpack
 
-def foo(**kwargs: Unpack[dict]) -> None:  # E: Unpack item in ** argument must be a TypedDict
+def foo(**kwargs: Unpack[dict]) -> None:  # E: Unpack item in ** parameter must be a TypedDict
     ...
 [builtins fixtures/dict.pyi]
 
