@@ -2960,3 +2960,140 @@ MypyFile:1(
         Var(x))
       Block:6(
         PassStmt:6()))))
+
+[case testMatchStmt]
+match x:
+    case foo(y):
+        pass
+    case _:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      ClassPattern:2(
+        NameExpr(foo)
+        Positionals(
+          AsPattern:2(
+            NameExpr(y)))))
+    Body(
+      PassStmt:3())
+    Pattern(
+      AsPattern:4())
+    Body(
+      PassStmt:5())))
+
+[case testMatchLiteralPatterns]
+match x:
+    case 1:
+        pass
+    case "hello":
+        pass
+    case True:
+        pass
+    case None:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      ValuePattern:2(
+        IntExpr(1)))
+    Body(
+      PassStmt:3())
+    Pattern(
+      ValuePattern:4(
+        StrExpr(hello)))
+    Body(
+      PassStmt:5())
+    Pattern(
+      SingletonPattern:6(
+        True))
+    Body(
+      PassStmt:7())
+    Pattern(
+      SingletonPattern:8())
+    Body(
+      PassStmt:9())))
+
+[case testMatchOrPattern]
+match x:
+    case 1 | 2 | 3:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      OrPattern:2(
+        ValuePattern:2(
+          IntExpr(1))
+        ValuePattern:2(
+          IntExpr(2))
+        ValuePattern:2(
+          IntExpr(3))))
+    Body(
+      PassStmt:3())))
+
+[case testMatchSequencePattern]
+match x:
+    case [a, *rest, b]:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      SequencePattern:2(
+        AsPattern:2(
+          NameExpr(a))
+        StarredPattern:2(
+          NameExpr(rest))
+        AsPattern:2(
+          NameExpr(b))))
+    Body(
+      PassStmt:3())))
+
+[case testMatchMappingPattern]
+match x:
+    case {"key": value, "x": y}:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      MappingPattern:2(
+        Key(
+          StrExpr(key))
+        Value(
+          AsPattern:2(
+            NameExpr(value)))
+        Key(
+          StrExpr(x))
+        Value(
+          AsPattern:2(
+            NameExpr(y)))))
+    Body(
+      PassStmt:3())))
+
+[case testMatchGuard]
+match x:
+    case y if y > 0:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(x)
+    Pattern(
+      AsPattern:2(
+        NameExpr(y)))
+    Guard(
+      ComparisonExpr:2(
+        >
+        NameExpr(y)
+        IntExpr(0)))
+    Body(
+      PassStmt:3())))

@@ -5073,6 +5073,15 @@ NONLOCAL_DECL: Final[Tag] = 212
 AWAIT_EXPR: Final[Tag] = 213
 BIG_INT_EXPR: Final[Tag] = 214
 IMPORT_ALL: Final[Tag] = 215
+MATCH_STMT: Final[Tag] = 216
+AS_PATTERN: Final[Tag] = 217
+OR_PATTERN: Final[Tag] = 218
+VALUE_PATTERN: Final[Tag] = 219
+SINGLETON_PATTERN: Final[Tag] = 220
+SEQUENCE_PATTERN: Final[Tag] = 221
+STARRED_PATTERN: Final[Tag] = 222
+MAPPING_PATTERN: Final[Tag] = 223
+CLASS_PATTERN: Final[Tag] = 224
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
