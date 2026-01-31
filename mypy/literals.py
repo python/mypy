@@ -100,7 +100,7 @@ from mypy.visitor import ExpressionVisitor
 
 
 Key: _TypeAlias = tuple[Any, ...]
-LITERAL_NAMES = frozenset(
+LITERAL_NAMES: Final = frozenset(
     ("builtins.True", "builtins.False", "builtins.None", "builtins.NotImplemented")
 )
 
