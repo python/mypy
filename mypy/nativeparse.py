@@ -562,6 +562,12 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
             default = None
         pos_only = read_bool(data)
 
+        # Apply implicit_optional if enabled and default is None
+        if state.options.implicit_optional and ann is not None:
+            optional = isinstance(default, NameExpr) and default.name == "None"
+            if isinstance(ann, UnboundType):
+                ann.optional = optional
+
         var = Var(arg_name, ann)
         var.is_inferred = False
         arg = Argument(var, ann, default, arg_kind, pos_only)
