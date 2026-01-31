@@ -3479,6 +3479,69 @@ def bar(X: type[T]) -> T:
     raise
 [builtins fixtures/type.pyi]
 
+[case testNarrowingConstrainedTypeVarType]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar, Any, Type
+
+TargetType = TypeVar("TargetType", int, float, str)
+
+def convert_type(target_type: Type[TargetType]) -> TargetType:
+    if target_type == str:
+        return str()  # E: Incompatible return value type (got "str", expected "int") \
+                      # E: Incompatible return value type (got "str", expected "float")
+    if target_type == int:
+        return int()  # E: Incompatible return value type (got "int", expected "str")
+    if target_type == float:
+        return float()  # E: Incompatible return value type (got "float", expected "int") \
+                        # E: Incompatible return value type (got "float", expected "str")
+    raise
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingEqualityWithPromotions]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Literal
+
+def f1(number: float, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f2(number: float, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # E: Statement is unreachable
+        reveal_type(five)
+
+def f3(number: float | int, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+
+def f4(number: float | None, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | None"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f5(number: float | int, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f6(number: float | complex, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.complex"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+class Custom:
+    def __eq__(self, other: object) -> bool: return True
+
+def f7(number: float, x: Custom | int):
+    if number == x:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingAnyNegativeIntersection-xfail]
 # flags: --strict-equality --warn-unreachable
 # https://github.com/python/mypy/issues/20597
