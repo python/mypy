@@ -56,7 +56,7 @@ def parse(
 
             errors.set_file(fnam, module, options=options)
             tree, parse_errors, type_ignores = mypy.nativeparse.native_parse(
-                fnam, skip_function_bodies=strip_function_bodies
+                fnam, options, skip_function_bodies=strip_function_bodies
             )
             # Convert type ignores list to dict
             tree.ignored_lines = dict(type_ignores)

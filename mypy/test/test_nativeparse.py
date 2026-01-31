@@ -65,7 +65,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             try:
-                node, errors, type_ignores = native_parse(fnam, skip_function_bodies)
+                node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
             except ValueError as e:
                 print(f"Parse failed: {e}")
                 assert False
@@ -125,12 +125,12 @@ class TestNativeParse(unittest.TestCase):
 
     def test_deserialize_hello(self) -> None:
         with temp_source("print('hello')") as fnam:
-            node = native_parse(fnam)
+            node = native_parse(fnam, Options())
             assert isinstance(node, MypyFile)
 
     def test_deserialize_member_expr(self) -> None:
         with temp_source("foo_bar.xyz2") as fnam:
-            node, _, _ = native_parse(fnam)
+            node, _, _ = native_parse(fnam, Options())
             assert isinstance(node, MypyFile)
             assert isinstance(node.defs[0], ExpressionStmt)
             assert isinstance(node.defs[0].expr, MemberExpr)
@@ -139,11 +139,12 @@ class TestNativeParse(unittest.TestCase):
         with temp_source("print('hello')\n" * 4000) as fnam:
             import time
 
+            options = Options()
             for i in range(10):
-                native_parse(fnam)
+                native_parse(fnam, options)
             t0 = time.time()
             for i in range(25):
-                node, _, _ = native_parse(fnam)
+                node, _, _ = native_parse(fnam, options)
             assert isinstance(node, MypyFile)
             print(len(node.defs))
             print((time.time() - t0) * 1000)

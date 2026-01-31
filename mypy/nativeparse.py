@@ -29,6 +29,7 @@ from librt.internal import (
 )
 
 from mypy import message_registry, nodes, types
+from mypy.options import Options
 from mypy.sharedparse import special_function_elide_names
 from mypy.cache import (
     DICT_STR_GEN,
@@ -137,7 +138,8 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 
 class State:
-    def __init__(self) -> None:
+    def __init__(self, options: Options) -> None:
+        self.options = options
         self.errors: list[dict[str, Any]] = []
 
     def add_error(self, message: str, line: int, column: int) -> None:
@@ -154,7 +156,7 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
 
 
 def native_parse(
-    filename: str, skip_function_bodies: bool = False
+    filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
     # If the path is a directory, return empty AST (matching fastparse behavior)
     # This can happen for packages that only contain .pyc files without source
@@ -166,7 +168,7 @@ def native_parse(
     b, errors, ignores = parse_to_binary_ast(filename, skip_function_bodies)
     data = ReadBuffer(b)
     n = read_int(data)
-    state = State()
+    state = State(options)
     defs = read_statements(state, data, n)
     node = MypyFile(defs, [])
     node.path = filename
