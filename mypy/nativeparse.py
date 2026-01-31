@@ -1449,3 +1449,38 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     call_arg.end_line = invalid.end_line
     call_arg.end_column = invalid.end_column
     return call_arg
+
+
+def strip_contents_from_if_stmt(stmt: IfStmt) -> None:
+    """Remove contents from IfStmt.
+
+    Needed to still be able to check the conditions after the contents
+    have been merged with the surrounding function overloads.
+    """
+    if len(stmt.body) == 1:
+        stmt.body[0].body = []
+    if stmt.else_body and len(stmt.else_body.body) == 1:
+        if isinstance(stmt.else_body.body[0], IfStmt):
+            strip_contents_from_if_stmt(stmt.else_body.body[0])
+        else:
+            stmt.else_body.body = []
+
+
+def is_stripped_if_stmt(stmt: Statement) -> bool:
+    """Check stmt to make sure it is a stripped IfStmt.
+
+    See also: strip_contents_from_if_stmt
+    """
+    if not isinstance(stmt, IfStmt):
+        return False
+
+    if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
+        # Body not empty
+        return False
+
+    if not stmt.else_body or len(stmt.else_body.body) == 0:
+        # No or empty else_body
+        return True
+
+    # For elif, IfStmt are stored recursively in else_body
+    return is_stripped_if_stmt(stmt.else_body.body[0])
