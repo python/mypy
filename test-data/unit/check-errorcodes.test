@@ -38,7 +38,7 @@ main:1: error: Invalid syntax  [syntax]
 main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
-def f(): # E: Type signature has too many arguments  [syntax]
+def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
@@ -549,7 +549,7 @@ def f(x):  # E: Type signature has too few arguments  [syntax]
     # type: () -> None
     pass
 
-def g(x):  # E: Type signature has too many arguments  [syntax]
+def g(x):  # E: Type signature has too many parameters  [syntax]
     # type: (int, int) -> None
     pass
 
