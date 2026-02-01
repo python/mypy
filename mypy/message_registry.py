@@ -126,7 +126,7 @@ ONLY_CLASS_APPLICATION: Final = ErrorMessage(
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
 )
-PARAMETER_TYPE_EXPECTED: Final = ErrorMessage(
+PARAM_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation for one or more parameters", codes.NO_UNTYPED_DEF
 )
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
