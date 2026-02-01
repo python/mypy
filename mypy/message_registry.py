@@ -312,7 +312,7 @@ ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
     "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
 )
 TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
-    "Type signature has too many arguments", codes.SYNTAX
+    "Type signature has too many parameter", codes.SYNTAX
 )
 TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
     "Type signature has too few arguments", codes.SYNTAX
