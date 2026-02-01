@@ -888,7 +888,11 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     else:
         finally_body = None
 
+    # Read is_star flag (for except* in Python 3.11+)
+    is_star = read_bool(data)
+
     stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
+    stmt.is_star = is_star
     read_loc(data, stmt)
     expect_end_tag(data)
     return stmt

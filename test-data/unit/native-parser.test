@@ -1293,6 +1293,92 @@ MypyFile:1(
       ExpressionStmt:6(
         NameExpr(z)))))
 
+[case testTryExceptStar]
+try:
+    x
+except* ValueError:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    *
+    NameExpr(ValueError)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testTryExceptStarWithVar]
+try:
+    x
+except* Exception as e:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    *
+    NameExpr(Exception)
+    NameExpr(e)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testTryMultipleExceptStar]
+try:
+    x
+except* ValueError:
+    y
+except* KeyError as e:
+    z
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    *
+    NameExpr(ValueError)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))
+    NameExpr(KeyError)
+    NameExpr(e)
+    Block:6(
+      ExpressionStmt:6(
+        NameExpr(z)))))
+
+[case testTryExceptStarElseFinally]
+try:
+    x
+except* ValueError:
+    y
+else:
+    z
+finally:
+    w
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    *
+    NameExpr(ValueError)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))
+    Else(
+      ExpressionStmt:6(
+        NameExpr(z)))
+    Finally(
+      ExpressionStmt:8(
+        NameExpr(w)))))
+
 [case testConditionalExprSimple]
 x if y else z
 [out]
