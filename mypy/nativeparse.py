@@ -999,7 +999,8 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         return raw_type
     elif tag == types.UNPACK_TYPE:
         inner_type = read_type(state, data)
-        unpack = UnpackType(inner_type)
+        from_star_syntax = read_bool(data)
+        unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
         expect_end_tag(data)
         return unpack
