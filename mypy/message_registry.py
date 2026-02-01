@@ -315,7 +315,7 @@ TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
     "Type signature has too many parameter", codes.SYNTAX
 )
 TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
-    "Type signature has too few arguments", codes.SYNTAX
+    "Type signature has too few parameters", codes.SYNTAX
 )
 ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
 ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(
