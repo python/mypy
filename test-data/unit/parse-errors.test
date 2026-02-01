@@ -254,7 +254,7 @@ file:1: error: Type signature has too many parameters
 def f(x, y): # type: (X) -> z
   pass
 [out]
-file:1: error: Type signature has too few arguments
+file:1: error: Type signature has too few parameters
 
 [case testCommentFunctionAnnotationVarArgMispatch-skip]
 # see mypy issue #1997
