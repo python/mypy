@@ -1237,6 +1237,36 @@ Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type vari
 
 [builtins fixtures/tuple.pyi]
 
+[case testGenericTypeAliasArgOfTypeAliasIsUnpackedTuple]
+# flags: --python-version 3.11
+from typing_extensions import TypeAlias
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+TA: TypeAlias = tuple[Unpack[Ts]]
+
+# Only "Test suite with py310-ubuntu, mypyc-compiled" expects: Invalid syntax; you likely need to run mypy using Python 3.11 or newer
+# The other tests expect: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+# v1: TA[*list[int]]
+
+v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/tuple.pyi]
+
+[case testGenericTypeAliasArgOfTypeAliasIsUnpackedTuple310]
+# flags: --python-version 3.10
+from typing_extensions import TypeAlias
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+TA: TypeAlias = tuple[Unpack[Ts]]
+
+# Only "Test suite with py310-ubuntu, mypyc-compiled" expects: Invalid syntax
+# The other tests expect: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+# v1: TA[*list[int]]
+
+v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/tuple.pyi]
+
 [case testAliasInstanceNameClash]
 from lib import func
 class A: ...
