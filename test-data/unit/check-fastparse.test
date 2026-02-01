@@ -178,7 +178,7 @@ def f(*,
 [out]
 
 [case testFasterParseTooManyArgumentsAnnotation]
-def f():  # E: Type signature has too many arguments
+def f():  # E: Type signature has too many parameters
     # type: (int) -> None
     pass
 
@@ -218,7 +218,7 @@ x @= 1
 def f(x):  # E: Type signature has too few arguments
     # type: () -> None
     pass
-def g():  # E: Type signature has too many arguments
+def g():  # E: Type signature has too many parameters
     # type: (int) -> None
     pass
 
