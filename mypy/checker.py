@@ -1792,7 +1792,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.PARAM_TYPE_EXPECTED, fdef)
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
