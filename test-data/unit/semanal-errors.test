@@ -1159,7 +1159,7 @@ def g(x): # type: () -> int
   pass
 [out]
 main:2: error: Type signature has too many parameters
-main:4: error: Type signature has too few arguments
+main:4: error: Type signature has too few parameters
 
 [case testStaticmethodAndNonMethod]
 import typing
