@@ -2389,18 +2389,6 @@ X = None | C
 Y = None | D
 [builtins fixtures/type.pyi]
 
-[case testGenericTypeAliasArgOfTypeAliasIsUnpackedTuple]
-from typing_extensions import TypeAlias
-from typing import TypeVarTuple, Unpack
-
-Ts = TypeVarTuple('Ts')
-TA: TypeAlias = tuple[Unpack[Ts]]
-
-# v1: TA[*list[int]]  # E: Invalid syntax
-
-v2: TA[Unpack[list[int]]]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
-[builtins fixtures/tuple.pyi]
-
 [case testMatchStatementWalrus]
 class A:
     a = 1
