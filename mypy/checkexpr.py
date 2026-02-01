@@ -5434,7 +5434,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if key is None:
                 # This is a **expr unpacking. Check that the expression has string keys.
                 value_type = get_proper_type(self.accept(value))
- # NEW: Allow Any or Unbound types to reduce false positives in external libraries
+                # NEW: Allow Any or Unbound types to reduce false positives in external libraries
                 if isinstance(value_type, (AnyType, UnboundType)):
                     pass
                 elif not self.is_valid_keyword_var_arg(value_type):
