@@ -308,13 +308,13 @@ INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', code
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )
-ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
+ELLIPSIS_WITH_OTHER_TYPEPARAMS: Final = ErrorMessage(
     "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
+TYPE_SIGNATURE_TOO_MANY_PARAMS: Final = ErrorMessage(
     "Type signature has too many parameter", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
+TYPE_SIGNATURE_TOO_FEW_PARAMS: Final = ErrorMessage(
     "Type signature has too few parameters", codes.SYNTAX
 )
 ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
