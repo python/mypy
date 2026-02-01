@@ -1158,7 +1158,7 @@ def f(): # type: (int) -> int
 def g(x): # type: () -> int
   pass
 [out]
-main:2: error: Type signature has too many arguments
+main:2: error: Type signature has too many parameters
 main:4: error: Type signature has too few arguments
 
 [case testStaticmethodAndNonMethod]
