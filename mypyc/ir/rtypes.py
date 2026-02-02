@@ -1442,7 +1442,7 @@ vec_api_by_item_type: Final[dict[RType, str]] = {
     bool_rprimitive: "VecBoolApi",
 }
 
-# These are special type item type contants used in nested vecs to represent
+# These are special type item type constants used in nested vecs to represent
 # item types with specialized representations. These must match definitions
 # in the vecs module (see VEC_ITEM_TYPE_I64 etc.).
 vec_item_type_tags: Final[dict[RType, int]] = {
