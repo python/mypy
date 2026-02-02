@@ -1,0 +1,89 @@
+[case testNoDeps]
+def f() -> None:
+    pass
+[out]
+No deps
+
+[case testStringsNoCapsuleDepWithoutExperimental]
+# Test case missing _experimental suffix -> no deps
+from librt.strings import StringWriter
+
+def f() -> None:
+    StringWriter()
+[out]
+No deps
+
+[case testStringsCapsuleDep_experimental]
+from librt.strings import StringWriter
+
+def f() -> None:
+    StringWriter()
+[out]
+Capsule(name='librt.strings')
+
+[case testStringsCapsuleDepFromParamType_experimental]
+from librt.strings import StringWriter
+
+def f(s: StringWriter) -> None:
+    pass
+[out]
+Capsule(name='librt.strings')
+
+[case testStringsCapsuleDepFromReturnType_experimental]
+from librt.strings import StringWriter
+
+def f() -> StringWriter:
+    assert False
+[out]
+Capsule(name='librt.strings')
+
+[case testStringsCapsuleDepFromUnion_experimental]
+from typing import Union
+
+from librt.strings import StringWriter
+
+def f(s: Union[StringWriter, str]) -> None:
+    pass
+[out]
+Capsule(name='librt.strings')
+
+[case testStringsCapsuleDepFromTuple_experimental]
+from librt.strings import StringWriter
+
+def f(s: tuple[int, StringWriter]) -> None:
+    pass
+[out]
+Capsule(name='librt.strings')
+
+[case testExtraFileDep_experimental]
+from librt.strings import StringWriter
+
+def f(s: StringWriter) -> int:
+    return s[0]
+[out]
+Capsule(name='librt.strings')
+SourceDep(path='stringwriter_extra_ops.c')
+
+[case testMultipleCapsuleDeps1_experimental]
+from librt.strings import StringWriter
+from librt.base64 import b64encode
+
+def f() -> None:
+    StringWriter()
+
+def g() -> bytes:
+    return b64encode(b'foo')
+[out]
+Capsule(name='librt.base64')
+Capsule(name='librt.strings')
+
+[case testMultipleCapsuleDeps2_experimental]
+from librt.strings import StringWriter
+from librt.base64 import b64encode
+
+def f() -> bytes:
+    StringWriter()
+    return b64encode(b'foo')
+[out]
+Capsule(name='librt.base64')
+Capsule(name='librt.strings')

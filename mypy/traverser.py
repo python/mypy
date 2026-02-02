@@ -66,6 +66,7 @@ from mypy.nodes import (
     SetExpr,
     SliceExpr,
     StarExpr,
+    Statement,
     StrExpr,
     SuperExpr,
     TempNode,
@@ -96,7 +97,7 @@ from mypy.patterns import (
     StarredPattern,
     ValuePattern,
 )
-from mypy.visitor import NodeVisitor
+from mypy.visitor import NodeVisitor, StatementVisitor
 
 
 @trait
@@ -108,6 +109,10 @@ class TraverserVisitor(NodeVisitor[None]):
     should override visit methods to perform actions during
     traversal. Calling the superclass method allows reusing the
     traversal implementation.
+
+    TODO: split this into more limited visitor (e.g. statements-only etc).
+    This will improve performance since in many cases we don't need to recurse
+    all the way down in various visitors that subclass this.
     """
 
     def __init__(self) -> None:
@@ -1084,3 +1089,123 @@ class YieldFromCollector(FuncCollectorBase):
 
     def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
         self.yield_from_expressions.append((expr, self.in_assignment))
+
+
+def find_definitions(o: Statement, name: str) -> list[Statement]:
+    visitor = DefinitionSeeker(name)
+    o.accept(visitor)
+    return visitor.found
+
+
+class DefinitionSeeker(StatementVisitor[None]):
+    """Find only the topmost functions/classes with the given name.
+
+    To find a nested class or method, you should split fullname in parts,
+    and use this visitor for each part.
+    """
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.found: list[Statement] = []
+
+    def visit_assignment_stmt(self, o: AssignmentStmt, /) -> None:
+        # TODO: support more kinds of locations (like assignment statements).
+        # the latter will be helpful for type old-style aliases.
+        pass
+
+    def visit_for_stmt(self, o: ForStmt, /) -> None:
+        o.body.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
+
+    def visit_with_stmt(self, o: WithStmt, /) -> None:
+        o.body.accept(self)
+
+    def visit_del_stmt(self, o: DelStmt, /) -> None:
+        pass
+
+    def visit_func_def(self, o: FuncDef, /) -> None:
+        if o.name == self.name:
+            self.found.append(o)
+
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef, /) -> None:
+        if o.name == self.name:
+            self.found.append(o)
+
+    def visit_class_def(self, o: ClassDef, /) -> None:
+        if o.name == self.name:
+            self.found.append(o)
+
+    def visit_global_decl(self, o: GlobalDecl, /) -> None:
+        pass
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl, /) -> None:
+        pass
+
+    def visit_decorator(self, o: Decorator, /) -> None:
+        if o.name == self.name:
+            self.found.append(o)
+
+    def visit_import(self, o: Import, /) -> None:
+        pass
+
+    def visit_import_from(self, o: ImportFrom, /) -> None:
+        pass
+
+    def visit_import_all(self, o: ImportAll, /) -> None:
+        pass
+
+    def visit_block(self, o: Block, /) -> None:
+        if o.is_unreachable:
+            return
+        for s in o.body:
+            s.accept(self)
+
+    def visit_expression_stmt(self, o: ExpressionStmt, /) -> None:
+        pass
+
+    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt, /) -> None:
+        pass
+
+    def visit_while_stmt(self, o: WhileStmt, /) -> None:
+        o.body.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
+
+    def visit_return_stmt(self, o: ReturnStmt, /) -> None:
+        pass
+
+    def visit_assert_stmt(self, o: AssertStmt, /) -> None:
+        pass
+
+    def visit_if_stmt(self, o: IfStmt, /) -> None:
+        for b in o.body:
+            b.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
+
+    def visit_break_stmt(self, o: BreakStmt, /) -> None:
+        pass
+
+    def visit_continue_stmt(self, o: ContinueStmt, /) -> None:
+        pass
+
+    def visit_pass_stmt(self, o: PassStmt, /) -> None:
+        pass
+
+    def visit_raise_stmt(self, o: RaiseStmt, /) -> None:
+        pass
+
+    def visit_try_stmt(self, o: TryStmt, /) -> None:
+        o.body.accept(self)
+        if o.else_body is not None:
+            o.else_body.accept(self)
+        if o.finally_body is not None:
+            o.finally_body.accept(self)
+
+    def visit_match_stmt(self, o: MatchStmt, /) -> None:
+        for b in o.bodies:
+            b.accept(self)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt, /) -> None:
+        pass

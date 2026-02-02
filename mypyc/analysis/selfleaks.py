@@ -16,6 +16,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     InitStatic,
@@ -177,6 +178,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
+        return CLEAN
+
+    def visit_get_element(self, op: GetElement) -> GenAndKill:
         return CLEAN
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:

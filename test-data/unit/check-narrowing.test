@@ -1,4 +1,5 @@
 [case testNarrowingParentWithStrsBasic]
+# flags: --strict-equality --warn-unreachable
 from dataclasses import dataclass
 from typing import Literal, NamedTuple, Tuple, TypedDict, Union
 
@@ -82,6 +83,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from dataclasses import dataclass
 from typing import Literal, NamedTuple, Tuple, TypedDict, Union
@@ -171,6 +173,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
+# flags: --strict-equality --warn-unreachable
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, TypedDict, Union
 
@@ -236,7 +239,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentMultipleKeys]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import Literal, Union
 
@@ -262,14 +265,14 @@ if x.key is Key.C:
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Object1 | __main__.Object2"
 
-if x.key is Key.D:
+if x.key is Key.D:  # E: Non-overlapping identity check (left operand type: "Literal[Key.A, Key.C, Key.B]", right operand type: "Literal[Key.D]")
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Object1 | __main__.Object2"
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingTypedDictParentMultipleKeys]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict):
@@ -288,7 +291,7 @@ if x['key'] == 'C':
 else:
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal['A'] | Literal['C']}) | TypedDict('__main__.TypedDict2', {'key': Literal['B'] | Literal['C']})"
 
-if x['key'] == 'D':
+if x['key'] == 'D':  # E: Non-overlapping equality check (left operand type: "Literal['A', 'C', 'B']", right operand type: "Literal['D']")
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal['A'] | Literal['C']}) | TypedDict('__main__.TypedDict2', {'key': Literal['B'] | Literal['C']})"
@@ -296,7 +299,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingPartialTypedDictParentMultipleKeys]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict, total=False):
@@ -315,7 +318,7 @@ if x['key'] == 'C':
 else:
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key'?: Literal['A'] | Literal['C']}) | TypedDict('__main__.TypedDict2', {'key'?: Literal['B'] | Literal['C']})"
 
-if x['key'] == 'D':
+if x['key'] == 'D':  # E: Non-overlapping equality check (left operand type: "Literal['A', 'C', 'B']", right operand type: "Literal['D']")
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key'?: Literal['A'] | Literal['C']}) | TypedDict('__main__.TypedDict2', {'key'?: Literal['B'] | Literal['C']})"
@@ -323,6 +326,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingNestedTypedDicts]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
@@ -351,6 +355,7 @@ if unknown['inner']['key'] == 'C':
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithMultipleParents]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import Literal, Union
 
@@ -381,6 +386,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingParentsWithGenerics]
+# flags: --strict-equality --warn-unreachable
 from typing import Union, TypeVar, Generic
 
 T = TypeVar('T')
@@ -395,6 +401,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingParentWithParentMixtures]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import Literal, Union, NamedTuple, TypedDict
 
@@ -444,6 +451,7 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testNarrowingParentWithProperties]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import Literal, Union
 
@@ -471,6 +479,7 @@ else:
 [builtins fixtures/property.pyi]
 
 [case testNarrowingParentWithAny]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import Literal, Union, Any
 
@@ -496,6 +505,7 @@ else:
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchy]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 from enum import Enum
 
@@ -553,6 +563,7 @@ else:
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchyGenerics]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar, Union
 
 T = TypeVar('T')
@@ -573,7 +584,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingParentsHierarchyTypedDict]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 from enum import Enum
 
@@ -605,7 +616,7 @@ else:
     reveal_type(x["model"])     # N: Revealed type is "TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})"
 
 y: Union[Parent1, Parent2]
-if y["model"]["key"] is Key.C:
+if y["model"]["key"] is Key.C:  # E: Non-overlapping identity check (left operand type: "Literal[Key.A, Key.B]", right operand type: "Literal[Key.C]")
     reveal_type(y)              # E: Statement is unreachable
     reveal_type(y["model"])
 else:
@@ -615,7 +626,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentsHierarchyTypedDictWithStr]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 
 class Parent1(TypedDict):
@@ -641,7 +652,7 @@ else:
     reveal_type(x["model"])     # N: Revealed type is "TypedDict('__main__.Model2', {'key': Literal['B']})"
 
 y: Union[Parent1, Parent2]
-if y["model"]["key"] == 'C':
+if y["model"]["key"] == 'C':  # E: Non-overlapping equality check (left operand type: "Literal['A', 'B']", right operand type: "Literal['C']")
     reveal_type(y)              # E: Statement is unreachable
     reveal_type(y["model"])
 else:
@@ -651,6 +662,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingExprPropagation]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
 class A:
@@ -671,7 +683,7 @@ if not (abo is None or abo.tag != "B"):
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityFlipFlop]
-# flags: --warn-unreachable --strict-equality
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Literal
 from enum import Enum
 
@@ -737,6 +749,7 @@ def test3(switch: FlipFlopEnum) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Literal
 
 A_final: Final = "A"
@@ -783,6 +796,7 @@ reveal_type(x_union)      # N: Revealed type is "Literal['A'] | Literal['B'] | N
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Literal, Union
 from enum import Enum
 
@@ -823,26 +837,32 @@ def bar(x: Union[SingletonFoo, Foo], y: SingletonFoo) -> None:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.SingletonFoo.A]"
 [builtins fixtures/primitives.pyi]
 
-[case testNarrowingEqualityDisabledForCustomEquality]
+[case testNarrowingEqualityCustomEqualityDisabled]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
-from enum import Enum
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
+def f1(x: Union[Custom, Literal[1], Literal[2]]):
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | Literal[2]"
+
 class Default: pass
 
-x1: Union[Custom, Literal[1], Literal[2]]
-if x1 == 1:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1] | Literal[2]"
-else:
-    reveal_type(x1)  # N: Revealed type is "__main__.Custom | Literal[1] | Literal[2]"
+def f2(x: Union[Default, Literal[1], Literal[2]]):
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Default | Literal[2]"
+[builtins fixtures/primitives.pyi]
 
-x2: Union[Default, Literal[1], Literal[2]]
-if x2 == 1:
-    reveal_type(x2)  # N: Revealed type is "Literal[1]"
-else:
-    reveal_type(x2)  # N: Revealed type is "__main__.Default | Literal[2]"
+[case testNarrowingEqualityCustomEqualityEnum]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal, Union
+from enum import Enum
 
 class CustomEnum(Enum):
     A = 1
@@ -855,7 +875,7 @@ key: Literal[CustomEnum.A]
 if x3 == key:
     reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
 else:
-    reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
+    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 
 # For comparison, this narrows since we bypass __eq__
 if x3 is key:
@@ -864,40 +884,125 @@ else:
     reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 [builtins fixtures/primitives.pyi]
 
-[case testNarrowingEqualityDisabledForCustomEqualityChain]
+[case testNarrowingEqualityCustomEqualityChainedComparison]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
 
+def f1(x: Literal[1, 2, None], y: Custom):
+    if 1 == x == y:
+        reveal_type(x)   # N: Revealed type is "Literal[1]"
+        reveal_type(y)   # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
+        reveal_type(y)   # N: Revealed type is "__main__.Custom"
+
 class Default: pass
 
-x: Literal[1, 2, None]
-y: Custom
-z: Default
+def f2(x: Literal[1, 2, None], z: Default):
+    if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Literal[1, 2] | None", right operand type: "Default")
+        reveal_type(x)   # E: Statement is unreachable
+        reveal_type(z)
+    else:
+        reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
+        reveal_type(z)   # N: Revealed type is "__main__.Default"
+[builtins fixtures/primitives.pyi]
 
-# We could maybe try doing something clever, but for simplicity we
-# treat the whole chain as contaminated and mostly disable narrowing.
-#
-# The only exception is that we do at least strip away the 'None'. We
-# (perhaps optimistically) assume no custom class would be pathological
-# enough to declare itself to be equal to None and so permit this narrowing,
-# since it's often convenient in practice.
-if 1 == x == y:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2]"
-    reveal_type(y)   # N: Revealed type is "__main__.Custom"
-else:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
-    reveal_type(y)   # N: Revealed type is "__main__.Custom"
+[case testNarrowingCustomEqualityLiteralElseBranch]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Literal
 
-# No contamination here
-if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Literal[1, 2] | None", right operand type: "Default")
-    reveal_type(x)   # E: Statement is unreachable
-    reveal_type(z)
-else:
-    reveal_type(x)   # N: Revealed type is "Literal[1] | Literal[2] | None"
-    reveal_type(z)   # N: Revealed type is "__main__.Default"
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(v: Custom | Literal["text"]) -> Custom | None:
+    if v == "text":
+        reveal_type(v)  # N: Revealed type is "__main__.Custom | Literal['text']"
+        return None
+    else:
+        reveal_type(v)  # N: Revealed type is "__main__.Custom"
+        return v
+
+def g(v: Custom | Literal["text"]) -> Custom | None:
+    if v != "text":
+        reveal_type(v)  # N: Revealed type is "__main__.Custom"
+        return None
+    else:
+        reveal_type(v)  # N: Revealed type is "__main__.Custom | Literal['text']"
+        return v  # E: Incompatible return value type (got "Custom | Literal['text']", expected "Custom | None")
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualityUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+def realistic(x: dict[str, Any]):
+    val = x.get("hey")
+    if val == 12:
+        reveal_type(val)  # N: Revealed type is "Any | Literal[12]?"
+
+def f1(x: Any | None):
+    if x == 12:
+        reveal_type(x)  # N: Revealed type is "Any | Literal[12]?"
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f2(x: Custom | None):
+    if x == 12:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+[builtins fixtures/dict.pyi]
+
+[case testNarrowingCustomEqualityUnion2]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f3(x: str | Custom, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+
+def f4(x: str | Any, y: str | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any"
+        reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testNarrowingCustomEqualityUnion3]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom | None, y: int | None):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases]
@@ -987,6 +1092,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
 str_or_false: Union[Literal[False], str]
@@ -1005,6 +1111,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingFalseyToLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 a: str
@@ -1022,7 +1129,7 @@ if not d:
     reveal_type(d)  # N: Revealed type is "Literal[''] | Literal[b''] | Literal[0]"
 
 [case testNarrowingIsInstanceFinalSubclass]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 from typing import final
 
@@ -1059,7 +1166,7 @@ else:
 
 
 [case testNarrowingIsInstanceFinalSubclassWithUnions]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 from typing import final, Union
 
@@ -1093,7 +1200,7 @@ else:
 
 
 [case testNarrowingIsSubclassFinalSubclassWithTypeVar]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 from typing import final, Type, TypeVar
 
@@ -1120,6 +1227,7 @@ reveal_type(f(B))  # N: Revealed type is "__main__.B"
 
 
 [case testNarrowingLiteralIdentityCheck]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
 
 str_or_false: Union[Literal[False], str]
@@ -1160,6 +1268,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanIdentityCheck]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Optional
 
 bool_val: bool
@@ -1181,6 +1290,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanTruthiness]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Optional
 
 bool_val: bool
@@ -1201,6 +1311,7 @@ reveal_type(opt_bool_val)   # N: Revealed type is "builtins.bool | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanBoolOp]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Optional
 
 bool_a: bool
@@ -1228,6 +1339,7 @@ reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 from enum import Enum
 
@@ -1251,6 +1363,7 @@ def f(d: Union[Foo, Bar]) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingUsingMetaclass]
+# flags: --strict-equality --warn-unreachable
 from typing import Type
 
 class M(type):
@@ -1270,6 +1383,7 @@ def f(t: Type[C]) -> None:
     reveal_type(t)  # N: Revealed type is "type[__main__.C]"
 
 [case testNarrowingUsingTypeVar]
+# flags: --strict-equality --warn-unreachable
 from typing import Type, TypeVar
 
 class A: pass
@@ -1289,6 +1403,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
 [case testNarrowingNestedUnionOfTypedDicts]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
@@ -1317,6 +1432,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingRuntimeCover]
+# flags: --strict-equality --warn-unreachable
 from typing import Dict, List, Union
 
 def unreachable(x: Union[str, List[str]]) -> None:
@@ -1325,7 +1441,7 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # No output: this branch is unreachable
+        reveal_type(x)  # No output: this branch is unreachable  # E: Statement is unreachable
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):
@@ -1346,6 +1462,7 @@ def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> Non
 
 
 [case testNarrowingWithDef]
+# flags: --strict-equality --warn-unreachable
 from typing import Callable, Optional
 
 def g() -> None:
@@ -1357,6 +1474,7 @@ def g() -> None:
 
 
 [case testNarrowingOptionalEqualsNone]
+# flags: --strict-equality --warn-unreachable
 from typing import Optional
 
 class A: ...
@@ -1364,25 +1482,43 @@ class A: ...
 val: Optional[A]
 
 if val == None:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 else:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 if val != None:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 
 if val in (None,):
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "__main__.A"
 if val not in (None,):
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualityOptionalEqualsNone]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+class Custom:
+    def __eq__(self, other) -> bool: ...
+
+def f(x: Custom | None):
+    if x == None:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    if x != None:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithTupleOfTypes]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Type
 
 class Base: ...
@@ -1407,7 +1543,7 @@ else:
 
 
 [case testNarrowingWithTupleOfTypesPy310Plus]
-# flags: --python-version 3.10
+# flags: --python-version 3.10 --strict-equality --warn-unreachable
 class Base: ...
 
 class Impl1(Base): ...
@@ -1429,6 +1565,7 @@ else:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingWithAnyOps]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 class C: ...
@@ -1472,6 +1609,7 @@ reveal_type(t)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNarrowingLenItemAndLenCompare]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 x: Any
@@ -1480,6 +1618,7 @@ if len(x) == x:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTuple]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
@@ -1498,6 +1637,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenHomogeneousTuple]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1513,6 +1653,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeUnaffected]
+# flags: --strict-equality --warn-unreachable
 from typing import Union, List
 
 x: Union[str, List[int]]
@@ -1523,6 +1664,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenAnyListElseNotAffected]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 def f(self, value: Any) -> Any:
@@ -1534,6 +1676,7 @@ def f(self, value: Any) -> Any:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenMultiple]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
@@ -1546,6 +1689,7 @@ if len(x) == len(y) == 3:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenFinal]
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Tuple, Union
 
 VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
@@ -1557,6 +1701,7 @@ if len(x) == fin:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenGreaterThan]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 VarTuple = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int]]
@@ -1584,6 +1729,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBothSidesUnionTuples]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 VarTuple = Union[
@@ -1601,7 +1747,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenGreaterThanHomogeneousTupleShort]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1615,7 +1761,7 @@ reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBiggerThanHomogeneousTupleLong]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1628,7 +1774,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBothSidesHomogeneousTuple]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1640,7 +1786,7 @@ reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionTupleUnreachable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 x: Union[Tuple[int, int], Tuple[int, int, int]]
@@ -1656,6 +1802,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenMixedTypes]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, List, Union
 
 x: Union[Tuple[int, int], Tuple[int, int, int], List[int]]
@@ -1676,6 +1823,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeVarTupleEquals]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1693,6 +1841,7 @@ def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeVarTupleGreaterThan]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1721,7 +1870,7 @@ def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeVarTupleUnreachable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1750,6 +1899,7 @@ def bar(x: Tuple[int, Unpack[Ts], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleEquals]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -1766,6 +1916,7 @@ def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleGreaterThan]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -1784,7 +1935,7 @@ def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleUnreachable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -1812,7 +1963,7 @@ def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionPrecise]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1821,6 +1972,7 @@ reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionTypeVarTuple]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1831,7 +1983,7 @@ def test(*xs: Unpack[Ts]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionWithNonePrecise]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple, Optional
 
 x: Optional[Tuple[int, ...]]
@@ -1842,6 +1994,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionWithNoneImprecise]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Optional
 
 x: Optional[Tuple[int, ...]]
@@ -1852,7 +2005,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenMixWithAnyPrecise]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Any
 
 x: Any
@@ -1871,6 +2024,7 @@ reveal_type(x1)  # N: Revealed type is "Any"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenMixWithAnyImprecise]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 x: Any
@@ -1889,6 +2043,7 @@ reveal_type(x1)  # N: Revealed type is "Any"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenExplicitLiteralTypes]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Tuple, Union
 
 VarTuple = Union[
@@ -1912,6 +2067,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionOfVariadicTuples]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Union
 
 x: Union[Tuple[int, ...], Tuple[str, ...]]
@@ -1922,6 +2078,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionOfNamedTuples]
+# flags: --strict-equality --warn-unreachable
 from typing import NamedTuple, Union
 
 class Point2D(NamedTuple):
@@ -1940,6 +2097,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTupleSubclass]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 
 class Ints(Tuple[int, ...]):
@@ -1957,6 +2115,7 @@ reveal_type(x)  # N: Revealed type is "__main__.Ints"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTupleSubclassCustomNotAllowed]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 
 class Ints(Tuple[int, ...]):
@@ -1971,7 +2130,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTupleSubclassPreciseNotAllowed]
-# flags: --enable-incomplete-feature=PreciseTupleTypes
+# flags: --enable-incomplete-feature=PreciseTupleTypes --strict-equality --warn-unreachable
 from typing import Tuple
 
 class Ints(Tuple[int, ...]):
@@ -1985,6 +2144,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnknownLen]
+# flags: --strict-equality --warn-unreachable
 from typing import Any, Tuple, Union
 
 x: Union[Tuple[int, int], Tuple[int, int, int]]
@@ -2003,6 +2163,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionWithUnreachable]
+# flags: --strict-equality --warn-unreachable
 from typing import Union, Sequence
 
 def f(x: Union[int, Sequence[int]]) -> None:
@@ -2016,6 +2177,7 @@ def f(x: Union[int, Sequence[int]]) -> None:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingIsSubclassNoneType1]
+# flags: --strict-equality --warn-unreachable
 from typing import Type, Union
 
 def f(cls: Type[Union[None, int]]) -> None:
@@ -2026,6 +2188,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType2]
+# flags: --strict-equality --warn-unreachable
 from typing import Type, Union
 
 def f(cls: Type[Union[None, int]]) -> None:
@@ -2036,6 +2199,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType3]
+# flags: --strict-equality --warn-unreachable
 from typing import Type, Union
 
 NoneType_ = type(None)
@@ -2048,7 +2212,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType4]
-# flags: --python-version 3.10
+# flags: --python-version 3.10 --strict-equality --warn-unreachable
 
 from types import NoneType
 from typing import Type, Union
@@ -2061,7 +2225,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType]
-# flags: --warn-unreachable --python-version 3.10
+# flags: --warn-unreachable --python-version 3.10 --strict-equality
 
 from types import NoneType
 from typing import final
@@ -2086,7 +2250,7 @@ if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z"
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeNarrowingReachableNegative]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal
 
 x: Literal[-1]
@@ -2098,6 +2262,7 @@ if x == -1:
 [builtins fixtures/ops.pyi]
 
 [case testTypeNarrowingReachableNegativeUnion]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal
 
 x: Literal[-1, 1]
@@ -2111,7 +2276,7 @@ else:
 [builtins fixtures/ops.pyi]
 
 [case testNarrowingWithIntEnum]
-# mypy: strict-equality
+# flags: --strict-equality --warn-unreachable
 from __future__ import annotations
 from typing import Any
 from enum import IntEnum
@@ -2144,7 +2309,7 @@ def f3(x: object) -> None:
 
 def f4(x: int | Any) -> None:
     if x == IE.X:
-        reveal_type(x)  # N: Revealed type is "builtins.int | Any"
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | Any"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | Any"
 
@@ -2166,7 +2331,7 @@ def f6(x: IE) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithIntEnum2]
-# mypy: strict-equality
+# flags: --strict-equality --warn-unreachable
 from __future__ import annotations
 from typing import Any
 from enum import IntEnum, Enum
@@ -2219,9 +2384,9 @@ def f5(x: E | str | int) -> None:
 
 def f6(x: IE | Any) -> None:
      if x == IE.X:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | Any"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | Any"
      else:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | Any"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y] | Any"
 
 def f7(x: IE | None) -> None:
      if x == IE.X:
@@ -2239,6 +2404,7 @@ def f8(x: IE | None) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithStrEnum]
+# flags: --strict-equality --warn-unreachable
 # mypy: strict-equality
 from enum import StrEnum
 
@@ -2271,25 +2437,45 @@ def f4(x: SE) -> None:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.B]"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingWithEnumStrSubclass]
+# flags: --strict-equality --warn-unreachable
+from enum import Enum
+
+class ParameterLocation(str, Enum):
+    QUERY = "query"
+    HEADER = "header"
+    PATH = "path"
+
+def foo(location: ParameterLocation):
+    if location == "path":
+        reveal_type(location)  # N: Revealed type is "__main__.ParameterLocation"
+    else:
+        reveal_type(location)  # N: Revealed type is "__main__.ParameterLocation"
+
+    if location == ParameterLocation.PATH:
+        reveal_type(location)  # N: Revealed type is "Literal[__main__.ParameterLocation.PATH]"
+    else:
+        reveal_type(location)  # N: Revealed type is "Literal[__main__.ParameterLocation.QUERY] | Literal[__main__.ParameterLocation.HEADER]"
+[builtins fixtures/primitives.pyi]
+
 [case testConsistentNarrowingEqAndIn]
-# flags: --python-version 3.10
+# flags: --python-version 3.10 --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/17864
 def f(x: str | int) -> None:
     if x == "x":
-        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
         y = x
 
     if x in ["x"]:
-        # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
-        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
         y = x
         z = x
     z = y
 [builtins fixtures/primitives.pyi]
 
-[case testConsistentNarrowingInWithCustomEq]
-# flags: --python-version 3.10
+[case testConsistentNarrowingEqAndInWithCustomEq]
+# flags: --python-version 3.10 --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/17864
 class C:
@@ -2306,15 +2492,21 @@ class C:
 class D(C):
     pass
 
-def f(x: C) -> None:
+def f1(x: C) -> None:
     if x in [D(5)]:
         reveal_type(x)  # D  # N: Revealed type is "__main__.C"
 
-f(C(5))
+f1(C(5))
+
+def f2(x: C) -> None:
+    if x == D(5):
+        reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+
+f2(C(5))
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypeVarNone]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/18126
 from typing import TypeVar
@@ -2333,7 +2525,7 @@ def fn_while(arg: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testRefinePartialTypeWithinLoop]
-# flags: --no-local-partial-types
+# flags: --no-local-partial-types --strict-equality --warn-unreachable
 
 x = None
 for _ in range(2):
@@ -2369,7 +2561,7 @@ class A:
 [builtins fixtures/primitives.pyi]
 
 [case testPersistentUnreachableLinesNestedInInpersistentUnreachableLines]
-# flags: --warn-unreachable --python-version 3.11
+# flags: --warn-unreachable --python-version 3.11 --strict-equality
 
 x = None
 y = None
@@ -2381,7 +2573,7 @@ while True:
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseRedundantCastInLoops]
-# flags: --warn-redundant-casts
+# flags: --warn-redundant-casts --strict-equality --warn-unreachable
 
 from typing import Callable, cast, Union
 
@@ -2402,7 +2594,7 @@ def main_no_cast(p: Processor) -> None:
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseUnreachableInLoop1]
-# flags: --warn-unreachable --python-version 3.11
+# flags: --warn-unreachable --python-version 3.11 --strict-equality
 
 def f() -> int | None: ...
 def b() -> bool: ...
@@ -2414,7 +2606,7 @@ while x is not None or b():
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseUnreachableInLoop2]
-# flags: --warn-unreachable --python-version 3.11
+# flags: --warn-unreachable --python-version 3.11 --strict-equality
 
 y = None
 while y is None:
@@ -2424,7 +2616,7 @@ while y is None:
 [builtins fixtures/list.pyi]
 
 [case testAvoidFalseUnreachableInLoop3]
-# flags: --warn-unreachable --python-version 3.11
+# flags: --warn-unreachable --python-version 3.11 --strict-equality
 
 xs: list[int | None]
 y = None
@@ -2435,7 +2627,7 @@ for x in xs:
 [builtins fixtures/list.pyi]
 
 [case testAvoidFalseRedundantExprInLoop]
-# flags: --enable-error-code redundant-expr --python-version 3.11
+# flags: --enable-error-code redundant-expr --python-version 3.11 --strict-equality --warn-unreachable
 
 def f() -> int | None: ...
 def b() -> bool: ...
@@ -2447,7 +2639,7 @@ while x is not None and b():
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop1]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality
+# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
 x = 1
 while True:
@@ -2459,7 +2651,7 @@ while True:
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop2]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality
+# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
 class A: ...
 class B: ...
@@ -2473,15 +2665,16 @@ while True:
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop3]
-# flags: --strict-equality
+# flags: --strict-equality --warn-unreachable
 
 for y in [1.0]:
-    if y is not None or y != "None":
+    if y is not None or y != "None":  # E: Right operand of "or" is never evaluated
         ...
 
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowPromotionsInsideUnions1]
+# flags: --strict-equality --warn-unreachable
 
 from typing import Union
 
@@ -2496,7 +2689,7 @@ reveal_type(z)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowPromotionsInsideUnions2]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 from typing import Optional
 
@@ -2515,7 +2708,7 @@ while b():
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseUnreachableInFinally]
-# flags: --allow-redefinition-new --local-partial-types --warn-unreachable
+# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 def f() -> None:
     try:
         x = 1
@@ -2534,6 +2727,7 @@ def f() -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNarrowingTypeVarMultiple]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 
 class A: ...
@@ -2552,6 +2746,7 @@ def foo(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testDoNotNarrowToNever]
+# flags: --strict-equality --warn-unreachable
 def any():
     return 1
 
@@ -2563,6 +2758,7 @@ def f() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeVarBoundType]
+# flags: --strict-equality --warn-unreachable
 from typing import Type, TypeVar
 
 class A: ...
@@ -2579,6 +2775,7 @@ def test(cls: Type[T]) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeVarBoundUnion]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 
 class A:
@@ -2602,6 +2799,7 @@ def test(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNarrowingWithSelfTypes]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar, overload
 
 T = TypeVar("T")
@@ -2654,12 +2852,13 @@ class D(tuple[T], Generic[T]): ...
 
 def check_d(arg: D[T]) -> None:
     if not isinstance(arg, D):
-        return
+        return  # E: Statement is unreachable
     reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
 [builtins fixtures/tuple.pyi]
 
 
 [case testNarrowingUnionMixins]
+# flags: --strict-equality --warn-unreachable
 class Base: ...
 
 class FooMixin:
@@ -2682,6 +2881,7 @@ def baz(item: Base) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testCustomSetterNarrowingReWidened]
+# flags: --strict-equality --warn-unreachable
 class B: ...
 class C(B): ...
 class C1(B): ...
@@ -2699,3 +2899,679 @@ reveal_type(t.foo)  # N: Revealed type is "__main__.D"
 t.foo = C1()
 reveal_type(t.foo)  # N: Revealed type is "__main__.C"
 [builtins fixtures/property.pyi]
+
+[case testNarrowingNotImplemented]
+# flags: --python-version 3.10 --warn-unreachable
+from __future__ import annotations
+import types
+
+def foo(x: types.NotImplementedType | str):
+    if x is not NotImplemented:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+from typing_extensions import Self
+
+class X:
+    def __divmod__(self, other: Self | int) -> tuple[Self, Self]: ...
+
+    def __floordiv__(self, other: Self | int) -> Self:
+        qr = self.__divmod__(other)
+        if qr is NotImplemented:
+            return NotImplemented
+        return qr[0]
+[builtins fixtures/notimplemented.pyi]
+
+
+[case testNarrowingBooleans]
+# flags: --warn-return-any --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(x: dict[str, Any]) -> bool:
+    if x.get("event") is False:
+        return False
+    if x.get("event") is True:
+        return True
+    raise
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingTypeObjects]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Callable, Any, TypeVar, Generic, Protocol
+_T_co = TypeVar('_T_co', covariant=True)
+
+class Boxxy(Protocol[_T_co]):
+    def get_box(self) -> _T_co: ...
+
+class TupleLike(Generic[_T_co]):
+    def __init__(self, iterable: Boxxy[_T_co], /) -> None:
+        raise
+
+class Box1(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+class Box2(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+def get_type(setting_name: str) -> Callable[[Box1], Any] | type[Any]:
+    raise
+
+def main(key: str):
+    existing_value_type = get_type(key)
+    if existing_value_type is TupleLike:
+        reveal_type(TupleLike)  # N: Revealed type is "def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]"
+        reveal_type(TupleLike(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str]"
+
+        reveal_type(existing_value_type)  # N: Revealed type is "(def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]) | type[Any]"
+        reveal_type(existing_value_type(Box2("str")))  # N: Revealed type is "__main__.TupleLike[builtins.str] | Any"
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingCollections]
+# flags: --strict-equality --warn-unreachable
+from typing import cast
+
+class X:
+    def __init__(self) -> None:
+        self.x: dict[str, str] = {}
+        self.y: list[str] = []
+
+    def xxx(self) -> None:
+        if self.x == {}:
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == dict():
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == cast(dict[int, int], {}):  # E: Non-overlapping equality check (left operand type: "dict[str, str]", right operand type: "dict[int, int]")
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+    def yyy(self) -> None:
+        if self.y == []:
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == list():
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == cast(list[int], []):  # E: Non-overlapping equality check (left operand type: "list[str]", right operand type: "list[int]")
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+[builtins fixtures/dict.pyi]
+
+
+[case testTypeNarrowingStringInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple(x: str, t: tuple[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_homo_tuple(x: str, t: tuple[Literal['a', 'b'], ...]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_list(x: str, t: list[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def narrow_set(x: str, t: set[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingLiteralInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple(x: Literal['c'], overlap: list[Literal['b', 'c']], no_overlap: list[Literal['a', 'b']]):
+    if x in overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+
+    if x in no_overlap:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowingUnionInContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Union, Literal
+
+def f1(x: Union[str, float], t1: list[Literal['a', 'b']], t2: list[str]):
+    if x in t1:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+
+    if x in t2:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowAnyWithEqualityOrContainment]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/17841
+from typing import Any
+
+def f1(x: Any) -> None:
+    if x is not None and x not in ["x"]:
+        return
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f2(x: Any) -> None:
+    if x is not None and x != "x":
+        return
+    reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowChainedContainment]
+# flags: --strict-equality --warn-unreachable
+
+def bad_compare_has_key(has_key: bool, key: str, s: tuple[str, ...]) -> None:
+    if has_key == key in s:  # E: Non-overlapping equality check (left operand type: "bool", right operand type: "str")
+        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
+        reveal_type(key)  # N: Revealed type is "builtins.str"
+
+def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
+    if has_key == key in s:
+        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
+        reveal_type(key)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowTypeObject]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+# https://github.com/python/mypy/issues/13704
+
+def f1(cls: type):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+def f2(cls: type[object]):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+def f3(cls: type[Any]):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "type[Any]"
+        reveal_type(cls(5))  # N: Revealed type is "Any"
+
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "type[Any]"
+        reveal_type(cls(5))  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeObjectUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+
+def f4(cls: type[str | int]):
+    reveal_type(cls)  # N: Revealed type is "type[builtins.str] | type[builtins.int]"
+
+    if cls is int:
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+    if cls == int:
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+[builtins fixtures/primitives.pyi]
+
+
+[case testTypeEqualsCheck]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+y: Any
+if type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testMultipleTypeEqualsCheck]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+x: Any
+y: Any
+if type(x) == type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+z: Any
+if int == type(z) == int:
+    reveal_type(z) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckWidening]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def f(x: str, y: Any, z: object):
+    if type(x) is type(y):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(y) # N: Revealed type is "builtins.str"
+
+    if type(x) == type(y):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(y) # N: Revealed type is "builtins.str"
+
+    if type(x) is type(z):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(z) # N: Revealed type is "builtins.str"
+
+    if type(x) == type(z):
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        reveal_type(z) # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+[case testTypeEqualsCheckUsingIs]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+y: Any
+if type(y) is int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckUsingIsNonOverlapping]
+# flags: --strict-equality --warn-unreachable
+from typing import Union
+
+y: str
+if type(y) is int:  # E: Non-overlapping identity check (left operand type: "type[str]", right operand type: "type[int]") \
+                    # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+    y  # E: Statement is unreachable
+else:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheckUsingIsNonOverlappingChild]
+# flags: --strict-equality --warn-unreachable
+from typing import Union
+
+class A: ...
+class B: ...
+class C(A): ...
+def main(x: Union[B, C]):
+    # C instance cannot be exactly its parent A, we need reversed subtyping relationship
+    # here (type(parent) is Child).
+    if type(x) is A:
+        reveal_type(x)  # E: Statement is unreachable
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheckTypeVar]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+
+class A: ...
+class B: ...
+
+T = TypeVar("T")
+
+def forgets_about_subclasses1(self, obj: T) -> T:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif isinstance(obj, B):
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+def correct1(self, obj: T) -> T:
+    if type(obj) == A:
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    elif type(obj) == B:
+        return B()  # E: Incompatible return value type (got "B", expected "T")
+    raise
+
+T_value = TypeVar("T_value", A, B)
+
+def forgets_about_subclasses2(self, obj: T_value) -> T_value:
+    if isinstance(obj, A):
+        return A()  # E: Incompatible return value type (got "A", expected "B")
+    elif isinstance(obj, B):
+        return B()
+    raise
+
+def correct2(self, obj: T_value) -> T_value:
+    if type(obj) == A:
+        return A()
+    elif type(obj) == B:
+        return B()
+    raise
+[builtins fixtures/primitives.pyi]
+
+[case testTypeEqualsCheckUsingDifferentSpecializedTypes]
+# flags: --strict-equality --warn-unreachable
+from collections import defaultdict
+
+x: defaultdict
+y: dict
+z: object
+if type(x) is type(y) is type(z):
+    reveal_type(x) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(y) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(z) # N: Revealed type is "collections.defaultdict[Any, Any]"
+
+[case testTypeEqualsTypeObjectUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+def f(x: object, y: type[int] | type[str]):
+    if type(x) == y:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(y)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+[builtins fixtures/primitives.pyi]
+
+[case testUnionTypeEquality]
+# flags: --strict-equality --warn-unreachable
+from typing import Any, reveal_type
+
+def f(x: Any):
+    if type(x) == (int, str):  # E: Non-overlapping equality check (left operand type: "type[Any]", right operand type: "tuple[type[int], type[str]]")
+        reveal_type(x) # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIntersectionWithConcreteTypes]
+# flags: --strict-equality --warn-unreachable
+class X: x = 1
+class Y: y = 1
+class Z(X, Y): ...
+
+z = Z()
+x: X = z
+y: Y = z
+if type(x) is type(y):  # E: Non-overlapping identity check (left operand type: "type[X]", right operand type: "type[Y]")
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.Y" and "__main__.X">"
+    x.y + y.x
+
+if isinstance(x, type(y)) and isinstance(y, type(x)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    x.y + y.x
+
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsNarrowingUnionWithElse]
+# flags: --strict-equality --warn-unreachable
+from typing import Union
+
+x: Union[int, str]
+if type(x) is int:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+[case testTypeEqualsMultipleTypesShouldntNarrow]
+# flags: --strict-equality --warn-unreachable
+
+from typing import Union
+
+x: Union[int, str]
+if type(x) == int == str:  # E: Non-overlapping equality check (left operand type: "type[int]", right operand type: "type[str]")
+    reveal_type(x)  # E: Statement is unreachable
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+[builtins fixtures/primitives.pyi]
+
+[case testTypeNotEqualsCheck]
+# flags: --strict-equality --warn-unreachable
+from typing import Union
+
+x: Union[int, str]
+if type(x) != int:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+# mypy thinks int isn't defined unless we include this
+[builtins fixtures/primitives.pyi]
+
+[case testTypeNotEqualsCheckUsingIsNot]
+# flags: --strict-equality --warn-unreachable
+from typing import Union
+
+x: Union[int, str]
+if type(x) is not int:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testTypeNarrowingAgainstType]
+# flags: --strict-equality --warn-unreachable
+class A:
+    def foo(self, x: object) -> None:
+        reveal_type(self)  # N: Revealed type is "__main__.A"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        if type(self) is type(x):
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+        else:
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "builtins.object"
+        if type(self) == type(x):
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+        else:
+            reveal_type(self)  # N: Revealed type is "__main__.A"
+            reveal_type(x)  # N: Revealed type is "builtins.object"
+
+class B:
+    y: int
+
+    def __eq__(self, other: object) -> bool:
+        return type(other) is type(self) and other.y == self.y
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowInElseCaseIfFinal]
+# flags: --strict-equality --warn-unreachable
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is C:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+
+[case testNarrowInIfCaseIfFinalUsingIsNot]
+# flags: --strict-equality --warn-unreachable
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is not C:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case testDunderClassNarrowing]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(y: object):
+    if y.__class__ == int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "builtins.object"
+
+    if y.__class__ is int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "builtins.object"
+
+
+def bar(y: Any):
+    if y.__class__ == int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "Any"
+
+    if y.__class__ is int:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(y) # N: Revealed type is "Any"
+[builtins fixtures/dict-full.pyi]
+
+[case testNarrowTypeVarType]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+
+T = TypeVar("T")
+
+class A: ...
+
+def foo(X: type[T]) -> T:
+    if X == A:
+        return X()
+    raise
+
+# It could be nice to make these two test cases consistent, but it would be tricky
+# The above case is much more common in real world code
+def bar(X: type[T]) -> T:
+    if X == A:
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    raise
+[builtins fixtures/type.pyi]
+
+[case testNarrowingAnyNegativeIntersection-xfail]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/20597
+from __future__ import annotations
+from typing import Any
+
+class array: ...
+
+def get_result() -> Any: ...
+
+def foo(x: str | array) -> str:
+    result = get_result()
+    if isinstance(result, array):
+        return "asdf"
+    if result is x:
+        reveal_type(result)  # N: Revealed type is "Any"
+        return result
+    raise
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingOptionalBytes]
+from __future__ import annotations
+def f(x: bytes | None):
+    if x == b"asdf":
+        reveal_type(x)  # N: Revealed type is "builtins.bytes"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.bytes | None"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingBytesLikeWithPromotion]
+# flags: --strict-equality --warn-unreachable --strict-bytes
+from __future__ import annotations
+
+def check_test(x: bytes) -> None: ...
+check_test(bytearray(b"asdf"))  # E: Argument 1 to "check_test" has incompatible type "bytearray"; expected "bytes"
+
+def main(
+    v_bytes: bytes,
+    v_bytearray: bytearray,
+    v_memoryview: memoryview,
+    v_all: bytes | bytearray | memoryview,
+) -> None:
+    if v_bytes == v_bytearray:
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+    if v_bytes == v_memoryview:
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+    if v_bytearray == v_memoryview:
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+
+    if v_all == v_bytes:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+    if v_all == v_bytearray:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+    if v_all == v_memoryview:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingBytesLikeNoPromotion]
+# flags: --strict-equality --warn-unreachable --no-strict-bytes
+from __future__ import annotations
+
+def check_test(x: bytes) -> None: ...
+check_test(bytearray(b"asdf"))
+
+def main(
+    v_bytes: bytes,
+    v_bytearray: bytearray,
+    v_memoryview: memoryview,
+    v_all: bytes | bytearray | memoryview,
+) -> None:
+    if v_bytes == v_bytearray:
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+    if v_bytes == v_memoryview:
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+    if v_bytearray == v_memoryview:
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+
+    if v_all == v_bytes:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
+    if v_all == v_bytearray:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
+        reveal_type(v_bytearray)  # N: Revealed type is "builtins.bytearray"
+    if v_all == v_memoryview:
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
+        reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+[builtins fixtures/primitives.pyi]

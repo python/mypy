@@ -305,6 +305,9 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     if not mypy.checker.is_valid_inferred_type(ret_type, ctx.api.options):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
+    # Technically, we should set definition to None here, since it will not be recovered
+    # on warm cache runs in fixup.py. This however may hide some helpful info in error
+    # messages, so we are keeping it for now. See also issue #20640.
     partially_applied = fn_type.copy_modified(
         arg_types=partial_types,
         arg_kinds=partial_kinds,

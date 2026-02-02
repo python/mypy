@@ -42,6 +42,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -795,6 +796,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if dest != src:
             self.emit_line(f"*({dest_type} *){dest} = {src};")
 
+    def visit_get_element(self, op: GetElement) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        dest_type = self.ctype(op.type)
+        self.emit_line(f"{dest} = ({dest_type}){src}.{op.field};")
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
@@ -921,6 +928,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
         assert op.traceback_entry is not None
+        if self.emitter.context.strict_traceback_checks:
+            assert (
+                op.traceback_entry[1] >= 0
+            ), "AttributeError traceback cannot have a negative line number"
         globals_static = self.emitter.static_name("globals", self.module_name)
         self.emit_line(
             'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'

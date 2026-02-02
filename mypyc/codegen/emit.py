@@ -33,6 +33,7 @@ from mypyc.ir.rtypes import (
     RUnion,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -102,6 +103,7 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
+        strict_traceback_checks: bool,
         group_name: str | None = None,
         group_map: dict[str, str | None] | None = None,
     ) -> None:
@@ -129,6 +131,8 @@ class EmitterContext:
         self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
+        # See mypyc/options.py for context.
+        self.strict_traceback_checks = strict_traceback_checks
 
 
 class ErrorHandler:
@@ -657,7 +661,17 @@ class Emitter:
         elif is_bytes_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
-            check = "(PyBytes_Check({}) || PyByteArray_Check({}))"
+            check = "(PyBytes_Check({}))"
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
+        elif is_bytearray_rprimitive(typ):
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            check = "(PyByteArray_Check({}))"
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
@@ -1190,6 +1204,8 @@ class Emitter:
         type_str: str = "",
         src: str = "",
     ) -> None:
+        if self.context.strict_traceback_checks:
+            assert traceback_entry[1] >= 0, "Traceback cannot have a negative line number"
         globals_static = self.static_name("globals", module_name)
         line = '%s("%s", "%s", %d, %s' % (
             func,

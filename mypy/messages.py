@@ -43,7 +43,6 @@ from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     CallExpr,
-    ClassDef,
     Context,
     Expression,
     FuncDef,
@@ -250,20 +249,10 @@ class MessageBuilder:
         """
 
         def span_from_context(ctx: Context) -> Iterable[int]:
-            """This determines where a type: ignore for a given context has effect.
-
-            Current logic is a bit tricky, to keep as much backwards compatibility as
-            possible. We may reconsider this to always be a single line (or otherwise
-            simplify it) when we drop Python 3.7.
-
-            TODO: address this in follow up PR
-            """
-            if isinstance(ctx, (ClassDef, FuncDef)):
+            """This determines where a type: ignore for a given context has effect."""
+            if not isinstance(ctx, Expression):
                 return range(ctx.line, ctx.line + 1)
-            elif not isinstance(ctx, Expression):
-                return [ctx.line]
-            else:
-                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
         origin_span: Iterable[int] | None
         if origin is not None:
@@ -277,6 +266,11 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
+        location_ref = None
+        if file is not None and file != self.errors.file:
+            assert isinstance(context, SymbolNode), "Only symbols can be locations in other files"
+            location_ref = context.fullname
+
         return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
@@ -289,6 +283,7 @@ class MessageBuilder:
             end_column=context.end_column if context else -1,
             code=code,
             parent_error=parent_error,
+            location_ref=location_ref,
         )
 
     def fail(
@@ -1306,17 +1301,13 @@ class MessageBuilder:
             )
 
     def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent(
-            """\
+        return dedent("""\
         It is recommended for "__eq__" to work with arbitrary objects, for example:
             def __eq__(self, other: object) -> bool:
                 if not isinstance(other, {class_name}):
                     return NotImplemented
                 return <logic to compare two {class_name} instances>
-        """.format(
-                class_name=class_name
-            )
-        )
+        """.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
         self,
@@ -1813,7 +1804,7 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        source, target = format_type_distinctly(source_type, target_type, options=self.options)
         self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
@@ -3028,30 +3019,37 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             s += ", /"
             slash = True
 
-    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     definition = get_func_def(tp)
+
+    # Extract function name, prefer the "human-readable" name if available.
+    func_name = None
+    if tp.name:
+        func_name = tp.name.split()[0]  # skip "of Class" part
+    elif isinstance(definition, FuncDef):
+        func_name = definition.name
+
+    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+    first_arg = None
     if (
         isinstance(definition, FuncDef)
         and hasattr(definition, "arguments")
         and not tp.from_concatenate
     ):
         definition_arg_names = [arg.variable.name for arg in definition.arguments]
-        if (
-            len(definition_arg_names) > len(tp.arg_names)
-            and definition_arg_names[0]
-            and not skip_self
-        ):
-            if s:
-                s = ", " + s
-            s = definition_arg_names[0] + s
-        s = f"{definition.name}({s})"
-    elif tp.name:
+        if len(definition_arg_names) > len(tp.arg_names) and definition_arg_names[0]:
+            first_arg = definition_arg_names[0]
+    else:
+        # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
-        if first_arg:
-            if s:
-                s = ", " + s
-            s = first_arg + s
-        s = f"{tp.name.split()[0]}({s})"  # skip "of Class" part
+
+    if tp.is_type_obj():
+        skip_self = True
+    if first_arg and not skip_self:
+        if s:
+            s = ", " + s
+        s = first_arg + s
+    if func_name:
+        s = f"{func_name}({s})"
     else:
         s = f"({s})"
 

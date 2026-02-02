@@ -593,6 +593,25 @@ x = 1
 [file m2.py]
 x = 1
 
+[case testStarImportDoesNotImportGeneratedIntersections]
+from m1 import *
+from m2 import *
+[file m1.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m2.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m3.py]
+class A: ...
+class B: ...
+class AB(A, B): ...
+[builtins fixtures/isinstance.pyi]
+
 [case testAssignToFuncDefViaImport]
 
 # Errors differ with the new analyzer. (Old analyzer gave error on the
@@ -2941,7 +2960,7 @@ class Some:
     name = __name__
 reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
-[case testReExportAllInStub_no_parallel]
+[case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
 C()
@@ -3165,7 +3184,7 @@ from b import no_such_export
 [file b.py]
 from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar1_no_parallel]
+[case testCyclicUndefinedImportWithStar1]
 import a
 [file a.py]
 from b import no_such_export
@@ -3173,9 +3192,8 @@ from b import no_such_export
 from a import *
 [out]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar2_no_parallel]
+[case testCyclicUndefinedImportWithStar2]
 import a
 [file a.py]
 from b import no_such_export
@@ -3185,8 +3203,6 @@ from c import *
 from a import *
 [out]
 tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar3]
 import test1
