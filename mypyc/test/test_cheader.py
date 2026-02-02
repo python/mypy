@@ -17,6 +17,8 @@ from mypyc.primitives import (
     float_ops,
     generic_ops,
     int_ops,
+    librt_strings_ops,
+    librt_vecs_ops,
     list_ops,
     misc_ops,
     registry,
@@ -24,8 +26,6 @@ from mypyc.primitives import (
     str_ops,
     tuple_ops,
     weakref_ops,
-    librt_vecs_ops,
-    librt_strings_ops,
 )
 
 
