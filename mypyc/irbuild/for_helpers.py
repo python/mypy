@@ -216,7 +216,7 @@ def sequence_from_generator_preallocate_helper(
     builder: IRBuilder,
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
-    set_item_op: Callable[[Value, Value, Value, int], None],  # CFunctionDescription,
+    set_item_op: Callable[[Value, Value, Value, int], None],
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 

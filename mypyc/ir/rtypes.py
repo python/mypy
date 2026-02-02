@@ -1333,15 +1333,6 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
         return -limit <= n < limit
 
 
-"""
-
-# vec (common fields)
-VecObject = RStruct(
-    name="VecObject", names=["ob_base", "len"], types=[PyObject, c_pyssize_t_rprimitive]
-)
-"""
-
-
 # Buffers for vec item types that have a packed representation
 
 VecI64BufObject = RStruct(
