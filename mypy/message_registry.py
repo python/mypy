@@ -224,7 +224,7 @@ SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
 
 # Self-type
 MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
-    "self parameter missing for a non-static method (or an invalid type for self)"
+    '"self" parameter missing for a non-static method (or an invalid type for self)'
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
