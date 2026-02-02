@@ -26,6 +26,7 @@ from mypyc.codegen.emitmodule import collect_source_dependencies
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
+from mypyc.test.librt_cache import get_librt_path
 from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -77,6 +78,10 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-match.test",
+    "run-vecs-i64-interp.test",
+    "run-vecs-misc-interp.test",
+    "run-vecs-t-interp.test",
+    "run-vecs-nested-interp.test",
 ]
 
 if sys.version_info >= (3, 12):
@@ -210,6 +215,7 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
+        options.check_untyped_defs = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -258,6 +264,7 @@ class TestRun(MypycDataSuite):
                 strict_dunder_typing=self.strict_dunder_typing,
                 depends_on_librt_internal=librt_internal,
                 experimental_features=experimental_features,
+                strict_traceback_checks=True,
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
@@ -288,6 +295,7 @@ class TestRun(MypycDataSuite):
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, "setup.py"))
         # We pass the C file information to the build script via setup.py unfortunately
+        # Note: install_librt is always False since we use cached librt from librt_cache
         with open(setup_file, "w", encoding="utf-8") as f:
             f.write(
                 setup_format.format(
@@ -296,16 +304,15 @@ class TestRun(MypycDataSuite):
                     (cfiles, deps),
                     self.multi_file,
                     opt_level,
-                    librt,
+                    False,  # install_librt - use cached version instead
                     experimental_features,
                 )
             )
 
         if librt:
-            # This hack forces Python to prefer the local "installation".
-            os.makedirs("librt", exist_ok=True)
-            with open(os.path.join("librt", "__init__.py"), "a"):
-                pass
+            # Use cached pre-built librt instead of rebuilding for each test
+            cached_librt = get_librt_path(experimental_features)
+            shutil.copytree(os.path.join(cached_librt, "librt"), "librt")
 
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):

@@ -275,7 +275,9 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 9))
+    options = CompilerOptions(
+        strip_asserts="StripAssert" in name, capi_version=(3, 9), strict_traceback_checks=True
+    )
     # A suffix like _python3_9 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:

@@ -1153,7 +1153,7 @@ for xx, yy, zz in [(A(), B())]: # E: Need more than 2 values to unpack (3 expect
     pass
 for xx, (yy, zz) in [(A(), B())]: # E: "B" object is not iterable
     pass
-for xxx, yyy in [(None, None)]:
+for xxx, yyy in [(1, 2)]:
     pass
 [builtins fixtures/for.pyi]
 
@@ -2125,19 +2125,66 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main:7: error: "None" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
+# flags: --no-local-partial-types
 a = None
-def f():
+def f() -> None:
     global a
     a = 42
-[out]
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(a)  # N: Revealed type is "builtins.int | None"
+
+b = None
+def unchecked():
+    global b
+    b = 42
+reveal_type(b)  # N: Revealed type is "Any | None"
+
+[case testGlobalInitializedToNoneSetFromFunctionLocalPartialTypes]
+# flags: --local-partial-types
+a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+def f() -> None:
+    global a
+    a = 42
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(a)  # N: Revealed type is "None"
+
+b = None  # E: Need type annotation for "b" (hint: "b: <type> | None = ...")
+def unchecked():
+    global b
+    b = 42
+reveal_type(b)  # N: Revealed type is "None"
 
 [case testGlobalInitializedToNoneSetFromMethod]
+# flags: --no-local-partial-types
 a = None
 class C:
-    def m(self):
+    def m(self) -> None:
         global a
         a = 42
-[out]
+reveal_type(a)  # N: Revealed type is "builtins.int | None"
+
+b = None
+class CC:
+    def unchecked(self):
+        global b
+        b = 42
+reveal_type(b)  # N: Revealed type is "Any | None"
+
+[case testGlobalInitializedToNoneSetFromMethodLocalPartialTypes]
+# flags: --local-partial-types
+a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+class C:
+    def m(self) -> None:
+        global a
+        a = 42
+reveal_type(a)  # N: Revealed type is "None"
+
+b = None  # E: Need type annotation for "b" (hint: "b: <type> | None = ...")
+class CC:
+    def unchecked(self):
+        global b
+        b = 42
+reveal_type(b)  # N: Revealed type is "None"
 
 -- More partial type errors
 -- ------------------------

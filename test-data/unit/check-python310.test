@@ -45,27 +45,29 @@ match m:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchLiteralPatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 m: int
 
 match m:
     case "str":
-        reveal_type(m)
+        reveal_type(m)  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 -- Value Pattern --
 
 [case testMatchValuePatternNarrows]
+# flags: --strict-equality --warn-unreachable
 import b
 m: object
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.object"
+        reveal_type(m)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: int
 
 [case testMatchValuePatternAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 import b
 m: bool
 
@@ -76,6 +78,7 @@ match m:
 b: int
 
 [case testMatchValuePatternIntersect]
+# flags: --strict-equality --warn-unreachable
 import b
 
 class A: ...
@@ -89,7 +92,7 @@ class B: ...
 b: B
 
 [case testMatchValuePatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 import b
 
 m: int
@@ -491,6 +494,7 @@ b: str
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternCapturesWrongKeyType]
+# flags: --strict-equality --warn-unreachable
 # This is not actually unreachable, as a subclass of dict could accept keys with different types
 from typing import Dict
 import b
@@ -572,6 +576,7 @@ a: str
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictUnreachable]
+# flags: --strict-equality --warn-unreachable
 # TypedDict keys are always str, so this is actually unreachable
 from typing import TypedDict
 import b
@@ -584,9 +589,9 @@ m: A
 
 match m:
     case {1: v}:
-        reveal_type(v)
+        reveal_type(v)  # E: Statement is unreachable
     case {b.b: v2}:
-        reveal_type(v2)
+        reveal_type(v2)  # E: Statement is unreachable
 [file b.py]
 b: int
 [typing fixtures/typing-typeddict.pyi]
@@ -1099,7 +1104,7 @@ match m:
         pass
 
 [case testMatchClassPatternCallable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Callable, Any
 
 class FnImpl:
@@ -1542,11 +1547,12 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
-    case a if isinstance(a, int):
-        reveal_type(a)
+    case a if isinstance(a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+        reveal_type(a)  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchSubjectAssignExprWithGuard]
@@ -1749,7 +1755,10 @@ def f(m: Medal) -> None:
     match m:
         case Medal.GOLD:
             always_assigned = 1
-            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            # Ideally, this should narrow to literal
+            # However `expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)`
+            # in checker.py means we expand the type to a LiteralType and then because there is no
+            # net change we don't end up inserting the LiteralType into the type map
             reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
@@ -2948,11 +2957,14 @@ T_Choice = TypeVar("T_Choice", bound=b.One | b.Two)
 def switch(choice: type[T_Choice]) -> None:
     match choice:
         case b.One:
-            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice)  # N: Revealed type is "def () -> b.One"
+            reveal_type(choice())  # N: Revealed type is "b.One"
         case b.Two:
-            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice)  # N: Revealed type is "def () -> b.Two"
+            reveal_type(choice())  # N: Revealed type is "b.Two"
         case _:
             reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+            reveal_type(choice())  # N: Revealed type is "b.One | b.Two"
 
 [file b.py]
 class One: ...
@@ -3245,3 +3257,117 @@ match config:
     case {"a": 1, **rest}:  # E: Incompatible types in capture pattern (pattern captures type "dict[str, object]", variable has type "list[int]")
         ...
 [builtins fixtures/dict.pyi]
+
+[case testMatchTypeNarrowing]
+# flags: --warn-unreachable
+import builtins
+import typing
+import types
+
+def type_bare(field_type: type) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.int"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.str"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bytes"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bool"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "builtins.type"
+            return "bar"
+    return ret
+
+def type_any(field_type: type[typing.Any]) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "type[Any]"
+            return "bar"
+    return ret
+
+def type_object(field_type: type[object]) -> str:
+    match field_type:
+        case builtins.int:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.int"
+            ret = "foo"
+        case builtins.str:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.str"
+            ret = "foo"
+        case builtins.bytes:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bytes"
+            ret = "foo"
+        case builtins.bool:
+            reveal_type(field_type)  # N: Revealed type is "def () -> builtins.bool"
+            ret = "foo"
+        case types.NoneType:
+            reveal_type(field_type)  # N: Revealed type is "type[None]"
+            ret = "foo"
+        case _:
+            reveal_type(field_type)  # N: Revealed type is "type[builtins.object]"
+            return "bar"
+    return ret
+[builtins fixtures/dict.pyi]
+
+
+[case testMatchFinalClass]
+from typing import final, NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+class Types:
+
+    @final
+    class A:
+        pass
+
+    @final
+    class B:
+        pass
+
+def foo(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case Types.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case Types.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+
+
+class TypeTypes:
+    A: type[Types.A] = Types.A
+    B: type[Types.B] = Types.B
+
+
+def bar(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case TypeTypes.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case TypeTypes.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+[builtins fixtures/tuple.pyi]

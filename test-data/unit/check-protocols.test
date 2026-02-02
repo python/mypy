@@ -1467,6 +1467,7 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
 x = f(g)
 reveal_type(x)  # N: Revealed type is "None"
+
 [case testMeetProtocolWithNormal]
 from typing import Protocol, Callable, TypeVar
 

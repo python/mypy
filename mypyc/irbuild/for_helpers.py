@@ -195,7 +195,7 @@ def for_loop_helper_with_index(
 
     builder.activate_block(body_block)
     for_gen.begin_body()
-    body_insts(builder.read(for_gen.index_target))
+    body_insts(builder.read(for_gen.index_target, line))
 
     builder.goto_and_activate(step_block)
     for_gen.gen_step()
@@ -314,10 +314,10 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(list_append_op, [builder.read(list_ops), e], gen.line)
+        builder.primitive_op(list_append_op, [builder.read(list_ops, gen.line), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return builder.read(list_ops)
+    return builder.read(list_ops, gen.line)
 
 
 def raise_error_if_contains_unreachable_names(
@@ -349,10 +349,10 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(set_add_op, [builder.read(set_ops), e], gen.line)
+        builder.primitive_op(set_add_op, [builder.read(set_ops, gen.line), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return builder.read(set_ops)
+    return builder.read(set_ops, gen.line)
 
 
 def comprehension_helper(
@@ -725,7 +725,10 @@ class ForNativeGenerator(ForGenerator):
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
         nn = builder.none_object()
         helper_call = MethodCall(
-            builder.read(self.iter_target), GENERATOR_HELPER_NAME, [nn, nn, nn, nn, ptr], line
+            builder.read(self.iter_target, line),
+            GENERATOR_HELPER_NAME,
+            [nn, nn, nn, nn, ptr],
+            line,
         )
         # We provide custom handling for error values.
         helper_call.error_kind = ERR_NEVER
@@ -789,9 +792,9 @@ class ForAsyncIterable(ForGenerator):
             return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
 
         def try_body() -> None:
-            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)
+            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
             self.next_reg = emit_await(builder, awaitable, line)
-            builder.assign(self.stop_reg, builder.false(), -1)
+            builder.assign(self.stop_reg, builder.false(), line)
 
         def except_body() -> None:
             builder.assign(self.stop_reg, builder.true(), line)
@@ -863,7 +866,7 @@ class ForSequence(ForGenerator):
             index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
             if self.length_reg is not None:
-                len_val = builder.read(self.length_reg)
+                len_val = builder.read(self.length_reg, self.line)
             else:
                 len_val = self.load_len(self.expr_target)
             index_reg = builder.builder.int_sub(len_val, 1)
@@ -1080,8 +1083,8 @@ class ForRange(ForGenerator):
             index_type = end_reg.type
         else:
             index_type = int_rprimitive
-        index_reg = Register(index_type)
-        builder.assign(index_reg, start_reg, -1)
+        index_reg = Register(index_type, line=self.line)
+        builder.assign(index_reg, start_reg, self.line)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
@@ -1145,7 +1148,9 @@ class ForInfiniteCounter(ForGenerator):
         builder.assign(self.index_reg, new_val, line)
 
     def begin_body(self) -> None:
-        self.builder.assign(self.index_target, self.builder.read(self.index_reg), self.line)
+        self.builder.assign(
+            self.index_target, self.builder.read(self.index_reg, self.line), self.line
+        )
 
 
 class ForEnumerate(ForGenerator):

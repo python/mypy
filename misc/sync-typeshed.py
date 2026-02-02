@@ -184,14 +184,12 @@ def main() -> None:
         assert commit
 
         # Create a commit
-        message = textwrap.dedent(
-            f"""\
+        message = textwrap.dedent(f"""\
             Sync typeshed
 
             Source commit:
             https://github.com/python/typeshed/commit/{commit}
-            """
-        )
+            """)
         subprocess.run(["git", "add", "--all", os.path.join("mypy", "typeshed")], check=True)
         subprocess.run(["git", "commit", "-m", message], check=True)
         print("Created typeshed sync commit.")

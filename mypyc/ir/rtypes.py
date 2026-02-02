@@ -41,6 +41,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.ir.deps import LIBRT_STRINGS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -88,6 +89,7 @@ class RType:
     # we never raise an AttributeError and don't need the bitfield
     # entry.)
     error_overlap = False
+    dependencies: tuple[Dependency, ...] | None = None
 
     @abstractmethod
     def accept(self, visitor: RTypeVisitor[T]) -> T:
@@ -232,6 +234,7 @@ class RPrimitive(RType):
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
         may_be_immortal: bool = True,
+        dependencies: tuple[Dependency, ...] | None = None,
     ) -> None:
         RPrimitive.primitive_map[name] = self
 
@@ -244,6 +247,7 @@ class RPrimitive(RType):
         self.size = size
         self.error_overlap = error_overlap
         self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
+        self.dependencies = dependencies
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
         elif ctype in ("int16_t", "int32_t", "int64_t"):
@@ -517,15 +521,17 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 KNOWN_NATIVE_TYPES: Final = {
-    name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
+    name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
     for name in [
         "librt.internal.WriteBuffer",
         "librt.internal.ReadBuffer",
         "librt.strings.BytesWriter",
+        "librt.strings.StringWriter",
     ]
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
+string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
@@ -859,12 +865,20 @@ class RStruct(RType):
         self.name = name
         self.names = names
         self.types = types
+        self.is_refcounted = any(t.is_refcounted for t in self.types)
+
         # generate dummy names
         if len(self.names) < len(self.types):
             for i in range(len(self.types) - len(self.names)):
                 self.names.append("_item" + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = name
+
+    def field_type(self, name: str) -> RType:
+        for n, t in zip(self.names, self.types):
+            if n == name:
+                return t
+        assert False, f"{self.name} has no field '{name}'"
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)

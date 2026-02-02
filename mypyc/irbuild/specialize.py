@@ -80,6 +80,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    string_writer_rprimitive,
     uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -113,12 +114,20 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
-from mypyc.primitives.int_ops import isinstance_int
+from mypyc.primitives.int_ops import (
+    int_to_big_endian_op,
+    int_to_bytes_op,
+    int_to_little_endian_op,
+    isinstance_int,
+)
 from mypyc.primitives.librt_strings_ops import (
     bytes_writer_adjust_index_op,
     bytes_writer_get_item_unsafe_op,
     bytes_writer_range_check_op,
     bytes_writer_set_item_unsafe_op,
+    string_writer_adjust_index_op,
+    string_writer_get_item_unsafe_op,
+    string_writer_range_check_op,
 )
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -521,8 +530,9 @@ def any_all_helper(
     modify: Callable[[Value], Value],
     new_value: Callable[[], Value],
 ) -> Value:
-    retval = Register(bool_rprimitive)
-    builder.assign(retval, initial_value(), -1)
+    init_val = initial_value()
+    retval = Register(bool_rprimitive, line=init_val.line)
+    builder.assign(retval, init_val, init_val.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
@@ -530,7 +540,8 @@ def any_all_helper(
         comparison = modify(builder.accept(gen.left_expr))
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(true_block)
-        builder.assign(retval, new_value(), -1)
+        new_val = new_value()
+        builder.assign(retval, new_val, new_val.line)
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
@@ -564,12 +575,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
 
     gen_expr = expr.args[0]
     target_type = builder.node_type(expr)
-    retval = Register(target_type)
-    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+    retval = Register(target_type, line=expr.line)
+    builder.assign(
+        retval, builder.coerce(builder.accept(start_expr), target_type, expr.line), expr.line
+    )
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
-        builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
+        builder.assign(
+            retval, builder.binary_op(retval, call_expr, "+", call_expr.line), call_expr.line
+        )
 
     loop_params = list(
         zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
@@ -1242,6 +1257,77 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
     return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
 
 
+@specialize_function("to_bytes", int_rprimitive)
+def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    # int.to_bytes(length, byteorder, signed=False)
+    if any(kind not in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds):
+        return None
+    if not isinstance(callee, MemberExpr):
+        return None
+    length_expr: Expression | None = None
+    byteorder_expr: Expression | None = None
+    signed_expr: Expression | None = None
+    positional_index = 0
+    for name, arg in zip(expr.arg_names, expr.args):
+        if name is None:
+            if positional_index == 0:
+                length_expr = arg
+            elif positional_index == 1:
+                byteorder_expr = arg
+            elif positional_index == 2:
+                signed_expr = arg
+            else:
+                return None
+            positional_index += 1
+        elif name == "length":
+            if length_expr is not None:
+                return None
+            length_expr = arg
+        elif name == "byteorder":
+            if byteorder_expr is not None:
+                return None
+            byteorder_expr = arg
+        elif name == "signed":
+            if signed_expr is not None:
+                return None
+            signed_expr = arg
+        else:
+            return None
+    if length_expr is None or byteorder_expr is None:
+        return None
+
+    signed_is_bool = True
+    if signed_expr is not None:
+        signed_is_bool = is_bool_rprimitive(builder.node_type(signed_expr))
+    if not (
+        is_int_rprimitive(builder.node_type(length_expr))
+        and is_str_rprimitive(builder.node_type(byteorder_expr))
+        and signed_is_bool
+    ):
+        return None
+
+    self_arg = builder.accept(callee.expr)
+    length_arg = builder.accept(length_expr)
+    if signed_expr is None:
+        signed_arg = builder.false()
+    else:
+        signed_arg = builder.accept(signed_expr)
+    if isinstance(byteorder_expr, StrExpr):
+        if byteorder_expr.value == "little":
+            return builder.call_c(
+                int_to_little_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
+        elif byteorder_expr.value == "big":
+            return builder.call_c(
+                int_to_big_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
+    # Fallback to generic primitive op
+    byteorder_arg = builder.accept(byteorder_expr)
+    return builder.call_c(
+        int_to_bytes_op, [self_arg, length_arg, byteorder_arg, signed_arg], expr.line
+    )
+
+
 def translate_getitem_with_bounds_check(
     builder: IRBuilder,
     base_expr: Expression,
@@ -1369,6 +1455,22 @@ def translate_bytes_writer_set_item(
     )
 
     return builder.none()
+
+
+@specialize_dunder("__getitem__", string_writer_rprimitive)
+def translate_string_writer_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized StringWriter.__getitem__ implementation with bounds checking."""
+    return translate_getitem_with_bounds_check(
+        builder,
+        base_expr,
+        args,
+        ctx_expr,
+        string_writer_adjust_index_op,
+        string_writer_range_check_op,
+        string_writer_get_item_unsafe_op,
+    )
 
 
 @specialize_dunder("__getitem__", bytes_rprimitive)

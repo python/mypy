@@ -810,3 +810,24 @@ y: List[int]
 if (y := []):
     reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
+
+[case testAssignToOptionalTupleWalrus]
+from typing import Optional
+
+def condition() -> bool: return False
+
+i: Optional[int] = 0 if condition() else None
+x: Optional[tuple[int, int]] = (i, (i := 1))  # E: Incompatible types in assignment (expression has type "tuple[int | None, int]", variable has type "tuple[int, int] | None")
+[builtins fixtures/tuple.pyi]
+
+[case testReturnTupleOptionalWalrus]
+from typing import Optional
+
+def condition() -> bool: return False
+
+def fn() -> tuple[int, int]:
+    i: Optional[int] = 0 if condition() else None
+    return (i, (i := i + 1))  # E: Incompatible return value type (got "tuple[int | None, int]", expected "tuple[int, int]") \
+                              # E: Unsupported operand types for + ("None" and "int") \
+                              # N: Left operand is of type "int | None"
+[builtins fixtures/dict.pyi]

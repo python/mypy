@@ -467,7 +467,7 @@ class A:
             pass
 A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
 
-[case testUnexpectedMethodKwargFromOtherModule_no_parallel]
+[case testUnexpectedMethodKwargFromOtherModule]
 import m
 m.A(x=1)
 [file m.py]

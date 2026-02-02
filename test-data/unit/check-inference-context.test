@@ -639,7 +639,7 @@ reveal_type((lambda s, i, **k: i)(i=0, s='x')) # N: Revealed type is "Any"
 from typing import TypeVar, List, Any, Callable
 t = TypeVar('t')
 class A:
-  x = None # type: A
+  x: 'A'
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
 list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)
@@ -964,6 +964,24 @@ reveal_type(c.f([1])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f([])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f(None)) # N: Revealed type is "builtins.list[builtins.int] | None"
 [builtins fixtures/list.pyi]
+
+[case testUnionWithTupleNeverBranch]
+# https://github.com/python/mypy/issues/20608
+from __future__ import annotations
+from typing import Callable, Never, Generic, TypeVar
+
+T = TypeVar('T')
+class ValueType(Generic[T]): pass
+class Bundle(Generic[T]): pass
+
+F = TypeVar('F')
+
+def fail_value_type_inference(self_bundle: ValueType[F]) -> tuple[Never, Bundle[ValueType[F]]] | tuple[int, Bundle[ValueType[int]]]:
+    raise
+
+x = fail_value_type_inference
+x = fail_value_type_inference
+[builtins fixtures/tuple.pyi]
 
 [case testGenericMethodCalledInGenericContext]
 from typing import TypeVar, Generic

@@ -103,6 +103,7 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
+        strict_traceback_checks: bool,
         group_name: str | None = None,
         group_map: dict[str, str | None] | None = None,
     ) -> None:
@@ -130,6 +131,8 @@ class EmitterContext:
         self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
+        # See mypyc/options.py for context.
+        self.strict_traceback_checks = strict_traceback_checks
 
 
 class ErrorHandler:
@@ -1201,6 +1204,8 @@ class Emitter:
         type_str: str = "",
         src: str = "",
     ) -> None:
+        if self.context.strict_traceback_checks:
+            assert traceback_entry[1] >= 0, "Traceback cannot have a negative line number"
         globals_static = self.static_name("globals", module_name)
         line = '%s("%s", "%s", %d, %s' % (
             func,
