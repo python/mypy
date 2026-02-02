@@ -4470,6 +4470,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 is_lvalue_final=name.is_final,
                 is_lvalue_member=isinstance(lvalue, MemberExpr),
             )
+            and not (
+                # Trust None assignments to dunder methods
+                # This is a bit ad-hoc, but it improves protocol
+                # (non-)assignability, for instance `__hash__ = None`
+                self.scope.active_class()
+                and is_dunder(name.name)
+                and isinstance(get_proper_type(init_type), NoneType)
+            )
             and not self.no_partial_types
         ):
             # We cannot use the type of the initialization expression for full type

@@ -2940,7 +2940,25 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
+from typing import Protocol
+
+class Hashable(Protocol):
+    def __hash__(self) -> int: ...
+
+class ObjectHashable:
+    def __hash__(self) -> int: ...
+
+class DataArray(ObjectHashable):
+    __hash__ = None
+
+    def f(self, x: Hashable) -> None:
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
+[builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocolHashableLocalPartialTypes]
+# flags: --no-strict-optional --local-partial-types
 from typing import Protocol
 
 class Hashable(Protocol):
