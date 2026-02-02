@@ -471,9 +471,9 @@ class Options:
             # backwards compatibility
             self.disable_bytearray_promotion = True
             self.disable_memoryview_promotion = True
-        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
-            # forwards compatibility
-            self.strict_bytes = True
+        else:
+            self.disable_bytearray_promotion = False
+            self.disable_memoryview_promotion = False
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.

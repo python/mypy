@@ -33,6 +33,64 @@ def f(x: bytes) -> None: pass
 f(memoryview(b''))
 [builtins fixtures/primitives.pyi]
 
+[case testDisableBytearrayMemoryviewPromotion]
+# flags: --strict-bytes --strict-equality --warn-unreachable
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if b"" == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if ba == bytes():
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if bytes() == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotion]
+# flags: --no-strict-bytes --strict-equality --warn-unreachable
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)
+if b"" == ba:
+    f(ba)
+if ba == bytes():
+    f(ba)
+if bytes() == ba:
+    f(ba)
+[builtins fixtures/primitives.pyi]
+
+[case testDisableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality --strict-bytes
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality --no-strict-bytes
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingDownFromPromoteTargetType]
 y = 0.0
 y = 1

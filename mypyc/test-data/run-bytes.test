@@ -305,7 +305,7 @@ def test_bytearray_type_object() -> None:
     b = bytearray()
     assert type(b) is bytearray
 
-def fb(b: bytes | bytearray) -> str:
+def fb(b: bytes) -> str:
     return "xy"
 
 def test_bytearray_passed_into_bytes() -> None:
