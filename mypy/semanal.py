@@ -6055,7 +6055,8 @@ class SemanticAnalyzer(
             [
                 (StrExpr(key) if key is not None else None, value)
                 for key, value in zip(call.arg_names, call.args)
-            ]
+            ],
+            from_dict_call=True,
         )
         expr.set_line(call)
         expr.accept(self)
