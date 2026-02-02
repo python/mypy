@@ -149,12 +149,7 @@ else:
                 extra_compile_args=cflags,
             ),
             Extension(
-                "librt.time",
-                [
-                    "time/librt_time.c",
-                ],
-                include_dirs=["."],
-                extra_compile_args=cflags,
+                "librt.time", ["time/librt_time.c"], include_dirs=["."], extra_compile_args=cflags
             ),
         ]
     )
