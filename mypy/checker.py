@@ -4471,6 +4471,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 is_lvalue_member=isinstance(lvalue, MemberExpr),
             )
             and not (
+                # Trust None assignments to dunder methods
+                # This is a bit ad-hoc, but it improves protocol
+                # (non-)assignability, for instance `__hash__ = None`
                 self.scope.active_class()
                 and is_dunder(name.name)
                 and isinstance(get_proper_type(init_type), NoneType)
