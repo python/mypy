@@ -22,6 +22,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -447,6 +448,9 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_set_mem(self, op: SetMem) -> None:
+        pass
+
+    def visit_get_element(self, op: GetElement) -> None:
         pass
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
