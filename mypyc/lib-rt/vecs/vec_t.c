@@ -13,9 +13,6 @@
 #include "librt_vecs.h"
 #include "vecs_internal.h"
 
-// Forward declaration of base vec type (defined in librt_vecs.c)
-extern PyTypeObject VecType;
-
 static inline VecT vec_error() {
     VecT v = { .len = -1 };
     return v;

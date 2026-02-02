@@ -720,7 +720,7 @@ L3:
     r5 = <error> :: float
     return r5
 
-[case testVecNestedRemove]
+[case testVecI64Remove]
 from librt.vecs import vec, remove
 from mypy_extensions import i64
 
