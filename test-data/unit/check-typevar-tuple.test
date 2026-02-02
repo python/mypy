@@ -2191,7 +2191,7 @@ g(1, 2, 3)  # E: Missing named argument "a" for "g" \
 
 def bad(
     *args: Unpack[Keywords],  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
-    **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
+    **kwargs: Unpack[Ints],  # E: Unpack item in ** parameter must be a TypedDict
 ) -> None: ...
 reveal_type(bad)  # N: Revealed type is "def (*args: Any, **kwargs: Any)"
 
@@ -2199,7 +2199,7 @@ def bad2(
     one: int,
     *args: Unpack[Keywords],  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
     other: str = "no",
-     **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
+     **kwargs: Unpack[Ints],  # E: Unpack item in ** parameter must be a TypedDict
 ) -> None: ...
 reveal_type(bad2)  # N: Revealed type is "def (one: builtins.int, *args: Any, other: builtins.str =, **kwargs: Any)"
 [builtins fixtures/dict.pyi]
@@ -2753,4 +2753,16 @@ class X(Generic[Unpack[Ts]]):
 
 def c(t: X[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for TypeVarTuple, only for ParamSpec
     reveal_type(t)  # N: Revealed type is "__main__.X[Unpack[builtins.tuple[Any, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleLiteralValueAsTypeArgument]
+from typing import TypeVarTuple, Unpack, Callable, TypeVar
+
+Ts = TypeVarTuple('Ts')
+T = TypeVar('T')
+
+def func(d: Callable[[Unpack[Ts]], T]) -> T: ...
+
+y = func[1, int] # E: Type application is only supported for generic classes \
+                 # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/tuple.pyi]

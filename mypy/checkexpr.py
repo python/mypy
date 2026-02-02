@@ -1958,28 +1958,29 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Returns the inferred types of *actual arguments*.
         """
-        res: list[Type | None] = [None] * len(args)
-
-        for i, actuals in enumerate(formal_to_actual):
+        # Precompute arg_context so that we type check argument expressions in evaluation order
+        arg_context: list[Type | None] = [None] * len(args)
+        for fi, actuals in enumerate(formal_to_actual):
             for ai in actuals:
-                if not arg_kinds[ai].is_star():
-                    arg_type = callee.arg_types[i]
-                    # When the outer context for a function call is known to be recursive,
-                    # we solve type constraints inferred from arguments using unions instead
-                    # of joins. This is a bit arbitrary, but in practice it works for most
-                    # cases. A cleaner alternative would be to switch to single bin type
-                    # inference, but this is a lot of work.
-                    old = self.infer_more_unions_for_recursive_type(arg_type)
-                    res[ai] = self.accept(args[ai], arg_type)
-                    # We need to manually restore union inference state, ugh.
-                    type_state.infer_unions = old
+                if arg_kinds[ai].is_star():
+                    continue
+                arg_context[ai] = callee.arg_types[fi]
 
-        # Fill in the rest of the argument types.
-        for i, t in enumerate(res):
-            if not t:
-                res[i] = self.accept(args[i])
-        assert all(tp is not None for tp in res)
-        return cast(list[Type], res)
+        res = []
+        for arg, ctx in zip(args, arg_context):
+            if ctx is not None:
+                # When the outer context for a function call is known to be recursive,
+                # we solve type constraints inferred from arguments using unions instead
+                # of joins. This is a bit arbitrary, but in practice it works for most
+                # cases. A cleaner alternative would be to switch to single bin type
+                # inference, but this is a lot of work.
+                old = self.infer_more_unions_for_recursive_type(ctx)
+                res.append(self.accept(arg, ctx))
+                # We need to manually restore union inference state, ugh.
+                type_state.infer_unions = old
+            else:
+                res.append(self.accept(arg))
+        return res
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
@@ -2115,7 +2116,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
-                (callee_type, inferred_args) = self.infer_function_type_arguments_pass2(
+                callee_type, inferred_args = self.infer_function_type_arguments_pass2(
                     callee_type,
                     args,
                     arg_kinds,
@@ -2525,6 +2526,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         The check_call docstring describes some of the arguments.
         """
+        if self.chk.can_skip_diagnostics:
+            return
         self.check_var_args_kwargs(arg_types, arg_kinds, context)
 
         check_arg = check_arg or self.check_arg
@@ -2917,7 +2920,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
+            with self.msg.filter_errors(filter_revealed_type=True) as w:
                 with self.chk.local_type_map as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
@@ -3678,7 +3681,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             self.msg.unsupported_operand_types("in", left_type, right_type, e)
                         else:
                             container_type = UnionType.make_union(container_types)
-                            if self.dangerous_comparison(
+                            if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
                                 left_type,
                                 container_type,
                                 original_container=right_type,
@@ -3701,7 +3704,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # testCustomEqCheckStrictEquality for an example.
                 if not w.has_new_errors() and operator in ("==", "!="):
                     right_type = self.accept(right)
-                    if self.dangerous_comparison(left_type, right_type):
+                    if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
+                        left_type, right_type
+                    ):
                         # Show the most specific literal types possible
                         left_type = try_getting_literal(left_type)
                         right_type = try_getting_literal(right_type)
@@ -3710,7 +3715,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
-                if self.dangerous_comparison(left_type, right_type, identity_check=True):
+                if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
+                    left_type, right_type, identity_check=True
+                ):
                     # Show the most specific literal types possible
                     left_type = try_getting_literal(left_type)
                     right_type = try_getting_literal(right_type)
@@ -4963,10 +4970,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     return [AnyType(TypeOfAny.from_error)] * len(vars)
 
-        if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
-            return list(args)
         # TODO: in future we may want to support type application to variadic functions.
-        assert t.is_type_obj()
+        if (
+            not vars
+            or not any(isinstance(v, TypeVarTupleType) for v in vars)
+            or not t.is_type_obj()
+        ):
+            return list(args)
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
         fake = Instance(info, args, line=ctx.line, column=ctx.column)
@@ -5937,7 +5947,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ctx_else_type = self.analyze_cond_branch(
                 else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
             )
-            ctx = make_simplified_union([ctx_if_type, ctx_else_type])
+            if has_ambiguous_uninhabited_component(ctx_if_type):
+                ctx = ctx_else_type
+            elif has_ambiguous_uninhabited_component(ctx_else_type):
+                ctx = ctx_if_type
+            else:
+                ctx = make_simplified_union([ctx_if_type, ctx_else_type])
 
         if_type = self.analyze_cond_branch(
             if_map, e.if_expr, context=ctx, allow_none_return=allow_none_return
@@ -6458,7 +6473,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Collect symbols targeted by NameExprs and MemberExprs,
         # to be looked up by TypeAnalyser when binding the
         # UnboundTypes corresponding to those expressions.
-        (name_exprs, member_exprs) = all_name_and_member_expressions(maybe_type_expr)
+        name_exprs, member_exprs = all_name_and_member_expressions(maybe_type_expr)
         sym_for_name = {e.name: SymbolTableNode(UNBOUND_IMPORTED, e.node) for e in name_exprs} | {
             e_name: SymbolTableNode(UNBOUND_IMPORTED, e.node)
             for e in member_exprs
@@ -6630,6 +6645,20 @@ class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True
+
+
+def has_ambiguous_uninhabited_component(t: Type) -> bool:
+    return t.accept(HasAmbiguousUninhabitedComponentsQuery())
+
+
+class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
+    """Visitor for querying whether a type has an ambiguous UninhabitedType component."""
+
+    def __init__(self) -> None:
+        super().__init__(types.ANY_STRATEGY)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return t.ambiguous
 
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:

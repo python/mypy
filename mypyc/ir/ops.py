@@ -773,9 +773,10 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.error_kind = desc.error_kind
+        super().__init__(line)
         self.args = args
         self.type = desc.return_type
-        self.error_kind = desc.error_kind
         self.desc = desc
 
     def sources(self) -> list[Value]:
@@ -849,7 +850,8 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: LiteralValue, rtype: RType) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
         self.type = rtype
 
@@ -1210,6 +1212,7 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
     ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
+    INDEX_ERROR: Final = "IndexError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
@@ -1546,7 +1549,7 @@ class FloatOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
@@ -1604,7 +1607,7 @@ class FloatComparisonOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
@@ -1799,7 +1802,8 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
+    def __init__(self, src: list[Value], line: int = -1, *, steal: bool = False) -> None:
+        super().__init__(line)
         assert src
         self.src = src
         self.steal = steal

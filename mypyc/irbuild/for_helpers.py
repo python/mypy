@@ -25,6 +25,7 @@ from mypy.nodes import (
     StarExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
@@ -194,7 +195,7 @@ def for_loop_helper_with_index(
 
     builder.activate_block(body_block)
     for_gen.begin_body()
-    body_insts(builder.read(for_gen.index_target))
+    body_insts(builder.read(for_gen.index_target, line))
 
     builder.goto_and_activate(step_block)
     for_gen.gen_step()
@@ -313,10 +314,10 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(list_append_op, [builder.read(list_ops), e], gen.line)
+        builder.primitive_op(list_append_op, [builder.read(list_ops, gen.line), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return builder.read(list_ops)
+    return builder.read(list_ops, gen.line)
 
 
 def raise_error_if_contains_unreachable_names(
@@ -348,10 +349,10 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(set_add_op, [builder.read(set_ops), e], gen.line)
+        builder.primitive_op(set_add_op, [builder.read(set_ops, gen.line), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return builder.read(set_ops)
+    return builder.read(set_ops, gen.line)
 
 
 def comprehension_helper(
@@ -724,7 +725,10 @@ class ForNativeGenerator(ForGenerator):
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
         nn = builder.none_object()
         helper_call = MethodCall(
-            builder.read(self.iter_target), GENERATOR_HELPER_NAME, [nn, nn, nn, nn, ptr], line
+            builder.read(self.iter_target, line),
+            GENERATOR_HELPER_NAME,
+            [nn, nn, nn, nn, ptr],
+            line,
         )
         # We provide custom handling for error values.
         helper_call.error_kind = ERR_NEVER
@@ -788,9 +792,9 @@ class ForAsyncIterable(ForGenerator):
             return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
 
         def try_body() -> None:
-            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)
+            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
             self.next_reg = emit_await(builder, awaitable, line)
-            builder.assign(self.stop_reg, builder.false(), -1)
+            builder.assign(self.stop_reg, builder.false(), line)
 
         def except_body() -> None:
             builder.assign(self.stop_reg, builder.true(), line)
@@ -862,7 +866,7 @@ class ForSequence(ForGenerator):
             index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
             if self.length_reg is not None:
-                len_val = builder.read(self.length_reg)
+                len_val = builder.read(self.length_reg, self.line)
             else:
                 len_val = self.load_len(self.expr_target)
             index_reg = builder.builder.int_sub(len_val, 1)
@@ -1079,8 +1083,8 @@ class ForRange(ForGenerator):
             index_type = end_reg.type
         else:
             index_type = int_rprimitive
-        index_reg = Register(index_type)
-        builder.assign(index_reg, start_reg, -1)
+        index_reg = Register(index_type, line=self.line)
+        builder.assign(index_reg, start_reg, self.line)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
@@ -1144,7 +1148,9 @@ class ForInfiniteCounter(ForGenerator):
         builder.assign(self.index_reg, new_val, line)
 
     def begin_body(self) -> None:
-        self.builder.assign(self.index_target, self.builder.read(self.index_reg), self.line)
+        self.builder.assign(
+            self.index_target, self.builder.read(self.index_reg, self.line), self.line
+        )
 
 
 class ForEnumerate(ForGenerator):
@@ -1235,10 +1241,50 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
         return get_expr_length(builder, expr.expr)
+    elif (
+        isinstance(expr, RefExpr)
+        and isinstance(expr.node, Var)
+        and expr.node.is_final
+        and isinstance(expr.node.final_value, str)
+        and expr.node.has_explicit_value
+    ):
+        return len(expr.node.final_value)
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
+        fullname = callee.fullname
+        if (
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
+            and len(expr.args) == 1
+        ):
+            return get_expr_length(builder, expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(builder, expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)  # type: ignore [type-var]
+        elif fullname == "builtins.range" and len(expr.args) <= 3:
+            folded_args = [constant_fold_expr(builder, arg) for arg in expr.args]
+            if all(isinstance(arg, int) for arg in folded_args):
+                try:
+                    return len(range(*cast(list[int], folded_args)))
+                except ValueError:  # prevent crash if invalid args
+                    pass
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
 
     # we might still be able to get the length directly from the type
     rtype = builder.node_type(expr)

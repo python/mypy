@@ -154,6 +154,62 @@ def if_else(flag: int) -> str:
             return 'if_else.inner: third definition'
     return inner()
 
+def wrap(f: Callable[[], str]):
+    def inner():
+        return 'wrapped ' + f()
+    return inner
+
+def if_else_all_decorated(flag: int) -> str:
+    def dummy_function() -> str:
+        return 'if_else.dummy_function'
+
+    if flag < 0:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: first definition'
+    elif flag > 0:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: second definition'
+    else:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: third definition'
+    return inner()
+
+def if_else_first_decorated(flag: int) -> str:
+    def dummy_function() -> str:
+        return 'if_else.dummy_function'
+
+    if flag < 0:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: first definition'
+    elif flag > 0:
+        def inner() -> str:
+            return 'if_else.inner: second definition'
+    else:
+        def inner() -> str:
+            return 'if_else.inner: third definition'
+    return inner()
+
+def if_else_all_but_first_decorated(flag: int) -> str:
+    def dummy_function() -> str:
+        return 'if_else.dummy_function'
+
+    if flag < 0:
+        def inner() -> str:
+            return 'if_else.inner: first definition'
+    elif flag > 0:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: second definition'
+    else:
+        @wrap
+        def inner() -> str:
+            return 'if_else.inner: third definition'
+    return inner()
+
 def for_loop() -> int:
     def dummy_function() -> str:
         return 'for_loop.dummy_function'
@@ -235,8 +291,9 @@ toplevel_lambda = lambda x: 10 + global_upvar + x
 
 [file driver.py]
 from native import (
-    a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, for_loop, while_loop,
-    free_vars, lambdas, outer, inner, A, toplevel_lambda
+    a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, if_else_all_decorated,
+    if_else_first_decorated, if_else_all_but_first_decorated,
+    for_loop, while_loop, free_vars, lambdas, outer, inner, A, toplevel_lambda
 )
 
 assert a()() == None
@@ -265,6 +322,18 @@ assert triple_outer()(4) == 20
 assert if_else(-1) == 'if_else.inner: first definition'
 assert if_else(1) == 'if_else.inner: second definition'
 assert if_else(0) == 'if_else.inner: third definition'
+
+assert if_else_all_decorated(-1) == 'wrapped if_else.inner: first definition'
+assert if_else_all_decorated(1) == 'wrapped if_else.inner: second definition'
+assert if_else_all_decorated(0) == 'wrapped if_else.inner: third definition'
+
+assert if_else_first_decorated(-1) == 'wrapped if_else.inner: first definition'
+assert if_else_first_decorated(1) == 'if_else.inner: second definition'
+assert if_else_first_decorated(0) == 'if_else.inner: third definition'
+
+assert if_else_all_but_first_decorated(-1) == 'if_else.inner: first definition'
+assert if_else_all_but_first_decorated(1) == 'wrapped if_else.inner: second definition'
+assert if_else_all_but_first_decorated(0) == 'wrapped if_else.inner: third definition'
 
 assert for_loop() == 3
 assert while_loop() == 3

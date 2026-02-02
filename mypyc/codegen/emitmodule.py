@@ -249,9 +249,9 @@ def compile_scc_to_ir(
     for module in modules.values():
         for fn in module.functions:
             # Insert checks for uninitialized values.
-            insert_uninit_checks(fn)
+            insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
             # Insert exception handling.
-            insert_exception_handling(fn)
+            insert_exception_handling(fn, compiler_options.strict_traceback_checks)
             # Insert reference count handling.
             insert_ref_count_opcodes(fn)
 
@@ -535,7 +535,9 @@ class GroupGenerator:
         """
         self.modules = modules
         self.source_paths = source_paths
-        self.context = EmitterContext(names, group_name, group_map)
+        self.context = EmitterContext(
+            names, compiler_options.strict_traceback_checks, group_name, group_map
+        )
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
@@ -625,11 +627,11 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
-            ext_declarations.emit_line("#include <librt_internal.h>")
+            ext_declarations.emit_line("#include <internal/librt_internal.h>")
         if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <librt_base64.h>")
+            ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <librt_strings.h>")
+            ext_declarations.emit_line("#include <strings/librt_strings.h>")
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
@@ -1087,6 +1089,7 @@ class GroupGenerator:
         declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
+        emitter.emit_line("intern_strings();")
         if self.compiler_options.depends_on_librt_internal:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
@@ -1135,16 +1138,6 @@ class GroupGenerator:
                 emitter.emit_lines(f"if (unlikely(!{type_struct}))", error_stmt)
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
-
-                if cl.coroutine_name:
-                    fn = cl.methods["__call__"]
-                    filepath = self.source_paths[module.fullname]
-                    name = cl.coroutine_name
-                    wrapper_name = emitter.emit_cpyfunction_instance(
-                        fn, name, filepath, error_stmt
-                    )
-                    static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
-                    emitter.emit_line(f"{static_name} = {wrapper_name};")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 
