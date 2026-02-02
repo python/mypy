@@ -8637,7 +8637,6 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
 
 
 BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.bytes",
     "builtins.bytearray",
     "builtins.memoryview",
     "builtins.list",
