@@ -653,7 +653,7 @@ def generate_setup_for_class(
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
             if value != "NULL":
-                emitter.set_undefined_value(f"self->{emitter.attr(attr)}", rtype)
+                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -1194,7 +1194,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     if deletable:
         emitter.emit_line("} else")
-        emitter.set_undefined_value(f"    self->{attr_field}", rtype)
+        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
