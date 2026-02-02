@@ -28,6 +28,7 @@ from mypy import util
 from mypy.build import (
     AckMessage,
     BuildManager,
+    GraphMessage,
     SccRequestMessage,
     SccResponseMessage,
     SccsDataMessage,
@@ -128,6 +129,15 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
 
     # Notify worker we are done loading graph.
     send(server, AckMessage())
+
+    # Compare worker graph and coordinator, with parallel parser we will only use the latter.
+    coordinator_graph = GraphMessage.read(receive(server), manager).graph
+    assert coordinator_graph.keys() == graph.keys()
+    for id in graph:
+        assert graph[id].dependencies_set == coordinator_graph[id].dependencies_set
+        assert graph[id].suppressed_set == coordinator_graph[id].suppressed_set
+    send(server, AckMessage())
+
     sccs = SccsDataMessage.read(receive(server)).sccs
     manager.scc_by_id = {scc.id: scc for scc in sccs}
     manager.top_order = [scc.id for scc in sccs]
