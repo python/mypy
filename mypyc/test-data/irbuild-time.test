@@ -1,0 +1,44 @@
+[case testTime_experimental]
+from librt.time import time
+
+def get_time() -> float:
+    return time()
+
+def time_twice() -> float:
+    t1 = time()
+    t2 = time()
+    return t2 - t1
+[out]
+def get_time():
+    r0 :: float
+L0:
+    r0 = LibRTTime_time()
+    return r0
+def time_twice():
+    r0, t1, r1, t2, r2 :: float
+L0:
+    r0 = LibRTTime_time()
+    t1 = r0
+    r1 = LibRTTime_time()
+    t2 = r1
+    r2 = t2 - t1
+    return r2
+
+[case testTimeExperimentalDisabled]
+from librt.time import time
+
+def get_time() -> float:
+    return time()
+[out]
+def get_time():
+    r0 :: dict
+    r1 :: str
+    r2, r3 :: object
+    r4 :: float
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'time'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
+    r4 = unbox(float, r3)
+    return r4

@@ -55,6 +55,7 @@ files = [
     "irbuild-weakref.test",
     "irbuild-librt-strings.test",
     "irbuild-base64.test",
+    "irbuild-time.test",
     "irbuild-match.test",
 ]
 
