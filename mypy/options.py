@@ -409,8 +409,6 @@ class Options:
 
         self.disable_bytearray_promotion = True
         self.disable_memoryview_promotion = True
-        self.force_uppercase_builtins = False
-        self.force_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
