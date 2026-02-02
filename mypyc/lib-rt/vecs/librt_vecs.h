@@ -847,11 +847,6 @@ static VecBoolAPI VecBoolApi;
 static VecTAPI VecTApi;
 static VecNestedAPI VecNestedApi;
 
-// Check if obj is an instance of vec (any vec type)
-static inline int CPyVec_Check(PyObject *obj) {
-    return PyObject_TypeCheck(obj, VecApi->get_vec_type());
-}
-
 static int
 import_librt_vecs(void)
 {

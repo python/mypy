@@ -24,6 +24,8 @@ from mypyc.primitives import (
     str_ops,
     tuple_ops,
     weakref_ops,
+    librt_vecs_ops,
+    librt_strings_ops,
 )
 
 
@@ -65,6 +67,8 @@ class TestHeaderInclusion(unittest.TestCase):
             float_ops,
             set_ops,
             weakref_ops,
+            librt_vecs_ops,
+            librt_strings_ops,
         ]:
             for name in dir(module):
                 val = getattr(module, name, None)
