@@ -985,7 +985,65 @@ A() + '' # E: No overload variant of "__add__" of "A" matches argument type "str
          # N:     def __add__(self, A, /) -> int \
          # N:     def __add__(self, int, /) -> int
 
+[case testAllowOverrideOverloadSwapped]
+# https://github.com/python/mypy/issues/20720
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+def test_mutually_exclusive_types() -> None:
+    # note: int and str are mutually exclusive types (@disjoint_base)
+    class Parent:
+        @overload
+        def f(self, x: int) -> int: ...
+        @overload
+        def f(self, x: str) -> str: ...
+    class Child(Parent):
+        @overload
+        def f(self, x: str) -> str: ...
+        @overload
+        def f(self, x: int) -> int: ...
+
+def test_mutually_exclusive_signatures() -> None:
+    # the overload call-signatures are mutually exclusive,
+    # so swapping is safe even if intersections exist
+    class X: ...
+    class Y: ...
+    class A: ...
+    class B: ...
+
+    class Parent:
+        @overload
+        def f(self, *, x: X) -> A: ...
+        @overload
+        def f(self, *, y: Y) -> B: ...
+    class Child(Parent):
+        @overload
+        def f(self, *, y: Y) -> B: ...
+        @overload
+        def f(self, *, x: X) -> A: ...
+
+def test_same_signature_and_return() -> None:
+    # swapping is safe if the return types are the same, even
+    # even if argument types overlap
+
+    class X: ...
+    class Y: ...
+
+    class Parent:
+        @overload
+        def f(self, x: X, /) -> None: ...
+        @overload
+        def f(self, y: Y, /) -> None: ...
+    class Child(Parent):
+        @overload
+        def f(self, y: Y, /) -> None: ...
+        @overload
+        def f(self, x: X, /) -> None: ...
+
+
 [case testOverrideOverloadSwapped]
+# flags: --strict-overload-subtyping
 from foo import *
 [file foo.pyi]
 from typing import overload
@@ -1003,6 +1061,7 @@ class Child(Parent):
     def f(self, x: int) -> int: ...
 
 [case testOverrideOverloadSwappedWithExtraVariants]
+# flags: --strict-overload-subtyping
 from foo import *
 [file foo.pyi]
 from typing import overload
@@ -1040,6 +1099,7 @@ class Child3(Parent):
     def f(self, x: bool) -> bool: ...
 
 [case testOverrideOverloadSwappedWithAdjustedVariants]
+# flags: --strict-overload-subtyping
 from foo import *
 [file foo.pyi]
 from typing import overload
