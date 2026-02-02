@@ -534,7 +534,8 @@ d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of "x"  [has-type]  # E: Name "x" is used before definition  [used-before-def]
+y = x  # E: Cannot determine type of "x"  [has-type] \
+       # E: Name "x" is used before definition  [used-before-def]
 reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
@@ -598,15 +599,15 @@ from typing import Callable
 
 def f() -> None: pass
 
-x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
-
 class A:
     def g(self) -> None: pass
 
-y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
-
 c: Callable[[], None]
-z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
+
+def main() -> None:
+    x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
+    y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+    z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
