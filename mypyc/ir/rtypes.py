@@ -240,7 +240,6 @@ class RPrimitive(RType):
         is_refcounted: bool,
         is_native_int: bool = False,
         is_signed: bool = False,
-        is_pointer: bool = False,
         ctype: str = "PyObject *",
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
@@ -316,19 +315,17 @@ class RPrimitive(RType):
 # little as possible, as generic ops are typically slow. Other types,
 # including other primitive types and RInstance, are usually much
 # faster.
-object_rprimitive: Final = RPrimitive(
-    "builtins.object", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+object_rprimitive: Final = RPrimitive("builtins.object", is_unboxed=False, is_refcounted=True)
 
 # represents a low level pointer of an object
 object_pointer_rprimitive: Final = RPrimitive(
-    "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **", is_pointer=True
+    "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **"
 )
 
 # Similar to object_primitive, but doesn not use automatic reference
 # counting. Useful for temporaries.
 object_non_refcounted_rprimitive: Final = RPrimitive(
-    "builtins.object_nrc", is_unboxed=False, is_refcounted=False, is_pointer=True
+    "builtins.object_nrc", is_unboxed=False, is_refcounted=False
 )
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
@@ -462,7 +459,7 @@ pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=Fal
 
 # Untyped pointer, represented as void * in the C backend
 c_pointer_rprimitive: Final = RPrimitive(
-    "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *", is_pointer=True
+    "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
 )
 
 cstring_rprimitive: Final = RPrimitive(
@@ -506,18 +503,14 @@ none_rprimitive: Final = RPrimitive(
 # immortal, but since this is expected to be very rare, and the immortality checks
 # can be pretty expensive for lists, we treat lists as non-immortal.
 list_rprimitive: Final = RPrimitive(
-    "builtins.list", is_unboxed=False, is_refcounted=True, is_pointer=True, may_be_immortal=False
+    "builtins.list", is_unboxed=False, is_refcounted=True, may_be_immortal=False
 )
 
 # Python dict object (or an instance of a subclass of dict).
-dict_rprimitive: Final = RPrimitive(
-    "builtins.dict", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
-set_rprimitive: Final = RPrimitive(
-    "builtins.set", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
 
 # Python frozenset object (or an instance of a subclass of frozenset).
 frozenset_rprimitive: Final = RPrimitive(
@@ -526,14 +519,10 @@ frozenset_rprimitive: Final = RPrimitive(
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
-str_rprimitive: Final = RPrimitive(
-    "builtins.str", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
 
 # Python bytes object.
-bytes_rprimitive: Final = RPrimitive(
-    "builtins.bytes", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
 
 # Python bytearray object.
 bytearray_rprimitive: Final = RPrimitive(
@@ -542,14 +531,10 @@ bytearray_rprimitive: Final = RPrimitive(
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
-tuple_rprimitive: Final = RPrimitive(
-    "builtins.tuple", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
 
 # Python range object.
-range_rprimitive: Final = RPrimitive(
-    "builtins.range", is_unboxed=False, is_refcounted=True, is_pointer=True
-)
+range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
@@ -1413,11 +1398,7 @@ VecNested = RStruct(
 )
 
 VecNestedBufObject_rprimitive = RPrimitive(
-    "VecNestedBufObject_ptr",
-    is_unboxed=False,
-    is_pointer=True,
-    is_refcounted=True,
-    ctype="VecNestedBufObject *",
+    "VecNestedBufObject_ptr", is_unboxed=False, is_refcounted=True, ctype="VecNestedBufObject *"
 )
 
 VecNestedPopResult = RStruct(
