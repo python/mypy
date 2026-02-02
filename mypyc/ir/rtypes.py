@@ -1370,10 +1370,6 @@ VecBoolBufObject = RStruct(
 )
 
 
-# vecbuf_i64_rprimitive: Final = RPrimitive(
-#    "VecI64BufObject", is_unboxed=False, is_refcounted=True, ctype="VecI64BufObject *"
-# )
-
 # Struct type for vec[i64] (in most cases use RVec instead).
 VecI64 = RStruct(
     name="VecI64", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
