@@ -131,7 +131,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
-from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len, vec_len_native
+from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
 from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
@@ -678,32 +678,6 @@ class LowLevelIRBuilder:
         # Handle overflow case
         self.activate_block(overflow)
         self.emit_fixed_width_overflow_error(target_type, line)
-
-        self.activate_block(end)
-        return res
-
-    def coerce_i64_to_ssize_t(self, src: Value, line: int) -> Value:
-        """Coerce int64 to c_pyssize_t with range check on 32-bit platforms.
-
-        On 64-bit platforms, this is a no-op since the types have the same size.
-        On 32-bit platforms, raises OverflowError if the value doesn't fit in 32 bits.
-        """
-        if PLATFORM_SIZE == 8:
-            return src
-
-        # 32-bit platform: need range check
-        overflow, end = BasicBlock(), BasicBlock()
-
-        self.check_fixed_width_range(src, c_pyssize_t_rprimitive, overflow, line)
-
-        # Value is in range - truncate to 32 bits
-        res = self.add(Truncate(src, c_pyssize_t_rprimitive, line))
-        self.goto(end)
-
-        # Handle overflow case
-        self.activate_block(overflow)
-        self.call_c(int32_overflow, [], line)
-        self.add(Unreachable())
 
         self.activate_block(end)
         return res
@@ -2756,30 +2730,6 @@ class LowLevelIRBuilder:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         if IS_FREE_THREADED and sys.version_info >= (3, 14):
             self.primitive_op(set_immortal_op, [v], line)
-
-    # Loop helpers
-
-    def begin_for(self, start: Value, end: Value, step: Value, *, signed: bool) -> ForBuilder:
-        """Generate for loop over a pointer or native int range.
-
-        Roughly corresponds to "for i in range(start, end, step): ....". Only
-        positive values for step are supported.
-
-        The loop index register is generated automatically and is available
-        via the return value. Do not modify it!
-
-        Example usage that clears a memory area:
-
-          for_loop = builder.begin_for(start_ptr, end_ptr, int32_rprimitive.size)
-
-          # For loop body
-          builder.set_mem(for_loop.index, int32_rprimitive, Integer(0, int32_rprimitive))
-
-          for_loop.finish()
-        """
-        b = ForBuilder(self, start, end, step, signed=signed)
-        b.begin()
-        return b
 
     # Internal helpers
 
