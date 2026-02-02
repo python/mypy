@@ -7671,7 +7671,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         (Used by checkexpr and checkmember.)
         """
         in_scope, is_local, partial_types = self.find_partial_types_in_all_scopes(node)
-        if typ.type is None and in_scope:
+        if typ.type is None and (in_scope or is_dunder(node.name)):
             # 'None' partial type. It has a well-defined type. In an lvalue context
             # we want to preserve the knowledge of it being a partial type.
             if not is_lvalue:
