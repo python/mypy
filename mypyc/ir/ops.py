@@ -1721,7 +1721,7 @@ class GetElementPtr(RegisterOp):
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
-        assert not isinstance(src.type, RStruct)
+        assert not isinstance(src.type, (RStruct, RVec))
         self.type = pointer_rprimitive
         self.src = src
         self.src_type = src_type
