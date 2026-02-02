@@ -422,7 +422,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.pop"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):  # TODO fix union
+    elif vec_depth(vec_type) == 0:
         name = "VecTApi.pop"
     else:
         name = "VecNestedApi.pop"

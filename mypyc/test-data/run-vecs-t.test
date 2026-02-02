@@ -340,6 +340,19 @@ def test_pop_index() -> None:
     assert n == "15"
     assert v == vec[str]()
 
+def test_pop_optional() -> None:
+    v = vec[Optional[str]](["x" + str(), None])
+    v, s = pop(v)
+    assert s is None
+    v, s = pop(v)
+    assert s == "x"
+    assert len(v) == 0
+    v = vec[Optional[str]](["x" + str(), None])
+    v, s = pop(v, 0)
+    assert s == "x"
+    v, s = pop(v, -1)
+    assert s is None
+
 def f(x: vec[str]) -> None:
     pass
 
