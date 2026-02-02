@@ -2672,22 +2672,15 @@ class ListExpr(Expression):
 class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
-    __slots__ = ("items", "from_dict_call")
+    __slots__ = ("items",)
 
     __match_args__ = ("items",)
 
     items: list[tuple[Expression | None, Expression]]
-    # True if this DictExpr was created from a dict() call (e.g., dict(a=1, **x))
-    from_dict_call: bool
 
-    def __init__(
-        self,
-        items: list[tuple[Expression | None, Expression]],
-        from_dict_call: bool = False,
-    ) -> None:
+    def __init__(self, items: list[tuple[Expression | None, Expression]]) -> None:
         super().__init__()
         self.items = items
-        self.from_dict_call = from_dict_call
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
