@@ -778,7 +778,7 @@ main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 class A:
     def f(self):
         # type: () -> None
-        def g(x):  # E: Type signature has too few arguments
+        def g(x):  # E: Type signature has too few parameters
             # type: () -> None
             pass
 
@@ -802,7 +802,7 @@ class A:
         class B:
             def g(self):
                 # type: () -> None
-                def h(x):  # E: Type signature has too few arguments
+                def h(x):  # E: Type signature has too few parameters
                     # type: () -> None
                     pass
 
@@ -2143,13 +2143,13 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic

@@ -7836,7 +7836,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 class A:
     def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
-    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def undecorated_not_self(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
 
@@ -7864,7 +7864,7 @@ class A:
     def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
     @to_same_callable
-    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @to_same_callable
     def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
@@ -7909,7 +7909,7 @@ class A:
         return 0
 
     @to_same_callable
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @to_same_callable
@@ -7931,7 +7931,7 @@ class B:
         return 0
 
     @remove_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @remove_first
@@ -7965,15 +7965,15 @@ reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins
 
 class D:
     @add_wrong_first
-    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn1() -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
 reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
@@ -7996,7 +7996,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 def unchecked():
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         # TODO: would be nice to make this error, but now we see the func
         # being decorated as Any, not as a callable
@@ -8017,12 +8017,12 @@ def unchecked():
 def checked() -> None:
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         @to_same_callable
         def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         @to_same_callable
-        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     class AlsoBad:
         def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?

@@ -116,7 +116,7 @@ def g(x: int): ...
 
 [case testPEP570ArgTypesMissing]
 # flags: --disallow-untyped-defs
-def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more parameters
 
 [case testPEP570ArgTypesBadDefault]
 def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")

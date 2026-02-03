@@ -8,7 +8,7 @@ main:2: error: Function is missing a type annotation
 # flags: --disallow-untyped-defs
 def f(x) -> int: pass
 [out]
-main:2: error: Function is missing a type annotation for one or more arguments
+main:2: error: Function is missing a type annotation for one or more parameters
 
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
@@ -63,7 +63,7 @@ async def f():  # E: Function is missing a return type annotation \
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
-async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments
+async def f(x) -> None:  # E: Function is missing a type annotation for one or more parameters
     pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
@@ -830,7 +830,7 @@ import standard, incomplete
 def incomplete(x) -> int:
     return 0
 [file incomplete.py]
-def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more parameters
     return 0
 [file mypy.ini]
 \[mypy]
@@ -847,7 +847,7 @@ import standard, incomplete
 def incomplete(x) -> int:
     return 0
 [file incomplete.py]
-def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more parameters
     return 0
 [file pyproject.toml]
 \[tool.mypy]
@@ -1555,7 +1555,7 @@ def g(m: Movie) -> Movie:
 
 def f(i: int):  # E: Function is missing a return type annotation
     pass
-def g(i) -> None:  # E: Function is missing a type annotation for one or more arguments
+def g(i) -> None:  # E: Function is missing a type annotation for one or more parameters
     pass
 def h(i: int) -> int:  # no error
     return i
@@ -1582,7 +1582,7 @@ def f(i: int, s):
 
 [out]
 main:3: error: Function is missing a return type annotation
-main:3: error: Function is missing a type annotation for one or more arguments
+main:3: error: Function is missing a type annotation for one or more parameters
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1609,7 +1609,7 @@ class Annotated:
 import attrs
 
 @attrs.define
-class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more parameters
     bar: int = attrs.field()
     baz = attrs.field()
 

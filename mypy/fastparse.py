@@ -1001,21 +1001,21 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEPARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,

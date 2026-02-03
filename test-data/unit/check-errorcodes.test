@@ -38,7 +38,7 @@ main:1: error: Invalid syntax  [syntax]
 main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
-def f(): # E: Type signature has too many arguments  [syntax]
+def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
@@ -382,7 +382,7 @@ def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
 def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     pass
 
-def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+def h(x) -> None:  # E: Function is missing a type annotation for one or more parameters  [no-untyped-def]
     pass
 
 def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
@@ -546,11 +546,11 @@ from typing import cast
 x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
 
 [case testErrorCodeInvalidCommentSignature]
-def f(x):  # E: Type signature has too few arguments  [syntax]
+def f(x):  # E: Type signature has too few parameters  [syntax]
     # type: () -> None
     pass
 
-def g(x):  # E: Type signature has too many arguments  [syntax]
+def g(x):  # E: Type signature has too many parameters  [syntax]
     # type: (int, int) -> None
     pass
 

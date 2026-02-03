@@ -9124,15 +9124,15 @@ x = ''
 x = 1
 
 [out]
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 ==
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
