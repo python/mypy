@@ -288,6 +288,7 @@ def vec_get_item(
     index = vec_check_and_adjust_index(builder, len_val, index, line)
     return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
 
+
 def vec_get_item_unsafe(
     builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
