@@ -77,6 +77,7 @@ files = [
     "run-python38.test",
     "run-librt-strings.test",
     "run-base64.test",
+    "run-librt-time.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",

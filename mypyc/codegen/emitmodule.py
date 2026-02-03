@@ -56,7 +56,7 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, LIBRT_TIME, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -632,6 +632,8 @@ class GroupGenerator:
             ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <strings/librt_strings.h>")
+        if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
+            ext_declarations.emit_line("#include <time/librt_time.h>")
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
@@ -1100,6 +1102,10 @@ class GroupGenerator:
             emitter.emit_line("}")
         if LIBRT_STRINGS in module.dependencies:
             emitter.emit_line("if (import_librt_strings() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_TIME in module.dependencies:
+            emitter.emit_line("if (import_librt_time() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
