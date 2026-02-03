@@ -708,20 +708,21 @@ class FlipFlopStr:
 
 def test1(switch: FlipFlopStr) -> None:
     # Naively, we might assume the 'assert' here would narrow the type to
-    # Literal["state-1"]. However, doing this ends up breaking a fair number of real-world
+    # a strong literal 'Literal["state-1"]'.
+    # However, doing this ends up breaking a fair number of real-world
     # code (usually test cases) that looks similar to this function: e.g. checks
     # to make sure a field was mutated to some particular value.
     #
     # And since mypy can't really reason about state mutation, we take a conservative
-    # approach and avoid narrowing anything here.
+    # approach and only narrow to a weak literal 'Literal["state-1"]?'
 
     assert switch.state == "state-1"
-    reveal_type(switch.state)          # N: Revealed type is "builtins.str"
+    reveal_type(switch.state)          # N: Revealed type is "Literal['state-1']?"
 
     switch.mutate()
 
     assert switch.state == "state-2"
-    reveal_type(switch.state)          # N: Revealed type is "builtins.str"
+    reveal_type(switch.state)          # N: Revealed type is "Literal['state-2']?"
 
 def test2(switch: FlipFlopEnum) -> None:
     # This is the same thing as 'test1', except we use enums, which we allow to be narrowed
@@ -755,18 +756,18 @@ from typing import Final, Literal
 A_final: Final = "A"
 A_literal: Literal["A"]
 
-# Neither the LHS nor the RHS are explicit literals, so regrettably nothing
-# is narrowed here -- see 'testNarrowingEqualityFlipFlop' for an example of
-# why more precise inference here is problematic.
+# narrow only to a weak literal 'Literal["A"]?', as the value may mutate to a different
+# string later - see 'testNarrowingEqualityFlipFlop' for an example of
+# why we cannot narrow to a strong literal 'Literal["A"]'
 x_str: str
 if x_str == "A":
-    reveal_type(x_str)  # N: Revealed type is "builtins.str"
+    reveal_type(x_str)  # N: Revealed type is "Literal['A']?"
 else:
     reveal_type(x_str)  # N: Revealed type is "builtins.str"
 reveal_type(x_str)      # N: Revealed type is "builtins.str"
 
 if x_str == A_final:
-    reveal_type(x_str)  # N: Revealed type is "builtins.str"
+    reveal_type(x_str)  # N: Revealed type is "Literal['A']?"
 else:
     reveal_type(x_str)  # N: Revealed type is "builtins.str"
 reveal_type(x_str)      # N: Revealed type is "builtins.str"
@@ -2464,7 +2465,7 @@ def foo(location: ParameterLocation):
 # https://github.com/python/mypy/issues/17864
 def f(x: str | int) -> None:
     if x == "x":
-        reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x)  # N: Revealed type is "Literal['x']?"
         y = x
 
     if x in ["x"]:
@@ -3572,7 +3573,7 @@ def foo(x: str | array) -> str:
 from __future__ import annotations
 def f(x: bytes | None):
     if x == b"asdf":
-        reveal_type(x)  # N: Revealed type is "builtins.bytes"
+        reveal_type(x)  # N: Revealed type is "Literal[b'asdf']?"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.bytes | None"
 [builtins fixtures/primitives.pyi]

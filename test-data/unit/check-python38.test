@@ -351,7 +351,7 @@ def check_narrow(x: Optional[int], s: List[int]) -> None:
         reveal_type(y)  # N: Revealed type is "builtins.int"
 
     if (y := x) == 10:
-        reveal_type(y)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "Literal[10]?"
 
     if (y := x) in s:
         reveal_type(y)  # N: Revealed type is "builtins.int"

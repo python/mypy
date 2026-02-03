@@ -448,7 +448,7 @@ from typing import Optional
 
 def main(x: Optional[str]):
     if x == '<string>':
-        reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x)  # N: Revealed type is "Literal['<string>']?"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | None"
     if x is '<string>':
@@ -461,7 +461,7 @@ def main(x: Optional[str]):
 from typing import Union
 def main(x: Union[str, int, None]):
     if x == '<string>':
-        reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x)  # N: Revealed type is "Literal['<string>']?"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
     if x is '<string>':
@@ -521,8 +521,8 @@ from typing import Optional
 
 def main(x: Optional[int], y: Optional[int]):
     if x == y == 1:
-        reveal_type(x)  # N: Revealed type is "builtins.int"
-        reveal_type(y)  # N: Revealed type is "builtins.int"
+        reveal_type(x)  # N: Revealed type is "Literal[1]?"
+        reveal_type(y)  # N: Revealed type is "Literal[1]?"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | None"
         reveal_type(y)  # N: Revealed type is "builtins.int | None"
