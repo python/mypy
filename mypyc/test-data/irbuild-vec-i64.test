@@ -462,7 +462,7 @@ def f() -> vec[i64]:
 def f():
     r0, r1 :: vec[i64]
     r2 :: short_int
-    r3, ___tmp_5 :: i64
+    r3, ___tmp_6 :: i64
     r4 :: bit
     r5 :: vec[i64]
     r6 :: short_int
@@ -472,18 +472,18 @@ L0:
     r1 = r0
     r2 = 0
     r3 = r2 >> 1
-    ___tmp_5 = r3
+    ___tmp_6 = r3
 L1:
     r4 = int_lt r2, 14
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = VecI64Api.append(r1, ___tmp_5)
+    r5 = VecI64Api.append(r1, ___tmp_6)
     r1 = r5
 L3:
     r6 = r2 + 2
     r2 = r6
     r7 = r6 >> 1
-    ___tmp_5 = r7
+    ___tmp_6 = r7
     goto L1
 L4:
     return r1
