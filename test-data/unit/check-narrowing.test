@@ -1608,6 +1608,21 @@ else:
 reveal_type(t)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testNarrowingAnyUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from unknown import A, AA  # E: Cannot find implementation or library stub for module named "unknown" \
+                           # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+class B: ...
+
+def f(x: A | B) -> None:
+    if isinstance(x, (AA, B)):
+        reveal_type(x)  # N: Revealed type is "Any | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNarrowingLenItemAndLenCompare]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
