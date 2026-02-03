@@ -521,7 +521,7 @@ def vec_slice(
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.slice"
-    elif vec_type.depth() == 0 and not isinstance(item_type, RUnion):
+    elif vec_type.depth() == 0:
         name = "VecTApi.slice"
     else:
         name = "VecNestedApi.slice"
