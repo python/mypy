@@ -2078,6 +2078,28 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...] | builtins.tuple[builtins.str, ...]"
 [builtins fixtures/len.pyi]
 
+
+[case testNarrowingNamedTupleLiteralValues]
+# flags: --strict-equality --warn-unreachable
+from typing import NamedTuple
+
+class CaptureResult(NamedTuple):
+    stdout: str
+    stderr: str
+
+cr = CaptureResult("out", "err")
+reveal_type(cr)  # N: Revealed type is "tuple[builtins.str, builtins.str, fallback=__main__.CaptureResult]"
+assert cr == ("out", "err")
+reveal_type(cr)  # N: Revealed type is "tuple[Literal['out']?, Literal['err']?, fallback=__main__.CaptureResult]"
+assert cr != ("out", "wrong")
+reveal_type(cr)  # N: Revealed type is "tuple[Literal['out']?, Literal['err']?, fallback=__main__.CaptureResult]"
+cr = cr._replace(stderr="replaced")
+reveal_type(cr)  # N: Revealed type is "tuple[builtins.str, builtins.str, fallback=__main__.CaptureResult]"
+assert cr == ("out", "replaced")
+reveal_type(cr)  # N: Revealed type is "tuple[Literal['out']?, Literal['replaced']?, fallback=__main__.CaptureResult]"
+[builtins fixtures/primitives.pyi]
+
+
 [case testNarrowingLenUnionOfNamedTuples]
 # flags: --strict-equality --warn-unreachable
 from typing import NamedTuple, Union
@@ -2854,7 +2876,7 @@ class D(tuple[T], Generic[T]): ...
 def check_d(arg: D[T]) -> None:
     if not isinstance(arg, D):
         return  # E: Statement is unreachable
-    reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
+    reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[T`-1]]"
 [builtins fixtures/tuple.pyi]
 
 

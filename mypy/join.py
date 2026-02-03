@@ -142,10 +142,7 @@ class InstanceJoiner:
                 assert new_type is not None
                 args.append(new_type)
 
-            # drop last known value if they differ (e.g. join('x'?, 'y'?) -> str)
-            lkv: LiteralType | None = (
-                t.last_known_value if t.last_known_value == s.last_known_value else None
-            )
+            lkv = join_last_known_values(t, s)
             result: ProperType = Instance(t.type, args, last_known_value=lkv)
         elif t.type.bases and is_proper_subtype(
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
@@ -795,6 +792,14 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback=fallback,
         name=None,
     )
+
+
+def join_last_known_values(t: Instance, s: Instance) -> LiteralType | None:
+    r"""Return the join of two last known values."""
+    # drop last known value if they differ (e.g. join('x'?, 'y'?) -> str)
+    left = t.last_known_value
+    right = s.last_known_value
+    return left if left == right else None
 
 
 def safe_join(t: Type, s: Type) -> Type:

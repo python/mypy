@@ -82,7 +82,7 @@ def meet_types(s: Type, t: Type) -> ProperType:
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
         # special casing for dealing with last known values
-        lkv = meet_last_known_values(t.last_known_value, s.last_known_value)
+        lkv = meet_last_known_values(t, s)
         t = t.copy_modified(last_known_value=lkv)
         s = s.copy_modified(last_known_value=lkv)
 
@@ -118,10 +118,11 @@ def meet_types(s: Type, t: Type) -> ProperType:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_last_known_values(
-    left: LiteralType | None, right: LiteralType | None
-) -> LiteralType | None:
+def meet_last_known_values(t: Instance, s: Instance) -> LiteralType | None:
     """Return the meet of two last_known_values."""
+    left = t.last_known_value
+    right = s.last_known_value
+
     if left is None:
         return right
     if right is None:
@@ -929,7 +930,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                                 assert isinstance(meet, UninhabitedType)
                                 meet = UnpackType(tv.tuple_fallback.copy_modified(args=[meet]))
                         args.append(meet)
-                    return Instance(t.type, args)
+                    lkv = meet_last_known_values(t, self.s)
+                    return Instance(t.type, args, last_known_value=lkv)
                 else:
                     if state.strict_optional:
                         return UninhabitedType()
@@ -1095,13 +1097,22 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 items.append(self.meet(fi, vi))
         return items
 
+    def meet_tuple_fallbacks(self, s: TupleType, t: TupleType) -> Instance:
+        fall_s = tuple_fallback(s)
+        fall_t = tuple_fallback(t)
+        meet_fallback = meet_types(fall_s, fall_t)
+        if not isinstance(meet_fallback, Instance):
+            # TODO: emit warning?
+            return fall_t
+        return meet_fallback
+
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType):
             items = self.meet_tuples(self.s, t)
             if items is None:
                 return self.default(self.s)
-            # TODO: What if the fallbacks are different?
-            return TupleType(items, tuple_fallback(t))
+            fallback = self.meet_tuple_fallbacks(self.s, t)
+            return TupleType(items, fallback=fallback)
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
