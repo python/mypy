@@ -799,7 +799,9 @@ def join_last_known_values(t: Instance, s: Instance) -> LiteralType | None:
     # drop last known value if they differ (e.g. join('x'?, 'y'?) -> str)
     left = t.last_known_value
     right = s.last_known_value
-    return left if left == right else None
+    if left == right:
+        return left
+    return None
 
 
 def safe_join(t: Type, s: Type) -> Type:
