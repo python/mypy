@@ -29,6 +29,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -279,6 +280,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
+
+    def visit_get_element(self, op: GetElement) -> str:
+        return self.format("%r = %r.%s", op, op.src, op.field)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)

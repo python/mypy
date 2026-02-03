@@ -865,12 +865,20 @@ class RStruct(RType):
         self.name = name
         self.names = names
         self.types = types
+        self.is_refcounted = any(t.is_refcounted for t in self.types)
+
         # generate dummy names
         if len(self.names) < len(self.types):
             for i in range(len(self.types) - len(self.names)):
                 self.names.append("_item" + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = name
+
+    def field_type(self, name: str) -> RType:
+        for n, t in zip(self.names, self.types):
+            if n == name:
+                return t
+        assert False, f"{self.name} has no field '{name}'"
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)

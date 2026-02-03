@@ -1013,7 +1013,6 @@ reveal_type(none1)  # N: Revealed type is "None"
 reveal_type(none2)  # N: Revealed type is "None"
 reveal_type(none3)  # N: Revealed type is "None"
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredOnlyForActualLiterals]
 from typing import Literal
@@ -1054,7 +1053,6 @@ combined = g
 combined = h
 
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredTypeMustMatchExpected]
 from typing import Literal
@@ -1068,7 +1066,6 @@ e: Literal["foo", "bar"] = "baz"    # E: Incompatible types in assignment (expre
 f: Literal[True, 4] = False         # E: Incompatible types in assignment (expression has type "Literal[False]", variable has type "Literal[True, 4]")
 
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredInCall]
 from typing import Literal
@@ -1114,7 +1111,6 @@ f_none_lit(None)
 f_none(None)
 f_none_lit(n1)
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredInReturnContext]
 from typing import Literal

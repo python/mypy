@@ -42,6 +42,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -794,6 +795,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # for some casts), so don't emit it.
         if dest != src:
             self.emit_line(f"*({dest_type} *){dest} = {src};")
+
+    def visit_get_element(self, op: GetElement) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        dest_type = self.ctype(op.type)
+        self.emit_line(f"{dest} = ({dest_type}){src}.{op.field};")
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
