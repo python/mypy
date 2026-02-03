@@ -322,7 +322,7 @@ object_pointer_rprimitive: Final = RPrimitive(
     "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **"
 )
 
-# Similar to object_primitive, but doesn not use automatic reference
+# Similar to object_primitive, but does not use automatic reference
 # counting. Useful for temporaries.
 object_non_refcounted_rprimitive: Final = RPrimitive(
     "builtins.object_nrc", is_unboxed=False, is_refcounted=False
@@ -1105,20 +1105,6 @@ class RVec(RType):
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RVec:
         return RVec(deserialize_type(data["item_type"], ctx))
-
-
-def vec_depth(t: RVec) -> int:
-    """Return nesting depth of a RVec type (0 == no nested vecs)."""
-    it = t.item_type
-    if isinstance(it, RUnion):
-        non_opt = optional_value_type(it)
-        assert non_opt is not None
-        it = non_opt
-    if isinstance(it, (RPrimitive, RInstance)):
-        return 0
-    elif isinstance(it, RVec):
-        return 1 + vec_depth(it)
-    assert False, t
 
 
 @final

@@ -50,7 +50,6 @@ from mypyc.ir.rtypes import (
     optional_value_type,
     pointer_rprimitive,
     vec_api_by_item_type,
-    vec_depth,
     vec_item_type_tags,
 )
 from mypyc.primitives.registry import builtin_names
@@ -391,7 +390,7 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.append"
-    elif vec_depth(vec_type) == 0:
+    elif vec_type.depth() == 0:
         name = "VecTApi.append"
         item_type_arg = [vec_item_type(builder, item_type, line)]
     else:
@@ -408,7 +407,7 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
             line=line,
         )
     )
-    if vec_depth(vec_type) > 0:
+    if vec_type.depth() > 0:
         builder.keep_alive([item], line)
     return call
 
@@ -422,7 +421,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.pop"
-    elif vec_depth(vec_type) == 0:
+    elif vec_type.depth() == 0:
         name = "VecTApi.pop"
     else:
         name = "VecNestedApi.pop"
@@ -439,7 +438,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
             line=line,
         )
     )
-    if vec_depth(vec_type) > 0:
+    if vec_type.depth() > 0:
         orig = result
         x = builder.add(TupleGet(result, 0, borrow=True))
         x = builder.add(Unborrow(x))
@@ -460,7 +459,7 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
 
     if item_type in vec_api_by_item_type:
         name = f"{vec_api_by_item_type[item_type]}.remove"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
+    elif vec_type.depth() == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.remove"
     else:
         coerced_item = convert_to_t_ext_item(builder, coerced_item)
@@ -476,7 +475,7 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
             line=line,
         )
     )
-    if vec_depth(vec_type) > 0:
+    if vec_type.depth() > 0:
         builder.keep_alive([item], line)
     return call
 
@@ -526,7 +525,7 @@ def vec_slice(
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.slice"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
+    elif vec_type.depth() == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.slice"
     else:
         name = "VecNestedApi.slice"

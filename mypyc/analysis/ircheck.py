@@ -225,7 +225,7 @@ def is_valid_ptr_displacement_type(rtype: RType) -> bool:
 
 
 def is_pointer_arithmetic(op: IntOp) -> bool:
-    """Check if op is add/subtract targeting pointer_rprimtive and integer of the same size."""
+    """Check if op is add/subtract targeting pointer_rprimitive and integer of the same size."""
     if op.op not in (IntOp.ADD, IntOp.SUB):
         return False
     if not is_pointer_rprimitive(op.type):
