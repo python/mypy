@@ -120,6 +120,7 @@ LIBRT_MODULES = [
         ["vecs/librt_vecs.h", "vecs/vec_template.c"],
         ["vecs"],
     ),
+    ModDesc("librt.time", ["time/librt_time.c"], ["time/librt_time.h"], []),
 ]
 
 try:
