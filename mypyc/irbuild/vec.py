@@ -459,7 +459,7 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
 
     if item_type in vec_api_by_item_type:
         name = f"{vec_api_by_item_type[item_type]}.remove"
-    elif vec_type.depth() == 0 and not isinstance(item_type, RUnion):
+    elif vec_type.depth() == 0:
         name = "VecTApi.remove"
     else:
         coerced_item = convert_to_t_ext_item(builder, coerced_item)
