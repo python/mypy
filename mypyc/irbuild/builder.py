@@ -92,6 +92,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -128,6 +129,7 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.vec import vec_set_item
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
@@ -420,8 +422,8 @@ class IRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
 
-    def builtin_len(self, val: Value, line: int) -> Value:
-        return self.builder.builtin_len(val, line)
+    def builtin_len(self, val: Value, line: int, use_pyssize_t: bool = False) -> Value:
+        return self.builder.builtin_len(val, line, use_pyssize_t)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
@@ -769,10 +771,13 @@ class IRBuilder:
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
-            target_reg2 = self.gen_method_call(
-                target.base, "__setitem__", [target.index, rvalue_reg], None, line
-            )
-            assert target_reg2 is not None, target.base.type
+            if isinstance(target.base.type, RVec):
+                vec_set_item(self.builder, target.base, target.index, rvalue_reg, line)
+            else:
+                target_reg2 = self.gen_method_call(
+                    target.base, "__setitem__", [target.index, rvalue_reg], None, line
+                )
+                assert target_reg2 is not None, target.base.type
         elif isinstance(target, AssignmentTargetTuple):
             if isinstance(rvalue_reg.type, RTuple) and target.star_idx is None:
                 rtypes = rvalue_reg.type.types

@@ -4,6 +4,10 @@
 // Header for the implementation of librt.vecs, which defines the 'vec' type.
 // Refer to librt_vecs.c for more detailed information.
 
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+#include <stdint.h>
+
 #ifndef MYPYC_EXPERIMENTAL
 
 static int
@@ -14,10 +18,6 @@ import_librt_vecs(void)
 }
 
 #else  // MYPYC_EXPERIMENTAL
-
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-#include <stdint.h>
 
 // Magic (native) integer return value on exception. Caller must also
 // use PyErr_Occurred() since this overlaps with valid integer values.
@@ -460,6 +460,7 @@ typedef struct {
     VecU8API *u8;
     VecFloatAPI *float_;
     VecBoolAPI *bool_;
+    PyTypeObject *(*get_vec_type)(void);  // Function to get base VecType for isinstance checks
 } VecCapsule;
 
 #define VEC_BUF_SIZE(b) ((b)->ob_base.ob_size)
@@ -834,6 +835,38 @@ PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
 int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item);
 PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
 PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
+
+// Global API pointers initialized by import_librt_vecs()
+static VecCapsule *VecApi;
+static VecI64API VecI64Api;
+static VecI32API VecI32Api;
+static VecI16API VecI16Api;
+static VecU8API VecU8Api;
+static VecFloatAPI VecFloatApi;
+static VecBoolAPI VecBoolApi;
+static VecTAPI VecTApi;
+static VecNestedAPI VecNestedApi;
+
+static int
+import_librt_vecs(void)
+{
+    PyObject *mod = PyImport_ImportModule("librt.vecs");
+    if (mod == NULL)
+        return -1;
+    Py_DECREF(mod);  // we import just for the side effect of making the below work.
+    VecApi = PyCapsule_Import("librt.vecs._C_API", 0);
+    if (!VecApi)
+        return -1;
+    VecI64Api = *VecApi->i64;
+    VecI32Api = *VecApi->i32;
+    VecI16Api = *VecApi->i16;
+    VecU8Api = *VecApi->u8;
+    VecFloatApi = *VecApi->float_;
+    VecBoolApi = *VecApi->bool_;
+    VecTApi = *VecApi->t;
+    VecNestedApi = *VecApi->nested;
+    return 0;
+}
 
 #endif  // MYPYC_EXPERIMENTAL
 
