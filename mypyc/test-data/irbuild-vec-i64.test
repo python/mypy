@@ -317,6 +317,7 @@ from librt.vecs import vec
 from mypy_extensions import i64
 
 def f(n: i64) -> vec[i64]:
+    # TODO: Can we pre-allocate a vec with capacity 5?
     return vec[i64]([x + 1 for x in range(i64(5))])
 [out]
 def f(n):
@@ -455,6 +456,7 @@ from librt.vecs import vec, pop
 from mypy_extensions import i64
 
 def f() -> vec[i64]:
+    # TODO: Can we pre-allocate a vec with capacity 7?
     return vec[i64](range(7))
 [out]
 def f():
