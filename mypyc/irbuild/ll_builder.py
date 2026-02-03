@@ -2986,7 +2986,7 @@ class ForBuilder:
         self.index = Register(start.type)
         self.top = BasicBlock()
         self.body = BasicBlock()
-        self.leave = BasicBlock()
+        self.loop_exit = BasicBlock()
 
     def begin(self) -> None:
         builder = self.builder
@@ -2995,11 +2995,11 @@ class ForBuilder:
         op = ComparisonOp.SLT if self.signed else ComparisonOp.ULT
         comp = ComparisonOp(self.index, self.end, op, line=-1)
         builder.add(comp)
-        builder.add(Branch(comp, self.body, self.leave, Branch.BOOL))
+        builder.add(Branch(comp, self.body, self.loop_exit, Branch.BOOL))
         builder.goto_and_activate(self.body)
 
     def finish(self) -> None:
         builder = self.builder
         builder.assign(self.index, builder.int_add(self.index, self.step))
         builder.goto(self.top)
-        builder.activate_block(self.leave)
+        builder.activate_block(self.loop_exit)
