@@ -177,4 +177,18 @@ def store_argument_type(
     elif typ.arg_kinds[i] == ARG_STAR2:
         if not isinstance(arg_type, ParamSpecType) and not typ.unpack_kwargs:
             arg_type = named_type("builtins.dict", [named_type("builtins.str", []), arg_type])
+        # Strip the Unpack from Unpack[K], since it isn't part of the
+        # type inside the function
+        elif isinstance(arg_type, UnpackType):
+            unpacked_type = get_proper_type(arg_type.type)
+            assert isinstance(unpacked_type, TypeVarType)
+            arg_type = unpacked_type
     defn.arguments[i].variable.type = arg_type
+
+
+def try_getting_literal(typ: Type) -> ProperType:
+    """If possible, get a more precise literal type for a given type."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        return typ.last_known_value
+    return typ

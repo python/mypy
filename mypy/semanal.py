@@ -1103,8 +1103,26 @@ class SemanticAnalyzer(
         if not isinstance(last_type, UnpackType):
             return typ
         p_last_type = get_proper_type(last_type.type)
+
+        # Handle TypeVar bound to TypedDict - allows inferring TypedDict from kwargs
+        if isinstance(p_last_type, TypeVarType):
+            bound = get_proper_type(p_last_type.upper_bound)
+            if not self.is_typeddict_like(bound):
+                self.fail(
+                    "Unpack item in ** parameter must be a TypedDict or a TypeVar with TypedDict bound",
+                    last_type,
+                )
+                new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
+                return typ.copy_modified(arg_types=new_arg_types)
+            # For TypeVar, we can't check overlap statically since the actual TypedDict
+            # will be inferred at call sites. Keep the TypeVar for constraint inference.
+            return typ.copy_modified(unpack_kwargs=True)
+
         if not isinstance(p_last_type, TypedDictType):
-            self.fail("Unpack item in ** parameter must be a TypedDict", last_type)
+            self.fail(
+                "Unpack item in ** parameter must be a TypedDict or a TypeVar with TypedDict bound",
+                last_type,
+            )
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         overlap = set(typ.arg_names) & set(p_last_type.items)
@@ -1118,6 +1136,23 @@ class SemanticAnalyzer(
         # OK, everything looks right now, mark the callable type as using unpack.
         new_arg_types = typ.arg_types[:-1] + [p_last_type]
         return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
+
+    def is_typeddict_like(self, typ: ProperType) -> bool:
+        """Check if type is TypedDict or inherits from BaseTypedDict."""
+        if isinstance(typ, TypedDictType):
+            return True
+        if isinstance(typ, Instance):
+            # Check if it's a TypedDict class or inherits from BaseTypedDict
+            if typ.type.typeddict_type is not None:
+                return True
+            for base in typ.type.mro:
+                if base.fullname in (
+                    "typing.TypedDict",
+                    "typing.BaseTypedDict",
+                    "_typeshed.typemap.BaseTypedDict",
+                ):
+                    return True
+        return False
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""

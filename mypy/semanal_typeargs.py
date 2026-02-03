@@ -28,6 +28,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
     TypeVarTupleType,
@@ -255,6 +256,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # tricky however, since this needs map_instance_to_supertype() available in many places.
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
+        # TypeVar with TypedDict bound is allowed for **kwargs unpacking with inference.
+        # Note: for concrete TypedDict, semanal.py's remove_unpack_kwargs() unwraps the Unpack,
+        # so this check won't be reached. For TypeVar, we keep the Unpack for constraint inference.
+        if isinstance(proper_type, TypeVarType):
+            bound = get_proper_type(proper_type.upper_bound)
+            if isinstance(bound, TypedDictType):
+                return
+            # Also allow Instance bounds that are TypedDict-like
+            if isinstance(bound, Instance) and bound.type.typeddict_type is not None:
+                return
         if not isinstance(proper_type, (UnboundType, AnyType)):
             # Avoid extra errors if there were some errors already. Also interpret plain Any
             # as tuple[Any, ...] (this is better for the code in type checker).

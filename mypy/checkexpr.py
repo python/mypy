@@ -209,6 +209,7 @@ from mypy.types_utils import (
     is_overlapping_none,
     is_self_type_like,
     remove_optional,
+    try_getting_literal,
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
@@ -1764,9 +1765,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             need_refresh = any(
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
             )
+            # Check if we have TypeVar-based kwargs that need expansion after inference
+            has_typevar_kwargs = (
+                callee.unpack_kwargs
+                and callee.arg_types
+                and isinstance(callee.arg_types[-1], UnpackType)
+                and isinstance(get_proper_type(callee.arg_types[-1].type), TypeVarType)
+            )
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
             )
+            if has_typevar_kwargs:
+                # After inference, the TypeVar in **kwargs should be replaced with
+                # an inferred TypedDict. Re-expand the kwargs now.
+                callee = callee.with_unpacked_kwargs().with_normalized_var_args()
+                need_refresh = True
             if need_refresh:
                 # Argument kinds etc. may have changed due to
                 # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
@@ -6831,14 +6844,6 @@ def merge_typevars_in_callables_by_name(
         output.append(target)
 
     return output, variables
-
-
-def try_getting_literal(typ: Type) -> ProperType:
-    """If possible, get a more precise literal type for a given type."""
-    typ = get_proper_type(typ)
-    if isinstance(typ, Instance) and typ.last_known_value is not None:
-        return typ.last_known_value
-    return typ
 
 
 def is_expr_literal_type(node: Expression) -> bool:

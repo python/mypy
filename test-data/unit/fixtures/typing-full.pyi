@@ -38,6 +38,9 @@ TypedDict = 0
 TypeGuard = 0
 NoReturn = 0
 NewType = 0
+Required = 0
+NotRequired = 0
+ReadOnly = 0
 Self = 0
 Unpack = 0
 Callable: _SpecialForm

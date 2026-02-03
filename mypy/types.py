@@ -2467,6 +2467,19 @@ class CallableType(FunctionLike):
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
         last_type = get_proper_type(self.arg_types[-1])
+        # Handle Unpack[K] where K is TypeVar bound to TypedDict
+        if isinstance(last_type, UnpackType):
+            unpacked = get_proper_type(last_type.type)
+            if isinstance(unpacked, TypeVarType):
+                # TypeVar with TypedDict bound - can't expand until after inference.
+                # Return unchanged for now; expansion happens after type var substitution.
+                return cast(NormalizedCallableType, self)
+            # For TypedDict inside UnpackType, unwrap it
+            if isinstance(unpacked, TypedDictType):
+                last_type = unpacked
+        if isinstance(last_type, TypeVarType):
+            # Direct TypeVar (shouldn't happen normally but handle it)
+            return cast(NormalizedCallableType, self)
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
             ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT

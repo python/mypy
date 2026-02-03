@@ -1,0 +1,266 @@
+[case testUnpackTypeVarKwargsBasicAccepted]
+# flags: --python-version 3.12
+# Test that TypeVar with TypedDict bound is accepted in **kwargs
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+def f[K: BaseTypedDict](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsInvalidBoundInt]
+from typing import TypeVar, Unpack
+
+T = TypeVar('T', bound=int)
+
+def f(**kwargs: Unpack[T]) -> None:  # E: Unpack item in ** parameter must be a TypedDict or a TypeVar with TypedDict bound
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsNoBound]
+from typing import TypeVar, Unpack
+
+T = TypeVar('T')
+
+def f(**kwargs: Unpack[T]) -> None:  # E: Unpack item in ** parameter must be a TypedDict or a TypeVar with TypedDict bound
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsConcreteTypedDictStillWorks]
+# Test that concrete TypedDict still works as before
+from typing import TypedDict, Unpack
+
+class TD(TypedDict):
+    x: int
+    y: str
+
+def f(**kwargs: Unpack[TD]) -> None:
+    pass
+
+f(x=1, y="hello")
+f(x=1)  # E: Missing named argument "y" for "f"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsInferBasic]
+# flags: --python-version 3.12
+# Test that kwargs TypeVar inference works
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+def f[K: BaseTypedDict](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+result = f(x=1, y="hello")
+reveal_type(result)  # N: Revealed type is "TypedDict('__main__.BaseTypedDict', {'x': Literal[1], 'y': Literal['hello']})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsInferEmpty]
+# flags: --python-version 3.12
+# Test empty kwargs infers empty TypedDict
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+def f[K: BaseTypedDict](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+result = f()
+reveal_type(result)  # N: Revealed type is "TypedDict('__main__.BaseTypedDict', {})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsWithPositionalParam]
+# flags: --python-version 3.12
+# Test with positional parameter
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+def g[K: BaseTypedDict](a: int, **kwargs: Unpack[K]) -> tuple[int, K]:
+    return (a, kwargs)
+
+result = g(1, name="test", count=42)
+reveal_type(result)  # N: Revealed type is "tuple[builtins.int, TypedDict('__main__.BaseTypedDict', {'name': Literal['test'], 'count': Literal[42]})]"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsNotGoingToKwargs]
+# flags: --python-version 3.12
+# Test that explicit keyword params don't go to kwargs TypeVar
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+def h[K: BaseTypedDict](*, required: str, **kwargs: Unpack[K]) -> K:
+    return kwargs
+
+# 'required' goes to explicit param, only 'extra' goes to kwargs
+result = h(required="yes", extra=42)
+reveal_type(result)  # N: Revealed type is "TypedDict('__main__.BaseTypedDict', {'extra': Literal[42]})"
+
+# Only explicit params, no extra kwargs
+result2 = h(required="yes")
+reveal_type(result2)  # N: Revealed type is "TypedDict('__main__.BaseTypedDict', {})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsBoundWithRequiredFields]
+# flags: --python-version 3.12
+# Test that bound TypedDict fields are required
+from typing import TypedDict, Unpack
+
+class BaseTD(TypedDict):
+    x: int
+
+def f[K: BaseTD](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+# Missing required field 'x' from the bound - inferred TypedDict doesn't satisfy bound
+f()  # E: Value of type variable "K" of "f" cannot be "BaseTD"
+f(y="hello")  # E: Value of type variable "K" of "f" cannot be "BaseTD"
+
+# Providing 'x' satisfies the bound
+result1 = f(x=1)
+reveal_type(result1)  # N: Revealed type is "TypedDict('__main__.BaseTD', {'x': builtins.int})"
+
+# Extra fields are allowed and inferred
+result2 = f(x=1, y="hello", z=True)
+reveal_type(result2)  # N: Revealed type is "TypedDict('__main__.BaseTD', {'x': builtins.int, 'y': Literal['hello'], 'z': Literal[True]})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsBoundWithNotRequired1]
+# flags: --python-version 3.12
+# Test that NotRequired fields from bound can be omitted
+from typing import TypedDict, NotRequired, Unpack
+
+class BaseTDWithOptional(TypedDict):
+    x: int
+    y: NotRequired[str]
+
+def g[K: BaseTDWithOptional](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+# Can omit NotRequired field 'y'
+result1 = g(x=1)
+reveal_type(result1)  # N: Revealed type is "TypedDict('__main__.BaseTDWithOptional', {'x': builtins.int, 'y'?: builtins.str})"
+
+# Can provide NotRequired field 'y'
+result2 = g(x=1, y="hello")
+reveal_type(result2)  # N: Revealed type is "TypedDict('__main__.BaseTDWithOptional', {'x': builtins.int, 'y'?: builtins.str})"
+
+# Still need required field 'x'
+g(y="hello")  # E: Value of type variable "K" of "g" cannot be "BaseTDWithOptional"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnpackTypeVarKwargsBoundWithNotRequired2]
+# flags: --python-version 3.12
+# Test that NotRequired fields from bound can be omitted
+from typing import TypedDict, NotRequired, ReadOnly, Unpack
+
+class BaseTDWithOptional(TypedDict):
+    x: ReadOnly[int]
+    y: ReadOnly[NotRequired[str]]
+
+def g[K: BaseTDWithOptional](**kwargs: Unpack[K]) -> K:
+    return kwargs
+
+# Can omit NotRequired field 'y'
+result1 = g(x=1)
+reveal_type(result1)  # N: Revealed type is "TypedDict('__main__.BaseTDWithOptional', {'x'=: Literal[1], 'y'?=: Never})"
+
+# Can provide NotRequired field 'y'
+result2 = g(x=1, y="hello")
+reveal_type(result2)  # N: Revealed type is "TypedDict('__main__.BaseTDWithOptional', {'x'=: Literal[1], 'y'?=: Literal['hello']})"
+
+# Still need required field 'x'
+g(y="hello")  # E: Value of type variable "K" of "g" cannot be "BaseTDWithOptional"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testUnpackTypeVarKwargsBasicMixed]
+# flags: --python-version 3.12
+# Test that TypeVar with TypedDict bound is accepted in **kwargs
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+class Args(TypedDict):
+    x: int
+    y: str
+
+
+def f[K: BaseTypedDict](x: int, **kwargs: Unpack[K]) -> K:
+    return kwargs
+
+
+kwargs: Args
+reveal_type(f(**kwargs))  # N: Revealed type is "TypedDict('__main__.BaseTypedDict', {'y': builtins.str})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testUnpackTypeVarKwargsInitField]
+# flags: --python-version 3.12
+# Test that TypeVar with TypedDict bound is accepted in **kwargs
+from typing import TypedDict, Unpack
+
+class BaseTypedDict(TypedDict):
+    pass
+
+class Args(TypedDict):
+    x: int
+
+
+class InitField[KwargDict: BaseTypedDict]:
+    def __init__(self, **kwargs: Unpack[KwargDict]) -> None:
+        ...
+
+
+class Field[KwargDict: Args](InitField[KwargDict]):
+    pass
+
+# XXX: mypy produces instances with last_known_values displayed with
+# ?s if not assigned to a value??
+# Though,
+# TODO: Do this on purpose??
+x = InitField(x=10, y='lol')
+reveal_type(x)  # N: Revealed type is "__main__.InitField[TypedDict('__main__.BaseTypedDict', {'x': Literal[10], 'y': Literal['lol']})]"
+
+a = Field(x=10, y='lol')
+reveal_type(a)  # N: Revealed type is "__main__.Field[TypedDict('__main__.Args', {'x': builtins.int, 'y': Literal['lol']})]"
+
+# TODO: These error messages are terrible and also wrong
+Field(y='lol')  # E: Value of type variable "KwargDict" of "Field" cannot be "Args"
+Field(x='asdf')  # E: Value of type variable "KwargDict" of "Field" cannot be "Args"
+
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

@@ -58,7 +58,7 @@ from mypy.types import (
     is_named_instance,
     split_with_prefix_and_suffix,
 )
-from mypy.types_utils import is_union_with_any
+from mypy.types_utils import is_union_with_any, try_getting_literal
 from mypy.typestate import type_state
 
 if TYPE_CHECKING:
@@ -135,7 +135,7 @@ def infer_constraints_for_callable(
                 break
 
     for i, actuals in enumerate(formal_to_actual):
-        if isinstance(callee.arg_types[i], UnpackType):
+        if isinstance(callee.arg_types[i], UnpackType) and callee.arg_kinds[i] == ARG_STAR:
             unpack_type = callee.arg_types[i]
             assert isinstance(unpack_type, UnpackType)
 
@@ -218,6 +218,88 @@ def infer_constraints_for_callable(
                         constraints.extend(infer_constraints(tt, at, SUPERTYPE_OF))
             else:
                 assert False, "mypy bug: unhandled constraint inference case"
+
+        elif isinstance(callee.arg_types[i], UnpackType) and callee.arg_kinds[i] == ARG_STAR2:
+            # Handle **kwargs: Unpack[K] where K is TypeVar bound to TypedDict.
+            # Collect actual kwargs and build a TypedDict constraint.
+
+            unpack_type = callee.arg_types[i]
+            assert isinstance(unpack_type, UnpackType)
+
+            unpacked_type = get_proper_type(unpack_type.type)
+            assert isinstance(unpacked_type, TypeVarType)
+
+            other_named = {
+                name
+                for name, kind in zip(callee.arg_names, callee.arg_kinds)
+                if name is not None and not kind.is_star()
+            }
+
+            # Collect all the arguments that will go to **kwargs
+            kwargs_items: dict[str, Type] = {}
+            for actual in actuals:
+                actual_arg_type = arg_types[actual]
+                if actual_arg_type is None:
+                    continue
+                actual_name = arg_names[actual] if arg_names is not None else None
+                if actual_name is not None:
+                    # Named argument going to **kwargs
+                    kwargs_items[actual_name] = actual_arg_type
+                elif arg_kinds[actual] == ARG_STAR2:
+                    # **kwargs being passed through - try to extract TypedDict items
+                    p_actual = get_proper_type(actual_arg_type)
+                    if isinstance(p_actual, TypedDictType):
+                        for sname, styp in p_actual.items.items():
+                            # But we need to filter out names that
+                            # will go to other parameters
+                            if sname not in other_named:
+                                kwargs_items[sname] = styp
+
+            # Build a TypedDict from the collected kwargs.
+            bound = get_proper_type(unpacked_type.upper_bound)
+            if isinstance(bound, Instance) and bound.type.typeddict_type is not None:
+                bound = bound.type.typeddict_type
+
+            # This should be an error from an earlier level, but don't compound it
+            if not isinstance(bound, TypedDictType):
+                continue
+
+            # Start with the actual kwargs passed, with literal types
+            # inferred for read-only and unbound items
+            items = {
+                key: (
+                    try_getting_literal(typ)
+                    if key not in bound.items or key in bound.readonly_keys
+                    else typ
+                )
+                for key, typ in kwargs_items.items()
+            }
+            # Add any NotRequired keys from the bound that weren't passed
+            # (they need to be present for TypedDict subtyping to work)
+            for key, value_type in bound.items.items():
+                if key not in items and key not in bound.required_keys:
+                    # If the key is missing and it is ReadOnly,
+                    # then we can replace the type with Never to
+                    # indicate that it is definitely not
+                    # present. We can't do that if it is mutable,
+                    # though (because that violates the subtyping
+                    # rules.)
+                    items[key] = (
+                        value_type if key not in bound.readonly_keys else UninhabitedType()
+                    )
+            # Keys are required if they're required in the bound, or if they're
+            # extra keys not in the bound (explicitly passed, so required).
+            required_keys = {
+                key for key in items if key in bound.required_keys or key not in bound.items
+            }
+            inferred_td = TypedDictType(
+                items=items,
+                required_keys=required_keys,
+                readonly_keys=bound.readonly_keys,
+                fallback=bound.fallback,
+            )
+            constraints.append(Constraint(unpacked_type, SUPERTYPE_OF, inferred_td))
+
         else:
             for actual in actuals:
                 actual_arg_type = arg_types[actual]
