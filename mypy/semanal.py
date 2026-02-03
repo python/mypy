@@ -6056,9 +6056,9 @@ class SemanticAnalyzer(
         # will catch the "keywords must be strings" error.
         for kind, arg in zip(call.arg_kinds, call.args):
             if kind == ARG_STAR2 and isinstance(arg, DictExpr):
-                # Check if all keys in the dict literal are strings
+                # Check if all keys in the dict literal are strings (not bytes!)
                 for key, _ in arg.items:
-                    if key is not None and not isinstance(key, (StrExpr, BytesExpr)):
+                    if key is not None and not isinstance(key, StrExpr):
                         # Non-string key found, don't translate
                         for a in call.args:
                             a.accept(self)
@@ -6070,6 +6070,7 @@ class SemanticAnalyzer(
             ]
         )
         expr.set_line(call)
+        expr.from_dict_call = True
         expr.accept(self)
         return expr
 

@@ -5436,6 +5436,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 expected_types.append(
                     self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [kt, vt])
                 )
+                # If this DictExpr came from a dict() call translation, validate that
+                # any unpacked dict has string keys (keywords must be strings)
+                if e.from_dict_call:
+                    value_type = self.accept(value)
+                    if not self.is_valid_keyword_var_arg(value_type):
+                        is_mapping = is_subtype(
+                            value_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                        )
+                        self.msg.invalid_keyword_var_arg(value_type, is_mapping, value)
             else:
                 tup = TupleExpr([key, value])
                 if key.line >= 0:
