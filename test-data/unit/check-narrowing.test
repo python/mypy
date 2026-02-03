@@ -3246,7 +3246,7 @@ class B: ...
 
 T = TypeVar("T")
 
-def forgets_about_subclasses1(self, obj: T) -> T:
+def forgets_about_subclasses(self, obj: T) -> T:
     if isinstance(obj, A):
         return A()  # E: Incompatible return value type (got "A", expected "T")
     elif isinstance(obj, B):
@@ -3254,6 +3254,7 @@ def forgets_about_subclasses1(self, obj: T) -> T:
     raise
 
 def correct1(self, obj: T) -> T:
+    # TODO: mypy should not error in this case
     if type(obj) == A:
         return A()  # E: Incompatible return value type (got "A", expected "T")
     elif type(obj) == B:
@@ -3262,7 +3263,10 @@ def correct1(self, obj: T) -> T:
 
 T_value = TypeVar("T_value", A, B)
 
-def forgets_about_subclasses2(self, obj: T_value) -> T_value:
+def forgets_about_multiple_inheritance(self, obj: T_value) -> T_value:
+    # Note that it is a little confusing that mypy only errors in the first branch here, but this
+    # is a branch that would be taken by a subclass of both A and B.
+    # See also https://github.com/python/mypy/issues/10302#issuecomment-3832182574
     if isinstance(obj, A):
         return A()  # E: Incompatible return value type (got "A", expected "B")
     elif isinstance(obj, B):
@@ -3478,6 +3482,71 @@ def bar(X: type[T]) -> T:
         return A()  # E: Incompatible return value type (got "A", expected "T")
     raise
 [builtins fixtures/type.pyi]
+
+[case testNarrowingConstrainedTypeVarType]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar, Any, Type
+
+TargetType = TypeVar("TargetType", int, float, str)
+
+# TODO: this behaviour is incorrect, it will be fixed by improving reachability
+def convert_type(target_type: Type[TargetType]) -> TargetType:
+    if target_type == str:
+        return str()  # E: Incompatible return value type (got "str", expected "int") \
+                      # E: Incompatible return value type (got "str", expected "float")
+    if target_type == int:
+        return int()  # E: Incompatible return value type (got "int", expected "str")
+    if target_type == float:
+        return float()  # E: Incompatible return value type (got "float", expected "int") \
+                        # E: Incompatible return value type (got "float", expected "str")
+    raise
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingEqualityWithPromotions]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Literal
+
+# TODO: the behaviour on some of these test cases is incorrect
+def f1(number: float, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f2(number: float, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # E: Statement is unreachable
+        reveal_type(five)
+
+def f3(number: float | int, five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+
+def f4(number: float | None, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | None"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f5(number: float | int, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+def f6(number: float | complex, i: int):
+    if number == i:
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.complex"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+
+class Custom:
+    def __eq__(self, other: object) -> bool: return True
+
+def f7(number: float, x: Custom | int):
+    if number == x:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowingAnyNegativeIntersection-xfail]
 # flags: --strict-equality --warn-unreachable
