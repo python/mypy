@@ -141,7 +141,11 @@ class InstanceJoiner:
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
-            lkv = t.last_known_value if t.last_known_value == s.last_known_value else None
+
+            # drop last known value if they differ (e.g. join('x'?, 'y'?) -> str)
+            lkv: LiteralType | None = (
+                t.last_known_value if t.last_known_value == s.last_known_value else None
+            )
             result: ProperType = Instance(t.type, args, last_known_value=lkv)
         elif t.type.bases and is_proper_subtype(
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
