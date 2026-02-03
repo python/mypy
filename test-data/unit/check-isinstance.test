@@ -1407,9 +1407,6 @@ def f(x: Union[A, B]) -> None:
 # flags: --warn-unreachable
 from typing import Union
 
-class FloatLike: pass
-class IntLike(FloatLike): pass
-
 def f1(x: Union[float, int]) -> None:
     # We ignore promotions in isinstance checks
     if isinstance(x, float):
@@ -1417,10 +1414,14 @@ def f1(x: Union[float, int]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 
+class FloatLike: pass
+class IntLike(FloatLike): pass
+
 def f2(x: Union[FloatLike, IntLike]) -> None:
-    # ...but not regular subtyping relationships
     if isinstance(x, FloatLike):
-        reveal_type(x)  # N: Revealed type is "__main__.FloatLike | __main__.IntLike"
+        reveal_type(x)  # N: Revealed type is "__main__.FloatLike"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfSuperclass]
