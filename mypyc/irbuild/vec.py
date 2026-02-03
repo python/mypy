@@ -282,26 +282,22 @@ def vec_get_item(
 
     We inline this, since it's simple but performance-critical.
     """
-    assert isinstance(base.type, RVec)
-    vtype = base.type
     # TODO: Support more item types
     # TODO: Support more index types
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
-    index = builder.coerce(index, c_pyssize_t_rprimitive, line)
-    item_addr = vec_item_ptr(builder, base, index)
-    result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
-    builder.keep_alives.append(base)
-    return result
+    return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
 
 
-def vec_get_item_unsafe(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) -> Value:
+def vec_get_item_unsafe(
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
+) -> Value:
     """Get vec item, assuming index is non-negative and within bounds."""
     assert isinstance(base.type, RVec)
     index = as_platform_int(builder, index, line)
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
-    result = builder.load_mem(item_addr, vtype.item_type)
+    result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
     builder.keep_alive([base], line)
     return result
 
