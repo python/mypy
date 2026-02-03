@@ -435,8 +435,8 @@ L2:
     r7 = r2 * 8
     r8 = r6 + r7
     r9 = load_mem r8 :: i64*
-    keep_alive v
     x = r9
+    keep_alive v
     r10 = x + 1
     r11 = r1.buf
     r12 = get_element_ptr r11 items :: VecI64BufObject
@@ -522,8 +522,8 @@ L2:
     r5 = r0 * 8
     r6 = r4 + r5
     r7 = load_mem r6 :: i64*
-    keep_alive v
     x = r7
+    keep_alive v
     r8 = t + 1
     t = r8
 L3:

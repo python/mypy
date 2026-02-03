@@ -248,8 +248,8 @@ L2:
     r5 = r0 * 2
     r6 = r4 + r5
     r7 = load_mem r6 :: i16*
-    keep_alive v
     x = r7
+    keep_alive v
     r8 = s + x
     s = r8
 L3:
