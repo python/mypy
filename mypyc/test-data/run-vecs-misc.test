@@ -145,6 +145,20 @@ def test_comprehension() -> None:
     v = vec[float]([x + 1.5 for x in range(4)])
     assert list(v) == [1.5, 2.5, 3.5, 4.5]
 
+def len_union(x: vec[i64] | vec[i32]) -> int:
+    return len(x)
+
+def test_union_of_vecs() -> None:
+    assert len_union(vec[i64]()) == 0
+    assert len_union(vec[i64]([7, 8])) == 2
+    assert len_union(vec[i32]([7, 8, 9])) == 3
+    with assertRaises(TypeError):
+        a1: Any = vec[i16]()
+        len_union(a1)
+    with assertRaises(TypeError):
+        a2: Any = []
+        len_union(a2)
+
 def test_nested_basics() -> None:
     v = vec[vec[i32]]([vec[i32]([5, 6]),
                        vec[i32]([-12])])
