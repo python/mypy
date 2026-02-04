@@ -703,7 +703,7 @@ Example:
 .. _code-unsafe-datetime:
 
 Disallow datetime where date is expected [unsafe-datetime]
----------------------------------------------------------
+----------------------------------------------------------
 
 If enabled with :option:`--enable-error-code unsafe-datetime <mypy --enable-error-code>`,
 mypy will prevent ``datetime.datetime`` objects from being used where ``datetime.date``
