@@ -378,7 +378,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             Box(self.vs), """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);"""
         )
         self.assert_emit(
-            Box(self.vs_opt), """cpy_r_r0 = VecTApi.box(cpy_r_vs, ((size_t)&PyUnicode_Type | 1));"""
+            Box(self.vs_opt),
+            """cpy_r_r0 = VecTApi.box(cpy_r_vs, ((size_t)&PyUnicode_Type | 1));""",
         )
         self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecNestedApi.box(cpy_r_vvs);""")
 
