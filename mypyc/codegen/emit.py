@@ -1118,7 +1118,10 @@ class Emitter:
 
     def vec_item_type_c(self, typ: RVec) -> str:
         item_type = typ.unwrap_item_type()
-        type_value = f"(size_t){self.type_c_ptr(item_type)}"
+        type_c_ptr = self.type_c_ptr(item_type)
+        # Can never be None, since we unwrapped the item type above
+        assert type_c_ptr is not None
+        type_value = f"(size_t){type_c_ptr}"
         if typ.is_optional():
             type_value = f"{type_value} | 1"
         return type_value
