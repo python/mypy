@@ -803,34 +803,21 @@ class Emitter:
         elif isinstance(typ, RVec):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
-            # Check for specialized vec types (vec[i64], vec[i32], etc.)
+            # Build type check expression based on vec kind
             api_name = vec_api_by_item_type.get(typ.item_type)
+            depth = typ.depth()
             if api_name:
-                # Use boxed_type from API struct: Py_TYPE(src) == VecI64Api.boxed_type
+                # Specialized vec types (vec[i64], vec[i32], etc.)
                 check = f"(Py_TYPE({src}) == {api_name}.boxed_type)"
-                if likely:
-                    check = f"(likely{check})"
-                self.emit_arg_check(src, dest, typ, check, optional)
-                self.emit_lines(f"    {dest} = {src};", "else {")
-                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
-                self.emit_line("}")
-            elif typ.depth() == 0:
-                # Generic vec types (vec[T], vec[T | None]) with reference type items.
-                # Check both the boxed type and the item type (with optional bit).
+            elif depth == 0:
+                # Generic vec types (vec[T], vec[T | None]) with reference type items
                 item_type_c = self.vec_item_type_c(typ)
                 check = (
                     f"(Py_TYPE({src}) == VecTApi.boxed_type && "
                     f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
                 )
-                if likely:
-                    check = f"(likely{check})"
-                self.emit_arg_check(src, dest, typ, check, optional)
-                self.emit_lines(f"    {dest} = {src};", "else {")
-                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
-                self.emit_line("}")
             else:
                 # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
-                depth = typ.depth()
                 unwrapped = typ.unwrap_item_type()
                 if unwrapped in vec_item_type_tags:
                     type_value = str(vec_item_type_tags[unwrapped])
@@ -841,12 +828,12 @@ class Emitter:
                     f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
                     f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
                 )
-                if likely:
-                    check = f"(likely{check})"
-                self.emit_arg_check(src, dest, typ, check, optional)
-                self.emit_lines(f"    {dest} = {src};", "else {")
-                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
-                self.emit_line("}")
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check, optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
         else:
             assert False, "Cast not implemented: %s" % typ
 
