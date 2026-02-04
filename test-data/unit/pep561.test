@@ -233,3 +233,21 @@ our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#
 [out2]
 our/bar.py:1: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
 our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testPartiallyTypedNamespacePackageNoCrash]
+# pkgs: typedpkg_ns_nested
+import a
+[file a.py]
+import m1
+import m2
+[file a.py.2]
+import m1
+[file m1.py]
+import typedpkg_ns.b  # type: ignore
+[file m2.py]
+import typedpkg_ns.a
+# TODO: the error on second run is a bug, but it is a separate issue, likely #20105.
+[out]
+[out2]
+m1.py:1: error: Skipping analyzing "typedpkg_ns": module is installed, but missing library stubs or py.typed marker
+m1.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
