@@ -3800,7 +3800,7 @@ def find_stale_sccs(
             # This check is expensive, so we only run it if needed and short-circuit below.
             if fresh:
                 for dep in graph[id].dependencies:
-                    if graph[id].priorities[dep] == PRI_INDIRECT:
+                    if graph[id].priorities.get(dep) == PRI_INDIRECT:
                         dep_scc_id = manager.scc_by_mod_id[dep].id
                         if dep_scc_id == ascc.id:
                             continue
