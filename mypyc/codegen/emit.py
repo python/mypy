@@ -829,11 +829,24 @@ class Emitter:
                 self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
                 self.emit_line("}")
             else:
-                # Nested vec types - no runtime check for now
-                self.emit_arg_check(src, dest, typ, "", optional)
-                self.emit_line(f"{dest} = {src};")
-                if optional:
-                    self.emit_line("}")
+                # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
+                depth = typ.depth()
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
+                else:
+                    type_value = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecNestedApi.boxed_type && "
+                    f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
+                    f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
+                )
+                if likely:
+                    check = f"(likely{check})"
+                self.emit_arg_check(src, dest, typ, check, optional)
+                self.emit_lines(f"    {dest} = {src};", "else {")
+                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+                self.emit_line("}")
         else:
             assert False, "Cast not implemented: %s" % typ
 

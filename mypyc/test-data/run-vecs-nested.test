@@ -2,7 +2,7 @@
 from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 
-from mypy_extensions import i64
+from mypy_extensions import i64, i32
 from librt.vecs import vec, append, remove, pop
 
 from testutil import assertRaises
@@ -466,3 +466,31 @@ def test_tuple() -> None:
     assert t == t2
     with assertRaises(RuntimeError):
         f_any(True)
+
+def len_union(x: vec[vec[i64]] | vec[vec[Optional[str]]]) -> int:
+    return len(x)
+
+def test_union_of_nested_vecs() -> None:
+    assert len_union(vec[vec[i64]]()) == 0
+    assert len_union(vec[vec[i64]]([vec[i64]([1, 2])])) == 1
+    assert len_union(vec[vec[Optional[str]]]([vec[Optional[str]](["x", None])])) == 1
+    # Wrong inner item type (i32 instead of i64)
+    with assertRaises(TypeError):
+        a1: Any = vec[vec[i32]]()
+        len_union(a1)
+    # Wrong inner item type (str instead of str | None)
+    with assertRaises(TypeError):
+        a2: Any = vec[vec[str]]()
+        len_union(a2)
+    # Not a nested vec
+    with assertRaises(TypeError):
+        a3: Any = vec[i64]()
+        len_union(a3)
+    # Plain list
+    with assertRaises(TypeError):
+        a4: Any = []
+        len_union(a4)
+    # Too deeply nested
+    with assertRaises(TypeError):
+        a5: Any = vec[vec[vec[i64]]]()
+        len_union(a5)
