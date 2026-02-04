@@ -868,6 +868,9 @@ class BuildManager:
         # Mapping from SCC id to corresponding SCC instance. This is populated
         # in process_graph().
         self.scc_by_id: dict[int, SCC] = {}
+        # Mapping from module id to the SCC it belongs to. This is populated
+        # in process_graph().
+        self.scc_by_mod_id: dict[str, SCC] = {}
         # Global topological order for SCCs. This exists to make order of processing
         # SCCs more predictable.
         self.top_order: list[int] = []
@@ -890,6 +893,8 @@ class BuildManager:
         # raw parsed trees not analyzed with mypy. We use these to find absolute
         # location of a symbol used as a location for an error message.
         self.extra_trees: dict[str, MypyFile] = {}
+        # Cache for transitive dependency check (expensive).
+        self.verify_transitive_cache: dict[tuple[int, int], bool] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1200,6 +1205,19 @@ class BuildManager:
             bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
             results,
         )
+
+    def verify_transitive(self, from_scc_id: int, to_scc_id: int) -> bool:
+        """Verify that one SCC is a (transitive) dependency of another."""
+        if (from_scc_id, to_scc_id) in self.verify_transitive_cache:
+            return self.verify_transitive_cache[(from_scc_id, to_scc_id)]
+        if to_scc_id in self.scc_by_id[from_scc_id].deps:
+            self.verify_transitive_cache[(from_scc_id, to_scc_id)] = True
+            return True
+        for dep in self.scc_by_id[from_scc_id].deps:
+            if self.verify_transitive(dep, to_scc_id):
+                return True
+        self.verify_transitive_cache[(from_scc_id, to_scc_id)] = False
+        return False
 
 
 def deps_to_json(x: dict[str, set[str]]) -> bytes:
@@ -2312,7 +2330,7 @@ class State:
             if temporary:
                 state.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
-                # Special case: if there were a previously missing package imported here
+                # Special case: if there were a previously missing package imported here,
                 # and it is not present, then we need to re-calculate dependencies.
                 # This is to support patterns like this:
                 #     from missing_package import missing_module  # type: ignore
@@ -2320,7 +2338,7 @@ class State:
                 # (it may be a variable, a class, or a function), so it is not added to
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
-                # NOTE: see comment below for why we skip this in fine grained mode.
+                # NOTE: see comment below for why we skip this in fine-grained mode.
                 if exist_added_packages(suppressed, manager, options):
                     state.parse_file()  # This is safe because the cache is anyway stale.
                     state.compute_dependencies()
@@ -2340,6 +2358,7 @@ class State:
                 # We don't need parsed trees in coordinator process, we parse only to
                 # compute dependencies.
                 state.tree = None
+                del manager.ast_cache[id]
 
         return state
 
@@ -3755,7 +3774,8 @@ def find_stale_sccs(
     Fresh SCCs are those where:
     * We have valid cache files for all modules in the SCC.
     * There are no changes in dependencies (files removed from/added to the build).
-    * The interface hashes of direct dependents matches those recorded in the cache.
+    * The interface hashes of dependencies matches those recorded in the cache.
+    * All indirect dependencies are still reachable via direct ones.
     The first and second conditions are verified by is_fresh().
     """
     stale_sccs = []
@@ -3772,6 +3792,23 @@ def find_stale_sccs(
                     stale_deps.add(dep)
         fresh = fresh and not stale_deps
 
+        # Verify the invariant that indirect dependencies are a subset of transitive direct
+        # dependencies. Note: the case where indirect dependency is removed from the graph
+        # completely is already handled above.
+        stale_indirect = None
+        for id in ascc.mod_ids:
+            # This check is expensive, so we only run it if needed and short-circuit below.
+            if fresh:
+                for dep in graph[id].dependencies:
+                    if graph[id].priorities[dep] == PRI_INDIRECT:
+                        dep_scc_id = manager.scc_by_mod_id[dep].id
+                        if dep_scc_id == ascc.id:
+                            continue
+                        if not manager.verify_transitive(ascc.id, dep_scc_id):
+                            stale_indirect = dep
+                            fresh = False
+                            break
+
         if fresh:
             fresh_msg = "fresh"
         elif stale_scc:
@@ -3780,8 +3817,11 @@ def find_stale_sccs(
                 fresh_msg += f" ({' '.join(sorted(stale_scc))})"
             if stale_deps:
                 fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
-        else:
+        elif stale_deps:
             fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
+        else:
+            assert stale_indirect is not None
+            fresh_msg = f"stale due to stale indirect dep(s): first {stale_indirect}"
 
         scc_str = " ".join(ascc.mod_ids)
         if fresh:
@@ -3833,6 +3873,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     scc_by_id = {scc.id: scc for scc in sccs}
     manager.scc_by_id = scc_by_id
     manager.top_order = [scc.id for scc in sccs]
+    for scc in sccs:
+        for mod_id in scc.mod_ids:
+            manager.scc_by_mod_id[mod_id] = scc
 
     # Broadcast SCC structure to the parallel workers, since they don't compute it.
     sccs_message = SccsDataMessage(sccs=sccs)
@@ -3877,8 +3920,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # type-checking this is already done and results should be empty here.
             if not manager.workers:
                 assert not results
-            for id, (interface_cache, errors) in results.items():
-                new_hash = bytes.fromhex(interface_cache)
+            for id, (interface_hash, errors) in results.items():
+                new_hash = bytes.fromhex(interface_hash)
                 if new_hash != graph[id].interface_hash:
                     graph[id].mark_interface_stale()
                     graph[id].interface_hash = new_hash
