@@ -801,6 +801,7 @@ class Emitter:
             assert not optional
             self.emit_tuple_cast(src, dest, typ, declare_dest, error, src_type)
         elif isinstance(typ, RVec):
+            assert False
             # TODO: Actually perform the type check, this is a no-op
             if declare_dest:
                 self.emit_line("PyObject *{};".format(dest))
