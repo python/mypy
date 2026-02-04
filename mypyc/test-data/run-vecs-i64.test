@@ -225,7 +225,7 @@ def test_vec_union() -> None:
     with assertRaises(TypeError):
         check_union(a3, False)
     a4: Any = vec[i32]()
-    with assertRaises(TypeError, 'vec[i64] object expected; got vec[i32]'):
+    with assertRaises(TypeError, 'union[vec[i64], str] object expected; got vec[i32]'):
         check_union(a4, False)
 
 def test_construct_from_list_multiply() -> None:

@@ -814,8 +814,22 @@ class Emitter:
                 self.emit_lines(f"    {dest} = {src};", "else {")
                 self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
                 self.emit_line("}")
+            elif typ.depth() == 0:
+                # Generic vec types (vec[T], vec[T | None]) with reference type items.
+                # Check both the boxed type and the item type (with optional bit).
+                item_type_c = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecTApi.boxed_type && "
+                    f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
+                )
+                if likely:
+                    check = f"(likely{check})"
+                self.emit_arg_check(src, dest, typ, check, optional)
+                self.emit_lines(f"    {dest} = {src};", "else {")
+                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+                self.emit_line("}")
             else:
-                # Generic vec types (vec[T], nested vecs) - no runtime check for now
+                # Nested vec types - no runtime check for now
                 self.emit_arg_check(src, dest, typ, "", optional)
                 self.emit_line(f"{dest} = {src};")
                 if optional:
@@ -1135,7 +1149,7 @@ class Emitter:
         assert type_c_ptr is not None
         type_value = f"(size_t){type_c_ptr}"
         if typ.is_optional():
-            type_value = f"{type_value} | 1"
+            type_value = f"({type_value} | 1)"
         return type_value
 
     def type_c_ptr(self, typ: RPrimitive | RInstance) -> str | None:

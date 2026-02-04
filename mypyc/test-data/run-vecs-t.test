@@ -404,3 +404,27 @@ def test_optional_item_new_syntax() -> None:
     v = append(v, 'x')
     v = append(v, None)
     assert str(v) == "vec[str | None](['x', None])"
+
+class Foo:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+def len_union(x: vec[str] | vec[Optional[Foo]]) -> int:
+    return len(x)
+
+def test_union_of_vecs() -> None:
+    assert len_union(vec[str]()) == 0
+    assert len_union(vec[str](["x", "y"])) == 2
+    assert len_union(vec[Optional[Foo]]([Foo("x"), None, Foo("y")])) == 3
+    with assertRaises(TypeError):
+        a1: Any = vec[Optional[str]]()
+        len_union(a1)
+    with assertRaises(TypeError):
+        a2: Any = []
+        len_union(a2)
+    with assertRaises(TypeError):
+        a3: Any = vec[bytes]()
+        len_union(a3)
+    with assertRaises(TypeError):
+        a4: Any = vec[Foo]()
+        len_union(a4)

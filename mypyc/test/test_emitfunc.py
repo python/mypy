@@ -378,7 +378,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             Box(self.vs), """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);"""
         )
         self.assert_emit(
-            Box(self.vs_opt), """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type | 1);"""
+            Box(self.vs_opt), """cpy_r_r0 = VecTApi.box(cpy_r_vs, ((size_t)&PyUnicode_Type | 1));"""
         )
         self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecNestedApi.box(cpy_r_vvs);""")
 
@@ -409,7 +409,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             Unbox(self.o, RVec(RUnion([str_rprimitive, none_rprimitive])), 55),
-            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1);
+            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, ((size_t)&PyUnicode_Type | 1));
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[str | None]", cpy_r_o); cpy_r_r0 = (VecT) { -1, NULL };
                }
@@ -435,7 +435,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             Unbox(self.o, RVec(RVec(RUnion([str_rprimitive, none_rprimitive]))), 55),
-            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 1);
+            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, ((size_t)&PyUnicode_Type | 1), 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[vec[str | None]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
