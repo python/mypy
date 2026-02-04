@@ -1,5 +1,5 @@
 [case testDatetimeVsDateComparison]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 dt: datetime
@@ -79,7 +79,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testDatetimeVsDateComparisonExplicitTypes]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 def compare_datetime_date(dt: datetime, d: date) -> bool:
@@ -107,7 +107,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testDatetimeComparisonOK]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 dt1: datetime
@@ -145,7 +145,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testDatetimeVsDateComparisonWithNow]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 if datetime.now() < date.today():  # E: Unsupported operand types for < ("datetime" and "date")
@@ -173,7 +173,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testDatetimeVsDateComparisonInExpression]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 dt: datetime
@@ -203,7 +203,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testDateVsDateMixedWithDatetime]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 def compare_dates(d1: date, d2: date) -> bool:
@@ -238,7 +238,7 @@ class datetime(date):
     def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
 
 [case testInheritanceBlocking]
-# flags: --enable-error-code safe-datetime
+# flags: --enable-error-code unsafe-datetime
 from datetime import date, datetime
 
 # Assignment should be blocked

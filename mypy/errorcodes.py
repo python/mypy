@@ -172,8 +172,8 @@ ASSERT_TYPE: Final = ErrorCode("assert-type", "Check that assert_type() call suc
 COMPARISON_OVERLAP: Final = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
 )
-SAFE_DATETIME: Final = ErrorCode(
-    "safe-datetime", "Disallow datetime where date is expected", "General", default_enabled=False
+UNSAFE_DATETIME: Final = ErrorCode(
+    "unsafe-datetime", "Disallow datetime where date is expected", "General", default_enabled=False
 )
 NO_ANY_UNIMPORTED: Final = ErrorCode(
     "no-any-unimported", 'Reject "Any" types from unfollowed imports', "General"

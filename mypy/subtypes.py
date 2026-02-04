@@ -531,12 +531,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
             lname = left.type.fullname
 
-            # Disallow datetime.datetime where datetime.date is expected when safe-datetime is
+            # Disallow datetime.datetime where datetime.date is expected when unsafe-datetime is
             # enabled. While datetime is a subclass of date at runtime, comparing them raises
             # TypeError, making this inheritance relationship problematic in practice.
             if (
                 self.options
-                and codes.SAFE_DATETIME in self.options.enabled_error_codes
+                and codes.UNSAFE_DATETIME in self.options.enabled_error_codes
                 and lname == "datetime.datetime"
                 and rname == "datetime.date"
             ):

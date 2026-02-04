@@ -700,12 +700,12 @@ Example:
         def add_forty_two(value: int) -> int:
             return value + 42
 
-.. _code-safe-datetime:
+.. _code-unsafe-datetime:
 
-Disallow datetime where date is expected [safe-datetime]
+Disallow datetime where date is expected [unsafe-datetime]
 ---------------------------------------------------------
 
-If enabled with :option:`--enable-error-code safe-datetime <mypy --enable-error-code>`,
+If enabled with :option:`--enable-error-code unsafe-datetime <mypy --enable-error-code>`,
 mypy will prevent ``datetime.datetime`` objects from being used where ``datetime.date``
 is expected. While ``datetime`` is a subclass of ``date`` at runtime, comparing a
 ``datetime`` with a ``date`` raises a ``TypeError``. This error code catches these
@@ -715,7 +715,7 @@ Example:
 
 .. code-block:: python
 
-    # mypy: enable-error-code="safe-datetime"
+    # mypy: enable-error-code="unsafe-datetime"
     from datetime import date, datetime
 
     # Error: Incompatible types in assignment (expression has type "datetime", variable has type "date")
@@ -742,7 +742,7 @@ runtime:
     if dt < d:
         print("never reached")
 
-When ``safe-datetime`` is enabled, assignment and parameter passing are blocked,
+When ``unsafe-datetime`` is enabled, assignment and parameter passing are blocked,
 preventing the runtime error.
 
 **Note:** Equality comparisons (``==`` and ``!=``) still work between these types,
