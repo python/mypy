@@ -9,6 +9,37 @@ from librt.strings import BytesWriter, StringWriter, write_i16_le, read_i16_le, 
 
 from testutil import assertRaises
 
+# Test values for i16 write/read operations, organized by byte size
+I16_TEST_VALUES: list[int] = [
+    # 1-byte values (0 to 127, and -128 to -1 in terms of low byte pattern)
+    0, 1, 127, -1, -128,
+    # 2-byte values (128 to 32767, -32768 to -129)
+    128, 255, 256, 0x1234, 32767, -129, -256, -32768,
+]
+
+# Test values for i32 write/read operations: all i16 values plus 3-4 byte values
+I32_TEST_VALUES: list[int] = I16_TEST_VALUES + [
+    # 3-byte values (32768 to 8388607, -8388608 to -32769)
+    32768, 65535, 65536, 8388607, -32769, -65536, -8388608,
+    # 4-byte values (8388608 to 2147483647, -2147483648 to -8388609)
+    8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648,
+]
+
+# Test values for i64 write/read operations: all i32 values plus 5-8 byte values
+I64_TEST_VALUES: list[int] = I32_TEST_VALUES + [
+    # 5-8 byte values (beyond i32 range)
+    2147483648,           # 2^31, just above i32 max
+    4294967295,           # 2^32 - 1
+    4294967296,           # 2^32
+    1099511627775,        # 2^40 - 1
+    281474976710655,      # 2^48 - 1
+    72057594037927935,    # 2^56 - 1
+    9223372036854775807,  # max i64
+    -2147483649,          # just below i32 min
+    -4294967296,          # -2^32
+    -9223372036854775808, # min i64
+]
+
 def test_bytes_writer_basics() -> None:
     w = BytesWriter()
     assert w.getvalue() == b""
@@ -120,14 +151,11 @@ def test_bytes_writer_truncate() -> None:
         b.truncate(-1)
 
 def test_bytes_writer_write_i16_le() -> None:
-    # Test basic values and multiple writes
+    # Test all i16 values from 1-byte to 2-byte range
     w = BytesWriter()
-    write_i16_le(w, 0x1234)
-    write_i16_le(w, -1)
-    write_i16_le(w, 0)
-    write_i16_le(w, -32768)  # min i16
-    write_i16_le(w, 32767)   # max i16
-    assert w.getvalue() == b"\x34\x12\xff\xff\x00\x00\x00\x80\xff\x7f"
+    for v in I16_TEST_VALUES:
+        write_i16_le(w, v)
+    assert w.getvalue() == b"".join(struct.pack("<h", v) for v in I16_TEST_VALUES)
 
     # Test mixing with other operations and buffer growth
     w = BytesWriter()
@@ -175,27 +203,18 @@ def test_write_i16_le_via_any() -> None:
         write_i16_le(w3, 100000 + int())
 
 def test_bytes_reader_read_i16_le() -> None:
-    # Test basic reads
-    data = b"\x34\x12\xff\xff\x00\x00\x00\x80\xff\x7f"
-    assert read_i16_le(data, 0) == 0x1234
-    assert read_i16_le(data, 2) == -1
-    assert read_i16_le(data, 4) == 0
-    assert read_i16_le(data, 6) == -32768  # min i16
-    assert read_i16_le(data, 8) == 32767   # max i16
+    # Test all i16 values from 1-byte to 2-byte range
+    data = b"".join(struct.pack("<h", v) for v in I16_TEST_VALUES)
+    for i, v in enumerate(I16_TEST_VALUES):
+        assert read_i16_le(data, i * 2) == v
 
     # Test round-trip with write_i16_le
     w = BytesWriter()
-    write_i16_le(w, 0x1234)
-    write_i16_le(w, -1)
-    write_i16_le(w, 0)
-    write_i16_le(w, -32768)
-    write_i16_le(w, 32767)
+    for v in I16_TEST_VALUES:
+        write_i16_le(w, v)
     result = w.getvalue()
-    assert read_i16_le(result, 0) == 0x1234
-    assert read_i16_le(result, 2) == -1
-    assert read_i16_le(result, 4) == 0
-    assert read_i16_le(result, 6) == -32768
-    assert read_i16_le(result, 8) == 32767
+    for i, v in enumerate(I16_TEST_VALUES):
+        assert read_i16_le(result, i * 2) == v
 
     # Test various offsets
     data2 = b"\xFF" + b"\x34\x12" + b"\xFF"
@@ -226,33 +245,11 @@ def test_read_i16_le_via_any() -> None:
         read_i16_le(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
 
 def test_bytes_writer_write_i32_le() -> None:
-    # Test 1-byte values (0 to 127, and -128 to -1 in terms of low byte pattern)
+    # Test all i32 values from 1-byte to 4-byte range
     w = BytesWriter()
-    values = [0, 1, 127, -1, -128]
-    for v in values:
+    for v in I32_TEST_VALUES:
         write_i32_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<i", v) for v in values)
-
-    # Test 2-byte values (128 to 32767, -32768 to -129)
-    w = BytesWriter()
-    values = [128, 255, 256, 32767, -129, -256, -32768]
-    for v in values:
-        write_i32_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<i", v) for v in values)
-
-    # Test 3-byte values (32768 to 8388607, -8388608 to -32769)
-    w = BytesWriter()
-    values = [32768, 65535, 65536, 8388607, -32769, -65536, -8388608]
-    for v in values:
-        write_i32_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<i", v) for v in values)
-
-    # Test 4-byte values (8388608 to 2147483647, -2147483648 to -8388609)
-    w = BytesWriter()
-    values = [8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648]
-    for v in values:
-        write_i32_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<i", v) for v in values)
+    assert w.getvalue() == b"".join(struct.pack("<i", v) for v in I32_TEST_VALUES)
 
     # Test mixing with other operations and buffer growth
     w = BytesWriter()
@@ -300,37 +297,17 @@ def test_write_i32_le_via_any() -> None:
         write_i32_le(w3, 10000000000 + int())
 
 def test_bytes_reader_read_i32_le() -> None:
-    # Test 1-byte values
-    values = [0, 1, 127, -1, -128]
-    data = b"".join(struct.pack("<i", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i32_le(data, i * 4) == v
-
-    # Test 2-byte values
-    values = [128, 255, 256, 32767, -129, -256, -32768]
-    data = b"".join(struct.pack("<i", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i32_le(data, i * 4) == v
-
-    # Test 3-byte values
-    values = [32768, 65535, 65536, 8388607, -32769, -65536, -8388608]
-    data = b"".join(struct.pack("<i", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i32_le(data, i * 4) == v
-
-    # Test 4-byte values
-    values = [8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648]
-    data = b"".join(struct.pack("<i", v) for v in values)
-    for i, v in enumerate(values):
+    # Test all i32 values from 1-byte to 4-byte range
+    data = b"".join(struct.pack("<i", v) for v in I32_TEST_VALUES)
+    for i, v in enumerate(I32_TEST_VALUES):
         assert read_i32_le(data, i * 4) == v
 
     # Test round-trip with write_i32_le
-    values = [0, 127, -1, 32767, -32768, 8388607, -8388608, 2147483647, -2147483648]
     w = BytesWriter()
-    for v in values:
+    for v in I32_TEST_VALUES:
         write_i32_le(w, v)
     result = w.getvalue()
-    for i, v in enumerate(values):
+    for i, v in enumerate(I32_TEST_VALUES):
         assert read_i32_le(result, i * 4) == v
 
     # Test various offsets
@@ -362,51 +339,11 @@ def test_read_i32_le_via_any() -> None:
         read_i32_le(bytearray(b"\x00\x00\x00\x00"), 0 + int())  # type: ignore
 
 def test_bytes_writer_write_i64_le() -> None:
-    # Test 1-byte values
+    # Test all i64 values (includes all i32 values plus 5-8 byte values)
     w = BytesWriter()
-    values = [0, 1, 127, -1, -128]
-    for v in values:
+    for v in I64_TEST_VALUES:
         write_i64_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in values)
-
-    # Test 2-byte values
-    w = BytesWriter()
-    values = [128, 255, 256, 32767, -129, -256, -32768]
-    for v in values:
-        write_i64_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in values)
-
-    # Test 3-byte values
-    w = BytesWriter()
-    values = [32768, 65535, 65536, 8388607, -32769, -65536, -8388608]
-    for v in values:
-        write_i64_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in values)
-
-    # Test 4-byte values
-    w = BytesWriter()
-    values = [8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648]
-    for v in values:
-        write_i64_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in values)
-
-    # Test 5-8 byte values (beyond i32 range)
-    w = BytesWriter()
-    values = [
-        2147483648,           # 2^31, just above i32 max
-        4294967295,           # 2^32 - 1
-        4294967296,           # 2^32
-        1099511627775,        # 2^40 - 1
-        281474976710655,      # 2^48 - 1
-        72057594037927935,    # 2^56 - 1
-        9223372036854775807,  # max i64
-        -2147483649,          # just below i32 min
-        -4294967296,          # -2^32
-        -9223372036854775808, # min i64
-    ]
-    for v in values:
-        write_i64_le(w, v)
-    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in values)
+    assert w.getvalue() == b"".join(struct.pack("<q", v) for v in I64_TEST_VALUES)
 
     # Test mixing with other operations and buffer growth
     w = BytesWriter()
@@ -442,55 +379,17 @@ def test_write_i64_le_via_any() -> None:
     assert result[392:400] == struct.pack("<q", 490000000000)
 
 def test_bytes_reader_read_i64_le() -> None:
-    # Test 1-byte values
-    values = [0, 1, 127, -1, -128]
-    data = b"".join(struct.pack("<q", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i64_le(data, i * 8) == v
-
-    # Test 2-byte values
-    values = [128, 255, 256, 32767, -129, -256, -32768]
-    data = b"".join(struct.pack("<q", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i64_le(data, i * 8) == v
-
-    # Test 3-byte values
-    values = [32768, 65535, 65536, 8388607, -32769, -65536, -8388608]
-    data = b"".join(struct.pack("<q", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i64_le(data, i * 8) == v
-
-    # Test 4-byte values
-    values = [8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648]
-    data = b"".join(struct.pack("<q", v) for v in values)
-    for i, v in enumerate(values):
-        assert read_i64_le(data, i * 8) == v
-
-    # Test 5-8 byte values (beyond i32 range)
-    values = [
-        2147483648,           # 2^31
-        4294967295,           # 2^32 - 1
-        4294967296,           # 2^32
-        1099511627775,        # 2^40 - 1
-        281474976710655,      # 2^48 - 1
-        72057594037927935,    # 2^56 - 1
-        9223372036854775807,  # max i64
-        -2147483649,          # just below i32 min
-        -4294967296,          # -2^32
-        -9223372036854775808, # min i64
-    ]
-    data = b"".join(struct.pack("<q", v) for v in values)
-    for i, v in enumerate(values):
+    # Test all i64 values (includes all i32 values plus 5-8 byte values)
+    data = b"".join(struct.pack("<q", v) for v in I64_TEST_VALUES)
+    for i, v in enumerate(I64_TEST_VALUES):
         assert read_i64_le(data, i * 8) == v
 
     # Test round-trip with write_i64_le
-    values = [0, 127, -1, 32767, -32768, 2147483647, -2147483648,
-              9223372036854775807, -9223372036854775808]
     w = BytesWriter()
-    for v in values:
+    for v in I64_TEST_VALUES:
         write_i64_le(w, v)
     result = w.getvalue()
-    for i, v in enumerate(values):
+    for i, v in enumerate(I64_TEST_VALUES):
         assert read_i64_le(result, i * 8) == v
 
     # Test various offsets
