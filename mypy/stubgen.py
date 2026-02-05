@@ -1222,13 +1222,12 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
 
     def visit_if_stmt(self, o: IfStmt) -> None:
         # Ignore if __name__ == '__main__'.
-        expr = o.expr[0]
         if (
-            isinstance(expr, ComparisonExpr)
-            and isinstance(expr.operands[0], NameExpr)
-            and isinstance(expr.operands[1], StrExpr)
-            and expr.operands[0].name == "__name__"
-            and "__main__" in expr.operands[1].value
+            isinstance(o.expr, ComparisonExpr)
+            and isinstance(o.expr.operands[0], NameExpr)
+            and isinstance(o.expr.operands[1], StrExpr)
+            and o.expr.operands[0].name == "__name__"
+            and "__main__" in o.expr.operands[1].value
         ):
             return
         super().visit_if_stmt(o)

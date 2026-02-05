@@ -5090,23 +5090,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # This frame records the knowledge from previous if/elif clauses not being taken.
         # Fall-through to the original frame is handled explicitly in each block.
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
-            for e, b in zip(s.expr, s.body):
-                t = get_proper_type(self.expr_checker.accept(e))
+            t = get_proper_type(self.expr_checker.accept(s.expr))
 
-                if isinstance(t, DeletedType):
-                    self.msg.deleted_as_rvalue(t, s)
+            if isinstance(t, DeletedType):
+                self.msg.deleted_as_rvalue(t, s)
 
-                if_map, else_map = self.find_isinstance_check(e)
+            if_map, else_map = self.find_isinstance_check(s.expr)
 
-                s.unreachable_else = is_unreachable_map(else_map)
+            s.unreachable_else = is_unreachable_map(else_map)
 
-                # XXX Issue a warning if condition is always False?
-                with self.binder.frame_context(can_skip=True, fall_through=2):
-                    self.push_type_map(if_map, from_assignment=False)
-                    self.accept(b)
+            # XXX Issue a warning if condition is always False?
+            with self.binder.frame_context(can_skip=True, fall_through=2):
+                self.push_type_map(if_map, from_assignment=False)
+                self.accept(s.body)
 
-                # XXX Issue a warning if condition is always True?
-                self.push_type_map(else_map, from_assignment=False)
+            # XXX Issue a warning if condition is always True?
+            self.push_type_map(else_map, from_assignment=False)
 
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 if s.else_body:
@@ -5114,7 +5113,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
-        if_stmt = IfStmt([s.expr], [s.body], None)
+        if_stmt = IfStmt(s.expr, s.body, None)
         if_stmt.set_line(s)
         self.accept_loop(if_stmt, s.else_body, exit_condition=s.expr)
 

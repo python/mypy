@@ -773,19 +773,19 @@ class ASTConverter:
         # Check that block only contains a single Decorator, FuncDef, or OverloadedFuncDef.
         # Multiple overloads have already been merged as OverloadedFuncDef.
         if not (
-            len(stmt.body[0].body) == 1
+            len(stmt.body.body) == 1
             and (
-                isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                isinstance(stmt.body.body[0], (Decorator, OverloadedFuncDef))
                 or current_overload_name is not None
-                and isinstance(stmt.body[0].body[0], FuncDef)
+                and isinstance(stmt.body.body[0], FuncDef)
             )
-            or len(stmt.body[0].body) > 1
-            and isinstance(stmt.body[0].body[-1], OverloadedFuncDef)
-            and all(self._is_stripped_if_stmt(if_stmt) for if_stmt in stmt.body[0].body[:-1])
+            or len(stmt.body.body) > 1
+            and isinstance(stmt.body.body[-1], OverloadedFuncDef)
+            and all(self._is_stripped_if_stmt(if_stmt) for if_stmt in stmt.body.body[:-1])
         ):
             return None
 
-        overload_name = cast(Decorator | FuncDef | OverloadedFuncDef, stmt.body[0].body[-1]).name
+        overload_name = cast(Decorator | FuncDef | OverloadedFuncDef, stmt.body.body[-1]).name
         if stmt.else_body is None:
             return overload_name
 
@@ -816,20 +816,20 @@ class ASTConverter:
                  i.e. the truth value is unknown.
         """
         infer_reachability_of_if_statement(stmt, self.options)
-        if stmt.else_body is None and stmt.body[0].is_unreachable is True:
+        if stmt.else_body is None and stmt.body.is_unreachable is True:
             # always False condition with no else
             return None, None
         if (
             stmt.else_body is None
-            or stmt.body[0].is_unreachable is False
+            or stmt.body.is_unreachable is False
             and stmt.else_body.is_unreachable is False
         ):
             # The truth value is unknown, thus not conclusive
             return None, stmt
         if stmt.else_body.is_unreachable is True:
             # else_body will be set unreachable if condition is always True
-            return stmt.body[0], None
-        if stmt.body[0].is_unreachable is True:
+            return stmt.body, None
+        if stmt.body.is_unreachable is True:
             # body will be set unreachable if condition is always False
             # else_body can contain an IfStmt itself (for elif) -> do a recursive check
             if isinstance(stmt.else_body.body[0], IfStmt):
@@ -843,8 +843,7 @@ class ASTConverter:
         Needed to still be able to check the conditions after the contents
         have been merged with the surrounding function overloads.
         """
-        if len(stmt.body) == 1:
-            stmt.body[0].body = []
+        stmt.body.body = []
         if stmt.else_body and len(stmt.else_body.body) == 1:
             if isinstance(stmt.else_body.body[0], IfStmt):
                 self._strip_contents_from_if_stmt(stmt.else_body.body[0])
@@ -859,7 +858,7 @@ class ASTConverter:
         if not isinstance(stmt, IfStmt):
             return False
 
-        if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
+        if stmt.body.body:
             # Body not empty
             return False
 
@@ -1328,9 +1327,7 @@ class ASTConverter:
 
     # If(expr test, stmt* body, stmt* orelse)
     def visit_If(self, n: ast3.If) -> IfStmt:
-        node = IfStmt(
-            [self.visit(n.test)], [self.as_required_block(n.body)], self.as_block(n.orelse)
-        )
+        node = IfStmt(self.visit(n.test), self.as_required_block(n.body), self.as_block(n.orelse))
         return self.set_line(node, n)
 
     # With(withitem* items, stmt* body, string? type_comment)

@@ -1836,8 +1836,8 @@ class IfStmt(Statement):
 
     __match_args__ = ("expr", "body", "else_body", "unreachable_else")
 
-    expr: list[Expression]
-    body: list[Block]
+    expr: Expression
+    body: Block
     else_body: Block | None
     # (If there is actually no else statement, semantic analysis may nevertheless create an
     # empty else block and mark it permanently as unreachable to tell that the control flow
@@ -1846,7 +1846,7 @@ class IfStmt(Statement):
     # (Type checking may modify this flag repeatedly to indicate whether an actually available
     # or unavailable else block is unreachable, considering the current type information.)
 
-    def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
+    def __init__(self, expr: Expression, body: Block, else_body: Block | None) -> None:
         super().__init__()
         self.expr = expr
         self.body = body

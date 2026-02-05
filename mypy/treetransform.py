@@ -360,8 +360,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_if_stmt(self, node: IfStmt) -> IfStmt:
         return IfStmt(
-            self.expressions(node.expr),
-            self.blocks(node.body),
+            self.expr(node.expr),
+            self.block(node.body),
             self.optional_block(node.else_body),
         )
 

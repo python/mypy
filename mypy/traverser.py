@@ -208,10 +208,8 @@ class TraverserVisitor(NodeVisitor[None]):
             o.expr.accept(self)
 
     def visit_if_stmt(self, o: IfStmt, /) -> None:
-        for e in o.expr:
-            e.accept(self)
-        for b in o.body:
-            b.accept(self)
+        o.expr.accept(self)
+        o.body.accept(self)
         if o.else_body:
             o.else_body.accept(self)
 
@@ -1179,8 +1177,7 @@ class DefinitionSeeker(StatementVisitor[None]):
         pass
 
     def visit_if_stmt(self, o: IfStmt, /) -> None:
-        for b in o.body:
-            b.accept(self)
+        o.body.accept(self)
         if o.else_body:
             o.else_body.accept(self)
 
