@@ -1,0 +1,467 @@
+-- Test cases for vec[i64]. These also partially cover other unboxed item types,
+-- which use a similar runtime representation.
+
+[case testVecI64BasicOps_librt_experimental]
+from typing import Final, Any, Iterable, Tuple
+
+from mypy_extensions import i64, i32
+from librt.vecs import vec, append, remove, pop
+
+from testutil import assertRaises
+
+ERROR: Final = -113
+
+def test_create_empty() -> None:
+    v = vec[i64]()
+    assert len(v) == 0
+
+def test_create_from_list_and_get_item() -> None:
+    v = vec[i64]([])
+    assert len(v) == 0
+
+    v = vec[i64]([ERROR, 0, 255, int() + (2**63 - 1)])
+    assert len(v) == 4
+    assert v[0] == -113
+    assert v[1] == 0
+    assert v[2] == 255
+    assert v[3] == 2**63 - 1
+
+    v = vec[i64]([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    assert len(v) == 9
+    for i in range(i64(9)):
+        assert v[i] == i + 1
+
+def test_append() -> None:
+    v = vec[i64]()
+    v = append(v, int() + 3)
+    assert len(v) == 1
+    x: i64 = ERROR + int()
+    v = append(v, x)
+    assert len(v) == 2
+    assert v[0] == 3
+    assert v[1] == ERROR
+    v = vec[i64]()
+    for i in range(1024):
+        v = append(v, i * 3)
+    assert len(v) == 1024
+    for i in range(1024):
+        assert v[i] == i * 3
+
+def test_get_item() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int()
+    assert v[x] == 3
+    assert v[int()] == 3
+    x += 1
+    assert v[x] == 4
+    assert v[int() + 1] == 4
+    with assertRaises(IndexError):
+        v[x + 1]
+    with assertRaises(IndexError):
+        v[2]
+    with assertRaises(IndexError):
+        v[2**63 - 1]
+
+def test_get_item_negative() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int() - 1
+    assert v[x] == 4
+    assert v[int() - 2] == 3
+    x -= 1
+    assert v[x] == 3
+    assert v[int() - 1] == 4
+    with assertRaises(IndexError):
+        v[x - 1]
+    with assertRaises(IndexError):
+        v[-3]
+    with assertRaises(IndexError):
+        v[-2**63]
+    with assertRaises(IndexError):
+        v[int() - 3]
+
+def test_set_item() -> None:
+    v = vec[i64]([3, 4])
+    v[0] = 0
+    assert v[0] == 0
+
+    x: i64 = int()
+
+    v[x] = 4
+    assert v[x] == 4
+
+    v[int()] = 5
+    assert v[int()] == 5
+
+    x += 1
+
+    v[x] = -5
+    assert v[x] == -5
+
+    v[1 + int()] = ERROR
+    assert v[1] == ERROR
+
+    with assertRaises(IndexError):
+        v[1 + x] = 6
+    with assertRaises(IndexError):
+        v[2 + int()] = 6
+
+def test_set_item_negative() -> None:
+    v = vec[i64]([3, 4])
+    v[-1] = 0
+    assert v[-1] == 0
+
+    x: i64 = int() - 1
+
+    v[x] = 4
+    assert v[x] == 4
+
+    v[int() - 2] = 5
+    assert v[int() - 2] == 5
+
+    x -= 1
+
+    v[x] = -5
+    assert v[x] == -5
+
+    v[-1 + int()] = ERROR
+    assert v[-1] == ERROR
+
+    with assertRaises(IndexError):
+        v[x - 1] = 6
+    with assertRaises(IndexError):
+        v[int() - 3] = 6
+
+def test_operator_assignment() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int()
+    v[x] += 2
+    assert v[0] == 5
+    v[x + 1] -= 10
+    assert v[1] == -6
+    y = int()
+    v[y] += 6
+    assert v[y] == 11
+    v[y + 1] *= 2
+    assert v[1 + y] == -12
+
+def test_box_and_unbox() -> None:
+    v = vec[i64]([3, 5])
+    o: Any = v
+    assert len(o) == 2
+    assert o[0] == 3
+    assert o[1] == 5
+    o[1] = 6
+    v2: vec[i64] = o
+    assert len(v2) == 2
+    assert v2[0] == 3
+    assert v2[1] == 6
+    o2: Any = "x"
+    with assertRaises(TypeError, "vec[i64] object expected; got str"):
+        v2 = o2
+    o3: Any = vec[str]([])
+    # TODO: Better message
+    with assertRaises(TypeError, "vec[i64] object expected; got vec"):
+        v2 = o3
+
+def check_opt(x: vec[i64] | None, is_none: bool) -> None:
+    if is_none:
+        assert x is None
+    else:
+        # If statements ensure type narrowing doesn't leak between blocks
+        if int() + 1:
+            assert x is not None
+            assert len(x) == 1
+            assert x[0] == 5
+        if int() + 2:
+            assert isinstance(x, vec)
+            assert len(x) == 1
+            assert x[0] == 5
+    if isinstance(x, vec):
+        assert x[0] == 5
+        assert not is_none
+    else:
+        assert is_none
+
+def test_vec_optional() -> None:
+    v = vec[i64]([5])
+    check_opt(None, True)
+    check_opt(v, False)
+    a1: Any = None
+    check_opt(a1, True)
+    a2: Any = v
+    check_opt(a2, False)
+    a3: Any = str
+    with assertRaises(TypeError):
+        check_opt(a3, False)
+
+def check_union(x: vec[i64] | str, is_str: bool) -> None:
+    if is_str:
+        assert isinstance(x, str)
+        assert x == "ss"
+    else:
+        if int() + 1:
+            assert not isinstance(x, str)
+            assert len(x) == 1
+            assert x[0] == 5
+        if int() + 2:
+            assert isinstance(x, vec)
+            assert len(x) == 1
+            assert x[0] == 5
+    if isinstance(x, vec):
+        assert x[0] == 5
+        assert not is_str
+    else:
+        assert is_str
+        assert x == "ss"
+
+def test_vec_union() -> None:
+    v = vec[i64]([5])
+    check_union("ss", True)
+    check_union(v, False)
+    a1: Any = "ss"
+    check_union(a1, True)
+    a2: Any = v
+    check_union(a2, False)
+    a3: Any = b"ss"
+    with assertRaises(TypeError):
+        check_union(a3, False)
+    a4: Any = vec[i32]()
+    with assertRaises(TypeError, 'union[vec[i64], str] object expected; got vec[i32]'):
+        check_union(a4, False)
+
+def test_construct_from_list_multiply() -> None:
+    for i in range(50):
+        v = vec[i64]([i + 1] * i)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == i + 1
+    for i in range(50):
+        v = vec[i64](i * [i - 1])
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == i - 1
+
+def test_construct_from_list_comprehension() -> None:
+    for i in range(50):
+        l = [i * i for i in range(i)]
+        v = vec[i64]([n + 5 for n in l])
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j + 5
+
+def test_construct_from_range() -> None:
+    v = vec[i64](range(0))
+    assert v == vec[i64]()
+    v = vec[i64](range(5))
+    assert v == vec[i64]([0, 1, 2, 3, 4])
+    v = vec[i64](range(2, 5))
+    assert v == vec[i64]([2, 3, 4])
+
+def test_construct_from_iterable() -> None:
+    for i in range(50):
+        it: Iterable[i64] = iter([i * i for i in range(i)])
+        v = vec[i64](it)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j
+    for i in range(50):
+        it2: Iterable[int] = iter([i * i for i in range(i)])
+        v = vec[i64](it2)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j
+
+def test_equality() -> None:
+    v0 = vec[i64]()
+    v0b = vec[i64]()
+    v1 = vec[i64]([1])
+    v1b = vec[i64]([3])
+    assert v0 == v0
+    assert v1 == v1
+    assert v0 == v0b
+    assert v0 != v1
+    assert v1 != v1b
+    assert v1 != v0
+
+def test_str_conversion() -> None:
+    v = vec[i64]()
+    assert str(v) == "vec[i64]([])"
+    assert repr(v) == "vec[i64]([])"
+    v = vec[i64]([126])
+    assert str(v) == "vec[i64]([126])"
+    v = append(v, -5)
+    assert str(v) == "vec[i64]([126, -5])"
+    v = append(v, ERROR)
+    assert str(v) == "vec[i64]([126, -5, -113])"
+
+def test_for_loop() -> None:
+    for n in vec[i64]():
+        assert False
+    a = []
+    for n in vec[i64]([5]):
+        a.append(n)
+    assert a == [5]
+    v = vec[i64]([ERROR, 9, 8])
+    a = []
+    for n in v:
+        a.append(n)
+    assert a == [ERROR, 9, 8]
+    assert len(v) == 3
+
+def test_contains() -> None:
+    v = vec[i64]()
+    x: i64 = int()
+    assert x not in v
+    v = vec[i64]([0])
+    assert x in v
+    assert x + 1 not in v
+    v2 = vec[i64]([ERROR, 7, 9])
+    assert x + ERROR in v2
+    assert x + 7 in v2
+    assert int() + 9 in v2
+    assert x not in v2
+    assert int() not in v2
+
+def test_slicing() -> None:
+    v = vec[i64]()
+    assert v[:] == vec[i64]([])
+    assert v[1:] == vec[i64]([])
+    assert v[:-5] == vec[i64]([])
+    v = vec[i64]([0, 1, 2, 3, 4])
+    assert v[1:4] == vec[i64]([1, 2, 3])
+    assert v[2:-1] == vec[i64]([2, 3])
+    assert v[-2:-1] == vec[i64]([3])
+    assert v[1:] == vec[i64]([1, 2, 3, 4])
+    assert v[:-1] == vec[i64]([0, 1, 2, 3])
+    assert v[:] == v
+    assert v[:] is not v
+    assert v[5:] == vec[i64]()
+    assert v[100:] == vec[i64]()
+    assert v[0:5] ==v
+    assert v[0:5] is not v
+    assert v[2:100] == vec[i64]([2, 3, 4])
+    assert v[-100:2] == vec[i64]([0, 1])
+    assert v[5:100] == vec[i64]([])
+    assert v[50:100] == vec[i64]([])
+    assert v[-100:-50] == vec[i64]([])
+
+def test_slicing_with_step() -> None:
+    v = vec[i64]([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    assert v[1:5:2] == vec[i64]([1, 3])
+    assert v[1:6:2] == vec[i64]([1, 3, 5])
+    assert v[5:1:-2] == vec[i64]([5, 3])
+    assert v[6:1:-2] == vec[i64]([6, 4, 2])
+    v = vec[i64]([0, 1, 2, 3, 4])
+    assert v[::-1] == vec[i64]([4, 3, 2, 1, 0])
+    with assertRaises(ValueError):
+        v[1:3:0]
+
+def test_remove() -> None:
+    a = [4, 7, ERROR]
+    for i in a:
+        v = vec[i64](a)
+        v = remove(v, i)
+        assert v == vec[i64]([j for j in a if j != i])
+    v = vec[i64](a)
+    v = remove(v, 4)
+    v = remove(v, 7)
+    v = remove(v, ERROR)
+    assert v == vec[i64]()
+    with assertRaises(ValueError):
+        remove(v, 4)
+    v = append(v, 5)
+    with assertRaises(ValueError):
+        remove(v, 7)
+    v = remove(v, 5)
+    assert len(v) == 0
+    v = vec[i64]([1, 1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1])
+    v = remove(v, 1)
+    assert v == vec[i64]()
+    f: Any = 1.1
+    with assertRaises(TypeError):
+        remove(v, f)
+    s: Any = 'x'
+    with assertRaises(TypeError):
+        remove(v, s)
+
+def test_pop_last() -> None:
+    v = vec[i64]([4, 7, ERROR])
+    v, n = pop(v)
+    assert n == ERROR
+    assert v == vec[i64]([4, 7])
+    v, n = pop(v)
+    assert n == 7
+    assert v == vec[i64]([4])
+    v, n = pop(v)
+    assert n == 4
+    assert v == vec[i64]()
+    with assertRaises(IndexError):
+       pop(v)
+
+def test_pop_index() -> None:
+    v = vec[i64]([4, 7, 9, 15, 22])
+    v, n = pop(v, 0)
+    assert n == 4
+    assert v == vec[i64]([7, 9, 15, 22])
+    v, n = pop(v, -1)
+    assert n == 22
+    assert v == vec[i64]([7, 9, 15])
+    v, n = pop(v, 1)
+    assert n == 9
+    assert v == vec[i64]([7, 15])
+
+    with assertRaises(IndexError):
+       pop(v, 2)
+
+    with assertRaises(IndexError):
+       pop(v, -3)
+
+    v, n = pop(v, -2)
+    assert n == 7
+    assert v == vec[i64]([15])
+    v, n = pop(v, 0)
+    assert n == 15
+    assert v == vec[i64]()
+
+def f(x: vec[i64]) -> None:
+    pass
+
+def test_wrapper_arg_check() -> None:
+    f_any: Any = f
+    with assertRaises(TypeError):
+        f_any([])
+
+v: Final = vec[i64]([5, 6])
+
+def test_final() -> None:
+    assert v == vec[i64]([5, 6])
+
+def fdefault(v: vec[i64] = vec[i64]([5])) -> vec[i64]:
+    return v
+
+def test_default_arg() -> None:
+    assert fdefault() == vec[i64]([5])
+    assert fdefault(vec[i64]()) == vec[i64]()
+    f_any: Any = fdefault
+    assert f_any() == vec[i64]([5])
+    assert f_any(vec[i64]([6])) == vec[i64]([6])
+
+def ftuple(b: bool) -> Tuple[vec[i64], vec[i64]]:
+    if b:
+        raise RuntimeError()
+    return vec[i64]([5]), vec[i64]()
+
+def test_tuple() -> None:
+    t = ftuple(False)
+    assert len(t) == 2
+    assert t[0] == vec[i64]([5])
+    assert t[1] == vec[i64]()
+    a, b = t
+    assert a == t[0]
+    assert b == t[1]
+    with assertRaises(RuntimeError):
+        ftuple(True)
