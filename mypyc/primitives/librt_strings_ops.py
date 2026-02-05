@@ -98,6 +98,26 @@ function_op(
 )
 
 function_op(
+    name="librt.strings.write_i32_le",
+    arg_types=[bytes_writer_rprimitive, int32_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI32LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i32_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name="CPyBytes_ReadI32LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
     name="builtins.len",
     arg_types=[bytes_writer_rprimitive],
     return_type=short_int_rprimitive,

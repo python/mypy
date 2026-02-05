@@ -44,10 +44,19 @@ CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
     return CPY_NONE;
 }
 
+static inline char
+CPyBytesWriter_WriteI32LE(PyObject *obj, int32_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    BytesWriter_write_i32_le_unchecked(self, value);
+    return CPY_NONE;
+}
+
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value);
 
 // Helper function for bytes read error handling (negative index or out of range)
-int16_t CPyBytes_ReadError(int64_t index, Py_ssize_t size);
+void CPyBytes_ReadError(int64_t index, Py_ssize_t size);
 
 // If index is negative, convert to non-negative index (no range checking)
 static inline int64_t CPyBytesWriter_AdjustIndex(PyObject *obj, int64_t index) {
@@ -79,6 +88,18 @@ CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return read_i16_le_unchecked(data + index);
+}
+
+static inline int32_t
+CPyBytes_ReadI32LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 4)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return read_i32_le_unchecked(data + index);
 }
 
 #endif // MYPYC_EXPERIMENTAL
