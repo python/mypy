@@ -831,9 +831,76 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
+static PyObject*
+write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_i16_le() takes exactly 2 arguments (%zu given)", nargs);
+        return NULL;
+    }
+    PyObject *writer = args[0];
+    if (!check_bytes_writer(writer)) {
+        return NULL;
+    }
+    PyObject *value = args[1];
+    int16_t unboxed = CPyLong_AsInt16(value);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        // Error already set by CPyLong_AsInt16 (ValueError for overflow, TypeError for wrong type)
+        return NULL;
+    }
+    BytesWriterObject *bw = (BytesWriterObject *)writer;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2))) {
+        return NULL;
+    }
+    BytesWriter_write_i16_le_unchecked(bw, unboxed);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_i16_le() takes exactly 2 arguments (%zu given)", nargs);
+        return NULL;
+    }
+    PyObject *bytes_obj = args[0];
+    if (unlikely(!PyBytes_Check(bytes_obj))) {
+        PyErr_SetString(PyExc_TypeError, "read_i16_le() argument 1 must be bytes");
+        return NULL;
+    }
+    PyObject *index_obj = args[1];
+    int64_t index = CPyLong_AsInt64(index_obj);
+    if (unlikely(index == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        return NULL;
+    }
+    if (unlikely(index < 0)) {
+        PyErr_SetString(PyExc_ValueError, "index must be non-negative");
+        return NULL;
+    }
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index > size - 2)) {
+        PyErr_Format(PyExc_IndexError,
+                     "index %lld out of range for bytes of length %zd",
+                     (long long)index, size);
+        return NULL;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    int16_t value = read_i16_le_unchecked(data + index);
+    return PyLong_FromLong(value);
+}
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
+#ifdef MYPYC_EXPERIMENTAL
+    {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
+     PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"read_i16_le", (PyCFunction) read_i16_le, METH_FASTCALL,
+     PyDoc_STR("Read a 16-bit signed integer from bytes in little-endian format")
+    },
+#endif
     {NULL, NULL, 0, NULL}
 };
 

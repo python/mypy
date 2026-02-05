@@ -94,6 +94,52 @@ L2:
     CPyBytesWriter_SetItem(b, r0, x)
     return 1
 
+[case testLibrtStrings_write_i16_le_experimental_64bit]
+from librt.strings import BytesWriter, write_i16_le
+from mypy_extensions import i16
+
+def test_write_i16_le(b: BytesWriter, n: i16) -> None:
+    write_i16_le(b, n)
+def test_write_i16_le_literal(b: BytesWriter) -> None:
+    write_i16_le(b, 1234)
+[out]
+def test_write_i16_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i16
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI16LE(b, n)
+    return 1
+def test_write_i16_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI16LE(b, 1234)
+    return 1
+
+[case testLibrtStrings_read_i16_le_experimental_64bit]
+from librt.strings import read_i16_le
+from mypy_extensions import i16, i64
+
+def test_read_i16_le(b: bytes, i: i64) -> i16:
+    return read_i16_le(b, i)
+def test_read_i16_le_literal(b: bytes) -> i16:
+    return read_i16_le(b, 0)
+[out]
+def test_read_i16_le(b, i):
+    b :: bytes
+    i :: i64
+    r0 :: i16
+L0:
+    r0 = CPyBytes_ReadI16LE(b, i)
+    return r0
+def test_read_i16_le_literal(b):
+    b :: bytes
+    r0 :: i16
+L0:
+    r0 = CPyBytes_ReadI16LE(b, 0)
+    return r0
+
 [case testLibrtStrings_StringWriter_experimental_64bit]
 from librt.strings import StringWriter
 from mypy_extensions import i32, i64

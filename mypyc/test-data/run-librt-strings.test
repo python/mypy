@@ -4,7 +4,7 @@ import base64
 import binascii
 import random
 
-from librt.strings import BytesWriter, StringWriter
+from librt.strings import BytesWriter, StringWriter, write_i16_le, read_i16_le
 
 from testutil import assertRaises
 
@@ -117,6 +117,112 @@ def test_bytes_writer_truncate() -> None:
     b.write(b"foobar")
     with assertRaises(ValueError):
         b.truncate(-1)
+
+def test_bytes_writer_write_i16_le() -> None:
+    # Test basic values and multiple writes
+    w = BytesWriter()
+    write_i16_le(w, 0x1234)
+    write_i16_le(w, -1)
+    write_i16_le(w, 0)
+    write_i16_le(w, -32768)  # min i16
+    write_i16_le(w, 32767)   # max i16
+    assert w.getvalue() == b"\x34\x12\xff\xff\x00\x00\x00\x80\xff\x7f"
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(1000):
+        write_i16_le(w, i)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 2002
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    # Check a few values in the middle
+    assert result[1:3] == b"\x00\x00"  # i=0
+    assert result[3:5] == b"\x01\x00"  # i=1
+    assert result[1999:2001] == b"\xe7\x03"  # i=999
+
+def test_write_i16_le_via_any() -> None:
+    # Test write_i16_le via Any to ensure C extension wrapper works
+    # (tests fallback path when not using mypyc primitives)
+    w: Any = BytesWriter()
+
+    # Test 8-bit and 16-bit operations
+    w.append(0x42)
+    write_i16_le(w, 0x1234)
+    w.append(0xFF)
+    assert w.getvalue() == b"\x42\x34\x12\xFF"
+
+    # Test buffer growth with write_i16_le
+    w2: Any = BytesWriter()
+    for i in range(150):
+        write_i16_le(w2, i)
+    result = w2.getvalue()
+    assert len(result) == 300
+    assert result[0:2] == b"\x00\x00"  # i=0
+    assert result[2:4] == b"\x01\x00"  # i=1
+    assert result[298:300] == b"\x95\x00"  # i=149
+
+    # Test values that don't fit in i16
+    w3: Any = BytesWriter()
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_le(w3, 32768 + int())
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_le(w3, -32769 + int())
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_le(w3, 100000 + int())
+
+def test_bytes_reader_read_i16_le() -> None:
+    # Test basic reads
+    data = b"\x34\x12\xff\xff\x00\x00\x00\x80\xff\x7f"
+    assert read_i16_le(data, 0) == 0x1234
+    assert read_i16_le(data, 2) == -1
+    assert read_i16_le(data, 4) == 0
+    assert read_i16_le(data, 6) == -32768  # min i16
+    assert read_i16_le(data, 8) == 32767   # max i16
+
+    # Test round-trip with write_i16_le
+    w = BytesWriter()
+    write_i16_le(w, 0x1234)
+    write_i16_le(w, -1)
+    write_i16_le(w, 0)
+    write_i16_le(w, -32768)
+    write_i16_le(w, 32767)
+    result = w.getvalue()
+    assert read_i16_le(result, 0) == 0x1234
+    assert read_i16_le(result, 2) == -1
+    assert read_i16_le(result, 4) == 0
+    assert read_i16_le(result, 6) == -32768
+    assert read_i16_le(result, 8) == 32767
+
+    # Test various offsets
+    data2 = b"\xFF" + b"\x34\x12" + b"\xFF"
+    assert read_i16_le(data2, 1) == 0x1234
+
+def test_read_i16_le_via_any() -> None:
+    # Test read_i16_le via Any to ensure C extension wrapper works
+    data: Any = b"\x34\x12\xff\xff\x00\x00"
+    assert read_i16_le(data, 0) == 0x1234
+    assert read_i16_le(data, 2) == -1
+    assert read_i16_le(data, 4) == 0
+
+    # Test error cases
+    # Index out of range
+    with assertRaises(IndexError, "index 10 out of range for bytes of length 6"):
+        read_i16_le(data, 10 + int())
+    with assertRaises(IndexError, "index 5 out of range for bytes of length 6"):
+        read_i16_le(data, 5 + int())  # Not enough bytes for i16
+
+    # Negative index
+    with assertRaises(ValueError, "index must be non-negative"):
+        read_i16_le(data, -1 + int())
+
+    # Wrong type for bytes argument
+    with assertRaises(TypeError, "read_i16_le() argument 1 must be bytes"):
+        read_i16_le("not bytes", 0 + int())  # type: ignore
+    with assertRaises(TypeError, "read_i16_le() argument 1 must be bytes"):
+        read_i16_le(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
 
 def test_write_bytearray() -> None:
     w = BytesWriter()

@@ -5,6 +5,7 @@ from mypyc.ir.rtypes import (
     bytearray_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     none_rprimitive,
@@ -74,6 +75,26 @@ method_op(
     error_kind=ERR_MAGIC,
     experimental=True,
     dependencies=[LIBRT_STRINGS],
+)
+
+function_op(
+    name="librt.strings.write_i16_le",
+    arg_types=[bytes_writer_rprimitive, int16_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI16LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i16_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyBytes_ReadI16LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 function_op(
