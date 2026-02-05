@@ -102,6 +102,27 @@ CPyBytes_ReadI32LE(PyObject *bytes_obj, int64_t index) {
     return read_i32_le_unchecked(data + index);
 }
 
+static inline char
+CPyBytesWriter_WriteI64LE(PyObject *obj, int64_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 8))
+        return CPY_NONE_ERROR;
+    BytesWriter_write_i64_le_unchecked(self, value);
+    return CPY_NONE;
+}
+
+static inline int64_t
+CPyBytes_ReadI64LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return read_i64_le_unchecked(data + index);
+}
+
 #endif // MYPYC_EXPERIMENTAL
 
 #endif
