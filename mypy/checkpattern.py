@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from collections import defaultdict
 from typing import Final, NamedTuple
 
@@ -242,12 +243,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         if star_position is not None:
             required_patterns -= 1
 
-        #
-        # get inner types of original type
-        # 1. Go through all possible types and filter to only those which are sequences that could match that number of items
-        # 2. If there is exactly one tuple left with an unpack, then use that type and the unpack index
-        # 3. Otherwise, take the product of the item types so that each index can have a unique type. For tuples with unpack
-        #    fallback to merging all of their types for each index since we can't handle multiple unpacked items at once yet.
+        # 1. Go through all possible types and filter to only those which are sequences that
+        #    could match that number of items
+        # 2. If there is exactly one tuple left with an unpack, then use that type
+        #    and the unpack index
+        # 3. Otherwise, take the product of the item types so that each index can have a
+        #    unique type. For tuples with unpack fallback to merging all of their types
+        #    for each index, since we can't handle multiple unpacked items at once yet.
 
         # Whether we have encountered a type that we don't know how to handle in the union
         unknown_type = False
@@ -255,39 +257,44 @@ class PatternChecker(PatternVisitor[PatternType]):
         sequence_types: list[Type] = []
         #  A list of tuple types that could match the sequence, per index
         tuple_types: list[list[Type]] = []
-        # A list of all the unpack tuple types that we encountered, each containing the tuple type, unpack index, and union index
+        # A list of all the unpack tuple types that we encountered, each containing the
+        # tuple type, unpack index, and union index
         unpack_tuple_types: list[tuple[TupleType, int, int]] = []
         for i, t in enumerate(
             current_type.items if isinstance(current_type, UnionType) else [current_type]
         ):
             t = get_proper_type(t)
             if isinstance(t, TupleType):
-                t_items = list(t.items)
-                unpack_index = find_unpack_in_list(t_items)
+                tuple_items = list(t.items)
+                unpack_index = find_unpack_in_list(tuple_items)
                 if unpack_index is None:
-                    size_diff = len(t_items) - required_patterns
+                    size_diff = len(tuple_items) - required_patterns
                     if size_diff < 0:
                         continue
-                    elif size_diff > 0 and star_position is None:
+                    if size_diff > 0 and star_position is None:
                         continue
-                    elif not size_diff and star_position is not None:
-                        t_items.append(UninhabitedType())
-                    tuple_types.append(t_items)
+                    if not size_diff and star_position is not None:
+                        # Above we subtract from required_patterns if star_position is not None
+                        tuple_items.append(UninhabitedType())
+                    tuple_types.append(tuple_items)
                 else:
                     normalized_inner_types = []
-                    for it in t_items:
+                    for it in tuple_items:
                         # Unfortunately, it is not possible to "split" the TypeVarTuple
                         # into individual items, so we just use its upper bound for the whole
                         # analysis instead.
                         if isinstance(it, UnpackType) and isinstance(it.type, TypeVarTupleType):
                             it = UnpackType(it.type.upper_bound)
                         normalized_inner_types.append(it)
-                    t_items = normalized_inner_types
-                    t = t.copy_modified(items=normalized_inner_types)
-                    if len(t_items) - 1 > required_patterns and star_position is None:
+                    if (
+                        len(normalized_inner_types) - 1 > required_patterns
+                        and star_position is None
+                    ):
                         continue
+                    t = t.copy_modified(items=normalized_inner_types)
                     unpack_tuple_types.append((t, unpack_index, i))
-                    # add the combined tuple type to the sequence types in case we have multiple unpacks we want to combine them all
+                    # In case we have multiple unpacks we want to combine them all, so add
+                    # the combined tuple type to the sequence types.
                     sequence_types.append(self.chk.iterable_item_type(tuple_fallback(t), o))
             elif isinstance(t, AnyType):
                 sequence_types.append(AnyType(TypeOfAny.from_another_any, t))
@@ -295,26 +302,32 @@ class PatternChecker(PatternVisitor[PatternType]):
                 sequence_types.append(self.chk.iterable_item_type(t, o))
             else:
                 unknown_type = True
-        # if we only got one unpack tuple type, we can use that
+
+        inner_types: list[Type]
+
+        # If we only got one unpack tuple type, we can use that
         unpack_index = None
         if len(unpack_tuple_types) == 1 and len(sequence_types) == 1 and not tuple_types:
             update_tuple_type, unpack_index, union_index = unpack_tuple_types[0]
-            inner_types: list[Type] = update_tuple_type.items
+            inner_types = update_tuple_type.items
             if isinstance(current_type, UnionType):
                 union_items = list(current_type.items)
                 union_items[union_index] = update_tuple_type
-                current_type = current_type.copy_modified(items=union_items)
+                current_type = UnionType.make_union(items=union_items)
             else:
                 current_type = update_tuple_type
-        # if we only got tuples we can't match, then exit early
+        # If we only got tuples we can't match, then exit early
         elif not tuple_types and not sequence_types and not unknown_type:
             return self.early_non_match()
         elif tuple_types:
-            inner_types = [make_simplified_union([*sequence_types, *x]) for x in zip(*tuple_types)]
+            inner_types = [
+                make_simplified_union([*sequence_types, *[t for t in group if t is not None]])
+                for group in itertools.zip_longest(*tuple_types)
+            ]
+        elif sequence_types:
+            inner_types = [make_simplified_union(sequence_types)] * len(o.patterns)
         else:
-            object_type = self.chk.named_type("builtins.object")
-            unioned = make_simplified_union(sequence_types) if sequence_types else object_type
-            inner_types = [unioned] * len(o.patterns)
+            inner_types = [self.chk.named_type("builtins.object")] * len(o.patterns)
 
         #
         # match inner patterns

@@ -1617,6 +1617,12 @@ match m8:
         reveal_type(b8)  # N: Revealed type is "Union[builtins.float, builtins.str]"
         reveal_type(rest8)  # N: Revealed type is "builtins.list[builtins.float]"
 
+m9: tuple[str, str, int] | tuple[str, str]
+match m9:
+    case (a9, *rest9):
+        reveal_type(a9)  # N: Revealed type is "builtins.str"
+        reveal_type(rest9)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.int]]"
+
 [builtins fixtures/tuple.pyi]
 
 
