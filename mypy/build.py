@@ -3712,7 +3712,7 @@ def load_graph(
                     new.append(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
     # modules that are back in graph. We need to do this after the loop to cover an edge
-    # where a namespace package ancestor is shared by a typed and an untyped package.
+    # case where a namespace package ancestor is shared by a typed and an untyped package.
     for st in graph.values():
         for dep in st.suppressed:
             if dep in graph:
