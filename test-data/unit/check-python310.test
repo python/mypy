@@ -2266,6 +2266,14 @@ def main(var: tuple[int, int] | tuple[str, str]):
             reveal_type(a)  # N: Revealed type is "builtins.int"
         case ("yes", b):
             reveal_type(b)  # N: Revealed type is "builtins.str"
+
+
+def main2(var: tuple[int, int] | tuple[str, str] | tuple[str, int]):
+    match var:
+        case (42, a):
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+        case ("yes", b):
+            reveal_type(b)  # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
