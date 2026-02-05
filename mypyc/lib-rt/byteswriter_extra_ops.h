@@ -87,7 +87,7 @@ CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
         return CPY_LL_INT_ERROR;
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
-    return read_i16_le_unchecked(data + index);
+    return CPyBytes_ReadI16LEUnsafe(data + index);
 }
 
 static inline int32_t
@@ -99,7 +99,7 @@ CPyBytes_ReadI32LE(PyObject *bytes_obj, int64_t index) {
         return CPY_LL_INT_ERROR;
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
-    return read_i32_le_unchecked(data + index);
+    return CPyBytes_ReadI32LEUnsafe(data + index);
 }
 
 static inline char
@@ -120,7 +120,7 @@ CPyBytes_ReadI64LE(PyObject *bytes_obj, int64_t index) {
         return CPY_LL_INT_ERROR;
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
-    return read_i64_le_unchecked(data + index);
+    return CPyBytes_ReadI64LEUnsafe(data + index);
 }
 
 #endif // MYPYC_EXPERIMENTAL

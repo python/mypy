@@ -900,7 +900,7 @@ read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i16_le", 2, &index);
     if (data == NULL)
         return NULL;
-    return PyLong_FromLong(read_i16_le_unchecked(data + index));
+    return PyLong_FromLong(CPyBytes_ReadI16LEUnsafe(data + index));
 }
 
 static PyObject*
@@ -923,7 +923,7 @@ read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_le", 4, &index);
     if (data == NULL)
         return NULL;
-    return PyLong_FromLong(read_i32_le_unchecked(data + index));
+    return PyLong_FromLong(CPyBytes_ReadI32LEUnsafe(data + index));
 }
 
 static PyObject*
@@ -946,7 +946,7 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_le", 8, &index);
     if (data == NULL)
         return NULL;
-    return PyLong_FromLongLong(read_i64_le_unchecked(data + index));
+    return PyLong_FromLongLong(CPyBytes_ReadI64LEUnsafe(data + index));
 }
 
 #endif

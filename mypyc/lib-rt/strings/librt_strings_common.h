@@ -68,7 +68,7 @@ BytesWriter_write_i16_le_unchecked(BytesWriterObject *self, int16_t value) {
 // Read a 16-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int16_t
-read_i16_le_unchecked(const unsigned char *data) {
+CPyBytes_ReadI16LEUnsafe(const unsigned char *data) {
     // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
     uint16_t value;
     memcpy(&value, data, 2);
@@ -95,7 +95,7 @@ BytesWriter_write_i32_le_unchecked(BytesWriterObject *self, int32_t value) {
 // Read a 32-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int32_t
-read_i32_le_unchecked(const unsigned char *data) {
+CPyBytes_ReadI32LEUnsafe(const unsigned char *data) {
     // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
     uint32_t value;
     memcpy(&value, data, 4);
@@ -122,7 +122,7 @@ BytesWriter_write_i64_le_unchecked(BytesWriterObject *self, int64_t value) {
 // Read a 64-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int64_t
-read_i64_le_unchecked(const unsigned char *data) {
+CPyBytes_ReadI64LEUnsafe(const unsigned char *data) {
     // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
     uint64_t value;
     memcpy(&value, data, 8);
