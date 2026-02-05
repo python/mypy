@@ -229,6 +229,8 @@ def test_nested_misc() -> None:
     vv, x = pop(v)
     assert vv == vec[vec[float]]()
     assert x == vec[float]([1.5])
+
+    # Since pop doesn't change the length of v, the following should work
     v[0] = vec[float]([-2.5])
     assert v[0] == vec[float]([-2.5])
     v[0][0] = 3.5

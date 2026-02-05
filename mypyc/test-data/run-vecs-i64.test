@@ -167,6 +167,7 @@ def check_opt(x: vec[i64] | None, is_none: bool) -> None:
     if is_none:
         assert x is None
     else:
+        # If statements ensure type narrowing doesn't leak between blocks
         if int() + 1:
             assert x is not None
             assert len(x) == 1

@@ -133,7 +133,6 @@ def test_box_and_unbox_optional() -> None:
     assert v2 == vec[str](["5"])
 
     o3: Any = vec[str]()
-    # TODO: Use str | None instead union
     with assertRaises(TypeError, "vec[str | None] object expected; got vec"):
         v = o3
 
