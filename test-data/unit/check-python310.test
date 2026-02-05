@@ -1753,7 +1753,7 @@ match m1:
 m2: tuple[int, str] | tuple[float, str]
 match m2:
     case (a2, b2):
-        reveal_type(a2)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+        reveal_type(a2)  # N: Revealed type is "builtins.int | builtins.float"
         reveal_type(b2)  # N: Revealed type is "builtins.str"
 
 m3: tuple[int] | tuple[float, str]
@@ -1780,30 +1780,30 @@ match m5:
 m6: tuple[int, Unpack[tuple[float, ...]]] | list[str]
 match m6:
     case (a6, b6):
-        reveal_type(a6)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
-        reveal_type(b6)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
+        reveal_type(a6)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
+        reveal_type(b6)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
 
 # but do still separate types from non unpacked types
 m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, str]
 match m7:
     case (a7, b7, *rest7):
-        reveal_type(a7)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
-        reveal_type(b7)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
-        reveal_type(rest7)  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.float]]"
+        reveal_type(a7)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
+        reveal_type(b7)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
+        reveal_type(rest7)  # N: Revealed type is "builtins.list[builtins.int | builtins.float]"
 
 # verify that if we are unpacking, it will get the type of the sequence if the tuple is too short
 m8: tuple[int, str] | list[float]
 match m8:
     case (a8, b8, *rest8):
-        reveal_type(a8)  # N: Revealed type is "Union[builtins.float, builtins.int]"
-        reveal_type(b8)  # N: Revealed type is "Union[builtins.float, builtins.str]"
+        reveal_type(a8)  # N: Revealed type is "builtins.float | builtins.int"
+        reveal_type(b8)  # N: Revealed type is "builtins.float | builtins.str"
         reveal_type(rest8)  # N: Revealed type is "builtins.list[builtins.float]"
 
 m9: tuple[str, str, int] | tuple[str, str]
 match m9:
     case (a9, *rest9):
         reveal_type(a9)  # N: Revealed type is "builtins.str"
-        reveal_type(rest9)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.int]]"
+        reveal_type(rest9)  # N: Revealed type is "builtins.list[builtins.str | builtins.int]"
 
 [builtins fixtures/tuple.pyi]
 
