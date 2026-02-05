@@ -4693,3 +4693,26 @@ class Impl:
         pass
 
 x: Proto = Impl()
+
+[case testContainerContainsAcceptsStr]
+from collections.abc import Container
+
+class StringContainer:
+    def __contains__(self, item: str) -> bool:
+        return True
+
+c: Container[str] = StringContainer()  # E: Incompatible types in assignment (expression has type "StringContainer", variable has type "Container[str]") \
+                                       # N: Following member(s) of "StringContainer" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def __contains__(self, object, /) -> bool \
+                                       # N:     Got: \
+                                       # N:         def __contains__(self, str, /) -> bool \
+                                       # N:     Note: "Container[T]" does not restrict the argument type of "__contains__" (it must accept "object"). The type parameter "T" is used for membership checks (e.g. flagging non-overlapping checks under --strict).
+[file collections/__init__.pyi]
+[file collections/abc.pyi]
+from typing import Protocol, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+class Container(Protocol[T_co]):
+    def __contains__(self, x: object) -> bool: ...

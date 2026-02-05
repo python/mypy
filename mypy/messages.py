@@ -2295,6 +2295,20 @@ class MessageBuilder:
                             parent_error=parent_error,
                             skip_self=class_obj or is_module,
                         )
+                    # Clarify common confusion around Container[T] and __contains__.
+                    if name == "__contains__" and supertype.type.fullname in {
+                        "typing.Container",
+                        "collections.abc.Container",
+                    }:
+                        self.note(
+                            'Note: "Container[T]" does not restrict the argument type of '
+                            '"__contains__" (it must accept "object"). The type parameter "T" '
+                            "is used for membership checks (e.g. flagging non-overlapping "
+                            "checks under --strict).",
+                            context,
+                            offset=OFFSET,
+                            parent_error=parent_error,
+                        )
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=parent_error.code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
