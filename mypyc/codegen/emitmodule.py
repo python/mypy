@@ -641,7 +641,7 @@ class GroupGenerator:
         if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <time/librt_time.h>")
         if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line('#include <vecs/librt_vecs.h>')
+            ext_declarations.emit_line("#include <vecs/librt_vecs.h>")
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
