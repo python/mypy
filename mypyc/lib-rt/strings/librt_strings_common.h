@@ -54,7 +54,7 @@ typedef struct {
 // Write a 16-bit signed integer in little-endian format to BytesWriter.
 // NOTE: This does NOT check buffer capacity - caller must ensure space is available.
 static inline void
-BytesWriter_write_i16_le_unchecked(BytesWriterObject *self, int16_t value) {
+BytesWriter_WriteI16LEUnsafe(BytesWriterObject *self, int16_t value) {
     // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
 #if PY_BIG_ENDIAN
     uint16_t swapped = BSWAP16((uint16_t)value);
@@ -81,7 +81,7 @@ CPyBytes_ReadI16LEUnsafe(const unsigned char *data) {
 // Write a 32-bit signed integer in little-endian format to BytesWriter.
 // NOTE: This does NOT check buffer capacity - caller must ensure space is available.
 static inline void
-BytesWriter_write_i32_le_unchecked(BytesWriterObject *self, int32_t value) {
+BytesWriter_WriteI32LEUnsafe(BytesWriterObject *self, int32_t value) {
     // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
 #if PY_BIG_ENDIAN
     uint32_t swapped = BSWAP32((uint32_t)value);
@@ -108,7 +108,7 @@ CPyBytes_ReadI32LEUnsafe(const unsigned char *data) {
 // Write a 64-bit signed integer in little-endian format to BytesWriter.
 // NOTE: This does NOT check buffer capacity - caller must ensure space is available.
 static inline void
-BytesWriter_write_i64_le_unchecked(BytesWriterObject *self, int64_t value) {
+BytesWriter_WriteI64LEUnsafe(BytesWriterObject *self, int64_t value) {
     // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
 #if PY_BIG_ENDIAN
     uint64_t swapped = BSWAP64((uint64_t)value);

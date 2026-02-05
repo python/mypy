@@ -40,7 +40,7 @@ CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 2))
         return CPY_NONE_ERROR;
-    BytesWriter_write_i16_le_unchecked(self, value);
+    BytesWriter_WriteI16LEUnsafe(self, value);
     return CPY_NONE;
 }
 
@@ -49,7 +49,7 @@ CPyBytesWriter_WriteI32LE(PyObject *obj, int32_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 4))
         return CPY_NONE_ERROR;
-    BytesWriter_write_i32_le_unchecked(self, value);
+    BytesWriter_WriteI32LEUnsafe(self, value);
     return CPY_NONE;
 }
 
@@ -107,7 +107,7 @@ CPyBytesWriter_WriteI64LE(PyObject *obj, int64_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 8))
         return CPY_NONE_ERROR;
-    BytesWriter_write_i64_le_unchecked(self, value);
+    BytesWriter_WriteI64LEUnsafe(self, value);
     return CPY_NONE;
 }
 

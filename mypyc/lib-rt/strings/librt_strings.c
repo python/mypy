@@ -890,7 +890,7 @@ write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     if (unlikely(!ensure_bytes_writer_size(bw, 2)))
         return NULL;
-    BytesWriter_write_i16_le_unchecked(bw, unboxed);
+    BytesWriter_WriteI16LEUnsafe(bw, unboxed);
     Py_RETURN_NONE;
 }
 
@@ -913,7 +913,7 @@ write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     if (unlikely(!ensure_bytes_writer_size(bw, 4)))
         return NULL;
-    BytesWriter_write_i32_le_unchecked(bw, unboxed);
+    BytesWriter_WriteI32LEUnsafe(bw, unboxed);
     Py_RETURN_NONE;
 }
 
@@ -936,7 +936,7 @@ write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     if (unlikely(!ensure_bytes_writer_size(bw, 8)))
         return NULL;
-    BytesWriter_write_i64_le_unchecked(bw, unboxed);
+    BytesWriter_WriteI64LEUnsafe(bw, unboxed);
     Py_RETURN_NONE;
 }
 
