@@ -8321,6 +8321,18 @@ def conditional_types(
         proposed_type = make_simplified_union(proposed_items)
 
     if isinstance(proper_type, AnyType):
+        # When current type is Any, we need to be careful about narrowing.
+        # For isinstance checks, proposed_type is typically an Instance, and we should narrow.
+        # For identity checks (is/is not), proposed_type is typically a FunctionLike (type object),
+        # and we should NOT narrow because Any could be anything.
+        proposed_proper = get_proper_type(proposed_type)
+        if (
+            isinstance(proposed_proper, (FunctionLike, Overloaded))
+            and proposed_proper.is_type_obj()
+        ):
+            # Identity check against a type object - don't narrow Any
+            return current_type, current_type
+        # isinstance check or other cases - narrow as before
         return proposed_type, current_type
     if isinstance(proposed_type, AnyType):
         # We don't really know much about the proposed type, so we shouldn't
