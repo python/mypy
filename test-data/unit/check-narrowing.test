@@ -3439,12 +3439,12 @@ else:
 from typing import Any
 
 def foo(y: object):
-    if y.__class__ == int:
+    if y.__class__ == int:  # E: "object" has no attribute "__class__"
         reveal_type(y) # N: Revealed type is "builtins.int"
     else:
         reveal_type(y) # N: Revealed type is "builtins.object"
 
-    if y.__class__ is int:
+    if y.__class__ is int:  # E: "object" has no attribute "__class__"
         reveal_type(y) # N: Revealed type is "builtins.int"
     else:
         reveal_type(y) # N: Revealed type is "builtins.object"
@@ -3460,6 +3460,36 @@ def bar(y: Any):
         reveal_type(y) # N: Revealed type is "builtins.int"
     else:
         reveal_type(y) # N: Revealed type is "Any"
+
+
+[case testAnyIdentityTypeObjectNoNarrowing]
+# flags: --strict-equality
+from typing import Any
+
+class A:
+    foo: Any
+
+def f(x: Any, a: A) -> None:
+    if x is list:
+        reveal_type(x)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
+
+    if x is not list:
+        reveal_type(x)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
+
+    if a.foo is list:
+        reveal_type(a.foo)  # N: Revealed type is "Any"
+    else:
+        reveal_type(a.foo)  # N: Revealed type is "Any"
+
+    if a.foo is not list:
+        a.foo = []
+
+    reveal_type(a.foo)  # N: Revealed type is "Any"
+    a.foo.append(1)
 [builtins fixtures/dict-full.pyi]
 
 [case testNarrowTypeVarType]
