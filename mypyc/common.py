@@ -15,6 +15,7 @@ TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
 TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
+FAST_PREFIX: Final = "__mypyc_fast_"  # Optimized methods in non-extension classes
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
 NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
@@ -22,6 +23,8 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
+CPYFUNCTION_NAME = "__cpyfunction__"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
@@ -63,7 +66,8 @@ MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
-# Runtime C library files
+# Runtime C library files that are always included (some ops may bring
+# extra dependencies via mypyc.ir.SourceDep)
 RUNTIME_C_FILES: Final = [
     "init.c",
     "getargs.c",
@@ -80,6 +84,7 @@ RUNTIME_C_FILES: Final = [
     "misc_ops.c",
     "generic_ops.c",
     "pythonsupport.c",
+    "function_wrapper.c",
 ]
 
 # Python 3.12 introduced immortal objects, specified via a special reference count

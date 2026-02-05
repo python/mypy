@@ -23,18 +23,21 @@ from mypyc.ir.rtypes import (
 )
 
 
-def is_subtype(left: RType, right: RType) -> bool:
+def is_subtype(left: RType, right: RType, *, relaxed: bool = False) -> bool:
     if is_object_rprimitive(right):
         return True
     elif isinstance(right, RUnion):
         if isinstance(left, RUnion):
             for left_item in left.items:
-                if not any(is_subtype(left_item, right_item) for right_item in right.items):
+                if not any(
+                    is_subtype(left_item, right_item, relaxed=relaxed)
+                    for right_item in right.items
+                ):
                     return False
             return True
         else:
-            return any(is_subtype(left, item) for item in right.items)
-    return left.accept(SubtypeVisitor(right))
+            return any(is_subtype(left, item, relaxed=relaxed) for item in right.items)
+    return left.accept(SubtypeVisitor(right, relaxed=relaxed))
 
 
 class SubtypeVisitor(RTypeVisitor[bool]):
@@ -44,14 +47,15 @@ class SubtypeVisitor(RTypeVisitor[bool]):
     is_subtype and don't need to be covered here.
     """
 
-    def __init__(self, right: RType) -> None:
+    def __init__(self, right: RType, *, relaxed: bool = False) -> None:
         self.right = right
+        self.relaxed = relaxed
 
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
 
     def visit_runion(self, left: RUnion) -> bool:
-        return all(is_subtype(item, self.right) for item in left.items)
+        return all(is_subtype(item, self.right, relaxed=self.relaxed) for item in left.items)
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         right = self.right
@@ -64,6 +68,11 @@ class SubtypeVisitor(RTypeVisitor[bool]):
         elif is_short_int_rprimitive(left):
             if is_int_rprimitive(right):
                 return True
+            if self.relaxed and is_fixed_width_rtype(right):
+                return True
+        elif is_int_rprimitive(left):
+            if self.relaxed and is_fixed_width_rtype(right):
+                return True
         elif is_fixed_width_rtype(left):
             if is_int_rprimitive(right):
                 return True
@@ -74,7 +83,8 @@ class SubtypeVisitor(RTypeVisitor[bool]):
             return True
         if isinstance(self.right, RTuple):
             return len(self.right.types) == len(left.types) and all(
-                is_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types)
+                is_subtype(t1, t2, relaxed=self.relaxed)
+                for t1, t2 in zip(left.types, self.right.types)
             )
         return False
 

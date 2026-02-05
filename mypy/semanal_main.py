@@ -26,11 +26,10 @@ will be incomplete.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from itertools import groupby
-from typing import TYPE_CHECKING, Callable, Final, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
@@ -106,6 +105,17 @@ def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> N
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
     if "builtins" in scc:
         cleanup_builtin_scc(graph["builtins"])
+
+    # Report TypeForm profiling stats
+    if len(scc) >= 1:
+        # Get manager from any state in the SCC (they all share the same manager)
+        manager = graph[scc[0]].manager
+        analyzer = manager.semantic_analyzer
+        manager.add_stats(
+            type_expression_parse_count=analyzer.type_expression_parse_count,
+            type_expression_full_parse_success_count=analyzer.type_expression_full_parse_success_count,
+            type_expression_full_parse_failure_count=analyzer.type_expression_full_parse_failure_count,
+        )
 
 
 def cleanup_builtin_scc(state: State) -> None:
@@ -347,12 +357,12 @@ def process_top_level_function(
 
 
 TargetInfo: _TypeAlias = tuple[
-    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 # Same as above but includes module as first item.
 FullTargetInfo: _TypeAlias = tuple[
-    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 

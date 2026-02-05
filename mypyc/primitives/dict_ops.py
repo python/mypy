@@ -53,7 +53,7 @@ dict_build_op = custom_op(
 )
 
 # Construct a dictionary from another dictionary.
-function_op(
+dict_copy_op = function_op(
     name="builtins.dict",
     arg_types=[dict_rprimitive],
     return_type=dict_rprimitive,
@@ -95,6 +95,15 @@ dict_set_item_op = method_op(
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_SetItem",
+    error_kind=ERR_NEG_INT,
+)
+
+# dict[key] = value (exact dict only, no subclasses)
+# NOTE: this is currently for internal use only, and not used for CallExpr specialization
+exact_dict_set_item_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_SetItem",
     error_kind=ERR_NEG_INT,
 )
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -63,7 +63,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
-ErrorSource = Union[BasicBlock, Op]
+ErrorSource = BasicBlock | Op
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -196,7 +196,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return s
 
     def visit_cast(self, op: Cast) -> str:
-        return self.format("%r = %scast(%s, %r)", op, self.borrow_prefix(op), op.type, op.src)
+        if op.is_unchecked:
+            prefix = "unchecked "
+        else:
+            prefix = ""
+        return self.format(
+            "%r = %s%scast(%s, %r)", op, prefix, self.borrow_prefix(op), op.type, op.src
+        )
 
     def visit_box(self, op: Box) -> str:
         return self.format("%r = box(%s, %r)", op, op.src.type, op.src)
@@ -408,7 +414,7 @@ def format_blocks(
         lines.append("L%d:%s" % (block.label, handler_msg))
         if block in source_to_error:
             for error in source_to_error[block]:
-                lines.append(f"  ERR: {error}")
+                lines.append(f"  ERROR: {error}")
         ops = block.ops
         if (
             isinstance(ops[-1], Goto)
@@ -423,8 +429,11 @@ def format_blocks(
             line = "    " + op.accept(visitor)
             lines.append(line)
             if op in source_to_error:
+                first = len(lines) - 1
+                # Use emojis to highlight the error
                 for error in source_to_error[op]:
-                    lines.append(f"  ERR: {error}")
+                    lines.append(f"    \U0001f446 ERROR: {error}")
+                lines[first] = " \U0000274c " + lines[first][4:]
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.

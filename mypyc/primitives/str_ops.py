@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import STR_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType,
@@ -10,10 +11,12 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
+    short_int_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
 )
@@ -79,11 +82,38 @@ binary_op(
     steals=[True, False],
 )
 
+# str * int
+binary_op(
+    name="*",
+    arg_types=[str_rprimitive, int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Multiply",
+    error_kind=ERR_MAGIC,
+)
+
+# int * str
+binary_op(
+    name="*",
+    arg_types=[int_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Multiply",
+    error_kind=ERR_MAGIC,
+    ordering=[1, 0],
+)
+
 # str1 == str2 (very common operation, so we provide our own)
 str_eq = custom_primitive_op(
     name="str_eq",
     c_function_name="CPyStr_Equal",
     arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
+str_eq_literal = custom_primitive_op(
+    name="str_eq_literal",
+    c_function_name="CPyStr_EqualLiteral",
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
     return_type=bool_rprimitive,
     error_kind=ERR_NEVER,
 )
@@ -387,12 +417,36 @@ method_op(
     extra_int_constants=[(0, pointer_rprimitive)],
 )
 
-# obj.decode(encoding, errors)
+# bytes.decode(encoding, errors)
 method_op(
     name="decode",
     arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPy_Decode",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - utf8 strict specialization
+bytes_decode_utf8_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeUTF8",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - ascii strict specialization
+bytes_decode_ascii_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeASCII",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - latin1 strict specialization
+bytes_decode_latin1_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeLatin1",
     error_kind=ERR_MAGIC,
 )
 
@@ -455,4 +509,36 @@ function_op(
     return_type=int_rprimitive,
     c_function_name="CPyStr_Ord",
     error_kind=ERR_MAGIC,
+)
+
+# Optimized str indexing for ord(s[i])
+
+# str index adjustment - convert negative index to positive
+str_adjust_index_op = custom_primitive_op(
+    name="str_adjust_index",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyStr_AdjustIndex",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+
+# str range check - check if index is in valid range
+str_range_check_op = custom_primitive_op(
+    name="str_range_check",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_RangeCheck",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+
+# str.__getitem__() as int - get character at index as int (ord value) - no bounds checking
+str_get_item_unsafe_as_int_op = custom_primitive_op(
+    name="str_get_item_unsafe_as_int",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=short_int_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafeAsInt",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
 )

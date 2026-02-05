@@ -97,6 +97,8 @@ class NodeFixer(NodeVisitor[None]):
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.self_type:
+                info.self_type.accept(self.type_fixer)
             if info.alt_promote:
                 info.alt_promote.accept(self.type_fixer)
                 instance = Instance(info, [])
@@ -181,8 +183,7 @@ class NodeFixer(NodeVisitor[None]):
         if isinstance(o.type, Overloaded):
             # For error messages we link the original definition for each item.
             for typ, item in zip(o.type.items, o.items):
-                if isinstance(item, Decorator):
-                    typ.definition = item.func
+                typ.definition = item
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
@@ -193,8 +194,9 @@ class NodeFixer(NodeVisitor[None]):
             d.var.accept(self)
         for node in d.decorators:
             node.accept(self)
-        if isinstance(d.var.type, ProperType) and isinstance(d.var.type, CallableType):
-            d.var.type.definition = d.func
+        typ = d.var.type
+        if isinstance(typ, ProperType) and isinstance(typ, CallableType):
+            typ.definition = d.func
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
@@ -345,6 +347,7 @@ class TypeFixer(TypeVisitor[None]):
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
         p.default.accept(self)
+        p.prefix.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         t.tuple_fallback.accept(self)
@@ -438,4 +441,4 @@ def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
 
 def missing_alias() -> TypeAlias:
     suggestion = _SUGGESTION.format("alias")
-    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, line=-1, column=-1)
+    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, "<missing>", line=-1, column=-1)

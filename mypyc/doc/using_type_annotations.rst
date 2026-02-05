@@ -37,11 +37,14 @@ implementations:
 * ``float`` (:ref:`native operations <float-ops>`)
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
+* ``bytes`` (:ref:`native operations <bytes-ops>`)
+* ``bytearray`` (:ref:`native operations <bytearray-ops>`)
 * ``list[T]`` (:ref:`native operations <list-ops>`)
 * ``dict[K, V]`` (:ref:`native operations <dict-ops>`)
 * ``set[T]`` (:ref:`native operations <set-ops>`)
 * ``tuple[T, ...]`` (variable-length tuple; :ref:`native operations <tuple-ops>`)
 * ``None``
+* ``range``
 
 The link after each type lists all supported native, optimized
 operations for the type. You can use all operations supported by

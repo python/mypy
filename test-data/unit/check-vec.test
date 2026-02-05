@@ -1,0 +1,45 @@
+[case testVecBasics]
+# flags: --python-version 3.10
+from typing import Optional, Any, TypeVar
+
+from librt.vecs import vec
+from mypy_extensions import i64, i32, i16, u8
+
+def f(v: vec[i64]) -> None:
+    x: i64 = v[0]
+    x = v[x]
+    v[x] = x
+
+v = vec[i64]()
+reveal_type(v)  # N: Revealed type is "librt.vecs.vec[mypy_extensions.i64]"
+f(v)
+reveal_type(len(v))  # N: Revealed type is "mypy_extensions.i64"
+
+vec_i32: vec[i32]
+vec_i16: vec[i16]
+vec_u8: vec[u8]
+vec_bool: vec[bool]
+vec_float: vec[float]
+vec_str: vec[str]
+vec_str_opt1: vec[str | None]
+vec_str_opt2: vec[Optional[str]]
+vec_nested1: vec[vec[i32]]
+vec_nested2: vec[vec[vec[str | None]]]
+vec_list: vec[list[int]]
+vec_var_tuple: vec[tuple[int, ...]]
+vec_object: vec[object]
+
+vec_bad_int: vec[int]  # E: Invalid item type for "vec"
+vec_bad_tuple: vec[tuple[int, str]]  # E: Invalid item type for "vec"
+vec_bad_union: vec[str | ellipsis]  # E: Invalid item type for "vec"
+vec_bad_any: vec[Any]  # E: Invalid item type for "vec"
+vec_bad_two_args: vec[i32, i32]  # E: Invalid item type for "vec"
+vec_bad_optional1: vec[int | None]  # E: Invalid item type for "vec"
+vec_bad_optional2: vec[i64 | None]  # E: Invalid item type for "vec"
+vec_bad_optional3: vec[bool | None]  # E: Invalid item type for "vec"
+vec_bad_optional4: vec[float | None]  # E: Invalid item type for "vec"
+
+T = TypeVar("T")
+
+def bad_generic_func(v: vec[T]) -> None: ...  # E: Invalid item type for "vec"
+[builtins fixtures/len.pyi]

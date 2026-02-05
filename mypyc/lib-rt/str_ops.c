@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // String primitive operations
 //
 // These are registered in mypyc.primitives.str_ops.
@@ -64,20 +66,33 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 #undef BLOOM_UPDATE
 }
 
-// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
-char CPyStr_Equal(PyObject *str1, PyObject *str2) {
-    if (str1 == str2) {
-        return 1;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(str1);
-    if (PyUnicode_GET_LENGTH(str2) != len)
+static inline char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
+    // This helper function only exists to deduplicate code in CPyStr_Equal and CPyStr_EqualLiteral
+    Py_ssize_t str1_length = PyUnicode_GET_LENGTH(str1);
+    if (str1_length != str2_length)
         return 0;
     int kind = PyUnicode_KIND(str1);
     if (PyUnicode_KIND(str2) != kind)
         return 0;
     const void *data1 = PyUnicode_DATA(str1);
     const void *data2 = PyUnicode_DATA(str2);
-    return memcmp(data1, data2, len * kind) == 0;
+    return memcmp(data1, data2, str1_length * kind) == 0;
+}
+
+// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
+char CPyStr_Equal(PyObject *str1, PyObject *str2) {
+    if (str1 == str2) {
+        return 1;
+    }
+    Py_ssize_t str2_length = PyUnicode_GET_LENGTH(str2);
+    return _CPyStr_Equal_NoIdentCheck(str1, str2, str2_length);
+}
+
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length) {
+    if (str == literal_str) {
+        return 1;
+    }
+    return _CPyStr_Equal_NoIdentCheck(str, literal_str, literal_length);
 }
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
@@ -308,7 +323,7 @@ static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) 
 
 // Copied from do_strip function in cpython.git/Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep) {
-    if (sep == NULL || sep == Py_None) {
+    if (sep == NULL || Py_IsNone(sep)) {
         Py_ssize_t len, i, j;
 
         // This check is needed from Python 3.9 and earlier.
@@ -513,6 +528,45 @@ PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     }
 }
 
+PyObject *CPy_DecodeUTF8(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeUTF8(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "utf-8", "strict");
+    }
+}
+
+PyObject *CPy_DecodeASCII(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeASCII(buffer, size, "strict");;
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "ascii", "strict");
+    }
+}
+
+PyObject *CPy_DecodeLatin1(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeLatin1(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "latin1", "strict");
+    }
+}
+
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     const char *enc = NULL;
     const char *err = NULL;
@@ -566,4 +620,13 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     PyErr_Format(
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
+}
+
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(str, temp_count);
 }

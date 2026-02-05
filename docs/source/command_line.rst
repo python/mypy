@@ -372,7 +372,7 @@ definitions or calls.
 
 .. option:: --untyped-calls-exclude
 
-    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    This flag allows one to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming there
     are no type annotations for ``third_party_lib`` available):
@@ -537,13 +537,15 @@ potentially problematic or redundant in some way.
                 print(x + "bad")
 
     To help prevent mypy from generating spurious warnings, the "Statement is
-    unreachable" warning will be silenced in exactly two cases:
+    unreachable" warning will be silenced in exactly three cases:
 
     1.  When the unreachable statement is a ``raise`` statement, is an
         ``assert False`` statement, or calls a function that has the :py:data:`~typing.NoReturn`
         return type hint. In other words, when the unreachable statement
         throws an error or terminates the program in some way.
-    2.  When the unreachable statement was *intentionally* marked as unreachable
+    2.  When the unreachable statement is ``return NotImplemented``. This
+        is allowed by mypy due to its use in operator overloading.
+    3.  When the unreachable statement was *intentionally* marked as unreachable
         using :ref:`version_and_platform_checks`.
 
     .. note::
@@ -562,7 +564,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --deprecated-calls-exclude
 
-    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    This flag allows one to selectively disable :ref:`deprecated<code-deprecated>` warnings
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
 
@@ -728,8 +730,21 @@ of the above sections.
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
-       assert text is not None  # OK, check against None is allowed as a special case.
+       assert text is not None  # OK, check against None is allowed
 
+
+.. option:: --strict-equality-for-none
+
+    This flag extends :option:`--strict-equality <mypy --strict-equality>` for checks
+    against ``None``:
+
+    .. code-block:: python
+
+       text: str
+       assert text is not None  # Error: non-overlapping identity check!
+
+    Note that :option:`--strict-equality-for-none <mypy --strict-equality-for-none>`
+    only works in combination with :option:`--strict-equality <mypy --strict-equality>`.
 
 .. option:: --strict-bytes
 
@@ -945,12 +960,6 @@ in error messages.
     useful or they may be overly noisy. If ``N`` is negative, there is
     no limit. The default limit is -1.
 
-.. option:: --force-union-syntax
-
-    Always use ``Union[]`` and ``Optional[]`` for union types
-    in error messages (instead of the ``|`` operator),
-    even on Python 3.10+.
-
 
 .. _incremental:
 
@@ -1146,7 +1155,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1198,8 +1207,11 @@ List of currently incomplete/experimental features:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def test_values() -> {"width": int, "description": str}:
+         return {"width": 42, "description": "test"}
+
+* ``TypeForm``: this feature enables ``TypeForm``, as described in
+  `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
 
 
 Miscellaneous
@@ -1242,11 +1254,17 @@ Miscellaneous
    stub packages were found, they are installed and then another run
    is performed.
 
-.. option:: --junit-xml JUNIT_XML
+.. option:: --junit-xml JUNIT_XML_OUTPUT_FILE
 
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
+
+.. option:: --junit-format {global,per_file}
+
+    If --junit-xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
 
 .. option:: --find-occurrences CLASS.MEMBER
 
