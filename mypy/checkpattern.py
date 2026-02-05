@@ -318,7 +318,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if isinstance(current_type, UnionType):
                 union_items = list(current_type.items)
                 union_items[union_index] = update_tuple_type
-                current_type = UnionType.make_union(items=union_items)
+                current_type = get_proper_type(UnionType.make_union(items=union_items))
             else:
                 current_type = update_tuple_type
         # If we only got tuples we can't match, then exit early
