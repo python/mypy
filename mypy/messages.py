@@ -2296,11 +2296,10 @@ class MessageBuilder:
                             skip_self=class_obj or is_module,
                         )
                     # Clarify common confusion around Container[T] and __contains__.
-                    if (
-                        name == "__contains__"
-                        and supertype.type.fullname
-                        in {"typing.Container", "collections.abc.Container"}
-                    ):
+                    if name == "__contains__" and supertype.type.fullname in {
+                        "typing.Container",
+                        "collections.abc.Container",
+                    }:
                         self.note(
                             'Note: "Container[T]" does not restrict the argument type of '
                             '"__contains__" (it must accept "object"). The type parameter "T" '
