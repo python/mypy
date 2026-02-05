@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
-// Byte-swap macros for big-endian support
+// Byte-swap functions for non-native endianness support
 #if PY_BIG_ENDIAN
 #  if defined(_MSC_VER)
 #    include <stdlib.h>
@@ -17,7 +17,26 @@
 #    define BSWAP32(x) __builtin_bswap32(x)
 #    define BSWAP64(x) __builtin_bswap64(x)
 #  else
-#    error "Unsupported compiler for big-endian byte swapping"
+// Fallback for other compilers (slower but portable)
+static inline uint16_t BSWAP16(uint16_t x) {
+    return (uint16_t)((x >> 8) | (x << 8));
+}
+static inline uint32_t BSWAP32(uint32_t x) {
+    return ((x >> 24) & 0xFFU) |
+           ((x >>  8) & 0xFF00U) |
+           ((x <<  8) & 0xFF0000U) |
+           ((x << 24) & 0xFF000000U);
+}
+static inline uint64_t BSWAP64(uint64_t x) {
+    return ((x >> 56) & 0xFFULL) |
+           ((x >> 40) & 0xFF00ULL) |
+           ((x >> 24) & 0xFF0000ULL) |
+           ((x >>  8) & 0xFF000000ULL) |
+           ((x <<  8) & 0xFF00000000ULL) |
+           ((x << 24) & 0xFF0000000000ULL) |
+           ((x << 40) & 0xFF000000000000ULL) |
+           ((x << 56) & 0xFF00000000000000ULL);
+}
 #  endif
 #endif
 
