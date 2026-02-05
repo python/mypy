@@ -354,6 +354,65 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
+// Iterator type for specialized vec types
+
+typedef struct {
+    PyObject_HEAD
+    VEC_OBJECT *vec_obj;  // Reference to vec object (keeps buffer alive)
+    Py_ssize_t index;     // Current iteration index
+} NAME(IterObject);
+
+PyTypeObject NAME(IterType);
+
+static PyObject *vec_iter(PyObject *self) {
+    NAME(IterObject) *it = PyObject_New(NAME(IterObject), &NAME(IterType));
+    if (it == NULL)
+        return NULL;
+    Py_INCREF(self);
+    it->vec_obj = (VEC_OBJECT *)self;
+    it->index = 0;
+    return (PyObject *)it;
+}
+
+static void vec_iter_dealloc(NAME(IterObject) *self) {
+    Py_DECREF(self->vec_obj);
+    PyObject_Del(self);
+}
+
+static PyObject *vec_iter_next(NAME(IterObject) *self) {
+    VEC v = self->vec_obj->vec;
+    if (self->index < v.len) {
+        PyObject *item = BOX_ITEM(v.buf->items[self->index]);
+        self->index++;
+        return item;
+    }
+    return NULL;  // StopIteration
+}
+
+static PyObject *vec_iter_len(NAME(IterObject) *self, PyObject *Py_UNUSED(ignored)) {
+    Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
+    if (remaining < 0)
+        remaining = 0;
+    return PyLong_FromSsize_t(remaining);
+}
+
+static PyMethodDef vec_iter_methods[] = {
+    {"__length_hint__", (PyCFunction)vec_iter_len, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+PyTypeObject NAME(IterType) = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec_iterator[" ITEM_TYPE_STR "]",
+    .tp_basicsize = sizeof(NAME(IterObject)),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_dealloc = (destructor)vec_iter_dealloc,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)vec_iter_next,
+    .tp_methods = vec_iter_methods,
+};
+
 PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf[" ITEM_TYPE_STR "]",
@@ -377,6 +436,7 @@ PyTypeObject VEC_TYPE = {
     //.tp_free = PyObject_Del,
     .tp_dealloc = (destructor)vec_dealloc,
     .tp_repr = (reprfunc)vec_repr,
+    .tp_iter = vec_iter,
     .tp_as_sequence = &vec_sequence_methods,
     .tp_as_mapping = &vec_mapping_methods,
     .tp_richcompare = vec_richcompare,

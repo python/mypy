@@ -420,6 +420,87 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
+// Iterator type for nested vecs
+
+typedef struct {
+    PyObject_HEAD
+    VecNestedObject *vec_obj;  // Reference to vec object (keeps buffer alive)
+    Py_ssize_t index;          // Current iteration index
+} VecNestedIterObject;
+
+PyTypeObject VecNestedIterType;
+
+static PyObject *VecNested_iter(PyObject *self) {
+    VecNestedIterObject *it = PyObject_GC_New(VecNestedIterObject, &VecNestedIterType);
+    if (it == NULL)
+        return NULL;
+    Py_INCREF(self);
+    it->vec_obj = (VecNestedObject *)self;
+    it->index = 0;
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static int
+VecNestedIter_traverse(VecNestedIterObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->vec_obj);
+    return 0;
+}
+
+static int
+VecNestedIter_clear(VecNestedIterObject *self)
+{
+    Py_CLEAR(self->vec_obj);
+    return 0;
+}
+
+static void VecNestedIter_dealloc(VecNestedIterObject *self) {
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->vec_obj);
+    PyObject_GC_Del(self);
+}
+
+static PyObject *VecNestedIter_next(VecNestedIterObject *self) {
+    if (self->vec_obj == NULL)
+        return NULL;
+    VecNested v = self->vec_obj->vec;
+    if (self->index < v.len) {
+        PyObject *item = box_vec_item_by_index(v, self->index);
+        self->index++;
+        return item;
+    }
+    return NULL;  // StopIteration
+}
+
+static PyObject *VecNestedIter_len(VecNestedIterObject *self, PyObject *Py_UNUSED(ignored)) {
+    if (self->vec_obj == NULL)
+        return PyLong_FromSsize_t(0);
+    Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
+    if (remaining < 0)
+        remaining = 0;
+    return PyLong_FromSsize_t(remaining);
+}
+
+static PyMethodDef VecNestedIter_methods[] = {
+    {"__length_hint__", (PyCFunction)VecNestedIter_len, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+PyTypeObject VecNestedIterType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec_nested_iterator",
+    .tp_basicsize = sizeof(VecNestedIterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecNestedIter_traverse,
+    .tp_clear = (inquiry)VecNestedIter_clear,
+    .tp_dealloc = (destructor)VecNestedIter_dealloc,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)VecNestedIter_next,
+    .tp_methods = VecNestedIter_methods,
+};
+
 PyTypeObject VecNestedBufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf",
@@ -447,6 +528,7 @@ PyTypeObject VecNestedType = {
     .tp_dealloc = (destructor)VecNested_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
+    .tp_iter = VecNested_iter,
     .tp_as_sequence = &VecNestedSequence,
     .tp_as_mapping = &VecNestedMapping,
     .tp_richcompare = vec_richcompare,

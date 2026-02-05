@@ -950,35 +950,51 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     if (PyType_Ready(&VecTBufType) < 0)
         return -1;
+    if (PyType_Ready(&VecTIterType) < 0)
+        return -1;
 
     if (PyType_Ready(&VecNestedType) < 0)
         return -1;
     if (PyType_Ready(&VecNestedBufType) < 0)
+        return -1;
+    if (PyType_Ready(&VecNestedIterType) < 0)
         return -1;
 
     if (PyType_Ready(&VecI64Type) < 0)
         return -1;
     if (PyType_Ready(&VecI64BufType) < 0)
         return -1;
+    if (PyType_Ready(&VecI64IterType) < 0)
+        return -1;
     if (PyType_Ready(&VecI32Type) < 0)
         return -1;
     if (PyType_Ready(&VecI32BufType) < 0)
+        return -1;
+    if (PyType_Ready(&VecI32IterType) < 0)
         return -1;
     if (PyType_Ready(&VecI16Type) < 0)
         return -1;
     if (PyType_Ready(&VecI16BufType) < 0)
         return -1;
+    if (PyType_Ready(&VecI16IterType) < 0)
+        return -1;
     if (PyType_Ready(&VecU8Type) < 0)
         return -1;
     if (PyType_Ready(&VecU8BufType) < 0)
+        return -1;
+    if (PyType_Ready(&VecU8IterType) < 0)
         return -1;
     if (PyType_Ready(&VecFloatType) < 0)
         return -1;
     if (PyType_Ready(&VecFloatBufType) < 0)
         return -1;
+    if (PyType_Ready(&VecFloatIterType) < 0)
+        return -1;
     if (PyType_Ready(&VecBoolType) < 0)
         return -1;
     if (PyType_Ready(&VecBoolBufType) < 0)
+        return -1;
+    if (PyType_Ready(&VecBoolIterType) < 0)
         return -1;
 
     Py_INCREF(&VecType);

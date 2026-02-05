@@ -416,6 +416,88 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
+// Iterator type for vec[T] (reference types)
+
+typedef struct {
+    PyObject_HEAD
+    VecTObject *vec_obj;  // Reference to vec object (keeps buffer alive)
+    Py_ssize_t index;     // Current iteration index
+} VecTIterObject;
+
+PyTypeObject VecTIterType;
+
+static PyObject *VecT_iter(PyObject *self) {
+    VecTIterObject *it = PyObject_GC_New(VecTIterObject, &VecTIterType);
+    if (it == NULL)
+        return NULL;
+    Py_INCREF(self);
+    it->vec_obj = (VecTObject *)self;
+    it->index = 0;
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static int
+VecTIter_traverse(VecTIterObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->vec_obj);
+    return 0;
+}
+
+static int
+VecTIter_clear(VecTIterObject *self)
+{
+    Py_CLEAR(self->vec_obj);
+    return 0;
+}
+
+static void VecTIter_dealloc(VecTIterObject *self) {
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->vec_obj);
+    PyObject_GC_Del(self);
+}
+
+static PyObject *VecTIter_next(VecTIterObject *self) {
+    if (self->vec_obj == NULL)
+        return NULL;
+    VecT v = self->vec_obj->vec;
+    if (self->index < v.len) {
+        PyObject *item = v.buf->items[self->index];
+        self->index++;
+        Py_INCREF(item);
+        return item;
+    }
+    return NULL;  // StopIteration
+}
+
+static PyObject *VecTIter_len(VecTIterObject *self, PyObject *Py_UNUSED(ignored)) {
+    if (self->vec_obj == NULL)
+        return PyLong_FromSsize_t(0);
+    Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
+    if (remaining < 0)
+        remaining = 0;
+    return PyLong_FromSsize_t(remaining);
+}
+
+static PyMethodDef VecTIter_methods[] = {
+    {"__length_hint__", (PyCFunction)VecTIter_len, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+PyTypeObject VecTIterType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec_iterator",
+    .tp_basicsize = sizeof(VecTIterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecTIter_traverse,
+    .tp_clear = (inquiry)VecTIter_clear,
+    .tp_dealloc = (destructor)VecTIter_dealloc,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)VecTIter_next,
+    .tp_methods = VecTIter_methods,
+};
+
 PyTypeObject VecTBufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf",
@@ -443,6 +525,7 @@ PyTypeObject VecTType = {
     .tp_dealloc = (destructor)VecT_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
+    .tp_iter = VecT_iter,
     .tp_as_sequence = &VecTSequence,
     .tp_as_mapping = &VecTMapping,
     .tp_richcompare = vec_richcompare,

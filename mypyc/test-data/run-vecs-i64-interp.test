@@ -231,6 +231,45 @@ def test_iteration_nested() -> None:
                  (5, 2), (5, 5), (5, 7),
                  (7, 2), (7, 5), (7, 7)]
 
+def test_iterator_protocol() -> None:
+    # Test iter() and next() functions explicitly
+    v = vec[i64]([1, 2, 3])
+    it = iter(v)
+    assert next(it) == 1
+    assert next(it) == 2
+    assert next(it) == 3
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test multiple iterators on same vec
+    v = vec[i64]([10, 20])
+    it1 = iter(v)
+    it2 = iter(v)
+    assert next(it1) == 10
+    assert next(it2) == 10
+    assert next(it1) == 20
+    assert next(it2) == 20
+
+    # Test empty vec iterator
+    it = iter(vec[i64]())
+    with assertRaises(StopIteration):
+        next(it)
+
+def test_iterator_length_hint() -> None:
+    v = vec[i64]([1, 2, 3, 4, 5])
+    it = iter(v)
+    op: Any = getattr(sys, "modules")["operator"]
+    length_hint = op.length_hint
+    assert length_hint(it) == 5
+    next(it)
+    assert length_hint(it) == 4
+    next(it)
+    next(it)
+    assert length_hint(it) == 2
+    next(it)
+    next(it)
+    assert length_hint(it) == 0
+
 def test_slicing() -> None:
     v = vec[i64](range(5))
     assert v[1:4] == vec[i64]([1, 2, 3])
