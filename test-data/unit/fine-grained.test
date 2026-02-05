@@ -7381,8 +7381,8 @@ class C:
 ==
 a.py:2: error: No overload variant of "B" matches argument type "int"
 a.py:2: note: Possible overload variants:
-a.py:2: note:     def __init__(self, x: str) -> B
-a.py:2: note:     def __init__(self, x: str, y: int) -> B
+a.py:2: note:     def B(x: str) -> B
+a.py:2: note:     def B(x: str, y: int) -> B
 
 [case testOverloadedToNormalMethodMetaclass]
 import a
@@ -9076,7 +9076,7 @@ def foo() -> Optional[List]:
     20
 [out]
 ==
-a.py:4: error: Missing type parameters for generic type "List"
+a.py:4: error: Missing type arguments for generic type "List"
 ==
 ==
 a.py:2: error: Missing return statement
@@ -9124,15 +9124,15 @@ x = ''
 x = 1
 
 [out]
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 ==
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
@@ -9149,7 +9149,7 @@ T = TypeVar('T')
 class A(Generic[T]): ...
 [out]
 ==
-main:5: error: Missing type parameters for generic type "A"
+main:5: error: Missing type arguments for generic type "A"
 
 [case testStripNewAnalyzer]
 # flags: --ignore-missing-imports
@@ -11518,3 +11518,17 @@ class Sub(Base[Concatenate[str, P]]): ...
 [out]
 ==
 impl.py:7: error: Argument 1 to "meth" of "Base" has incompatible type "int"; expected "str"
+
+[case testFineGrainedUnexpectedKeywordArgument]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[out]
+==
+a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+b.py:1: note: "lol" defined here

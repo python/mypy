@@ -126,8 +126,8 @@ ONLY_CLASS_APPLICATION: Final = ErrorMessage(
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
 )
-ARGUMENT_TYPE_EXPECTED: Final = ErrorMessage(
-    "Function is missing a type annotation for one or more arguments", codes.NO_UNTYPED_DEF
+PARAM_TYPE_EXPECTED: Final = ErrorMessage(
+    "Function is missing a type annotation for one or more parameters", codes.NO_UNTYPED_DEF
 )
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
     'Keyword argument only valid with "str" key type in call to "dict"'
@@ -176,7 +176,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
     "Access to generic instance variables via class is ambiguous"
 )
 GENERIC_CLASS_VAR_ACCESS: Final = "Access to generic class variables is ambiguous"
-BARE_GENERIC: Final = "Missing type parameters for generic type {}"
+BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
@@ -224,7 +224,7 @@ SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
 
 # Self-type
 MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
-    "Self argument missing for a non-static method (or an invalid type for self)"
+    '"self" parameter missing for a non-static method (or an invalid type for self)'
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
@@ -308,14 +308,14 @@ INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', code
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )
-ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
-    "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
+ELLIPSIS_WITH_OTHER_TYPEPARAMS: Final = ErrorMessage(
+    "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
-    "Type signature has too many arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_MANY_PARAMS: Final = ErrorMessage(
+    "Type signature has too many parameters", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
-    "Type signature has too few arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_FEW_PARAMS: Final = ErrorMessage(
+    "Type signature has too few parameters", codes.SYNTAX
 )
 ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
 ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(

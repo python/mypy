@@ -115,7 +115,7 @@ a, b = x
 a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleAdditionalArgs_no_parallel]
+[case testNamedTupleAdditionalArgs]
 from collections import namedtuple
 
 A = namedtuple('A', 'a b')

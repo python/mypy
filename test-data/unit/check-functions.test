@@ -778,9 +778,22 @@ main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 class A:
     def f(self):
         # type: () -> None
-        def g(x):  # E: Type signature has too few arguments
+        def g(x):  # E: Type signature has too few parameters
             # type: () -> None
             pass
+
+[case testNestedFunctionInMethodCannotAccessEnclosingClassAttributes]
+class A:
+    var: int
+    import mod
+    class B: ...
+
+    def method(self) -> None:
+        def f1(arg: object) -> None:
+            arg.var  # E: "object" has no attribute "var"
+            arg.mod  # E: "object" has no attribute "mod"
+            arg.B  # E: "object" has no attribute "B"
+[file mod.py]
 
 [case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
 class A:
@@ -789,7 +802,7 @@ class A:
         class B:
             def g(self):
                 # type: () -> None
-                def h(x):  # E: Type signature has too few arguments
+                def h(x):  # E: Type signature has too few parameters
                     # type: () -> None
                     pass
 
@@ -2130,13 +2143,13 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic
@@ -2617,7 +2630,6 @@ x_in = None
 def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)
-[out]
 
 [case testNoComplainInferredNoneStrict]
 from typing import TypeVar, Optional
@@ -2627,7 +2639,6 @@ x_in = None
 def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)
-[out]
 
 [case testNoComplainNoneReturnFromUntyped]
 def foo() -> None:
@@ -3498,6 +3509,56 @@ class Qux(Bar):
     def baz(self, x) -> None:
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithDefaults]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def join(t1: T, t2: T) -> T: ...
+
+def f1() -> None: ...
+def f2(i: int = 0) -> None: ...
+def f3(i: str = "") -> None: ...
+
+reveal_type(join(f1, f2))  # N: Revealed type is "def ()"
+reveal_type(join(f1, f3))  # N: Revealed type is "def ()"
+reveal_type(join(f2, f3))  # N: Revealed type is "builtins.function"  # TODO: this could be better
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithDefaultsMultiple]
+from typing import TypeVar
+T = TypeVar("T")
+def join(t1: T, t2: T, t3: T) -> T: ...
+
+def f_1(common, a=None): ...
+def f_any(*_, **__): ...
+def f_3(common, b=None, x=None): ...
+
+fdict = {
+    "f_1": f_1,
+    "f_any": f_any,
+    "f_3": f_3,
+}
+reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (common: Any, a: Any =) -> Any]"
+
+reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, a: Any =) -> Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithType]
+from __future__ import annotations
+class Exc: ...
+class AttributeErr(Exc):
+    def __init__(self, *args: object) -> None: ...
+class FnfErr(Exc): ...
+
+x = [
+    FnfErr,
+    AttributeErr,
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+[builtins fixtures/type.pyi]
 
 [case testDistinctFormatting]
 from typing import Awaitable, Callable, ParamSpec

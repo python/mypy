@@ -1322,7 +1322,7 @@ main:2: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 from typing import Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x = None  # type: T
+    x: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
 [targets __main__]
@@ -1332,7 +1332,7 @@ from typing import Generic, List, TypeVar, Union
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x = None  # type: Union[T, List[U]]
+    x: Union[T, List[U]]
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/list.pyi]
@@ -3492,8 +3492,8 @@ c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def __new__(cls, foo: int) -> C \
-      # N:     def __new__(cls, x: str, y: str) -> C
+      # N:     def C(foo: int) -> C \
+      # N:     def C(x: str, y: str) -> C
 [builtins fixtures/__new__.pyi]
 
 
@@ -3922,8 +3922,8 @@ u = new(User)
 [out]
 tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: note: Possible overload variants:
-tmp/foo.pyi:17: note:     def __init__(self) -> U
-tmp/foo.pyi:17: note:     def __init__(self, arg: int) -> U
+tmp/foo.pyi:17: note:     def User() -> U
+tmp/foo.pyi:17: note:     def User(arg: int) -> U
 tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -4562,7 +4562,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 
 [case testVariableSubclassAssignment]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
     def __init__(self) -> None:
         self.a = "a"
@@ -4571,9 +4571,9 @@ main:5: error: Incompatible types in assignment (expression has type "str", vari
 
 [case testVariableSubclassTypeOverwrite]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
-    a = None  # type: str
+    a: str
 class C(B):
     a = "a"
 [out]
@@ -4583,7 +4583,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 class A:
     a = 1
 class B(A):
-    a = None  # type: str
+    a: str
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
@@ -4600,7 +4600,7 @@ class C(B):
 [case testClassAllBases]
 from typing import Union
 class A:
-    a = None  # type: Union[int, str]
+    a: Union[int, str]
 class B(A):
     a = 1
 class C(B):
@@ -4614,7 +4614,7 @@ main:7: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = 1
 
@@ -4622,7 +4622,7 @@ class B(A[int]):
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = "abc"
 [out]
@@ -4632,7 +4632,7 @@ main:6: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     pass
 class C(B):
@@ -4644,8 +4644,8 @@ main:8: error: Incompatible types in assignment (expression has type "str", base
 from typing import List, TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: List[T]
-    b = None  # type: List[T]
+    a: List[T]
+    b: List[T]
 class B(A[int]):
     a = [1]
     b = ['']
@@ -4670,7 +4670,7 @@ class A:
     @property
     def a(self) -> bool: pass
 class B(A):
-    a = None  # type: bool
+    a: bool
 class C(A):
     a = True
 class D(A):
@@ -4751,7 +4751,7 @@ main:7: error: Incompatible types in assignment (expression has type "Callable[[
 [case testClassSpec]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: int) -> int: pass
     b = c
@@ -4761,7 +4761,7 @@ reveal_type(B().b)  # N: Revealed type is "def (a: builtins.int) -> builtins.int
 [case testClassSpecError]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: str) -> int: pass
     b = c  # E: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
@@ -7683,7 +7683,7 @@ class Child(metaclass=M, thing=0):
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 
-[case testTooManyArgsForObject_no_parallel]
+[case testTooManyArgsForObject]
 class A(thing=5):
     pass
 [out]
@@ -7836,7 +7836,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 class A:
     def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
-    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def undecorated_not_self(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
 
@@ -7864,7 +7864,7 @@ class A:
     def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
     @to_same_callable
-    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @to_same_callable
     def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
@@ -7909,7 +7909,7 @@ class A:
         return 0
 
     @to_same_callable
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @to_same_callable
@@ -7931,7 +7931,7 @@ class B:
         return 0
 
     @remove_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @remove_first
@@ -7965,15 +7965,15 @@ reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins
 
 class D:
     @add_wrong_first
-    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn1() -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
 reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
@@ -7996,7 +7996,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 def unchecked():
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         # TODO: would be nice to make this error, but now we see the func
         # being decorated as Any, not as a callable
@@ -8017,12 +8017,12 @@ def unchecked():
 def checked() -> None:
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         @to_same_callable
         def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         @to_same_callable
-        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     class AlsoBad:
         def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
@@ -8328,6 +8328,37 @@ reveal_type(Foo.baz)  # E: "type[Foo]" has no attribute "baz" \
 foo: int
 def bar(x: int) -> int: ...
 
+[case testClassScopeImportAccessibleInMethods]
+class A:
+    import mod
+    from mod import var
+
+    def __new__(cls) -> "A":
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+        return cls()
+
+    def pos_or_named_self(self) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    def pos_only_self(self, /) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    @classmethod
+    def clsmethod(cls) -> None:
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+var = 1
+[builtins fixtures/module.pyi]
+
 [case testClassScopeImportFunctionNested]
 class Foo:
     class Bar:
@@ -8498,7 +8529,7 @@ def identity_wrapper(func: FuncT) -> FuncT:
 def foo(self: Any) -> str:
     return ""
 
-[case testParentClassWithTypeAliasAndSubclassWithMethod_no_parallel]
+[case testParentClassWithTypeAliasAndSubclassWithMethod]
 from typing import Any, Callable, TypeVar
 
 class Parent:
@@ -8517,7 +8548,7 @@ class Child(Parent):
         return val
     def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent" \
                                      # N:      Superclass: \
-                                     # N:          def __init__(self) -> bar \
+                                     # N:          def bar() -> bar \
                                      # N:      Subclass: \
                                      # N:          def bar(self, val: str) -> str
         return val

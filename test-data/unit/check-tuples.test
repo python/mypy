@@ -1533,17 +1533,24 @@ reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleOverlapDifferentTuples]
+# flags: --warn-unreachable
 from typing import Optional, Tuple
 class A: pass
 class B: pass
 
-possibles: Tuple[int, Tuple[A]]
-x: Optional[Tuple[B]]
+def f1(possibles: Tuple[int, Tuple[A]], x: Optional[Tuple[B]]):
+    if x in possibles:
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.B]"
+    else:
+        reveal_type(x) # N: Revealed type is "tuple[__main__.B] | None"
 
-if x in possibles:
-    reveal_type(x) # N: Revealed type is "tuple[__main__.B]"
-else:
-    reveal_type(x) # N: Revealed type is "tuple[__main__.B] | None"
+class AA(A): pass
+
+def f2(possibles: Tuple[int, Tuple[A]], x: Optional[Tuple[AA]]):
+    if x in possibles:
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.AA]"
+    else:
+        reveal_type(x) # N: Revealed type is "tuple[__main__.AA] | None"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1823,4 +1830,11 @@ class A: ...
 class tuple_aa_subclass(Tuple[A, A]): ...
 
 inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "tuple[A, A]", variable has type "tuple_aa_subclass")
+[builtins fixtures/tuple.pyi]
+
+[case testTuplePassedParameters]
+from typing_extensions import Concatenate
+
+def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for tuple, only for ParamSpec
+    reveal_type(t)  # N: Revealed type is "tuple[Any]"
 [builtins fixtures/tuple.pyi]
