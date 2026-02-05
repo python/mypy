@@ -1397,7 +1397,7 @@ def report_internal_error(
     err: Exception,
     file: str | None,
     line: int,
-    errors: Errors,
+    errors: Errors | None,
     options: Options,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -1410,11 +1410,12 @@ def report_internal_error(
     stderr = stderr or sys.stderr
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
-    try:
-        for msg in errors.new_messages():
-            print(msg)
-    except Exception as e:
-        print("Failed to dump errors:", repr(e), file=stderr)
+    if errors:
+        try:
+            for msg in errors.new_messages():
+                print(msg)
+        except Exception as e:
+            print("Failed to dump errors:", repr(e), file=stderr)
 
     # Compute file:line prefix for official-looking error messages.
     if file:
@@ -1456,7 +1457,7 @@ def report_internal_error(
     if not options.show_traceback:
         if not options.pdb:
             print(
-                "{}: note: please use --show-traceback to print a traceback "
+                "{}note: please use --show-traceback to print a traceback "
                 "when reporting a bug".format(prefix),
                 file=stderr,
             )
@@ -1467,7 +1468,7 @@ def report_internal_error(
         for s in traceback.format_list(tb + tb2):
             print(s.rstrip("\n"))
         print(f"{type(err).__name__}: {err}", file=stdout)
-        print(f"{prefix}: note: use --pdb to drop into pdb", file=stderr)
+        print(f"{prefix}note: use --pdb to drop into pdb", file=stderr)
 
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
