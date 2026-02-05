@@ -879,7 +879,7 @@ read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     }
     Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
-    if (unlikely(index + 2 > size)) {
+    if (unlikely(index > size - 2)) {
         PyErr_Format(PyExc_IndexError,
                      "index %lld out of range for bytes of length %zd",
                      (long long)index, size);

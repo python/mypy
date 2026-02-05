@@ -73,7 +73,7 @@ static inline int16_t
 CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
     // bytes_obj type is enforced by mypyc
     Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
-    if (unlikely(index < 0 || index + 2 > size)) {
+    if (unlikely(index < 0 || index > size - 2)) {
         CPyBytes_ReadError(index, size);
         return CPY_LL_INT_ERROR;
     }
