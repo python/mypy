@@ -8325,7 +8325,7 @@ def conditional_types(
         # For isinstance checks, proposed_type is typically an Instance, and we should narrow.
         # For identity checks (is/is not), proposed_type is typically a FunctionLike (type object),
         # and we should NOT narrow because Any could be anything.
-        proposed_proper = get_proper_type(proposed_type)
+        proposed_proper = proposed_type
         if (
             isinstance(proposed_proper, (FunctionLike, Overloaded))
             and proposed_proper.is_type_obj()
