@@ -31,8 +31,10 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+
 [builtins fixtures/list.pyi]
 
 [case testAttrsTypeComments]
@@ -49,8 +51,10 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+
 [builtins fixtures/list.pyi]
 
 [case testAttrsAutoAttribs]
@@ -67,8 +71,10 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+
 [builtins fixtures/list.pyi]
 
 [case testAttrsUntypedNoUntypedDefs]
@@ -1576,7 +1582,9 @@ takes_attrs_cls(A)
 takes_attrs_instance(A(1, ""))
 
 takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "type[AttrsInstance]"
-takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "type[A]"; expected "AttrsInstance" \
+                         # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
+
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsFields]
@@ -2490,4 +2498,30 @@ class Child(Parent[float]):
 Parent(run_type = None)
 c = Child(run_type = None)
 reveal_type(c.run_type)  # N: Revealed type is "builtins.int | None"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsInitOverload]
+# flags: --python-version 3.10
+from typing import overload
+
+import attrs
+
+@attrs.frozen(init=False)
+class C:
+    x: "int | str"
+
+    @overload
+    def __init__(self, x: int) -> None: ...
+
+    @overload
+    def __init__(self, x: str) -> None: ...
+
+    def __init__(self, x: "int | str") -> None:
+        self.__attrs_init__(x)
+
+
+obj = C(1)
+attrs.evolve(obj, x=1, y=1)
+attrs.evolve(obj, x=[])
+attrs.evolve(obj, x="1")
 [builtins fixtures/plugin_attrs.pyi]
