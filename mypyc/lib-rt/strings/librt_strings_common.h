@@ -266,4 +266,21 @@ BytesWriter_WriteF64BEUnsafe(BytesWriterObject *self, double value) {
     self->len += 8;
 }
 
+// Read a 64-bit float (double) in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline double
+CPyBytes_ReadF64BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    double value;
+#if PY_BIG_ENDIAN
+    memcpy(&value, data, 8);
+#else
+    uint64_t bits;
+    memcpy(&bits, data, 8);
+    bits = BSWAP64(bits);
+    memcpy(&value, &bits, 8);
+#endif
+    return value;
+}
+
 #endif  // LIBRT_STRINGS_COMMON_H

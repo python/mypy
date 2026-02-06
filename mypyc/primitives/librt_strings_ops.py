@@ -290,6 +290,16 @@ function_op(
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
+function_op(
+    name="librt.strings.read_f64_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyBytes_ReadF64BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
 # StringWriter operations
 
 function_op(
