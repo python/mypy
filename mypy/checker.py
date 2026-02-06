@@ -32,7 +32,12 @@ from mypy.checkmember import (
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
-from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
+from mypy.erasetype import (
+    erase_type,
+    erase_typevars,
+    remove_instance_last_known_values,
+    shallow_erase_type_for_equality,
+)
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
     ErrorInfo,
@@ -45,7 +50,7 @@ from mypy.errors import (
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
+from mypy.meet import is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -6540,19 +6545,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             narrowable_indices={0},
                         )
 
-                        # We only try and narrow away 'None' for now
-                        if (
-                            not is_unreachable_map(if_map)
-                            and is_overlapping_none(item_type)
-                            and not is_overlapping_none(collection_item_type)
-                            and not (
-                                isinstance(collection_item_type, Instance)
-                                and collection_item_type.type.fullname == "builtins.object"
-                            )
-                            and is_overlapping_erased_types(item_type, collection_item_type)
-                        ):
-                            if_map[operands[left_index]] = remove_optional(item_type)
-
                 if right_index in narrowable_operand_index_to_hash:
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
@@ -6676,6 +6668,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target_type = operand_types[j]
                 if should_coerce_literals:
                     target_type = coerce_to_literal(target_type)
+                # Type A[T1] could compare equal to A[T2] even if T1 is disjoint from T2
+                # e.g. cast(list[int], []) == cast(list[str], [])
+                target_type = shallow_erase_type_for_equality(target_type)
 
                 if (
                     # See comments in ambiguous_enum_equality_keys
@@ -6689,7 +6684,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if_map, else_map = conditional_types_to_typemaps(
                     operands[i], *conditional_types(expr_type, [target])
                 )
-                if is_target_for_value_narrowing(get_proper_type(target_type)):
+                if is_target_for_value_narrowing(target_type):
                     all_if_maps.append(if_map)
                     all_else_maps.append(else_map)
                 else:
@@ -6758,13 +6753,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target_type = operand_types[j]
                     if should_coerce_literals:
                         target_type = coerce_to_literal(target_type)
+                    target_type = shallow_erase_type_for_equality(target_type)
+
                     target = TypeRange(target_type, is_upper_bound=False)
 
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i], *conditional_types(expr_type, [target], default=expr_type)
                     )
                     or_if_maps.append(if_map)
-                    if is_target_for_value_narrowing(get_proper_type(target_type)):
+                    if is_target_for_value_narrowing(target_type):
                         or_else_maps.append(else_map)
 
             all_if_maps.append(reduce_or_conditional_type_maps(or_if_maps))
@@ -8609,13 +8606,7 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.bytearray",
-    "builtins.memoryview",
-    "builtins.list",
-    "builtins.dict",
-    "builtins.set",
-}
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {"builtins.bytearray", "builtins.memoryview"}
 
 
 def has_custom_eq_checks(t: Type) -> bool:
