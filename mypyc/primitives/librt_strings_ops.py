@@ -1,5 +1,5 @@
 from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS, STRING_WRITER_EXTRA_OPS
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_MAGIC_OVERLAPPING
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytearray_rprimitive,
