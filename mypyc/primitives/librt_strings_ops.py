@@ -158,6 +158,16 @@ function_op(
 )
 
 function_op(
+    name="librt.strings.write_i64_be",
+    arg_types=[bytes_writer_rprimitive, int64_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI64BE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
     name="librt.strings.write_i64_le",
     arg_types=[bytes_writer_rprimitive, int64_rprimitive],
     return_type=none_rprimitive,

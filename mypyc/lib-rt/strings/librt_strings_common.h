@@ -175,6 +175,20 @@ BytesWriter_WriteI64LEUnsafe(BytesWriterObject *self, int64_t value) {
     self->len += 8;
 }
 
+// Write a 64-bit signed integer in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteI64BEUnsafe(BytesWriterObject *self, int64_t value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 8);
+#else
+    uint64_t swapped = BSWAP64((uint64_t)value);
+    memcpy(self->buf + self->len, &swapped, 8);
+#endif
+    self->len += 8;
+}
+
 // Read a 64-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int64_t

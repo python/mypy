@@ -110,6 +110,15 @@ CPyBytesWriter_WriteI64LE(PyObject *obj, int64_t value) {
     return CPY_NONE;
 }
 
+static inline char
+CPyBytesWriter_WriteI64BE(PyObject *obj, int64_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 8))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteI64BEUnsafe(self, value);
+    return CPY_NONE;
+}
+
 // Bytes: Read integer operations
 
 // Helper function for bytes read error handling (negative index or out of range)
