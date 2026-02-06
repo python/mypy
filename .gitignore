@@ -60,3 +60,4 @@ test_capi
 test_capi
 /mypyc/lib-rt/build/
 /mypyc/lib-rt/*.so
+.worktrees/
