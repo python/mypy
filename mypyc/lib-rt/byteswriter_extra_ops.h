@@ -75,6 +75,15 @@ CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
 }
 
 static inline char
+CPyBytesWriter_WriteI16BE(PyObject *obj, int16_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 2))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteI16BEUnsafe(self, value);
+    return CPY_NONE;
+}
+
+static inline char
 CPyBytesWriter_WriteI32LE(PyObject *obj, int32_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 4))

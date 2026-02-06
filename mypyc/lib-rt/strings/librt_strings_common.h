@@ -5,18 +5,17 @@
 #include <stdint.h>
 #include <string.h>
 
-// Byte-swap functions for non-native endianness support
-#if PY_BIG_ENDIAN
-#  if defined(_MSC_VER)
-#    include <stdlib.h>
-#    define BSWAP16(x) _byteswap_ushort(x)
-#    define BSWAP32(x) _byteswap_ulong(x)
-#    define BSWAP64(x) _byteswap_uint64(x)
-#  elif defined(__GNUC__) || defined(__clang__)
-#    define BSWAP16(x) __builtin_bswap16(x)
-#    define BSWAP32(x) __builtin_bswap32(x)
-#    define BSWAP64(x) __builtin_bswap64(x)
-#  else
+// Byte-swap functions for endianness conversion (needed for both LE and BE operations)
+#if defined(_MSC_VER)
+#  include <stdlib.h>
+#  define BSWAP16(x) _byteswap_ushort(x)
+#  define BSWAP32(x) _byteswap_ulong(x)
+#  define BSWAP64(x) _byteswap_uint64(x)
+#elif defined(__GNUC__) || defined(__clang__)
+#  define BSWAP16(x) __builtin_bswap16(x)
+#  define BSWAP32(x) __builtin_bswap32(x)
+#  define BSWAP64(x) __builtin_bswap64(x)
+#else
 // Fallback for other compilers (slower but portable)
 static inline uint16_t BSWAP16(uint16_t x) {
     return (uint16_t)((x >> 8) | (x << 8));
@@ -37,7 +36,6 @@ static inline uint64_t BSWAP64(uint64_t x) {
            ((x << 40) & 0xFF000000000000ULL) |
            ((x << 56) & 0xFF00000000000000ULL);
 }
-#  endif
 #endif
 
 // Length of the default buffer embedded directly in a BytesWriter object
@@ -61,6 +59,20 @@ BytesWriter_WriteI16LEUnsafe(BytesWriterObject *self, int16_t value) {
     memcpy(self->buf + self->len, &swapped, 2);
 #else
     memcpy(self->buf + self->len, &value, 2);
+#endif
+    self->len += 2;
+}
+
+// Write a 16-bit signed integer in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteI16BEUnsafe(BytesWriterObject *self, int16_t value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 2);
+#else
+    uint16_t swapped = BSWAP16((uint16_t)value);
+    memcpy(self->buf + self->len, &swapped, 2);
 #endif
     self->len += 2;
 }

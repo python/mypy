@@ -5,7 +5,7 @@ import binascii
 import random
 import struct
 
-from librt.strings import BytesWriter, StringWriter, write_i16_le, read_i16_le, write_i32_le, read_i32_le, write_i64_le, read_i64_le
+from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, write_i32_le, read_i32_le, write_i64_le, read_i64_le
 
 from testutil import assertRaises
 
@@ -243,6 +243,58 @@ def test_read_i16_le_via_any() -> None:
         read_i16_le("not bytes", 0 + int())  # type: ignore
     with assertRaises(TypeError, "read_i16_le() argument 1 must be bytes"):
         read_i16_le(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
+
+def test_bytes_writer_write_i16_be() -> None:
+    # Test various i16 values from 1-byte to 2-byte range
+    w = BytesWriter()
+    for v in I16_TEST_VALUES:
+        write_i16_be(w, v)
+    assert w.getvalue() == b"".join(struct.pack(">h", v) for v in I16_TEST_VALUES)
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(1000):
+        write_i16_be(w, i)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 2002
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    # Check a few values in the middle
+    assert result[1:3] == b"\x00\x00"  # i=0
+    assert result[3:5] == b"\x00\x01"  # i=1
+    assert result[1999:2001] == b"\x03\xe7"  # i=999
+
+def test_write_i16_be_via_any() -> None:
+    # Test write_i16_be via Any to ensure C extension wrapper works
+    # (tests fallback path when not using mypyc primitives)
+    w: Any = BytesWriter()
+
+    # Test 8-bit and 16-bit operations
+    w.append(0x42)
+    write_i16_be(w, 0x1234)
+    w.append(0xFF)
+    assert w.getvalue() == b"\x42\x12\x34\xFF"
+
+    # Test buffer growth with write_i16_be
+    w2: Any = BytesWriter()
+    for i in range(150):
+        write_i16_be(w2, i)
+    result = w2.getvalue()
+    assert len(result) == 300
+    assert result[0:2] == b"\x00\x00"  # i=0
+    assert result[2:4] == b"\x00\x01"  # i=1
+    assert result[298:300] == b"\x00\x95"  # i=149
+
+    # Test values that don't fit in i16
+    w3: Any = BytesWriter()
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_be(w3, 32768 + int())
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_be(w3, -32769 + int())
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        write_i16_be(w3, 100000 + int())
 
 def test_bytes_writer_write_i32_le() -> None:
     # Test various i32 values from 1-byte to 4-byte range

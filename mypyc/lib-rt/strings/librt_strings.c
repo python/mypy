@@ -895,6 +895,20 @@ write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+write_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i16_be");
+    if (bw == NULL)
+        return NULL;
+    int16_t unboxed = CPyLong_AsInt16(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2)))
+        return NULL;
+    BytesWriter_WriteI16BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i16_le", 2, &index);
@@ -955,6 +969,9 @@ static PyMethodDef librt_strings_module_methods[] = {
 #ifdef MYPYC_EXPERIMENTAL
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
      PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"write_i16_be", (PyCFunction) write_i16_be, METH_FASTCALL,
+     PyDoc_STR("Write a 16-bit signed integer to BytesWriter in big-endian format")
     },
     {"read_i16_le", (PyCFunction) read_i16_le, METH_FASTCALL,
      PyDoc_STR("Read a 16-bit signed integer from bytes in little-endian format")
