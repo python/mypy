@@ -1009,6 +1009,15 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyLong_FromLongLong(CPyBytes_ReadI64LEUnsafe(data + index));
 }
 
+static PyObject*
+read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_be", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLongLong(CPyBytes_ReadI64BEUnsafe(data + index));
+}
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
@@ -1045,6 +1054,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_i64_le", (PyCFunction) read_i64_le, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit signed integer from bytes in little-endian format")
+    },
+    {"read_i64_be", (PyCFunction) read_i64_be, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit signed integer from bytes in big-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}

@@ -202,4 +202,19 @@ CPyBytes_ReadI64LEUnsafe(const unsigned char *data) {
     return (int64_t)value;
 }
 
+// Read a 64-bit signed integer in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int64_t
+CPyBytes_ReadI64BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    uint64_t value;
+    memcpy(&value, data, 8);
+#if PY_BIG_ENDIAN
+    // Already in big-endian format, no swap needed
+#else
+    value = BSWAP64(value);
+#endif
+    return (int64_t)value;
+}
+
 #endif  // LIBRT_STRINGS_COMMON_H

@@ -184,6 +184,18 @@ CPyBytes_ReadI64LE(PyObject *bytes_obj, int64_t index) {
     return CPyBytes_ReadI64LEUnsafe(data + index);
 }
 
+static inline int64_t
+CPyBytes_ReadI64BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI64BEUnsafe(data + index);
+}
+
 #endif // MYPYC_EXPERIMENTAL
 
 #endif
