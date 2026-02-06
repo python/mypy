@@ -1005,6 +1005,50 @@ def f(x: Custom | None, y: int | None):
         reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingCustomEqualityUnion4]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom1:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+class Custom2:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom1 | int, y: Custom2 | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom1 | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.Custom2 | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom1 | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.Custom2 | builtins.int"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualitySubclass]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+class CustomSub(Custom):
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom, y: CustomSub):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(y)  # N: Revealed type is "__main__.CustomSub"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(y)  # N: Revealed type is "__main__.CustomSub"
+[builtins fixtures/tuple.pyi]
+
 [case testNarrowingUnreachableCases]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
