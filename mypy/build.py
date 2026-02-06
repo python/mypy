@@ -848,6 +848,8 @@ class BuildManager:
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+        if self.verbosity() >= 2:
+            self.trace(f"Plugins snapshot (fresh) {json.dumps(self.plugins_snapshot)}")
         self.quickstart_state = read_quickstart_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
@@ -1355,7 +1357,7 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
     snapshot = _load_json_file(
         PLUGIN_SNAPSHOT_FILE,
         manager,
-        log_success="Plugins snapshot ",
+        log_success="Plugins snapshot (cached) ",
         log_error="Could not load plugins snapshot: ",
     )
     if snapshot is None:
