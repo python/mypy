@@ -6736,13 +6736,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             or_else_maps: list[TypeMap] = []
             for expr_type in union_expr_type.items:
                 if has_custom_eq_checks(expr_type):
-                    # Always include union items with custom __eq__ in the type
+                    # Always include the union items with custom __eq__ in the type
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
                 expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
                 for j in expr_indices:
                     if j in custom_eq_indices:
+                        if i == j:
+                            continue
+                        # If we compare to a target with custom __eq__, we cannot narrow at all
+                        or_if_maps.append({})
                         continue
                     target_type = operand_types[j]
                     if should_coerce_literals:
