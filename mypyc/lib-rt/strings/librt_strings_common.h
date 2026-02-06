@@ -217,6 +217,38 @@ CPyBytes_ReadI64BEUnsafe(const unsigned char *data) {
     return (int64_t)value;
 }
 
+// Write a 32-bit float in little-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteF32LEUnsafe(BytesWriterObject *self, float value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    uint32_t bits;
+    memcpy(&bits, &value, 4);
+    bits = BSWAP32(bits);
+    memcpy(self->buf + self->len, &bits, 4);
+#else
+    memcpy(self->buf + self->len, &value, 4);
+#endif
+    self->len += 4;
+}
+
+// Write a 32-bit float in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteF32BEUnsafe(BytesWriterObject *self, float value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 4);
+#else
+    uint32_t bits;
+    memcpy(&bits, &value, 4);
+    bits = BSWAP32(bits);
+    memcpy(self->buf + self->len, &bits, 4);
+#endif
+    self->len += 4;
+}
+
 // Write a 64-bit float (double) in little-endian format to BytesWriter.
 // NOTE: This does NOT check buffer capacity - caller must ensure space is available.
 static inline void

@@ -5,7 +5,7 @@ import binascii
 import random
 import struct
 
-from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be, write_f64_le, read_f64_le, write_f64_be, read_f64_be
+from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be, write_f64_le, read_f64_le, write_f64_be, read_f64_be, write_f32_le, write_f32_be
 
 from testutil import assertRaises
 
@@ -52,6 +52,21 @@ F64_TEST_VALUES: list[float] = [
     -1.7976931348623157e+308,  # min float
     2.2250738585072014e-308,   # min positive normal
     5e-324,                    # min positive subnormal
+    float('inf'), float('-inf'),
+    float('nan'),
+]
+
+# Test values for f32 write/read operations (values that fit in 32-bit float)
+F32_TEST_VALUES: list[float] = [
+    0.0, -0.0, 1.0, -1.0,
+    -113.0,  # mypyc overlapping error value
+    0.5, -0.5, 0.1, -0.1,
+    1.5, 255.0, 256.0,
+    1e10, -1e10,
+    1e-10,
+    3.4028235e+38,    # max float32
+    -3.4028235e+38,   # min float32
+    1.1754944e-38,    # min positive normal float32
     float('inf'), float('-inf'),
     float('nan'),
 ]
@@ -748,6 +763,92 @@ def test_write_f64_via_any() -> None:
         assert result[0:8] == struct.pack(fmt, float('inf'))
         assert result[8:16] == struct.pack(fmt, float('-inf'))
         assert math.isnan(struct.unpack(fmt, result[16:24])[0])
+
+        # Test wrong type
+        w4: Any = BytesWriter()
+        with assertRaises(TypeError):
+            write_func(w4, "not a float" + str())  # type: ignore
+
+def test_bytes_writer_write_f32_le() -> None:
+    import struct as s
+    # Test various f32 values
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_le(w, v)
+    result = w.getvalue()
+    expected = b"".join(s.pack("<f", v) for v in F32_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f32_le(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 802
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:5] == s.pack("<f", 0.0)
+    assert result[5:9] == s.pack("<f", 1.5)
+    assert result[797:801] == s.pack("<f", 199.0 * 1.5)
+
+def test_bytes_writer_write_f32_be() -> None:
+    import struct as s
+    # Test various f32 values
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_be(w, v)
+    result = w.getvalue()
+    expected = b"".join(s.pack(">f", v) for v in F32_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f32_be(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 802
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:5] == s.pack(">f", 0.0)
+    assert result[5:9] == s.pack(">f", 1.5)
+    assert result[797:801] == s.pack(">f", 199.0 * 1.5)
+
+def test_write_f32_via_any() -> None:
+    import math
+    # Test write_f32_le/be via Any to ensure C extension wrapper works
+    for write_func, fmt in zip((write_f32_le, write_f32_be), ("<f", ">f")):
+        w: Any = BytesWriter()
+
+        w.append(0x42)
+        write_func(w, 1.5)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 1.5) + b"\xFF"
+
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(100):
+            write_func(w2, float(i) * 0.25)
+        result = w2.getvalue()
+        assert len(result) == 400
+        assert result[0:4] == struct.pack(fmt, 0.0)
+        assert result[4:8] == struct.pack(fmt, 0.25)
+        assert result[396:400] == struct.pack(fmt, 99.0 * 0.25)
+
+        # Test special values
+        w3: Any = BytesWriter()
+        write_func(w3, float('inf'))
+        write_func(w3, float('-inf'))
+        write_func(w3, float('nan'))
+        result = w3.getvalue()
+        assert result[0:4] == struct.pack(fmt, float('inf'))
+        assert result[4:8] == struct.pack(fmt, float('-inf'))
+        assert math.isnan(struct.unpack(fmt, result[8:12])[0])
 
         # Test wrong type
         w4: Any = BytesWriter()

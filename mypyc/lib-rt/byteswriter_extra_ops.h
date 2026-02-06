@@ -122,6 +122,24 @@ CPyBytesWriter_WriteI64BE(PyObject *obj, int64_t value) {
 // BytesWriter: Write float operations
 
 static inline char
+CPyBytesWriter_WriteF32LE(PyObject *obj, double value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteF32LEUnsafe(self, (float)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteF32BE(PyObject *obj, double value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteF32BEUnsafe(self, (float)value);
+    return CPY_NONE;
+}
+
+static inline char
 CPyBytesWriter_WriteF64LE(PyObject *obj, double value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 8))

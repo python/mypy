@@ -1010,6 +1010,34 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+write_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f32_le");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteF32LEUnsafe(bw, (float)unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f32_be");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteF32BEUnsafe(bw, (float)unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 write_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f64_le");
     if (bw == NULL)
@@ -1115,6 +1143,12 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
+    },
+    {"write_f32_le", (PyCFunction) write_f32_le, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit float to BytesWriter in little-endian format")
+    },
+    {"write_f32_be", (PyCFunction) write_f32_be, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit float to BytesWriter in big-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}

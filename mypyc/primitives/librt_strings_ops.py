@@ -300,6 +300,28 @@ function_op(
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
+# f32 write/read functions
+
+function_op(
+    name="librt.strings.write_f32_le",
+    arg_types=[bytes_writer_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteF32LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_f32_be",
+    arg_types=[bytes_writer_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteF32BE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
 # StringWriter operations
 
 function_op(
