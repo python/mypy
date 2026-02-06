@@ -140,6 +140,85 @@ L0:
     r0 = CPyBytes_ReadI16LE(b, 0)
     return r0
 
+[case testLibrtStrings_i32_le_experimental_64bit]
+from librt.strings import BytesWriter, write_i32_le, read_i32_le
+from mypy_extensions import i32, i64
+
+def test_write_i32_le(b: BytesWriter, n: i32) -> None:
+    write_i32_le(b, n)
+def test_write_i32_le_literal(b: BytesWriter) -> None:
+    write_i32_le(b, 12345678)
+def test_read_i32_le(b: bytes, i: i64) -> i32:
+    return read_i32_le(b, i)
+def test_read_i32_le_literal(b: bytes) -> i32:
+    return read_i32_le(b, 0)
+[out]
+def test_write_i32_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i32
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI32LE(b, n)
+    return 1
+def test_write_i32_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI32LE(b, 12345678)
+    return 1
+def test_read_i32_le(b, i):
+    b :: bytes
+    i :: i64
+    r0 :: i32
+L0:
+    r0 = CPyBytes_ReadI32LE(b, i)
+    return r0
+def test_read_i32_le_literal(b):
+    b :: bytes
+    r0 :: i32
+L0:
+    r0 = CPyBytes_ReadI32LE(b, 0)
+    return r0
+
+[case testLibrtStrings_i64_le_experimental_64bit]
+from librt.strings import BytesWriter, write_i64_le, read_i64_le
+from mypy_extensions import i64
+
+def test_write_i64_le(b: BytesWriter, n: i64) -> None:
+    write_i64_le(b, n)
+def test_write_i64_le_literal(b: BytesWriter) -> None:
+    write_i64_le(b, 1234567890123456789)
+def test_read_i64_le(b: bytes, i: i64) -> i64:
+    return read_i64_le(b, i)
+def test_read_i64_le_literal(b: bytes) -> i64:
+    return read_i64_le(b, 0)
+[out]
+def test_write_i64_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i64
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI64LE(b, n)
+    return 1
+def test_write_i64_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI64LE(b, 1234567890123456789)
+    return 1
+def test_read_i64_le(b, i):
+    b :: bytes
+    i, r0 :: i64
+L0:
+    r0 = CPyBytes_ReadI64LE(b, i)
+    return r0
+def test_read_i64_le_literal(b):
+    b :: bytes
+    r0 :: i64
+L0:
+    r0 = CPyBytes_ReadI64LE(b, 0)
+    return r0
+
 [case testLibrtStrings_StringWriter_experimental_64bit]
 from librt.strings import StringWriter
 from mypy_extensions import i32, i64

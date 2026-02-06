@@ -32,7 +32,7 @@ char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     return CPY_NONE;
 }
 
-int16_t CPyBytes_ReadError(int64_t index, Py_ssize_t size) {
+void CPyBytes_ReadError(int64_t index, Py_ssize_t size) {
     if (index < 0) {
         PyErr_SetString(PyExc_ValueError, "index must be non-negative");
     } else {
@@ -40,7 +40,6 @@ int16_t CPyBytes_ReadError(int64_t index, Py_ssize_t size) {
                      "index %lld out of range for bytes of length %zd",
                      (long long)index, size);
     }
-    return CPY_LL_INT_ERROR;
 }
 
 #endif // MYPYC_EXPERIMENTAL

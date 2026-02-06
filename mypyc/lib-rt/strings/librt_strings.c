@@ -831,46 +831,37 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
-static PyObject*
-write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+// Helper for write_i*_le/be functions - validates args and returns BytesWriter
+static inline BytesWriterObject *
+parse_write_int_args(PyObject *const *args, size_t nargs, const char *func_name) {
     if (unlikely(nargs != 2)) {
         PyErr_Format(PyExc_TypeError,
-                     "write_i16_le() takes exactly 2 arguments (%zu given)", nargs);
+                     "%s() takes exactly 2 arguments (%zu given)", func_name, nargs);
         return NULL;
     }
     PyObject *writer = args[0];
     if (!check_bytes_writer(writer)) {
         return NULL;
     }
-    PyObject *value = args[1];
-    int16_t unboxed = CPyLong_AsInt16(value);
-    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred())) {
-        // Error already set by CPyLong_AsInt16 (ValueError for overflow, TypeError for wrong type)
-        return NULL;
-    }
-    BytesWriterObject *bw = (BytesWriterObject *)writer;
-    if (unlikely(!ensure_bytes_writer_size(bw, 2))) {
-        return NULL;
-    }
-    BytesWriter_write_i16_le_unchecked(bw, unboxed);
-    Py_INCREF(Py_None);
-    return Py_None;
+    return (BytesWriterObject *)writer;
 }
 
-static PyObject*
-read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+// Helper for read_i*_le/be functions - validates args and returns data pointer
+// Returns NULL on error, sets *out_index to the validated index on success
+static inline const unsigned char *
+parse_read_int_args(PyObject *const *args, size_t nargs, const char *func_name,
+                    Py_ssize_t num_bytes, int64_t *out_index) {
     if (unlikely(nargs != 2)) {
         PyErr_Format(PyExc_TypeError,
-                     "read_i16_le() takes exactly 2 arguments (%zu given)", nargs);
+                     "%s() takes exactly 2 arguments (%zu given)", func_name, nargs);
         return NULL;
     }
     PyObject *bytes_obj = args[0];
     if (unlikely(!PyBytes_Check(bytes_obj))) {
-        PyErr_SetString(PyExc_TypeError, "read_i16_le() argument 1 must be bytes");
+        PyErr_Format(PyExc_TypeError, "%s() argument 1 must be bytes", func_name);
         return NULL;
     }
-    PyObject *index_obj = args[1];
-    int64_t index = CPyLong_AsInt64(index_obj);
+    int64_t index = CPyLong_AsInt64(args[1]);
     if (unlikely(index == CPY_LL_INT_ERROR && PyErr_Occurred())) {
         return NULL;
     }
@@ -879,15 +870,83 @@ read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     }
     Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
-    if (unlikely(index > size - 2)) {
+    if (unlikely(index > size - num_bytes)) {
         PyErr_Format(PyExc_IndexError,
                      "index %lld out of range for bytes of length %zd",
                      (long long)index, size);
         return NULL;
     }
-    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
-    int16_t value = read_i16_le_unchecked(data + index);
-    return PyLong_FromLong(value);
+    *out_index = index;
+    return (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+}
+
+static PyObject*
+write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i16_le");
+    if (bw == NULL)
+        return NULL;
+    int16_t unboxed = CPyLong_AsInt16(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2)))
+        return NULL;
+    BytesWriter_WriteI16LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i16_le", 2, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI16LEUnsafe(data + index));
+}
+
+static PyObject*
+write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i32_le");
+    if (bw == NULL)
+        return NULL;
+    int32_t unboxed = CPyLong_AsInt32(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteI32LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_le", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI32LEUnsafe(data + index));
+}
+
+static PyObject*
+write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i64_le");
+    if (bw == NULL)
+        return NULL;
+    int64_t unboxed = CPyLong_AsInt64(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteI64LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_le", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLongLong(CPyBytes_ReadI64LEUnsafe(data + index));
 }
 
 #endif
@@ -899,6 +958,18 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_i16_le", (PyCFunction) read_i16_le, METH_FASTCALL,
      PyDoc_STR("Read a 16-bit signed integer from bytes in little-endian format")
+    },
+    {"write_i32_le", (PyCFunction) write_i32_le, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"read_i32_le", (PyCFunction) read_i32_le, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit signed integer from bytes in little-endian format")
+    },
+    {"write_i64_le", (PyCFunction) write_i64_le, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"read_i64_le", (PyCFunction) read_i64_le, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit signed integer from bytes in little-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}
