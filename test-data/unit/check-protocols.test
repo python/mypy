@@ -4693,3 +4693,55 @@ class Impl:
         pass
 
 x: Proto = Impl()
+
+[case testIndirectDependencyOnProtocolIncremental]
+import a
+[file a.py]
+from b import P
+
+class CNested:
+    def f(self) -> int: ...
+class C:
+    def f(self) -> CNested: ...
+
+x: P = C()
+
+[file b.py]
+from typing import Protocol
+from c import PNested
+
+class P(Protocol):
+    def f(self) -> PNested: ...
+
+[file c.py]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+
+[file c.py.2]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> int: ...
+
+[file c.py.3]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+[out]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested
+[out2]
+[out3]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested
