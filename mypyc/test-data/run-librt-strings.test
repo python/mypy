@@ -17,7 +17,7 @@ I16_TEST_VALUES: list[int] = [
     128, 255, 256, 0x1234, 32767, -129, -256, -32768,
 ]
 
-# Test values for i32 write/read operations: all i16 values plus 3-4 byte values
+# Test values for i32 write/read operations: i16 test values plus 3-4 byte values
 I32_TEST_VALUES: list[int] = I16_TEST_VALUES + [
     # 3-byte values (32768 to 8388607, -8388608 to -32769)
     32768, 65535, 65536, 8388607, -32769, -65536, -8388608,
@@ -25,7 +25,7 @@ I32_TEST_VALUES: list[int] = I16_TEST_VALUES + [
     8388608, 16777215, 16777216, 2147483647, -8388609, -16777216, -2147483648,
 ]
 
-# Test values for i64 write/read operations: all i32 values plus 5-8 byte values
+# Test values for i64 write/read operations: i32 test values plus 5-8 byte values
 I64_TEST_VALUES: list[int] = I32_TEST_VALUES + [
     # 5-8 byte values (beyond i32 range)
     2147483648,           # 2^31, just above i32 max
@@ -151,7 +151,7 @@ def test_bytes_writer_truncate() -> None:
         b.truncate(-1)
 
 def test_bytes_writer_write_i16_le() -> None:
-    # Test all i16 values from 1-byte to 2-byte range
+    # Test various i16 values from 1-byte to 2-byte range
     w = BytesWriter()
     for v in I16_TEST_VALUES:
         write_i16_le(w, v)
@@ -203,7 +203,7 @@ def test_write_i16_le_via_any() -> None:
         write_i16_le(w3, 100000 + int())
 
 def test_bytes_reader_read_i16_le() -> None:
-    # Test all i16 values from 1-byte to 2-byte range
+    # Test various i16 values from 1-byte to 2-byte range
     data = b"".join(struct.pack("<h", v) for v in I16_TEST_VALUES)
     for i, v in enumerate(I16_TEST_VALUES):
         assert read_i16_le(data, i * 2) == v
@@ -216,7 +216,7 @@ def test_bytes_reader_read_i16_le() -> None:
     for i, v in enumerate(I16_TEST_VALUES):
         assert read_i16_le(result, i * 2) == v
 
-    # Test various offsets
+    # Test unaligned offset
     data2 = b"\xFF" + b"\x34\x12" + b"\xFF"
     assert read_i16_le(data2, 1) == 0x1234
 
@@ -245,7 +245,7 @@ def test_read_i16_le_via_any() -> None:
         read_i16_le(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
 
 def test_bytes_writer_write_i32_le() -> None:
-    # Test all i32 values from 1-byte to 4-byte range
+    # Test various i32 values from 1-byte to 4-byte range
     w = BytesWriter()
     for v in I32_TEST_VALUES:
         write_i32_le(w, v)
@@ -297,7 +297,7 @@ def test_write_i32_le_via_any() -> None:
         write_i32_le(w3, 10000000000 + int())
 
 def test_bytes_reader_read_i32_le() -> None:
-    # Test all i32 values from 1-byte to 4-byte range
+    # Test various i32 values from 1-byte to 4-byte range
     data = b"".join(struct.pack("<i", v) for v in I32_TEST_VALUES)
     for i, v in enumerate(I32_TEST_VALUES):
         assert read_i32_le(data, i * 4) == v
@@ -310,7 +310,7 @@ def test_bytes_reader_read_i32_le() -> None:
     for i, v in enumerate(I32_TEST_VALUES):
         assert read_i32_le(result, i * 4) == v
 
-    # Test various offsets
+    # Test unaligned offset
     data2 = b"\xFF" + struct.pack("<i", 0x12345678) + b"\xFF"
     assert read_i32_le(data2, 1) == 0x12345678
 
@@ -392,7 +392,7 @@ def test_bytes_reader_read_i64_le() -> None:
     for i, v in enumerate(I64_TEST_VALUES):
         assert read_i64_le(result, i * 8) == v
 
-    # Test various offsets
+    # Test unaligned offset
     data2 = b"\xFF" + struct.pack("<q", 0x123456789ABCDEF0) + b"\xFF"
     assert read_i64_le(data2, 1) == 0x123456789ABCDEF0
 
