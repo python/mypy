@@ -941,6 +941,20 @@ write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+write_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i32_be");
+    if (bw == NULL)
+        return NULL;
+    int32_t unboxed = CPyLong_AsInt32(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteI32BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_le", 4, &index);
@@ -990,6 +1004,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"write_i32_le", (PyCFunction) write_i32_le, METH_FASTCALL,
      PyDoc_STR("Write a 32-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"write_i32_be", (PyCFunction) write_i32_be, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit signed integer to BytesWriter in big-endian format")
     },
     {"read_i32_le", (PyCFunction) read_i32_le, METH_FASTCALL,
      PyDoc_STR("Read a 32-bit signed integer from bytes in little-endian format")
