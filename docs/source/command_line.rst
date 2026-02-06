@@ -746,6 +746,10 @@ of the above sections.
     Note that :option:`--strict-equality-for-none <mypy --strict-equality-for-none>`
     only works in combination with :option:`--strict-equality <mypy --strict-equality>`.
 
+.. option:: --strict-overload-subtyping
+
+    Require subtype overload order to match supertype overload order.
+
 .. option:: --strict-bytes
 
     By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
