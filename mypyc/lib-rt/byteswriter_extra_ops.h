@@ -101,7 +101,7 @@ CPyBytesWriter_WriteI64LE(PyObject *obj, int64_t value) {
     return CPY_NONE;
 }
 
-// Bytes: Read integer operations (little-endian)
+// Bytes: Read integer operations
 
 // Helper function for bytes read error handling (negative index or out of range)
 void CPyBytes_ReadError(int64_t index, Py_ssize_t size);
@@ -116,6 +116,18 @@ CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadI16LEUnsafe(data + index);
+}
+
+static inline int16_t
+CPyBytes_ReadI16BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 2)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI16BEUnsafe(data + index);
 }
 
 static inline int32_t

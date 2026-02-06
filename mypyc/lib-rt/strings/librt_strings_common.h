@@ -90,6 +90,21 @@ CPyBytes_ReadI16LEUnsafe(const unsigned char *data) {
     return (int16_t)value;
 }
 
+// Read a 16-bit signed integer in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int16_t
+CPyBytes_ReadI16BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    uint16_t value;
+    memcpy(&value, data, 2);
+#if PY_BIG_ENDIAN
+    // Already in big-endian format, no swap needed
+#else
+    value = BSWAP16(value);
+#endif
+    return (int16_t)value;
+}
+
 // Write a 32-bit signed integer in little-endian format to BytesWriter.
 // NOTE: This does NOT check buffer capacity - caller must ensure space is available.
 static inline void
