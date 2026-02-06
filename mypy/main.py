@@ -1076,10 +1076,12 @@ def define_options(
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
-    incremental_group.add_argument(
-        "--fixed-format-cache",
-        action="store_true",
-        help="Use new fast and compact fixed format cache",
+    add_invertible_flag(
+        "--no-fixed-format-cache",
+        dest="fixed_format_cache",
+        default=True,
+        help="Do not use new fixed format cache",
+        group=incremental_group,
     )
     incremental_group.add_argument(
         "--skip-version-check",
