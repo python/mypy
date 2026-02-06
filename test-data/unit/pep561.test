@@ -246,8 +246,5 @@ import m1
 import typedpkg_ns.b  # type: ignore
 [file m2.py]
 import typedpkg_ns.a
-# TODO: the error on second run is a bug, but it is a separate issue, likely #20105.
 [out]
 [out2]
-m1.py:1: error: Skipping analyzing "typedpkg_ns": module is installed, but missing library stubs or py.typed marker
-m1.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

@@ -1835,7 +1835,7 @@ def write_cache(
     tree: MypyFile,
     dependencies: list[str],
     suppressed: list[str],
-    ignored_lines: dict[int, list[str]],
+    imports_ignored: dict[int, list[str]],
     dep_prios: list[int],
     dep_lines: list[int],
     old_interface_hash: bytes,
@@ -1950,7 +1950,7 @@ def write_cache(
         data_mtime=data_mtime,
         data_file=data_file,
         suppressed=suppressed,
-        ignored_lines=ignored_lines,
+        imports_ignored=imports_ignored,
         options=options_snapshot(id, manager),
         dep_prios=dep_prios,
         dep_lines=dep_lines,
@@ -2200,8 +2200,8 @@ class State:
     # we use file size as a proxy for complexity.
     size_hint: int
 
-    # Mapping from line number to type ignore codes on this line.
-    ignored_lines: dict[int, list[str]]
+    # Mapping from line number to type ignore codes on this line (for imports only).
+    imports_ignored: dict[int, list[str]]
 
     @classmethod
     def new_state(
@@ -2284,7 +2284,7 @@ class State:
             dep_hashes = {k: v for (k, v) in zip(meta.dependencies, meta.dep_hashes)}
             # Only copy `error_lines` if the module is not silently imported.
             error_lines = [] if ignore_all else meta.error_lines
-            ignored_lines = meta.ignored_lines
+            imports_ignored = meta.imports_ignored
         else:
             dependencies = []
             suppressed = []
@@ -2292,7 +2292,7 @@ class State:
             dep_line_map = {}
             dep_hashes = {}
             error_lines = []
-            ignored_lines = {}
+            imports_ignored = {}
 
         state = cls(
             manager=manager,
@@ -2313,7 +2313,7 @@ class State:
             dep_line_map=dep_line_map,
             dep_hashes=dep_hashes,
             error_lines=error_lines,
-            ignored_lines=ignored_lines,
+            imports_ignored=imports_ignored,
         )
 
         if meta:
@@ -2371,7 +2371,7 @@ class State:
         dep_line_map: dict[str, int],
         dep_hashes: dict[str, bytes],
         error_lines: list[SerializedError],
-        ignored_lines: dict[int, list[str]],
+        imports_ignored: dict[int, list[str]],
         size_hint: int = 0,
     ) -> None:
         self.manager = manager
@@ -2401,7 +2401,7 @@ class State:
         self.early_errors = []
         self._type_checker = None
         self.add_ancestors()
-        self.ignored_lines = ignored_lines
+        self.imports_ignored = imports_ignored
         self.size_hint = size_hint
 
     def write(self, buf: WriteBuffer) -> None:
@@ -2488,7 +2488,7 @@ class State:
             dep_line_map=dep_line_map,
             dep_hashes=dep_hashes,
             error_lines=[],
-            ignored_lines={},
+            imports_ignored={},
             size_hint=read_int(buf),
         )
 
@@ -2695,7 +2695,6 @@ class State:
                     self.tree.ignored_lines,
                     self.ignore_all or self.options.ignore_errors,
                 )
-            self.ignored_lines = self.tree.ignored_lines
 
         self.time_spent_us += time_spent_us(t0)
 
@@ -2817,6 +2816,10 @@ class State:
             self.add_dependency(id)
             if id not in self.dep_line_map:
                 self.dep_line_map[id] = line
+        import_lines = self.dep_line_map.values()
+        self.imports_ignored = {
+            line: codes for line, codes in self.tree.ignored_lines.items() if line in import_lines
+        }
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
@@ -3003,7 +3006,7 @@ class State:
             self.tree,
             list(self.dependencies),
             list(self.suppressed),
-            self.ignored_lines,
+            self.imports_ignored,
             dep_prios,
             dep_lines,
             self.interface_hash,
@@ -3275,7 +3278,7 @@ def module_not_found(
     errors.set_file(caller_state.xpath, caller_state.id, caller_state.options)
     errors.set_file_ignored_lines(
         caller_state.xpath,
-        caller_state.ignored_lines,
+        caller_state.tree.ignored_lines if caller_state.tree else caller_state.imports_ignored,
         caller_state.ignore_all or caller_state.options.ignore_errors,
     )
     if target == "builtins":
