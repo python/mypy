@@ -172,35 +172,36 @@ def test_bytes_writer_write_i16_le() -> None:
     assert result[3:5] == b"\x01\x00"  # i=1
     assert result[1999:2001] == b"\xe7\x03"  # i=999
 
-def test_write_i16_le_via_any() -> None:
-    # Test write_i16_le via Any to ensure C extension wrapper works
+def test_write_i16_via_any() -> None:
+    # Test write_i16_le/be via Any to ensure C extension wrapper works
     # (tests fallback path when not using mypyc primitives)
-    w: Any = BytesWriter()
+    for write_func, fmt in zip((write_i16_le, write_i16_be), ("<h", ">h")):
+        w: Any = BytesWriter()
 
-    # Test 8-bit and 16-bit operations
-    w.append(0x42)
-    write_i16_le(w, 0x1234)
-    w.append(0xFF)
-    assert w.getvalue() == b"\x42\x34\x12\xFF"
+        # Test 8-bit and 16-bit operations
+        w.append(0x42)
+        write_func(w, 0x1234)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 0x1234) + b"\xFF"
 
-    # Test buffer growth with write_i16_le
-    w2: Any = BytesWriter()
-    for i in range(150):
-        write_i16_le(w2, i)
-    result = w2.getvalue()
-    assert len(result) == 300
-    assert result[0:2] == b"\x00\x00"  # i=0
-    assert result[2:4] == b"\x01\x00"  # i=1
-    assert result[298:300] == b"\x95\x00"  # i=149
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(150):
+            write_func(w2, i)
+        result = w2.getvalue()
+        assert len(result) == 300
+        assert result[0:2] == struct.pack(fmt, 0)    # i=0
+        assert result[2:4] == struct.pack(fmt, 1)    # i=1
+        assert result[298:300] == struct.pack(fmt, 149)  # i=149
 
-    # Test values that don't fit in i16
-    w3: Any = BytesWriter()
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, 32768 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, -32769 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, 100000 + int())
+        # Test values that don't fit in i16
+        w3: Any = BytesWriter()
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, 32768 + int())
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, -32769 + int())
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, 100000 + int())
 
 def test_bytes_reader_read_i16_le() -> None:
     # Test various i16 values from 1-byte to 2-byte range
@@ -265,36 +266,6 @@ def test_bytes_writer_write_i16_be() -> None:
     assert result[1:3] == b"\x00\x00"  # i=0
     assert result[3:5] == b"\x00\x01"  # i=1
     assert result[1999:2001] == b"\x03\xe7"  # i=999
-
-def test_write_i16_be_via_any() -> None:
-    # Test write_i16_be via Any to ensure C extension wrapper works
-    # (tests fallback path when not using mypyc primitives)
-    w: Any = BytesWriter()
-
-    # Test 8-bit and 16-bit operations
-    w.append(0x42)
-    write_i16_be(w, 0x1234)
-    w.append(0xFF)
-    assert w.getvalue() == b"\x42\x12\x34\xFF"
-
-    # Test buffer growth with write_i16_be
-    w2: Any = BytesWriter()
-    for i in range(150):
-        write_i16_be(w2, i)
-    result = w2.getvalue()
-    assert len(result) == 300
-    assert result[0:2] == b"\x00\x00"  # i=0
-    assert result[2:4] == b"\x00\x01"  # i=1
-    assert result[298:300] == b"\x00\x95"  # i=149
-
-    # Test values that don't fit in i16
-    w3: Any = BytesWriter()
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_be(w3, 32768 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_be(w3, -32769 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_be(w3, 100000 + int())
 
 def test_bytes_writer_write_i32_le() -> None:
     # Test various i32 values from 1-byte to 4-byte range
