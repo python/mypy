@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 1
+CACHE_VERSION: Final = 2
 
 SerializedError: _TypeAlias = tuple[str | None, int | str, int, int, int, str, str, str | None]
 
@@ -89,6 +89,7 @@ class CacheMeta:
         data_mtime: int,
         data_file: str,
         suppressed: list[str],
+        imports_ignored: dict[int, list[str]],
         options: dict[str, object],
         dep_prios: list[int],
         dep_lines: list[int],
@@ -108,6 +109,7 @@ class CacheMeta:
         self.data_mtime = data_mtime  # mtime of data_file
         self.data_file = data_file  # path of <id>.data.json or <id>.data.ff
         self.suppressed = suppressed  # dependencies that weren't imported
+        self.imports_ignored = imports_ignored  # type ignore codes by line
         self.options = options  # build options snapshot
         # dep_prios and dep_lines are both aligned with dependencies + suppressed
         self.dep_prios = dep_prios
@@ -130,6 +132,7 @@ class CacheMeta:
             "data_mtime": self.data_mtime,
             "dependencies": self.dependencies,
             "suppressed": self.suppressed,
+            "imports_ignored": {str(line): codes for line, codes in self.imports_ignored.items()},
             "options": self.options,
             "dep_prios": self.dep_prios,
             "dep_lines": self.dep_lines,
@@ -154,6 +157,9 @@ class CacheMeta:
                 data_mtime=meta["data_mtime"],
                 data_file=data_file,
                 suppressed=meta["suppressed"],
+                imports_ignored={
+                    int(line): codes for line, codes in meta["imports_ignored"].items()
+                },
                 options=meta["options"],
                 dep_prios=meta["dep_prios"],
                 dep_lines=meta["dep_lines"],
@@ -176,6 +182,10 @@ class CacheMeta:
         write_str_list(data, self.dependencies)
         write_int(data, self.data_mtime)
         write_str_list(data, self.suppressed)
+        write_int_bare(data, len(self.imports_ignored))
+        for line, codes in self.imports_ignored.items():
+            write_int(data, line)
+            write_str_list(data, codes)
         write_json(data, self.options)
         write_int_list(data, self.dep_prios)
         write_int_list(data, self.dep_lines)
@@ -201,6 +211,9 @@ class CacheMeta:
                 data_mtime=read_int(data),
                 data_file=data_file,
                 suppressed=read_str_list(data),
+                imports_ignored={
+                    read_int(data): read_str_list(data) for _ in range(read_int_bare(data))
+                },
                 options=read_json(data),
                 dep_prios=read_int_list(data),
                 dep_lines=read_int_list(data),
