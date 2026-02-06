@@ -1680,12 +1680,12 @@ def find_cache_meta(
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log(f"Metadata abandoned for {id}: plugins differ")
             return None
-    # So that plugins can return data with tuples in it without
-    # things silently always invalidating modules, we round-trip
-    # the config data. This isn't beautiful.
-    plugin_data = json_loads(
-        json_dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
-    )
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
+    if not manager.options.fixed_format_cache:
+        # So that plugins can return data with tuples in it without
+        # things silently always invalidating modules, we round-trip
+        # the config data. This isn't beautiful.
+        plugin_data = json_loads(json_dumps(plugin_data))
     if m.plugin_data != plugin_data:
         manager.log(f"Metadata abandoned for {id}: plugin configuration differs")
         return None
