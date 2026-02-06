@@ -5,6 +5,7 @@ from mypyc.ir.rtypes import (
     bytearray_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
+    float_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -253,6 +254,18 @@ function_op(
     return_type=int64_rprimitive,
     c_function_name="CPyBytes_ReadI64BE",
     error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# f64 write/read functions
+
+function_op(
+    name="librt.strings.write_f64_le",
+    arg_types=[bytes_writer_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteF64LE",
+    error_kind=ERR_MAGIC,
     experimental=True,
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )

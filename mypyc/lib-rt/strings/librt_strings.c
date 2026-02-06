@@ -1010,6 +1010,20 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+write_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f64_le");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteF64LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
     const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_be", 8, &index);
@@ -1057,6 +1071,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_i64_be", (PyCFunction) read_i64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit signed integer from bytes in big-endian format")
+    },
+    {"write_f64_le", (PyCFunction) write_f64_le, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit float to BytesWriter in little-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}
