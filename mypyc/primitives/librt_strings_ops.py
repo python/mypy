@@ -322,6 +322,26 @@ function_op(
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
+function_op(
+    name="librt.strings.read_f32_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyBytes_ReadF32LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_f32_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyBytes_ReadF32BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
 # StringWriter operations
 
 function_op(

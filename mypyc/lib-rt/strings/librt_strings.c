@@ -1092,6 +1092,24 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
+static PyObject*
+read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_le", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32LEUnsafe(data + index));
+}
+
+static PyObject*
+read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_be", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32BEUnsafe(data + index));
+}
+
 #endif
 
 static PyMethodDef librt_strings_module_methods[] = {
@@ -1149,6 +1167,12 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"write_f32_be", (PyCFunction) write_f32_be, METH_FASTCALL,
      PyDoc_STR("Write a 32-bit float to BytesWriter in big-endian format")
+    },
+    {"read_f32_le", (PyCFunction) read_f32_le, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit float from bytes in little-endian format")
+    },
+    {"read_f32_be", (PyCFunction) read_f32_be, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit float from bytes in big-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}
