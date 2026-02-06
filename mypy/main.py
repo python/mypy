@@ -850,7 +850,7 @@ def define_options(
     add_invertible_flag(
         "--warn-unreachable",
         default=False,
-        strict_flag=False,
+        strict_flag=True,
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
