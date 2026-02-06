@@ -1252,8 +1252,33 @@ def test_optional_ne() -> None:
 
 [case testConstantFoldFormatArgs]
 from typing import Final
+from testutil import assertRaises
 
 FMT: Final = "{} {}"
+FMT_S: Final = "{:s}"
+FMT_S_PAIR: Final = "{:s} {:s}"
+FMT_D_S: Final = "{:d} {:s}"
+FMT_S_NAMED: Final = "{name:s}"
 
 def test_format() -> None:
-    assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+ assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+
+def test_format_s_str() -> None:
+    assert FMT_S.format("420") == "420"
+
+def test_format_s_str_var() -> None:
+    value = "4" + "20"
+    assert FMT_S.format(value) == "420"
+
+def test_format_s_pair() -> None:
+    assert FMT_S_PAIR.format("foo", "bar") == "foo bar"
+
+def test_format_d_s() -> None:
+    assert FMT_D_S.format(400 + 20, "roll" + "up") == "420 rollup"
+
+def test_format_s_named() -> None:
+    assert FMT_S_NAMED.format(name="mypy") == "mypy"
+
+def test_format_s_non_str() -> None:
+    with assertRaises(ValueError):
+        FMT_S.format(400 + 20)
