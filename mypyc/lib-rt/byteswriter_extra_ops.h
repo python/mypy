@@ -140,6 +140,18 @@ CPyBytes_ReadI16BE(PyObject *bytes_obj, int64_t index) {
 }
 
 static inline int32_t
+CPyBytes_ReadI32BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 4)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI32BEUnsafe(data + index);
+}
+
+static inline int32_t
 CPyBytes_ReadI32LE(PyObject *bytes_obj, int64_t index) {
     // bytes_obj type is enforced by mypyc
     Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);

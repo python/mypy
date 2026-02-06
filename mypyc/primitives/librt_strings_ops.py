@@ -138,6 +138,16 @@ function_op(
 )
 
 function_op(
+    name="librt.strings.read_i32_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name="CPyBytes_ReadI32BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
     name="librt.strings.read_i32_le",
     arg_types=[bytes_rprimitive, int64_rprimitive],
     return_type=int32_rprimitive,

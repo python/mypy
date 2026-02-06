@@ -964,6 +964,15 @@ read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+read_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_be", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI32BEUnsafe(data + index));
+}
+
+static PyObject*
 write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i64_le");
     if (bw == NULL)
@@ -1010,6 +1019,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_i32_le", (PyCFunction) read_i32_le, METH_FASTCALL,
      PyDoc_STR("Read a 32-bit signed integer from bytes in little-endian format")
+    },
+    {"read_i32_be", (PyCFunction) read_i32_be, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit signed integer from bytes in big-endian format")
     },
     {"write_i64_le", (PyCFunction) write_i64_le, METH_FASTCALL,
      PyDoc_STR("Write a 64-bit signed integer to BytesWriter in little-endian format")
