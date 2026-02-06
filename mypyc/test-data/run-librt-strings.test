@@ -12,7 +12,7 @@ from testutil import assertRaises
 # Test values for i16 write/read operations, organized by byte size
 I16_TEST_VALUES: list[int] = [
     # 1-byte values (0 to 127, and -128 to -1 in terms of low byte pattern)
-    0, 1, 127, -1, -128,
+    0, 1, 127, -1, -113, -128,  # -113 is mypyc overlapping error value
     # 2-byte values (128 to 32767, -32768 to -129)
     128, 255, 256, 0x1234, 32767, -129, -256, -32768,
 ]
