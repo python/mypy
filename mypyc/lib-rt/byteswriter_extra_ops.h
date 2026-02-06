@@ -216,6 +216,20 @@ CPyBytes_ReadI64BE(PyObject *bytes_obj, int64_t index) {
     return CPyBytes_ReadI64BEUnsafe(data + index);
 }
 
+// Bytes: Read float operations
+
+static inline double
+CPyBytes_ReadF64LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_FLOAT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadF64LEUnsafe(data + index);
+}
+
 #endif // MYPYC_EXPERIMENTAL
 
 #endif
