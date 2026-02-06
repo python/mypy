@@ -3144,9 +3144,9 @@ def find_module_and_diagnose(
             raise ModuleNotFound
         if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
-        return (result, follow_imports)
+        return result, follow_imports
     else:
-        # Could not find a module.  Typically the reason is a
+        # Could not find a module.  Typically, the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
 
@@ -3155,7 +3155,7 @@ def find_module_and_diagnose(
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
-        # negatives. (Unless there are stubs but they are incomplete.)
+        # negatives. (Unless there are stubs, but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
             is_module_from_legacy_bundled_package(id)
@@ -3650,7 +3650,7 @@ def load_graph(
             added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
         else:
             # During initial loading we don't care about newly added modules,
-            # they will be taken care of during fine grained update. See also
+            # they will be taken care of during fine-grained update. See also
             # comment about this in `State.__init__()`.
             added = []
         for dep in st.ancestors + dependencies + st.suppressed:
@@ -3710,11 +3710,15 @@ def load_graph(
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in graph and dep in st.suppressed_set:
-                # Previously suppressed file is now visible
+    # There are two things we need to do after the initial load loop. One is up-suppress
+    # modules that are back in graph. We need to do this after the loop to cover an edge
+    # case where a namespace package ancestor is shared by a typed and an untyped package.
+    for st in graph.values():
+        for dep in st.suppressed:
+            if dep in graph:
                 st.add_dependency(dep)
-    # In the loop above we skip indirect dependencies, so to make indirect dependencies behave
-    # more consistently with regular ones, we suppress them manually here (when needed).
+    # Second, in the initial loop we skip indirect dependencies, so to make indirect dependencies
+    # behave more consistently with regular ones, we suppress them manually here (when needed).
     for st in graph.values():
         indirect = [dep for dep in st.dependencies if st.priorities.get(dep) == PRI_INDIRECT]
         for dep in indirect:
