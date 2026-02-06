@@ -6746,7 +6746,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         if i == j:
                             continue
                         # If we compare to a target with custom __eq__, we cannot narrow at all
-                        or_if_maps.append({})
+                        if is_overlapping_none(expr_type) and not is_overlapping_none(
+                            operand_types[j]
+                        ):
+                            # Narrow away from None. This is unsound, we're hoping that no one
+                            # has a custom __eq__ that returns True for None.
+                            or_if_maps.append({operands[i]: remove_optional(expr_type)})
+                        else:
+                            or_if_maps.append({operands[i]: expr_type})
                         continue
                     target_type = operand_types[j]
                     if should_coerce_literals:
