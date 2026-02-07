@@ -1229,9 +1229,10 @@ def read_block(state: State, data: ReadBuffer) -> Block:
     expect_tag(data, nodes.BLOCK)
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
+    is_unreachable = read_bool(data)
     if n == 0:
         # Empty block - read explicit location
-        b = Block([])
+        b = Block([], is_unreachable=is_unreachable)
         read_loc(data, b)
         expect_end_tag(data)
         return b
@@ -1239,7 +1240,7 @@ def read_block(state: State, data: ReadBuffer) -> Block:
         # Non-empty block - read statements and set location from them
         a = read_statements(state, data, n)
         expect_end_tag(data)
-        b = Block(a)
+        b = Block(a, is_unreachable=is_unreachable)
         b.line = a[0].line
         b.column = a[0].column
         b.end_line = a[-1].end_line
@@ -1251,11 +1252,12 @@ def read_optional_block(state: State, data: ReadBuffer) -> Block | None:
     expect_tag(data, nodes.BLOCK)
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
+    is_unreachable = read_bool(data)
     if n == 0:
         b = None
     else:
         a = [read_statement(state, data) for i in range(n)]
-        b = Block(a)
+        b = Block(a, is_unreachable=is_unreachable)
         b.line = a[0].line
         b.column = a[0].column
         b.end_line = a[-1].end_line
