@@ -1859,6 +1859,7 @@ def write_cache(
     dep_prios: list[int],
     dep_lines: list[int],
     old_interface_hash: bytes,
+    trans_dep_hash: bytes,
     source_hash: str,
     ignore_all: bool,
     manager: BuildManager,
@@ -1975,6 +1976,7 @@ def write_cache(
         dep_prios=dep_prios,
         dep_lines=dep_lines,
         interface_hash=interface_hash,
+        trans_dep_hash=trans_dep_hash,
         version_id=manager.version_id,
         ignore_all=ignore_all,
         plugin_data=plugin_data,
@@ -2192,6 +2194,12 @@ class State:
 
     # Contains a hash of the public interface in incremental mode
     interface_hash: bytes = b""
+
+    # Hash of import structure that this module depends on. It is not 1:1 with
+    # transitive dependencies set, but if two hashes are equal, transitive
+    # dependencies are guaranteed to be identical. Some expensive checks can be
+    # skipped if this value is unchanged for a module.
+    trans_dep_hash: bytes = b""
 
     # Options, specialized for this file
     options: Options
@@ -3031,6 +3039,7 @@ class State:
             dep_prios,
             dep_lines,
             self.interface_hash,
+            self.trans_dep_hash,
             self.source_hash,
             self.ignore_all,
             self.manager,
@@ -3793,6 +3802,27 @@ def order_ascc_ex(graph: Graph, ascc: SCC) -> list[str]:
     return scc
 
 
+def verify_transitive_deps(ascc: SCC, graph: Graph, manager: BuildManager) -> str | None:
+    """Verify all indirect dependencies of this SCC are still reachable via direct ones.
+
+    Return first unreachable dependency id, or None.
+    """
+    for id in ascc.mod_ids:
+        st = graph[id]
+        assert st.meta is not None, "Must be called on fresh SCCs only"
+        if st.trans_dep_hash == st.meta.trans_dep_hash:
+            # Import graph unchanged, skip this module.
+            continue
+        for dep in st.dependencies:
+            if st.priorities.get(dep) == PRI_INDIRECT:
+                dep_scc_id = manager.scc_by_mod_id[dep].id
+                if dep_scc_id == ascc.id:
+                    continue
+                if not manager.verify_transitive(ascc.id, dep_scc_id):
+                    return dep
+    return None
+
+
 def find_stale_sccs(
     sccs: list[SCC], graph: Graph, manager: BuildManager
 ) -> tuple[list[SCC], list[SCC]]:
@@ -3823,18 +3853,10 @@ def find_stale_sccs(
         # dependencies. Note: the case where indirect dependency is removed from the graph
         # completely is already handled above.
         stale_indirect = None
-        for id in ascc.mod_ids:
-            # This check is expensive, so we only run it if needed and short-circuit below.
-            if fresh:
-                for dep in graph[id].dependencies:
-                    if graph[id].priorities.get(dep) == PRI_INDIRECT:
-                        dep_scc_id = manager.scc_by_mod_id[dep].id
-                        if dep_scc_id == ascc.id:
-                            continue
-                        if not manager.verify_transitive(ascc.id, dep_scc_id):
-                            stale_indirect = dep
-                            fresh = False
-                            break
+        if fresh:
+            stale_indirect = verify_transitive_deps(ascc, graph, manager)
+            if stale_indirect is not None:
+                fresh = False
 
         if fresh:
             fresh_msg = "fresh"
@@ -3960,6 +3982,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 if not scc_by_id[dependent].not_ready_deps:
                     not_ready.remove(scc_by_id[dependent])
                     ready.append(scc_by_id[dependent])
+    manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.verify_transitive_cache)}")
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT) -> list[str]:
@@ -4211,6 +4234,19 @@ def sorted_components(graph: Graph) -> list[SCC]:
             scc.size_hint = sum(graph[mid].size_hint for mid in scc.mod_ids)
             for dep in scc_dep_map[scc]:
                 dep.direct_dependents.append(scc.id)
+            for id in scc.mod_ids:
+                st = graph[id]
+                # Stable snapshot of transitive import structure in topological order.
+                # We compute this here since we know no direct dependencies will be added
+                # or suppressed after this point.
+                direct_deps = sorted(
+                    dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT
+                )
+                trans_dep_hash_map = {
+                    dep_id: "" if dep_id in scc.mod_ids else graph[dep_id].trans_dep_hash.hex()
+                    for dep_id in direct_deps
+                }
+                st.trans_dep_hash = hash_digest_bytes(json_dumps(trans_dep_hash_map))
         res.extend(sorted_ready)
     return res
 
