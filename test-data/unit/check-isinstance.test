@@ -3209,3 +3209,35 @@ def foo(x: object, t: T):
         reveal_type(x)  # N: Revealed type is "__main__.A"
         reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
+
+
+[case testIsInstanceFinalTypeObject]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import final
+
+@final
+class A: ...
+
+def f1(x: A, t: type[A]):
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+def f2(x: A | None, t: type[A]):
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+[builtins fixtures/isinstancelist.pyi]
