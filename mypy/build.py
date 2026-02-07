@@ -896,7 +896,7 @@ class BuildManager:
         # location of a symbol used as a location for an error message.
         self.extra_trees: dict[str, MypyFile] = {}
         # Cache for transitive dependency check (expensive).
-        self.verify_transitive_cache: dict[tuple[int, int], bool] = {}
+        self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1208,17 +1208,18 @@ class BuildManager:
             results,
         )
 
-    def verify_transitive(self, from_scc_id: int, to_scc_id: int) -> bool:
-        """Verify that one SCC is a (transitive) dependency of another."""
-        if (from_scc_id, to_scc_id) in self.verify_transitive_cache:
-            return self.verify_transitive_cache[(from_scc_id, to_scc_id)]
+    def is_transitive_scc_dep(self, from_scc_id: int, to_scc_id: int) -> bool:
+        """Check if one SCC is a (transitive) dependency of another."""
+        edge = (from_scc_id, to_scc_id)
+        if (cached := self.transitive_deps_cache.get(edge)) is not None:
+            return cached
         if to_scc_id in self.scc_by_id[from_scc_id].deps:
-            self.verify_transitive_cache[(from_scc_id, to_scc_id)] = True
+            self.transitive_deps_cache[edge] = True
             return True
         for dep in self.scc_by_id[from_scc_id].deps:
-            if self.verify_transitive(dep, to_scc_id):
+            if self.is_transitive_scc_dep(dep, to_scc_id):
                 return True
-        self.verify_transitive_cache[(from_scc_id, to_scc_id)] = False
+        self.transitive_deps_cache[edge] = False
         return False
 
 
@@ -3818,7 +3819,7 @@ def verify_transitive_deps(ascc: SCC, graph: Graph, manager: BuildManager) -> st
                 dep_scc_id = manager.scc_by_mod_id[dep].id
                 if dep_scc_id == ascc.id:
                     continue
-                if not manager.verify_transitive(ascc.id, dep_scc_id):
+                if not manager.is_transitive_scc_dep(ascc.id, dep_scc_id):
                     return dep
     return None
 
@@ -3982,7 +3983,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 if not scc_by_id[dependent].not_ready_deps:
                     not_ready.remove(scc_by_id[dependent])
                     ready.append(scc_by_id[dependent])
-    manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.verify_transitive_cache)}")
+    manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT) -> list[str]:
