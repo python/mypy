@@ -409,6 +409,14 @@ main:2:10:2:17: error: Incompatible types in assignment (expression has type "st
 main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:8:1:8:4: error: Value of type "int" is not indexable
 
+[case testColumnsMissingPositionalArgShiftDetected]
+def f(x: int, y: str, z: bytes, aa: int) -> None: ...
+f(1, b'x', 1) # E:6: Missing positional argument "y" in call to "f"
+def g(x: int, y: str, z: bytes) -> None: ...
+g("hello", b'x') # E:3: Missing positional argument "x" in call to "g"
+g(1, "hello") # E:1: Missing positional argument "z" in call to "g"
+[builtins fixtures/primitives.pyi]
+
 [case testEndColumnsWithTooManyTypeVars]
 # flags: --pretty
 import typing
