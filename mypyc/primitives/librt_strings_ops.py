@@ -1,10 +1,11 @@
 from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS, STRING_WRITER_EXTRA_OPS
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytearray_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     none_rprimitive,
@@ -74,6 +75,66 @@ method_op(
     error_kind=ERR_MAGIC,
     experimental=True,
     dependencies=[LIBRT_STRINGS],
+)
+
+function_op(
+    name="librt.strings.write_i16_le",
+    arg_types=[bytes_writer_rprimitive, int16_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI16LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i16_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyBytes_ReadI16LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_i32_le",
+    arg_types=[bytes_writer_rprimitive, int32_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI32LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i32_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name="CPyBytes_ReadI32LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_i64_le",
+    arg_types=[bytes_writer_rprimitive, int64_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI64LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i64_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyBytes_ReadI64LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 function_op(

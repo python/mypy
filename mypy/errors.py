@@ -1397,7 +1397,7 @@ def report_internal_error(
     err: Exception,
     file: str | None,
     line: int,
-    errors: Errors,
+    errors: Errors | None,
     options: Options,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -1410,11 +1410,12 @@ def report_internal_error(
     stderr = stderr or sys.stderr
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
-    try:
-        for msg in errors.new_messages():
-            print(msg)
-    except Exception as e:
-        print("Failed to dump errors:", repr(e), file=stderr)
+    if errors:
+        try:
+            for msg in errors.new_messages():
+                print(msg)
+        except Exception as e:
+            print("Failed to dump errors:", repr(e), file=stderr)
 
     # Compute file:line prefix for official-looking error messages.
     if file:
@@ -1456,7 +1457,7 @@ def report_internal_error(
     if not options.show_traceback:
         if not options.pdb:
             print(
-                "{}: note: please use --show-traceback to print a traceback "
+                "{}note: please use --show-traceback to print a traceback "
                 "when reporting a bug".format(prefix),
                 file=stderr,
             )
@@ -1467,7 +1468,7 @@ def report_internal_error(
         for s in traceback.format_list(tb + tb2):
             print(s.rstrip("\n"))
         print(f"{type(err).__name__}: {err}", file=stdout)
-        print(f"{prefix}: note: use --pdb to drop into pdb", file=stderr)
+        print(f"{prefix}note: use --pdb to drop into pdb", file=stderr)
 
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
@@ -1480,6 +1481,8 @@ class MypyError:
         file_path: str,
         line: int,
         column: int,
+        end_line: int,
+        end_column: int,
         message: str,
         errorcode: ErrorCode | None,
         severity: Literal["error", "note"],
@@ -1487,6 +1490,8 @@ class MypyError:
         self.file_path = file_path
         self.line = line
         self.column = column
+        self.end_line = end_line
+        self.end_column = end_column
         self.message = message
         self.errorcode = errorcode
         self.severity = severity
@@ -1502,7 +1507,7 @@ def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
     latest_error_at_location: dict[_ErrorLocation, MypyError] = {}
 
     for error_tuple in error_tuples:
-        file_path, line, column, _, _, severity, message, errorcode = error_tuple
+        file_path, line, column, end_line, end_column, severity, message, errorcode = error_tuple
         if file_path is None:
             continue
 
@@ -1512,14 +1517,25 @@ def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
             error = latest_error_at_location.get(error_location)
             if error is None:
                 # This is purely a note, with no error correlated to it
-                error = MypyError(file_path, line, column, message, errorcode, severity="note")
+                error = MypyError(
+                    file_path,
+                    line,
+                    column,
+                    end_line,
+                    end_column,
+                    message,
+                    errorcode,
+                    severity="note",
+                )
                 errors.append(error)
                 continue
 
             error.hints.append(message)
 
         else:
-            error = MypyError(file_path, line, column, message, errorcode, severity="error")
+            error = MypyError(
+                file_path, line, column, end_line, end_column, message, errorcode, severity="error"
+            )
             errors.append(error)
             error_location = (file_path, line, column)
             latest_error_at_location[error_location] = error

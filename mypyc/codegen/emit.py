@@ -21,16 +21,25 @@ from mypyc.common import (
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
+    TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
-from mypyc.ir.ops import BasicBlock, Value
+from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
+    NAMESPACE_STATIC,
+    NAMESPACE_TYPE,
+    NAMESPACE_TYPE_VAR,
+    BasicBlock,
+    Value,
+)
 from mypyc.ir.rtypes import (
     RInstance,
     RPrimitive,
     RTuple,
     RType,
     RUnion,
+    RVec,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
@@ -56,13 +65,23 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
+    vec_api_by_item_type,
+    vec_item_type_tags,
 )
 from mypyc.namegen import NameGenerator, exported_name
+from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_type
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
 DEBUG_ERRORS: Final = False
+
+PREFIX_MAP: Final = {
+    NAMESPACE_STATIC: STATIC_PREFIX,
+    NAMESPACE_TYPE: TYPE_PREFIX,
+    NAMESPACE_MODULE: MODULE_PREFIX,
+    NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
+}
 
 
 class HeaderDeclaration:
@@ -326,6 +345,13 @@ class Emitter:
         else:
             return ctype + " "
 
+    def set_undefined_value(self, target: str, rtype: RType) -> None:
+        if isinstance(rtype, RVec):
+            self.emit_line(f"{target}.len = -1;")
+            self.emit_line(f"{target}.buf = NULL;")
+        else:
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+
     def c_undefined_value(self, rtype: RType) -> str:
         if not rtype.is_unboxed:
             return "NULL"
@@ -333,6 +359,8 @@ class Emitter:
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
             return self.tuple_undefined_value(rtype)
+        elif isinstance(rtype, RVec):
+            return f"({self.ctype(rtype)}) {{ -1, NULL }}"
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -435,6 +463,12 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
+        elif isinstance(rtype, RVec):
+            if compare == "==":
+                return f"{value}.len < 0"
+            elif compare == "!=":
+                return f"{value}.len >= 0"
+            assert False, compare
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 
@@ -466,6 +500,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
+        elif isinstance(item_type, RVec):
+            return f"{tuple_expr_in_c}.f{i}.len {compare} -1"
         else:
             check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
             if rtuple.error_overlap and check_exception:
@@ -485,6 +521,8 @@ class Emitter:
                 return f"{{ {int_rprimitive.c_undefined} }}"
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
+        elif isinstance(rtype, RVec):
+            return "{ -1, NULL }"
         else:
             return self.c_undefined_value(rtype)
 
@@ -518,6 +556,9 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            self.emit_line(f"Py_XINCREF({dest}.buf);")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
@@ -546,6 +587,12 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            if rare:
+                self.emit_line(f"CPy_XDecRef({dest}.buf);")
+            else:
+                self.emit_line(f"CPy_XDECREF({dest}.buf);")
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
@@ -555,6 +602,8 @@ class Emitter:
                     self.emit_line(f"CPy_{x}DECREF({dest});")
                 else:
                     self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
+        elif rtype.is_refcounted:
+            assert False, f"dec_ref not implemented for {rtype}"
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -751,6 +800,40 @@ class Emitter:
         elif isinstance(typ, RTuple):
             assert not optional
             self.emit_tuple_cast(src, dest, typ, declare_dest, error, src_type)
+        elif isinstance(typ, RVec):
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            # Build type check expression based on vec kind
+            api_name = vec_api_by_item_type.get(typ.item_type)
+            depth = typ.depth()
+            if api_name:
+                # Specialized vec types (vec[i64], vec[i32], etc.)
+                check = f"(Py_TYPE({src}) == {api_name}.boxed_type)"
+            elif depth == 0:
+                # Generic vec types (vec[T], vec[T | None]) with reference type items
+                item_type_c = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecTApi.boxed_type && "
+                    f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
+                )
+            else:
+                # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
+                else:
+                    type_value = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecNestedApi.boxed_type && "
+                    f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
+                    f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
+                )
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check, optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
         else:
             assert False, "Cast not implemented: %s" % typ
 
@@ -894,6 +977,7 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             error: What happens on error
             raise_exception: If True, also raise TypeError on failure
+            optional: If True, NULL src value is allowed and will map to error value
             borrow: If True, create a borrowed reference
 
         """
@@ -1025,9 +1109,55 @@ class Emitter:
             self.emit_line("}")
             if optional:
                 self.emit_line("}")
+        elif isinstance(typ, RVec):
+            if declare_dest:
+                self.emit_line(f"{self.ctype(typ)} {dest};")
 
+            if optional:
+                self.emit_line(f"if ({src} == NULL) {{")
+                self.emit_line(f"{dest} = {self.c_error_value(typ)};")
+                self.emit_line("} else {")
+
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                self.emit_line(f"{dest} = {specialized_api_name}.unbox({src});")
+            else:
+                depth = typ.depth()
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
+                else:
+                    type_value = self.vec_item_type_c(typ)
+                if depth == 0:
+                    self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
+                else:
+                    self.emit_line(f"{dest} = VecNestedApi.unbox({src}, {type_value}, {depth});")
+
+            self.emit_line(f"if (VEC_IS_ERROR({dest})) {{")
+            self.emit_line(failure)
+            self.emit_line("}")
+
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Unboxing not implemented: %s" % typ
+
+    def vec_item_type_c(self, typ: RVec) -> str:
+        item_type = typ.unwrap_item_type()
+        type_c_ptr = self.type_c_ptr(item_type)
+        # Can never be None, since we unwrapped the item type above
+        assert type_c_ptr is not None
+        type_value = f"(size_t){type_c_ptr}"
+        if typ.is_optional():
+            type_value = f"({type_value} | 1)"
+        return type_value
+
+    def type_c_ptr(self, typ: RPrimitive | RInstance) -> str | None:
+        if isinstance(typ, RPrimitive) and typ.is_refcounted:
+            return "&" + builtin_names[typ.name][1]
+        elif isinstance(typ, RInstance):
+            return self.type_struct_name(typ.class_ir)
+        return None
 
     def emit_box(
         self, src: str, dest: str, typ: RType, declare_dest: bool = False, can_borrow: bool = False
@@ -1083,6 +1213,20 @@ class Emitter:
                         inner_name = self.temp_name()
                         self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                         self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+        elif isinstance(typ, RVec):
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                api = specialized_api_name
+            elif typ.depth() > 0:
+                api = "VecNestedApi"
+            else:
+                api = "VecTApi"
+                # Empty vecs of this sort don't describe item type, so it needs to be
+                # passed explicitly.
+                item_type = self.vec_item_type_c(typ)
+                self.emit_line(f"{declaration}{dest} = {api}.box({src}, {item_type});")
+                return
+            self.emit_line(f"{declaration}{dest} = {api}.box({src});")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1096,6 +1240,8 @@ class Emitter:
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"if ({value}.len < 0) {{")
         elif rtype.error_overlap:
             # The error value is also valid as a normal value, so we need to also check
             # for a raised exception.
@@ -1120,6 +1266,8 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_VISIT({target}.buf);")
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1144,6 +1292,8 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_CLEAR({target}.buf);")
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")

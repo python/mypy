@@ -6736,13 +6736,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             or_else_maps: list[TypeMap] = []
             for expr_type in union_expr_type.items:
                 if has_custom_eq_checks(expr_type):
-                    # Always include union items with custom __eq__ in the type
+                    # Always include the union items with custom __eq__ in the type
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
                 expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
                 for j in expr_indices:
                     if j in custom_eq_indices:
+                        if i == j:
+                            continue
+                        # If we compare to a target with custom __eq__, we cannot narrow at all
+                        if is_overlapping_none(expr_type) and not is_overlapping_none(
+                            operand_types[j]
+                        ):
+                            # Narrow away from None. This is unsound, we're hoping that no one
+                            # has a custom __eq__ that returns True for None.
+                            or_if_maps.append({operands[i]: remove_optional(expr_type)})
+                        else:
+                            or_if_maps.append({operands[i]: expr_type})
                         continue
                     target_type = operand_types[j]
                     if should_coerce_literals:
@@ -8301,24 +8312,29 @@ def conditional_types(
             enum_name = target.fallback.type.fullname
             current_type = try_expanding_sum_type_to_union(current_type, enum_name)
 
+    proposed_type: Type
+    remaining_type: Type
+
     proper_type = get_proper_type(current_type)
     # factorize over union types: isinstance(A|B, C) -> yes = A_yes | B_yes
     if isinstance(proper_type, UnionType):
-        result: list[tuple[Type | None, Type | None]] = [
-            conditional_types(
+        yes_items: list[Type] = []
+        no_items: list[Type] = []
+        for union_item in proper_type.items:
+            yes_type, no_type = conditional_types(
                 union_item,
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
-            for union_item in get_proper_types(proper_type.items)
-        ]
-        # separate list of tuples into two lists
-        yes_types, no_types = zip(*result)
-        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
-    else:
-        proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
+            yes_items.append(yes_type)
+            no_items.append(no_type)
+
+        proposed_type = make_simplified_union(yes_items)
+        remaining_type = make_simplified_union(no_items)
+        return proposed_type, remaining_type
+
+    proposed_type = make_simplified_union([type_range.item for type_range in proposed_type_ranges])
 
     if isinstance(proper_type, AnyType):
         return proposed_type, current_type

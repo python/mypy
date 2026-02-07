@@ -7655,7 +7655,7 @@ def wrong() -> int:
 [out]
 main:2: error: Missing return statement
 [out2]
-{"file": "main", "line": 2, "column": 0, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
+{"file": "main", "line": 2, "column": 0, "end_line": 4, "end_column": 16, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
 
 [case testReExportAllInStubIncremental]
 from m1 import C

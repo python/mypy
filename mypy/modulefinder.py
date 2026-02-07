@@ -471,7 +471,7 @@ class FindModuleCache:
                 if fscache.isdir(path):
                     if fscache.isfile(stub_typed_file):
                         # Stub packages can have a py.typed file, which must include
-                        # 'partial\n' to make the package partial
+                        # 'partial\n' to make the package partial.
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == "partial":

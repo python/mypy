@@ -848,6 +848,8 @@ class BuildManager:
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+        if self.verbosity() >= 2:
+            self.trace(f"Plugins snapshot (fresh) {json.dumps(self.plugins_snapshot)}")
         self.quickstart_state = read_quickstart_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
@@ -1373,7 +1375,7 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
     snapshot = _load_json_file(
         PLUGIN_SNAPSHOT_FILE,
         manager,
-        log_success="Plugins snapshot ",
+        log_success="Plugins snapshot (cached) ",
         log_error="Could not load plugins snapshot: ",
     )
     if snapshot is None:
@@ -1698,12 +1700,12 @@ def find_cache_meta(
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log(f"Metadata abandoned for {id}: plugins differ")
             return None
-    # So that plugins can return data with tuples in it without
-    # things silently always invalidating modules, we round-trip
-    # the config data. This isn't beautiful.
-    plugin_data = json_loads(
-        json_dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
-    )
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
+    if not manager.options.fixed_format_cache:
+        # So that plugins can return data with tuples in it without
+        # things silently always invalidating modules, we round-trip
+        # the config data. This isn't beautiful.
+        plugin_data = json_loads(json_dumps(plugin_data))
     if m.plugin_data != plugin_data:
         manager.log(f"Metadata abandoned for {id}: plugin configuration differs")
         return None
@@ -1853,6 +1855,7 @@ def write_cache(
     tree: MypyFile,
     dependencies: list[str],
     suppressed: list[str],
+    imports_ignored: dict[int, list[str]],
     dep_prios: list[int],
     dep_lines: list[int],
     old_interface_hash: bytes,
@@ -1967,6 +1970,7 @@ def write_cache(
         data_mtime=data_mtime,
         data_file=data_file,
         suppressed=suppressed,
+        imports_ignored=imports_ignored,
         options=options_snapshot(id, manager),
         dep_prios=dep_prios,
         dep_lines=dep_lines,
@@ -2216,6 +2220,9 @@ class State:
     # we use file size as a proxy for complexity.
     size_hint: int
 
+    # Mapping from line number to type ignore codes on this line (for imports only).
+    imports_ignored: dict[int, list[str]]
+
     @classmethod
     def new_state(
         cls,
@@ -2297,6 +2304,7 @@ class State:
             dep_hashes = {k: v for (k, v) in zip(meta.dependencies, meta.dep_hashes)}
             # Only copy `error_lines` if the module is not silently imported.
             error_lines = [] if ignore_all else meta.error_lines
+            imports_ignored = meta.imports_ignored
         else:
             dependencies = []
             suppressed = []
@@ -2304,6 +2312,7 @@ class State:
             dep_line_map = {}
             dep_hashes = {}
             error_lines = []
+            imports_ignored = {}
 
         state = cls(
             manager=manager,
@@ -2324,6 +2333,7 @@ class State:
             dep_line_map=dep_line_map,
             dep_hashes=dep_hashes,
             error_lines=error_lines,
+            imports_ignored=imports_ignored,
         )
 
         if meta:
@@ -2382,6 +2392,7 @@ class State:
         dep_line_map: dict[str, int],
         dep_hashes: dict[str, bytes],
         error_lines: list[SerializedError],
+        imports_ignored: dict[int, list[str]],
         size_hint: int = 0,
     ) -> None:
         self.manager = manager
@@ -2411,6 +2422,7 @@ class State:
         self.early_errors = []
         self._type_checker = None
         self.add_ancestors()
+        self.imports_ignored = imports_ignored
         self.size_hint = size_hint
 
     def write(self, buf: WriteBuffer) -> None:
@@ -2497,6 +2509,7 @@ class State:
             dep_line_map=dep_line_map,
             dep_hashes=dep_hashes,
             error_lines=[],
+            imports_ignored={},
             size_hint=read_int(buf),
         )
 
@@ -2824,6 +2837,10 @@ class State:
             self.add_dependency(id)
             if id not in self.dep_line_map:
                 self.dep_line_map[id] = line
+        import_lines = self.dep_line_map.values()
+        self.imports_ignored = {
+            line: codes for line, codes in self.tree.ignored_lines.items() if line in import_lines
+        }
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
@@ -3010,6 +3027,7 @@ class State:
             self.tree,
             list(self.dependencies),
             list(self.suppressed),
+            self.imports_ignored,
             dep_prios,
             dep_lines,
             self.interface_hash,
@@ -3163,9 +3181,9 @@ def find_module_and_diagnose(
             raise ModuleNotFound
         if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
-        return (result, follow_imports)
+        return result, follow_imports
     else:
-        # Could not find a module.  Typically the reason is a
+        # Could not find a module.  Typically, the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
 
@@ -3174,7 +3192,7 @@ def find_module_and_diagnose(
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
-        # negatives. (Unless there are stubs but they are incomplete.)
+        # negatives. (Unless there are stubs, but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
             is_module_from_legacy_bundled_package(id)
@@ -3279,6 +3297,11 @@ def module_not_found(
     save_import_context = errors.import_context()
     errors.set_import_context(caller_state.import_context)
     errors.set_file(caller_state.xpath, caller_state.id, caller_state.options)
+    errors.set_file_ignored_lines(
+        caller_state.xpath,
+        caller_state.tree.ignored_lines if caller_state.tree else caller_state.imports_ignored,
+        caller_state.ignore_all or caller_state.options.ignore_errors,
+    )
     if target == "builtins":
         errors.report(
             line, 0, "Cannot find 'builtins' module. Typeshed appears broken!", blocker=True
@@ -3669,7 +3692,7 @@ def load_graph(
             added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
         else:
             # During initial loading we don't care about newly added modules,
-            # they will be taken care of during fine grained update. See also
+            # they will be taken care of during fine-grained update. See also
             # comment about this in `State.__init__()`.
             added = []
         for dep in st.ancestors + dependencies + st.suppressed:
@@ -3729,11 +3752,15 @@ def load_graph(
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in graph and dep in st.suppressed_set:
-                # Previously suppressed file is now visible
+    # There are two things we need to do after the initial load loop. One is up-suppress
+    # modules that are back in graph. We need to do this after the loop to cover an edge
+    # case where a namespace package ancestor is shared by a typed and an untyped package.
+    for st in graph.values():
+        for dep in st.suppressed:
+            if dep in graph:
                 st.add_dependency(dep)
-    # In the loop above we skip indirect dependencies, so to make indirect dependencies behave
-    # more consistently with regular ones, we suppress them manually here (when needed).
+    # Second, in the initial loop we skip indirect dependencies, so to make indirect dependencies
+    # behave more consistently with regular ones, we suppress them manually here (when needed).
     for st in graph.values():
         indirect = [dep for dep in st.dependencies if st.priorities.get(dep) == PRI_INDIRECT]
         for dep in indirect:

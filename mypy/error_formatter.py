@@ -26,6 +26,8 @@ class JSONFormatter(ErrorFormatter):
                 "file": error.file_path,
                 "line": error.line,
                 "column": error.column,
+                "end_line": error.end_line,
+                "end_column": error.end_column,
                 "message": error.message,
                 "hint": None if len(error.hints) == 0 else "\n".join(error.hints),
                 "code": None if error.errorcode is None else error.errorcode.code,

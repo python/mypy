@@ -292,7 +292,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = False
-        self.fixed_format_cache = False
+        self.fixed_format_cache = True
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False
