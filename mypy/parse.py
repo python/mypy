@@ -5,28 +5,8 @@ import re
 
 from mypy import errorcodes as codes
 from mypy.errors import Errors
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile
+from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.traverser import TraverserVisitor
-
-
-class ImportCollector(TraverserVisitor):
-    """Visitor that collects all import nodes from an AST."""
-
-    def __init__(self) -> None:
-        self.imports: list[ImportBase] = []
-
-    def visit_import(self, node: Import) -> None:
-        self.imports.append(node)
-        super().visit_import(node)
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        self.imports.append(node)
-        super().visit_import_from(node)
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        self.imports.append(node)
-        super().visit_import_all(node)
 
 
 def parse(
