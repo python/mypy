@@ -235,7 +235,9 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 def parse_to_binary_ast(
     filename: str, skip_function_bodies: bool = False
 ) -> tuple[bytes, list[dict[str, Any]], TypeIgnores]:
-    return ast_serialize.parse(filename, skip_function_bodies)  # type: ignore[no-any-return]
+    ast_bytes, errors, ignores, _import_bytes = ast_serialize.parse(filename, skip_function_bodies)
+    # TODO: Process import_bytes for dependency tracking
+    return ast_bytes, errors, ignores
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
