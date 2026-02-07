@@ -62,10 +62,9 @@ def parse(
             tree.ignored_lines = dict(type_ignores)
             # Set is_stub based on file extension
             tree.is_stub = fnam.endswith(".pyi")
-            # Collect all import nodes from the tree
-            collector = ImportCollector()
-            tree.accept(collector)
-            tree.imports = collector.imports
+            # Note: tree.imports is populated directly by native_parse with deserialized
+            # import metadata, so we don't need to collect imports via AST traversal
+
             # Report parse errors
             for error in parse_errors:
                 message = error["message"]

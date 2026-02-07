@@ -107,7 +107,7 @@ class TestNativeParse(unittest.TestCase):
             ]
 
         with temp_source("print('hello')") as fnam:
-            b, _, _ = parse_to_binary_ast(fnam)
+            b, _, _, _ = parse_to_binary_ast(fnam)
             assert list(b) == (
                 [LITERAL_INT, 22, nodes.EXPR_STMT, nodes.CALL_EXPR]
                 + [nodes.NAME_EXPR, LITERAL_STR]
