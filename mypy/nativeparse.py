@@ -88,6 +88,7 @@ from mypy.nodes import (
     IfStmt,
     Import,
     ImportAll,
+    ImportBase,
     ImportFrom,
     IndexExpr,
     IntExpr,
@@ -105,6 +106,7 @@ from mypy.nodes import (
     OverloadPart,
     PassStmt,
     RaiseStmt,
+    RefExpr,
     ReturnStmt,
     SetComprehension,
     SetExpr,
@@ -220,7 +222,7 @@ def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom) -
     stmt.is_mypy_only = is_mypy_only
 
 
-def deserialize_imports(import_bytes: bytes) -> list[Import | ImportFrom]:
+def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
     """Deserialize import metadata from bytes into mypy AST nodes.
 
     Args:
@@ -238,7 +240,7 @@ def deserialize_imports(import_bytes: bytes) -> list[Import | ImportFrom]:
     expect_tag(data, LIST_GEN)
     n_imports = read_int_bare(data)
 
-    imports: list[Import | ImportFrom] = []
+    imports: list[ImportBase] = []
 
     for _ in range(n_imports):
         tag = read_tag(data)
@@ -651,7 +653,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         # Read number of cases
         n_cases = read_int(data)
         patterns = []
-        guards = []
+        guards: list[Expression | None] = []
         bodies = []
         for _ in range(n_cases):
             # Read pattern
@@ -1087,7 +1089,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         elif type_name == "typing.Any":
             # Invalid type - read None value
             tag = read_tag(data)
-            assert tag == types.LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
+            assert tag == LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
             value = None
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
@@ -1202,7 +1204,7 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         return mapping_pattern
     elif tag == nodes.CLASS_PATTERN:
         # Read class reference expression
-        class_ref = read_expression(state, data)
+        class_ref = cast(RefExpr, read_expression(state, data))
         # Read number of positional patterns
         n_positional = read_int(data)
         positionals = [read_pattern(state, data) for _ in range(n_positional)]
