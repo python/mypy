@@ -891,6 +891,15 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
+        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        group=strictness_group,
+        dest="allow_redefinition_old",
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-old",
+        default=False,
+        strict_flag=False,
         help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
@@ -899,7 +908,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics (experimental)",
+        help="Allow more flexible variable redefinition semantics",
         group=strictness_group,
     )
 

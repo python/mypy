@@ -2682,3 +2682,11 @@ A = Union[C, List]  # OK
 -- check_untyped_defs is False by default.
 def f():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testRedefineLocalWithDifferentTypeAlias]
+# flags: --allow-redefinition-old
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''
+    reveal_type(x) # N: Revealed type is "builtins.str"
