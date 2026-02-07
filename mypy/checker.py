@@ -6687,7 +6687,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
-                    operands[i], *conditional_types(expr_type, [target])
+                    operands[i],
+                    *conditional_types(expr_type, [target], consider_promotion_overlap=True),
                 )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
@@ -6724,7 +6725,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target = TypeRange(target_type, is_upper_bound=False)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
-                            operands[i], *conditional_types(expr_type, [target])
+                            operands[i],
+                            *conditional_types(
+                                expr_type, [target], consider_promotion_overlap=True
+                            ),
                         )
                         all_else_maps.append(else_map)
                 continue
@@ -6761,7 +6765,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target = TypeRange(target_type, is_upper_bound=False)
 
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target], default=expr_type)
+                        operands[i],
+                        *conditional_types(
+                            expr_type, [target], default=expr_type, consider_promotion_overlap=True
+                        ),
                     )
                     or_if_maps.append(if_map)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
@@ -8263,6 +8270,7 @@ def conditional_types(
     default: None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type | None, Type | None]: ...
 
 
@@ -8273,6 +8281,7 @@ def conditional_types(
     default: Type,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type, Type]: ...
 
 
@@ -8282,6 +8291,7 @@ def conditional_types(
     default: Type | None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -8326,6 +8336,7 @@ def conditional_types(
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
+                consider_promotion_overlap=consider_promotion_overlap,
             )
             yes_items.append(yes_type)
             no_items.append(no_type)
@@ -8361,9 +8372,17 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+    if not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=not consider_promotion_overlap
+    ):
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
+    if consider_promotion_overlap and not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=True
+    ):
+        # We set consider_promotion_overlap when comparing equality. This is one of the places
+        # at runtime where subtyping with promotion does happen to match runtime semantics
+        return default, default
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
         [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]

@@ -3583,7 +3583,6 @@ def convert_type(target_type: Type[TargetType]) -> TargetType:
 from __future__ import annotations
 from typing import Literal
 
-# TODO: the behaviour on some of these test cases is incorrect
 def f1(number: float, i: int):
     if number == i:
         reveal_type(number)  # N: Revealed type is "builtins.float"
@@ -3591,22 +3590,30 @@ def f1(number: float, i: int):
 
 def f2(number: float, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # E: Statement is unreachable
-        reveal_type(five)
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
 
 def f3(number: float | int, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+
+def f8(number: float | Literal[5], five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+    else:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(five)  # N: Revealed type is "Literal[5]"
 
 def f4(number: float | None, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.float | None"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 def f5(number: float | int, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.int"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 def f6(number: float | complex, i: int):
@@ -3620,7 +3627,7 @@ class Custom:
 def f7(number: float, x: Custom | int):
     if number == x:
         reveal_type(number)  # N: Revealed type is "builtins.float"
-        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingAnyNegativeIntersection-xfail]
@@ -3710,7 +3717,7 @@ def main(
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
 
     if v_all == v_bytes:
-        reveal_type(v_all)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
     if v_all == v_bytearray:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
