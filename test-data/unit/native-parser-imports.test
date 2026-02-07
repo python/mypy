@@ -174,3 +174,191 @@ else:
     import reachable_else
 [out]
 7: import reachable_else
+
+[case testMypyOnlyImport]
+# Imports in TYPE_CHECKING blocks are mypy_only
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import mypy_only_module
+import regular_module
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_module [mypy_only]
+5: import regular_module
+
+[case testMypyOnlyFromImport]
+# From imports in TYPE_CHECKING blocks are mypy_only
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from mypy_types import MyType
+from regular import RegularType
+[out]
+2: from typing import TYPE_CHECKING
+4: from mypy_types import MyType [mypy_only]
+5: from regular import RegularType
+
+[case testMypyNameAlias]
+# MYPY is also recognized as mypy_only
+if MYPY:
+    import only_for_mypy
+import for_everyone
+[out]
+3: import only_for_mypy [mypy_only]
+4: import for_everyone
+
+[case testMypyOnlyElseBranch]
+# Else branch of TYPE_CHECKING is unreachable (runtime-only, not analyzed by mypy)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import for_mypy
+else:
+    import for_runtime
+[out]
+2: from typing import TYPE_CHECKING
+4: import for_mypy [mypy_only]
+
+[case testNestedMypyOnly]
+# Nested blocks inside TYPE_CHECKING are also mypy_only
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    if True:
+        import deeply_nested
+    import also_mypy_only
+[out]
+2: from typing import TYPE_CHECKING
+5: import deeply_nested [mypy_only]
+6: import also_mypy_only [mypy_only]
+
+[case testMypyOnlyInFunction]
+# Mypy-only imports in functions
+from typing import TYPE_CHECKING
+def f():
+    if TYPE_CHECKING:
+        import mypy_func_import
+    import regular_func_import
+[out]
+2: from typing import TYPE_CHECKING
+5: import mypy_func_import [not top_level, mypy_only]
+6: import regular_func_import [not top_level]
+
+[case testMypyOnlyElifBranch]
+# Elif after TYPE_CHECKING is unreachable (runtime-only)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import for_mypy
+elif True:
+    import for_runtime_elif
+[out]
+2: from typing import TYPE_CHECKING
+4: import for_mypy [mypy_only]
+
+[case testNotMypyFalseBranch]
+# Not TYPE_CHECKING makes body unreachable, else is mypy_only
+from typing import TYPE_CHECKING
+if not TYPE_CHECKING:
+    import runtime_only
+else:
+    import mypy_only
+[out]
+2: from typing import TYPE_CHECKING
+6: import mypy_only [mypy_only]
+
+[case testMixedMypyOnlyAndUnreachable]
+# Combination of mypy_only and unreachable
+from typing import TYPE_CHECKING
+if PY2:
+    import unreachable_py2
+if TYPE_CHECKING:
+    import mypy_only_import
+if PY3:
+    import always_reachable
+[out]
+2: from typing import TYPE_CHECKING
+6: import mypy_only_import [mypy_only]
+8: import always_reachable
+
+[case testTypingExtensionsTypeChecking]
+# typing_extensions.TYPE_CHECKING is also recognized
+from typing_extensions import TYPE_CHECKING
+if TYPE_CHECKING:
+    import mypy_import
+[out]
+2: from typing_extensions import TYPE_CHECKING
+4: import mypy_import [mypy_only]
+
+[case testUnknownCondition]
+# Unknown conditions - all branches reachable
+if x:
+    import in_if
+else:
+    import in_else
+[out]
+3: import in_if
+5: import in_else
+
+[case testUnknownConditionWithElif]
+# Unknown conditions with elif
+if unknown_var:
+    import first
+elif another_var:
+    import second
+else:
+    import third
+[out]
+3: import first
+5: import second
+7: import third
+
+[case testMixedKnownUnknown]
+# Mix of known and unknown conditions
+if TYPE_CHECKING:
+    import mypy_only
+if some_var:
+    import maybe_reachable
+if PY2:
+    import unreachable
+[out]
+3: import mypy_only [mypy_only]
+5: import maybe_reachable
+
+[case testNestedUnknownInMypyOnly]
+# Unknown condition nested in mypy-only block
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    if condition:
+        import nested_mypy
+    import also_mypy
+[out]
+2: from typing import TYPE_CHECKING
+5: import nested_mypy [mypy_only]
+6: import also_mypy [mypy_only]
+
+[case testUnknownAfterMypyTrue]
+# Unknown elif after TYPE_CHECKING is unreachable
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import for_mypy
+elif x:
+    import unreachable_elif
+[out]
+2: from typing import TYPE_CHECKING
+4: import for_mypy [mypy_only]
+
+[case testComplexCondition]
+# Complex boolean conditions that can't be evaluated
+if x and y:
+    import complex_if
+elif z or w:
+    import complex_elif
+[out]
+3: import complex_if
+5: import complex_elif
+
+[case testUnknownWithFunction]
+# Unknown condition with function call
+if func():
+    import from_func_call
+import regular
+[out]
+3: import from_func_call
+4: import regular
