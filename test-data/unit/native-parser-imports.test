@@ -1,0 +1,176 @@
+-- Test cases for import returned by the native parser using a side channel
+-- In particular, test import flags related to reachability and priority when ordering SCCs
+
+[case testNoImport]
+# No imports
+print()
+[out]
+
+[case testSimpleImport]
+import foo
+[out]
+1: import foo
+
+[case testMultipleImports]
+import foo
+import bar
+import baz
+[out]
+1: import foo
+2: import bar
+3: import baz
+
+[case testImportAs]
+import foo as f
+import bar as b
+[out]
+1: import foo as f
+2: import bar as b
+
+[case testFromImport]
+from foo import bar
+[out]
+1: from foo import bar
+
+[case testFromImportMultiple]
+from foo import bar, baz, qux
+[out]
+1: from foo import bar, baz, qux
+
+[case testFromImportAs]
+from foo import bar as b, baz as z
+[out]
+1: from foo import bar as b, baz as z
+
+[case testRelativeImport]
+from . import foo
+from .. import bar
+from ...baz import qux
+[out]
+1: from . import foo
+2: from .. import bar
+3: from ...baz import qux
+
+[case testNonTopLevelImport]
+def f():
+    import foo
+    from bar import baz
+[out]
+2: import foo [not top_level]
+3: from bar import baz [not top_level]
+
+[case testMixedTopLevel]
+import toplevel
+def f():
+    import inside_func
+import another_toplevel
+[out]
+1: import toplevel
+3: import inside_func [not top_level]
+4: import another_toplevel
+
+[case testImportInClass]
+class Foo:
+    import bar
+[out]
+2: import bar
+[case testUnreachableImportPY2]
+# Imports in unreachable blocks should not appear
+if PY2:
+    import unreachable_module
+import reachable_module
+[out]
+4: import reachable_module
+
+[case testUnreachableFromImportPY2]
+# From imports in unreachable blocks should not appear
+if PY2:
+    from unreachable import foo
+from reachable import bar
+[out]
+4: from reachable import bar
+
+[case testReachableImportPY3]
+# Imports in reachable if PY3 blocks should appear
+if PY3:
+    import reachable_module
+[out]
+3: import reachable_module
+
+[case testUnreachableElseBlock]
+# Imports in unreachable else block should not appear
+if PY3:
+    import reachable
+else:
+    import unreachable
+[out]
+3: import reachable
+
+[case testMixedReachableUnreachable]
+# Mix of reachable and unreachable imports
+import before
+if PY2:
+    import unreachable_in_if
+else:
+    import reachable_in_else
+import after
+[out]
+2: import before
+6: import reachable_in_else
+7: import after
+
+[case testNestedUnreachable]
+# Nested unreachable blocks
+if PY2:
+    import outer_unreachable
+    if True:
+        import inner_unreachable
+import reachable
+[out]
+6: import reachable
+
+[case testUnreachableWithTopLevel]
+# Unreachable imports are still marked as top_level correctly
+def f():
+    if PY2:
+        import unreachable_func
+    import reachable_func
+if PY2:
+    import unreachable_top
+import reachable_top
+[out]
+5: import reachable_func [not top_level]
+8: import reachable_top
+
+[case testVersionCheckUnreachable]
+# sys.version_info check makes else unreachable
+import sys
+if sys.version_info >= (3, 8):
+    import reachable_version_check
+else:
+    import unreachable_old_version
+[out]
+2: import sys
+4: import reachable_version_check
+
+[case testElifUnreachable]
+# Elif after always-true condition is unreachable
+if PY3:
+    import reachable_if
+elif True:
+    import unreachable_elif
+else:
+    import unreachable_else
+[out]
+3: import reachable_if
+
+[case testAllBranchesUnreachable]
+# When all branches are unreachable, no imports appear
+if PY2:
+    import unreachable_if
+elif PY2:
+    import unreachable_elif
+else:
+    import reachable_else
+[out]
+7: import reachable_else
