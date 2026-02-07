@@ -424,24 +424,22 @@ x = 1
 [case testCustomSysVersionInfo]
 # flags: --python-version 3.11
 import sys
-if sys.version_info == (3, 11):
+if sys.version_info >= (3, 11):
     x = "foo"
 else:
     x = 3
 reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
-[out]
 
 [case testCustomSysVersionInfo2]
 # flags: --python-version 3.11
 import sys
-if sys.version_info == (3, 6):
+if sys.version_info >= (3, 12):
     x = "foo"
 else:
     x = 3
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
-[out]
 
 [case testCustomSysPlatform]
 # flags: --platform linux
@@ -894,42 +892,53 @@ def baz(x: int) -> int:
 import sys
 from typing import TYPE_CHECKING
 
-x: int
-if TYPE_CHECKING:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-else:
-    reveal_type(x)
+def f1(x: int) -> None:
+    if TYPE_CHECKING:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)
 
-if not TYPE_CHECKING:
-    reveal_type(x)
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+def f2(x: int) -> None:
+    if not TYPE_CHECKING:
+        reveal_type(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if sys.platform == 'darwin':
-    reveal_type(x)
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+def f3(x: int) -> None:
+    if sys.platform == 'darwin':
+        reveal_type(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if sys.platform == 'win32':
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-else:
-    reveal_type(x)
+def f4(x: int) -> None:
+    if sys.platform == 'win32':
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)
 
-if sys.version_info == (2, 7):
-    reveal_type(x)
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+def f5(x: int) -> None:
+    if sys.version_info == (2, 7):
+        reveal_type(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if sys.version_info == (3, 9):
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-else:
-    reveal_type(x)
+def f6(x: int) -> None:
+    if sys.version_info >= (3, 9):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)
 
-FOOBAR = ""
-if FOOBAR:
-    reveal_type(x)
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+    if sys.version_info >= (3, 10):
+        reveal_type(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f7(x: int) -> None:
+    FOOBAR = ""
+    if FOOBAR:
+        reveal_type(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [typing fixtures/typing-medium.pyi]
 

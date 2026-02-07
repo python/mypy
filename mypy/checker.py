@@ -6699,9 +6699,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # However, for non-value targets, we cannot do this narrowing,
                     # and so we ignore else_map
                     # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
-                    # TODO: this reachability gate is incorrect and should be removed
-                    if not is_unreachable_map(if_map):
-                        all_if_maps.append(if_map)
+                    all_if_maps.append(if_map)
 
         # Handle narrowing for operands with custom __eq__ methods specially
         # In most cases, we won't be able to do any narrowing
