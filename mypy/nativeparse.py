@@ -52,6 +52,8 @@ from mypy.cache import (
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
+    IMPORT_METADATA,
+    IMPORTFROM_METADATA,
     MISSING_FALLBACK,
     PARAM_SPEC_KIND,
     TYPE_VAR_KIND,
@@ -151,7 +153,6 @@ from mypy.types import (
 
 TypeIgnores = list[tuple[int, list[str]]]
 
-
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
@@ -196,6 +197,98 @@ def expect_end_tag(data: ReadBuffer) -> None:
 
 def expect_tag(data: ReadBuffer, tag: Tag) -> None:
     assert read_tag(data) == tag
+
+
+def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom) -> None:
+    """Read location and metadata flags from buffer and set them on the import statement.
+
+    Args:
+        data: Buffer containing serialized data
+        stmt: Import or ImportFrom statement to populate with location and metadata
+    """
+    # Read location
+    read_loc(data, stmt)
+
+    # Read metadata flags
+    is_top_level = read_bool(data)
+    is_unreachable = read_bool(data)
+    is_mypy_only = read_bool(data)
+
+    # Set metadata on statement
+    stmt.is_top_level = is_top_level
+    stmt.is_unreachable = is_unreachable
+    stmt.is_mypy_only = is_mypy_only
+
+
+def deserialize_imports(import_bytes: bytes) -> list[Import | ImportFrom]:
+    """Deserialize import metadata from bytes into mypy AST nodes.
+
+    Args:
+        import_bytes: Serialized import metadata from the Rust parser
+
+    Returns:
+        List of Import and ImportFrom AST nodes with location and metadata
+    """
+    if not import_bytes:
+        return []
+
+    data = ReadBuffer(import_bytes)
+
+    # Read list header
+    expect_tag(data, LIST_GEN)
+    n_imports = read_int_bare(data)
+
+    imports: list[Import | ImportFrom] = []
+
+    for _ in range(n_imports):
+        tag = read_tag(data)
+
+        if tag == IMPORT_METADATA:
+            # Read Import fields
+            name = read_str(data)
+            relative = read_int(data)
+
+            # Read optional as_name
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+
+            # Create Import node and read common metadata
+            # Note: relative imports are handled via ImportFrom, so relative should be 0 here
+            stmt = Import([(name, asname)])
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        elif tag == IMPORTFROM_METADATA:
+            # Read ImportFrom fields
+            module = read_str(data)
+            relative = read_int(data)
+
+            # Read list of names
+            expect_tag(data, LIST_GEN)
+            n_names = read_int_bare(data)
+            names: list[tuple[str, str | None]] = []
+
+            for _ in range(n_names):
+                name = read_str(data)
+                has_asname = read_bool(data)
+                if has_asname:
+                    asname = read_str(data)
+                else:
+                    asname = None
+                names.append((name, asname))
+
+            # Create ImportFrom node and read common metadata
+            stmt = ImportFrom(module, relative, names)
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        else:
+            raise ValueError(f"Unexpected tag in import metadata: {tag}")
+
+    return imports
 
 
 def native_parse(

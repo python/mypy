@@ -5083,6 +5083,8 @@ STARRED_PATTERN: Final[Tag] = 222
 MAPPING_PATTERN: Final[Tag] = 223
 CLASS_PATTERN: Final[Tag] = 224
 TYPE_ALIAS_STMT: Final[Tag] = 225
+IMPORT_METADATA: Final[Tag] = 226
+IMPORTFROM_METADATA: Final[Tag] = 227
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
