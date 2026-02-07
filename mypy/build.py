@@ -4235,19 +4235,11 @@ def sorted_components(graph: Graph) -> list[SCC]:
             scc.size_hint = sum(graph[mid].size_hint for mid in scc.mod_ids)
             for dep in scc_dep_map[scc]:
                 dep.direct_dependents.append(scc.id)
+            # We compute dependencies hash here since we know no direct
+            # dependencies will be added or suppressed after this point.
+            trans_dep_hash = transitive_dep_hash(scc, graph)
             for id in scc.mod_ids:
-                st = graph[id]
-                # Stable snapshot of transitive import structure in topological order.
-                # We compute this here since we know no direct dependencies will be added
-                # or suppressed after this point.
-                direct_deps = sorted(
-                    dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT
-                )
-                trans_dep_hash_map = {
-                    dep_id: "" if dep_id in scc.mod_ids else graph[dep_id].trans_dep_hash.hex()
-                    for dep_id in direct_deps
-                }
-                st.trans_dep_hash = hash_digest_bytes(json_dumps(trans_dep_hash_map))
+                graph[id].trans_dep_hash = trans_dep_hash
         res.extend(sorted_ready)
     return res
 
@@ -4279,6 +4271,21 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
         for dep in state.dependencies
         if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max
     ]
+
+
+def transitive_dep_hash(scc: SCC, graph: Graph) -> bytes:
+    """Compute stable snapshot of transitive import structure for given SCC."""
+    all_direct_deps = {
+        dep
+        for id in scc.mod_ids
+        for dep in graph[id].dependencies
+        if graph[id].priorities.get(dep) != PRI_INDIRECT
+    }
+    trans_dep_hash_map = {
+        dep_id: "" if dep_id in scc.mod_ids else graph[dep_id].trans_dep_hash.hex()
+        for dep_id in all_direct_deps
+    }
+    return hash_digest_bytes(json_dumps(trans_dep_hash_map))
 
 
 def missing_stubs_file(cache_dir: str) -> str:
