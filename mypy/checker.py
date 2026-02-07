@@ -6254,8 +6254,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # Narrow Any to a generic callable type to satisfy no-any-return in strict mode.
             return {
                 expr: CallableType(
-                    [AnyType(TypeOfAny.from_another_any, source_any=proper_type),
-                     AnyType(TypeOfAny.from_another_any, source_any=proper_type)],
+                    [
+                        AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                        AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                    ],
                     [nodes.ARG_STAR, nodes.ARG_STAR2],
                     [None, None],
                     ret_type=AnyType(TypeOfAny.from_another_any, source_any=proper_type),
