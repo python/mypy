@@ -6250,7 +6250,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return {}, {}
 
         if isinstance(get_proper_type(current_type), AnyType):
-            return {}, {}
+            # Narrow Any to a generic callable type to satisfy no-any-return in strict mode.
+            return {
+                expr: CallableType(
+                    [AnyType(TypeOfAny.from_another_any, source_any=current_type),
+                     AnyType(TypeOfAny.from_another_any, source_any=current_type)],
+                    [nodes.ARG_STAR, nodes.ARG_STAR2],
+                    [None, None],
+                    ret_type=AnyType(TypeOfAny.from_another_any, source_any=current_type),
+                    fallback=self.named_type("builtins.function"),
+                    is_ellipsis_args=True,
+                )
+            }, {}
 
         callables, uncallables = self.partition_by_callable(current_type, unsound_partition=False)
 
