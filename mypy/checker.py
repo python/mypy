@@ -6252,17 +6252,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         proper_type = get_proper_type(current_type)
         if isinstance(proper_type, AnyType):
             # Narrow Any to a generic callable type to satisfy no-any-return in strict mode.
-            return {
-                expr: CallableType(
-                    [AnyType(TypeOfAny.from_another_any, source_any=proper_type),
-                     AnyType(TypeOfAny.from_another_any, source_any=proper_type)],
-                    [nodes.ARG_STAR, nodes.ARG_STAR2],
-                    [None, None],
-                    ret_type=AnyType(TypeOfAny.from_another_any, source_any=proper_type),
-                    fallback=self.named_type("builtins.function"),
-                    is_ellipsis_args=True,
-                )
-            }, {}
+            # We use a synthesized fallback "<any callable fallback>" to preserve attribute
+            # access (fixing regressions in sympy, pandas, etc.) without triggering
+            # metaclass-related internal errors or breaking invariant subtyping.
+            obj_fallback = self.named_type("builtins.object")
+            if obj_fallback.type.fullname == "builtins.object":
+                cdef = nodes.ClassDef("<any callable fallback>", nodes.Block([]))
+                cdef._fullname = "<any callable fallback>"
+                info = TypeInfo(nodes.SymbolTable(), cdef, "")
+                info.mro = obj_fallback.type.mro
+                info.bases = obj_fallback.type.bases
+                info.fallback_to_any = True
+                fallback_instance = Instance(info, [])
+                
+                return {
+                    expr: CallableType(
+                        [AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                         AnyType(TypeOfAny.from_another_any, source_any=proper_type)],
+                        [nodes.ARG_STAR, nodes.ARG_STAR2],
+                        [None, None],
+                        ret_type=AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                        fallback=fallback_instance,
+                        is_ellipsis_args=True,
+                    )
+                }, {}
 
         callables, uncallables = self.partition_by_callable(current_type, unsound_partition=False)
 
