@@ -188,7 +188,7 @@ from typing import Any
 x = 5  # type: Any
 
 if callable(x):
-    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(x)  # N: Revealed type is "def (*Any, **Any) -> Any"
 else:
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/callable.pyi]
