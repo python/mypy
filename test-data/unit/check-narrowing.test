@@ -3726,3 +3726,103 @@ def main(
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
 [builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeVsSubclass]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType
+
+M1 = NewType("M1", int)
+M2 = NewType("M2", int)
+
+def check_m(base: int, m1: M1, m2: M2):
+    if m1 == m2:  # E: Non-overlapping equality check (left operand type: "M1", right operand type: "M2")
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(m2)  # N: Revealed type is "__main__.M2"
+
+    if m1 == base:
+        # We do not narrow base
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(base)  # N: Revealed type is "builtins.int"
+        if m2 == base:
+            reveal_type(m2)  # N: Revealed type is "__main__.M2"
+            reveal_type(base)  # N: Revealed type is "builtins.int"
+
+# We do narrow for subclasses! (assuming no custom equality)
+class A: ...
+class A1(A): ...
+class A2(A): ...
+
+def check_a(base: A, a1: A1, a2: A2):
+    if a1 == a2:  # E: Non-overlapping equality check (left operand type: "A1", right operand type: "A2")
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(a2)  # N: Revealed type is "__main__.A2"
+
+    if a1 == base:
+        # We do narrow base
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(base)  # N: Revealed type is "__main__.A1"
+        if a2 == base:  # E: Non-overlapping equality check (left operand type: "A2", right operand type: "A1")
+            reveal_type(a2)  # N: Revealed type is "__main__.A2"
+            reveal_type(base)  # N: Revealed type is "__main__.A1"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeFromObject]
+# mypy: strict-equality, warn-unreachable
+from __future__ import annotations
+from typing import NewType
+
+UserId = NewType("UserId", int)
+
+def f1(whatever: object, uid: UserId):
+    # The general principle is that we should not be able to produce a value of NewType
+    # without there being explicit wrapping somewhere
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+
+class Other: ...
+
+def f2(whatever: object, uid: UserId | Other):
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int | __main__.Other"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId | __main__.Other"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeNested]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+Path = NewType("Path", str)
+NormPath = NewType("NormPath", Path)
+
+def op(normpath: NormPath, path: Path):
+    if normpath == path:
+        # No narrowing
+        reveal_type(normpath)  # N: Revealed type is "__main__.NormPath"
+        reveal_type(path)  # N: Revealed type is "__main__.Path"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeSharedValue]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+UserId = NewType("UserId", int)
+TeamId = NewType("TeamId", int)
+INVALID = 123
+
+def get_owner(uid: UserId, tid: TeamId):
+    # No narrowing for INVALID
+    if uid == INVALID:
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+        reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+        reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+        if tid == INVALID:
+            reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+            reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+            reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+            return None
+[builtins fixtures/primitives.pyi]
