@@ -225,7 +225,7 @@ class Options:
         self.allow_redefinition_old = False
 
         # Allow flexible variable redefinition with an arbitrary type, in different
-        # blocks and and at different nesting levels
+        # blocks and at different nesting levels
         self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
