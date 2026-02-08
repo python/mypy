@@ -1945,7 +1945,7 @@ def check_ifstmt_for_overloads(
         return None
 
     overload_name = cast(Decorator | FuncDef | OverloadedFuncDef, stmt.body[0].body[-1]).name
-    if stmt.else_body is None:
+    if stmt.else_body is None or stmt.else_body.is_unreachable:
         return overload_name
 
     if len(stmt.else_body.body) == 1:
@@ -1986,7 +1986,7 @@ def get_executable_if_block_with_overloads(
     ):
         # The truth value is unknown, thus not conclusive
         return None, stmt
-    if stmt.else_body.is_unreachable is True:
+    if stmt.else_body.is_unreachable:
         # else_body will be set unreachable if condition is always True
         return stmt.body[0], None
     if stmt.body[0].is_unreachable is True:
