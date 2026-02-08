@@ -1007,7 +1007,7 @@ def define_options(
     )
     add_invertible_flag(
         "--pretty",
-        default=False,
+        default=True,
         help="Use visually nicer output in error messages:"
         " Use soft word wrap, show source code snippets,"
         " and show error location markers",
