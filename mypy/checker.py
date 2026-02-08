@@ -6699,7 +6699,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # However, for non-value targets, we cannot do this narrowing,
                     # and so we ignore else_map
                     # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
-                    all_if_maps.append(if_map)
+
+                    # It is correct to always narrow here. It improves behaviour on tests and
+                    # detects many inaccurate type annotations on primer.
+                    # However, because mypy does not currently check unreachable code, it feels
+                    # risky to narrow to unreachable without --warn-unreachable.
+                    # See also this specific primer comment, where I force primer to run with
+                    # --warn-unreachable to see what code we would stop checking:
+                    # https://github.com/python/mypy/pull/20660#issuecomment-3865794148
+                    if self.options.warn_unreachable or not is_unreachable_map(if_map):
+                        all_if_maps.append(if_map)
 
         # Handle narrowing for operands with custom __eq__ methods specially
         # In most cases, we won't be able to do any narrowing
