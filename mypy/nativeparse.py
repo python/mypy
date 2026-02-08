@@ -29,10 +29,6 @@ from librt.internal import (
 )
 
 from mypy import message_registry, nodes, types
-from mypy.options import Options
-from mypy.reachability import infer_reachability_of_if_statement
-from mypy.sharedparse import special_function_elide_names
-from mypy.util import unnamed_function
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -53,12 +49,9 @@ from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
     IMPORT_METADATA,
-    IMPORTFROM_METADATA,
     IMPORTALL_METADATA,
+    IMPORTFROM_METADATA,
     MISSING_FALLBACK,
-    PARAM_SPEC_KIND,
-    TYPE_VAR_KIND,
-    TYPE_VAR_TUPLE_KIND,
     Argument,
     AssertStmt,
     AssignmentExpr,
@@ -128,6 +121,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -139,6 +133,8 @@ from mypy.patterns import (
     StarredPattern,
     ValuePattern,
 )
+from mypy.reachability import infer_reachability_of_if_statement
+from mypy.sharedparse import special_function_elide_names
 from mypy.types import (
     AnyType,
     CallableArgument,
@@ -153,6 +149,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
+from mypy.util import unnamed_function
 
 TypeIgnores = list[tuple[int, list[str]]]
 
@@ -185,13 +182,9 @@ class State:
             blocker: If True, this error blocks further analysis
             code: Error code for categorization
         """
-        self.errors.append({
-            "line": line,
-            "column": column,
-            "message": message,
-            "blocker": blocker,
-            "code": code,
-        })
+        self.errors.append(
+            {"line": line, "column": column, "message": message, "blocker": blocker, "code": code}
+        )
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -1998,9 +1991,7 @@ def get_executable_if_block_with_overloads(
     return None, stmt
 
 
-def fix_function_overloads(
-    state: State, stmts: list[Statement]
-) -> list[Statement]:
+def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Statement]:
     """Merge consecutive function overloads into OverloadedFuncDef nodes.
 
     This function processes a list of statements and combines function overloads
@@ -2083,9 +2074,7 @@ def fix_function_overloads(
                 skipped_if_stmts.extend(cast(list[IfStmt], if_block_with_overload.body[:-1]))
                 current_overload.extend(if_block_with_overload.body[-1].items)
             else:
-                current_overload.append(
-                    cast(Decorator | FuncDef, if_block_with_overload.body[0])
-                )
+                current_overload.append(cast(Decorator | FuncDef, if_block_with_overload.body[0]))
         else:
             if last_if_stmt is not None:
                 ret.append(last_if_stmt)
@@ -2126,12 +2115,9 @@ def fix_function_overloads(
                 last_if_stmt = stmt
                 last_if_stmt_overload_name = None
                 if if_block_with_overload is not None:
-                    skipped_if_stmts.extend(
-                        cast(list[IfStmt], if_block_with_overload.body[:-1])
-                    )
+                    skipped_if_stmts.extend(cast(list[IfStmt], if_block_with_overload.body[:-1]))
                     last_if_overload = cast(
-                        Decorator | FuncDef | OverloadedFuncDef,
-                        if_block_with_overload.body[-1],
+                        Decorator | FuncDef | OverloadedFuncDef, if_block_with_overload.body[-1]
                     )
                 last_if_unknown_truth_value = if_unknown_truth_value
             else:
