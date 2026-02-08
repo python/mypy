@@ -504,7 +504,12 @@ def parse_section(
 
     for key in section:
         invert = False
+        # Here we use `key` for original config section key, and `options_key` for
+        # the corresponding Options attribute.
         options_key = key
+        # Match aliasing for command line flag.
+        if key.endswith("allow_redefinition"):
+            options_key += "_old"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:
@@ -515,7 +520,7 @@ def parse_section(
             )
             continue
         else:
-            dv = getattr(template, key, None)
+            dv = getattr(template, options_key, None)
             if dv is None:
                 if key.endswith("_report"):
                     report_type = key[:-7].replace("_", "-")
@@ -526,17 +531,17 @@ def parse_section(
                     continue
                 if key.startswith("x_"):
                     pass  # Don't complain about `x_blah` flags
-                elif key.startswith("no_") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("no_") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("allow") and hasattr(template, "dis" + key):
-                    options_key = "dis" + key
+                elif key.startswith("allow") and hasattr(template, "dis" + options_key):
+                    options_key = "dis" + options_key
                     invert = True
-                elif key.startswith("disallow") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("disallow") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("show_") and hasattr(template, "hide_" + key[5:]):
-                    options_key = "hide_" + key[5:]
+                elif key.startswith("show_") and hasattr(template, "hide_" + options_key[5:]):
+                    options_key = "hide_" + options_key[5:]
                     invert = True
                 elif key == "strict":
                     pass  # Special handling below

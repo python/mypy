@@ -2682,3 +2682,58 @@ A = Union[C, List]  # OK
 -- check_untyped_defs is False by default.
 def f():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testRedefineLocalWithDifferentTypeAlias]
+# flags: --allow-redefinition-old
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+[case testRedefineLocalWithDifferentTypeInline]
+# mypy: allow-redefinition
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+[case testRedefineLocalWithDifferentTypeInverse]
+# flags: --disallow-redefinition-old
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRedefineLocalWithDifferentTypeConfigAlias]
+# flags: --config-file tmp/mypy.ini
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''
+    reveal_type(x) # N: Revealed type is "builtins.str"
+[file mypy.ini]
+\[mypy]
+allow_redefinition = true
+
+[case testRedefineLocalWithDifferentTypeConfigOld]
+# flags: --config-file tmp/mypy.ini
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''
+    reveal_type(x) # N: Revealed type is "builtins.str"
+[file mypy.ini]
+\[mypy]
+allow_redefinition_old = true
+
+[case testRedefineLocalWithDifferentTypeConfigInverse]
+# flags: --config-file tmp/mypy.ini
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file mypy.ini]
+\[mypy]
+disallow_redefinition = true

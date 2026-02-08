@@ -2764,7 +2764,7 @@ class State:
                 # Perform some low-key variable renaming when assignments can't
                 # widen inferred types
                 self.tree.accept(LimitedVariableRenameVisitor())
-            if options.allow_redefinition:
+            if options.allow_redefinition_old:
                 # Perform more renaming across the AST to allow variable redefinitions
                 self.tree.accept(VariableRenameVisitor())
         self.time_spent_us += time_spent_us(t0)

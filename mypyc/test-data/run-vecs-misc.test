@@ -5,7 +5,7 @@
 -- vec[i64] test cases are in run-vecs-i64.test.
 
 [case testVecMiscBasicOps_librt_experimental]
-# mypy: allow-redefinition
+# mypy: allow-redefinition-old
 
 from typing import Any, cast
 from mypy_extensions import i64, i32, i16, u8

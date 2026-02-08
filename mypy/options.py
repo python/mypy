@@ -21,7 +21,7 @@ class BuildType:
 
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
-    "allow_redefinition",
+    "allow_redefinition_old",
     "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
@@ -222,10 +222,10 @@ class Options:
 
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
-        self.allow_redefinition = False
+        self.allow_redefinition_old = False
 
         # Allow flexible variable redefinition with an arbitrary type, in different
-        # blocks and and at different nesting levels
+        # blocks and at different nesting levels
         self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
