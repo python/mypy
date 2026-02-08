@@ -136,9 +136,7 @@ class NodeStripVisitor(TraverserVisitor):
         node.type_vars = []
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
-        node.defs.body = [
-            s for s in node.defs.body if s not in to_delete  # type: ignore[comparison-overlap]
-        ]
+        node.defs.body = [s for s in node.defs.body if s not in to_delete]
         with self.enter_class(node.info):
             super().visit_class_def(node)
         node.defs.body.extend(node.removed_statements)
