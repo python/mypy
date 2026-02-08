@@ -137,7 +137,7 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
 
     Returns a list of strings representing reachable imports with line numbers and flags.
     """
-    from mypy.nodes import Import, ImportFrom
+    from mypy.nodes import Import, ImportAll, ImportFrom
 
     output: list[str] = []
 
@@ -185,6 +185,19 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
 
             names_str = ", ".join(name_parts)
             output.append(f"{line_num}: from {module} import {names_str}{flags_str}")
+        elif isinstance(imp, ImportAll):
+            # Format: line: from foo import * [flags]
+            # Handle relative imports
+            if imp.relative > 0:
+                prefix = "." * imp.relative
+                if imp.id:
+                    module = f"{prefix}{imp.id}"
+                else:
+                    module = prefix
+            else:
+                module = imp.id
+
+            output.append(f"{line_num}: from {module} import *{flags_str}")
 
     return output
 

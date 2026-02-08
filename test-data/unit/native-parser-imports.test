@@ -362,3 +362,40 @@ import regular
 [out]
 3: import from_func_call
 4: import regular
+
+[case testStarImport]
+from foo import *
+[out]
+1: from foo import *
+
+[case testRelativeStarImport]
+from . import *
+from ..bar import *
+from ...baz import *
+[out]
+1: from . import *
+2: from ..bar import *
+3: from ...baz import *
+
+[case testStarImportInFunction]
+def f():
+    from foo import *
+[out]
+2: from foo import * [not top_level]
+
+[case testMypyOnlyStarImport]
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from mypy_types import *
+from regular import *
+[out]
+1: from typing import TYPE_CHECKING
+3: from mypy_types import * [mypy_only]
+4: from regular import *
+
+[case testUnreachableStarImport]
+if PY2:
+    from unreachable import *
+from reachable import *
+[out]
+3: from reachable import *

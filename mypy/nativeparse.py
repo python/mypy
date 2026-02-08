@@ -54,6 +54,7 @@ from mypy.nodes import (
     ARG_POS,
     IMPORT_METADATA,
     IMPORTFROM_METADATA,
+    IMPORTALL_METADATA,
     MISSING_FALLBACK,
     PARAM_SPEC_KIND,
     TYPE_VAR_KIND,
@@ -201,25 +202,26 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
     assert read_tag(data) == tag
 
 
-def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom) -> None:
+def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | ImportAll) -> None:
     """Read location and metadata flags from buffer and set them on the import statement.
 
     Args:
         data: Buffer containing serialized data
-        stmt: Import or ImportFrom statement to populate with location and metadata
+        stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
     """
     # Read location
     read_loc(data, stmt)
 
-    # Read metadata flags
-    is_top_level = read_bool(data)
-    is_unreachable = read_bool(data)
-    is_mypy_only = read_bool(data)
+    # Read metadata flags as a single integer bitfield
+    flags = read_int(data)
 
-    # Set metadata on statement
-    stmt.is_top_level = is_top_level
-    stmt.is_unreachable = is_unreachable
-    stmt.is_mypy_only = is_mypy_only
+    # Extract individual flags using bitwise operations
+    # Bit 0: is_top_level
+    # Bit 1: is_unreachable
+    # Bit 2: is_mypy_only
+    stmt.is_top_level = (flags & 0x01) != 0
+    stmt.is_unreachable = (flags & 0x02) != 0
+    stmt.is_mypy_only = (flags & 0x04) != 0
 
 
 def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
@@ -284,6 +286,16 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
 
             # Create ImportFrom node and read common metadata
             stmt = ImportFrom(module, relative, names)
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        elif tag == IMPORTALL_METADATA:
+            # Read ImportAll fields
+            module = read_str(data)
+            relative = read_int(data)
+
+            # Create ImportAll node and read common metadata
+            stmt = ImportAll(module, relative)
             _read_and_set_import_metadata(data, stmt)
             imports.append(stmt)
 
