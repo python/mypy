@@ -894,6 +894,15 @@ These options may only be set in the global section (``[mypy]``).
 
     Shows documentation link to corresponding error code.
 
+.. confval:: show_error_codes
+
+    :type: boolean
+    :default: True
+
+    Shows error codes in error messages. See :ref:`error-codes` for more information.
+
+    This is the default behavior. To hide error codes, use :confval:`hide_error_codes` instead.
+
 .. confval:: hide_error_codes
 
     :type: boolean
