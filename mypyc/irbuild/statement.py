@@ -411,6 +411,7 @@ def transform_non_native_import_group(
     # entry within the helper function (which is admittedly ugly). To drive
     # this, we need the line number corresponding to each module.
     mod_lines = []
+    first_line = group[0][2] if group else NO_TRACEBACK_LINE_NO
     for mod_id, as_name, line in group:
         builder.imports[mod_id] = None
         modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
@@ -419,9 +420,9 @@ def transform_non_native_import_group(
         mod_lines.append(Integer(line, c_pyssize_t_rprimitive))
 
     static_array_ptr = builder.builder.setup_rarray(
-        object_pointer_rprimitive, static_ptrs, node.line
+        object_pointer_rprimitive, static_ptrs, first_line
     )
-    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, node.line)
+    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, first_line)
     builder.call_c(
         import_many_op,
         [
