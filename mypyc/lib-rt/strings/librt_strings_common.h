@@ -5,18 +5,17 @@
 #include <stdint.h>
 #include <string.h>
 
-// Byte-swap functions for non-native endianness support
-#if PY_BIG_ENDIAN
-#  if defined(_MSC_VER)
-#    include <stdlib.h>
-#    define BSWAP16(x) _byteswap_ushort(x)
-#    define BSWAP32(x) _byteswap_ulong(x)
-#    define BSWAP64(x) _byteswap_uint64(x)
-#  elif defined(__GNUC__) || defined(__clang__)
-#    define BSWAP16(x) __builtin_bswap16(x)
-#    define BSWAP32(x) __builtin_bswap32(x)
-#    define BSWAP64(x) __builtin_bswap64(x)
-#  else
+// Byte-swap functions for endianness conversion (needed for both LE and BE operations)
+#if defined(_MSC_VER)
+#  include <stdlib.h>
+#  define BSWAP16(x) _byteswap_ushort(x)
+#  define BSWAP32(x) _byteswap_ulong(x)
+#  define BSWAP64(x) _byteswap_uint64(x)
+#elif defined(__GNUC__) || defined(__clang__)
+#  define BSWAP16(x) __builtin_bswap16(x)
+#  define BSWAP32(x) __builtin_bswap32(x)
+#  define BSWAP64(x) __builtin_bswap64(x)
+#else
 // Fallback for other compilers (slower but portable)
 static inline uint16_t BSWAP16(uint16_t x) {
     return (uint16_t)((x >> 8) | (x << 8));
@@ -37,7 +36,6 @@ static inline uint64_t BSWAP64(uint64_t x) {
            ((x << 40) & 0xFF000000000000ULL) |
            ((x << 56) & 0xFF00000000000000ULL);
 }
-#  endif
 #endif
 
 // Length of the default buffer embedded directly in a BytesWriter object
@@ -65,6 +63,20 @@ BytesWriter_WriteI16LEUnsafe(BytesWriterObject *self, int16_t value) {
     self->len += 2;
 }
 
+// Write a 16-bit signed integer in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteI16BEUnsafe(BytesWriterObject *self, int16_t value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 2);
+#else
+    uint16_t swapped = BSWAP16((uint16_t)value);
+    memcpy(self->buf + self->len, &swapped, 2);
+#endif
+    self->len += 2;
+}
+
 // Read a 16-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int16_t
@@ -73,6 +85,21 @@ CPyBytes_ReadI16LEUnsafe(const unsigned char *data) {
     uint16_t value;
     memcpy(&value, data, 2);
 #if PY_BIG_ENDIAN
+    value = BSWAP16(value);
+#endif
+    return (int16_t)value;
+}
+
+// Read a 16-bit signed integer in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int16_t
+CPyBytes_ReadI16BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    uint16_t value;
+    memcpy(&value, data, 2);
+#if PY_BIG_ENDIAN
+    // Already in big-endian format, no swap needed
+#else
     value = BSWAP16(value);
 #endif
     return (int16_t)value;
@@ -92,6 +119,20 @@ BytesWriter_WriteI32LEUnsafe(BytesWriterObject *self, int32_t value) {
     self->len += 4;
 }
 
+// Write a 32-bit signed integer in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteI32BEUnsafe(BytesWriterObject *self, int32_t value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 4);
+#else
+    uint32_t swapped = BSWAP32((uint32_t)value);
+    memcpy(self->buf + self->len, &swapped, 4);
+#endif
+    self->len += 4;
+}
+
 // Read a 32-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int32_t
@@ -100,6 +141,21 @@ CPyBytes_ReadI32LEUnsafe(const unsigned char *data) {
     uint32_t value;
     memcpy(&value, data, 4);
 #if PY_BIG_ENDIAN
+    value = BSWAP32(value);
+#endif
+    return (int32_t)value;
+}
+
+// Read a 32-bit signed integer in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int32_t
+CPyBytes_ReadI32BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    uint32_t value;
+    memcpy(&value, data, 4);
+#if PY_BIG_ENDIAN
+    // Already in big-endian format, no swap needed
+#else
     value = BSWAP32(value);
 #endif
     return (int32_t)value;
@@ -119,6 +175,20 @@ BytesWriter_WriteI64LEUnsafe(BytesWriterObject *self, int64_t value) {
     self->len += 8;
 }
 
+// Write a 64-bit signed integer in big-endian format to BytesWriter.
+// NOTE: This does NOT check buffer capacity - caller must ensure space is available.
+static inline void
+BytesWriter_WriteI64BEUnsafe(BytesWriterObject *self, int64_t value) {
+    // memcpy is reliably optimized to a single store by GCC, Clang, and MSVC
+#if PY_BIG_ENDIAN
+    memcpy(self->buf + self->len, &value, 8);
+#else
+    uint64_t swapped = BSWAP64((uint64_t)value);
+    memcpy(self->buf + self->len, &swapped, 8);
+#endif
+    self->len += 8;
+}
+
 // Read a 64-bit signed integer in little-endian format from bytes.
 // NOTE: This does NOT check bounds - caller must ensure valid index.
 static inline int64_t
@@ -127,6 +197,21 @@ CPyBytes_ReadI64LEUnsafe(const unsigned char *data) {
     uint64_t value;
     memcpy(&value, data, 8);
 #if PY_BIG_ENDIAN
+    value = BSWAP64(value);
+#endif
+    return (int64_t)value;
+}
+
+// Read a 64-bit signed integer in big-endian format from bytes.
+// NOTE: This does NOT check bounds - caller must ensure valid index.
+static inline int64_t
+CPyBytes_ReadI64BEUnsafe(const unsigned char *data) {
+    // memcpy is reliably optimized to a single load by GCC, Clang, and MSVC
+    uint64_t value;
+    memcpy(&value, data, 8);
+#if PY_BIG_ENDIAN
+    // Already in big-endian format, no swap needed
+#else
     value = BSWAP64(value);
 #endif
     return (int64_t)value;

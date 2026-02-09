@@ -5,7 +5,7 @@ import binascii
 import random
 import struct
 
-from librt.strings import BytesWriter, StringWriter, write_i16_le, read_i16_le, write_i32_le, read_i32_le, write_i64_le, read_i64_le
+from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be
 
 from testutil import assertRaises
 
@@ -172,35 +172,36 @@ def test_bytes_writer_write_i16_le() -> None:
     assert result[3:5] == b"\x01\x00"  # i=1
     assert result[1999:2001] == b"\xe7\x03"  # i=999
 
-def test_write_i16_le_via_any() -> None:
-    # Test write_i16_le via Any to ensure C extension wrapper works
+def test_write_i16_via_any() -> None:
+    # Test write_i16_le/be via Any to ensure C extension wrapper works
     # (tests fallback path when not using mypyc primitives)
-    w: Any = BytesWriter()
+    for write_func, fmt in zip((write_i16_le, write_i16_be), ("<h", ">h")):
+        w: Any = BytesWriter()
 
-    # Test 8-bit and 16-bit operations
-    w.append(0x42)
-    write_i16_le(w, 0x1234)
-    w.append(0xFF)
-    assert w.getvalue() == b"\x42\x34\x12\xFF"
+        # Test 8-bit and 16-bit operations
+        w.append(0x42)
+        write_func(w, 0x1234)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 0x1234) + b"\xFF"
 
-    # Test buffer growth with write_i16_le
-    w2: Any = BytesWriter()
-    for i in range(150):
-        write_i16_le(w2, i)
-    result = w2.getvalue()
-    assert len(result) == 300
-    assert result[0:2] == b"\x00\x00"  # i=0
-    assert result[2:4] == b"\x01\x00"  # i=1
-    assert result[298:300] == b"\x95\x00"  # i=149
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(150):
+            write_func(w2, i)
+        result = w2.getvalue()
+        assert len(result) == 300
+        assert result[0:2] == struct.pack(fmt, 0)    # i=0
+        assert result[2:4] == struct.pack(fmt, 1)    # i=1
+        assert result[298:300] == struct.pack(fmt, 149)  # i=149
 
-    # Test values that don't fit in i16
-    w3: Any = BytesWriter()
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, 32768 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, -32769 + int())
-    with assertRaises(ValueError, "int too large to convert to i16"):
-        write_i16_le(w3, 100000 + int())
+        # Test values that don't fit in i16
+        w3: Any = BytesWriter()
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, 32768 + int())
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, -32769 + int())
+        with assertRaises(ValueError, "int too large to convert to i16"):
+            write_func(w3, 100000 + int())
 
 def test_bytes_reader_read_i16_le() -> None:
     # Test various i16 values from 1-byte to 2-byte range
@@ -217,32 +218,81 @@ def test_bytes_reader_read_i16_le() -> None:
         assert read_i16_le(result, i * 2) == v
 
     # Test unaligned offset
-    data2 = b"\xFF" + b"\x34\x12" + b"\xFF"
+    data2 = b"\xFF" + struct.pack("<h", 0x1234) + b"\xFF"
     assert read_i16_le(data2, 1) == 0x1234
 
-def test_read_i16_le_via_any() -> None:
-    # Test read_i16_le via Any to ensure C extension wrapper works
-    data: Any = b"\x34\x12\xff\xff\x00\x00"
-    assert read_i16_le(data, 0) == 0x1234
-    assert read_i16_le(data, 2) == -1
-    assert read_i16_le(data, 4) == 0
+    # Test barely out of bounds (only 1 byte available, need 2)
+    with assertRaises(IndexError):
+        read_i16_le(data, len(data) - 1)
 
-    # Test error cases
-    # Index out of range
-    with assertRaises(IndexError, "index 10 out of range for bytes of length 6"):
-        read_i16_le(data, 10 + int())
-    with assertRaises(IndexError, "index 5 out of range for bytes of length 6"):
-        read_i16_le(data, 5 + int())  # Not enough bytes for i16
+def test_bytes_reader_read_i16_be() -> None:
+    # Test various i16 values from 1-byte to 2-byte range
+    data = b"".join(struct.pack(">h", v) for v in I16_TEST_VALUES)
+    for i, v in enumerate(I16_TEST_VALUES):
+        assert read_i16_be(data, i * 2) == v
 
-    # Negative index
-    with assertRaises(ValueError, "index must be non-negative"):
-        read_i16_le(data, -1 + int())
+    # Test round-trip with write_i16_be
+    w = BytesWriter()
+    for v in I16_TEST_VALUES:
+        write_i16_be(w, v)
+    result = w.getvalue()
+    for i, v in enumerate(I16_TEST_VALUES):
+        assert read_i16_be(result, i * 2) == v
 
-    # Wrong type for bytes argument
-    with assertRaises(TypeError, "read_i16_le() argument 1 must be bytes"):
-        read_i16_le("not bytes", 0 + int())  # type: ignore
-    with assertRaises(TypeError, "read_i16_le() argument 1 must be bytes"):
-        read_i16_le(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
+    # Test unaligned offset
+    data2 = b"\xFF" + struct.pack(">h", 0x1234) + b"\xFF"
+    assert read_i16_be(data2, 1) == 0x1234
+
+    # Test barely out of bounds (only 1 byte available, need 2)
+    with assertRaises(IndexError):
+        read_i16_be(data, len(data) - 1)
+
+def test_read_i16_via_any() -> None:
+    # Test read_i16_le/be via Any to ensure C extension wrapper works
+    for read_func, fmt in zip((read_i16_le, read_i16_be), ("<h", ">h")):
+        data: Any = struct.pack(fmt, 0x1234) + struct.pack(fmt, -1) + struct.pack(fmt, 0)
+        assert read_func(data, 0) == 0x1234
+        assert read_func(data, 2) == -1
+        assert read_func(data, 4) == 0
+
+        # Test error cases
+        # Index out of range
+        with assertRaises(IndexError, "index 10 out of range for bytes of length 6"):
+            read_func(data, 10 + int())
+        with assertRaises(IndexError, "index 5 out of range for bytes of length 6"):
+            read_func(data, 5 + int())  # Not enough bytes for i16
+
+        # Negative index
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+
+        # Wrong type for bytes argument
+        with assertRaises(TypeError):
+            read_func("not bytes", 0 + int())  # type: ignore
+        with assertRaises(TypeError):
+            read_func(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
+
+def test_bytes_writer_write_i16_be() -> None:
+    # Test various i16 values from 1-byte to 2-byte range
+    w = BytesWriter()
+    for v in I16_TEST_VALUES:
+        write_i16_be(w, v)
+    assert w.getvalue() == b"".join(struct.pack(">h", v) for v in I16_TEST_VALUES)
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(1000):
+        write_i16_be(w, i)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 2002
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    # Check a few values in the middle
+    assert result[1:3] == b"\x00\x00"  # i=0
+    assert result[3:5] == b"\x00\x01"  # i=1
+    assert result[1999:2001] == b"\x03\xe7"  # i=999
 
 def test_bytes_writer_write_i32_le() -> None:
     # Test various i32 values from 1-byte to 4-byte range
@@ -266,35 +316,58 @@ def test_bytes_writer_write_i32_le() -> None:
     assert result[5:9] == struct.pack("<i", 1000)
     assert result[1997:2001] == struct.pack("<i", 499000)
 
-def test_write_i32_le_via_any() -> None:
-    # Test write_i32_le via Any to ensure C extension wrapper works
-    # (tests fallback path when not using mypyc primitives)
-    w: Any = BytesWriter()
+def test_bytes_writer_write_i32_be() -> None:
+    # Test various i32 values from 1-byte to 4-byte range
+    w = BytesWriter()
+    for v in I32_TEST_VALUES:
+        write_i32_be(w, v)
+    assert w.getvalue() == b"".join(struct.pack(">i", v) for v in I32_TEST_VALUES)
 
-    # Test 8-bit and 32-bit operations
-    w.append(0x42)
-    write_i32_le(w, 0x12345678)
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
     w.append(0xFF)
-    assert w.getvalue() == b"\x42" + struct.pack("<i", 0x12345678) + b"\xFF"
+    for i in range(500):
+        write_i32_be(w, i * 1000)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 2002
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    # Check a few values in the middle
+    assert result[1:5] == struct.pack(">i", 0)
+    assert result[5:9] == struct.pack(">i", 1000)
+    assert result[1997:2001] == struct.pack(">i", 499000)
 
-    # Test buffer growth with write_i32_le
-    w2: Any = BytesWriter()
-    for i in range(100):
-        write_i32_le(w2, i * 10000)
-    result = w2.getvalue()
-    assert len(result) == 400
-    assert result[0:4] == struct.pack("<i", 0)
-    assert result[4:8] == struct.pack("<i", 10000)
-    assert result[396:400] == struct.pack("<i", 990000)
+def test_write_i32_via_any() -> None:
+    # Test write_i32_le/be via Any to ensure C extension wrapper works
+    # (tests fallback path when not using mypyc primitives)
+    for write_func, fmt in zip((write_i32_le, write_i32_be), ("<i", ">i")):
+        w: Any = BytesWriter()
 
-    # Test values that don't fit in i32
-    w3: Any = BytesWriter()
-    with assertRaises(ValueError, "int too large to convert to i32"):
-        write_i32_le(w3, 2147483648 + int())
-    with assertRaises(ValueError, "int too large to convert to i32"):
-        write_i32_le(w3, -2147483649 + int())
-    with assertRaises(ValueError, "int too large to convert to i32"):
-        write_i32_le(w3, 10000000000 + int())
+        # Test 8-bit and 32-bit operations
+        w.append(0x42)
+        write_func(w, 0x12345678)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 0x12345678) + b"\xFF"
+
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(100):
+            write_func(w2, i * 10000)
+        result = w2.getvalue()
+        assert len(result) == 400
+        assert result[0:4] == struct.pack(fmt, 0)
+        assert result[4:8] == struct.pack(fmt, 10000)
+        assert result[396:400] == struct.pack(fmt, 990000)
+
+        # Test values that don't fit in i32
+        w3: Any = BytesWriter()
+        with assertRaises(ValueError, "int too large to convert to i32"):
+            write_func(w3, 2147483648 + int())
+        with assertRaises(ValueError, "int too large to convert to i32"):
+            write_func(w3, -2147483649 + int())
+        with assertRaises(ValueError, "int too large to convert to i32"):
+            write_func(w3, 10000000000 + int())
 
 def test_bytes_reader_read_i32_le() -> None:
     # Test various i32 values from 1-byte to 4-byte range
@@ -314,29 +387,56 @@ def test_bytes_reader_read_i32_le() -> None:
     data2 = b"\xFF" + struct.pack("<i", 0x12345678) + b"\xFF"
     assert read_i32_le(data2, 1) == 0x12345678
 
-def test_read_i32_le_via_any() -> None:
-    # Test read_i32_le via Any to ensure C extension wrapper works
-    data: Any = struct.pack("<i", 0x12345678) + struct.pack("<i", -1) + struct.pack("<i", 0)
-    assert read_i32_le(data, 0) == 0x12345678
-    assert read_i32_le(data, 4) == -1
-    assert read_i32_le(data, 8) == 0
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_i32_le(data, len(data) - 3)
 
-    # Test error cases
-    # Index out of range
-    with assertRaises(IndexError, "index 20 out of range for bytes of length 12"):
-        read_i32_le(data, 20 + int())
-    with assertRaises(IndexError, "index 9 out of range for bytes of length 12"):
-        read_i32_le(data, 9 + int())  # Not enough bytes for i32
+def test_bytes_reader_read_i32_be() -> None:
+    # Test various i32 values from 1-byte to 4-byte range
+    data = b"".join(struct.pack(">i", v) for v in I32_TEST_VALUES)
+    for i, v in enumerate(I32_TEST_VALUES):
+        assert read_i32_be(data, i * 4) == v
 
-    # Negative index
-    with assertRaises(ValueError, "index must be non-negative"):
-        read_i32_le(data, -1 + int())
+    # Test round-trip with write_i32_be
+    w = BytesWriter()
+    for v in I32_TEST_VALUES:
+        write_i32_be(w, v)
+    result = w.getvalue()
+    for i, v in enumerate(I32_TEST_VALUES):
+        assert read_i32_be(result, i * 4) == v
 
-    # Wrong type for bytes argument
-    with assertRaises(TypeError, "read_i32_le() argument 1 must be bytes"):
-        read_i32_le("not bytes", 0 + int())  # type: ignore
-    with assertRaises(TypeError, "read_i32_le() argument 1 must be bytes"):
-        read_i32_le(bytearray(b"\x00\x00\x00\x00"), 0 + int())  # type: ignore
+    # Test unaligned offset
+    data2 = b"\xFF" + struct.pack(">i", 0x12345678) + b"\xFF"
+    assert read_i32_be(data2, 1) == 0x12345678
+
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_i32_be(data, len(data) - 3)
+
+def test_read_i32_via_any() -> None:
+    # Test read_i32_le/be via Any to ensure C extension wrapper works
+    for read_func, fmt in zip((read_i32_le, read_i32_be), ("<i", ">i")):
+        data: Any = struct.pack(fmt, 0x12345678) + struct.pack(fmt, -1) + struct.pack(fmt, 0)
+        assert read_func(data, 0) == 0x12345678
+        assert read_func(data, 4) == -1
+        assert read_func(data, 8) == 0
+
+        # Test error cases
+        # Index out of range
+        with assertRaises(IndexError, "index 20 out of range for bytes of length 12"):
+            read_func(data, 20 + int())
+        with assertRaises(IndexError, "index 9 out of range for bytes of length 12"):
+            read_func(data, 9 + int())  # Not enough bytes for i32
+
+        # Negative index
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+
+        # Wrong type for bytes argument
+        with assertRaises(TypeError):
+            read_func("not bytes", 0 + int())  # type: ignore
+        with assertRaises(TypeError):
+            read_func(bytearray(b"\x00\x00\x00\x00"), 0 + int())  # type: ignore
 
 def test_bytes_writer_write_i64_le() -> None:
     # Test all i64 values (includes all i32 values plus 5-8 byte values)
@@ -359,24 +459,46 @@ def test_bytes_writer_write_i64_le() -> None:
     assert result[9:17] == struct.pack("<q", 1000000000)
     assert result[1593:1601] == struct.pack("<q", 199000000000)
 
-def test_write_i64_le_via_any() -> None:
-    # Test write_i64_le via Any to ensure C extension wrapper works
-    w: Any = BytesWriter()
+def test_bytes_writer_write_i64_be() -> None:
+    # Test all i64 values (includes all i32 values plus 5-8 byte values)
+    w = BytesWriter()
+    for v in I64_TEST_VALUES:
+        write_i64_be(w, v)
+    assert w.getvalue() == b"".join(struct.pack(">q", v) for v in I64_TEST_VALUES)
 
-    w.append(0x42)
-    write_i64_le(w, 0x123456789ABCDEF0)
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
     w.append(0xFF)
-    assert w.getvalue() == b"\x42" + struct.pack("<q", 0x123456789ABCDEF0) + b"\xFF"
+    for i in range(200):
+        write_i64_be(w, i * 1000000000)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 1602
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:9] == struct.pack(">q", 0)
+    assert result[9:17] == struct.pack(">q", 1000000000)
+    assert result[1593:1601] == struct.pack(">q", 199000000000)
 
-    # Test buffer growth with write_i64_le
-    w2: Any = BytesWriter()
-    for i in range(50):
-        write_i64_le(w2, i * 10000000000)
-    result = w2.getvalue()
-    assert len(result) == 400
-    assert result[0:8] == struct.pack("<q", 0)
-    assert result[8:16] == struct.pack("<q", 10000000000)
-    assert result[392:400] == struct.pack("<q", 490000000000)
+def test_write_i64_via_any() -> None:
+    # Test write_i64_le/be via Any to ensure C extension wrapper works
+    for write_func, fmt in zip((write_i64_le, write_i64_be), ("<q", ">q")):
+        w: Any = BytesWriter()
+
+        w.append(0x42)
+        write_func(w, 0x123456789ABCDEF0)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 0x123456789ABCDEF0) + b"\xFF"
+
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(50):
+            write_func(w2, i * 10000000000)
+        result = w2.getvalue()
+        assert len(result) == 400
+        assert result[0:8] == struct.pack(fmt, 0)
+        assert result[8:16] == struct.pack(fmt, 10000000000)
+        assert result[392:400] == struct.pack(fmt, 490000000000)
 
 def test_bytes_reader_read_i64_le() -> None:
     # Test all i64 values (includes all i32 values plus 5-8 byte values)
@@ -396,29 +518,56 @@ def test_bytes_reader_read_i64_le() -> None:
     data2 = b"\xFF" + struct.pack("<q", 0x123456789ABCDEF0) + b"\xFF"
     assert read_i64_le(data2, 1) == 0x123456789ABCDEF0
 
-def test_read_i64_le_via_any() -> None:
-    # Test read_i64_le via Any to ensure C extension wrapper works
-    data: Any = struct.pack("<q", 0x123456789ABCDEF0) + struct.pack("<q", -1) + struct.pack("<q", 0)
-    assert read_i64_le(data, 0) == 0x123456789ABCDEF0
-    assert read_i64_le(data, 8) == -1
-    assert read_i64_le(data, 16) == 0
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_i64_le(data, len(data) - 7)
 
-    # Test error cases
-    # Index out of range
-    with assertRaises(IndexError, "index 30 out of range for bytes of length 24"):
-        read_i64_le(data, 30 + int())
-    with assertRaises(IndexError, "index 17 out of range for bytes of length 24"):
-        read_i64_le(data, 17 + int())  # Not enough bytes for i64
+def test_bytes_reader_read_i64_be() -> None:
+    # Test all i64 values (includes all i32 values plus 5-8 byte values)
+    data = b"".join(struct.pack(">q", v) for v in I64_TEST_VALUES)
+    for i, v in enumerate(I64_TEST_VALUES):
+        assert read_i64_be(data, i * 8) == v
 
-    # Negative index
-    with assertRaises(ValueError, "index must be non-negative"):
-        read_i64_le(data, -1 + int())
+    # Test round-trip with write_i64_be
+    w = BytesWriter()
+    for v in I64_TEST_VALUES:
+        write_i64_be(w, v)
+    result = w.getvalue()
+    for i, v in enumerate(I64_TEST_VALUES):
+        assert read_i64_be(result, i * 8) == v
 
-    # Wrong type for bytes argument
-    with assertRaises(TypeError, "read_i64_le() argument 1 must be bytes"):
-        read_i64_le("not bytes", 0 + int())  # type: ignore
-    with assertRaises(TypeError, "read_i64_le() argument 1 must be bytes"):
-        read_i64_le(bytearray(b"\x00" * 8), 0 + int())  # type: ignore
+    # Test unaligned offset
+    data2 = b"\xFF" + struct.pack(">q", 0x123456789ABCDEF0) + b"\xFF"
+    assert read_i64_be(data2, 1) == 0x123456789ABCDEF0
+
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_i64_be(data, len(data) - 7)
+
+def test_read_i64_via_any() -> None:
+    # Test read_i64_le/be via Any to ensure C extension wrapper works
+    for read_func, fmt in zip((read_i64_le, read_i64_be), ("<q", ">q")):
+        data: Any = struct.pack(fmt, 0x123456789ABCDEF0) + struct.pack(fmt, -1) + struct.pack(fmt, 0)
+        assert read_func(data, 0) == 0x123456789ABCDEF0
+        assert read_func(data, 8) == -1
+        assert read_func(data, 16) == 0
+
+        # Test error cases
+        # Index out of range
+        with assertRaises(IndexError, "index 30 out of range for bytes of length 24"):
+            read_func(data, 30 + int())
+        with assertRaises(IndexError, "index 17 out of range for bytes of length 24"):
+            read_func(data, 17 + int())  # Not enough bytes for i64
+
+        # Negative index
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+
+        # Wrong type for bytes argument
+        with assertRaises(TypeError):
+            read_func("not bytes", 0 + int())  # type: ignore
+        with assertRaises(TypeError):
+            read_func(bytearray(b"\x00" * 8), 0 + int())  # type: ignore
 
 def test_write_bytearray() -> None:
     w = BytesWriter()

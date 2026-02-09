@@ -75,11 +75,29 @@ CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
 }
 
 static inline char
+CPyBytesWriter_WriteI16BE(PyObject *obj, int16_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 2))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteI16BEUnsafe(self, value);
+    return CPY_NONE;
+}
+
+static inline char
 CPyBytesWriter_WriteI32LE(PyObject *obj, int32_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 4))
         return CPY_NONE_ERROR;
     BytesWriter_WriteI32LEUnsafe(self, value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteI32BE(PyObject *obj, int32_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteI32BEUnsafe(self, value);
     return CPY_NONE;
 }
 
@@ -92,7 +110,16 @@ CPyBytesWriter_WriteI64LE(PyObject *obj, int64_t value) {
     return CPY_NONE;
 }
 
-// Bytes: Read integer operations (little-endian)
+static inline char
+CPyBytesWriter_WriteI64BE(PyObject *obj, int64_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 8))
+        return CPY_NONE_ERROR;
+    BytesWriter_WriteI64BEUnsafe(self, value);
+    return CPY_NONE;
+}
+
+// Bytes: Read integer operations
 
 // Helper function for bytes read error handling (negative index or out of range)
 void CPyBytes_ReadError(int64_t index, Py_ssize_t size);
@@ -107,6 +134,30 @@ CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadI16LEUnsafe(data + index);
+}
+
+static inline int16_t
+CPyBytes_ReadI16BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 2)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI16BEUnsafe(data + index);
+}
+
+static inline int32_t
+CPyBytes_ReadI32BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 4)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI32BEUnsafe(data + index);
 }
 
 static inline int32_t
@@ -131,6 +182,18 @@ CPyBytes_ReadI64LE(PyObject *bytes_obj, int64_t index) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadI64LEUnsafe(data + index);
+}
+
+static inline int64_t
+CPyBytes_ReadI64BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return CPyBytes_ReadI64BEUnsafe(data + index);
 }
 
 #endif // MYPYC_EXPERIMENTAL
