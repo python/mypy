@@ -221,6 +221,10 @@ def test_bytes_reader_read_i16_le() -> None:
     data2 = b"\xFF" + struct.pack("<h", 0x1234) + b"\xFF"
     assert read_i16_le(data2, 1) == 0x1234
 
+    # Test barely out of bounds (only 1 byte available, need 2)
+    with assertRaises(IndexError):
+        read_i16_le(data, len(data) - 1)
+
 def test_bytes_reader_read_i16_be() -> None:
     # Test various i16 values from 1-byte to 2-byte range
     data = b"".join(struct.pack(">h", v) for v in I16_TEST_VALUES)
@@ -238,6 +242,10 @@ def test_bytes_reader_read_i16_be() -> None:
     # Test unaligned offset
     data2 = b"\xFF" + struct.pack(">h", 0x1234) + b"\xFF"
     assert read_i16_be(data2, 1) == 0x1234
+
+    # Test barely out of bounds (only 1 byte available, need 2)
+    with assertRaises(IndexError):
+        read_i16_be(data, len(data) - 1)
 
 def test_read_i16_via_any() -> None:
     # Test read_i16_le/be via Any to ensure C extension wrapper works
@@ -379,6 +387,10 @@ def test_bytes_reader_read_i32_le() -> None:
     data2 = b"\xFF" + struct.pack("<i", 0x12345678) + b"\xFF"
     assert read_i32_le(data2, 1) == 0x12345678
 
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_i32_le(data, len(data) - 3)
+
 def test_bytes_reader_read_i32_be() -> None:
     # Test various i32 values from 1-byte to 4-byte range
     data = b"".join(struct.pack(">i", v) for v in I32_TEST_VALUES)
@@ -396,6 +408,10 @@ def test_bytes_reader_read_i32_be() -> None:
     # Test unaligned offset
     data2 = b"\xFF" + struct.pack(">i", 0x12345678) + b"\xFF"
     assert read_i32_be(data2, 1) == 0x12345678
+
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_i32_be(data, len(data) - 3)
 
 def test_read_i32_via_any() -> None:
     # Test read_i32_le/be via Any to ensure C extension wrapper works
@@ -502,6 +518,10 @@ def test_bytes_reader_read_i64_le() -> None:
     data2 = b"\xFF" + struct.pack("<q", 0x123456789ABCDEF0) + b"\xFF"
     assert read_i64_le(data2, 1) == 0x123456789ABCDEF0
 
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_i64_le(data, len(data) - 7)
+
 def test_bytes_reader_read_i64_be() -> None:
     # Test all i64 values (includes all i32 values plus 5-8 byte values)
     data = b"".join(struct.pack(">q", v) for v in I64_TEST_VALUES)
@@ -519,6 +539,10 @@ def test_bytes_reader_read_i64_be() -> None:
     # Test unaligned offset
     data2 = b"\xFF" + struct.pack(">q", 0x123456789ABCDEF0) + b"\xFF"
     assert read_i64_be(data2, 1) == 0x123456789ABCDEF0
+
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_i64_be(data, len(data) - 7)
 
 def test_read_i64_via_any() -> None:
     # Test read_i64_le/be via Any to ensure C extension wrapper works
