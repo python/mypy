@@ -675,6 +675,10 @@ def test_bytes_reader_read_f64_le() -> None:
     data2 = b"\xFF" + struct.pack("<d", 1.5) + b"\xFF"
     assert read_f64_le(data2, 1) == 1.5
 
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_f64_le(data, len(data) - 7)
+
 def test_bytes_reader_read_f64_be() -> None:
     import math
     # Test various f64 values
@@ -701,6 +705,10 @@ def test_bytes_reader_read_f64_be() -> None:
     # Test unaligned offset
     data2 = b"\xFF" + struct.pack(">d", 1.5) + b"\xFF"
     assert read_f64_be(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_f64_be(data, len(data) - 7)
 
 def test_read_f64_via_any() -> None:
     import math
@@ -886,6 +894,10 @@ def test_bytes_reader_read_f32_le() -> None:
     data2 = b"\xFF" + s.pack("<f", 1.5) + b"\xFF"
     assert read_f32_le(data2, 1) == 1.5
 
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_f32_le(data, len(data) - 3)
+
 def test_bytes_reader_read_f32_be() -> None:
     import math
     import struct as s
@@ -916,6 +928,10 @@ def test_bytes_reader_read_f32_be() -> None:
     # Test unaligned offset
     data2 = b"\xFF" + s.pack(">f", 1.5) + b"\xFF"
     assert read_f32_be(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_f32_be(data, len(data) - 3)
 
 def test_read_f32_via_any() -> None:
     import math
