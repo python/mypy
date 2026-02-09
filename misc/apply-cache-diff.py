@@ -35,9 +35,10 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
         if data is None:
             cache.remove(file)
         else:
-            cache.write(file, data)
+            data_bytes = data.encode() if isinstance(data, str) else data
+            cache.write(file, data_bytes)
             if file.endswith(".meta.json") and "@deps" not in file:
-                meta = json_loads(data)
+                meta = json_loads(data_bytes)
                 old_deps["snapshot"][meta["id"]] = meta["hash"]
 
     cache.write("@deps.meta.json", json_dumps(old_deps))

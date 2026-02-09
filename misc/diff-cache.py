@@ -73,7 +73,7 @@ def main() -> None:
     type_misses: dict[str, int] = defaultdict(int)
     type_hits: dict[str, int] = defaultdict(int)
 
-    updates: dict[str, bytes | None] = {}
+    updates: dict[str, str | None] = {}
 
     deps1: dict[str, set[str]] = {}
     deps2: dict[str, set[str]] = {}
@@ -96,7 +96,7 @@ def main() -> None:
             # so we can produce a much smaller direct diff of them.
             if ".deps." not in s:
                 if obj2 is not None:
-                    updates[s] = json_dumps(obj2)
+                    updates[s] = json_dumps(obj2).decode()
                 else:
                     updates[s] = None
             elif obj2:
@@ -109,7 +109,7 @@ def main() -> None:
     cache1_all_set = set(cache1_all)
     for s in cache2.list_all():
         if s not in cache1_all_set:
-            updates[s] = cache2.read(s)
+            updates[s] = cache2.read(s).decode()
 
     # Compute what deps have been added and merge them all into the
     # @root deps file.
@@ -122,7 +122,7 @@ def main() -> None:
     merge_deps(new_deps, root_deps)
 
     new_deps_json = {k: list(v) for k, v in new_deps.items() if v}
-    updates["@root.deps.json"] = json_dumps(new_deps_json)
+    updates["@root.deps.json"] = json_dumps(new_deps_json).decode()
 
     # Drop updates to deps.meta.json for size reasons. The diff
     # applier will manually fix it up.
