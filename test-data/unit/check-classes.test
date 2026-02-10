@@ -585,6 +585,58 @@ class B(A):
     @dec
     def f(self) -> int: pass
 
+[case testOverrideWithDecoratorReturningCallable]
+from typing import Any, Callable, TypeVar
+
+class Base:
+    def get(self, a: str) -> None: ...
+
+def dec(fn: Any) -> Callable[[Any, int], None]: ...
+
+class Derived(Base):
+    @dec
+    def get(self) -> None: ...  # E: Argument 1 of "get" is incompatible with supertype "Base"; supertype defines the argument type as "str" \
+                                # N: This violates the Liskov substitution principle \
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideWithDecoratorReturningCallable2]
+# flags: --pretty
+from typing import Any, Callable, TypeVar
+
+_C = TypeVar("_C", bound=Callable[..., Any])
+
+def infer_signature(f: _C) -> Callable[[Any], _C]: ...
+
+class Base:
+    def get(self, a: str, b: str, c: str) -> None: ...
+    def post(self, a: str, b: str) -> None: ...
+
+# Third argument incompatible
+def get(self, a: str, b: str, c: int) -> None: ...
+
+# Second argument incompatible - still should not map to **kwargs
+def post(self, a: str, b: int) -> None: ...
+
+class Derived(Base):
+    @infer_signature(get)
+    def get(self, *args: Any, **kwargs: Any) -> None: ...
+
+    @infer_signature(post)
+    def post(self, *args: Any, **kwargs: Any) -> None: ...
+[builtins fixtures/tuple.pyi]
+[out]
+main:20: error: Argument 3 of "get" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+        def get(self, *args: Any, **kwargs: Any) -> None: ...
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:20: note: This violates the Liskov substitution principle
+main:20: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:23: error: Argument 2 of "post" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+        def post(self, *args: Any, **kwargs: Any) -> None: ...
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:23: note: This violates the Liskov substitution principle
+main:23: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
 [case testOverrideWithDecoratorReturningInstance]
 def dec(f) -> str: pass
 
@@ -717,7 +769,7 @@ class A:
 
 class B(A):
     def __replace__(self, x: str) -> Self: pass # E: \
-        # E: Argument 1 of "__replace__" is incompatible with supertype "A"; supertype defines the argument type as "Optional[str]"  [override] \
+        # E: Argument 1 of "__replace__" is incompatible with supertype "A"; supertype defines the argument type as "str | None"  [override] \
         # N: This violates the Liskov substitution principle \
         # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/tuple.pyi]
@@ -847,18 +899,18 @@ class A:
     f4: Union[Callable[[str], str], str]
 
 class B(A):
-    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 
-    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[object], str]")
+    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[object], str]")
         pass
 
     @classmethod
-    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 
     @staticmethod
-    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 [builtins fixtures/classmethod.pyi]
 
@@ -1097,10 +1149,10 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: pass
 
 f1 = join(func, WithMetaclass)
-reveal_type(f1())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+reveal_type(f1())  # N: Revealed type is "__main__.WithMetaclass | None"
 
 f2 = join(WithMetaclass, func)
-reveal_type(f2())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+reveal_type(f2())  # N: Revealed type is "__main__.WithMetaclass | None"
 
 -- Attribute access in class body
 -- ------------------------------
@@ -1270,7 +1322,7 @@ main:2: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 from typing import Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x = None  # type: T
+    x: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
 [targets __main__]
@@ -1280,7 +1332,7 @@ from typing import Generic, List, TypeVar, Union
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x = None  # type: Union[T, List[U]]
+    x: Union[T, List[U]]
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/list.pyi]
@@ -2777,9 +2829,9 @@ a: Union[int, float]
 b: int
 c: float
 
-reveal_type(a + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
-reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, builtins.float]"
-reveal_type(b + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(a + a)  # N: Revealed type is "builtins.int | builtins.float"
+reveal_type(a + b)  # N: Revealed type is "builtins.int | builtins.float"
+reveal_type(b + a)  # N: Revealed type is "builtins.int | builtins.float"
 reveal_type(a + c)  # N: Revealed type is "builtins.float"
 reveal_type(c + a)  # N: Revealed type is "builtins.float"
 [builtins fixtures/ops.pyi]
@@ -2825,16 +2877,16 @@ a + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
        # N: Both left and right operands are unions
 
 a + b  # E: Unsupported operand types for + ("Bar" and "Foo") \
-       # N: Left operand is of type "Union[Foo, Bar]"
+       # N: Left operand is of type "Foo | Bar"
 
 b + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
-       # N: Right operand is of type "Union[Foo, Bar]"
+       # N: Right operand is of type "Foo | Bar"
 
 a + c  # E: Unsupported operand types for + ("Foo" and "Bar") \
-       # N: Left operand is of type "Union[Foo, Bar]"
+       # N: Left operand is of type "Foo | Bar"
 
 c + a  # E: Unsupported operand types for + ("Bar" and "Foo") \
-       # N: Right operand is of type "Union[Foo, Bar]"
+       # N: Right operand is of type "Foo | Bar"
 
 [case testOperatorDoubleUnionNoRelationship2]
 from typing import Union
@@ -2851,9 +2903,9 @@ a: Union[Foo, Bar]
 b: Foo
 c: Bar
 
-reveal_type(a + a)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
-reveal_type(a + b)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
-reveal_type(b + a)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
+reveal_type(a + a)  # N: Revealed type is "__main__.Foo | __main__.Bar"
+reveal_type(a + b)  # N: Revealed type is "__main__.Foo | __main__.Bar"
+reveal_type(b + a)  # N: Revealed type is "__main__.Foo | __main__.Bar"
 reveal_type(a + c)  # N: Revealed type is "__main__.Bar"
 reveal_type(c + a)  # N: Revealed type is "__main__.Bar"
 
@@ -2894,11 +2946,11 @@ class D:
 x: Union[A, B]
 y: Union[C, D]
 
-reveal_type(x + y)    # N: Revealed type is "Union[__main__.Out3, __main__.Out1, __main__.Out2, __main__.Out4]"
-reveal_type(A() + y)  # N: Revealed type is "Union[__main__.Out3, __main__.Out1]"
-reveal_type(B() + y)  # N: Revealed type is "Union[__main__.Out2, __main__.Out4]"
-reveal_type(x + C())  # N: Revealed type is "Union[__main__.Out3, __main__.Out2]"
-reveal_type(x + D())  # N: Revealed type is "Union[__main__.Out1, __main__.Out4]"
+reveal_type(x + y)    # N: Revealed type is "__main__.Out3 | __main__.Out1 | __main__.Out2 | __main__.Out4"
+reveal_type(A() + y)  # N: Revealed type is "__main__.Out3 | __main__.Out1"
+reveal_type(B() + y)  # N: Revealed type is "__main__.Out2 | __main__.Out4"
+reveal_type(x + C())  # N: Revealed type is "__main__.Out3 | __main__.Out2"
+reveal_type(x + D())  # N: Revealed type is "__main__.Out1 | __main__.Out4"
 
 [case testOperatorDoubleUnionDivision]
 from typing import Union
@@ -2918,8 +2970,8 @@ def sum(x: Iterable[T]) -> Union[T, int]: ...
 def len(x: Iterable[T]) -> int: ...
 
 x = [1.1, 2.2, 3.3]
-reveal_type(sum(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
-reveal_type(sum(x) / len(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
+reveal_type(sum(x))  # N: Revealed type is "builtins.float | builtins.int"
+reveal_type(sum(x) / len(x))  # N: Revealed type is "builtins.float | builtins.int"
 [builtins fixtures/floatdict.pyi]
 
 [case testOperatorWithEmptyListAndSum]
@@ -3371,7 +3423,7 @@ class C:
 
 x = C(foo=12)
 x.a # E: "C" has no attribute "a"
-C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "Optional[int]"
+C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int | None"
 [builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
@@ -3440,8 +3492,8 @@ c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def __new__(cls, foo: int) -> C \
-      # N:     def __new__(cls, x: str, y: str) -> C
+      # N:     def C(foo: int) -> C \
+      # N:     def C(x: str, y: str) -> C
 [builtins fixtures/__new__.pyi]
 
 
@@ -3798,7 +3850,7 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     obj = cls()
     cls.bar(obj)
     cls.mro()  # Defined in class type
-    cls.error  # E: Item "type" of "Union[type[BasicUser], type[ProUser]]" has no attribute "error"
+    cls.error  # E: Item "type" of "type[BasicUser] | type[ProUser]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -3870,8 +3922,8 @@ u = new(User)
 [out]
 tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: note: Possible overload variants:
-tmp/foo.pyi:17: note:     def __init__(self) -> U
-tmp/foo.pyi:17: note:     def __init__(self, arg: int) -> U
+tmp/foo.pyi:17: note:     def User() -> U
+tmp/foo.pyi:17: note:     def User(arg: int) -> U
 tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -4510,7 +4562,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 
 [case testVariableSubclassAssignment]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
     def __init__(self) -> None:
         self.a = "a"
@@ -4519,9 +4571,9 @@ main:5: error: Incompatible types in assignment (expression has type "str", vari
 
 [case testVariableSubclassTypeOverwrite]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
-    a = None  # type: str
+    a: str
 class C(B):
     a = "a"
 [out]
@@ -4531,7 +4583,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 class A:
     a = 1
 class B(A):
-    a = None  # type: str
+    a: str
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
@@ -4548,7 +4600,7 @@ class C(B):
 [case testClassAllBases]
 from typing import Union
 class A:
-    a = None  # type: Union[int, str]
+    a: Union[int, str]
 class B(A):
     a = 1
 class C(B):
@@ -4562,7 +4614,7 @@ main:7: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = 1
 
@@ -4570,7 +4622,7 @@ class B(A[int]):
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = "abc"
 [out]
@@ -4580,7 +4632,7 @@ main:6: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     pass
 class C(B):
@@ -4592,8 +4644,8 @@ main:8: error: Incompatible types in assignment (expression has type "str", base
 from typing import List, TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: List[T]
-    b = None  # type: List[T]
+    a: List[T]
+    b: List[T]
 class B(A[int]):
     a = [1]
     b = ['']
@@ -4618,7 +4670,7 @@ class A:
     @property
     def a(self) -> bool: pass
 class B(A):
-    a = None  # type: bool
+    a: bool
 class C(A):
     a = True
 class D(A):
@@ -4699,7 +4751,7 @@ main:7: error: Incompatible types in assignment (expression has type "Callable[[
 [case testClassSpec]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: int) -> int: pass
     b = c
@@ -4709,7 +4761,7 @@ reveal_type(B().b)  # N: Revealed type is "def (a: builtins.int) -> builtins.int
 [case testClassSpecError]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: str) -> int: pass
     b = c  # E: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
@@ -5556,7 +5608,7 @@ class Bar(NamedTuple):
 
 def foo(node: Node) -> int:
     x = node
-    reveal_type(node) # N: Revealed type is "Union[tuple[builtins.int, fallback=__main__.Foo], tuple[builtins.int, fallback=__main__.Bar]]"
+    reveal_type(node) # N: Revealed type is "tuple[builtins.int, fallback=__main__.Foo] | tuple[builtins.int, fallback=__main__.Bar]"
     return x.x
 [builtins fixtures/tuple.pyi]
 [out]
@@ -5634,7 +5686,7 @@ ForwardUnion = Union['TP', int]
 class TP(NamedTuple('TP', [('x', int)])): pass
 
 def f(x: ForwardUnion) -> None:
-  reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, fallback=__main__.TP], builtins.int]"
+  reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.TP] | builtins.int"
   if isinstance(x, TP):
     reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.TP]"
 [builtins fixtures/isinstance.pyi]
@@ -7095,7 +7147,7 @@ def test() -> None:
         x = Other
     else:
         return
-    reveal_type(x)  # N: Revealed type is "Union[def () -> __main__.One, def () -> __main__.Other]"
+    reveal_type(x)  # N: Revealed type is "(def () -> __main__.One) | (def () -> __main__.Other)"
     reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
@@ -7310,10 +7362,10 @@ from typing import Tuple, Optional
 # Check for some cases that aren't allowed
 
 class X:
-    def __new__(cls) -> Optional[Y]:  # E: "__new__" must return a class instance (got "Optional[Y]")
+    def __new__(cls) -> Optional[Y]:  # E: "__new__" must return a class instance (got "Y | None")
         pass
 class Y:
-    def __new__(cls) -> Optional[int]:  # E: "__new__" must return a class instance (got "Optional[int]")
+    def __new__(cls) -> Optional[int]:  # E: "__new__" must return a class instance (got "int | None")
         pass
 
 
@@ -7636,7 +7688,7 @@ class A(thing=5):
     pass
 [out]
 main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
-tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
+tmp/builtins.pyi:6: note: "__init_subclass__" of "object" defined here
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassWithImports]
@@ -7755,7 +7807,7 @@ class Foo:
         self.x = None
         self.y = []
 
-reveal_type(Foo().x)  # N: Revealed type is "Union[Any, None]"
+reveal_type(Foo().x)  # N: Revealed type is "Any | None"
 reveal_type(Foo().y)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/list.pyi]
 
@@ -7784,7 +7836,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 class A:
     def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
-    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def undecorated_not_self(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
 
@@ -7812,7 +7864,7 @@ class A:
     def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
     @to_same_callable
-    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @to_same_callable
     def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
@@ -7857,7 +7909,7 @@ class A:
         return 0
 
     @to_same_callable
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @to_same_callable
@@ -7879,7 +7931,7 @@ class B:
         return 0
 
     @remove_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @remove_first
@@ -7913,15 +7965,15 @@ reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins
 
 class D:
     @add_wrong_first
-    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn1() -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
 reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
@@ -7944,7 +7996,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 def unchecked():
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         # TODO: would be nice to make this error, but now we see the func
         # being decorated as Any, not as a callable
@@ -7965,12 +8017,12 @@ def unchecked():
 def checked() -> None:
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         @to_same_callable
         def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         @to_same_callable
-        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     class AlsoBad:
         def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
@@ -8276,6 +8328,37 @@ reveal_type(Foo.baz)  # E: "type[Foo]" has no attribute "baz" \
 foo: int
 def bar(x: int) -> int: ...
 
+[case testClassScopeImportAccessibleInMethods]
+class A:
+    import mod
+    from mod import var
+
+    def __new__(cls) -> "A":
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+        return cls()
+
+    def pos_or_named_self(self) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    def pos_only_self(self, /) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    @classmethod
+    def clsmethod(cls) -> None:
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+var = 1
+[builtins fixtures/module.pyi]
+
 [case testClassScopeImportFunctionNested]
 class Foo:
     class Bar:
@@ -8465,7 +8548,7 @@ class Child(Parent):
         return val
     def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent" \
                                      # N:      Superclass: \
-                                     # N:          def __init__(self) -> bar \
+                                     # N:          def bar() -> bar \
                                      # N:      Subclass: \
                                      # N:          def bar(self, val: str) -> str
         return val
@@ -8874,6 +8957,11 @@ class C:
     def f(self) -> None:
         __module__  # E: Name "__module__" is not defined
         __qualname__  # E: Name "__qualname__" is not defined
+
+    x: __module__  # E: Variable "__main__.C.__module__" is not valid as a type \
+                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: __qualname__  # E: Variable "__main__.C.__qualname__" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testPropertySetterType]
 class A:

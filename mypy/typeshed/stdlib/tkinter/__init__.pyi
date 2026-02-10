@@ -1,6 +1,6 @@
 import _tkinter
 import sys
-from _typeshed import Incomplete, MaybeNone, StrOrBytesPath
+from _typeshed import FileDescriptorLike, Incomplete, MaybeNone, StrOrBytesPath
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from tkinter.constants import *
 from tkinter.font import _FontDescription
@@ -1005,34 +1005,43 @@ class Tk(Misc, Wm):
     # Tk has __getattr__ so that tk_instance.foo falls back to tk_instance.tk.foo
     # Please keep in sync with _tkinter.TkappType.
     # Some methods are intentionally missing because they are inherited from Misc instead.
-    def adderrorinfo(self, msg: str, /): ...
+    def adderrorinfo(self, msg: str, /) -> None: ...
     def call(self, command: Any, /, *args: Any) -> Any: ...
-    def createcommand(self, name: str, func, /): ...
+    # TODO: Figure out what arguments the following `func` callbacks should accept
+    def createcommand(self, name: str, func: Callable[..., object], /) -> None: ...
     if sys.platform != "win32":
-        def createfilehandler(self, file, mask: int, func, /): ...
-        def deletefilehandler(self, file, /) -> None: ...
+        def createfilehandler(self, file: FileDescriptorLike, mask: int, func: Callable[..., object], /) -> None: ...
+        def deletefilehandler(self, file: FileDescriptorLike, /) -> None: ...
 
-    def createtimerhandler(self, milliseconds: int, func, /): ...
-    def dooneevent(self, flags: int = 0, /): ...
+    def createtimerhandler(self, milliseconds: int, func: Callable[..., object], /): ...
+    def dooneevent(self, flags: int = 0, /) -> int: ...
     def eval(self, script: str, /) -> str: ...
-    def evalfile(self, fileName: str, /): ...
-    def exprboolean(self, s: str, /): ...
-    def exprdouble(self, s: str, /): ...
-    def exprlong(self, s: str, /): ...
-    def exprstring(self, s: str, /): ...
+    def evalfile(self, fileName: str, /) -> str: ...
+    def exprboolean(self, s: str, /) -> Literal[0, 1]: ...
+    def exprdouble(self, s: str, /) -> float: ...
+    def exprlong(self, s: str, /) -> int: ...
+    def exprstring(self, s: str, /) -> str: ...
     def globalgetvar(self, *args, **kwargs): ...
     def globalsetvar(self, *args, **kwargs): ...
     def globalunsetvar(self, *args, **kwargs): ...
     def interpaddr(self) -> int: ...
     def loadtk(self) -> None: ...
-    def record(self, script: str, /): ...
+    def record(self, script: str, /) -> str: ...
     if sys.version_info < (3, 11):
         @deprecated("Deprecated since Python 3.9; removed in Python 3.11. Use `splitlist()` instead.")
         def split(self, arg, /): ...
 
-    def splitlist(self, arg, /): ...
+    def splitlist(self, arg, /) -> tuple[Incomplete, ...]: ...
     def unsetvar(self, *args, **kwargs): ...
-    def wantobjects(self, *args, **kwargs): ...
+    if sys.version_info >= (3, 14):
+        @overload
+        def wantobjects(self) -> Literal[0, 1]: ...
+    else:
+        @overload
+        def wantobjects(self) -> bool: ...
+
+    @overload
+    def wantobjects(self, wantobjects: Literal[0, 1] | bool, /) -> None: ...
     def willdispatch(self) -> None: ...
 
 def Tcl(screenName: str | None = None, baseName: str | None = None, className: str = "Tk", useTk: bool = False) -> Tk: ...
@@ -3145,7 +3154,6 @@ class Scrollbar(Widget):
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
     def set(self, first: float | str, last: float | str) -> None: ...
 
-_TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
 _WhatToCount: TypeAlias = Literal[
     "chars", "displaychars", "displayindices", "displaylines", "indices", "lines", "xpixels", "ypixels"
 ]
@@ -3261,20 +3269,37 @@ class Text(Widget, XView, YView):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
-    def bbox(self, index: _TextIndex) -> tuple[int, int, int, int] | None: ...  # type: ignore[override]
-    def compare(self, index1: _TextIndex, op: Literal["<", "<=", "==", ">=", ">", "!="], index2: _TextIndex) -> bool: ...
+    def bbox(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> tuple[int, int, int, int] | None: ...  # type: ignore[override]
+    def compare(
+        self,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        op: Literal["<", "<=", "==", ">=", ">", "!="],
+        index2: str | float | _tkinter.Tcl_Obj | Widget,
+    ) -> bool: ...
     if sys.version_info >= (3, 13):
         @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex, *, return_ints: Literal[True]) -> int: ...
-        @overload
         def count(
-            self, index1: _TextIndex, index2: _TextIndex, arg: _WhatToCount | Literal["update"], /, *, return_ints: Literal[True]
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            *,
+            return_ints: Literal[True],
         ) -> int: ...
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg: _WhatToCount | Literal["update"],
+            /,
+            *,
+            return_ints: Literal[True],
+        ) -> int: ...
+        @overload
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: Literal["update"],
             arg2: _WhatToCount,
             /,
@@ -3284,8 +3309,8 @@ class Text(Widget, XView, YView):
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount,
             arg2: Literal["update"],
             /,
@@ -3294,13 +3319,20 @@ class Text(Widget, XView, YView):
         ) -> int: ...
         @overload
         def count(
-            self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: _WhatToCount, /, *, return_ints: Literal[True]
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg1: _WhatToCount,
+            arg2: _WhatToCount,
+            /,
+            *,
+            return_ints: Literal[True],
         ) -> tuple[int, int]: ...
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount | Literal["update"],
             arg2: _WhatToCount | Literal["update"],
             arg3: _WhatToCount | Literal["update"],
@@ -3309,12 +3341,18 @@ class Text(Widget, XView, YView):
             return_ints: Literal[True],
         ) -> tuple[int, ...]: ...
         @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex, *, return_ints: Literal[False] = False) -> tuple[int] | None: ...
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            *,
+            return_ints: Literal[False] = False,
+        ) -> tuple[int] | None: ...
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg: _WhatToCount | Literal["update"],
             /,
             *,
@@ -3323,8 +3361,8 @@ class Text(Widget, XView, YView):
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: Literal["update"],
             arg2: _WhatToCount,
             /,
@@ -3334,8 +3372,8 @@ class Text(Widget, XView, YView):
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount,
             arg2: Literal["update"],
             /,
@@ -3345,8 +3383,8 @@ class Text(Widget, XView, YView):
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount,
             arg2: _WhatToCount,
             /,
@@ -3356,8 +3394,8 @@ class Text(Widget, XView, YView):
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount | Literal["update"],
             arg2: _WhatToCount | Literal["update"],
             arg3: _WhatToCount | Literal["update"],
@@ -3367,22 +3405,49 @@ class Text(Widget, XView, YView):
         ) -> tuple[int, ...]: ...
     else:
         @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex) -> tuple[int] | None: ...
-        @overload
         def count(
-            self, index1: _TextIndex, index2: _TextIndex, arg: _WhatToCount | Literal["update"], /
+            self, index1: str | float | _tkinter.Tcl_Obj | Widget, index2: str | float | _tkinter.Tcl_Obj | Widget
         ) -> tuple[int] | None: ...
-        @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: Literal["update"], arg2: _WhatToCount, /) -> int | None: ...
-        @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: Literal["update"], /) -> int | None: ...
-        @overload
-        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: _WhatToCount, /) -> tuple[int, int]: ...
         @overload
         def count(
             self,
-            index1: _TextIndex,
-            index2: _TextIndex,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg: _WhatToCount | Literal["update"],
+            /,
+        ) -> tuple[int] | None: ...
+        @overload
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg1: Literal["update"],
+            arg2: _WhatToCount,
+            /,
+        ) -> int | None: ...
+        @overload
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg1: _WhatToCount,
+            arg2: Literal["update"],
+            /,
+        ) -> int | None: ...
+        @overload
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
+            arg1: _WhatToCount,
+            arg2: _WhatToCount,
+            /,
+        ) -> tuple[int, int]: ...
+        @overload
+        def count(
+            self,
+            index1: str | float | _tkinter.Tcl_Obj | Widget,
+            index2: str | float | _tkinter.Tcl_Obj | Widget,
             arg1: _WhatToCount | Literal["update"],
             arg2: _WhatToCount | Literal["update"],
             arg3: _WhatToCount | Literal["update"],
@@ -3394,13 +3459,15 @@ class Text(Widget, XView, YView):
     def debug(self, boolean: None = None) -> bool: ...
     @overload
     def debug(self, boolean: bool) -> None: ...
-    def delete(self, index1: _TextIndex, index2: _TextIndex | None = None) -> None: ...
-    def dlineinfo(self, index: _TextIndex) -> tuple[int, int, int, int, int] | None: ...
+    def delete(
+        self, index1: str | float | _tkinter.Tcl_Obj | Widget, index2: str | float | _tkinter.Tcl_Obj | Widget | None = None
+    ) -> None: ...
+    def dlineinfo(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> tuple[int, int, int, int, int] | None: ...
     @overload
     def dump(
         self,
-        index1: _TextIndex,
-        index2: _TextIndex | None = None,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None = None,
         command: None = None,
         *,
         all: bool = ...,
@@ -3413,8 +3480,8 @@ class Text(Widget, XView, YView):
     @overload
     def dump(
         self,
-        index1: _TextIndex,
-        index2: _TextIndex | None,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None,
         command: Callable[[str, str, str], object] | str,
         *,
         all: bool = ...,
@@ -3427,8 +3494,8 @@ class Text(Widget, XView, YView):
     @overload
     def dump(
         self,
-        index1: _TextIndex,
-        index2: _TextIndex | None = None,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None = None,
         *,
         command: Callable[[str, str, str], object] | str,
         all: bool = ...,
@@ -3447,21 +3514,27 @@ class Text(Widget, XView, YView):
     def edit_reset(self) -> None: ...  # actually returns empty string
     def edit_separator(self) -> None: ...  # actually returns empty string
     def edit_undo(self) -> None: ...  # actually returns empty string
-    def get(self, index1: _TextIndex, index2: _TextIndex | None = None) -> str: ...
+    def get(
+        self, index1: str | float | _tkinter.Tcl_Obj | Widget, index2: str | float | _tkinter.Tcl_Obj | Widget | None = None
+    ) -> str: ...
     @overload
-    def image_cget(self, index: _TextIndex, option: Literal["image", "name"]) -> str: ...
+    def image_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["image", "name"]) -> str: ...
     @overload
-    def image_cget(self, index: _TextIndex, option: Literal["padx", "pady"]) -> int: ...
+    def image_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["padx", "pady"]) -> int: ...
     @overload
-    def image_cget(self, index: _TextIndex, option: Literal["align"]) -> Literal["baseline", "bottom", "center", "top"]: ...
+    def image_cget(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["align"]
+    ) -> Literal["baseline", "bottom", "center", "top"]: ...
     @overload
-    def image_cget(self, index: _TextIndex, option: str) -> Any: ...
+    def image_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: str) -> Any: ...
     @overload
-    def image_configure(self, index: _TextIndex, cnf: str) -> tuple[str, str, str, str, str | int]: ...
+    def image_configure(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, cnf: str
+    ) -> tuple[str, str, str, str, str | int]: ...
     @overload
     def image_configure(
         self,
-        index: _TextIndex,
+        index: str | float | _tkinter.Tcl_Obj | Widget,
         cnf: dict[str, Any] | None = None,
         *,
         align: Literal["baseline", "bottom", "center", "top"] = ...,
@@ -3472,7 +3545,7 @@ class Text(Widget, XView, YView):
     ) -> dict[str, tuple[str, str, str, str, str | int]] | None: ...
     def image_create(
         self,
-        index: _TextIndex,
+        index: str | float | _tkinter.Tcl_Obj | Widget,
         cnf: dict[str, Any] | None = {},
         *,
         align: Literal["baseline", "bottom", "center", "top"] = ...,
@@ -3482,28 +3555,36 @@ class Text(Widget, XView, YView):
         pady: float | str = ...,
     ) -> str: ...
     def image_names(self) -> tuple[str, ...]: ...
-    def index(self, index: _TextIndex) -> str: ...
-    def insert(self, index: _TextIndex, chars: str, *args: str | list[str] | tuple[str, ...]) -> None: ...
+    def index(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> str: ...
+    def insert(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, chars: str, *args: str | list[str] | tuple[str, ...]
+    ) -> None: ...
     @overload
     def mark_gravity(self, markName: str, direction: None = None) -> Literal["left", "right"]: ...
     @overload
     def mark_gravity(self, markName: str, direction: Literal["left", "right"]) -> None: ...  # actually returns empty string
     def mark_names(self) -> tuple[str, ...]: ...
-    def mark_set(self, markName: str, index: _TextIndex) -> None: ...
+    def mark_set(self, markName: str, index: str | float | _tkinter.Tcl_Obj | Widget) -> None: ...
     def mark_unset(self, *markNames: str) -> None: ...
-    def mark_next(self, index: _TextIndex) -> str | None: ...
-    def mark_previous(self, index: _TextIndex) -> str | None: ...
+    def mark_next(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> str | None: ...
+    def mark_previous(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> str | None: ...
     # **kw of peer_create is same as the kwargs of Text.__init__
     def peer_create(self, newPathName: str | Text, cnf: dict[str, Any] = {}, **kw) -> None: ...
     def peer_names(self) -> tuple[_tkinter.Tcl_Obj, ...]: ...
-    def replace(self, index1: _TextIndex, index2: _TextIndex, chars: str, *args: str | list[str] | tuple[str, ...]) -> None: ...
+    def replace(
+        self,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget,
+        chars: str,
+        *args: str | list[str] | tuple[str, ...],
+    ) -> None: ...
     def scan_mark(self, x: int, y: int) -> None: ...
     def scan_dragto(self, x: int, y: int) -> None: ...
     def search(
         self,
         pattern: str,
-        index: _TextIndex,
-        stopindex: _TextIndex | None = None,
+        index: str | float | _tkinter.Tcl_Obj | Widget,
+        stopindex: str | float | _tkinter.Tcl_Obj | Widget | None = None,
         forwards: bool | None = None,
         backwards: bool | None = None,
         exact: bool | None = None,
@@ -3512,8 +3593,10 @@ class Text(Widget, XView, YView):
         count: Variable | None = None,
         elide: bool | None = None,
     ) -> str: ...  # returns empty string for not found
-    def see(self, index: _TextIndex) -> None: ...
-    def tag_add(self, tagName: str, index1: _TextIndex, *args: _TextIndex) -> None: ...
+    def see(self, index: str | float | _tkinter.Tcl_Obj | Widget) -> None: ...
+    def tag_add(
+        self, tagName: str, index1: str | float | _tkinter.Tcl_Obj | Widget, *args: str | float | _tkinter.Tcl_Obj | Widget
+    ) -> None: ...
     # tag_bind stuff is very similar to Canvas
     @overload
     def tag_bind(
@@ -3568,33 +3651,50 @@ class Text(Widget, XView, YView):
     tag_config = tag_configure
     def tag_delete(self, first_tag_name: str, /, *tagNames: str) -> None: ...  # error if no tag names given
     def tag_lower(self, tagName: str, belowThis: str | None = None) -> None: ...
-    def tag_names(self, index: _TextIndex | None = None) -> tuple[str, ...]: ...
+    def tag_names(self, index: str | float | _tkinter.Tcl_Obj | Widget | None = None) -> tuple[str, ...]: ...
     def tag_nextrange(
-        self, tagName: str, index1: _TextIndex, index2: _TextIndex | None = None
+        self,
+        tagName: str,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None = None,
     ) -> tuple[str, str] | tuple[()]: ...
     def tag_prevrange(
-        self, tagName: str, index1: _TextIndex, index2: _TextIndex | None = None
+        self,
+        tagName: str,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None = None,
     ) -> tuple[str, str] | tuple[()]: ...
     def tag_raise(self, tagName: str, aboveThis: str | None = None) -> None: ...
     def tag_ranges(self, tagName: str) -> tuple[_tkinter.Tcl_Obj, ...]: ...
     # tag_remove and tag_delete are different
-    def tag_remove(self, tagName: str, index1: _TextIndex, index2: _TextIndex | None = None) -> None: ...
+    def tag_remove(
+        self,
+        tagName: str,
+        index1: str | float | _tkinter.Tcl_Obj | Widget,
+        index2: str | float | _tkinter.Tcl_Obj | Widget | None = None,
+    ) -> None: ...
     @overload
-    def window_cget(self, index: _TextIndex, option: Literal["padx", "pady"]) -> int: ...
+    def window_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["padx", "pady"]) -> int: ...
     @overload
-    def window_cget(self, index: _TextIndex, option: Literal["stretch"]) -> bool: ...  # actually returns Literal[0, 1]
+    def window_cget(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["stretch"]
+    ) -> bool: ...  # actually returns Literal[0, 1]
     @overload
-    def window_cget(self, index: _TextIndex, option: Literal["align"]) -> Literal["baseline", "bottom", "center", "top"]: ...
+    def window_cget(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["align"]
+    ) -> Literal["baseline", "bottom", "center", "top"]: ...
     @overload  # window is set to a widget, but read as the string name.
-    def window_cget(self, index: _TextIndex, option: Literal["create", "window"]) -> str: ...
+    def window_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: Literal["create", "window"]) -> str: ...
     @overload
-    def window_cget(self, index: _TextIndex, option: str) -> Any: ...
+    def window_cget(self, index: str | float | _tkinter.Tcl_Obj | Widget, option: str) -> Any: ...
     @overload
-    def window_configure(self, index: _TextIndex, cnf: str) -> tuple[str, str, str, str, str | int]: ...
+    def window_configure(
+        self, index: str | float | _tkinter.Tcl_Obj | Widget, cnf: str
+    ) -> tuple[str, str, str, str, str | int]: ...
     @overload
     def window_configure(
         self,
-        index: _TextIndex,
+        index: str | float | _tkinter.Tcl_Obj | Widget,
         cnf: dict[str, Any] | None = None,
         *,
         align: Literal["baseline", "bottom", "center", "top"] = ...,
@@ -3607,7 +3707,7 @@ class Text(Widget, XView, YView):
     window_config = window_configure
     def window_create(
         self,
-        index: _TextIndex,
+        index: str | float | _tkinter.Tcl_Obj | Widget,
         cnf: dict[str, Any] | None = {},
         *,
         align: Literal["baseline", "bottom", "center", "top"] = ...,

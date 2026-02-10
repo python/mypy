@@ -60,23 +60,23 @@ class GraphSuite(Suite):
     def test_sorted_components(self) -> None:
         manager = self._make_manager()
         graph = {
-            "a": State("a", None, "import b, c", manager),
-            "d": State("d", None, "pass", manager),
-            "b": State("b", None, "import c", manager),
-            "c": State("c", None, "import b, d", manager),
+            "a": State.new_state("a", None, "import b, c", manager),
+            "d": State.new_state("d", None, "pass", manager),
+            "b": State.new_state("b", None, "import c", manager),
+            "c": State.new_state("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
-        assert_equal(res, [frozenset({"d"}), frozenset({"c", "b"}), frozenset({"a"})])
+        res = [scc.mod_ids for scc in sorted_components(graph)]
+        assert_equal(res, [{"d"}, {"c", "b"}, {"a"}])
 
     def test_order_ascc(self) -> None:
         manager = self._make_manager()
         graph = {
-            "a": State("a", None, "import b, c", manager),
-            "d": State("d", None, "def f(): import a", manager),
-            "b": State("b", None, "import c", manager),
-            "c": State("c", None, "import b, d", manager),
+            "a": State.new_state("a", None, "import b, c", manager),
+            "d": State.new_state("d", None, "def f(): import a", manager),
+            "b": State.new_state("b", None, "import c", manager),
+            "c": State.new_state("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
+        res = [scc.mod_ids for scc in sorted_components(graph)]
         assert_equal(res, [frozenset({"a", "d", "c", "b"})])
         ascc = res[0]
         scc = order_ascc(graph, ascc)

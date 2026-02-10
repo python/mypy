@@ -31,6 +31,19 @@ def console_entry() -> None:
         sys.stdout.flush()
         sys.stderr.flush()
         sys.exit(2)
+    except Exception as e:
+        # Try reporting any uncaught error canonically, otherwise just flush the traceback.
+        try:
+            import mypy.errors
+
+            _, options = process_options(args=sys.argv[1:])
+            mypy.errors.report_internal_error(e, None, 0, None, options)
+        except Exception:
+            pass
+        sys.stdout.write(traceback.format_exc())
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sys.exit(2)
 
 
 if __name__ == "__main__":

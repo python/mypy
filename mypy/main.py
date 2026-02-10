@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -13,6 +14,14 @@ from gettext import gettext
 from io import TextIOWrapper
 from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
+
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
     get_config_module_names,
@@ -20,6 +29,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -39,10 +49,8 @@ from mypy.version import __version__
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
 
-
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
-RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -256,10 +264,19 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         if "\n" in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
-        else:
-            # Assume we want argparse to manage wrapping, indenting, and
-            # formatting the text for us.
-            return argparse.HelpFormatter._fill_text(self, text, width, indent)
+        # Format the text like argparse, but overflow rather than
+        # breaking long words (like URLs)
+        text = self._whitespace_matcher.sub(" ", text).strip()
+        import textwrap
+
+        return textwrap.fill(
+            text,
+            width,
+            initial_indent=indent,
+            subsequent_indent=indent,
+            break_on_hyphens=False,
+            break_long_words=False,
+        )
 
 
 # Define pairs of flag prefixes with inverse meaning.
@@ -544,10 +561,15 @@ def define_options(
     #     Feel free to add subsequent sentences that add additional details.
     # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
     #     (E.g. see the "miscellaneous" sections).
-    # 4.  The group description should end with a period (unless the last line is a link). If you
-    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
-    #     long and will break up into multiple lines if we include that prefix, so for consistency
-    #     we omit the prefix on all links.)
+    # 4.  The text of the group description should end with a period, optionally followed
+    #     by a documentation reference (URL).
+    # 5.  If you want to include a documentation reference, place it at the end of the
+    #     description. Feel free to open with a brief reference ("See also:", "For more
+    #     information:", etc.), followed by a space, then the entire URL including
+    #     "https://" scheme identifier and fragment ("#some-target-heading"), if any.
+    #     Do not end with a period (or any other characters not part of the URL).
+    #     URLs longer than the available terminal width will overflow without being
+    #     broken apart. This facilitates both URL detection, and manual copy-pasting.
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
@@ -793,15 +815,6 @@ def define_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
-    # This flag is deprecated, Mypy only supports Python 3.9+
-    add_invertible_flag(
-        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
-    add_invertible_flag(
-        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",
@@ -1034,7 +1047,7 @@ def define_options(
         "Mypy caches type information about modules into a cache to "
         "let you speed up future invocations of mypy. Also see "
         "mypy's daemon mode: "
-        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+        "https://mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
     )
     incremental_group.add_argument(
         "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
@@ -1063,10 +1076,12 @@ def define_options(
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
-    incremental_group.add_argument(
-        "--fixed-format-cache",
-        action="store_true",
-        help="Use new fast and compact fixed format cache",
+    add_invertible_flag(
+        "--no-fixed-format-cache",
+        dest="fixed_format_cache",
+        default=True,
+        help="Do not use new fixed format cache",
+        group=incremental_group,
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1137,6 +1152,11 @@ def define_options(
     )
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
+
+    # Experimental parallel type-checking support.
+    internals_group.add_argument(
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
@@ -1278,7 +1298,7 @@ def define_options(
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+        "https://mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
     )
     add_invertible_flag(
         "--explicit-package-bases",
@@ -1353,6 +1373,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    mypyc: bool = False,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -1380,6 +1401,9 @@ def process_options(
 
     options = Options()
     strict_option_set = False
+    if mypyc:
+        # Mypyc has strict_bytes enabled by default
+        options.strict_bytes = True
 
     def set_strict_flags() -> None:
         nonlocal strict_option_set
@@ -1513,9 +1537,6 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
-
-    if options.force_uppercase_builtins:
-        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

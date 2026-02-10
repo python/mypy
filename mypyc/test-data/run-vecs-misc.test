@@ -1,0 +1,238 @@
+-- Test cases for packed/specialized vec item types other than i64, such as
+-- vec[i32] and vec[float]. Since many of the code paths are the same as for
+-- vec[i64], only test a subset of functionality.
+--
+-- vec[i64] test cases are in run-vecs-i64.test.
+
+[case testVecMiscBasicOps_librt_experimental]
+# mypy: allow-redefinition
+
+from typing import Any, cast
+from mypy_extensions import i64, i32, i16, u8
+from librt.vecs import vec, append, remove, pop
+from testutil import assertRaises
+
+def test_create_empty() -> None:
+    assert str(vec[i32]()) == "vec[i32]([])"
+    assert str(vec[i16]()) == "vec[i16]([])"
+    assert str(vec[u8]()) == "vec[u8]([])"
+    assert str(vec[float]()) == "vec[float]([])"
+    assert str(vec[bool]()) == "vec[bool]([])"
+
+def test_create_from_values() -> None:
+    assert str(vec[i32]([5, -12])) == "vec[i32]([5, -12])"
+    assert str(vec[i16]([6, -8])) == "vec[i16]([6, -8])"
+    assert str(vec[u8]([0, 123, 255])) == "vec[u8]([0, 123, 255])"
+    assert str(vec[float]([1.5, -3.5])) == "vec[float]([1.5, -3.5])"
+    assert str(vec[bool]([False, True])) == "vec[bool]([False, True])"
+
+def test_get_item() -> None:
+    assert vec[i32]([5, -12])[1] == -12
+    assert vec[i16]([6, -8])[1] == -8
+    assert vec[u8]([0, 123, 255])[2] == 255
+    assert vec[float]([1.5, -3.5])[1] == -3.5
+    assert vec[bool]([False, True])[1] == True
+
+def test_get_item_negative() -> None:
+    assert vec[i32]([5, -12])[-2] == 5
+    assert vec[i16]([6, -8])[-2] == 6
+    assert vec[u8]([0, 123, 255])[-2] == 123
+    assert vec[float]([1.5, -3.5])[-2] == 1.5
+    assert vec[bool]([False, True])[-2] == False
+
+def test_append() -> None:
+    assert append(vec[i32](), 123) == vec[i32]([123])
+    assert append(vec[i16](), 123) == vec[i16]([123])
+    assert append(vec[u8](), 123) == vec[u8]([123])
+    assert append(vec[float](), 123.5) == vec[float]([123.5])
+    assert append(vec[bool](), True) == vec[bool]([True])
+
+def test_unbox() -> None:
+    v: vec[i64]
+
+    a = cast(Any, vec[i32]([1, 2]))
+    v_i32: vec[i32] = a
+    assert v_i32 == vec[i32]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[i16]([1, 2]))
+    v_i16: vec[i16] = a
+    assert v_i16 == vec[i16]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[u8]([1, 2]))
+    v_u8: vec[u8] = a
+    assert v_u8 == vec[u8]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[float]([1, 2]))
+    v_float: vec[float] = a
+    assert v_float == vec[float]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[bool]([True, False]))
+    v_bool: vec[bool] = a
+    assert v_bool == vec[bool]([True, False])
+    with assertRaises(TypeError):
+        v = a
+
+def test_set_item() -> None:
+    v = vec[i32]([5, -12])
+    v[1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[i16]([5, -12])
+    v[1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[u8]([5, 237])
+    v[1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[float]([1.5, -3.5])
+    v[1] = 5.5
+    assert v[0] == 1.5 and v[1] == 5.5
+
+    v = vec[bool]([True, False])
+    v[1] = True
+    assert v[0] and v[1]
+
+def test_set_item_negative() -> None:
+    v = vec[i32]([5, -12])
+    v[-1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[i16]([5, -12])
+    v[-1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[u8]([5, 237])
+    v[-1] = 55
+    assert v[0] == 5 and v[1] == 55
+
+    v = vec[float]([1.5, -3.5])
+    v[-1] = 5.5
+    assert v[0] == 1.5 and v[1] == 5.5
+
+    v = vec[bool]([True, False])
+    v[-1] = True
+    assert v[0] and v[1]
+
+def test_for_loop() -> None:
+    a: Any = []
+    for x in vec[float]([1.5, -3.5]):
+        a.append(x)
+    assert a == [1.5, -3.5]
+
+    a = []
+    for x in vec[bool]([True, False, False, True]):
+        a.append(x)
+    assert a == [True, False, False, True]
+
+    a = []
+    for x in vec[u8]([0, 5, 237, 255]):
+        a.append(x)
+    assert a == [0, 5, 237, 255]
+
+def test_comprehension() -> None:
+    v = vec[i32]([x + 1 for x in [1, 4, -5]])
+    assert list(v) == [2, 5, -4]
+
+    v = vec[float]([x + 1.5 for x in range(4)])
+    assert list(v) == [1.5, 2.5, 3.5, 4.5]
+
+def len_union(x: vec[i64] | vec[i32]) -> int:
+    return len(x)
+
+def test_union_of_vecs() -> None:
+    assert len_union(vec[i64]()) == 0
+    assert len_union(vec[i64]([7, 8])) == 2
+    assert len_union(vec[i32]([7, 8, 9])) == 3
+    with assertRaises(TypeError):
+        a1: Any = vec[i16]()
+        len_union(a1)
+    with assertRaises(TypeError):
+        a2: Any = []
+        len_union(a2)
+
+def test_nested_basics() -> None:
+    v = vec[vec[i32]]([vec[i32]([5, 6]),
+                       vec[i32]([-12])])
+    assert str(v) == "vec[vec[i32]]([[5, 6], [-12]])"
+    assert v[0][1] == 6
+    assert v[1][0] == -12
+
+    v = vec[vec[i16]]([vec[i16]([5, 6]),
+                       vec[i16]([-12])])
+    assert str(v) == "vec[vec[i16]]([[5, 6], [-12]])"
+    assert v[0][1] == 6
+    assert v[1][0] == -12
+
+    v = vec[vec[u8]]([vec[u8]([5, 6]),
+                      vec[u8]([237])])
+    assert str(v) == "vec[vec[u8]]([[5, 6], [237]])"
+    assert v[0][1] == 6
+    assert v[1][0] == 237
+
+    v = vec[vec[float]]([vec[float]([1.5, -3.5]),
+                         vec[float]([3.0])])
+    assert str(v) == "vec[vec[float]]([[1.5, -3.5], [3.0]])"
+    assert v[0][1] == -3.5
+    assert v[1][0] == 3.0
+
+    v = vec[vec[bool]]([vec[bool]([False, True]),
+                        vec[bool]([False])])
+    assert str(v) == "vec[vec[bool]]([[False, True], [False]])"
+    assert v[0][1] == True
+    assert v[1][0] == False
+
+def test_nested_unbox() -> None:
+    vv: vec[vec[i64]]
+
+    a = cast(Any, vec[vec[i32]]([vec[i32]([5])]))
+    v_i32: vec[vec[i32]] = a
+    assert str(v_i32) == "vec[vec[i32]]([[5]])"
+    with assertRaises(TypeError):
+        vv = a
+
+    a = cast(Any, vec[vec[i16]]([vec[i16]([5])]))
+    v_i16: vec[vec[i16]] = a
+    with assertRaises(TypeError):
+        vv = a
+
+    a = cast(Any, vec[vec[u8]]([vec[u8]([5])]))
+    v_u8: vec[vec[u8]] = a
+    with assertRaises(TypeError):
+        vv = a
+
+    a = cast(Any, vec[vec[float]]([vec[float]([5])]))
+    v_float: vec[vec[float]] = a
+    with assertRaises(TypeError):
+        vv = a
+
+    a = cast(Any, vec[vec[bool]]([vec[bool]([True])]))
+    v_bool: vec[vec[bool]] = a
+    with assertRaises(TypeError):
+        vv = a
+
+def test_nested_misc() -> None:
+    v = vec[vec[float]]()
+    assert len(v) == 0
+    v = append(v, vec[float]([1.5]))
+    assert len(v) == 1
+    for x in v:
+        assert x == vec[float]([1.5])
+    vv, x = pop(v)
+    assert vv == vec[vec[float]]()
+    assert x == vec[float]([1.5])
+
+    # Since pop doesn't change the length of v, the following should work
+    v[0] = vec[float]([-2.5])
+    assert v[0] == vec[float]([-2.5])
+    v[0][0] = 3.5
+    assert v[0] == vec[float]([3.5])
+    assert v[:5] == vec[vec[float]]([vec[float]([3.5])])

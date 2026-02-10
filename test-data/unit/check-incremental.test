@@ -1090,7 +1090,9 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
-[case testIncrementalWithSilentImportsAndIgnore]
+-- Order of processing of files is not stable in this test, skip it in parallel mode.
+-- Note: do not use _no_parallel unless really needed!
+[case testIncrementalWithSilentImportsAndIgnore_no_parallel]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
 # flags: --follow-imports=skip
@@ -1259,8 +1261,8 @@ reveal_type(x)
 y: Alias[int]
 reveal_type(y)
 [out2]
-tmp/a.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
-tmp/a.py:5: note: Revealed type is "Union[builtins.int, builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.int | builtins.str"
+tmp/a.py:5: note: Revealed type is "builtins.int | builtins.int"
 
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
@@ -1746,9 +1748,9 @@ class A: pass
 class B: pass
 
 class X:
-    attr = None  # type: A
+    attr: A
 class Y:
-    attr = None  # type: B
+    attr: B
 class Z(X, Y): pass
 [stale]
 [out]
@@ -2064,10 +2066,10 @@ m.A().x = 0
 [file m.py]
 from typing import ClassVar
 class A:
-    x = None  # type: ClassVar[int]
+    x: ClassVar[int]
 [file m.py.2]
 class A:
-    x = None  # type: int
+    x: int
 [out1]
 main:2: error: Cannot assign to class variable "x" via instance
 
@@ -2076,7 +2078,7 @@ import b
 [file a.py]
 from typing import ClassVar
 class A:
-    x = None  # type: ClassVar[int]
+    x: ClassVar[int]
 [file b.py]
 import a
 [file b.py.2]
@@ -2336,7 +2338,6 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
--- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -2465,6 +2466,25 @@ def foo(a: int, b: int) -> str:
 [out1]
 [out2]
 tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testIncrementalWithSilentImportsReverse]
+-- Same commands as previous test, just in reverse order.
+-- expected output is also in reverse order
+# cmd: mypy -m b
+# cmd2: mypy -m a
+# flags: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+[out2]
 
 [case testForwardNamedTupleToUnionWithOtherNamedTUple]
 from typing import NamedTuple, Union
@@ -2937,7 +2957,7 @@ def foo() -> Optional[int]: return 0
 [out1]
 [out2]
 main:2: error: Unsupported operand types for + ("int" and "None")
-main:2: note: Right operand is of type "Optional[int]"
+main:2: note: Right operand is of type "int | None"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -3215,9 +3235,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: note: Revealed type is "def (x: Union[builtins.int, None]) -> a.a.A"
+main:2: note: Revealed type is "def (x: builtins.int | None) -> a.a.A"
 [out2]
-main:2: note: Revealed type is "def (x: Union[builtins.int, None]) -> a.a.A"
+main:2: note: Revealed type is "def (x: builtins.int | None) -> a.a.A"
 
 [case testAttrsIncrementalConverterManyStyles]
 import a
@@ -3355,14 +3375,14 @@ class SubBB(SubBase):
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
-tmp/a.py:3: error: Argument 2 to "Base" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:6: error: Argument 2 to "A" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:7: error: Argument 5 to "B" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:10: error: Argument 2 to "SubBase" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:13: error: Argument 2 to "AA" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:14: error: Argument 5 to "BB" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected "Optional[str]"
-tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:3: error: Argument 2 to "Base" has incompatible type "int"; expected "str | None"
+tmp/a.py:6: error: Argument 2 to "A" has incompatible type "int"; expected "str | None"
+tmp/a.py:7: error: Argument 5 to "B" has incompatible type "int"; expected "str | None"
+tmp/a.py:10: error: Argument 2 to "SubBase" has incompatible type "int"; expected "str | None"
+tmp/a.py:13: error: Argument 2 to "AA" has incompatible type "int"; expected "str | None"
+tmp/a.py:14: error: Argument 5 to "BB" has incompatible type "int"; expected "str | None"
+tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected "str | None"
+tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "str | None"
 
 [case testAttrsIncrementalConverterInFunction]
 import attrs
@@ -3503,7 +3523,7 @@ class Baz:
 [out]
 [out2]
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "None")
-tmp/a.py:3: note: Right operand is of type "Optional[int]"
+tmp/a.py:3: note: Right operand is of type "int | None"
 
 [case testIncrementalMetaclassUpdate]
 import a
@@ -5504,7 +5524,7 @@ reveal_type(y.c)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/c.py:2: note: Revealed type is "Union[a.<subclass of "a.A" and "a.B">, a.<subclass of "a.A" and "a.C">]"
+tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B"> | a.<subclass of "a.A" and "a.C">"
 tmp/c.py:3: note: Revealed type is "builtins.int"
 tmp/c.py:5: note: Revealed type is "builtins.str"
 
@@ -5854,9 +5874,9 @@ reveal_type(a.n)
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
-tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-tmp/c.py:7: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:4: note: Revealed type is "tuple[tuple[... | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
+tmp/c.py:7: note: Revealed type is "tuple[tuple[... | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
 import c
@@ -5887,8 +5907,8 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
-tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:4: note: Revealed type is "tuple[tuple[... | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
 import c
@@ -5919,8 +5939,8 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
-tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:4: note: Revealed type is "tuple[tuple[... | None, builtins.int] | None, builtins.int]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
 import c
@@ -5961,9 +5981,9 @@ reveal_type(a.n)
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
-tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
+tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': TypedDict('b.M', {'r': ... | None, 'x': builtins.int}) | None, 'x': builtins.int})"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
+tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': TypedDict('b.M', {'r': ... | None, 'x': builtins.int}) | None, 'x': builtins.int})"
 
 [case testIncrementalAddClassMethodPlugin]
 # flags: --config-file tmp/mypy.ini
@@ -6901,8 +6921,8 @@ class TheClass:
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
 
-
-[case testIncrementalFunctoolsPartial]
+-- Note: do not use _no_parallel unless really needed!
+[case testIncrementalFunctoolsPartial_no_parallel]
 import a
 
 [file a.py]
@@ -6950,7 +6970,7 @@ p3 = functools.partial(foo, b="a")
 [out]
 tmp/a.py:8: note: Revealed type is "functools.partial[builtins.int]"
 tmp/a.py:13: error: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]"
-tmp/a.py:13: note: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+tmp/a.py:13: note: "partial[int].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> int"
 tmp/a.py:18: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 tmp/a.py:19: error: Too many arguments for "foo"
 tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
@@ -7236,14 +7256,14 @@ tmp/impl.py:7: error: Argument 1 has incompatible type "str"; expected "int"
 [file foo.py]
 foo = 5
 [file foo.py.2]
-foo = None
+foo = "foo"
 [file bar.py]
 from foo import foo
 bar: int = foo
 [out]
 [out2]
 [out3]
-tmp/bar.py:2: error: Incompatible types in assignment (expression has type "None", variable has type "int")
+tmp/bar.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testIncrementalBlockingErrorRepeatAndUndo]
 import m
@@ -7311,3 +7331,468 @@ x = 2
 [out]
 [rechecked bar]
 [stale]
+
+
+[case testIncrementalTypedDictGetMethodTotalFalse]
+import impl
+[file lib.py]
+from typing import TypedDict
+class Unrelated: pass
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+[file impl.py]
+pass
+[file impl.py.2]
+from typing import Literal
+from lib import D, Unrelated
+d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
+reveal_type(d.get('x'))
+reveal_type(d.get('y'))
+reveal_type(d.get('z'))
+reveal_type(d.get('x', u))
+reveal_type(d.get('x', 1))
+reveal_type(d.get('y', None))
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x))
+reveal_type(d.get(y))
+reveal_type(d.get(z))
+reveal_type(d.get(x_or_y))
+reveal_type(d.get(x_or_z))
+reveal_type(d.get(x_or_y_or_z))
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u))
+reveal_type(d.get(y, u))
+reveal_type(d.get(z, u))
+reveal_type(d.get(x_or_y, u))
+reveal_type(d.get(x_or_z, u))
+reveal_type(d.get(x_or_y_or_z, u))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/impl.py:13: note: Revealed type is "builtins.int | None"
+tmp/impl.py:14: note: Revealed type is "builtins.str | None"
+tmp/impl.py:15: note: Revealed type is "builtins.object"
+tmp/impl.py:16: note: Revealed type is "builtins.int | lib.Unrelated"
+tmp/impl.py:17: note: Revealed type is "builtins.int"
+tmp/impl.py:18: note: Revealed type is "builtins.str | None"
+tmp/impl.py:21: note: Revealed type is "builtins.int | None"
+tmp/impl.py:22: note: Revealed type is "builtins.str | None"
+tmp/impl.py:23: note: Revealed type is "builtins.object"
+tmp/impl.py:24: note: Revealed type is "builtins.int | builtins.str | None"
+tmp/impl.py:25: note: Revealed type is "builtins.object"
+tmp/impl.py:26: note: Revealed type is "builtins.object"
+tmp/impl.py:29: note: Revealed type is "builtins.int | lib.Unrelated"
+tmp/impl.py:30: note: Revealed type is "builtins.str | lib.Unrelated"
+tmp/impl.py:31: note: Revealed type is "builtins.object"
+tmp/impl.py:32: note: Revealed type is "builtins.int | builtins.str | lib.Unrelated"
+tmp/impl.py:33: note: Revealed type is "builtins.object"
+tmp/impl.py:34: note: Revealed type is "builtins.object"
+
+[case testIncrementalTypedDictGetMethodTotalTrue]
+import impl
+[file lib.py]
+from typing import TypedDict
+class Unrelated: pass
+D = TypedDict('D', {'x': int, 'y': str}, total=True)
+[file impl.py]
+pass
+[file impl.py.2]
+from typing import Literal
+from lib import D, Unrelated
+d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
+reveal_type(d.get('x'))
+reveal_type(d.get('y'))
+reveal_type(d.get('z'))
+reveal_type(d.get('x', u))
+reveal_type(d.get('x', 1))
+reveal_type(d.get('y', None))
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x))
+reveal_type(d.get(y))
+reveal_type(d.get(z))
+reveal_type(d.get(x_or_y))
+reveal_type(d.get(x_or_z))
+reveal_type(d.get(x_or_y_or_z))
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u))
+reveal_type(d.get(y, u))
+reveal_type(d.get(z, u))
+reveal_type(d.get(x_or_y, u))
+reveal_type(d.get(x_or_z, u))
+reveal_type(d.get(x_or_y_or_z, u))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/impl.py:13: note: Revealed type is "builtins.int"
+tmp/impl.py:14: note: Revealed type is "builtins.str"
+tmp/impl.py:15: note: Revealed type is "builtins.object"
+tmp/impl.py:16: note: Revealed type is "builtins.int"
+tmp/impl.py:17: note: Revealed type is "builtins.int"
+tmp/impl.py:18: note: Revealed type is "builtins.str"
+tmp/impl.py:21: note: Revealed type is "builtins.int"
+tmp/impl.py:22: note: Revealed type is "builtins.str"
+tmp/impl.py:23: note: Revealed type is "builtins.object"
+tmp/impl.py:24: note: Revealed type is "builtins.int | builtins.str"
+tmp/impl.py:25: note: Revealed type is "builtins.object"
+tmp/impl.py:26: note: Revealed type is "builtins.object"
+tmp/impl.py:29: note: Revealed type is "builtins.int"
+tmp/impl.py:30: note: Revealed type is "builtins.str"
+tmp/impl.py:31: note: Revealed type is "builtins.object"
+tmp/impl.py:32: note: Revealed type is "builtins.int | builtins.str"
+tmp/impl.py:33: note: Revealed type is "builtins.object"
+tmp/impl.py:34: note: Revealed type is "builtins.object"
+
+
+[case testIncrementalTypedDictGetMethodTotalMixed]
+import impl
+[file lib.py]
+from typing import TypedDict
+from typing_extensions import Required, NotRequired
+class Unrelated: pass
+D = TypedDict('D', {'x': Required[int], 'y': NotRequired[str]})
+[file impl.py]
+pass
+[file impl.py.2]
+from typing import Literal
+from lib import D, Unrelated
+d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
+reveal_type(d.get('x'))
+reveal_type(d.get('y'))
+reveal_type(d.get('z'))
+reveal_type(d.get('x', u))
+reveal_type(d.get('x', 1))
+reveal_type(d.get('y', None))
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x))
+reveal_type(d.get(y))
+reveal_type(d.get(z))
+reveal_type(d.get(x_or_y))
+reveal_type(d.get(x_or_z))
+reveal_type(d.get(x_or_y_or_z))
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u))
+reveal_type(d.get(y, u))
+reveal_type(d.get(z, u))
+reveal_type(d.get(x_or_y, u))
+reveal_type(d.get(x_or_z, u))
+reveal_type(d.get(x_or_y_or_z, u))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/impl.py:13: note: Revealed type is "builtins.int"
+tmp/impl.py:14: note: Revealed type is "builtins.str | None"
+tmp/impl.py:15: note: Revealed type is "builtins.object"
+tmp/impl.py:16: note: Revealed type is "builtins.int"
+tmp/impl.py:17: note: Revealed type is "builtins.int"
+tmp/impl.py:18: note: Revealed type is "builtins.str | None"
+tmp/impl.py:21: note: Revealed type is "builtins.int"
+tmp/impl.py:22: note: Revealed type is "builtins.str | None"
+tmp/impl.py:23: note: Revealed type is "builtins.object"
+tmp/impl.py:24: note: Revealed type is "builtins.int | builtins.str | None"
+tmp/impl.py:25: note: Revealed type is "builtins.object"
+tmp/impl.py:26: note: Revealed type is "builtins.object"
+tmp/impl.py:29: note: Revealed type is "builtins.int"
+tmp/impl.py:30: note: Revealed type is "builtins.str | lib.Unrelated"
+tmp/impl.py:31: note: Revealed type is "builtins.object"
+tmp/impl.py:32: note: Revealed type is "builtins.int | builtins.str | lib.Unrelated"
+tmp/impl.py:33: note: Revealed type is "builtins.object"
+tmp/impl.py:34: note: Revealed type is "builtins.object"
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImport]
+import b
+import a
+
+[file a.py]
+import pkg
+
+pkg.submod.foo()
+
+[file a.py.2]
+import pkg
+
+pkg.submod.foo()
+x = 1
+
+[file b.py]
+import c
+
+[file c.py]
+from pkg import submod
+
+[file pkg/__init__.pyi]
+[file pkg/submod.pyi]
+def foo() -> None: pass
+[out]
+tmp/a.py:3: error: "object" has no attribute "submod"
+[out2]
+tmp/a.py:3: error: "object" has no attribute "submod"
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImportNested]
+import a
+
+[file a.py]
+import pandas
+pandas.core.dtypes
+
+[file a.py.2]
+import pandas
+pandas.core.dtypes
+# touch
+
+[file pandas/__init__.py]
+import pandas.core.api
+
+[file pandas/core/__init__.py]
+[file pandas/core/api.py]
+import pandas.core.dtypes.dtypes
+
+[file pandas/core/dtypes/__init__.py]
+[file pandas/core/dtypes/dtypes.py]
+X = 0
+[out]
+[out2]
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImportNestedFrom]
+import a
+
+[file a.py]
+import pandas
+
+# Although this actually works at runtime, we do not support this, since
+# this would cause major slowdown for a rare edge case. This test verifies
+# that we fail consistently on cold and warm runs.
+pandas.core.dtypes
+
+[file a.py.2]
+import pandas
+pandas.core.dtypes
+
+[file pandas/__init__.py]
+import pandas.core.api
+
+[file pandas/core/__init__.py]
+[file pandas/core/api.py]
+from pandas.core.dtypes.dtypes import X
+
+[file pandas/core/dtypes/__init__.py]
+[file pandas/core/dtypes/dtypes.py]
+X = 0
+[out]
+tmp/a.py:6: error: "object" has no attribute "dtypes"
+[out2]
+tmp/a.py:2: error: "object" has no attribute "dtypes"
+
+[case testStarImportCycleRedefinition]
+import m
+
+[file m.py]
+import a
+
+[file m.py.2]
+import a
+reveal_type(a.C)
+
+[file a/__init__.py]
+from a.b import *
+from a.c import *
+x = 1
+
+[file a/b.py]
+from other import C
+from a.c import y
+class C: ...  # type: ignore
+
+[file a/c.py]
+from other import C
+from a import x
+y = 1
+
+[file other.py]
+class C: ...
+[out2]
+tmp/m.py:2: note: Revealed type is "def () -> other.C"
+
+[case testOutputFormatterIncremental]
+# flags2: --output json
+def wrong() -> int:
+    if wrong():
+        return 0
+[out]
+main:2: error: Missing return statement
+[out2]
+{"file": "main", "line": 2, "column": 0, "end_line": 4, "end_column": 16, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
+
+[case testReExportAllInStubIncremental]
+from m1 import C
+from m1 import D
+C()
+C(1)
+[file m1.pyi]
+from m2 import *
+[file m2.pyi]
+from m3 import *
+from m3 import __all__ as __all__
+class D: pass
+[file m2.pyi.2]
+from m3 import *
+from m3 import __all__ as __all__
+class D:
+    x = 1
+[file m3.pyi]
+from m4 import C as C
+__all__ = ['C']
+[file m4.pyi]
+class C: pass
+[builtins fixtures/list.pyi]
+[out]
+main:2: error: Module "m1" has no attribute "D"
+main:4: error: Too many arguments for "C"
+[out2]
+main:2: error: Module "m1" has no attribute "D"
+main:4: error: Too many arguments for "C"
+
+[case testCyclicUndefinedImportWithStarIncremental]
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a
+reveal_type(a.no_such_export)
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+[out2]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/m.py:2: note: Revealed type is "Any"
+
+[case testCachedUnexpectedKeywordArgument]
+import m
+[file m.py]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[file b.py.3]
+# space
+def lol() -> None: pass
+[file m.py.4]
+import a  # touch
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out3]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
+[out4]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:2: note: "lol" defined here
+
+[case testCachedUnexpectedKeywordArgumentNested]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+while True:
+    if True:
+        def lol() -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:3: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:3: note: "lol" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod]
+import a
+[file a.py]
+import b
+b.B().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
+tmp/b.py:4: note: "lol" of "B" defined here
+
+[case testCachedUnexpectedKeywordArgumentMethod2]
+import a
+[file a.py]
+import b
+b.B.BB().lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.B.BB().lol(uhhhh=12)
+[file b.py]
+class A:
+    def lol(self) -> None: pass
+class B:
+    class BB:
+        def lol(self) -> None: pass
+class C:
+    def lol(self) -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
+tmp/b.py:5: note: "lol" of "BB" defined here

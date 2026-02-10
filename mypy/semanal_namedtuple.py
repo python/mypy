@@ -34,6 +34,7 @@ from mypy.nodes import (
     NamedTupleExpr,
     NameExpr,
     PassStmt,
+    PlaceholderNode,
     RefExpr,
     Statement,
     StrExpr,
@@ -526,7 +527,7 @@ class NamedTupleAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(tuple_base):
             self.api.process_placeholder(
                 None, "NamedTuple item", info, force_progress=tuple_base != info.tuple_type
             )
@@ -697,10 +698,14 @@ class NamedTupleAnalyzer:
                 if isinstance(sym.node, (FuncBase, Decorator)) and not sym.plugin_generated:
                     # Keep user-defined methods as is.
                     continue
-                # Keep existing (user-provided) definitions under mangled names, so they
-                # get semantically analyzed.
-                r_key = get_unique_redefinition_name(key, named_tuple_info.names)
-                named_tuple_info.names[r_key] = sym
+                # Do not retain placeholders - we'll get back here if they cease to
+                # be placeholders later. If we keep placeholders alive, they may never
+                # be reached again, making it to cacheable symtable.
+                if not isinstance(sym.node, PlaceholderNode):
+                    # Keep existing (user-provided) definitions under mangled names, so they
+                    # get semantically analyzed.
+                    r_key = get_unique_redefinition_name(key, named_tuple_info.names)
+                    named_tuple_info.names[r_key] = sym
             named_tuple_info.names[key] = value
 
     # Helpers

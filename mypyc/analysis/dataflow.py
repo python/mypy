@@ -24,6 +24,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -196,6 +197,12 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_set_mem(self, op: SetMem) -> GenAndKill[T]:
         raise NotImplementedError
 
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_call(self, op: Call) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
@@ -269,6 +276,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_get_element(self, op: GetElement) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:

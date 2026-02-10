@@ -14,28 +14,24 @@ def _run_pytest(data_suite: str) -> PytestResult:
 class ParseTestDataSuite(Suite):
     def test_parse_invalid_case(self) -> None:
         # Act
-        result = _run_pytest(
-            """
+        result = _run_pytest("""
             [case abc]
             s: str
             [case foo-XFAIL]
             s: str
-            """
-        )
+            """)
 
         # Assert
         assert "Invalid testcase id 'foo-XFAIL'" in result.stdout
 
     def test_parse_invalid_section(self) -> None:
         # Act
-        result = _run_pytest(
-            """
+        result = _run_pytest("""
             [case abc]
             s: str
             [unknownsection]
             abc
-            """
-        )
+            """)
 
         # Assert
         expected_lineno = result.input.splitlines().index("[unknownsection]") + 1
@@ -46,28 +42,28 @@ class ParseTestDataSuite(Suite):
 
     def test_bad_ge_version_check(self) -> None:
         # Act
-        actual = _run_pytest(
-            """
+        actual = _run_pytest("""
             [case abc]
             s: str
-            [out version>=3.9]
+            [out version>=3.10]
             abc
-            """
-        )
+            """)
 
         # Assert
-        assert "version>=3.9 always true since minimum runtime version is (3, 9)" in actual.stdout
+        assert (
+            "version>=3.10 always true since minimum runtime version is (3, 10)" in actual.stdout
+        )
 
     def test_bad_eq_version_check(self) -> None:
         # Act
-        actual = _run_pytest(
-            """
+        actual = _run_pytest("""
             [case abc]
             s: str
             [out version==3.7]
             abc
-            """
-        )
+            """)
 
         # Assert
-        assert "version==3.7 always false since minimum runtime version is (3, 9)" in actual.stdout
+        assert (
+            "version==3.7 always false since minimum runtime version is (3, 10)" in actual.stdout
+        )

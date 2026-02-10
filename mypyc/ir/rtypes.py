@@ -38,10 +38,10 @@ NOTE: As a convention, we don't create subclasses of concrete RType
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar, final
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.ir.deps import LIBRT_STRINGS, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -89,6 +89,7 @@ class RType:
     # we never raise an AttributeError and don't need the bitfield
     # entry.)
     error_overlap = False
+    dependencies: tuple[Dependency, ...] | None = None
 
     @abstractmethod
     def accept(self, visitor: RTypeVisitor[T]) -> T:
@@ -135,6 +136,8 @@ def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
         return RTuple.deserialize(data, ctx)
     elif data[".class"] == "RUnion":
         return RUnion.deserialize(data, ctx)
+    elif data[".class"] == "RVec":
+        return RVec.deserialize(data, ctx)
     raise NotImplementedError("unexpected .class {}".format(data[".class"]))
 
 
@@ -147,6 +150,10 @@ class RTypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_rinstance(self, typ: RInstance, /) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rvec(self, typ: RVec, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -168,6 +175,10 @@ class RTypeVisitor(Generic[T]):
     @abstractmethod
     def visit_rvoid(self, typ: RVoid, /) -> T:
         raise NotImplementedError
+
+
+# These types are implemented as C structs.
+RStructLike = Union["RStruct", "RVec"]
 
 
 @final
@@ -233,6 +244,7 @@ class RPrimitive(RType):
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
         may_be_immortal: bool = True,
+        dependencies: tuple[Dependency, ...] | None = None,
     ) -> None:
         RPrimitive.primitive_map[name] = self
 
@@ -245,6 +257,7 @@ class RPrimitive(RType):
         self.size = size
         self.error_overlap = error_overlap
         self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
+        self.dependencies = dependencies
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
         elif ctype in ("int16_t", "int32_t", "int64_t"):
@@ -307,6 +320,12 @@ object_rprimitive: Final = RPrimitive("builtins.object", is_unboxed=False, is_re
 # represents a low level pointer of an object
 object_pointer_rprimitive: Final = RPrimitive(
     "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **"
+)
+
+# Similar to object_primitive, but does not use automatic reference
+# counting. Useful for temporaries.
+object_non_refcounted_rprimitive: Final = RPrimitive(
+    "builtins.object_nrc", is_unboxed=False, is_refcounted=False
 )
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
@@ -505,6 +524,11 @@ str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcount
 # Python bytes object.
 bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
 
+# Python bytearray object.
+bytearray_rprimitive: Final = RPrimitive(
+    "builtins.bytearray", is_unboxed=False, is_refcounted=True
+)
+
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
 tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
@@ -513,9 +537,17 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 KNOWN_NATIVE_TYPES: Final = {
-    name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
-    for name in ["librt.internal.Buffer"]
+    name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
+    for name in [
+        "librt.internal.WriteBuffer",
+        "librt.internal.ReadBuffer",
+        "librt.strings.BytesWriter",
+        "librt.strings.StringWriter",
+    ]
 }
+
+bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
+string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
@@ -524,6 +556,10 @@ def is_native_rprimitive(rtype: RType) -> bool:
 
 def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
+
+
+def is_any_int(rtype: RType) -> bool:
+    return is_tagged(rtype) or is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
 
 
 def is_int_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
@@ -627,6 +663,10 @@ def is_bytes_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytes"
 
 
+def is_bytearray_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytearray"
+
+
 def is_tuple_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.tuple"
 
@@ -641,6 +681,7 @@ def is_sequence_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
         or is_tuple_rprimitive(rtype)
         or is_str_rprimitive(rtype)
         or is_bytes_rprimitive(rtype)
+        or is_bytearray_rprimitive(rtype)
     )
 
 
@@ -658,6 +699,12 @@ class TupleNameVisitor(RTypeVisitor[str]):
 
     def visit_rinstance(self, t: RInstance) -> str:
         return "O"
+
+    def visit_rvec(self, t: RVec) -> str:
+        if isinstance(t.item_type, RVec):
+            # All nested vecs share a representation
+            return "Vv"
+        return "V" + t.item_type.accept(self)
 
     def visit_runion(self, t: RUnion) -> str:
         return "O"
@@ -685,6 +732,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return "T{}{}".format(len(parts), "".join(parts))
 
     def visit_rstruct(self, t: RStruct) -> str:
+        if t.name == "VecNestedBufItem":
+            return "Vi"
         assert False, "RStruct not supported in tuple"
 
     def visit_rarray(self, t: RArray) -> str:
@@ -844,12 +893,20 @@ class RStruct(RType):
         self.name = name
         self.names = names
         self.types = types
+        self.is_refcounted = any(t.is_refcounted for t in self.types)
+
         # generate dummy names
         if len(self.names) < len(self.types):
             for i in range(len(self.types) - len(self.names)):
                 self.names.append("_item" + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = name
+
+    def field_type(self, name: str) -> RType:
+        for n, t in zip(self.names, self.types):
+            if n == name:
+                return t
+        assert False, f"{self.name} has no field '{name}'"
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
@@ -949,6 +1006,105 @@ class RInstance(RType):
 
     def serialize(self) -> str:
         return self.name
+
+
+@final
+class RVec(RType):
+    """librt.vecs.vec[T]"""
+
+    is_unboxed = True
+
+    def __init__(self, item_type: RType) -> None:
+        self.name = "vec[%s]" % item_type
+        self.item_type = item_type
+        self.names = ["len", "buf"]
+        self.dependencies = (LIBRT_VECS,)
+        if isinstance(item_type, RUnion):
+            non_opt = optional_value_type(item_type)
+        else:
+            non_opt = item_type
+        if item_type in vec_buf_types:
+            self._ctype = vec_c_types[item_type]
+            self.buf_type = vec_buf_types[item_type]
+            self.types = [c_pyssize_t_rprimitive, self.buf_type]
+        elif isinstance(non_opt, RVec):
+            self._ctype = "VecNested"
+            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
+            self.buf_type = VecNestedBufObject
+        else:
+            self._ctype = "VecT"
+            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
+            self.buf_type = VecTBufObject
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
+    def unwrap_item_type(self) -> RPrimitive | RInstance:
+        """Return the non-optional value (non-vec) item type in a potentially nested vec."""
+        item_type = self.item_type
+        while True:
+            if isinstance(item_type, RUnion):
+                value_type = optional_value_type(item_type)
+                assert value_type is not None
+                item_type = value_type
+            elif isinstance(item_type, RVec):
+                item_type = item_type.item_type
+            elif isinstance(item_type, (RPrimitive, RInstance)):
+                return item_type
+            else:
+                assert False, f"unexpected item type: {self.item_type}"
+
+    def is_optional(self) -> bool:
+        item_type = self.item_type
+        if isinstance(item_type, RUnion):
+            return True
+        elif isinstance(item_type, RVec):
+            return item_type.is_optional()
+        return False
+
+    def depth(self) -> int:
+        item_type = self.item_type
+        if isinstance(item_type, RUnion):
+            value_type = optional_value_type(item_type)
+            assert value_type is not None
+            item_type = value_type
+        if isinstance(item_type, RVec):
+            return 1 + item_type.depth()
+        return 0
+
+    def field_type(self, name: str) -> RType:
+        if name == "len":
+            return c_pyssize_t_rprimitive
+        elif name == "buf":
+            return object_rprimitive
+        assert False, f"RVec has no field '{name}'"
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        return visitor.visit_rvec(self)
+
+    def __str__(self) -> str:
+        if self.is_optional() and self.depth() == 0:
+            type_str = f"{self.unwrap_item_type()} | None"
+        else:
+            type_str = str(self.item_type)
+        return f"vec[{type_str}]"
+
+    def __repr__(self) -> str:
+        return "<RVec[%s]>" % self.item_type
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RVec) and other.item_type == self.item_type
+
+    def __hash__(self) -> int:
+        return hash(self.item_type) ^ 1
+
+    def serialize(self) -> JsonDict:
+        return {".class": "RVec", "item_type": self.item_type.serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RVec:
+        return RVec(deserialize_type(data["item_type"], ctx))
 
 
 @final
@@ -1146,3 +1302,143 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
     else:
         limit = 1 << (rtype.size * 8 - 1)
         return -limit <= n < limit
+
+
+# Buffers for vec item types that have a packed representation
+#
+# Note that the 'items' fields are variable-length arrays, and mypyc IR isn't
+# able to represent these, so the field type is omitted for now.
+
+VecI64BufObject = RStruct(
+    name="VecI64BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecI32BufObject = RStruct(
+    name="VecI32BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecI16BufObject = RStruct(
+    name="VecI16BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecU8BufObject = RStruct(
+    name="VecU8BufObject", names=["ob_base", "len", "items"], types=[PyVarObject, int64_rprimitive]
+)
+
+VecFloatBufObject = RStruct(
+    name="VecFloatBufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecBoolBufObject = RStruct(
+    name="VecBoolBufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+
+# Struct type for vec[i64] (in most cases use RVec instead).
+VecI64 = RStruct(
+    name="VecI64", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+)
+
+
+# Buffer for vec[t]
+VecTBufObject = RStruct(
+    name="VecTBufObject",
+    names=["ob_base", "item_type", "items"],
+    types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
+)
+
+# Struct type for vec[t] (in most cases use RVec instead).
+VecT = RStruct(
+    name="VecT", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+)
+
+VecNestedBufItem = RStruct(
+    name="VecNestedBufItem",
+    names=["len", "buf"],
+    types=[c_pyssize_t_rprimitive, object_non_refcounted_rprimitive],
+)
+
+# Buffer for vec[vec[t]]
+VecNestedBufObject = RStruct(
+    name="VecNestedBufObject",
+    names=["ob_base", "item_type", "depth", "optionals", "items"],
+    types=[
+        PyVarObject,
+        c_pyssize_t_rprimitive,
+        int32_rprimitive,
+        int32_rprimitive,
+        VecNestedBufItem,
+    ],
+)
+
+# Struct type for vec[vec[...]] (in most cases use RVec instead).
+VecNested = RStruct(
+    name="VecNested", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+)
+
+VecNestedBufObject_rprimitive = RPrimitive(
+    "VecNestedBufObject_ptr", is_unboxed=False, is_refcounted=True, ctype="VecNestedBufObject *"
+)
+
+VecNestedPopResult = RStruct(
+    name="VecNestedPopResult", names=["vec", "item"], types=[VecNested, VecNestedBufItem]
+)
+
+
+vec_buf_types: Final[dict[RType, RStruct]] = {
+    int64_rprimitive: VecI64BufObject,
+    int32_rprimitive: VecI32BufObject,
+    int16_rprimitive: VecI16BufObject,
+    uint8_rprimitive: VecU8BufObject,
+    float_rprimitive: VecFloatBufObject,
+    bool_rprimitive: VecBoolBufObject,
+}
+
+vec_c_types: Final[dict[RType, str]] = {
+    int64_rprimitive: "VecI64",
+    int32_rprimitive: "VecI32",
+    int16_rprimitive: "VecI16",
+    uint8_rprimitive: "VecU8",
+    float_rprimitive: "VecFloat",
+    bool_rprimitive: "VecBool",
+}
+
+vec_api_fields: Final[dict[RType, str]] = {
+    int64_rprimitive: "i64",
+    int32_rprimitive: "i32",
+    int16_rprimitive: "i16",
+    uint8_rprimitive: "u8",
+    float_rprimitive: "float_",
+    bool_rprimitive: "bool_",
+}
+
+vec_api_by_item_type: Final[dict[RType, str]] = {
+    int64_rprimitive: "VecI64Api",
+    int32_rprimitive: "VecI32Api",
+    int16_rprimitive: "VecI16Api",
+    uint8_rprimitive: "VecU8Api",
+    float_rprimitive: "VecFloatApi",
+    bool_rprimitive: "VecBoolApi",
+}
+
+# These are special item type constants used in nested vecs to represent
+# item types with specialized representations. These must match definitions
+# in the vecs module (see VEC_ITEM_TYPE_I64 etc.).
+vec_item_type_tags: Final[dict[RType, int]] = {
+    int64_rprimitive: 2,
+    int32_rprimitive: 6,
+    int16_rprimitive: 10,
+    uint8_rprimitive: 14,
+    float_rprimitive: 18,
+    bool_rprimitive: 22,
+}

@@ -13,6 +13,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __class__: object
     def __init__(self) -> None: pass
     def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
@@ -75,8 +76,7 @@ class float: pass
 class complex: pass
 class bool(int): pass
 
-class ellipsis:
-    __class__: object
+class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
 

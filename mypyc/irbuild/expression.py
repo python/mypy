@@ -7,8 +7,7 @@ and mypyc.irbuild.builder.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -50,7 +49,15 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    TypeOfAny,
+    TypeType,
+    get_proper_type,
+)
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -71,9 +78,12 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    RVec,
     bool_rprimitive,
     int_rprimitive,
+    is_any_int,
     is_fixed_width_rtype,
+    is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
@@ -89,6 +99,7 @@ from mypyc.irbuild.for_helpers import (
     raise_error_if_contains_unreachable_names,
     translate_list_comprehension,
     translate_set_comprehension,
+    translate_vec_comprehension,
 )
 from mypyc.irbuild.format_str_tokenizer import (
     convert_format_expr_to_bytes,
@@ -98,10 +109,18 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import (
+    apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
     translate_object_setattr,
+)
+from mypyc.irbuild.vec import (
+    vec_append,
+    vec_create,
+    vec_create_from_values,
+    vec_create_initialized,
+    vec_slice,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
@@ -127,33 +146,31 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
                 RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
-        return builder.none()
+        return builder.none(expr.line)
     fullname = expr.node.fullname
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
         return builder.add(LoadAddress(typ, src, expr.line))
     # special cases
     if fullname == "builtins.None":
-        return builder.none()
+        return builder.none(expr.line)
     if fullname == "builtins.True":
-        return builder.true()
+        return builder.true(expr.line)
     if fullname == "builtins.False":
-        return builder.false()
+        return builder.false(expr.line)
     if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
-    math_literal = transform_math_literal(builder, fullname)
+    math_literal = transform_math_literal(builder, fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
+        final_type = builder.types.get(expr) or expr.node.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            expr.node,
-            fullname,
-            expr.name,
-            builder.is_native_ref_expr(expr),
-            builder.types[expr],
-            expr.line,
+            expr.node, fullname, expr.name, builder.is_native_ref_expr(expr), final_type, expr.line
         )
         if value is not None:
             return value
@@ -202,19 +219,22 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     # Special Cases
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
-        return builder.false()
+        return builder.false(expr.line)
 
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
+        final_type = builder.types.get(expr) or final_var.type
+        if final_type is None:
+            final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            final_var, fullname, final_var.name, native, builder.types[expr], expr.line
+            final_var, fullname, final_var.name, native, final_type, expr.line
         )
         if value is not None:
             return value
 
-    math_literal = transform_math_literal(builder, expr.fullname)
+    math_literal = transform_math_literal(builder, expr.fullname, expr.line)
     if math_literal is not None:
         return math_literal
 
@@ -296,8 +316,8 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         # Grab first argument
         vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
-            # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[6]
+            # grab seventh argument (see comment in translate_super_method_call)
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -325,7 +345,19 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         return builder.accept(expr.args[0])
 
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
-        callee = callee.analyzed.expr  # Unwrap type application
+        analyzed = callee.analyzed
+        if (
+            isinstance(analyzed.expr, RefExpr)
+            and analyzed.expr.fullname == "librt.vecs.vec"
+            and len(analyzed.types) == 1
+        ):
+            item_type = builder.type_to_rtype(analyzed.types[0])
+            vec_type = RVec(item_type)
+            if len(expr.args) == 0:
+                return vec_create(builder.builder, vec_type, 0, expr.line)
+            elif len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+                return translate_vec_create_from_iterable(builder, vec_type, expr.args[0])
+        callee = analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
         if isinstance(callee.expr, RefExpr) and isinstance(callee.expr.node, MypyFile):
@@ -504,18 +536,77 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 6th value
+            # For generator classes, the self target is the 7th value
             # in the symbol table (which is an ordered dict). This is sort
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[6]
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)
         arg_names.insert(0, None)
 
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
+
+
+def translate_vec_create_from_iterable(
+    builder: IRBuilder, vec_type: RVec, arg: Expression
+) -> Value:
+    line = arg.line
+    item_type = vec_type.item_type
+    if isinstance(arg, OpExpr) and arg.op == "*":
+        if isinstance(arg.left, ListExpr):
+            lst = arg.left
+            other = arg.right
+        elif isinstance(arg.right, ListExpr):
+            lst = arg.right
+            other = arg.left
+        else:
+            assert False
+        assert len(lst.items) == 1
+        other_type = builder.node_type(other)
+        # TODO: is_any_int(...)
+        if is_int64_rprimitive(other_type) or is_int_rprimitive(other_type):
+            length = builder.accept(other)
+            init = builder.accept(lst.items[0])
+            return vec_create_initialized(builder.builder, vec_type, length, init, line)
+        assert False, other_type
+    if isinstance(arg, ListExpr):
+        items = []
+        for item in arg.items:
+            value = builder.accept(item)
+            items.append(builder.coerce(value, item_type, line))
+        return vec_create_from_values(builder.builder, vec_type, items, line)
+    if isinstance(arg, ListComprehension):
+        return translate_vec_comprehension(builder, vec_type, arg.generator)
+    return vec_from_iterable(builder, vec_type, arg, line)
+
+
+def vec_from_iterable(
+    builder: IRBuilder, vec_type: RVec, iterable: Expression, line: int
+) -> Value:
+    """Construct a vec from an arbitrary iterable."""
+    # Translate it as a vec comprehension vec[t]([<name> for <name> in
+    # iterable]). This way we can use various special casing supported
+    # by for loops and comprehensions.
+    vec = Register(vec_type)
+    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line), line)
+    name = f"___tmp_{line}"
+    var = Var(name)
+    reg = builder.add_local(var, vec_type.item_type)
+    index = NameExpr(name)
+    index.kind = LDEF
+    index.node = var
+    loop_params: list[tuple[Expression, Expression, list[Expression], bool]] = [
+        (index, iterable, [], False)
+    ]
+
+    def gen_inner_stmts() -> None:
+        builder.assign(vec, vec_append(builder.builder, vec, reg, line), line)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, line)
+    return vec
 
 
 def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
@@ -578,15 +669,23 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
         return expr
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
-        return OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr = OpExpr(">>", expr.left, IntExpr(shift))
+        new_expr.line = expr.line
+        return new_expr
     return expr
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    is_list = is_list_rprimitive(base_type)
-    can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
+
+    # Check for dunder specialization for non-slice indexing
+    if not isinstance(index, SliceExpr):
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
+        if specialized is not None:
+            return specialized
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
@@ -602,9 +701,9 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index, can_borrow=is_list)
-    return builder.gen_method_call(
-        base, "__getitem__", [index_reg], builder.node_type(expr), expr.line
+    index_reg = builder.accept(expr.index, can_borrow=can_borrow)
+    return builder.builder.get_item(
+        base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
     )
 
 
@@ -640,7 +739,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value
         end_type = int_rprimitive
 
     # Both begin and end index must be int (or missing).
-    if is_int_rprimitive(begin_type) and is_int_rprimitive(end_type):
+    if is_any_int(begin_type) and is_any_int(end_type):
         if index.begin_index:
             begin = builder.accept(index.begin_index)
         else:
@@ -651,6 +750,8 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value
             # Replace missing end index with the largest short integer
             # (a sequence can't be longer).
             end = builder.load_int(MAX_SHORT_INT)
+        if isinstance(base.type, RVec):
+            return vec_slice(builder.builder, base, begin, end, index.line)
         candidates = [list_slice_op, tuple_slice_op, str_slice_op, bytes_slice_op]
         return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
 
@@ -668,13 +769,13 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.activate_block(if_body)
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
-    builder.add(Assign(target, true_value))
+    builder.add(Assign(target, true_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(else_body)
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
-    builder.add(Assign(target, false_value))
+    builder.add(Assign(target, false_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(next_block)
@@ -865,6 +966,14 @@ def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Va
 def transform_basic_comparison(
     builder: IRBuilder, op: str, left: Value, right: Value, line: int
 ) -> Value:
+    """Transform single comparison.
+
+    'op' must be one of these:
+
+       '==', '!=', '<', '<=', '>', '>='
+       'in', 'not in'
+       'is', 'is not'
+    """
     if is_fixed_width_rtype(left.type) and op in ComparisonOp.signed_ops:
         if right.type == left.type:
             if left.type.is_signed:
@@ -1075,10 +1184,10 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.call_c(exact_dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
-    return builder.read(d)
+    return builder.read(d, o.line)
 
 
 # Misc
@@ -1107,16 +1216,16 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     return value
 
 
-def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+def transform_math_literal(builder: IRBuilder, fullname: str, line: int) -> Value | None:
     if fullname == "math.e":
-        return builder.load_float(math.e)
+        return builder.load_float(math.e, line)
     if fullname == "math.pi":
-        return builder.load_float(math.pi)
+        return builder.load_float(math.pi, line)
     if fullname == "math.inf":
-        return builder.load_float(math.inf)
+        return builder.load_float(math.inf, line)
     if fullname == "math.nan":
-        return builder.load_float(math.nan)
+        return builder.load_float(math.nan, line)
     if fullname == "math.tau":
-        return builder.load_float(math.tau)
+        return builder.load_float(math.tau, line)
 
     return None

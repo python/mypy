@@ -118,9 +118,8 @@ import os
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import Callable, Final, NamedTuple, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from collections.abc import Callable, Sequence
+from typing import Final, NamedTuple, TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -137,6 +136,7 @@ from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
+    Context,
     Decorator,
     FuncDef,
     ImportFrom,
@@ -296,7 +296,7 @@ class FineGrainedBuildManager:
                 if not changed_modules:
                     # Preserve state needed for the next update.
                     self.previous_targets_with_errors = self.manager.errors.targets()
-                    messages = self.manager.errors.new_messages()
+                    messages = self.manager.errors.new_messages(self.resolve_location_cb)
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
@@ -320,8 +320,11 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages().copy()
+        self.previous_messages = self.manager.errors.new_messages(self.resolve_location_cb).copy()
         return self.update(changed_modules, [])
+
+    def resolve_location_cb(self, fullname: str) -> Context | None:
+        return self.manager.resolve_location(self.graph, fullname)
 
     def flush_cache(self) -> None:
         """Flush AST cache.
@@ -555,7 +558,7 @@ class BlockedUpdate(NamedTuple):
     messages: list[str]
 
 
-UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = NormalUpdate | BlockedUpdate
 
 
 def update_module_isolated(
@@ -631,6 +634,8 @@ def update_module_isolated(
 
     # Find any other modules brought in by imports.
     changed_modules = [(st.id, st.xpath) for st in new_modules]
+    for m in new_modules:
+        manager.import_map[m.id] = set(m.dependencies + m.suppressed)
 
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
