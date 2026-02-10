@@ -299,9 +299,11 @@ def test_read_i16_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00\x00")
+            read_func(bad2, 0 + int())
 
 def test_bytes_writer_write_i16_be() -> None:
     # Test various i16 values from 1-byte to 2-byte range
@@ -465,9 +467,11 @@ def test_read_i32_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00\x00\x00\x00"), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00\x00\x00\x00")
+            read_func(bad2, 0 + int())
 
 def test_bytes_writer_write_i64_le() -> None:
     # Test all i64 values (includes all i32 values plus 5-8 byte values)
@@ -596,9 +600,11 @@ def test_read_i64_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00" * 8), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00" * 8)
+            read_func(bad2, 0 + int())
 
 def test_bytes_writer_write_f64_le() -> None:
     # Test various f64 values
@@ -737,9 +743,11 @@ def test_read_f64_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00" * 8), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00" * 8)
+            read_func(bad2, 0 + int())
 
 def test_write_f64_via_any() -> None:
     import math
@@ -775,7 +783,8 @@ def test_write_f64_via_any() -> None:
         # Test wrong type
         w4: Any = BytesWriter()
         with assertRaises(TypeError):
-            write_func(w4, "not a float" + str())  # type: ignore
+            bad: Any = "not a float" + str()
+            write_func(w4, bad)
 
 def test_bytes_writer_write_f32_le() -> None:
     import struct as s
@@ -861,7 +870,8 @@ def test_write_f32_via_any() -> None:
         # Test wrong type
         w4: Any = BytesWriter()
         with assertRaises(TypeError):
-            write_func(w4, "not a float" + str())  # type: ignore
+            bad: Any = "not a float" + str()
+            write_func(w4, bad)
 
 def test_bytes_reader_read_f32_le() -> None:
     import math
@@ -960,9 +970,11 @@ def test_read_f32_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00" * 4), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00" * 4)
+            read_func(bad2, 0 + int())
 
 def test_write_bytearray() -> None:
     w = BytesWriter()
