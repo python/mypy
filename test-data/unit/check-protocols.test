@@ -1467,6 +1467,7 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
 x = f(g)
 reveal_type(x)  # N: Revealed type is "None"
+
 [case testMeetProtocolWithNormal]
 from typing import Protocol, Callable, TypeVar
 
@@ -2939,7 +2940,25 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
+from typing import Protocol
+
+class Hashable(Protocol):
+    def __hash__(self) -> int: ...
+
+class ObjectHashable:
+    def __hash__(self) -> int: ...
+
+class DataArray(ObjectHashable):
+    __hash__ = None
+
+    def f(self, x: Hashable) -> None:
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
+[builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocolHashableLocalPartialTypes]
+# flags: --no-strict-optional --local-partial-types
 from typing import Protocol
 
 class Hashable(Protocol):
@@ -3609,7 +3628,7 @@ test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P"
          # N:     Expected: \
          # N:         def __call__(x: int, y: int) -> Any \
          # N:     Got: \
-         # N:         def __init__(x: int, y: str) -> C \
+         # N:         def C(x: int, y: str) -> C \
          # N: "P.__call__" has type "def __call__(self, x: int, y: int) -> Any"
 
 [case testProtocolClassObjectPureCallback]
@@ -3631,7 +3650,7 @@ test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P"
          # N:     Expected: \
          # N:         def __call__(x: int, y: int) -> Any \
          # N:     Got: \
-         # N:         def __init__(x: int, y: str) -> C \
+         # N:         def C(x: int, y: str) -> C \
          # N: "P.__call__" has type "def __call__(self, x: int, y: int) -> Any"
 [builtins fixtures/type.pyi]
 
@@ -3654,7 +3673,7 @@ p: P = C  # E: Incompatible types in assignment (expression has type "type[C]", 
           # N:     Expected: \
           # N:         def __call__(app: int) -> Callable[[str], None] \
           # N:     Got: \
-          # N:         def __init__(app: str) -> C \
+          # N:         def C(app: str) -> C \
           # N: "P.__call__" has type "def __call__(self, app: int) -> Callable[[str], None]"
 
 [builtins fixtures/type.pyi]
@@ -3890,7 +3909,7 @@ other_flag = False
 def update() -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationClassObject_no_parallel]
+[case testModuleAsProtocolImplementationClassObject]
 import runner
 import bad_runner
 from typing import Callable, Protocol
@@ -3909,7 +3928,7 @@ run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
-                 # N:         def __init__(arg: str) -> Run
+                 # N:         def Run(arg: str) -> Run
 
 [file runner.py]
 class Run:
@@ -3922,7 +3941,7 @@ class Run:
     def __init__(self, arg: str) -> None: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationTypeAlias_no_parallel]
+[case testModuleAsProtocolImplementationTypeAlias]
 import runner
 import bad_runner
 from typing import Callable, Protocol
@@ -3941,7 +3960,7 @@ run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
-                 # N:         def __init__(arg: str) -> Run
+                 # N:         def Run(arg: str) -> Run
 
 [file runner.py]
 class Run:
@@ -4674,3 +4693,55 @@ class Impl:
         pass
 
 x: Proto = Impl()
+
+[case testIndirectDependencyOnProtocolIncremental]
+import a
+[file a.py]
+from b import P
+
+class CNested:
+    def f(self) -> int: ...
+class C:
+    def f(self) -> CNested: ...
+
+x: P = C()
+
+[file b.py]
+from typing import Protocol
+from c import PNested
+
+class P(Protocol):
+    def f(self) -> PNested: ...
+
+[file c.py]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+
+[file c.py.2]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> int: ...
+
+[file c.py.3]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+[out]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested
+[out2]
+[out3]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested

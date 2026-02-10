@@ -1432,16 +1432,16 @@ async def identity_async(val: int) -> int:
 F = TypeVar("F", bound=Callable[..., Any])
 
 def wrap(fn: F) -> F:
+    if is_coroutine(fn):
+        @wraps(fn)
+        async def wrapper_async(*args) -> Any:
+            return await fn(*args) + await fn(*args)
+
+        return cast(F, wrapper_async)
+
     @wraps(fn)
     def wrapper(*args) -> Any:
         return fn(*args) + fn(*args)
-
-    return cast(F, wrapper)
-
-def wrap_async(fn: F) -> F:
-    @wraps(fn)
-    async def wrapper(*args) -> Any:
-        return await fn(*args) + await fn(*args)
 
     return cast(F, wrapper)
 
@@ -1449,9 +1449,17 @@ def wrap_async(fn: F) -> F:
 def wrapped(val: int) -> int:
     return val
 
-@wrap_async
+@wrap
+def wrapped2(val: int) -> int:
+    return val * 2
+
+@wrap
 async def wrapped_async(val: int) -> int:
     return val
+
+@wrap
+async def wrapped2_async(val: int) -> int:
+    return val * 2
 
 class T:
     def returns_one(self) -> int:
@@ -1464,7 +1472,7 @@ class T:
     def returns_two(self) -> int:
         return 1
 
-    @wrap_async
+    @wrap
     async def returns_two_async(self) -> int:
         return 1
 
@@ -1485,7 +1493,7 @@ class T:
         return 3
 
 def is_coroutine(fn):
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # type: ignore[operator]
         return inspect.iscoroutinefunction(fn)
 
     # inspect on older python versions does not support function-like objects.
@@ -1517,6 +1525,16 @@ def test_function() -> None:
     assert not is_coroutine(wrapped)
     assert is_coroutine(wrapped_async)
     assert asyncio.run(wrapped_async(22)) == 44
+
+    assert getattr(wrapped, "__name__") == "wrapped", getattr(wrapped, "__name__")
+    assert getattr(wrapped2, "__name__") == "wrapped2", getattr(wrapped2, "__name__")
+
+    assert getattr(wrapped_async, "__name__") == "wrapped_async", getattr(wrapped_async, "__name__")
+    assert getattr(wrapped2_async, "__name__") == "wrapped2_async", getattr(wrapped2_async, "__name__")
+
+    setattr(wrapped_async, "__name__", "new name")
+    assert getattr(wrapped_async, "__name__") == "new name", getattr(wrapped_async, "__name__")
+    assert getattr(wrapped2_async, "__name__") == "wrapped2_async", getattr(wrapped2_async, "__name__")
 
 def test_method() -> None:
     assert not is_coroutine(T.returns_one)
@@ -1551,7 +1569,7 @@ def test_nested() -> None:
     def nested_wrapped() -> int:
         return 2
 
-    @wrap_async
+    @wrap
     async def nested_wrapped_async() -> int:
         return 2
 
@@ -1572,4 +1590,287 @@ def test_nested() -> None:
     assert asyncio.run(nested_wrapped_async()) == 4
 
 [file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testFuture]
+import asyncio
+from typing import Any, Awaitable
+
+from testutil import assertRaises
+
+from m import (
+    m_future_with_result,
+    m_future_with_exception,
+    m_future_with_caught_exception,
+    m_future_with_reraised_exception
+)
+
+async def set_result(fut: asyncio.Future, result: Any) -> None:
+    if isinstance(result, Exception):
+        fut.set_exception(result)
+    else:
+        fut.set_result(result)
+
+def make_future(result: Any) -> asyncio.Future:
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    loop.create_task(set_result(fut, result))
+    return fut
+
+async def future_with_result(result: int) -> int:
+    return await make_future(result)
+
+async def future_with_exception(exception: Exception) -> Any:
+    return await make_future(exception)
+
+async def future_with_caught_exception(exception: Exception) -> None:
+    try:
+        return await make_future(exception)
+    except type(exception):
+        return None
+
+async def future_with_reraised_exception(first_exc: Exception, second_exc: Exception) -> Any:
+    try:
+        return await make_future(first_exc)
+    except type(first_exc):
+        raise second_exc
+
+def test_future() -> None:
+    assert asyncio.run(future_with_result(42)) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(future_with_exception(ValueError("error")))
+
+    assert asyncio.run(future_with_caught_exception(ValueError("error"))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(future_with_reraised_exception(ValueError("error"), RuntimeError("reraised")))
+
+class ctx_man:
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+async def wrap(f: Awaitable) -> Any:
+    with ctx_man():
+        return await f
+
+def test_future_with_context_manager() -> None:
+    assert asyncio.run(wrap(future_with_result(42))) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(wrap(future_with_exception(ValueError("error"))))
+
+    assert asyncio.run(wrap(future_with_caught_exception(ValueError("error")))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(wrap(future_with_reraised_exception(ValueError("error"), RuntimeError("reraised"))))
+
+def test_interpreted_future() -> None:
+    assert asyncio.run(m_future_with_result(42)) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(m_future_with_exception(ValueError("error")))
+
+    assert asyncio.run(m_future_with_caught_exception(ValueError("error"))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(m_future_with_reraised_exception(ValueError("error"), RuntimeError("reraised")))
+
+def test_interpreted_future_with_context_manager() -> None:
+    assert asyncio.run(wrap(m_future_with_result(42))) == 42
+
+    with assertRaises(ValueError, "error"):
+        asyncio.run(wrap(m_future_with_exception(ValueError("error"))))
+
+    assert asyncio.run(wrap(m_future_with_caught_exception(ValueError("error")))) == None
+
+    with assertRaises(RuntimeError, "reraised"):
+        asyncio.run(wrap(m_future_with_reraised_exception(ValueError("error"), RuntimeError("reraised"))))
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
+
+class Future:
+    def set_result(self, result: object) -> None: ...
+    def set_exception(self, exception: object) -> None: ...
+    def __await__(self) -> Generator[Any, Any, Any]: ...
+
+class Loop:
+    def create_future(self) -> Future: ...
+    def create_task(self, x: object) -> None: ...
+
+def get_running_loop() -> Loop: ...
+
+[file m.py]
+import asyncio
+from typing import Any
+
+async def set_result(fut: asyncio.Future, result: Any) -> None:
+    if isinstance(result, Exception):
+        fut.set_exception(result)
+    else:
+        fut.set_result(result)
+
+def make_future(result: Any) -> asyncio.Future:
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    loop.create_task(set_result(fut, result))
+    return fut
+
+async def m_future_with_result(result: int) -> int:
+    return await make_future(result)
+
+async def m_future_with_exception(exception: Exception) -> Any:
+    return await make_future(exception)
+
+async def m_future_with_caught_exception(exception: Exception) -> None:
+    try:
+        return await make_future(exception)
+    except type(exception):
+        return None
+
+async def m_future_with_reraised_exception(first_exc: Exception, second_exc: Exception) -> Any:
+    try:
+        return await make_future(first_exc)
+    except type(first_exc):
+        raise second_exc
+
+[case testCPyFunctionWithFreedInstance]
+import asyncio
+
+from functools import wraps
+from typing import Any
+
+class ctx_man:
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+def with_ctx_man():
+    def decorator(f):
+        @wraps(f)
+        async def inner():
+            async with ctx_man():
+                return await f()
+
+        return inner
+
+    return decorator
+
+async def func() -> int:
+    return 33
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_native():
+    assert asyncio.run(run_wrapped()) == 33
+
+[file driver.py]
+import asyncio
+
+from native import test_native, with_ctx_man
+
+async def func() -> int:
+    return 42
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_interpreted():
+    assert asyncio.run(run_wrapped()) == 42
+
+# Run multiple times to test that the CPyFunction attribute is still
+# set correctly after reusing a freed instance of the inner callable class object.
+for i in range(10):
+    test_interpreted()
+    test_native()
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
+
+[case testNestedCoroutineCallsAnotherNestedFunction]
+import asyncio
+import functools
+import inspect
+from typing import Any, Callable, TypeVar, cast
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def mult_different_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper_async(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+            wrapper = wrapper_async
+        else:
+            @functools.wraps(fn)
+            def wrapper_non_async(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+            wrapper = wrapper_non_async
+
+        return cast(F, wrapper)
+
+    return decorate
+
+def mult_same_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+        else:
+            @functools.wraps(fn)
+            def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+
+        return cast(F, wrapper)
+
+    return decorate
+
+@mult_different_wrapper_names(3)
+def identity(x: int):
+    return x
+
+@mult_different_wrapper_names(5)
+async def async_identity(x: int):
+    return x
+
+@mult_same_wrapper_names(2)
+def times_two(x: int):
+    return x * 2
+
+@mult_same_wrapper_names(4)
+async def async_times_two(x: int):
+    return x * 2
+
+def test_nested_coroutine_calls_another_nested_function():
+    assert identity(1) == 3
+    assert asyncio.run(async_identity(2)) == 10
+
+    assert times_two(3) == 12
+    assert asyncio.run(async_times_two(4)) == 32
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
 def run(x: object) -> object: ...

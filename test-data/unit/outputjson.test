@@ -18,7 +18,7 @@ def foo() -> None:
 
 foo(1)
 [out]
-{"file": "main", "line": 5, "column": 0, "message": "Too many arguments for \"foo\"", "hint": null, "code": "call-arg", "severity": "error"}
+{"file": "main", "line": 5, "column": 0, "end_line": 5, "end_column": 6, "message": "Too many arguments for \"foo\"", "hint": null, "code": "call-arg", "severity": "error"}
 
 [case testOutputJsonWithHint]
 # flags: --output=json
@@ -39,6 +39,6 @@ foo('42')
 def bar() -> None: ...
 bar('42')
 [out]
-{"file": "main", "line": 12, "column": 12, "message": "Revealed type is \"Overload(def (), def (x: builtins.int))\"", "hint": null, "code": "misc", "severity": "note"}
-{"file": "main", "line": 14, "column": 0, "message": "No overload variant of \"foo\" matches argument type \"str\"", "hint": "Possible overload variants:\n    def foo() -> None\n    def foo(x: int) -> None", "code": "call-overload", "severity": "error"}
-{"file": "main", "line": 17, "column": 0, "message": "Too many arguments for \"bar\"", "hint": null, "code": "call-arg", "severity": "error"}
+{"file": "main", "line": 12, "column": 12, "end_line": 12, "end_column": 15, "message": "Revealed type is \"Overload(def (), def (x: builtins.int))\"", "hint": null, "code": "misc", "severity": "note"}
+{"file": "main", "line": 14, "column": 0, "end_line": 14, "end_column": 9, "message": "No overload variant of \"foo\" matches argument type \"str\"", "hint": "Possible overload variants:\n    def foo() -> None\n    def foo(x: int) -> None", "code": "call-overload", "severity": "error"}
+{"file": "main", "line": 17, "column": 0, "end_line": 17, "end_column": 9, "message": "Too many arguments for \"bar\"", "hint": null, "code": "call-arg", "severity": "error"}

@@ -28,6 +28,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
+    CPYFUNCTION_NAME,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
@@ -652,7 +653,7 @@ def generate_setup_for_class(
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
             if value != "NULL":
-                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
+                emitter.set_undefined_value(f"self->{emitter.attr(attr)}", rtype)
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -1192,10 +1193,11 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
-        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line("} else {")
+        emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -1281,10 +1283,26 @@ def generate_coroutine_setup(
     emitter.emit_line(f"{NATIVE_PREFIX}{coroutine_setup_name}(PyObject *type)")
     emitter.emit_line("{")
 
-    if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
+    error_stmt = "    return 2;"
+
+    def emit_instance(fn: FuncIR, fn_name: str) -> str:
+        filepath = emitter.filepath or ""
+        return emitter.emit_cpyfunction_instance(fn, fn_name, filepath, error_stmt)
+
+    def success() -> None:
         emitter.emit_line("return 1;")
         emitter.emit_line("}")
-        return
+
+    if cl.coroutine_name:
+        # Callable class generated for a coroutine. It stores its function wrapper as an attribute.
+        wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
+        struct_name = cl.struct_name(emitter.names)
+        attr = emitter.attr(CPYFUNCTION_NAME)
+        emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
+        return success()
+
+    if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
+        return success()
 
     emitter.emit_line("PyTypeObject *tp = (PyTypeObject *)type;")
 
@@ -1292,10 +1310,8 @@ def generate_coroutine_setup(
         if not fn.decl.is_coroutine:
             continue
 
-        filepath = emitter.filepath or ""
-        error_stmt = "    return 2;"
         name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
-        wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
+        wrapper_name = emit_instance(fn, name)
         name_obj = f"{wrapper_name}_name"
         emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
         emitter.emit_line(f"if (unlikely(!{name_obj}))")
@@ -1303,5 +1319,4 @@ def generate_coroutine_setup(
         emitter.emit_line(f"if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)")
         emitter.emit_line(error_stmt)
 
-    emitter.emit_line("return 1;")
-    emitter.emit_line("}")
+    return success()

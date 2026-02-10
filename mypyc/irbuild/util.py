@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, Literal, TypedDict, cast
+from typing import Any, Final, Literal, TypedDict
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -138,7 +138,6 @@ def get_mypyc_attrs(
 
     def set_mypyc_attr(key: str, value: Any, line: int) -> None:
         if key in MYPYC_ATTRS:
-            key = cast(MypycAttr, key)
             attrs[key] = value
             lines[key] = line
         else:

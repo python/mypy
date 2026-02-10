@@ -634,7 +634,7 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (if_block_with_overload, if_unknown_truth_value) = (
+                    if_block_with_overload, if_unknown_truth_value = (
                         self._get_executable_if_block_with_overloads(stmt)
                     )
 
@@ -1001,21 +1001,21 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEPARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,

@@ -3243,3 +3243,22 @@ tmp/b.py:3: note:      Superclass:
 tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental]
+import a
+[file a.py]
+import b  # type: ignore[import]
+[file b.py]
+[delete b.py.2]
+[out]
+[out2]
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental2]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b  # type: ignore[import-not-found]
+[file b.py.2]
+[out]
+[out2]
+tmp/a.py:1: error: Unused "type: ignore" comment

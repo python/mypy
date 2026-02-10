@@ -89,33 +89,33 @@ else:
             Extension(
                 "librt.internal",
                 [
-                    "librt_internal.c",
+                    "internal/librt_internal.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "internal"],
                 extra_compile_args=cflags,
             ),
             Extension(
                 "librt.strings",
                 [
-                    "librt_strings.c",
+                    "strings/librt_strings.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
                     "getargsfast.c",
                 ],
-                include_dirs=["."],
+                include_dirs=[".", "strings"],
                 extra_compile_args=cflags,
             ),
             Extension(
                 "librt.base64",
                 [
-                    "librt_base64.c",
+                    "base64/librt_base64.c",
                     "base64/lib.c",
                     "base64/codec_choose.c",
                     "base64/tables/tables.c",
@@ -131,6 +131,25 @@ else:
                 ],
                 include_dirs=[".", "base64"],
                 extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.vecs",
+                [
+                    "vecs/librt_vecs.c",
+                    "vecs/vec_i64.c",
+                    "vecs/vec_i32.c",
+                    "vecs/vec_i16.c",
+                    "vecs/vec_u8.c",
+                    "vecs/vec_float.c",
+                    "vecs/vec_bool.c",
+                    "vecs/vec_t.c",
+                    "vecs/vec_nested.c",
+                ],
+                include_dirs=[".", "vecs"],
+                extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.time", ["time/librt_time.c"], include_dirs=["."], extra_compile_args=cflags
             ),
         ]
     )

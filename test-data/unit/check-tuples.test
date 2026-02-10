@@ -1533,17 +1533,24 @@ reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleOverlapDifferentTuples]
+# flags: --warn-unreachable
 from typing import Optional, Tuple
 class A: pass
 class B: pass
 
-possibles: Tuple[int, Tuple[A]]
-x: Optional[Tuple[B]]
+def f1(possibles: Tuple[int, Tuple[A]], x: Optional[Tuple[B]]):
+    if x in possibles:
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.B]"
+    else:
+        reveal_type(x) # N: Revealed type is "tuple[__main__.B] | None"
 
-if x in possibles:
-    reveal_type(x) # N: Revealed type is "tuple[__main__.B]"
-else:
-    reveal_type(x) # N: Revealed type is "tuple[__main__.B] | None"
+class AA(A): pass
+
+def f2(possibles: Tuple[int, Tuple[A]], x: Optional[Tuple[AA]]):
+    if x in possibles:
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.AA]"
+    else:
+        reveal_type(x) # N: Revealed type is "tuple[__main__.AA] | None"
 
 [builtins fixtures/tuple.pyi]
 

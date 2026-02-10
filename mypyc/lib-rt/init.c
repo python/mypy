@@ -1,5 +1,6 @@
 #include <Python.h>
 #include "CPy.h"
+#include "static_data.c"
 
 struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
 PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;

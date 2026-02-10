@@ -114,6 +114,9 @@ def build_ir_for_single_file2(
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
+    options.strict_bytes = True
+    options.disable_bytearray_promotion = True
+    options.disable_memoryview_promotion = True
     options.per_module_options["__main__"] = {"mypyc": True}
 
     source = build.BuildSource("main", "__main__", program_text)
@@ -272,7 +275,9 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 9))
+    options = CompilerOptions(
+        strip_asserts="StripAssert" in name, capi_version=(3, 9), strict_traceback_checks=True
+    )
     # A suffix like _python3_9 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
