@@ -6264,11 +6264,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 info.bases = obj_fallback.type.bases
                 info.fallback_to_any = True
                 fallback_instance = Instance(info, [])
-                
+
                 return {
                     expr: CallableType(
-                        [AnyType(TypeOfAny.from_another_any, source_any=proper_type),
-                         AnyType(TypeOfAny.from_another_any, source_any=proper_type)],
+                        [
+                            AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                            AnyType(TypeOfAny.from_another_any, source_any=proper_type),
+                        ],
                         [nodes.ARG_STAR, nodes.ARG_STAR2],
                         [None, None],
                         ret_type=AnyType(TypeOfAny.from_another_any, source_any=proper_type),

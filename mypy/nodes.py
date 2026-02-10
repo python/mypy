@@ -3829,7 +3829,9 @@ class TypeInfo(SymbolNode):
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or (self.fallback_to_any and not precise and self.fullname != "<any callable fallback>")
+            or (
+                self.fallback_to_any and not precise and self.fullname != "<any callable fallback>"
+            )
         )
 
     def has_base(self, fullname: str) -> bool:
