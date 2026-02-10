@@ -394,9 +394,7 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
             if res == WAIT_FAILED:
                 for _, ov in pending:
                     ov.cancel()
-                raise IPCException(
-                    f"Failed to wait for connections: {_winapi.GetLastError()}"
-                )
+                raise IPCException(f"Failed to wait for connections: {_winapi.GetLastError()}")
 
         # Check which pending operations completed, cancel the rest
         for i, ov in pending:
