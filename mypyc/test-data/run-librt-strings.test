@@ -5,7 +5,7 @@ import binascii
 import random
 import struct
 
-from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be
+from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be, write_f64_le, read_f64_le, write_f64_be, read_f64_be, write_f32_le, write_f32_be, read_f32_le, read_f32_be
 
 from testutil import assertRaises
 
@@ -38,6 +38,37 @@ I64_TEST_VALUES: list[int] = I32_TEST_VALUES + [
     -2147483649,          # just below i32 min
     -4294967296,          # -2^32
     -9223372036854775808, # min i64
+]
+
+# Test values for f64 write/read operations
+F64_TEST_VALUES: list[float] = [
+    0.0, -0.0, 1.0, -1.0,
+    -113.0,  # mypyc overlapping error value
+    0.5, -0.5, 0.1, -0.1,
+    1.5, 255.0, 256.0,
+    1e10, -1e10, 1e100, -1e100,
+    1e-10, 1e-100,
+    1.7976931348623157e+308,   # max float
+    -1.7976931348623157e+308,  # min float
+    2.2250738585072014e-308,   # min positive normal
+    5e-324,                    # min positive subnormal
+    float('inf'), float('-inf'),
+    float('nan'),
+]
+
+# Test values for f32 write/read operations (values that fit in 32-bit float)
+F32_TEST_VALUES: list[float] = [
+    0.0, -0.0, 1.0, -1.0,
+    -113.0,  # mypyc overlapping error value
+    0.5, -0.5, 0.1, -0.1,
+    1.5, 255.0, 256.0,
+    1e10, -1e10,
+    1e-10,
+    3.4028235e+38,    # max float32
+    -3.4028235e+38,   # min float32
+    1.1754944e-38,    # min positive normal float32
+    float('inf'), float('-inf'),
+    float('nan'),
 ]
 
 def test_bytes_writer_basics() -> None:
@@ -268,9 +299,11 @@ def test_read_i16_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00\x00"), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00\x00")
+            read_func(bad2, 0 + int())
 
 def test_bytes_writer_write_i16_be() -> None:
     # Test various i16 values from 1-byte to 2-byte range
@@ -434,9 +467,11 @@ def test_read_i32_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00\x00\x00\x00"), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00\x00\x00\x00")
+            read_func(bad2, 0 + int())
 
 def test_bytes_writer_write_i64_le() -> None:
     # Test all i64 values (includes all i32 values plus 5-8 byte values)
@@ -565,9 +600,381 @@ def test_read_i64_via_any() -> None:
 
         # Wrong type for bytes argument
         with assertRaises(TypeError):
-            read_func("not bytes", 0 + int())  # type: ignore
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
         with assertRaises(TypeError):
-            read_func(bytearray(b"\x00" * 8), 0 + int())  # type: ignore
+            bad2: Any = bytearray(b"\x00" * 8)
+            read_func(bad2, 0 + int())
+
+def test_bytes_writer_write_f64_le() -> None:
+    # Test various f64 values
+    w = BytesWriter()
+    for v in F64_TEST_VALUES:
+        write_f64_le(w, v)
+    result = w.getvalue()
+    expected = b"".join(struct.pack("<d", v) for v in F64_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f64_le(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 1602
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:9] == struct.pack("<d", 0.0)
+    assert result[9:17] == struct.pack("<d", 1.5)
+    assert result[1593:1601] == struct.pack("<d", 199.0 * 1.5)
+
+def test_bytes_writer_write_f64_be() -> None:
+    # Test various f64 values
+    w = BytesWriter()
+    for v in F64_TEST_VALUES:
+        write_f64_be(w, v)
+    result = w.getvalue()
+    expected = b"".join(struct.pack(">d", v) for v in F64_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f64_be(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 1602
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:9] == struct.pack(">d", 0.0)
+    assert result[9:17] == struct.pack(">d", 1.5)
+    assert result[1593:1601] == struct.pack(">d", 199.0 * 1.5)
+
+def test_bytes_reader_read_f64_le() -> None:
+    import math
+    # Test various f64 values
+    data = b"".join(struct.pack("<d", v) for v in F64_TEST_VALUES)
+    for i, v in enumerate(F64_TEST_VALUES):
+        result = read_f64_le(data, i * 8)
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == v
+
+    # Test round-trip with write_f64_le
+    w = BytesWriter()
+    for v in F64_TEST_VALUES:
+        write_f64_le(w, v)
+    result_bytes = w.getvalue()
+    for i, v in enumerate(F64_TEST_VALUES):
+        result = read_f64_le(result_bytes, i * 8)
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == v
+
+    # Test unaligned offset
+    data2 = b"\xFF" + struct.pack("<d", 1.5) + b"\xFF"
+    assert read_f64_le(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_f64_le(data, len(data) - 7)
+
+def test_bytes_reader_read_f64_be() -> None:
+    import math
+    # Test various f64 values
+    data = b"".join(struct.pack(">d", v) for v in F64_TEST_VALUES)
+    for i, v in enumerate(F64_TEST_VALUES):
+        result = read_f64_be(data, i * 8)
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == v
+
+    # Test round-trip with write_f64_be
+    w = BytesWriter()
+    for v in F64_TEST_VALUES:
+        write_f64_be(w, v)
+    result_bytes = w.getvalue()
+    for i, v in enumerate(F64_TEST_VALUES):
+        result = read_f64_be(result_bytes, i * 8)
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == v
+
+    # Test unaligned offset
+    data2 = b"\xFF" + struct.pack(">d", 1.5) + b"\xFF"
+    assert read_f64_be(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 7 bytes available, need 8)
+    with assertRaises(IndexError):
+        read_f64_be(data, len(data) - 7)
+
+def test_read_f64_via_any() -> None:
+    import math
+    # Test read_f64_le/be via Any to ensure C extension wrapper works
+    for read_func, fmt in zip((read_f64_le, read_f64_be), ("<d", ">d")):
+        data: Any = struct.pack(fmt, 1.5) + struct.pack(fmt, -113.0) + struct.pack(fmt, 0.0)
+        assert read_func(data, 0) == 1.5
+        assert read_func(data, 8) == -113.0
+        assert read_func(data, 16) == 0.0
+
+        # Test special values
+        data2: Any = struct.pack(fmt, float('inf')) + struct.pack(fmt, float('nan'))
+        assert read_func(data2, 0) == float('inf')
+        assert math.isnan(read_func(data2, 8))
+
+        # Test error cases
+        # Index out of range
+        with assertRaises(IndexError, "index 30 out of range for bytes of length 24"):
+            read_func(data, 30 + int())
+        with assertRaises(IndexError, "index 17 out of range for bytes of length 24"):
+            read_func(data, 17 + int())  # Not enough bytes for f64
+
+        # Negative index
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+
+        # Wrong type for bytes argument
+        with assertRaises(TypeError):
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
+        with assertRaises(TypeError):
+            bad2: Any = bytearray(b"\x00" * 8)
+            read_func(bad2, 0 + int())
+
+def test_write_f64_via_any() -> None:
+    import math
+    # Test write_f64_le/be via Any to ensure C extension wrapper works
+    for write_func, fmt in zip((write_f64_le, write_f64_be), ("<d", ">d")):
+        w: Any = BytesWriter()
+
+        w.append(0x42)
+        write_func(w, 1.5)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 1.5) + b"\xFF"
+
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(50):
+            write_func(w2, float(i) * 0.25)
+        result = w2.getvalue()
+        assert len(result) == 400
+        assert result[0:8] == struct.pack(fmt, 0.0)
+        assert result[8:16] == struct.pack(fmt, 0.25)
+        assert result[392:400] == struct.pack(fmt, 49.0 * 0.25)
+
+        # Test special values
+        w3: Any = BytesWriter()
+        write_func(w3, float('inf'))
+        write_func(w3, float('-inf'))
+        write_func(w3, float('nan'))
+        result = w3.getvalue()
+        assert result[0:8] == struct.pack(fmt, float('inf'))
+        assert result[8:16] == struct.pack(fmt, float('-inf'))
+        assert math.isnan(struct.unpack(fmt, result[16:24])[0])
+
+        # Test wrong type
+        w4: Any = BytesWriter()
+        with assertRaises(TypeError):
+            bad: Any = "not a float" + str()
+            write_func(w4, bad)
+
+def test_bytes_writer_write_f32_le() -> None:
+    import struct as s
+    # Test various f32 values
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_le(w, v)
+    result = w.getvalue()
+    expected = b"".join(s.pack("<f", v) for v in F32_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f32_le(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 802
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:5] == s.pack("<f", 0.0)
+    assert result[5:9] == s.pack("<f", 1.5)
+    assert result[797:801] == s.pack("<f", 199.0 * 1.5)
+
+def test_bytes_writer_write_f32_be() -> None:
+    import struct as s
+    # Test various f32 values
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_be(w, v)
+    result = w.getvalue()
+    expected = b"".join(s.pack(">f", v) for v in F32_TEST_VALUES)
+    # Compare byte-by-byte (NaN != NaN but bytes should match)
+    assert result == expected
+
+    # Test mixing with other operations and buffer growth
+    w = BytesWriter()
+    w.append(0xFF)
+    for i in range(200):
+        write_f32_be(w, float(i) * 1.5)
+    w.append(0xEE)
+    result = w.getvalue()
+    assert len(result) == 802
+    assert result[0] == 0xFF
+    assert result[-1] == 0xEE
+    assert result[1:5] == s.pack(">f", 0.0)
+    assert result[5:9] == s.pack(">f", 1.5)
+    assert result[797:801] == s.pack(">f", 199.0 * 1.5)
+
+def test_write_f32_via_any() -> None:
+    import math
+    # Test write_f32_le/be via Any to ensure C extension wrapper works
+    for write_func, fmt in zip((write_f32_le, write_f32_be), ("<f", ">f")):
+        w: Any = BytesWriter()
+
+        w.append(0x42)
+        write_func(w, 1.5)
+        w.append(0xFF)
+        assert w.getvalue() == b"\x42" + struct.pack(fmt, 1.5) + b"\xFF"
+
+        # Test buffer growth
+        w2: Any = BytesWriter()
+        for i in range(100):
+            write_func(w2, float(i) * 0.25)
+        result = w2.getvalue()
+        assert len(result) == 400
+        assert result[0:4] == struct.pack(fmt, 0.0)
+        assert result[4:8] == struct.pack(fmt, 0.25)
+        assert result[396:400] == struct.pack(fmt, 99.0 * 0.25)
+
+        # Test special values
+        w3: Any = BytesWriter()
+        write_func(w3, float('inf'))
+        write_func(w3, float('-inf'))
+        write_func(w3, float('nan'))
+        result = w3.getvalue()
+        assert result[0:4] == struct.pack(fmt, float('inf'))
+        assert result[4:8] == struct.pack(fmt, float('-inf'))
+        assert math.isnan(struct.unpack(fmt, result[8:12])[0])
+
+        # Test wrong type
+        w4: Any = BytesWriter()
+        with assertRaises(TypeError):
+            bad: Any = "not a float" + str()
+            write_func(w4, bad)
+
+def test_bytes_reader_read_f32_le() -> None:
+    import math
+    import struct as s
+    # Test various f32 values (compare against f32-rounded expected value,
+    # since some f64 values like 0.1 lose precision when stored as f32)
+    data = b"".join(s.pack("<f", v) for v in F32_TEST_VALUES)
+    for i, v in enumerate(F32_TEST_VALUES):
+        result = read_f32_le(data, i * 4)
+        expected = s.unpack("<f", s.pack("<f", v))[0]
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == expected
+
+    # Test round-trip with write_f32_le
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_le(w, v)
+    result_bytes = w.getvalue()
+    for i, v in enumerate(F32_TEST_VALUES):
+        result = read_f32_le(result_bytes, i * 4)
+        expected = s.unpack("<f", s.pack("<f", v))[0]
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == expected
+
+    # Test unaligned offset
+    data2 = b"\xFF" + s.pack("<f", 1.5) + b"\xFF"
+    assert read_f32_le(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_f32_le(data, len(data) - 3)
+
+def test_bytes_reader_read_f32_be() -> None:
+    import math
+    import struct as s
+    # Test various f32 values (compare against f32-rounded expected value,
+    # since some f64 values like 0.1 lose precision when stored as f32)
+    data = b"".join(s.pack(">f", v) for v in F32_TEST_VALUES)
+    for i, v in enumerate(F32_TEST_VALUES):
+        result = read_f32_be(data, i * 4)
+        expected = s.unpack(">f", s.pack(">f", v))[0]
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == expected
+
+    # Test round-trip with write_f32_be
+    w = BytesWriter()
+    for v in F32_TEST_VALUES:
+        write_f32_be(w, v)
+    result_bytes = w.getvalue()
+    for i, v in enumerate(F32_TEST_VALUES):
+        result = read_f32_be(result_bytes, i * 4)
+        expected = s.unpack(">f", s.pack(">f", v))[0]
+        if math.isnan(v):
+            assert math.isnan(result)
+        else:
+            assert result == expected
+
+    # Test unaligned offset
+    data2 = b"\xFF" + s.pack(">f", 1.5) + b"\xFF"
+    assert read_f32_be(data2, 1) == 1.5
+
+    # Test barely out of bounds (only 3 bytes available, need 4)
+    with assertRaises(IndexError):
+        read_f32_be(data, len(data) - 3)
+
+def test_read_f32_via_any() -> None:
+    import math
+    # Test read_f32_le/be via Any to ensure C extension wrapper works
+    for read_func, fmt in zip((read_f32_le, read_f32_be), ("<f", ">f")):
+        data: Any = struct.pack(fmt, 1.5) + struct.pack(fmt, -113.0) + struct.pack(fmt, 0.0)
+        assert read_func(data, 0) == 1.5
+        assert read_func(data, 4) == -113.0
+        assert read_func(data, 8) == 0.0
+
+        # Test special values
+        data2: Any = struct.pack(fmt, float('inf')) + struct.pack(fmt, float('nan'))
+        assert read_func(data2, 0) == float('inf')
+        assert math.isnan(read_func(data2, 4))
+
+        # Test error cases
+        # Index out of range
+        with assertRaises(IndexError, "index 20 out of range for bytes of length 12"):
+            read_func(data, 20 + int())
+        with assertRaises(IndexError, "index 9 out of range for bytes of length 12"):
+            read_func(data, 9 + int())  # Not enough bytes for f32
+
+        # Negative index
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+
+        # Wrong type for bytes argument
+        with assertRaises(TypeError):
+            bad: Any = "not bytes"
+            read_func(bad, 0 + int())
+        with assertRaises(TypeError):
+            bad2: Any = bytearray(b"\x00" * 4)
+            read_func(bad2, 0 + int())
 
 def test_write_bytearray() -> None:
     w = BytesWriter()
