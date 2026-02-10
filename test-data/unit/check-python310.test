@@ -1746,6 +1746,33 @@ match m6:
 
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequenceWildcardRefutability]
+# flags: --strict-equality --warn-unreachable
+def f1(x: int | list[int]):
+    match x:
+        case [*foo]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f2(x: object):
+    match x:
+        case [*foo]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.object]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.object]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f3(x: int | list[int]):
+    match x:
+        case [1, *foo]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchTupleUnions]
 from typing_extensions import Unpack
 
