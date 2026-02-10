@@ -1010,6 +1010,15 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
+read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_be", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLongLong(CPyBytes_ReadI64BEUnsafe(data + index));
+}
+
+static PyObject*
 write_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
     BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f32_le");
     if (bw == NULL)
@@ -1035,6 +1044,24 @@ write_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
         return NULL;
     BytesWriter_WriteF32BEUnsafe(bw, (float)unboxed);
     Py_RETURN_NONE;
+}
+
+static PyObject*
+read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_le", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32LEUnsafe(data + index));
+}
+
+static PyObject*
+read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_be", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32BEUnsafe(data + index));
 }
 
 static PyObject*
@@ -1066,15 +1093,6 @@ write_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
 }
 
 static PyObject*
-read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_be", 8, &index);
-    if (data == NULL)
-        return NULL;
-    return PyLong_FromLongLong(CPyBytes_ReadI64BEUnsafe(data + index));
-}
-
-static PyObject*
 read_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
     const unsigned char *data = parse_read_int_args(args, nargs, "read_f64_le", 8, &index);
@@ -1090,24 +1108,6 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     if (data == NULL)
         return NULL;
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
-}
-
-static PyObject*
-read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_le", 4, &index);
-    if (data == NULL)
-        return NULL;
-    return PyFloat_FromDouble((double)CPyBytes_ReadF32LEUnsafe(data + index));
-}
-
-static PyObject*
-read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_be", 4, &index);
-    if (data == NULL)
-        return NULL;
-    return PyFloat_FromDouble((double)CPyBytes_ReadF32BEUnsafe(data + index));
 }
 
 #endif
@@ -1150,18 +1150,6 @@ static PyMethodDef librt_strings_module_methods[] = {
     {"read_i64_be", (PyCFunction) read_i64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit signed integer from bytes in big-endian format")
     },
-    {"write_f64_le", (PyCFunction) write_f64_le, METH_FASTCALL,
-     PyDoc_STR("Write a 64-bit float to BytesWriter in little-endian format")
-    },
-    {"write_f64_be", (PyCFunction) write_f64_be, METH_FASTCALL,
-     PyDoc_STR("Write a 64-bit float to BytesWriter in big-endian format")
-    },
-    {"read_f64_le", (PyCFunction) read_f64_le, METH_FASTCALL,
-     PyDoc_STR("Read a 64-bit float from bytes in little-endian format")
-    },
-    {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
-     PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
-    },
     {"write_f32_le", (PyCFunction) write_f32_le, METH_FASTCALL,
      PyDoc_STR("Write a 32-bit float to BytesWriter in little-endian format")
     },
@@ -1173,6 +1161,18 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_f32_be", (PyCFunction) read_f32_be, METH_FASTCALL,
      PyDoc_STR("Read a 32-bit float from bytes in big-endian format")
+    },
+    {"write_f64_le", (PyCFunction) write_f64_le, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit float to BytesWriter in little-endian format")
+    },
+    {"write_f64_be", (PyCFunction) write_f64_be, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit float to BytesWriter in big-endian format")
+    },
+    {"read_f64_le", (PyCFunction) read_f64_le, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit float from bytes in little-endian format")
+    },
+    {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
     },
 #endif
     {NULL, NULL, 0, NULL}
