@@ -831,9 +831,9 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
-// Helper for write_i*_le/be functions - validates args and returns BytesWriter
+// Helper for write_*_le/be functions - validates args and returns BytesWriter
 static inline BytesWriterObject *
-parse_write_int_args(PyObject *const *args, size_t nargs, const char *func_name) {
+parse_write_args(PyObject *const *args, size_t nargs, const char *func_name) {
     if (unlikely(nargs != 2)) {
         PyErr_Format(PyExc_TypeError,
                      "%s() takes exactly 2 arguments (%zu given)", func_name, nargs);
@@ -846,10 +846,10 @@ parse_write_int_args(PyObject *const *args, size_t nargs, const char *func_name)
     return (BytesWriterObject *)writer;
 }
 
-// Helper for read_i*_le/be functions - validates args and returns data pointer
+// Helper for read_*_le/be functions - validates args and returns data pointer
 // Returns NULL on error, sets *out_index to the validated index on success
 static inline const unsigned char *
-parse_read_int_args(PyObject *const *args, size_t nargs, const char *func_name,
+parse_read_args(PyObject *const *args, size_t nargs, const char *func_name,
                     Py_ssize_t num_bytes, int64_t *out_index) {
     if (unlikely(nargs != 2)) {
         PyErr_Format(PyExc_TypeError,
@@ -882,7 +882,7 @@ parse_read_int_args(PyObject *const *args, size_t nargs, const char *func_name,
 
 static PyObject*
 write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i16_le");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i16_le");
     if (bw == NULL)
         return NULL;
     int16_t unboxed = CPyLong_AsInt16(args[1]);
@@ -896,7 +896,7 @@ write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i16_be");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i16_be");
     if (bw == NULL)
         return NULL;
     int16_t unboxed = CPyLong_AsInt16(args[1]);
@@ -911,7 +911,7 @@ write_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i16_le", 2, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i16_le", 2, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLong(CPyBytes_ReadI16LEUnsafe(data + index));
@@ -920,7 +920,7 @@ read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i16_be", 2, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i16_be", 2, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLong(CPyBytes_ReadI16BEUnsafe(data + index));
@@ -928,7 +928,7 @@ read_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i32_le");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i32_le");
     if (bw == NULL)
         return NULL;
     int32_t unboxed = CPyLong_AsInt32(args[1]);
@@ -942,7 +942,7 @@ write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i32_be");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i32_be");
     if (bw == NULL)
         return NULL;
     int32_t unboxed = CPyLong_AsInt32(args[1]);
@@ -957,7 +957,7 @@ write_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_le", 4, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i32_le", 4, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLong(CPyBytes_ReadI32LEUnsafe(data + index));
@@ -966,7 +966,7 @@ read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i32_be", 4, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i32_be", 4, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLong(CPyBytes_ReadI32BEUnsafe(data + index));
@@ -974,7 +974,7 @@ read_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i64_le");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i64_le");
     if (bw == NULL)
         return NULL;
     int64_t unboxed = CPyLong_AsInt64(args[1]);
@@ -988,7 +988,7 @@ write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_i64_be");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i64_be");
     if (bw == NULL)
         return NULL;
     int64_t unboxed = CPyLong_AsInt64(args[1]);
@@ -1003,7 +1003,7 @@ write_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_le", 8, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i64_le", 8, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLongLong(CPyBytes_ReadI64LEUnsafe(data + index));
@@ -1012,7 +1012,7 @@ read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_i64_be", 8, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_i64_be", 8, &index);
     if (data == NULL)
         return NULL;
     return PyLong_FromLongLong(CPyBytes_ReadI64BEUnsafe(data + index));
@@ -1020,7 +1020,7 @@ read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f32_le");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f32_le");
     if (bw == NULL)
         return NULL;
     double unboxed = PyFloat_AsDouble(args[1]);
@@ -1034,7 +1034,7 @@ write_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f32_be");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f32_be");
     if (bw == NULL)
         return NULL;
     double unboxed = PyFloat_AsDouble(args[1]);
@@ -1049,7 +1049,7 @@ write_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_le", 4, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_f32_le", 4, &index);
     if (data == NULL)
         return NULL;
     return PyFloat_FromDouble((double)CPyBytes_ReadF32LEUnsafe(data + index));
@@ -1058,7 +1058,7 @@ read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f32_be", 4, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_f32_be", 4, &index);
     if (data == NULL)
         return NULL;
     return PyFloat_FromDouble((double)CPyBytes_ReadF32BEUnsafe(data + index));
@@ -1066,7 +1066,7 @@ read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f64_le");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f64_le");
     if (bw == NULL)
         return NULL;
     double unboxed = PyFloat_AsDouble(args[1]);
@@ -1080,7 +1080,7 @@ write_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 
 static PyObject*
 write_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
-    BytesWriterObject *bw = parse_write_int_args(args, nargs, "write_f64_be");
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f64_be");
     if (bw == NULL)
         return NULL;
     double unboxed = PyFloat_AsDouble(args[1]);
@@ -1095,7 +1095,7 @@ write_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f64_le", 8, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_f64_le", 8, &index);
     if (data == NULL)
         return NULL;
     return PyFloat_FromDouble(CPyBytes_ReadF64LEUnsafe(data + index));
@@ -1104,7 +1104,7 @@ read_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
 static PyObject*
 read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     int64_t index;
-    const unsigned char *data = parse_read_int_args(args, nargs, "read_f64_be", 8, &index);
+    const unsigned char *data = parse_read_args(args, nargs, "read_f64_be", 8, &index);
     if (data == NULL)
         return NULL;
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
