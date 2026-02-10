@@ -236,7 +236,7 @@ class Options:
         self.strict_equality_for_none = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes
-        self.strict_bytes = False
+        self.strict_bytes = True
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
@@ -407,8 +407,8 @@ class Options:
         # (undocumented feature).
         self.export_ref_info = False
 
-        self.disable_bytearray_promotion = False
-        self.disable_memoryview_promotion = False
+        self.disable_bytearray_promotion = True
+        self.disable_memoryview_promotion = True
 
         # Sets custom output format
         self.output: str | None = None
@@ -471,9 +471,9 @@ class Options:
             # backwards compatibility
             self.disable_bytearray_promotion = True
             self.disable_memoryview_promotion = True
-        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
-            # forwards compatibility
-            self.strict_bytes = True
+        else:
+            self.disable_bytearray_promotion = False
+            self.disable_memoryview_promotion = False
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
