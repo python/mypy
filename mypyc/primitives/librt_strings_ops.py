@@ -258,48 +258,6 @@ function_op(
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
-# f64 write/read functions
-
-function_op(
-    name="librt.strings.write_f64_le",
-    arg_types=[bytes_writer_rprimitive, float_rprimitive],
-    return_type=none_rprimitive,
-    c_function_name="CPyBytesWriter_WriteF64LE",
-    error_kind=ERR_MAGIC,
-    experimental=True,
-    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
-)
-
-function_op(
-    name="librt.strings.write_f64_be",
-    arg_types=[bytes_writer_rprimitive, float_rprimitive],
-    return_type=none_rprimitive,
-    c_function_name="CPyBytesWriter_WriteF64BE",
-    error_kind=ERR_MAGIC,
-    experimental=True,
-    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
-)
-
-function_op(
-    name="librt.strings.read_f64_le",
-    arg_types=[bytes_rprimitive, int64_rprimitive],
-    return_type=float_rprimitive,
-    c_function_name="CPyBytes_ReadF64LE",
-    error_kind=ERR_MAGIC_OVERLAPPING,
-    experimental=True,
-    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
-)
-
-function_op(
-    name="librt.strings.read_f64_be",
-    arg_types=[bytes_rprimitive, int64_rprimitive],
-    return_type=float_rprimitive,
-    c_function_name="CPyBytes_ReadF64BE",
-    error_kind=ERR_MAGIC_OVERLAPPING,
-    experimental=True,
-    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
-)
-
 # f32 write/read functions
 
 function_op(
@@ -337,6 +295,48 @@ function_op(
     arg_types=[bytes_rprimitive, int64_rprimitive],
     return_type=float_rprimitive,
     c_function_name="CPyBytes_ReadF32BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# f64 write/read functions
+
+function_op(
+    name="librt.strings.write_f64_le",
+    arg_types=[bytes_writer_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteF64LE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_f64_be",
+    arg_types=[bytes_writer_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteF64BE",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_f64_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyBytes_ReadF64LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_f64_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyBytes_ReadF64BE",
     error_kind=ERR_MAGIC_OVERLAPPING,
     experimental=True,
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
