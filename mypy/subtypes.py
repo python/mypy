@@ -8,6 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.checker_state import checker_state
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
     expand_self_type,
@@ -35,6 +36,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
+from mypy.typeops import get_all_type_vars
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
@@ -2311,3 +2313,45 @@ def is_erased_instance(t: Instance) -> bool:
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
     return True
+
+
+def solve_as_subtype(typ: Type, target: Type) -> Type | None:
+    """Solves type variables in `target` so that `typ` becomes a subtype of `target`.
+
+    Returns:
+        None: if the mapping is not possible.
+        Type: the mapped type if the mapping is possible.
+
+    Examples:
+        (list[int], Iterable[T]) -> Iterable[int]
+        (list[list[int]], Iterable[list[T]]) -> Iterable[list[int]]
+        (dict[str, int], Mapping[K, int]) -> Mapping[str, int]
+        (list[int], Mapping[K, V]) -> None
+    """
+
+    # 1. get type vars of target
+    tvars = get_all_type_vars(target)
+
+    # fast path: if no type vars, just check subtype
+    if not tvars:
+        return target if is_subtype(typ, target) else None
+
+    from mypy.solve import solve_constraints
+
+    # 2. determine constraints
+    constraints: list[Constraint] = infer_constraints(target, typ, SUPERTYPE_OF)
+    for tvar in tvars:
+        # need to manually include these because solve_constraints ignores them
+        # apparently
+        constraints.append(Constraint(tvar, SUBTYPE_OF, tvar.upper_bound))
+
+    # 3. solve constraints
+    solution, _ = solve_constraints(tvars, constraints)
+
+    if None in solution:
+        return None
+
+    # 4. build resulting Type by substituting type vars with solution
+    env = {tvar.id: s for tvar, s in zip(tvars, cast("list[Type]", solution))}
+    target = expand_type(target, env)
+    return target if is_subtype(typ, target) else None
