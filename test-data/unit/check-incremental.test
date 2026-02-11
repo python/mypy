@@ -7796,3 +7796,71 @@ tmp/b.py:5: note: "lol" of "BB" defined here
 [out2]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
 tmp/b.py:5: note: "lol" of "BB" defined here
+
+[case testIndirectDependencyReorderModulesNoCrash]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import pkg.mod
+import b
+[file b.py]
+import foo
+import pkg
+x: pkg.mod.C
+[file pkg/__init__.py]
+[file pkg/mod.py]
+import c
+class C: ...
+# The chain of trivial stale modules is to force late load of pkg.mod,
+# otherwise the test can pass accidentally.
+[file c.py]
+import d
+[file c.py.2]
+import d  # touch
+[file d.py]
+import e
+[file d.py.2]
+import e  # touch
+[file e.py]
+[file foo.py]
+import bar
+[file bar.py]
+import pkg.mod
+[file bar.py.2]
+[out]
+[out2]
+tmp/b.py:3: error: Name "pkg.mod.C" is not defined
+
+[case testIndirectDependencyReorderModulesNoCrash2]
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a
+import d
+[file a.py]
+import b
+x: b.c.d.C
+[file b.py]
+import c
+[file c.py]
+import d
+[file c.py.2]
+[file d.py]
+import n1
+class C: ...
+# The chain of trivial stale modules is to force late load of d,
+# otherwise the test can pass accidentally.
+[file n1.py]
+import n2
+[file n1.py.2]
+import n2  # touch
+[file n2.py]
+import n3
+[file n2.py.2]
+import n3  # touch
+[file n3.py]
+[out]
+[out2]
+tmp/a.py:2: error: Name "b.c.d.C" is not defined

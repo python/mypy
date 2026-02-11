@@ -31,7 +31,6 @@ from contextlib import nullcontext
 from itertools import groupby
 from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
-import mypy.build
 import mypy.state
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
@@ -416,11 +415,6 @@ def semantic_analyze_target(
         )
         if isinstance(node, Decorator):
             infer_decorator_signature_if_simple(node, analyzer)
-    for dep in analyzer.imports:
-        state.add_dependency(dep)
-        priority = mypy.build.PRI_LOW
-        if priority <= state.priorities.get(dep, priority):
-            state.priorities[dep] = priority
 
     # Clear out some stale data to avoid memory leaks and astmerge
     # validity check confusion
