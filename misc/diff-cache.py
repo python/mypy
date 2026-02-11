@@ -121,7 +121,10 @@ def load(cache: MetadataStore, s: str) -> Any:
         version_prefix = data[:2]
         buf = ReadBuffer(data[2:])
         meta = CacheMeta.read(buf, data_file="")
-        assert meta is not None
+        if meta is None:
+            # Can't deserialize (e.g. different mypy version). Fall back to
+            # raw bytes -- we lose mtime normalization but the diff stays correct.
+            return data
         normalize_meta(meta)
         return serialize_meta_ff(meta, version_prefix)
     if s.endswith(".data.ff"):
