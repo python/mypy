@@ -224,7 +224,7 @@ class CacheMeta:
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
             )
-        except ValueError:
+        except (ValueError, AssertionError):
             return None
 
 
