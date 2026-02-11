@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TempNode, TypeAlias, Var
+from mypy.nodes import ARG_POS, Expression, NameExpr, TempNode, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
