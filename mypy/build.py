@@ -1213,13 +1213,28 @@ class BuildManager:
         edge = (from_scc_id, to_scc_id)
         if (cached := self.transitive_deps_cache.get(edge)) is not None:
             return cached
-        if to_scc_id in self.scc_by_id[from_scc_id].deps:
-            self.transitive_deps_cache[edge] = True
-            return True
-        for dep in self.scc_by_id[from_scc_id].deps:
-            if self.is_transitive_scc_dep(dep, to_scc_id):
-                return True
+        todo = self.scc_by_id[from_scc_id].deps
+        seen = set()
+        while todo:
+            more = set()
+            # Breadth-first search seems to be better here, because all
+            # "lower-level" SCCs are processed and some may be cached.
+            for dep in todo:
+                seen.add(dep)
+                if dep == to_scc_id:
+                    self.transitive_deps_cache[edge] = True
+                    return True
+                if cached := self.transitive_deps_cache.get((dep, to_scc_id)):
+                    self.transitive_deps_cache[edge] = True
+                    return True
+                elif cached is None:
+                    more |= self.scc_by_id[dep].deps
+            todo = more
         self.transitive_deps_cache[edge] = False
+        for dep in seen:
+            # We negative-cache all intermediate lookups, thus
+            # trading time for space.
+            self.transitive_deps_cache[(dep, to_scc_id)] = False
         return False
 
 
