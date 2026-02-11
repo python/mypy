@@ -317,9 +317,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         elif isinstance(current_type, AnyType):
             inner_type: Type = AnyType(TypeOfAny.from_another_any, current_type)
             inner_types = [inner_type] * len(o.patterns)
-        elif isinstance(current_type, TupleType):
-            inner_type = self.chk.iterable_item_type(tuple_fallback(current_type), o)
-            inner_types = [inner_type] * len(o.patterns)
         elif isinstance(current_type, Instance) and self.chk.type_is_iterable(current_type):
             inner_type = self.chk.iterable_item_type(current_type, o)
             inner_types = [inner_type] * len(o.patterns)
