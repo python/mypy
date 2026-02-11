@@ -8,6 +8,7 @@ many cases instead of full cache artifacts.
 from __future__ import annotations
 
 import argparse
+import base64
 import os
 import sys
 from collections import defaultdict
@@ -15,6 +16,9 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import CacheMeta
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.util import json_dumps, json_loads
 
@@ -31,31 +35,116 @@ def merge_deps(all: dict[str, set[str]], new: dict[str, set[str]]) -> None:
         all.setdefault(k, set()).update(v)
 
 
+def normalize_meta(meta: CacheMeta) -> None:
+    """Normalize a CacheMeta instance to avoid spurious diffs.
+
+    Zero out mtimes and sort dependencies deterministically.
+    """
+    meta.mtime = 0
+    meta.data_mtime = 0
+    all_deps = list(
+        zip(
+            meta.dependencies + meta.suppressed,
+            meta.dep_prios,
+            meta.dep_lines,
+        )
+    )
+    num_deps = len(meta.dependencies)
+    sorted_deps = sorted(all_deps[:num_deps])
+    sorted_supp = sorted(all_deps[num_deps:])
+    if sorted_deps:
+        deps, prios1, lines1 = zip(*sorted_deps)
+        meta.dependencies = list(deps)
+        prios1 = list(prios1)
+        lines1 = list(lines1)
+    else:
+        meta.dependencies = []
+        prios1 = []
+        lines1 = []
+    if sorted_supp:
+        supp, prios2, lines2 = zip(*sorted_supp)
+        meta.suppressed = list(supp)
+        prios2 = list(prios2)
+        lines2 = list(lines2)
+    else:
+        meta.suppressed = []
+        prios2 = []
+        lines2 = []
+    meta.dep_prios = prios1 + prios2
+    meta.dep_lines = lines1 + lines2
+
+
+def serialize_meta_ff(meta: CacheMeta, version_prefix: bytes) -> bytes:
+    """Serialize a CacheMeta instance back to fixed format binary."""
+    buf = WriteBuffer()
+    meta.write(buf)
+    return version_prefix + buf.getvalue()
+
+
+def normalize_json_meta(obj: dict[str, Any]) -> None:
+    """Normalize a JSON meta dict to avoid spurious diffs.
+
+    Zero out mtimes and sort dependencies deterministically.
+    """
+    obj["mtime"] = 0
+    obj["data_mtime"] = 0
+    if "dependencies" in obj:
+        all_deps: list[str] = obj["dependencies"] + obj["suppressed"]
+        num_deps = len(obj["dependencies"])
+        thing = list(zip(all_deps, obj["dep_prios"], obj["dep_lines"]))
+        sorted_deps = sorted(thing[:num_deps])
+        sorted_supp = sorted(thing[num_deps:])
+        if sorted_deps:
+            deps, prios1, lines1 = zip(*sorted_deps)
+        else:
+            deps, prios1, lines1 = (), (), ()
+        if sorted_supp:
+            supp, prios2, lines2 = zip(*sorted_supp)
+        else:
+            supp, prios2, lines2 = (), (), ()
+        obj["dependencies"] = deps
+        obj["suppressed"] = supp
+        obj["dep_prios"] = prios1 + prios2
+        obj["dep_lines"] = lines1 + lines2
+
+
 def load(cache: MetadataStore, s: str) -> Any:
+    """Load and normalize a cache entry.
+
+    Returns:
+      - For .meta.ff: normalized binary bytes (with version prefix)
+      - For .data.ff: raw binary bytes
+      - For .meta.json/.data.json/.deps.json: parsed and normalized dict/list
+    """
     data = cache.read(s)
+    if s.endswith(".meta.ff"):
+        version_prefix = data[:2]
+        buf = ReadBuffer(data[2:])
+        meta = CacheMeta.read(buf, data_file="")
+        assert meta is not None
+        normalize_meta(meta)
+        return serialize_meta_ff(meta, version_prefix)
+    if s.endswith(".data.ff"):
+        return data
     obj = json_loads(data)
     if s.endswith(".meta.json"):
-        # For meta files, zero out the mtimes and sort the
-        # dependencies to avoid spurious conflicts
-        obj["mtime"] = 0
-        obj["data_mtime"] = 0
-        if "dependencies" in obj:
-            all_deps = obj["dependencies"] + obj["suppressed"]
-            num_deps = len(obj["dependencies"])
-            thing = list(zip(all_deps, obj["dep_prios"], obj["dep_lines"]))
-
-            def unzip(x: Any) -> Any:
-                return zip(*x) if x else ((), (), ())
-
-            obj["dependencies"], prios1, lines1 = unzip(sorted(thing[:num_deps]))
-            obj["suppressed"], prios2, lines2 = unzip(sorted(thing[num_deps:]))
-            obj["dep_prios"] = prios1 + prios2
-            obj["dep_lines"] = lines1 + lines2
+        normalize_json_meta(obj)
     if s.endswith(".deps.json"):
         # For deps files, sort the deps to avoid spurious mismatches
         for v in obj.values():
             v.sort()
     return obj
+
+
+def encode_for_diff(s: str, obj: object) -> str:
+    """Encode a cache entry value for inclusion in the JSON diff.
+
+    Fixed format binary entries are base64-encoded, JSON entries are
+    re-serialized as JSON strings.
+    """
+    if isinstance(obj, bytes):
+        return base64.b64encode(obj).decode()
+    return json_dumps(obj).decode()
 
 
 def main() -> None:
@@ -96,10 +185,12 @@ def main() -> None:
             # so we can produce a much smaller direct diff of them.
             if ".deps." not in s:
                 if obj2 is not None:
-                    updates[s] = json_dumps(obj2).decode()
+                    updates[s] = encode_for_diff(s, obj2)
                 else:
                     updates[s] = None
             elif obj2:
+                # This is a deps file, with json data
+                assert ".deps." in s
                 merge_deps(deps1, obj1)
                 merge_deps(deps2, obj2)
         else:
@@ -109,7 +200,11 @@ def main() -> None:
     cache1_all_set = set(cache1_all)
     for s in cache2.list_all():
         if s not in cache1_all_set:
-            updates[s] = cache2.read(s).decode()
+            raw = cache2.read(s)
+            if s.endswith(".ff"):
+                updates[s] = base64.b64encode(raw).decode()
+            else:
+                updates[s] = raw.decode()
 
     # Compute what deps have been added and merge them all into the
     # @root deps file.
