@@ -8,7 +8,7 @@ from typing import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
-from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
+from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort2
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list, meet_types
 from mypy.subtypes import is_subtype
@@ -147,7 +147,7 @@ def solve_with_dependent(
     sccs = list(strongly_connected_components(set(vars), dmap))
     if not all(check_linear(scc, lowers, uppers) for scc in sccs):
         return {}, []
-    raw_batches = list(topsort(prepare_sccs(sccs, dmap)))
+    raw_batches = list(topsort2(prepare_sccs(sccs, dmap)))
 
     free_vars = []
     free_solutions = {}

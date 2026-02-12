@@ -117,7 +117,7 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
     assert not data, f"A cyclic dependency exists amongst {data!r}"
 
 
-class topsort2(Iterator[set[T]]):
+class topsort2(Iterator[set[T]]):  # noqa: N801
     """Topological sort using Kahn's algorithm.
 
     This is functionally equivalent to topsort() but avoids rebuilding
