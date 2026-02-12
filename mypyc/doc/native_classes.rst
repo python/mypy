@@ -287,6 +287,10 @@ This can improve performance, especially for classes that are
 allocated and deallocated frequently. Acyclic instances also use
 less memory, since CPython doesn't need to add a GC header to them.
 
+The acyclic property is not inherited by subclasses. Each subclass
+must explicitly use ``@mypyc_attr(acyclic=True)`` to also opt out
+of cyclic GC.
+
 .. warning::
 
     If instances of an acyclic class actually participate in reference
