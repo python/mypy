@@ -3957,12 +3957,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
     # Prime the ready list with leaf SCCs (that have no dependencies).
     ready = []
-    not_ready = []
+    not_ready = set()
     for scc in sccs:
         if not scc.deps:
             ready.append(scc)
         else:
-            not_ready.append(scc)
+            not_ready.add(scc)
 
     still_working = False
     while ready or not_ready or still_working:
