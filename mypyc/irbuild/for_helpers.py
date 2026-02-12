@@ -510,39 +510,35 @@ def make_for_loop_generator(
         return for_dict
 
     if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
-        if (
-            is_range_ref(expr.callee)
-            and (
-                len(expr.args) <= 2
-                or (len(expr.args) == 3 and builder.extract_int(expr.args[2]) is not None)
-            )
-            and set(expr.arg_kinds) == {ARG_POS}
-        ):
-            # Special case "for x in range(...)".
-            # We support the 3 arg form but only for int literals, since it doesn't
-            # seem worth the hassle of supporting dynamically determining which
-            # direction of comparison to do.
-            if len(expr.args) == 1:
-                start_reg: Value = Integer(0)
-                end_reg = builder.accept(expr.args[0])
-            else:
-                start_reg = builder.accept(expr.args[0])
-                end_reg = builder.accept(expr.args[1])
-            if len(expr.args) == 3:
-                step = builder.extract_int(expr.args[2])
-                assert step is not None
-                if step == 0:
-                    builder.error("range() step can't be zero", expr.args[2].line)
-            else:
-                step = 1
+        num_args = len(expr.args)
 
-            for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
-            for_range.init(start_reg, end_reg, step)
-            return for_range
+        if is_range_ref(expr.callee) and set(expr.arg_kinds) == {ARG_POS}:
+            # Special case "for x in range(...)".
+            # NOTE We support the 3 arg form but only when `step` is constant-
+            # foldable, since it doesn't seem worth the hassle of supporting
+            # dynamically determining which direction of comparison to do.
+            # If we cannot constant fold `step`, we just fallback to stdlib range.
+            if num_args <= 2 or (num_args == 3 and builder.extract_int(expr.args[2])):
+                if num_args == 1:
+                    start_reg: Value = Integer(0)
+                    end_reg = builder.accept(expr.args[0])
+                    step = 1
+                else:
+                    start_reg = builder.accept(expr.args[0])
+                    end_reg = builder.accept(expr.args[1])
+                    step_ = 1 if num_args == 2 else builder.extract_int(expr.args[2])
+                    assert isinstance(
+                        step_, int
+                    ), "this was validated above, the assert is for mypy"
+                    step = step_
+
+                for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
+                for_range.init(start_reg, end_reg, step)
+                return for_range
 
         elif (
             expr.callee.fullname == "builtins.enumerate"
-            and len(expr.args) == 1
+            and num_args == 1
             and expr.arg_kinds == [ARG_POS]
             and isinstance(index, TupleExpr)
             and len(index.items) == 2
@@ -556,10 +552,10 @@ def make_for_loop_generator(
 
         elif (
             expr.callee.fullname == "builtins.zip"
-            and len(expr.args) >= 2
+            and num_args >= 2
             and set(expr.arg_kinds) == {ARG_POS}
             and isinstance(index, TupleExpr)
-            and len(index.items) == len(expr.args)
+            and len(index.items) == num_args
         ):
             # Special case "for x, y in zip(a, b)".
             for_zip = ForZip(builder, index, body_block, loop_exit, line, nested)
@@ -568,7 +564,7 @@ def make_for_loop_generator(
 
         if (
             expr.callee.fullname == "builtins.reversed"
-            and len(expr.args) == 1
+            and num_args == 1
             and expr.arg_kinds == [ARG_POS]
             and is_sequence_rprimitive(builder.node_type(expr.args[0]))
         ):
