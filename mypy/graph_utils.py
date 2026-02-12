@@ -117,7 +117,7 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
     assert not data, f"A cyclic dependency exists amongst {data!r}"
 
 
-def topsort2(data: dict[T, set[T]]) -> Iterable[set[T]]:
+class topsort2(Iterator[set[T]]):
     """Topological sort using Kahn's algorithm.
 
     This is functionally equivalent to topsort() but avoids rebuilding
@@ -125,47 +125,58 @@ def topsort2(data: dict[T, set[T]]) -> Iterable[set[T]]:
     in-degree counters and a reverse adjacency list, so the total work
     is O(V + E) rather than O(depth * V).
 
+    Implemented as a class rather than a generator for better mypyc
+    compilation.
+
     Args:
       data: A map from vertices to all vertices that it has an edge
             connecting it to.  NOTE: This data structure
             is modified in place -- for normalization purposes,
             self-dependencies are removed and entries representing
             orphans are added.
-
-    Returns:
-      An iterator yielding sets of vertices that have an equivalent
-      ordering.
     """
-    for k, v in data.items():
-        v.discard(k)  # Ignore self dependencies.
-    for item in set.union(*data.values()) - set(data.keys()):
-        data[item] = set()
 
-    # Build reverse adjacency list and in-degree counts.
-    in_degree: dict[T, int] = {}
-    rev: dict[T, list[T]] = {}
-    for item in data:
-        in_degree[item] = len(data[item])
-        rev[item] = []
-    for item, deps in data.items():
-        for dep in deps:
-            rev[dep].append(item)
+    def __init__(self, data: dict[T, set[T]]) -> None:
+        for k, v in data.items():
+            v.discard(k)  # Ignore self dependencies.
+        for item in set.union(*data.values()) - set(data.keys()):
+            data[item] = set()
 
-    ready = {item for item, deg in in_degree.items() if deg == 0}
-    remaining = len(in_degree) - len(ready)
+        # Build reverse adjacency list and in-degree counts.
+        in_degree: dict[T, int] = {}
+        rev: dict[T, list[T]] = {}
+        for item in data:
+            in_degree[item] = len(data[item])
+            rev[item] = []
+        for item, deps in data.items():
+            for dep in deps:
+                rev[dep].append(item)
 
-    while ready:
-        yield ready
+        self.in_degree = in_degree
+        self.rev = rev
+        self.ready = {item for item, deg in in_degree.items() if deg == 0}
+        self.remaining = len(in_degree) - len(self.ready)
+
+    def __iter__(self) -> Iterator[set[T]]:
+        return self
+
+    def __next__(self) -> set[T]:
+        ready = self.ready
+        if not ready:
+            assert self.remaining == 0, (
+                f"A cyclic dependency exists amongst "
+                f"{[k for k, deg in self.in_degree.items() if deg > 0]!r}"
+            )
+            raise StopIteration
+        in_degree = self.in_degree
+        rev = self.rev
         new_ready: set[T] = set()
         for item in ready:
             for dependent in rev[item]:
-                in_degree[dependent] -= 1
-                if in_degree[dependent] == 0:
+                new_deg = in_degree[dependent] - 1
+                in_degree[dependent] = new_deg
+                if new_deg == 0:
                     new_ready.add(dependent)
-        remaining -= len(new_ready)
-        ready = new_ready
-
-    assert remaining == 0, (
-        f"A cyclic dependency exists amongst "
-        f"{[k for k, deg in in_degree.items() if deg > 0]!r}"
-    )
+        self.remaining -= len(new_ready)
+        self.ready = new_ready
+        return ready
