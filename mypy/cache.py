@@ -96,6 +96,7 @@ class CacheMeta:
         dep_lines: list[int],
         dep_hashes: list[bytes],
         interface_hash: bytes,
+        trans_dep_hash: bytes,
         error_lines: list[SerializedError],
         version_id: str,
         ignore_all: bool,
@@ -119,6 +120,7 @@ class CacheMeta:
         # dep_hashes list is aligned with dependencies only
         self.dep_hashes = dep_hashes  # list of interface_hash for dependencies
         self.interface_hash = interface_hash  # hash representing the public interface
+        self.trans_dep_hash = trans_dep_hash  # hash of import structure (transitive)
         self.error_lines = error_lines
         self.version_id = version_id  # mypy version for cache invalidation
         self.ignore_all = ignore_all  # if errors were ignored
@@ -141,6 +143,7 @@ class CacheMeta:
             "dep_lines": self.dep_lines,
             "dep_hashes": [dep.hex() for dep in self.dep_hashes],
             "interface_hash": self.interface_hash.hex(),
+            "trans_dep_hash": self.trans_dep_hash.hex(),
             "error_lines": self.error_lines,
             "version_id": self.version_id,
             "ignore_all": self.ignore_all,
@@ -169,6 +172,7 @@ class CacheMeta:
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
+                trans_dep_hash=bytes.fromhex(meta["trans_dep_hash"]),
                 error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
@@ -196,6 +200,7 @@ class CacheMeta:
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
+        write_bytes(data, self.trans_dep_hash)
         write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
@@ -225,12 +230,13 @@ class CacheMeta:
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
+                trans_dep_hash=read_bytes(data),
                 error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
             )
-        except ValueError:
+        except (ValueError, AssertionError):
             return None
 
 
