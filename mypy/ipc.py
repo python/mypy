@@ -73,8 +73,8 @@ class IPCBase:
             self.message_size = struct.unpack("!L", self.buffer[:HEADER_SIZE])[0]
         if size < self.message_size + HEADER_SIZE:
             return None
-        # We have a full frame
-        bdata = self.buffer[HEADER_SIZE : HEADER_SIZE + self.message_size]
+        # We have a full frame, avoid extra copy in case we get a large frame.
+        bdata = memoryview(self.buffer)[HEADER_SIZE : HEADER_SIZE + self.message_size]
         self.buffer = self.buffer[HEADER_SIZE + self.message_size :]
         self.message_size = None
         return bytes(bdata)
