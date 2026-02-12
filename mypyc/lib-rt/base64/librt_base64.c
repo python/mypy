@@ -5,8 +5,6 @@
 #include "libbase64.h"
 #include "pythoncapi_compat.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 static PyObject *
 b64decode_handle_invalid_input(
     PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen, bool freesrc);
@@ -327,19 +325,13 @@ urlsafe_b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
     return b64decode_internal(args[0], true);
 }
 
-#endif
-
 static PyMethodDef librt_base64_module_methods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using Base64.")},
     {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode a Base64 encoded bytes object or ASCII string.")},
     {"urlsafe_b64encode", (PyCFunction)urlsafe_b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using URL and file system safe Base64 alphabet.")},
     {"urlsafe_b64decode", (PyCFunction)urlsafe_b64decode, METH_FASTCALL, PyDoc_STR("Decode bytes or ASCII string using URL and file system safe Base64 alphabet.")},
-#endif
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 base64_abi_version(void) {
@@ -351,12 +343,9 @@ base64_api_version(void) {
     return LIBRT_BASE64_API_VERSION;
 }
 
-#endif
-
 static int
 librt_base64_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     // Export mypy internal C API, be careful with the order!
     static void *base64_api[LIBRT_BASE64_API_LEN] = {
         (void *)base64_abi_version,
@@ -368,7 +357,6 @@ librt_base64_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 
