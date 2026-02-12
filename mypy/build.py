@@ -13,7 +13,6 @@ The function build() is the main interface to this module.
 
 from __future__ import annotations
 
-import base64
 import collections
 import contextlib
 import gc
@@ -40,6 +39,7 @@ from typing import (
     TypedDict,
 )
 
+from librt.base64 import b64encode
 from librt.internal import (
     cache_version,
     read_bool,
@@ -353,7 +353,7 @@ def build(
     if options.num_workers > 0:
         # TODO: switch to something more efficient than pickle (also in the daemon).
         pickled_options = pickle.dumps(options.snapshot())
-        options_data = base64.b64encode(pickled_options).decode()
+        options_data = b64encode(pickled_options).decode()
         workers = [
             WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
             for idx in range(options.num_workers)

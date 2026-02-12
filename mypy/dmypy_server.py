@@ -7,7 +7,6 @@ to enable fine-grained incremental reprocessing of changes.
 from __future__ import annotations
 
 import argparse
-import base64
 import io
 import json
 import os
@@ -19,6 +18,8 @@ import traceback
 from collections.abc import Callable, Sequence, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Final, TypeAlias as _TypeAlias
+
+from librt.base64 import b64encode
 
 import mypy.build
 import mypy.errors
@@ -57,7 +58,7 @@ if sys.platform == "win32":
         """
         command = [sys.executable, "-m", "mypy.dmypy", "--status-file", status_file, "daemon"]
         pickled_options = pickle.dumps(options.snapshot())
-        command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
+        command.append(f'--options-data="{b64encode(pickled_options).decode()}"')
         if timeout:
             command.append(f"--timeout={timeout}")
         if log_file:
