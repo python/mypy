@@ -115,3 +115,57 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
         yield ready
         data = {item: (dep - ready) for item, dep in data.items() if item not in ready}
     assert not data, f"A cyclic dependency exists amongst {data!r}"
+
+
+def topsort2(data: dict[T, set[T]]) -> Iterable[set[T]]:
+    """Topological sort using Kahn's algorithm.
+
+    This is functionally equivalent to topsort() but avoids rebuilding
+    the full dict and set objects on each iteration. Instead it uses
+    in-degree counters and a reverse adjacency list, so the total work
+    is O(V + E) rather than O(depth * V).
+
+    Args:
+      data: A map from vertices to all vertices that it has an edge
+            connecting it to.  NOTE: This data structure
+            is modified in place -- for normalization purposes,
+            self-dependencies are removed and entries representing
+            orphans are added.
+
+    Returns:
+      An iterator yielding sets of vertices that have an equivalent
+      ordering.
+    """
+    for k, v in data.items():
+        v.discard(k)  # Ignore self dependencies.
+    for item in set.union(*data.values()) - set(data.keys()):
+        data[item] = set()
+
+    # Build reverse adjacency list and in-degree counts.
+    in_degree: dict[T, int] = {}
+    rev: dict[T, list[T]] = {}
+    for item in data:
+        in_degree[item] = len(data[item])
+        rev[item] = []
+    for item, deps in data.items():
+        for dep in deps:
+            rev[dep].append(item)
+
+    ready = {item for item, deg in in_degree.items() if deg == 0}
+    remaining = len(in_degree) - len(ready)
+
+    while ready:
+        yield ready
+        new_ready: set[T] = set()
+        for item in ready:
+            for dependent in rev[item]:
+                in_degree[dependent] -= 1
+                if in_degree[dependent] == 0:
+                    new_ready.add(dependent)
+        remaining -= len(new_ready)
+        ready = new_ready
+
+    assert remaining == 0, (
+        f"A cyclic dependency exists amongst "
+        f"{[k for k, deg in in_degree.items() if deg > 0]!r}"
+    )
