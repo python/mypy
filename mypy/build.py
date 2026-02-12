@@ -2373,8 +2373,18 @@ class State:
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine-grained mode.
-                if exist_added_packages(suppressed, manager, options):
+                if exist_added_packages(suppressed, manager):
                     state.parse_file()  # This is safe because the cache is anyway stale.
+                    state.compute_dependencies()
+                # This is an inverse to the situation above. If we had an import like this:
+                #     from pkg import mod
+                # and then mod was deleted, we need to force recompute dependencies, to
+                # decide whether we should still depend on a missing pkg.mod. Otherwise,
+                # the above import is indistinguishable from something like this:
+                #     import pkg
+                #     import pkg.mod
+                if exist_removed_submodules(dependencies, manager):
+                    state.parse_file()  # Same as above, the current state is stale anyway.
                     state.compute_dependencies()
             state.size_hint = meta.size
         else:
@@ -3242,7 +3252,7 @@ def find_module_and_diagnose(
             raise ModuleNotFound
 
 
-def exist_added_packages(suppressed: list[str], manager: BuildManager, options: Options) -> bool:
+def exist_added_packages(suppressed: list[str], manager: BuildManager) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.
@@ -3255,13 +3265,32 @@ def exist_added_packages(suppressed: list[str], manager: BuildManager, options: 
         path = find_module_simple(dep, manager)
         if not path:
             continue
+        options = manager.options.clone_for_module(dep)
         if options.follow_imports == "skip" and (
             not path.endswith(".pyi") or options.follow_imports_for_stubs
         ):
             continue
-        if "__init__.py" in path:
-            # It is better to have a bit lenient test, this will only slightly reduce
-            # performance, while having a too strict test may affect correctness.
+        if os.path.basename(path) in ("__init__.py", "__init__.pyi"):
+            return True
+    return False
+
+
+def exist_removed_submodules(dependencies: list[str], manager: BuildManager) -> bool:
+    """Find if there are any submodules of packages that are now missing.
+
+    This is conceptually an inverse of exist_added_packages().
+    """
+    dependencies_set = set(dependencies)
+    for dep in dependencies:
+        if "." not in dep:
+            continue
+        if dep in manager.source_set.source_modules:
+            # We still know it is definitely a module.
+            continue
+        direct_ancestor, _ = dep.rsplit(".", maxsplit=1)
+        if direct_ancestor not in dependencies_set:
+            continue
+        if find_module_simple(dep, manager) is None:
             return True
     return False
 
@@ -3784,6 +3813,7 @@ def load_graph(
         for dep in st.suppressed:
             if dep in graph:
                 st.add_dependency(dep)
+                manager.missing_modules.discard(dep)
     # Second, in the initial loop we skip indirect dependencies, so to make indirect dependencies
     # behave more consistently with regular ones, we suppress them manually here (when needed).
     for st in graph.values():

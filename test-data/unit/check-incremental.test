@@ -7864,3 +7864,34 @@ import n3  # touch
 [out]
 [out2]
 tmp/a.py:2: error: Name "b.c.d.C" is not defined
+
+[case testDeletedModuleFromImport]
+# flags: --ignore-missing-imports
+from a import b
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
+[out]
+[out2]
+main:2: error: Module "a" has no attribute "b"
+
+[case testDeletedModuleFromImport2]
+# flags: --ignore-missing-imports
+import a
+import a.b
+from a import b  # no error here
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
+[out]
+[out2]
+
+[case testDeletedModuleFromImport3]
+# flags: --warn-unused-ignores
+from a import b  # type: ignore[attr-defined]
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
+[out]
+main:2: error: Unused "type: ignore" comment
+[out2]
