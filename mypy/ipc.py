@@ -1,4 +1,4 @@
-"""Cross platform abstractions for inter-process communication
+"""Cross-platform abstractions for inter-process communication
 
 On Unix, this uses AF_UNIX sockets.
 On Windows, this uses NamedPipes.
@@ -6,11 +6,10 @@ On Windows, this uses NamedPipes.
 
 from __future__ import annotations
 
-import base64
-import codecs
 import json
 import os
 import shutil
+import struct
 import sys
 import tempfile
 from abc import abstractmethod
@@ -20,6 +19,7 @@ from types import TracebackType
 from typing import Final
 from typing_extensions import Self
 
+from librt.base64 import urlsafe_b64encode
 from librt.internal import ReadBuffer, WriteBuffer
 
 if sys.platform == "win32":
@@ -36,6 +36,9 @@ else:
     import socket
 
     _IPCHandle = socket.socket
+
+# Size of the message packed as !L, i.e. 4 bytes in network order (big-endian).
+HEADER_SIZE = 4
 
 
 class IPCException(Exception):
@@ -58,24 +61,29 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        self.message_size: int | None = None
         self.buffer = bytearray()
 
-    def frame_from_buffer(self) -> bytearray | None:
+    def frame_from_buffer(self) -> bytes | None:
         """Return a full frame from the bytes we have in the buffer."""
-        space_pos = self.buffer.find(b" ")
-        if space_pos == -1:
+        size = len(self.buffer)
+        if size < HEADER_SIZE:
             return None
-        # We have a full frame
-        bdata = self.buffer[:space_pos]
-        self.buffer = self.buffer[space_pos + 1 :]
-        return bdata
+        if self.message_size is None:
+            self.message_size = struct.unpack("!L", self.buffer[:HEADER_SIZE])[0]
+        if size < self.message_size + HEADER_SIZE:
+            return None
+        # We have a full frame, avoid extra copy in case we get a large frame.
+        bdata = memoryview(self.buffer)[HEADER_SIZE : HEADER_SIZE + self.message_size]
+        self.buffer = self.buffer[HEADER_SIZE + self.message_size :]
+        self.message_size = None
+        return bytes(bdata)
 
     def read(self, size: int = 100000) -> str:
         return self.read_bytes(size).decode("utf-8")
 
     def read_bytes(self, size: int = 100000) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
-        bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
                 # Check if we already have a message in the buffer before
@@ -126,10 +134,10 @@ class IPCBase:
                 self.buffer.extend(more)
 
         if not bdata:
-            # Socket was empty and we didn't get any frame.
+            # Socket was empty, and we didn't get any frame.
             # This should only happen if the socket was closed.
             return b""
-        return codecs.decode(bdata, "base64")
+        return bdata
 
     def write(self, data: str) -> None:
         self.write_bytes(data.encode("utf-8"))
@@ -137,8 +145,8 @@ class IPCBase:
     def write_bytes(self, data: bytes) -> None:
         """Write to an IPC connection."""
 
-        # Frame the data by urlencoding it and separating by space.
-        encoded_data = codecs.encode(data, "base64") + b" "
+        # Frame the data by adding fixed size header.
+        encoded_data = struct.pack("!L", len(data)) + data
 
         if sys.platform == "win32":
             try:
@@ -226,9 +234,7 @@ class IPCServer(IPCBase):
 
     def __init__(self, name: str, timeout: float | None = None) -> None:
         if sys.platform == "win32":
-            name = r"\\.\pipe\{}-{}.pipe".format(
-                name, base64.urlsafe_b64encode(os.urandom(6)).decode()
-            )
+            name = r"\\.\pipe\{}-{}.pipe".format(name, urlsafe_b64encode(os.urandom(6)).decode())
         else:
             name = f"{name}.sock"
         super().__init__(name, timeout)

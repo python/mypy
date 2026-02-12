@@ -14,7 +14,6 @@ The protocol of communication with the coordinator is as following:
 from __future__ import annotations
 
 import argparse
-import base64
 import gc
 import json
 import os
@@ -23,6 +22,8 @@ import platform
 import sys
 import time
 from typing import NamedTuple
+
+from librt.base64 import b64decode
 
 from mypy import util
 from mypy.build import (
@@ -72,7 +73,7 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    options_dict = pickle.loads(base64.b64decode(args.options_data))
+    options_dict = pickle.loads(b64decode(args.options_data))
     options_obj = Options()
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
