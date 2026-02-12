@@ -115,3 +115,76 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
         yield ready
         data = {item: (dep - ready) for item, dep in data.items() if item not in ready}
     assert not data, f"A cyclic dependency exists amongst {data!r}"
+
+
+class topsort2(Iterator[set[T]]):  # noqa: N801
+    """Topological sort using Kahn's algorithm.
+
+    This is functionally equivalent to topsort() but avoids rebuilding
+    the full dict and set objects on each iteration. Instead it uses
+    in-degree counters and a reverse adjacency list, so the total work
+    is O(V + E) rather than O(depth * V).
+
+    Implemented as a class rather than a generator for better mypyc
+    compilation.
+
+    Args:
+      data: A map from vertices to all vertices that it has an edge
+            connecting it to.  NOTE: This data structure
+            is modified in place -- for normalization purposes,
+            self-dependencies are removed and entries representing
+            orphans are added.
+    """
+
+    def __init__(self, data: dict[T, set[T]]) -> None:
+        # Single pass: remove self-deps, build reverse adjacency list,
+        # compute in-degree counts, detect orphans, and find initial ready set.
+        in_degree: dict[T, int] = {}
+        rev: dict[T, list[T]] = {}
+        ready: set[T] = set()
+        for item, deps in data.items():
+            deps.discard(item)  # Ignore self dependencies.
+            deg = len(deps)
+            in_degree[item] = deg
+            if deg == 0:
+                ready.add(item)
+            if item not in rev:
+                rev[item] = []
+            for dep in deps:
+                if dep in rev:
+                    rev[dep].append(item)
+                else:
+                    rev[dep] = [item]
+                    if dep not in data:
+                        # Orphan: appears as dependency but has no entry in data.
+                        in_degree[dep] = 0
+                        ready.add(dep)
+
+        self.in_degree = in_degree
+        self.rev = rev
+        self.ready = ready
+        self.remaining = len(in_degree) - len(ready)
+
+    def __iter__(self) -> Iterator[set[T]]:
+        return self
+
+    def __next__(self) -> set[T]:
+        ready = self.ready
+        if not ready:
+            assert self.remaining == 0, (
+                f"A cyclic dependency exists amongst "
+                f"{[k for k, deg in self.in_degree.items() if deg > 0]!r}"
+            )
+            raise StopIteration
+        in_degree = self.in_degree
+        rev = self.rev
+        new_ready: set[T] = set()
+        for item in ready:
+            for dependent in rev[item]:
+                new_deg = in_degree[dependent] - 1
+                in_degree[dependent] = new_deg
+                if new_deg == 0:
+                    new_ready.add(dependent)
+        self.remaining -= len(new_ready)
+        self.ready = new_ready
+        return ready

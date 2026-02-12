@@ -94,7 +94,7 @@ from mypy.errors import (
     ErrorTupleRaw,
     report_internal_error,
 )
-from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
+from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort2
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.ipc import BadStatus, IPCClient, IPCMessage, read_status, ready_to_read, receive, send
 from mypy.messages import MessageBuilder
@@ -4236,7 +4236,7 @@ def sorted_components(graph: Graph) -> list[SCC]:
     scc_dep_map = prepare_sccs_full(strongly_connected_components(vertices, edges), edges)
     # Topsort.
     res = []
-    for ready in topsort(scc_dep_map):
+    for ready in topsort2(scc_dep_map):
         # Sort the sets in ready by reversed smallest State.order.  Examples:
         #
         # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
@@ -4271,7 +4271,7 @@ def sorted_components_inner(
     edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
     sccs = list(strongly_connected_components(vertices, edges))
     res = []
-    for ready in topsort(prepare_sccs(sccs, edges)):
+    for ready in topsort2(prepare_sccs(sccs, edges)):
         res.extend(sorted(ready, key=lambda scc: -min(graph[id].order for id in scc)))
     return res
 
