@@ -895,6 +895,9 @@ class BuildManager:
         # raw parsed trees not analyzed with mypy. We use these to find absolute
         # location of a symbol used as a location for an error message.
         self.extra_trees: dict[str, MypyFile] = {}
+        # Snapshot of import-related options per module. We record these even for
+        # suppressed imports, since they can affect errors in the callers.
+        self.import_options: dict[str, dict[str, object]] = {}
         # Cache for transitive dependency check (expensive).
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
 
@@ -1871,6 +1874,7 @@ def write_cache(
     tree: MypyFile,
     dependencies: list[str],
     suppressed: list[str],
+    suppressed_deps_opts: bytes,
     imports_ignored: dict[int, list[str]],
     dep_prios: list[int],
     dep_lines: list[int],
@@ -1989,6 +1993,7 @@ def write_cache(
         suppressed=suppressed,
         imports_ignored=imports_ignored,
         options=options_snapshot(id, manager),
+        suppressed_deps_opts=suppressed_deps_opts,
         dep_prios=dep_prios,
         dep_lines=dep_lines,
         interface_hash=interface_hash,
@@ -2274,6 +2279,7 @@ class State:
             import_context = []
         id = id or "__main__"
         options = manager.options.clone_for_module(id)
+        manager.import_options[id] = options.dep_import_options()
 
         ignore_all = False
         if not path and source is None:
@@ -2571,7 +2577,16 @@ class State:
         # self.meta.dependencies when a dependency is dropped due to
         # suppression by silent mode.  However, when a suppressed
         # dependency is added back we find out later in the process.
-        return self.meta is not None and self.dependencies == self.meta.dependencies
+        # Additionally, we need to verify that import following options are
+        # same for suppressed dependencies, even if the first check is OK.
+        return (
+            self.meta is not None
+            and self.dependencies == self.meta.dependencies
+            and (
+                self.options.fine_grained_incremental
+                or self.meta.suppressed_deps_opts == self.suppressed_deps_opts()
+            )
+        )
 
     def mark_as_rechecked(self) -> None:
         """Marks this module as having been fully re-analyzed by the type-checker."""
@@ -3020,6 +3035,15 @@ class State:
             merge_dependencies(self.compute_fine_grained_deps(), deps)
             type_state.update_protocol_deps(deps)
 
+    def suppressed_deps_opts(self) -> bytes:
+        return json_dumps(
+            {
+                dep: self.manager.import_options[dep]
+                for dep in self.suppressed
+                if self.priorities.get(dep) != PRI_INDIRECT
+            }
+        )
+
     def write_cache(self) -> tuple[CacheMeta, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
@@ -3051,6 +3075,7 @@ class State:
             self.tree,
             list(self.dependencies),
             list(self.suppressed),
+            self.suppressed_deps_opts(),
             self.imports_ignored,
             dep_prios,
             dep_lines,
@@ -3126,10 +3151,8 @@ class State:
             self.options.warn_unused_ignores
             or codes.UNUSED_IGNORE in self.options.enabled_error_codes
         ) and codes.UNUSED_IGNORE not in self.options.disabled_error_codes:
-            # If this file was initially loaded from the cache, it may have suppressed
-            # dependencies due to imports with ignores on them. We need to generate
-            # those errors to avoid spuriously flagging them as unused ignores.
-            if self.meta:
+            # We only need this for the daemon, regular incremental does this unconditionally.
+            if self.meta and self.options.fine_grained_incremental:
                 self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_errors(self.xpath)
 
@@ -3710,20 +3733,22 @@ def load_graph(
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
         if not manager.use_fine_grained_cache():
-            # TODO: Ideally we could skip here modules that appeared in st.suppressed
-            # because they are not in build with `follow-imports=skip`.
-            # This way we could avoid overhead of cloning options in `State.__init__()`
-            # below to get the option value. This is quite minor performance loss however.
             added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
         else:
             # During initial loading we don't care about newly added modules,
             # they will be taken care of during fine-grained update. See also
-            # comment about this in `State.__init__()`.
+            # comment about this in `State.new_state()`.
             added = []
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
+                # TODO: for now we skip this in the daemon as a performance optimization.
+                # This however creates a correctness issue, see #7777 and State.is_fresh().
+                if not manager.use_fine_grained_cache():
+                    manager.import_options[dep] = manager.options.clone_for_module(
+                        dep
+                    ).dep_import_options()
             elif dep not in graph:
                 try:
                     if dep in st.ancestors:
@@ -4129,6 +4154,9 @@ def process_stale_scc(
     t2 = time.time()
     stale = scc
     for id in stale:
+        # Re-generate import errors in case this module was loaded from the cache.
+        if graph[id].meta:
+            graph[id].verify_dependencies(suppressed_only=True)
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()

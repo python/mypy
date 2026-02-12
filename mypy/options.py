@@ -616,3 +616,11 @@ class Options:
                 val = sorted([code.code for code in val])
             result[opt] = val
         return result
+
+    def dep_import_options(self) -> dict[str, object]:
+        # These are options that can affect dependent modules as well.
+        return {
+            "ignore_missing_imports": self.ignore_missing_imports,
+            "follow_imports": self.follow_imports,
+            "follow_imports_for_stubs": self.follow_imports_for_stubs,
+        }

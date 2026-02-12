@@ -7797,6 +7797,104 @@ tmp/b.py:5: note: "lol" of "BB" defined here
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
 tmp/b.py:5: note: "lol" of "BB" defined here
 
+[case testMissingImportUnIgnoredInConfig]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[out]
+[out2]
+main:2: error: Cannot find implementation or library stub for module named "foo"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingImportUnIgnoredInConfig2]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[out]
+main:2: error: Cannot find implementation or library stub for module named "foo"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+
+[case testMissingImportUnIgnoredInConfig3]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file foo.py]
+bar = 1
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+follow_imports = skip
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+follow_imports = error
+[out]
+[out2]
+main:2: error: Import of "foo" ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testMissingImportUnIgnoredInConfig4]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file foo.py]
+bar = 1
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+follow_imports = error
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+follow_imports = skip
+[out]
+main:2: error: Import of "foo" ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+[out2]
+
+[case testMissingImportUnIgnoredInConfig5]
+# flags: --config-file tmp/mypy.ini --warn-unused-ignores
+from foo import bar  # type: ignore[import-not-found]
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[out]
+main:2: error: Unused "type: ignore" comment
+[out2]
+
+[case testMissingImportUnIgnoredInConfig6]
+# flags: --config-file tmp/mypy.ini  --warn-unused-ignores
+from foo import bar  # type: ignore[import-not-found]
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[out]
+[out2]
+main:2: error: Unused "type: ignore" comment
+
 [case testIndirectDependencyReorderModulesNoCrash]
 import a
 [file a.py]

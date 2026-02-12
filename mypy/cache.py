@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 3
+CACHE_VERSION: Final = 4
 
 SerializedError: _TypeAlias = tuple[str | None, int | str, int, int, int, str, str, str | None]
 
@@ -91,6 +91,7 @@ class CacheMeta:
         suppressed: list[str],
         imports_ignored: dict[int, list[str]],
         options: dict[str, object],
+        suppressed_deps_opts: bytes,
         dep_prios: list[int],
         dep_lines: list[int],
         dep_hashes: list[bytes],
@@ -112,6 +113,7 @@ class CacheMeta:
         self.suppressed = suppressed  # dependencies that weren't imported
         self.imports_ignored = imports_ignored  # type ignore codes by line
         self.options = options  # build options snapshot
+        self.suppressed_deps_opts = suppressed_deps_opts  # hash of import-related options
         # dep_prios and dep_lines are both aligned with dependencies + suppressed
         self.dep_prios = dep_prios
         self.dep_lines = dep_lines
@@ -136,6 +138,7 @@ class CacheMeta:
             "suppressed": self.suppressed,
             "imports_ignored": {str(line): codes for line, codes in self.imports_ignored.items()},
             "options": self.options,
+            "suppressed_deps_opts": self.suppressed_deps_opts.hex(),
             "dep_prios": self.dep_prios,
             "dep_lines": self.dep_lines,
             "dep_hashes": [dep.hex() for dep in self.dep_hashes],
@@ -164,6 +167,7 @@ class CacheMeta:
                     int(line): codes for line, codes in meta["imports_ignored"].items()
                 },
                 options=meta["options"],
+                suppressed_deps_opts=bytes.fromhex(meta["suppressed_deps_opts"]),
                 dep_prios=meta["dep_prios"],
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
@@ -191,6 +195,7 @@ class CacheMeta:
             write_int(data, line)
             write_str_list(data, codes)
         write_json(data, self.options)
+        write_bytes(data, self.suppressed_deps_opts)
         write_int_list(data, self.dep_prios)
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
@@ -220,6 +225,7 @@ class CacheMeta:
                     read_int(data): read_str_list(data) for _ in range(read_int_bare(data))
                 },
                 options=read_json(data),
+                suppressed_deps_opts=read_bytes(data),
                 dep_prios=read_int_list(data),
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
