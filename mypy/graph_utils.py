@@ -137,25 +137,33 @@ class topsort2(Iterator[set[T]]):
     """
 
     def __init__(self, data: dict[T, set[T]]) -> None:
-        for k, v in data.items():
-            v.discard(k)  # Ignore self dependencies.
-        for item in set.union(*data.values()) - set(data.keys()):
-            data[item] = set()
-
-        # Build reverse adjacency list and in-degree counts.
+        # Single pass: remove self-deps, build reverse adjacency list,
+        # compute in-degree counts, detect orphans, and find initial ready set.
         in_degree: dict[T, int] = {}
         rev: dict[T, list[T]] = {}
-        for item in data:
-            in_degree[item] = len(data[item])
-            rev[item] = []
+        ready: set[T] = set()
         for item, deps in data.items():
+            deps.discard(item)  # Ignore self dependencies.
+            deg = len(deps)
+            in_degree[item] = deg
+            if deg == 0:
+                ready.add(item)
+            if item not in rev:
+                rev[item] = []
             for dep in deps:
-                rev[dep].append(item)
+                if dep in rev:
+                    rev[dep].append(item)
+                else:
+                    rev[dep] = [item]
+                    if dep not in data:
+                        # Orphan: appears as dependency but has no entry in data.
+                        in_degree[dep] = 0
+                        ready.add(dep)
 
         self.in_degree = in_degree
         self.rev = rev
-        self.ready = {item for item, deg in in_degree.items() if deg == 0}
-        self.remaining = len(in_degree) - len(self.ready)
+        self.ready = ready
+        self.remaining = len(in_degree) - len(ready)
 
     def __iter__(self) -> Iterator[set[T]]:
         return self
