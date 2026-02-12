@@ -5619,3 +5619,60 @@ def test_read_corrupted_data() -> None:
             print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
             print(">>>", e, data)
             raise
+
+[case testAcyclicClass]
+import gc
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(acyclic=True)
+class Leaf:
+    def __init__(self, x: int, s: str) -> None:
+        self.x = x
+        self.s = s
+
+def test_basic() -> None:
+    o = Leaf(5, "hello")
+    assert o.x == 5
+    assert o.s == "hello"
+    o.x = 10
+    assert o.x == 10
+
+def test_gc_not_tracked() -> None:
+    o = Leaf(1, "a")
+    assert not gc.is_tracked(o)
+
+def test_dealloc() -> None:
+    for i in range(1000):
+        o = Leaf(i, str(i))
+    # Just verify no crash or leak during repeated alloc/dealloc
+
+@mypyc_attr(acyclic=True)
+class AcyclicBase:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class DerivedNotAcyclic(AcyclicBase):
+    """Derived without acyclic -- still participates in GC."""
+    def __init__(self, x: int, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+@mypyc_attr(acyclic=True)
+class DerivedAcyclic(AcyclicBase):
+    """Derived with acyclic -- also opts out of GC."""
+    def __init__(self, x: int, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_derived_not_acyclic() -> None:
+    d = DerivedNotAcyclic(3, "hi")
+    assert d.x == 3
+    assert d.y == "hi"
+    # Subclass without @mypyc_attr(acyclic=True) still participates in GC
+    assert gc.is_tracked(d)
+
+def test_derived_acyclic() -> None:
+    d = DerivedAcyclic(3, "hi")
+    assert d.x == 3
+    assert d.y == "hi"
+    assert not gc.is_tracked(d)
