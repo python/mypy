@@ -251,6 +251,8 @@ def gen_func_item(
         assert isinstance(fitem, FuncDef), fitem
         generator_class_ir = builder.mapper.fdef_to_generator[fitem]
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+        if builder.fn_info.can_merge_generator_and_env_classes():
+            builder.fn_info.generator_class.ir.is_environment = True
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -961,7 +963,6 @@ def gen_calls_to_correct_impl(
     typ, src = builtin_names["builtins.int"]
     int_type_obj = builder.add(LoadAddress(typ, src, line))
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
-
     native_call, non_native_call = BasicBlock(), BasicBlock()
     builder.add_bool_branch(is_int, native_call, non_native_call)
     builder.activate_block(native_call)
