@@ -3266,7 +3266,16 @@ def exist_added_packages(suppressed: list[str], manager: BuildManager) -> bool:
         if not path:
             continue
         options = manager.options.clone_for_module(dep)
-        if options.follow_imports == "skip" and (
+        # Technically this is not 100% correct, since we can have:
+        #     from pkg import mod
+        # with
+        #     [mypy-pkg]
+        #     follow-import = silent
+        #     [mypy-pkg.mod]
+        #     follow-imports = normal
+        # But such cases are extremely rare, and this allows us to avoid
+        # massive performance impact in much more common situations.
+        if options.follow_imports in ("skip", "error") and (
             not path.endswith(".pyi") or options.follow_imports_for_stubs
         ):
             continue
