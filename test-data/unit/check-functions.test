@@ -3810,6 +3810,22 @@ main:3: error: Missing positional argument "z" in call to "f"
 main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 main:3: error: Argument 2 to "f" has incompatible type "int"; expected "str"
 
+[case testMissingPositionalArgNoShiftPatternLast]
+def f(x: int, y: str, z: bytes) -> None: ...
+
+f(123, "wrong")
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Missing positional argument "z" in call to "f"
+
+[case testMissingPositionalArgNoShiftPatternNone]
+def f(x: int) -> None: ...
+
+f()
+[builtins fixtures/primitives.pyi]
+[out]
+main:3: error: Missing positional argument "x" in call to "f"
+
 [case testMissingPositionalArgMultipleMissing]
 def f(a: int, b: str, c: float, d: list[int]) -> None: ...
 

@@ -2355,8 +2355,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """Try to identify a single missing positional argument using type alignment.
 
         If the caller and callee are just positional arguments and exactly one arg is missing,
-        we scan left to right to find which argument skipped. If there is an error, report it 
-        and return True, or return False to fall back to normal checking.
+        we scan left to right to find which argument skipped. If only the last argument is missing, 
+        we return False since it's already handled in a desired manner. If there is an error, 
+        report it and return True, or return False to fall back to normal checking.
         """
         if not all(k == ARG_POS for k in callee.arg_kinds):
             return False
@@ -2379,6 +2380,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return False
 
         if skip_idx is None or j != len(arg_types):
+            return False
+
+        if skip_idx == len(callee.arg_types) - 1:
             return False
 
         param_name = callee.arg_names[skip_idx]
