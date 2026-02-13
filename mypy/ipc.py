@@ -41,6 +41,8 @@ else:
 HEADER_SIZE = 4
 
 
+# TODO: we should make sure consistent exceptions are raised on different platforms.
+# Currently we raise either IPCException or OSError for equivalent conditions.
 class IPCException(Exception):
     """Exception for IPC issues."""
 
@@ -354,7 +356,7 @@ def read_status(status_file: str) -> dict[str, object]:
         try:
             data = json.load(f)
         except Exception as e:
-            raise BadStatus("Malformed status file (not JSON)") from e
+            raise BadStatus(f"Malformed status file: {str(e)}") from e
     if not isinstance(data, dict):
         raise BadStatus(f"Invalid status file (not a dict): {data}")
     return data
@@ -380,7 +382,9 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
             try:
                 ov, err = _winapi.ReadFile(conn.connection, 1, overlapped=True)
             except OSError:
-                # Broken/closed pipe
+                # Broken/closed pipe. Mimic Linux behavior here, caller will get
+                # the exception when trying to read from this socket.
+                ready.append(i)
                 continue
             if err == _winapi.ERROR_IO_PENDING:
                 events.append(ov.event)

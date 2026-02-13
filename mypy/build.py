@@ -100,7 +100,16 @@ from mypy.errors import (
 )
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.ipc import BadStatus, IPCClient, IPCMessage, read_status, ready_to_read, receive, send
+from mypy.ipc import (
+    BadStatus,
+    IPCClient,
+    IPCException,
+    IPCMessage,
+    read_status,
+    ready_to_read,
+    receive,
+    send,
+)
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ClassDef,
@@ -280,9 +289,8 @@ class WorkerClient:
                 assert isinstance(pid, int), f"Bad PID: {pid}"
                 assert isinstance(connection_name, str), f"Bad connection name: {connection_name}"
                 if sys.platform != "win32":
-                    # TODO(emmatyping): for some reason this does not work on Windows. Probably
-                    # because we don't fork? We should check this
-                    # Double-check this status file is created by us.
+                    # Windows uses "wrapper processes" to run Python, so we cannot
+                    # verify PIDs reliably.
                     assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
                 return
@@ -402,7 +410,7 @@ def build(
         for worker in workers:
             try:
                 send(worker.conn, SccRequestMessage(scc_id=None))
-            except OSError:
+            except (OSError, IPCException):
                 pass
         for worker in workers:
             worker.close()
