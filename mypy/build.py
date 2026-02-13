@@ -38,6 +38,7 @@ from typing import (
     TextIO,
     TypeAlias as _TypeAlias,
     TypedDict,
+    cast,
 )
 
 from librt.internal import (
@@ -59,6 +60,7 @@ from mypy.cache import (
     LIST_GEN,
     LITERAL_NONE,
     CacheMeta,
+    JsonValue,
     ReadBuffer,
     SerializedError,
     Tag,
@@ -74,6 +76,7 @@ from mypy.cache import (
     write_int,
     write_int_list,
     write_int_opt,
+    write_json_value,
     write_str,
     write_str_list,
     write_str_opt,
@@ -108,6 +111,7 @@ from mypy.nodes import (
     MypyFile,
     SymbolTable,
 )
+from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -1616,11 +1620,17 @@ def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
     Separately store only the options we may compare individually, and take a hash
     of everything else. If --debug-cache is specified, fall back to full snapshot.
     """
-    snapshot = manager.options.clone_for_module(id).select_options_affecting_cache()
+    platform_opt, values = manager.options.clone_for_module(id).select_options_affecting_cache()
     if manager.options.debug_cache:
-        return snapshot
-    platform_opt = snapshot.pop("platform")
-    return {"platform": platform_opt, "other_options": hash_digest(json_dumps(snapshot))}
+        # Build full options snapshot for debugging purposes.
+        result: dict[str, object] = {"platform": platform_opt}
+        for key, val in zip(OPTIONS_AFFECTING_CACHE_NO_PLATFORM, values):
+            result[key] = val
+        return result
+    # Process most options quickly, since this is performance critical.
+    buf = WriteBuffer()
+    write_json_value(buf, cast(JsonValue, values))
+    return {"platform": platform_opt, "other_options": hash_digest(buf.getvalue())}
 
 
 def find_cache_meta(
