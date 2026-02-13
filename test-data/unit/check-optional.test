@@ -493,11 +493,11 @@ from typing import Optional
 
 def main(x: Optional[str]):
     if x == 0:
-        reveal_type(x)  # N: Revealed type is "builtins.str | None"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | None"
     if x is 0:
-        reveal_type(x)  # N: Revealed type is "builtins.str | None"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | None"
 [builtins fixtures/ops.pyi]
