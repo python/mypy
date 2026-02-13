@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Set as AbstractSet
+from collections.abc import Iterator, Set as AbstractSet
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -72,15 +72,20 @@ def prepare_sccs(
     return data
 
 
-def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
-    """Topological sort.
+class topsort(Iterator[set[T]]):  # noqa: N801
+    """Topological sort using Kahn's algorithm.
+
+    Uses in-degree counters and a reverse adjacency list, so the total work
+    is O(V + E).
+
+    Implemented as a class rather than a generator for better mypyc
+    compilation.
 
     Args:
       data: A map from vertices to all vertices that it has an edge
-            connecting it to.  NOTE: This data structure
-            is modified in place -- for normalization purposes,
-            self-dependencies are removed and entries representing
-            orphans are added.
+            connecting it to. NOTE: dependency sets in this data
+            structure are modified in place to remove self-dependencies.
+            Orphans are handled internally and are not added to `data`.
 
     Returns:
       An iterator yielding sets of vertices that have an equivalent
@@ -91,49 +96,15 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
 
         {A: {B, C}, B: {D}, C: {D}}
 
-      This is normalized to:
+      The algorithm treats orphan dependencies as if normalized to:
 
         {A: {B, C}, B: {D}, C: {D}, D: {}}
 
-      The algorithm will yield the following values:
+      It will yield the following values:
 
         {D}
         {B, C}
         {A}
-
-    From https://code.activestate.com/recipes/577413/.
-    """
-    # TODO: Use a faster algorithm?
-    for k, v in data.items():
-        v.discard(k)  # Ignore self dependencies.
-    for item in set.union(*data.values()) - set(data.keys()):
-        data[item] = set()
-    while True:
-        ready = {item for item, dep in data.items() if not dep}
-        if not ready:
-            break
-        yield ready
-        data = {item: (dep - ready) for item, dep in data.items() if item not in ready}
-    assert not data, f"A cyclic dependency exists amongst {data!r}"
-
-
-class topsort2(Iterator[set[T]]):  # noqa: N801
-    """Topological sort using Kahn's algorithm.
-
-    This is functionally equivalent to topsort() but avoids rebuilding
-    the full dict and set objects on each iteration. Instead it uses
-    in-degree counters and a reverse adjacency list, so the total work
-    is O(V + E) rather than O(depth * V).
-
-    Implemented as a class rather than a generator for better mypyc
-    compilation.
-
-    Args:
-      data: A map from vertices to all vertices that it has an edge
-            connecting it to.  NOTE: This data structure
-            is modified in place -- for normalization purposes,
-            self-dependencies are removed and entries representing
-            orphans are added.
     """
 
     def __init__(self, data: dict[T, set[T]]) -> None:
