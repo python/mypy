@@ -7534,7 +7534,9 @@ class SemanticAnalyzer(
         if b and isinstance(b.node, MypyFile):
             # Only include public builtins (not _private ones)
             for builtin_name in b.node.names.keys():
-                if not (len(builtin_name) > 1 and builtin_name[0] == "_" and builtin_name[1] != "_"):
+                if not (
+                    len(builtin_name) > 1 and builtin_name[0] == "_" and builtin_name[1] != "_"
+                ):
                     names.add(builtin_name)
 
         # Filter out internal/dunder names that aren't useful as suggestions
