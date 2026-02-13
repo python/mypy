@@ -116,7 +116,7 @@ jobs:
           python: '3.14'
           os: windows-latest
           toxenv: py
-          tox_extra_args: "-n 4 --mypy-num-workers=2 mypy/test/testcheck.py -k incremental -k module"
+          tox_extra_args: "-n 4 --mypy-num-workers=2 mypy/test/testcheck.py --k 'incremental or modules or classes'"
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'
