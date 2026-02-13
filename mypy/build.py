@@ -47,6 +47,7 @@ from librt.internal import (
     read_str as read_str_bare,
     read_tag,
     write_bool,
+    write_bytes as write_bytes_bare,
     write_int as write_int_bare,
     write_str as write_str_bare,
     write_tag,
@@ -4357,17 +4358,20 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
 
 def transitive_dep_hash(scc: SCC, graph: Graph) -> bytes:
     """Compute stable snapshot of transitive import structure for given SCC."""
-    all_direct_deps = {
-        dep
-        for id in scc.mod_ids
-        for dep in graph[id].dependencies
-        if graph[id].priorities.get(dep) != PRI_INDIRECT
-    }
-    trans_dep_hash_map = {
-        dep_id: "" if dep_id in scc.mod_ids else graph[dep_id].trans_dep_hash.hex()
-        for dep_id in all_direct_deps
-    }
-    return hash_digest_bytes(json_dumps(trans_dep_hash_map))
+    all_direct_deps = sorted(
+        {
+            dep
+            for id in scc.mod_ids
+            for dep in graph[id].dependencies
+            if graph[id].priorities.get(dep) != PRI_INDIRECT
+        }
+    )
+    buf = WriteBuffer()
+    for dep_id in all_direct_deps:
+        write_str_bare(buf, dep_id)
+        if dep_id not in scc.mod_ids:
+            write_bytes_bare(buf, graph[dep_id].trans_dep_hash)
+    return hash_digest_bytes(buf.getvalue())
 
 
 def missing_stubs_file(cache_dir: str) -> str:
