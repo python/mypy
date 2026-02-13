@@ -16,7 +16,7 @@ from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.types import Type
-from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
+from mypy.util import DEFAULT_SOURCE_OFFSET
 from mypy.version import __version__ as mypy_version
 
 T = TypeVar("T")
@@ -869,11 +869,8 @@ class Errors:
             if not has_blocker and path in self.has_blockers:
                 self.has_blockers.remove(path)
 
-    def generate_unused_ignore_errors(self, file: str) -> None:
-        if (
-            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
-            or file in self.ignored_files
-        ):
+    def generate_unused_ignore_errors(self, file: str, is_typeshed: bool = False) -> None:
+        if is_typeshed or file in self.ignored_files:
             return
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
@@ -921,12 +918,9 @@ class Errors:
             self._add_error_info(file, info)
 
     def generate_ignore_without_code_errors(
-        self, file: str, is_warning_unused_ignores: bool
+        self, file: str, is_warning_unused_ignores: bool, is_typeshed: bool = False
     ) -> None:
-        if (
-            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
-            or file in self.ignored_files
-        ):
+        if is_typeshed or file in self.ignored_files:
             return
 
         used_ignored_lines = self.used_ignored_lines[file]

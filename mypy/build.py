@@ -821,6 +821,7 @@ class BuildManager:
             and not has_reporters
         )
         self.fscache = fscache
+        self.cwd = os.getcwd()
         self.find_module_cache = FindModuleCache(
             self.search_paths, self.fscache, self.options, source_set=self.source_set
         )
@@ -2454,7 +2455,11 @@ class State:
         self.id = id
         self.path = path
         if path:
-            self.abspath = os.path.abspath(path)
+            # Avoid calling os.abspath, since it makes a getcwd() syscall, which is slow
+            if os.path.isabs(path):
+                self.abspath = path
+            else:
+                self.abspath = os.path.normpath(os.path.join(manager.cwd, path))
         self.xpath = path or "<string>"
         self.source = source
         self.options = options
@@ -3178,12 +3183,14 @@ class State:
             # We only need this for the daemon, regular incremental does this unconditionally.
             if self.meta and self.options.fine_grained_incremental:
                 self.verify_dependencies(suppressed_only=True)
-            self.manager.errors.generate_unused_ignore_errors(self.xpath)
+            is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
+            self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
 
     def generate_ignore_without_code_notes(self) -> None:
         if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
+            is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
             self.manager.errors.generate_ignore_without_code_errors(
-                self.xpath, self.options.warn_unused_ignores
+                self.xpath, self.options.warn_unused_ignores, is_typeshed
             )
 
 
@@ -3823,7 +3830,7 @@ def load_graph(
                         st.suppress_dependency(dep)
                 else:
                     if newst.path:
-                        newst_path = os.path.abspath(newst.path)
+                        newst_path = newst.abspath
 
                         if newst_path in seen_files:
                             manager.errors.report(
