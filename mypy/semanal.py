@@ -7475,12 +7475,16 @@ class SemanticAnalyzer(
             self.record_incomplete_ref()
             return
         message = f'Name "{name}" is not defined'
-        # Collect all names in scope to suggest similar alternatives
-        alternatives = self._get_names_in_scope()
-        alternatives.discard(name)
-        matches = best_matches(name, alternatives, n=3)
-        if matches:
-            message += f"; did you mean {pretty_seq(matches, 'or')}?"
+        if (
+            "." not in name
+            and not (name.startswith("__") and name.endswith("__"))
+            and f"builtins.{name}" not in SUGGESTED_TEST_FIXTURES
+        ):
+            alternatives = self._get_names_in_scope()
+            alternatives.discard(name)
+            matches = best_matches(name, alternatives, n=3)
+            if matches:
+                message += f"; did you mean {pretty_seq(matches, 'or')}?"
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if f"builtins.{name}" in SUGGESTED_TEST_FIXTURES:
@@ -7532,8 +7536,8 @@ class SemanticAnalyzer(
                 if not (len(builtin_name) > 1 and builtin_name[0] == "_" and builtin_name[1] != "_"):
                     names.add(builtin_name)
 
-        # Filter out internal/dunder names that aren't useful for suggestions and might introduce noise
-        return {n for n in names if not n.startswith("__") or n.endswith("__")}
+        # Filter out internal/dunder names that aren't useful as suggestions
+        return {n for n in names if not n.startswith("__")}
 
     def already_defined(
         self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None, noun: str
