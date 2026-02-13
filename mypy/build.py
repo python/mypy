@@ -280,9 +280,8 @@ class WorkerClient:
                 assert isinstance(pid, int), f"Bad PID: {pid}"
                 assert isinstance(connection_name, str), f"Bad connection name: {connection_name}"
                 if sys.platform != "win32":
-                    # TODO(emmatyping): for some reason this does not work on Windows. Probably
-                    # because we don't fork? We should check this
-                    # Double-check this status file is created by us.
+                    # Windows uses "wrapper processes" to run Python, so we cannot
+                    # verify PIDs reliably.
                     assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
                 return

@@ -380,7 +380,9 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
             try:
                 ov, err = _winapi.ReadFile(conn.connection, 1, overlapped=True)
             except OSError:
-                # Broken/closed pipe
+                # Broken/closed pipe. Mimic Linux behavior here, caller will get
+                # the exception when trying to read from this socket.
+                ready.append(i)
                 continue
             if err == _winapi.ERROR_IO_PENDING:
                 events.append(ov.event)
