@@ -66,7 +66,7 @@ from librt.internal import (
     write_str as write_str_bare,
     write_tag as write_tag,
 )
-from mypy_extensions import u8
+from mypy_extensions import mypyc_attr, u8
 
 # High-level cache layout format
 CACHE_VERSION: Final = 4
@@ -74,6 +74,7 @@ CACHE_VERSION: Final = 4
 SerializedError: _TypeAlias = tuple[str | None, int | str, int, int, int, str, str, str | None]
 
 
+@mypyc_attr(acyclic=True)
 class CacheMeta:
     """Class representing cache metadata for a module."""
 
