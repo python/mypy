@@ -1016,13 +1016,17 @@ class MessageBuilder:
             for_function(callee), name, context, matches=matches
         )
         module = find_defining_module(self.modules, callee)
-        if module and module.path != self.errors.file:
+        if (
+            module
+            and module.path != self.errors.file
+            and module.fullname not in ("builtins", "typing")
+        ):
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
                 fname = "Called function"
             else:
-                fname = fname.split(" of ")[0]
+                fname = fname.split(" of ")[0]  # use short method names in the note
             self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
