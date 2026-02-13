@@ -5,7 +5,7 @@ for suggesting corrections when a user mistypes an import statement.
 
 Sources:
 - Python standard library (typeshed/stdlib/VERSIONS)
-- Top 200 PyPI packages by downloads (https://github.com/hugovk/top-pypi-packages)
+- Top 100 PyPI packages by downloads (https://github.com/hugovk/top-pypi-packages)
 
 Note: These are import names, not PyPI package names.
 """
@@ -38,16 +38,10 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
     "multidict",
     "requests_oauthlib",
     "oauthlib",
-    "websocket",
-    "websockets",
     "h11",
-    "sniffio",
-    "requests_toolbelt",
-    "httplib2",
 
     # Typing / Extensions
     "typing_extensions",
-    "mypy_extensions",
     "annotated_types",
     "typing_inspection",
 
@@ -61,41 +55,22 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
     "filelock",
     "zipp",
     "importlib_metadata",
-    "importlib_resources",
-    "distlib",
-    "distro",
-    "appdirs",
 
     # Data Science / Numerical
     "numpy",
     "pandas",
     "scipy",
-    "sklearn",
-    "matplotlib",
     "pyarrow",
-    "networkx",
-    "joblib",
-    "threadpoolctl",
-    "kiwisolver",
-    "fontTools",
-    "dill",
-    "cloudpickle",
 
     # Serialization / Config
     "yaml",
     "pydantic",
     "pydantic_core",
-    "pydantic_settings",
     "attrs",
     "tomli",
-    "tomlkit",
     "jsonschema",
     "jsonschema_specifications",
-    "jsonpointer",
     "jmespath",
-    "msgpack",
-    "isodate",
-    "ruamel",
 
     # Cryptography / Security
     "cryptography",
@@ -103,64 +78,35 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
     "pycparser",
     "rsa",
     "pyjwt",
-    "jwt",
     "pyasn1",
     "pyasn1_modules",
-    "OpenSSL",
-    "nacl",
-    "bcrypt",
-    "asn1crypto",
-    "paramiko",
-    "secretstorage",
-    "msal",
-    "msal_extensions",
-    "keyring",
 
     # Date / Time
     "dateutil",
     "pytz",
     "tzdata",
-    "tzlocal",
 
-    # Google
+    # Google / gRPC
     "google",
-    "google_auth_oauthlib",
-    "google_auth_httplib2",
-    "google_crc32c",
-    "googleapiclient",
     "grpc",
     "grpc_status",
     "grpc_tools",
     "protobuf",
-    "proto",
     "googleapis_common_protos",
 
     # Testing
     "pytest",
     "pluggy",
     "iniconfig",
-    "coverage",
-    "exceptiongroup",
 
     # CLI / Terminal
     "click",
-    "typer",
     "colorama",
     "rich",
     "tqdm",
-    "tabulate",
-    "prompt_toolkit",
-    "shellingham",
-    "wcwidth",
 
     # Web Frameworks
-    "flask",
-    "werkzeug",
-    "itsdangerous",
-    "blinker",
-    "fastapi",
     "starlette",
-    "uvicorn",
 
     # Templates / Markup
     "jinja2",
@@ -168,34 +114,23 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
     "pygments",
     "markdown_it",
     "mdurl",
-    "docutils",
 
     # Async
     "anyio",
     "greenlet",
     "aiosignal",
     "aiohappyeyeballs",
-    "async_timeout",
+    "frozenlist",
 
     # Database
     "sqlalchemy",
-    "alembic",
-    "redis",
-    "psycopg2",
 
     # Parsing / XML
-    "lxml",
-    "bs4",
-    "soupsieve",
     "pyparsing",
-    "regex",
     "et_xmlfile",
 
     # OpenTelemetry
     "opentelemetry",
-
-    # Azure
-    "azure",
 
     # Other Popular Modules
     "six",
@@ -205,43 +140,17 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
     "rpds",
     "pathspec",
     "PIL",
-    "pillow",
     "psutil",
     "referencing",
     "trove_classifiers",
     "openpyxl",
-    "tenacity",
-    "more_itertools",
-    "sortedcontainers",
-    "decorator",
-    "ptyprocess",
-    "pexpect",
-    "hatchling",
     "dotenv",
-    "python_dotenv",
-    "huggingface_hub",
-    "transformers",
-    "openai",
-    "langsmith",
-    "dns",
-    "dnspython",
-    "git",
-    "gitdb",
-    "smmap",
-    "deprecated",
-    "chardet",
-    "backoff",
-    "ruff",
-    "setuptools_scm",
-    "pyproject_hooks",
-    "jiter",
     "yandexcloud",
-    "aliyunsdkcore",
-    "uritemplate",
-    "kubernetes",
-    "snowflake",
-    "multipart",
+    "cachetools",
 })
+
+
+_known_modules_cache: frozenset[str] | None = None
 
 
 def get_stdlib_modules(
@@ -264,7 +173,11 @@ def get_known_modules(
     stdlib_versions: StdlibVersions | None = None,
     python_version: tuple[int, int] | None = None,
 ) -> frozenset[str]:
+    global _known_modules_cache
+    if _known_modules_cache is not None:
+        return _known_modules_cache
     modules: set[str] = set(POPULAR_THIRD_PARTY_MODULES)
     if stdlib_versions is not None:
         modules = modules.union(get_stdlib_modules(stdlib_versions, python_version))
-    return frozenset(modules)
+    _known_modules_cache = frozenset(modules)
+    return _known_modules_cache
