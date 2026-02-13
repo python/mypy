@@ -86,6 +86,25 @@ class topsort(Iterator[set[T]]):  # noqa: N801
             connecting it to. NOTE: dependency sets in this data
             structure are modified in place to remove self-dependencies.
             Orphans are handled internally and are not added to `data`.
+
+    Returns:
+      An iterator yielding sets of vertices that have an equivalent
+      ordering.
+
+    Example:
+      Suppose the input has the following structure:
+
+        {A: {B, C}, B: {D}, C: {D}}
+
+      The algorithm treats orphan dependencies as if normalized to:
+
+        {A: {B, C}, B: {D}, C: {D}, D: {}}
+
+      It will yield the following values:
+
+        {D}
+        {B, C}
+        {A}
     """
 
     def __init__(self, data: dict[T, set[T]]) -> None:
