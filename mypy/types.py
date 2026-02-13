@@ -25,6 +25,7 @@ from librt.internal import (
     write_int as write_int_bare,
     write_str as write_str_bare,
 )
+from mypy_extensions import mypyc_attr
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -1273,6 +1274,7 @@ class UnpackType(ProperType):
         return isinstance(other, UnpackType) and self.type == other.type
 
 
+@mypyc_attr(acyclic=True)
 class AnyType(ProperType):
     """The type 'Any'."""
 
@@ -1381,6 +1383,7 @@ class AnyType(ProperType):
         return ret
 
 
+@mypyc_attr(acyclic=True)
 class UninhabitedType(ProperType):
     """This type has no members.
 
@@ -1436,6 +1439,7 @@ class UninhabitedType(ProperType):
         return UninhabitedType()
 
 
+@mypyc_attr(acyclic=True)
 class NoneType(ProperType):
     """The type of 'None'.
 

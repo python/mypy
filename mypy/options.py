@@ -8,6 +8,8 @@ from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
 
+from mypy_extensions import mypyc_attr
+
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
@@ -92,6 +94,7 @@ INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, T
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
+@mypyc_attr(acyclic=True)
 class Options:
     """Options collected from flags."""
 

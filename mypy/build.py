@@ -53,6 +53,7 @@ from librt.internal import (
     write_str as write_str_bare,
     write_tag,
 )
+from mypy_extensions import mypyc_attr
 
 import mypy.semanal_main
 from mypy.cache import (
@@ -194,6 +195,7 @@ initial_gc_freeze_done = False
 Graph: _TypeAlias = dict[str, "State"]
 
 
+@mypyc_attr(acyclic=True)
 class SCC:
     """A simple class that represents a strongly connected component (import cycle)."""
 
