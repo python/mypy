@@ -41,6 +41,8 @@ else:
 HEADER_SIZE = 4
 
 
+# TODO: we should make sure consistent exceptions are raised on different platforms.
+# Currently we raise either IPCException or OSError for equivalent conditions.
 class IPCException(Exception):
     """Exception for IPC issues."""
 

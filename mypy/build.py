@@ -100,7 +100,16 @@ from mypy.errors import (
 )
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort2
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.ipc import BadStatus, IPCClient, IPCMessage, read_status, ready_to_read, receive, send
+from mypy.ipc import (
+    BadStatus,
+    IPCClient,
+    IPCException,
+    IPCMessage,
+    read_status,
+    ready_to_read,
+    receive,
+    send,
+)
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ClassDef,
@@ -401,7 +410,7 @@ def build(
         for worker in workers:
             try:
                 send(worker.conn, SccRequestMessage(scc_id=None))
-            except OSError:
+            except (OSError, IPCException):
                 pass
         for worker in workers:
             worker.close()

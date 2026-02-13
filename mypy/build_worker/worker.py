@@ -41,7 +41,7 @@ from mypy.build import (
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
 from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCServer, receive, send
+from mypy.ipc import IPCException, IPCServer, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.options import Options
 from mypy.util import read_py_file
@@ -94,7 +94,7 @@ def main(argv: list[str]) -> None:
     try:
         with server:
             serve(server, ctx)
-    except OSError as exc:
+    except (OSError, IPCException) as exc:
         if options.verbosity >= 1:
             print("Error communicating with coordinator:", exc)
     except Exception as exc:
