@@ -131,7 +131,7 @@ if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 
 from mypy import errorcodes as codes
-from mypy.config_parser import parse_mypy_comments
+from mypy.config_parser import get_config_module_names, parse_mypy_comments
 from mypy.fixup import fixup_module
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
@@ -472,6 +472,7 @@ def build_inner(
             dump_timing_stats(options.timing_stats, graph)
         if options.line_checking_stats is not None:
             dump_line_checking_stats(options.line_checking_stats, graph)
+        warn_unused_configs(options, flush_errors)
         return BuildResult(manager, graph)
     finally:
         t0 = time.time()
@@ -494,6 +495,19 @@ def build_inner(
             exclude_from_backups(options.cache_dir)
         if os.path.isdir(options.cache_dir):
             record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
+
+
+def warn_unused_configs(
+    options: Options, flush_errors: Callable[[str | None, list[str], bool], None]
+) -> None:
+    if options.warn_unused_configs and options.unused_configs and not options.non_interactive:
+        unused = get_config_module_names(
+            options.config_file,
+            [glob for glob in options.per_module_options.keys() if glob in options.unused_configs],
+        )
+        flush_errors(
+            None, ["{}: note: unused section(s): {}".format(options.config_file, unused)], False
+        )
 
 
 def default_data_dir() -> str:
@@ -3783,7 +3797,7 @@ def load_graph(
                 manager.missing_modules.add(dep)
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
-                if not manager.use_fine_grained_cache():
+                if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:
                     manager.import_options[dep] = manager.options.clone_for_module(
                         dep
                     ).dep_import_options()
@@ -3841,8 +3855,8 @@ def load_graph(
                     graph[newst.id] = newst
                     new.append(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
-    # modules that are back in graph. We need to do this after the loop to cover an edge
-    # case where a namespace package ancestor is shared by a typed and an untyped package.
+    # modules that are back in graph. We need to do this after the loop to cover edge cases
+    # like where a namespace package ancestor is shared by a typed and an untyped package.
     for st in graph.values():
         for dep in st.suppressed:
             if dep in graph:
