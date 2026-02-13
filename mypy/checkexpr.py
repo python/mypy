@@ -4656,8 +4656,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
     ) -> tuple[Type, set[str]]:
-        if isinstance(index, StrExpr):
-            key_names = [index.value]
+        if isinstance(folded_index := constant_fold_expr(index, "unused"), str):
+            key_names = [folded_index]
         else:
             typ = get_proper_type(self.accept(index))
             if isinstance(typ, UnionType):
