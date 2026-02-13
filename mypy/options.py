@@ -8,6 +8,8 @@ from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
 
+from librt.internal import WriteBuffer, write_bool, write_str
+
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
@@ -628,10 +630,13 @@ class Options:
             result.append(val)
         return self.platform, result
 
-    def dep_import_options(self) -> dict[str, object]:
-        # These are options that can affect dependent modules as well.
-        return {
-            "ignore_missing_imports": self.ignore_missing_imports,
-            "follow_imports": self.follow_imports,
-            "follow_imports_for_stubs": self.follow_imports_for_stubs,
-        }
+    def dep_import_options(self) -> bytes:
+        """Return opaque bytes with options that can affect dependent modules as well.
+
+        The value can be compared for equality to detect changed options.
+        """
+        buf = WriteBuffer()
+        write_bool(buf, self.ignore_missing_imports)
+        write_str(buf, self.follow_imports)
+        write_bool(buf, self.follow_imports_for_stubs)
+        return buf.getvalue()

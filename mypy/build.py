@@ -905,8 +905,9 @@ class BuildManager:
         # location of a symbol used as a location for an error message.
         self.extra_trees: dict[str, MypyFile] = {}
         # Snapshot of import-related options per module. We record these even for
-        # suppressed imports, since they can affect errors in the callers.
-        self.import_options: dict[str, dict[str, object]] = {}
+        # suppressed imports, since they can affect errors in the callers. Bytes
+        # value is opaque but can be compared to detect changes in options.
+        self.import_options: dict[str, bytes] = {}
         # Cache for transitive dependency check (expensive).
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
 
@@ -3065,13 +3066,15 @@ class State:
             type_state.update_protocol_deps(deps)
 
     def suppressed_deps_opts(self) -> bytes:
-        return json_dumps(
-            {
-                dep: self.manager.import_options[dep]
-                for dep in self.suppressed
-                if self.priorities.get(dep) != PRI_INDIRECT
-            }
-        )
+        if not self.suppressed:
+            return b""
+        buf = WriteBuffer()
+        import_options = self.manager.import_options
+        for dep in sorted(self.suppressed):
+            if self.priorities.get(dep) != PRI_INDIRECT:
+                write_str_bare(buf, dep)
+                write_bytes_bare(buf, import_options[dep])
+        return buf.getvalue()
 
     def write_cache(self) -> tuple[CacheMeta, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
