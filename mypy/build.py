@@ -3192,7 +3192,7 @@ def module_not_found(
             code = codes.IMPORT
         errors.report(line, 0, msg.format(module=target), code=code)
 
-        if reason == ModuleNotFoundReason.NOT_FOUND:
+        if reason == ModuleNotFoundReason.NOT_FOUND and not errors.prefer_simple_messages():
             top_level_target = target.split(".")[0]
             known_modules = get_known_modules(
                 manager.find_module_cache.stdlib_py_versions,
