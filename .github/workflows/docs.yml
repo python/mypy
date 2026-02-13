@@ -5,6 +5,15 @@ on:
   push:
     branches: [main, master, 'release*']
     tags: ['*']
+    paths:
+    - 'docs/**'
+    - 'mypy/errorcodes.py'
+    - 'mypy/main.py'
+    - 'mypyc/doc/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - CREDITS
+    - LICENSE
   pull_request:
     paths:
     - 'docs/**'
