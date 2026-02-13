@@ -152,6 +152,10 @@ POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
 
 _known_modules_cache: frozenset[str] | None = None
 
+def reset_known_modules_cache() -> None:
+    global _known_modules_cache
+    _known_modules_cache = None
+
 
 def get_stdlib_modules(
     stdlib_versions: StdlibVersions,

@@ -150,7 +150,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
-from mypy.known_modules import get_known_modules
+from mypy.known_modules import get_known_modules, reset_known_modules_cache
 from mypy.messages import best_matches, pretty_seq
 from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
@@ -337,6 +337,7 @@ def build(
 
     # This is mostly for the benefit of tests that use builtins fixtures.
     instance_cache.reset()
+    reset_known_modules_cache()
 
     def default_flush_errors(
         filename: str | None, new_messages: list[str], is_serious: bool
