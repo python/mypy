@@ -169,8 +169,8 @@ def get_stdlib_modules(
             if max_ver is not None and python_version > max_ver:
                 continue
         top_level = module.split(".")[0]
-        # Skip private modules to avoid adding noise
-        if top_level.startswith("_"):
+        # Skip private and very short modules to avoid false positives and noise
+        if top_level.startswith("_") or len(top_level) <= 2:
             continue
         modules.add(top_level)
     return frozenset(modules)
