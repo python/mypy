@@ -5176,7 +5176,7 @@ def g(y: T) -> T:
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "x"
-c.py:4: note: Called function defined here
+a.py:2: note: Called function defined in "c"
 
 [case testGenericFineCallableInBound]
 import a
@@ -10522,7 +10522,7 @@ m.py:9: error: Too many arguments for "foo"
 m.py:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"
-partial.py:4: note: "foo" defined here
+m.py:10: note: "foo" defined in "partial"
 
 [case testReplaceFunctionWithDecoratedFunctionIndirect]
 from b import f
@@ -11531,4 +11531,4 @@ def lol() -> None: pass
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-b.py:1: note: "lol" defined here
+a.py:2: note: "lol" defined in "b"
