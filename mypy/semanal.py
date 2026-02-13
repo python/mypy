@@ -7476,7 +7476,8 @@ class SemanticAnalyzer(
             return
         message = f'Name "{name}" is not defined'
         if (
-            "." not in name
+            not self.msg.prefer_simple_messages()
+            and "." not in name
             and not (name.startswith("__") and name.endswith("__"))
             and f"builtins.{name}" not in SUGGESTED_TEST_FIXTURES
         ):
