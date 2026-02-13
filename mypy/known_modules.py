@@ -16,141 +16,127 @@ from typing import Final
 
 from mypy.modulefinder import StdlibVersions
 
-POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset({
-    # Cloud
-    "boto3",
-    "botocore",
-    "aiobotocore",
-    "s3transfer",
-    "s3fs",
-    "awscli",
-
-    # HTTP / Networking
-    "urllib3",
-    "requests",
-    "certifi",
-    "idna",
-    "charset_normalizer",
-    "httpx",
-    "httpcore",
-    "aiohttp",
-    "yarl",
-    "multidict",
-    "requests_oauthlib",
-    "oauthlib",
-    "h11",
-
-    # Typing / Extensions
-    "typing_extensions",
-    "annotated_types",
-    "typing_inspection",
-
-    # Core Utilities
-    "setuptools",
-    "packaging",
-    "pip",
-    "wheel",
-    "virtualenv",
-    "platformdirs",
-    "filelock",
-    "zipp",
-    "importlib_metadata",
-
-    # Data Science / Numerical
-    "numpy",
-    "pandas",
-    "scipy",
-    "pyarrow",
-
-    # Serialization / Config
-    "yaml",
-    "pydantic",
-    "pydantic_core",
-    "attrs",
-    "tomli",
-    "jsonschema",
-    "jsonschema_specifications",
-    "jmespath",
-
-    # Cryptography / Security
-    "cryptography",
-    "cffi",
-    "pycparser",
-    "rsa",
-    "pyjwt",
-    "pyasn1",
-    "pyasn1_modules",
-
-    # Date / Time
-    "dateutil",
-    "pytz",
-    "tzdata",
-
-    # Google / gRPC
-    "google",
-    "grpc",
-    "grpc_status",
-    "grpc_tools",
-    "protobuf",
-    "googleapis_common_protos",
-
-    # Testing
-    "pytest",
-    "pluggy",
-    "iniconfig",
-
-    # CLI / Terminal
-    "click",
-    "colorama",
-    "rich",
-    "tqdm",
-
-    # Web Frameworks
-    "starlette",
-
-    # Templates / Markup
-    "jinja2",
-    "markupsafe",
-    "pygments",
-    "markdown_it",
-    "mdurl",
-
-    # Async
-    "anyio",
-    "greenlet",
-    "aiosignal",
-    "aiohappyeyeballs",
-    "frozenlist",
-
-    # Database
-    "sqlalchemy",
-
-    # Parsing / XML
-    "pyparsing",
-    "et_xmlfile",
-
-    # OpenTelemetry
-    "opentelemetry",
-
-    # Other Popular Modules
-    "six",
-    "fsspec",
-    "wrapt",
-    "propcache",
-    "rpds",
-    "pathspec",
-    "PIL",
-    "psutil",
-    "referencing",
-    "trove_classifiers",
-    "openpyxl",
-    "dotenv",
-    "yandexcloud",
-    "cachetools",
-})
+POPULAR_THIRD_PARTY_MODULES: Final[frozenset[str]] = frozenset(
+    {
+        # Cloud
+        "boto3",
+        "botocore",
+        "aiobotocore",
+        "s3transfer",
+        "s3fs",
+        "awscli",
+        # HTTP / Networking
+        "urllib3",
+        "requests",
+        "certifi",
+        "idna",
+        "charset_normalizer",
+        "httpx",
+        "httpcore",
+        "aiohttp",
+        "yarl",
+        "multidict",
+        "requests_oauthlib",
+        "oauthlib",
+        "h11",
+        # Typing / Extensions
+        "typing_extensions",
+        "annotated_types",
+        "typing_inspection",
+        # Core Utilities
+        "setuptools",
+        "packaging",
+        "pip",
+        "wheel",
+        "virtualenv",
+        "platformdirs",
+        "filelock",
+        "zipp",
+        "importlib_metadata",
+        # Data Science / Numerical
+        "numpy",
+        "pandas",
+        "scipy",
+        "pyarrow",
+        # Serialization / Config
+        "yaml",
+        "pydantic",
+        "pydantic_core",
+        "attrs",
+        "tomli",
+        "jsonschema",
+        "jsonschema_specifications",
+        "jmespath",
+        # Cryptography / Security
+        "cryptography",
+        "cffi",
+        "pycparser",
+        "rsa",
+        "pyjwt",
+        "pyasn1",
+        "pyasn1_modules",
+        # Date / Time
+        "dateutil",
+        "pytz",
+        "tzdata",
+        # Google / gRPC
+        "google",
+        "grpc",
+        "grpc_status",
+        "grpc_tools",
+        "protobuf",
+        "googleapis_common_protos",
+        # Testing
+        "pytest",
+        "pluggy",
+        "iniconfig",
+        # CLI / Terminal
+        "click",
+        "colorama",
+        "rich",
+        "tqdm",
+        # Web Frameworks
+        "starlette",
+        # Templates / Markup
+        "jinja2",
+        "markupsafe",
+        "pygments",
+        "markdown_it",
+        "mdurl",
+        # Async
+        "anyio",
+        "greenlet",
+        "aiosignal",
+        "aiohappyeyeballs",
+        "frozenlist",
+        # Database
+        "sqlalchemy",
+        # Parsing / XML
+        "pyparsing",
+        "et_xmlfile",
+        # OpenTelemetry
+        "opentelemetry",
+        # Other Popular Modules
+        "six",
+        "fsspec",
+        "wrapt",
+        "propcache",
+        "rpds",
+        "pathspec",
+        "PIL",
+        "psutil",
+        "referencing",
+        "trove_classifiers",
+        "openpyxl",
+        "dotenv",
+        "yandexcloud",
+        "cachetools",
+    }
+)
 
 
 _known_modules_cache: frozenset[str] | None = None
+
 
 def reset_known_modules_cache() -> None:
     global _known_modules_cache
@@ -158,8 +144,7 @@ def reset_known_modules_cache() -> None:
 
 
 def get_stdlib_modules(
-    stdlib_versions: StdlibVersions,
-    python_version: tuple[int, int] | None = None,
+    stdlib_versions: StdlibVersions, python_version: tuple[int, int] | None = None
 ) -> frozenset[str]:
     modules: set[str] = set()
     for module, (min_ver, max_ver) in stdlib_versions.items():
@@ -177,8 +162,7 @@ def get_stdlib_modules(
 
 
 def get_known_modules(
-    stdlib_versions: StdlibVersions | None = None,
-    python_version: tuple[int, int] | None = None,
+    stdlib_versions: StdlibVersions | None = None, python_version: tuple[int, int] | None = None
 ) -> frozenset[str]:
     global _known_modules_cache
     if _known_modules_cache is not None:
