@@ -1840,7 +1840,7 @@ class SemanticAnalyzer(
                 return None
             tvs.append((p.name, tv))
 
-            if self.is_defined_type_param(p.name):
+            if self.get_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
                 assert self.add_symbol(
@@ -1849,15 +1849,15 @@ class SemanticAnalyzer(
 
         return tvs
 
-    def is_defined_type_param(self, name: str) -> bool:
+    def get_defined_type_param(self, name: str) -> TypeVarLikeExpr | None:
         for names in self.locals:
             if names is None:
                 continue
             if name in names:
                 node = names[name].node
                 if isinstance(node, TypeVarLikeExpr):
-                    return True
-        return False
+                    return node
+        return None
 
     def analyze_type_param(
         self, type_param: TypeParam, context: Context
@@ -2270,15 +2270,15 @@ class SemanticAnalyzer(
         has_type_var_tuple = False
         if defn.type_args is not None:
             for p in defn.type_args:
-                node = self.lookup(p.name, context)
+                node = self.get_defined_type_param(p.name)
                 assert node is not None
-                assert isinstance(node.node, TypeVarLikeExpr)
-                if isinstance(node.node, TypeVarTupleExpr):
+                assert isinstance(node, TypeVarLikeExpr)
+                if isinstance(node, TypeVarTupleExpr):
                     if has_type_var_tuple:
                         self.fail("Can only use one type var tuple in a class def", context)
                         continue
                     has_type_var_tuple = True
-                declared_tvars.append((p.name, node.node))
+                declared_tvars.append((p.name, node))
 
         for i, base_expr in enumerate(base_type_exprs):
             if isinstance(base_expr, StarExpr):
