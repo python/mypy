@@ -778,7 +778,7 @@ class FancyFormatter:
     def colorize(self, error: str) -> str:
         """Colorize an output line by highlighting the status and error code."""
         # TODO: detecting source code highlights through an indent can be surprising.
-        if error.startswith(" " * DEFAULT_SOURCE_OFFSET):
+        if error.startswith(CODE_START):
             if not self.is_marker_line(error):
                 return self.style(error, "none", dim=True)
             return self.style(error, "red")
