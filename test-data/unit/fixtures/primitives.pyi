@@ -35,6 +35,8 @@ class str(Sequence[str]):
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> str: pass
     def format(self, *args: object, **kwargs: object) -> str: pass
+    # Note: this is a simplification of the actual signature
+    def split(self, sep: str | None = None) -> list[str]: pass
 class bytes(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
