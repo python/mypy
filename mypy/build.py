@@ -3710,16 +3710,14 @@ def load_graph(
                 f'Duplicate module named "{st.id}" (also at "{graph[st.id].xpath}")',
                 blocker=True,
             )
-            manager.note_multiline(
-                None,
-                f"""
-                See {MODULE_RESOLUTION_URL} for more info
-                Common resolutions include:
-                    a) using `--exclude` to avoid checking one of them,
-                    b) adding `__init__.py` somewhere,
-                    c) using `--explicit-package-bases` or adjusting `MYPYPATH`
-                """,
-            )
+            resolution_note = f"""
+            See {MODULE_RESOLUTION_URL} for more info
+            Common resolutions include:
+                a) using `--exclude` to avoid checking one of them,
+                b) adding `__init__.py` somewhere,
+                c) using `--explicit-package-bases` or adjusting `MYPYPATH`
+            """
+            manager.note_multiline(None, resolution_note)
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
@@ -3790,18 +3788,16 @@ def load_graph(
                             manager.error(
                                 None,
                                 "Source file found twice under different module names: "
-                                '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
+                                f'"{seen_files[newst_path].id}" and "{newst.id}"',
                                 blocker=True,
                             )
-                            manager.note_multiline(
-                                None,
-                                f"""
-                                See {MODULE_RESOLUTION_URL} for more info
-                                Common resolutions include:
-                                    a) adding `__init__.py` somewhere,
-                                    b) using `--explicit-package-bases` or adjusting `MYPYPATH`
-                                """,
-                            )
+                            resolution_note = f"""
+                            See {MODULE_RESOLUTION_URL} for more info
+                            Common resolutions include:
+                                a) adding `__init__.py` somewhere,
+                                b) using `--explicit-package-bases` or adjusting `MYPYPATH`
+                            """
+                            manager.note_multiline(None, resolution_note)
                             manager.errors.raise_error()
 
                         seen_files[newst_path] = newst
