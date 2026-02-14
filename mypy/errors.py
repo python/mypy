@@ -1063,9 +1063,10 @@ class Errors:
                 if severity == "error" and source_lines and line > 0:
                     source_line = source_lines[line - 1]
                     source_line_expanded = source_line.expandtabs()
-                    if column < 0:
+                    min_column = len(source_line) - len(source_line.lstrip())
+                    if column < min_column:
                         # Something went wrong, take first non-empty column.
-                        column = len(source_line) - len(source_line.lstrip())
+                        column = min_column
 
                     # Shifts column after tab expansion
                     column = len(source_line[:column].expandtabs())
