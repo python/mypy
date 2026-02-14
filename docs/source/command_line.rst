@@ -937,7 +937,7 @@ in error messages.
 
     Use visually nicer output in error messages: use soft word wrap,
     show source code snippets, and show error location markers.
-    This is enabled by default. Use :option:`--no-pretty` to disable.
+    This is enabled by default. Use ``--no-pretty`` to disable.
 
 .. option:: --no-color-output
 
