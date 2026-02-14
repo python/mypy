@@ -2069,7 +2069,7 @@ from dataclasses import dataclass, replace, InitVar
 from typing import ClassVar
 
 @dataclass
-class A:  # N: "replace" of "A" defined here
+class A:
     x: int
     q: InitVar[int]
     q2: InitVar[int] = 0

@@ -148,7 +148,7 @@ f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.pyi]
 
 [case testCallVarArgsWithMatchingNamedArgument]
-def foo(*args: int) -> None: ...  # N: "foo" defined here
+def foo(*args: int) -> None: ...
 foo(args=1)  # E: Unexpected keyword argument "args" for "foo"
 
 def bar(*args: int, **kwargs: str) -> None: ...
@@ -840,7 +840,7 @@ from typing_extensions import Unpack
 
 Empty = TypedDict("Empty", {})
 
-def foo(**kwargs: Unpack[Empty]) -> None:  # N: "foo" defined here
+def foo(**kwargs: Unpack[Empty]) -> None:
     reveal_type(kwargs)  # N: Revealed type is "TypedDict('__main__.Empty', {})"
 foo()
 foo(x=1)  # E: Unexpected keyword argument "x" for "foo"
@@ -879,7 +879,7 @@ class Person(TypedDict, total=False):
     name: str
     age: int
 
-def foo(**kwargs: Unpack[Person]) -> None:  # N: "foo" defined here
+def foo(**kwargs: Unpack[Person]) -> None:
     ...
 foo(name='John', age=42, department='Sales')  # E: Unexpected keyword argument "department" for "foo"
 foo(name='Jennifer', age=38)

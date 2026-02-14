@@ -130,14 +130,14 @@ def f(arg: int, /) -> None:
     reveal_type(arg)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Required]
-def f(arg: int, /) -> None: ...  # N: "f" defined here
+def f(arg: int, /) -> None: ...
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
 f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
 
 [case testPEP570Default]
-def f(arg: int = 0, /) -> None: ...  # N: "f" defined here
+def f(arg: int = 0, /) -> None: ...
 f()
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
@@ -147,7 +147,7 @@ f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
 [case testPEP570Calls]
 # flags: --no-strict-optional
 from typing import Any, Dict
-def f(p, /, p_or_kw, *, kw) -> None: ...  # N: "f" defined here
+def f(p, /, p_or_kw, *, kw) -> None: ...
 d = None # type: Dict[Any, Any]
 f(0, 0, 0)  # E: Too many positional arguments for "f"
 f(0, 0, kw=0)
@@ -194,9 +194,9 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
 [case testPEP570Unannotated]
-def f(arg, /): ...  # N: "f" defined here
+def f(arg, /): ...
 g = lambda arg, /: arg
-def h(arg=0, /): ...  # N: "h" defined here
+def h(arg=0, /): ...
 i = lambda arg=0, /: arg
 
 f(1)

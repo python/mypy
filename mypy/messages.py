@@ -236,7 +236,6 @@ class MessageBuilder:
         severity: str,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
         secondary_context: Context | None = None,
@@ -266,24 +265,17 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
-        location_ref = None
-        if file is not None and file != self.errors.file:
-            assert isinstance(context, SymbolNode), "Only symbols can be locations in other files"
-            location_ref = context.fullname
-
         return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
             msg,
             severity=severity,
-            file=file,
             offset=offset,
             origin_span=origin_span,
             end_line=context.end_line if context else -1,
             end_column=context.end_column if context else -1,
             code=code,
             parent_error=parent_error,
-            location_ref=location_ref,
         )
 
     def fail(
@@ -292,19 +284,15 @@ class MessageBuilder:
         context: Context | None,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
         secondary_context: Context | None = None,
     ) -> ErrorInfo:
         """Report an error message (unless disabled)."""
-        return self.report(
-            msg, context, "error", code=code, file=file, secondary_context=secondary_context
-        )
+        return self.report(msg, context, "error", code=code, secondary_context=secondary_context)
 
     def note(
         self,
         msg: str,
         context: Context,
-        file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
         *,
@@ -317,7 +305,6 @@ class MessageBuilder:
             msg,
             context,
             "note",
-            file=file,
             origin=origin,
             offset=offset,
             code=code,
@@ -329,7 +316,6 @@ class MessageBuilder:
         self,
         messages: str,
         context: Context,
-        file: str | None = None,
         offset: int = 0,
         code: ErrorCode | None = None,
         *,
@@ -338,13 +324,7 @@ class MessageBuilder:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(
-                msg,
-                context,
-                "note",
-                file=file,
-                offset=offset,
-                code=code,
-                secondary_context=secondary_context,
+                msg, context, "note", offset=offset, code=code, secondary_context=secondary_context
             )
 
     #
@@ -1036,18 +1016,18 @@ class MessageBuilder:
             for_function(callee), name, context, matches=matches
         )
         module = find_defining_module(self.modules, callee)
-        if module:
+        if (
+            module
+            and module.path != self.errors.file
+            and module.fullname not in ("builtins", "typing")
+        ):
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
                 fname = "Called function"
-            self.note(
-                f"{fname} defined here",
-                callee.definition,
-                file=module.path,
-                origin=context,
-                code=codes.CALL_ARG,
-            )
+            else:
+                fname = fname.split(" of ")[0]  # use short method names in the note
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(

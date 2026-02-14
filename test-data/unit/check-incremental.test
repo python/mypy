@@ -6976,11 +6976,10 @@ tmp/a.py:19: error: Too many arguments for "foo"
 tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 tmp/a.py:19: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 tmp/a.py:20: error: Unexpected keyword argument "a" for "foo"
-tmp/partial.py:4: note: "foo" defined here
+tmp/a.py:20: note: "foo" defined in "partial"
 [out2]
 tmp/a.py:8: error: Too many positional arguments for "foo"
 tmp/a.py:8: error: Argument 2 to "foo" has incompatible type "int"; expected "str"
-
 
 [case testStartUsingTypeGuard]
 import a
@@ -7722,80 +7721,16 @@ def lol() -> None: pass
 import a  # touch
 [out]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:1: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out2]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:1: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out3]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:2: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out4]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:2: note: "lol" defined here
-
-[case testCachedUnexpectedKeywordArgumentNested]
-import a
-[file a.py]
-import b
-b.lol(uhhhh=12) # tweak
-[file a.py.2]
-import b
-b.lol(uhhhh=12)
-[file b.py]
-while True:
-    if True:
-        def lol() -> None: pass
-[out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:3: note: "lol" defined here
-[out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:3: note: "lol" defined here
-
-[case testCachedUnexpectedKeywordArgumentMethod]
-import a
-[file a.py]
-import b
-b.B().lol(uhhhh=12) # tweak
-[file a.py.2]
-import b
-b.B().lol(uhhhh=12)
-[file b.py]
-class A:
-    def lol(self) -> None: pass
-class B:
-    def lol(self) -> None: pass
-class C:
-    def lol(self) -> None: pass
-[out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
-tmp/b.py:4: note: "lol" of "B" defined here
-[out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
-tmp/b.py:4: note: "lol" of "B" defined here
-
-[case testCachedUnexpectedKeywordArgumentMethod2]
-import a
-[file a.py]
-import b
-b.B.BB().lol(uhhhh=12) # tweak
-[file a.py.2]
-import b
-b.B.BB().lol(uhhhh=12)
-[file b.py]
-class A:
-    def lol(self) -> None: pass
-class B:
-    class BB:
-        def lol(self) -> None: pass
-class C:
-    def lol(self) -> None: pass
-[out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
-tmp/b.py:5: note: "lol" of "BB" defined here
-[out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
-tmp/b.py:5: note: "lol" of "BB" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 
 [case testMissingImportUnIgnoredInConfig]
 # flags: --config-file tmp/mypy.ini

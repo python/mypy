@@ -3428,7 +3428,7 @@ C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int 
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
 class C:
-    def __new__(cls, foo):  # N: "C" defined here
+    def __new__(cls, foo):
         obj = object.__new__(cls)
         return obj
 
@@ -6117,7 +6117,7 @@ class C(Any):
 
 [case testClassDecoratorIsTypeChecked]
 from typing import Callable, Type
-def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
+def decorate(x: int) -> Callable[[type], type]:
     ...
 def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
     ...
@@ -7688,7 +7688,6 @@ class A(thing=5):
     pass
 [out]
 main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
-tmp/builtins.pyi:6: note: "__init_subclass__" of "object" defined here
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassWithImports]

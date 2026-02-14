@@ -207,7 +207,7 @@ pass
 def f() -> None: pass
 [out]
 main:3: error: Unexpected keyword argument "kw" for "f"
-tmp/m.py:2: note: "f" defined here
+main:3: note: "f" defined in "m"
 
 [case testIgnoreUnexpectedKeywordArgument]
 import m

@@ -69,9 +69,9 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 4
+CACHE_VERSION: Final = 5
 
-SerializedError: _TypeAlias = tuple[str | None, int | str, int, int, int, str, str, str | None]
+SerializedError: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
 
 
 class CacheMeta:
@@ -504,10 +504,7 @@ def write_errors(data: WriteBuffer, errs: list[SerializedError]) -> None:
     for path, line, column, end_line, end_column, severity, message, code in errs:
         write_tag(data, TUPLE_GEN)
         write_str_opt(data, path)
-        if isinstance(line, str):
-            write_str(data, line)
-        else:
-            write_int(data, line)
+        write_int(data, line)
         write_int(data, column)
         write_int(data, end_line)
         write_int(data, end_column)
@@ -521,17 +518,10 @@ def read_errors(data: ReadBuffer) -> list[SerializedError]:
     result = []
     for _ in range(read_int_bare(data)):
         assert read_tag(data) == TUPLE_GEN
-        path = read_str_opt(data)
-        tag = read_tag(data)
-        if tag == LITERAL_STR:
-            line: str | int = read_str_bare(data)
-        else:
-            assert tag == LITERAL_INT
-            line = read_int_bare(data)
         result.append(
             (
-                path,
-                line,
+                read_str_opt(data),
+                read_int(data),
                 read_int(data),
                 read_int(data),
                 read_int(data),

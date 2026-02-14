@@ -130,7 +130,6 @@ class ErrorInfo:
         target: str | None = None,
         priority: int = 0,
         parent_error: ErrorInfo | None = None,
-        location_ref: str | None = None,
     ) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -152,17 +151,11 @@ class ErrorInfo:
         if parent_error is not None:
             assert severity == "note", "Only notes can specify parent errors"
         self.parent_error = parent_error
-        self.location_ref = location_ref
 
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
 ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, ErrorCode | None]
-
-# A raw version of the above that can refer to either absolute or relative location.
-# If the location is relative, the first item (line) is a string with a symbol fullname,
-# and three other values (column, end_line, end_column) are set to -1.
-ErrorTupleRaw: _TypeAlias = tuple[str | None, int | str, int, int, int, str, str, ErrorCode | None]
 
 
 class ErrorWatcher:
@@ -569,14 +562,12 @@ class Errors:
         *,
         blocker: bool = False,
         severity: str = "error",
-        file: str | None = None,
         only_once: bool = False,
         origin_span: Iterable[int] | None = None,
         offset: int = 0,
         end_line: int | None = None,
         end_column: int | None = None,
         parent_error: ErrorInfo | None = None,
-        location_ref: str | None = None,
     ) -> ErrorInfo:
         """Report message at the given line using the current error context.
 
@@ -587,7 +578,6 @@ class Errors:
             code: error code (defaults to 'misc'; not shown for notes)
             blocker: if True, don't continue analysis after this error
             severity: 'error' or 'note'
-            file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_span: if non-None, override current context as origin
                          (type: ignores have effect here)
@@ -611,8 +601,6 @@ class Errors:
             else:
                 end_column = column + 1
 
-        if file is None:
-            file = self.file
         if offset:
             message = " " * offset + message
 
@@ -627,7 +615,7 @@ class Errors:
 
         info = ErrorInfo(
             import_ctx=self.import_context(),
-            file=file,
+            file=self.file,
             module=self.current_module(),
             typ=type,
             function_or_member=function,
@@ -643,7 +631,6 @@ class Errors:
             origin=(self.file, origin_span),
             target=self.current_target(),
             parent_error=parent_error,
-            location_ref=location_ref,
         )
         self.add_error_info(info)
         return info
@@ -1019,8 +1006,6 @@ class Errors:
         """
         # self.new_messages() will format all messages that haven't already
         # been returned from a file_messages() call.
-        # TODO: pass resolve_location callback here.
-        # This will be needed if we are going to use relative locations in blocker errors.
         raise CompileError(
             self.new_messages(), use_stdout=use_stdout, module_with_blocker=self.blocker_module()
         )
@@ -1084,7 +1069,7 @@ class Errors:
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
-    def file_messages(self, path: str) -> list[ErrorTupleRaw]:
+    def file_messages(self, path: str) -> list[ErrorTuple]:
         """Return an error tuple list of new error messages from a given file."""
         if path not in self.error_info_map:
             return []
@@ -1127,9 +1112,7 @@ class Errors:
                 return i[1]
         return None
 
-    def new_messages(
-        self, resolve_location: Callable[[str], Context | None] | None = None
-    ) -> list[str]:
+    def new_messages(self) -> list[str]:
         """Return a string list of new error messages.
 
         Use a form suitable for displaying to the user.
@@ -1139,29 +1122,7 @@ class Errors:
         msgs = []
         for path in self.error_info_map.keys():
             if path not in self.flushed_files:
-                error_tuples_rel = self.file_messages(path)
-                error_tuples = []
-                for e in error_tuples_rel:
-                    # This has a bit of code duplication with build.py, but it is hard
-                    # to avoid without either an import cycle or a performance penalty.
-                    file, line_rel, column, end_line, end_column, severity, message, code = e
-                    if isinstance(line_rel, int):
-                        line = line_rel
-                    elif resolve_location is not None:
-                        assert file is not None
-                        loc = resolve_location(line_rel)
-                        if loc is not None:
-                            line = loc.line
-                            column = loc.column
-                            end_line = loc.end_line or -1
-                            end_column = loc.end_column or -1
-                        else:
-                            line = -1
-                    else:
-                        line = -1
-                    error_tuples.append(
-                        (file, line, column, end_line, end_column, severity, message, code)
-                    )
+                error_tuples = self.file_messages(path)
                 msgs.extend(self.format_messages(path, error_tuples))
         return msgs
 
@@ -1173,7 +1134,7 @@ class Errors:
             info.target for errs in self.error_info_map.values() for info in errs if info.target
         }
 
-    def render_messages(self, errors: list[ErrorInfo]) -> list[ErrorTupleRaw]:
+    def render_messages(self, errors: list[ErrorInfo]) -> list[ErrorTuple]:
         """Translate the messages into a sequence of tuples.
 
         Each tuple is of form (path, line, col, severity, message, code).
@@ -1181,7 +1142,7 @@ class Errors:
         The path item may be None. If the line item is negative, the
         line number is not defined for the tuple.
         """
-        result: list[ErrorTupleRaw] = []
+        result: list[ErrorTuple] = []
         prev_import_context: list[tuple[str, int]] = []
         prev_function_or_member: str | None = None
         prev_type: str | None = None
@@ -1256,21 +1217,9 @@ class Errors:
                 else:
                     result.append((file, -1, -1, -1, -1, "note", f'In class "{e.type}":', None))
 
-            if e.location_ref is not None:
-                result.append((file, e.location_ref, -1, -1, -1, e.severity, e.message, e.code))
-            else:
-                result.append(
-                    (
-                        file,
-                        e.line,
-                        e.column,
-                        e.end_line,
-                        e.end_column,
-                        e.severity,
-                        e.message,
-                        e.code,
-                    )
-                )
+            result.append(
+                (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message, e.code)
+            )
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
