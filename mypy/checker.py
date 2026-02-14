@@ -2601,7 +2601,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             original_arg_type,
                             supertype,
                             context,
-                            secondary_context=node,
+                            origin_context=node,
                         )
                         emitted_msg = True
 
