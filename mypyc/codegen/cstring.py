@@ -31,7 +31,8 @@ for c in string.printable:
 
 # These assignments must come last because we prioritize simple escape
 # sequences over any other representation.
-for c in ("'", '"', "\\", "a", "b", "f", "n", "r", "t", "v"):
+for c in ("'", '"', "\\", "a", "b", "f", "n", "r", "t", "v", "0"):
+
     escaped = f"\\{c}"
     decoded = escaped.encode("ascii").decode("unicode_escape")
     CHAR_MAP[ord(decoded)] = escaped
