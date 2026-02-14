@@ -306,7 +306,7 @@ unexpected errors when combined with type inference. For example:
 
    lst = [A(), A()]  # Inferred type is list[A]
    new_lst = [B(), B()]  # inferred type is list[B]
-   lst = new_lst  # mypy will complain about this, because List is invariant
+   lst = new_lst  # error: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
 
 Possible strategies in such situations are:
 
@@ -329,7 +329,7 @@ Possible strategies in such situations are:
 
      def f_bad(x: list[A]) -> A:
          return x[0]
-     f_bad(new_lst) # Fails
+     f_bad(new_lst) # error: Argument 1 to "f_bad" has incompatible type "list[B]"; expected "list[A]"
 
      def f_good(x: Sequence[A]) -> A:
          return x[0]
@@ -726,7 +726,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerArgument(A):
         # A more specific argument type isn't accepted
-        def test(self, t: list[int]) -> Sequence[str]:  # Error
+        def test(self, t: list[int]) -> Sequence[str]:  # error: Argument 1 of "test" is incompatible with supertype "A"; supertype defines the argument type as "Sequence[int]"
             ...
 
     class NarrowerReturn(A):
@@ -736,7 +736,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class GeneralizedReturn(A):
         # A more general return type is an error
-        def test(self, t: Sequence[int]) -> Iterable[str]:  # Error
+        def test(self, t: Sequence[int]) -> Iterable[str]:  # error: Return type "Iterable[str]" of "test" incompatible with return type "Sequence[str]" in supertype "A"
             ...
 
 You can use ``# type: ignore[override]`` to silence the error. Add it
