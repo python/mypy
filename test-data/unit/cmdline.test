@@ -60,7 +60,10 @@ undef
 [out]
 dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+dir/a.py: note: Common resolutions include:
+dir/a.py: note:     a) using `--exclude` to avoid checking one of them,
+dir/a.py: note:     b) adding `__init__.py` somewhere,
+dir/a.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -126,7 +129,10 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [out]
 two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+two/mod/__init__.py: note: Common resolutions include:
+two/mod/__init__.py: note:     a) using `--exclude` to avoid checking one of them,
+two/mod/__init__.py: note:     b) adding `__init__.py` somewhere,
+two/mod/__init__.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
@@ -774,7 +780,9 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
 src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewhere, b) using `--explicit-package-bases` or adjusting MYPYPATH
+src/foo/bar.py: note: Common resolutions include:
+src/foo/bar.py: note:     a) adding `__init__.py` somewhere,
+src/foo/bar.py: note:     b) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testEnableInvalidErrorCode]

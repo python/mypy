@@ -312,7 +312,7 @@ class MessageBuilder:
         parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
-        for msg in messages.splitlines():
+        for msg in dedent(messages.lstrip("\n")).splitlines():
             self.report(
                 msg,
                 context,
@@ -1257,33 +1257,24 @@ class MessageBuilder:
         if name != "__post_init__":
             # `__post_init__` is special, it can be incompatible by design.
             # So, this note is misleading.
-            self.note(
-                "This violates the Liskov substitution principle",
-                context,
-                code=codes.OVERRIDE,
-                origin_context=origin_context,
-            )
-            self.note(
-                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-                context,
-                code=codes.OVERRIDE,
-                origin_context=origin_context,
-            )
-
-        if name == "__eq__" and type_name:
-            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
+            invariant_message = """
+            This violates the Liskov substitution principle
+            See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+            """
             self.note_multiline(
-                multiline_msg, context, code=codes.OVERRIDE, origin_context=origin_context
+                invariant_message, context, code=codes.OVERRIDE, origin_context=origin_context
             )
-
-    def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent("""\
-        It is recommended for "__eq__" to work with arbitrary objects, for example:
-            def __eq__(self, other: object) -> bool:
-                if not isinstance(other, {class_name}):
-                    return NotImplemented
-                return <logic to compare two {class_name} instances>
-        """.format(class_name=class_name))
+        if name == "__eq__" and type_name:
+            eq_message = """
+            It is recommended for "__eq__" to work with arbitrary objects, for example:
+                def __eq__(self, other: object) -> bool:
+                    if not isinstance(other, {class_name}):
+                        return NotImplemented
+                    return <logic to compare two {class_name} instances>
+            """.format(class_name=type_name)
+            self.note_multiline(
+                eq_message, context, code=codes.OVERRIDE, origin_context=origin_context
+            )
 
     def return_type_incompatible_with_supertype(
         self,
@@ -3353,7 +3344,7 @@ def append_numbers_notes(
 ) -> list[str]:
     """Explain if an unsupported type from "numbers" is used in a subtype check."""
     if expected_type.type.fullname in UNSUPPORTED_NUMBERS_TYPES:
-        notes.append('Types from "numbers" aren\'t supported for static type checking')
+        notes.append('Types from "numbers" are not supported for static type checking')
         notes.append("See https://peps.python.org/pep-0484/#the-numeric-tower")
         notes.append("Consider using a protocol instead, such as typing.SupportsFloat")
     return notes

@@ -415,19 +415,6 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages: set[str]
 
-    # Set to True to show "In function "foo":" messages.
-    show_error_context: bool = False
-
-    # Set to True to show column numbers in error messages.
-    show_column_numbers: bool = False
-
-    # Set to True to show end line and end column in error messages.
-    # This implies `show_column_numbers`.
-    show_error_end: bool = False
-
-    # Set to True to show absolute file paths in error messages.
-    show_absolute_path: bool = False
-
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
     # Current module id.
@@ -634,6 +621,64 @@ class Errors:
         if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
+    def note_for_info(
+        self,
+        file: str,
+        info: ErrorInfo,
+        message: str,
+        code: ErrorCode | None,
+        *,
+        only_once: bool = False,
+        priority: int = 0,
+    ) -> None:
+        """Generate an additional note for an existing ErrorInfo.
+
+        This skip the logic in add_error_info() and goes to _add_error_info().
+        """
+        info = ErrorInfo(
+            import_ctx=info.import_ctx,
+            local_ctx=info.local_ctx,
+            line=info.line,
+            column=info.column,
+            end_line=info.end_line,
+            end_column=info.end_column,
+            severity="note",
+            message=message,
+            code=code,
+            blocker=False,
+            only_once=only_once,
+            module=info.module,
+            target=info.target,
+            origin_span=info.origin_span,
+            priority=priority,
+        )
+        self._add_error_info(file, info)
+
+    def report_simple_error(
+        self, file: str, line: int, message: str, code: ErrorCode | None
+    ) -> None:
+        """Generate a simple error in a module.
+
+        This skip the logic in add_error_info() and goes to _add_error_info().
+        """
+        info = ErrorInfo(
+            import_ctx=self.import_context(),
+            local_ctx=(None, None),
+            line=line,
+            column=-1,
+            end_line=line,
+            end_column=-1,
+            severity="error",
+            message=message,
+            code=code,
+            blocker=False,
+            only_once=False,
+            module=self.current_module(),
+            # TODO: can we support more precise targets?
+            target=self.target_module,
+        )
+        self._add_error_info(file, info)
+
     def get_watchers(self) -> Iterator[ErrorWatcher]:
         """Yield the `ErrorWatcher` stack from top to bottom."""
         i = len(self._watchers)
@@ -704,23 +749,7 @@ class Errors:
                         f'Error code changed to {info.code.code}; "type: ignore" comment '
                         + "may be out of date"
                     )
-            note = ErrorInfo(
-                import_ctx=info.import_ctx,
-                local_ctx=info.local_ctx,
-                line=info.line,
-                column=info.column,
-                end_line=info.end_line,
-                end_column=info.end_column,
-                severity="note",
-                message=msg,
-                code=None,
-                blocker=False,
-                only_once=False,
-                module=info.module,
-                target=info.target,
-                origin_span=info.origin_span,
-            )
-            self._add_error_info(file, note)
+            self.note_for_info(file, info, msg, None, only_once=False)
         if (
             self.options.show_error_code_links
             and not self.options.hide_error_codes
@@ -732,24 +761,7 @@ class Errors:
             if message in self.only_once_messages:
                 return
             self.only_once_messages.add(message)
-            info = ErrorInfo(
-                import_ctx=info.import_ctx,
-                local_ctx=info.local_ctx,
-                line=info.line,
-                column=info.column,
-                end_line=info.end_line,
-                end_column=info.end_column,
-                severity="note",
-                message=message,
-                code=info.code,
-                blocker=False,
-                only_once=True,
-                module=info.module,
-                target=info.target,
-                origin_span=info.origin_span,
-                priority=20,
-            )
-            self._add_error_info(file, info)
+            self.note_for_info(file, info, message, info.code, only_once=True, priority=20)
 
     def has_many_errors(self) -> bool:
         if self.options.many_errors_threshold < 0:
@@ -771,23 +783,7 @@ class Errors:
         if message in self.only_once_messages:
             return
         self.only_once_messages.add(message)
-        new_info = ErrorInfo(
-            import_ctx=info.import_ctx,
-            local_ctx=info.local_ctx,
-            line=info.line,
-            column=info.column,
-            end_line=info.end_line,
-            end_column=info.end_column,
-            severity="note",
-            message=message,
-            code=None,
-            blocker=False,
-            only_once=True,
-            module=info.module,
-            target=info.target,
-            origin_span=info.origin_span,
-        )
-        self._add_error_info(file, new_info)
+        self.note_for_info(file, info, message, None, only_once=True)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: dict[int, list[str]]) -> bool:
         if info.blocker:
@@ -867,23 +863,8 @@ class Errors:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
                 if narrower:
                     message += f", use narrower [{', '.join(narrower)}] instead of [{unused}] code"
-            # Don't use report since add_error_info will ignore the error!
-            info = ErrorInfo(
-                import_ctx=self.import_context(),
-                local_ctx=(None, None),
-                line=line,
-                column=-1,
-                end_line=line,
-                end_column=-1,
-                severity="error",
-                message=message,
-                code=codes.UNUSED_IGNORE,
-                blocker=False,
-                only_once=False,
-                module=self.current_module(),
-                target=self.current_target(),
-            )
-            self._add_error_info(file, info)
+            # Don't use report() since add_error_info will ignore the error!
+            self.report_simple_error(file, line, message, code=codes.UNUSED_IGNORE)
 
     def generate_ignore_without_code_errors(
         self, file: str, is_warning_unused_ignores: bool, is_typeshed: bool = False
@@ -914,23 +895,8 @@ class Errors:
                 codes_hint = f' (consider "type: ignore[{", ".join(ignored_codes)}]" instead)'
 
             message = f'"type: ignore" comment without error code{codes_hint}'
-            # Don't use report since add_error_info will ignore the error!
-            info = ErrorInfo(
-                import_ctx=self.import_context(),
-                local_ctx=(None, None),
-                line=line,
-                column=-1,
-                end_line=line,
-                end_column=-1,
-                severity="error",
-                message=message,
-                code=codes.IGNORE_WITHOUT_CODE,
-                blocker=False,
-                only_once=False,
-                module=self.current_module(),
-                target=self.current_target(),
-            )
-            self._add_error_info(file, info)
+            # Don't use report() since add_error_info will ignore the error!
+            self.report_simple_error(file, line, message, code=codes.IGNORE_WITHOUT_CODE)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
