@@ -38,9 +38,11 @@ class FormatOp(Enum):
     For example, to mark a conversion from any object to string,
     ConversionSpecifier may have several representations, like '%s', '{}'
     or '{:{}}'. However, there would only exist one corresponding FormatOp.
+    The ':s' format code is stricter and maps to STR_ONLY.
     """
 
     STR = "s"
+    STR_ONLY = "s_only"
     INT = "d"
     BYTES = "b"
 
@@ -55,7 +57,9 @@ def generate_format_ops(specifiers: list[ConversionSpecifier]) -> list[FormatOp]
         # TODO: Match specifiers instead of using whole_seq
         if spec.whole_seq == "%s" or spec.whole_seq == "{:{}}":
             format_op = FormatOp.STR
-        elif spec.whole_seq == "%d":
+        elif spec.whole_seq == ":s":
+            format_op = FormatOp.STR_ONLY
+        elif spec.whole_seq in ("%d", ":d"):
             format_op = FormatOp.INT
         elif spec.whole_seq == "%b":
             format_op = FormatOp.BYTES
@@ -152,6 +156,13 @@ def convert_format_expr_to_str(
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.primitive_op(str_op, [builder.accept(x)], line)
+        elif format_op == FormatOp.STR_ONLY:
+            if isinstance(folded := constant_fold_expr(builder, x), str):
+                var_str = builder.load_literal_value(folded)
+            elif is_str_rprimitive(node_type):
+                var_str = builder.accept(x)
+            else:
+                return None
         elif format_op == FormatOp.INT:
             if isinstance(folded := constant_fold_expr(builder, x), int):
                 var_str = builder.load_literal_value(str(folded))
