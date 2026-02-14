@@ -128,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -595,7 +596,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -731,7 +732,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
