@@ -2933,3 +2933,22 @@ def f5(x: str | Custom | SE):
         reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom | __main__.SE"
 
 [builtins fixtures/primitives.pyi]
+
+[case testEnumMemberNamedValueWithAuto]
+from enum import Enum, auto
+
+class A(Enum):
+    value = auto()
+
+class B(Enum):
+    name = auto()
+
+class C(Enum):
+    name = auto()
+    value = auto()
+
+reveal_type(A.value)  # N: Revealed type is "Literal[__main__.A.value]?"
+reveal_type(B.name)  # N: Revealed type is "Literal[__main__.B.name]?"
+reveal_type(C.name)  # N: Revealed type is "Literal[__main__.C.name]?"
+reveal_type(C.value)  # N: Revealed type is "Literal[__main__.C.value]?"
+[builtins fixtures/primitives.pyi]

@@ -3608,6 +3608,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if is_private(lvalue_node.name):
                     continue
 
+                # Enum members "name"/"value" shadow properties, not overrides.
+                if (
+                    lvalue_node.info.is_enum
+                    and lvalue_node.name in ("name", "value")
+                    and base.fullname in ENUM_BASES
+                ):
+                    continue
+
                 base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
                 # TODO: if the r.h.s. is a descriptor, we should check setter override as well.
                 custom_setter = is_custom_settable_property(base_node)
