@@ -1,4 +1,8 @@
-"""Tests for the native mypy parser."""
+"""Tests for the experimental native mypy parser.
+
+To run these, you will need to manually install ast_serialize from
+https://github.com/mypyc/ast_serialize first (see the README for the details).
+"""
 
 from __future__ import annotations
 
@@ -14,12 +18,20 @@ from mypy import defaults, nodes
 from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
-from mypy.nativeparse import native_parse, parse_to_binary_ast
 from mypy.nodes import ExpressionStmt, MemberExpr, MypyFile
 from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import get_mypy_comments
+
+# If the experimental ast_serialize module isn't installed, the following import will fail
+# and we won't run any native parser tests.
+try:
+    from mypy.nativeparse import native_parse, parse_to_binary_ast
+
+    has_nativeparse = True
+except ImportError:
+    has_nativeparse = False
 
 gc.set_threshold(200 * 1000, 30, 30)
 
@@ -27,7 +39,7 @@ gc.set_threshold(200 * 1000, 30, 30)
 class NativeParserSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = ["native-parser.test"]
+    files = ["native-parser.test"] if has_nativeparse else []
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -36,7 +48,7 @@ class NativeParserSuite(DataSuite):
 class NativeParserImportsSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = ["native-parser-imports.test"]
+    files = ["native-parser-imports.test"] if has_nativeparse else []
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser_imports(testcase)
@@ -202,6 +214,7 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
     return output
 
 
+@unittest.skipUnless(has_nativeparse, "nativeparse not available")
 class TestNativeParse(unittest.TestCase):
     def test_trivial_binary_data(self) -> None:
         def int_enc(n: int) -> int:

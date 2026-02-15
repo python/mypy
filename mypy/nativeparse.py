@@ -2018,7 +2018,7 @@ def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Stateme
             # Check IfStmt block to determine if function overloads can be merged
             if_overload_name = check_ifstmt_for_overloads(stmt, current_overload_name)
             if if_overload_name is not None:
-                (if_block_with_overload, if_unknown_truth_value) = (
+                if_block_with_overload, if_unknown_truth_value = (
                     get_executable_if_block_with_overloads(stmt, state.options)
                 )
 
