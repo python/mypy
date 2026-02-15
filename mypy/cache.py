@@ -71,7 +71,9 @@ from mypy_extensions import u8
 # High-level cache layout format
 CACHE_VERSION: Final = 5
 
-SerializedError: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
+# Type used internally to represent errors:
+#   (path, line, column, end_line, end_column, severity, message, code)
+ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
 
 
 class CacheMeta:
@@ -97,7 +99,7 @@ class CacheMeta:
         dep_hashes: list[bytes],
         interface_hash: bytes,
         trans_dep_hash: bytes,
-        error_lines: list[SerializedError],
+        error_lines: list[ErrorTuple],
         version_id: str,
         ignore_all: bool,
         plugin_data: Any,
@@ -498,7 +500,7 @@ def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
         write_json_value(data, value[key])
 
 
-def write_errors(data: WriteBuffer, errs: list[SerializedError]) -> None:
+def write_errors(data: WriteBuffer, errs: list[ErrorTuple]) -> None:
     write_tag(data, LIST_GEN)
     write_int_bare(data, len(errs))
     for path, line, column, end_line, end_column, severity, message, code in errs:
@@ -513,7 +515,7 @@ def write_errors(data: WriteBuffer, errs: list[SerializedError]) -> None:
         write_str_opt(data, code)
 
 
-def read_errors(data: ReadBuffer) -> list[SerializedError]:
+def read_errors(data: ReadBuffer) -> list[ErrorTuple]:
     assert read_tag(data) == LIST_GEN
     result = []
     for _ in range(read_int_bare(data)):

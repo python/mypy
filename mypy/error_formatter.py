@@ -30,7 +30,7 @@ class JSONFormatter(ErrorFormatter):
                 "end_column": error.end_column,
                 "message": error.message,
                 "hint": None if len(error.hints) == 0 else "\n".join(error.hints),
-                "code": None if error.errorcode is None else error.errorcode.code,
+                "code": error.errorcode,
                 "severity": error.severity,
             }
         )
