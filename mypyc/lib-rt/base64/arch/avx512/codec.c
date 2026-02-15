@@ -9,6 +9,8 @@
 #include "../../env.h"
 
 #if HAVE_AVX512
+#pragma GCC target("avx512vbmi")
+#pragma clang attribute push (__attribute__((target("avx512vbmi"))), apply_to=function)
 #include <immintrin.h>
 
 #include "../avx2/dec_reshuffle.c"
@@ -38,6 +40,7 @@ base64_stream_decode_avx512 BASE64_DEC_PARAMS
 	#include "../generic/dec_head.c"
 	dec_loop_avx2(&s, &slen, &o, &olen);
 	#include "../generic/dec_tail.c"
+	#pragma clang attribute pop
 #else
 	return base64_dec_stub(state, src, srclen, out, outlen);
 #endif

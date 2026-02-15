@@ -9,6 +9,8 @@
 #include "../../env.h"
 
 #if HAVE_SSE41
+#pragma GCC target("sse4.1")
+#pragma clang attribute push (__attribute__((target("sse4.1"))), apply_to=function)
 #include <smmintrin.h>
 
 // Only enable inline assembly on supported compilers and on 64-bit CPUs.
@@ -52,6 +54,7 @@ base64_stream_decode_sse41 BASE64_DEC_PARAMS
 	#include "../generic/dec_head.c"
 	dec_loop_ssse3(&s, &slen, &o, &olen);
 	#include "../generic/dec_tail.c"
+	#pragma clang attribute pop
 #else
 	return base64_dec_stub(state, src, srclen, out, outlen);
 #endif
