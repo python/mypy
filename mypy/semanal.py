@@ -6058,6 +6058,7 @@ class SemanticAnalyzer(
             ]
         )
         expr.set_line(call)
+        expr.from_dict_call = True
         expr.accept(self)
         return expr
 
