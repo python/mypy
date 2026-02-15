@@ -62,6 +62,13 @@ dict_copy_op = function_op(
     priority=2,
 )
 
+dict_template_copy_op = custom_op(
+    arg_types=[dict_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name="PyDict_Copy",
+    error_kind=ERR_MAGIC,
+)
+
 # Generic one-argument dict constructor: dict(obj)
 dict_copy = function_op(
     name="builtins.dict",

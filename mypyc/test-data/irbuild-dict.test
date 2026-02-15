@@ -545,10 +545,9 @@ def f4(d, flag):
     flag :: bool
     r0 :: str
     r1 :: object
-    r2, r3 :: str
-    r4 :: object
-    r5 :: dict
-    r6, r7 :: object
+    r2 :: str
+    r3, r4 :: dict
+    r5, r6 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
@@ -557,11 +556,25 @@ L1:
     return r1
 L2:
     r2 = 'a'
-    r3 = 'c'
-    r4 = object 1
-    r5 = CPyDict_Build(1, r3, r4)
-    r6 = CPyDict_SetDefault(d, r2, r5)
-    return r6
+    r3 = {'c': 1}
+    r4 = PyDict_Copy(r3)
+    r5 = CPyDict_SetDefault(d, r2, r4)
+    return r5
 L3:
-    r7 = box(None, 1)
-    return r7
+    r6 = box(None, 1)
+    return r6
+
+[case testNestedDictLiteral]
+def f() -> None:
+    d = {"a": {2: 3.4}}
+[out]
+def f():
+    r0 :: str
+    r1, r2, r3, d :: dict
+L0:
+    r0 = 'a'
+    r1 = {2: 3.4}
+    r2 = PyDict_Copy(r1)
+    r3 = CPyDict_Build(1, r0, r2)
+    d = r3
+    return 1

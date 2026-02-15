@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
+from typing import Union, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -80,6 +81,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RVec,
     bool_rprimitive,
+    dict_rprimitive,
     int_rprimitive,
     is_any_int,
     is_fixed_width_rtype,
@@ -93,7 +95,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
-from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.constant_fold import ConstantValue, constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
     raise_error_if_contains_unreachable_names,
@@ -123,7 +125,12 @@ from mypyc.irbuild.vec import (
     vec_slice,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.dict_ops import (
+    dict_get_item_op,
+    dict_new_op,
+    dict_template_copy_op,
+    exact_dict_set_item_op,
+)
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -131,6 +138,9 @@ from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
+
+ConstantValueOrTuple = Union[ConstantValue, "ConstantValueTuple"]
+ConstantValueTuple = tuple[ConstantValueOrTuple, ...]
 
 # Name and attribute references
 
@@ -1112,8 +1122,55 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
+def dict_literal_values(
+    builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int
+) -> dict[ConstantValueOrTuple, ConstantValueOrTuple] | None:
+    """Try to extract a constant dict from a dict literal, recursively staticizing nested dicts.
+
+    If all keys and values are deeply immutable and constant (including nested dicts as values),
+    return the Python dict value. Otherwise, return None.
+    """
+
+    def constant_fold_expr_or_tuple(expr: Expression) -> ConstantValueOrTuple | None:
+        value = constant_fold_expr(builder, expr)
+        if value is not None:
+            return value
+        if not isinstance(expr, TupleExpr):
+            return None
+        folded = tuple(map(constant_fold_expr_or_tuple, expr.items))
+        return None if None in folded else cast(ConstantValueTuple, folded)
+
+    result = {}
+    for key_expr, value_expr in items:
+        if key_expr is None:
+            # ** unpacking, not a literal
+            # TODO: if ** is unpacking a dict literal we can use that, we just need logic
+            return None
+        key = constant_fold_expr_or_tuple(key_expr)
+        if key is None:
+            return None
+        value = constant_fold_expr_or_tuple(value_expr)
+        if value is None:
+            return None
+        result[key] = value
+
+    return result or None
+
+
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
-    """First accepts all keys and values, then makes a dict out of them."""
+    """First accepts all keys and values, then makes a dict out of them.
+
+    Optimization: If all keys and values are deeply immutable, emit a static template dict
+    and at runtime use PyDict_Copy to return a fresh dict.
+    """
+    # Try to constant fold the dict and get a static Value
+    static_dict = dict_literal_values(builder, expr.items, expr.line)
+    if static_dict is not None:
+        # Register the static dict and return a copy at runtime
+        static_val = builder.add(LoadLiteral(static_dict, dict_rprimitive))  # type: ignore [arg-type]
+        return builder.call_c(dict_template_copy_op, [static_val], expr.line)
+
+    # If that fails, build dict at runtime
     key_value_pairs = []
     for key_expr, value_expr in expr.items:
         key = builder.accept(key_expr) if key_expr is not None else None
