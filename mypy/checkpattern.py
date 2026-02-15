@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TempNode, TypeAlias, Var
+from mypy.nodes import ARG_POS, Expression, NameExpr, TempNode, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -394,11 +394,14 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
-            if isinstance(current_type, TypeVarType):
-                new_bound = self.narrow_sequence_child(current_type.upper_bound, new_inner_type, o)
-                new_type = current_type.copy_modified(upper_bound=new_bound)
-            else:
-                new_type = self.narrow_sequence_child(current_type, new_inner_type, o)
+            new_type = self.construct_sequence_child(current_type, new_inner_type)
+            new_type, possible_rest_type = self.chk.conditional_types_with_intersection(
+                current_type, [get_type_range(new_type)], o, default=current_type
+            )
+            if star_position is not None and len(o.patterns) == 1:
+                # Match cannot be refuted, so narrow the remaining type
+                rest_type = possible_rest_type
+
         return PatternType(new_type, rest_type, captures)
 
     def contract_starred_pattern_types(
@@ -477,16 +480,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types += types[star_pos + 1 :]
 
         return new_types
-
-    def narrow_sequence_child(self, outer_type: Type, inner_type: Type, ctx: Context) -> Type:
-        new_type = self.construct_sequence_child(outer_type, inner_type)
-        if is_subtype(new_type, outer_type):
-            new_type, _ = self.chk.conditional_types_with_intersection(
-                outer_type, [get_type_range(new_type)], ctx, default=outer_type
-            )
-        else:
-            new_type = outer_type
-        return new_type
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures: dict[Expression, Type] = {}
@@ -796,6 +789,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
+        if isinstance(proper_type, TypeVarType):
+            new_bound = self.construct_sequence_child(proper_type.upper_bound, inner_type)
+            return proper_type.copy_modified(upper_bound=new_bound)
         if isinstance(proper_type, AnyType):
             return outer_type
         if isinstance(proper_type, UnionType):
