@@ -525,12 +525,12 @@ def define_options(
             help += f" (inverse: {inverse})"
 
         arg = group.add_argument(
-            flag, action="store_false" if default else "store_true", dest=dest, help=help
+            flag, action="store_true", dest=dest, help=help
         )
         dest = arg.dest
         group.add_argument(
             inverse,
-            action="store_true" if default else "store_false",
+            action="store_false",
             dest=dest,
             help=argparse.SUPPRESS,
         )

@@ -79,6 +79,18 @@ def parse_script(input: list[str]) -> list[list[str]]:
 def run_cmd(input: str) -> tuple[int, str]:
     if input[1:].startswith("mypy run --") and "--show-error-codes" not in input:
         input += " --hide-error-codes"
+    if "--pretty" not in input:
+        if input.startswith("dmypy ") and " -- " in input:
+            # For dmypy commands, mypy flags come after --, so append at end
+            input += " --no-pretty"
+        elif input.startswith("mypy ") and " -- " in input:
+            # For mypy commands, options come before --, so insert before --
+            input = input.replace(" -- ", " --no-pretty -- ", 1)
+        elif input.startswith("dmypy run ") or input.startswith("dmypy start"):
+            # dmypy commands without -- need the separator added
+            input += " -- --no-pretty"
+        elif input.startswith("mypy "):
+            input += " --no-pretty"
     if input.startswith("dmypy "):
         input = sys.executable + " -m mypy." + input
     if input.startswith("mypy "):
