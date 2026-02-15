@@ -7,7 +7,6 @@ https://github.com/mypyc/ast_serialize first (see the README for the details).
 from __future__ import annotations
 
 import contextlib
-import gc
 import os
 import tempfile
 import unittest
@@ -15,7 +14,15 @@ from collections.abc import Iterator
 from typing import Any
 
 from mypy import defaults, nodes
-from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
+from mypy.cache import (
+    END_TAG,
+    LIST_GEN,
+    LIST_INT,
+    LITERAL_INT,
+    LITERAL_NONE,
+    LITERAL_STR,
+    LOCATION,
+)
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
 from mypy.nodes import ExpressionStmt, MemberExpr, MypyFile
@@ -234,13 +241,17 @@ class TestNativeParse(unittest.TestCase):
                 + [nodes.NAME_EXPR, LITERAL_STR]
                 + [int_enc(5)]
                 + list(b"print")
-                + locs(1, 1, 1, 6)
+                + locs(1, 0, 1, 5)
                 + [END_TAG, LIST_GEN, 22, nodes.STR_EXPR]
                 + [LITERAL_STR, int_enc(5)]
                 + list(b"hello")
-                + locs(1, 7, 1, 14)
+                + locs(1, 6, 1, 13)
                 + [END_TAG]
-                + locs(1, 1, 1, 15)
+                # arg_kinds: [ARG_POS]
+                + [LIST_INT, 22, int_enc(0)]
+                # arg_names: [None]
+                + [LIST_GEN, 22, LITERAL_NONE]
+                + locs(1, 0, 1, 14)
                 + [END_TAG, END_TAG]
             )
 
