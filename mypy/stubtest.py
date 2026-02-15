@@ -2286,6 +2286,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
 
     options = Options()
     options.incremental = False
+    options.pretty = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
     if options.custom_typeshed_dir:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
