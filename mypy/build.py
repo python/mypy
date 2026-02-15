@@ -119,6 +119,7 @@ from mypy.util import (
     is_sub_path_normabs,
     is_typeshed_file,
     module_prefix,
+    os_path_join,
     read_py_file,
     time_ref,
     time_spent_us,
@@ -582,7 +583,7 @@ def load_plugins_from_config(
             plugin_path, func_name = plugin_path.rsplit(":", 1)
         if plugin_path.endswith(".py"):
             # Plugin paths can be relative to the config file location.
-            plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
+            plugin_path = os_path_join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
                 plugin_error(f'Can\'t find plugin "{plugin_path}"')
             # Use an absolute path to avoid populating the cache entry
@@ -1466,7 +1467,7 @@ def _cache_dir_prefix(options: Options) -> str:
         return os.curdir
     cache_dir = options.cache_dir
     pyversion = options.python_version
-    base = os.path.join(cache_dir, "%d.%d" % pyversion)
+    base = os_path_join(cache_dir, "%d.%d" % pyversion)
     return base
 
 
@@ -1475,7 +1476,7 @@ def add_catch_all_gitignore(target_dir: str) -> None:
 
     No-op if the .gitignore already exists.
     """
-    gitignore = os.path.join(target_dir, ".gitignore")
+    gitignore = os_path_join(target_dir, ".gitignore")
     try:
         with open(gitignore, "x") as f:
             print("# Automatically created by mypy", file=f)
@@ -1489,7 +1490,7 @@ def exclude_from_backups(target_dir: str) -> None:
 
     If the CACHEDIR.TAG file exists the function is a no-op.
     """
-    cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
+    cachedir_tag = os_path_join(target_dir, "CACHEDIR.TAG")
     try:
         with open(cachedir_tag, "x") as f:
             f.write("""Signature: 8a477f597d28d172789f06886806bc55
@@ -1539,7 +1540,7 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     prefix = os.path.join(*id.split("."))
     is_package = os.path.basename(path).startswith("__init__.py")
     if is_package:
-        prefix = os.path.join(prefix, "__init__")
+        prefix = os_path_join(prefix, "__init__")
 
     deps_json = None
     if options.cache_fine_grained:
@@ -2393,7 +2394,7 @@ class State:
             if os.path.isabs(path):
                 self.abspath = path
             else:
-                self.abspath = os.path.normpath(os.path.join(manager.cwd, path))
+                self.abspath = os.path.normpath(os_path_join(manager.cwd, path))
         self.xpath = path or "<string>"
         self.source = source
         self.options = options
@@ -4327,7 +4328,7 @@ def transitive_dep_hash(scc: SCC, graph: Graph) -> bytes:
 
 
 def missing_stubs_file(cache_dir: str) -> str:
-    return os.path.join(cache_dir, "missing_stubs")
+    return os_path_join(cache_dir, "missing_stubs")
 
 
 def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]) -> None:
