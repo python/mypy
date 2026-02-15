@@ -373,10 +373,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         return stmt
     elif tag == nodes.EXPR_STMT:
         es = ExpressionStmt(read_expression(state, data))
-        es.line = es.expr.line
-        es.column = es.expr.column
-        es.end_line = es.expr.end_line
-        es.end_column = es.expr.end_column
+        set_line_column_range(es, es.expr)
         expect_end_tag(data)
         return es
     elif tag == nodes.ASSIGNMENT_STMT:
@@ -394,10 +391,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, a)
         # If rvalue is TempNode, copy location from AssignmentStmt
         if isinstance(rvalue, TempNode):
-            rvalue.line = a.line
-            rvalue.column = a.column
-            rvalue.end_line = a.end_line
-            rvalue.end_column = a.end_column
+            set_line_column_range(rvalue, a)
         expect_end_tag(data)
         return a
     elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
@@ -452,10 +446,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
 
             # Wrap in a Block to become the else clause for the outer if
             current_else = Block([elif_stmt])
-            current_else.line = elif_stmt.line
-            current_else.column = elif_stmt.column
-            current_else.end_line = elif_stmt.end_line
-            current_else.end_column = elif_stmt.end_column
+            set_line_column_range(current_else, elif_stmt)
 
         # Create the main if statement
         if_stmt = IfStmt([expr], [body], current_else)
@@ -724,10 +715,7 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         var.is_inferred = False
         arg = Argument(var, ann, default, arg_kind, pos_only)
         read_loc(data, arg)
-        var.line = arg.line
-        var.column = arg.column
-        var.end_line = arg.end_line
-        var.end_column = arg.end_column
+        set_line_column_range(var, arg)
         arguments.append(arg)
 
     return arguments, has_ann
@@ -924,10 +912,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     # Wrap the value expression in a LambdaExpr as expected by TypeAliasStmt
     # The LambdaExpr body is a Block with a single ReturnStmt
     return_stmt = ReturnStmt(value_expr)
-    return_stmt.line = value_expr.line
-    return_stmt.column = value_expr.column
-    return_stmt.end_line = value_expr.end_line
-    return_stmt.end_column = value_expr.end_column
+    set_line_column_range(return_stmt, value_expr)
 
     block = Block([return_stmt])
     block.line = -1  # Synthetic block
@@ -936,10 +921,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     block.end_column = 0
 
     lambda_expr = LambdaExpr([], block)
-    lambda_expr.line = value_expr.line
-    lambda_expr.column = value_expr.column
-    lambda_expr.end_line = value_expr.end_line
-    lambda_expr.end_column = value_expr.end_column
+    set_line_column_range(lambda_expr, value_expr)
 
     stmt = TypeAliasStmt(name, type_params, lambda_expr)
     read_loc(data, stmt)
@@ -1368,10 +1350,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expr = ListComprehension(generator)
         read_loc(data, expr)
         # Also copy location to the inner generator
-        generator.line = expr.line
-        generator.column = expr.column
-        generator.end_line = expr.end_line
-        generator.end_column = expr.end_column
+        set_line_column_range(generator, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.SET_COMPREHENSION:
@@ -1379,10 +1358,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expr = SetComprehension(generator)
         read_loc(data, expr)
         # Also copy location to the inner generator
-        generator.line = expr.line
-        generator.column = expr.column
-        generator.end_line = expr.end_line
-        generator.end_column = expr.end_column
+        set_line_column_range(generator, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_COMPREHENSION:
@@ -1703,6 +1679,13 @@ def set_line_column(target: Context, src: Context) -> None:
     target.column = src.column
 
 
+def set_line_column_range(target: Context, src: Context) -> None:
+    target.line = src.line
+    target.column = src.column
+    target.end_line = src.end_line
+    target.end_column = src.end_column
+
+
 def read_expression_list(state: State, data: ReadBuffer) -> list[Expression]:
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
@@ -1865,10 +1848,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
 
     # Create CallableArgument
     call_arg = CallableArgument(typ, name, constructor)
-    call_arg.line = invalid.line
-    call_arg.column = invalid.column
-    call_arg.end_line = invalid.end_line
-    call_arg.end_column = invalid.end_column
+    set_line_column_range(call_arg, invalid)
     return call_arg
 
 
