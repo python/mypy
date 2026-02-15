@@ -33,8 +33,6 @@ try:
 except ImportError:
     has_nativeparse = False
 
-gc.set_threshold(200 * 1000, 30, 30)
-
 
 class NativeParserSuite(DataSuite):
     required_out_section = True
@@ -257,44 +255,6 @@ class TestNativeParse(unittest.TestCase):
             assert isinstance(node, MypyFile)
             assert isinstance(node.defs[0], ExpressionStmt)
             assert isinstance(node.defs[0].expr, MemberExpr)
-
-    def test_deserialize_bench(self) -> None:
-        with temp_source("print('hello')\n" * 4000) as fnam:
-            import time
-
-            options = Options()
-            for i in range(10):
-                native_parse(fnam, options)
-            t0 = time.time()
-            for i in range(25):
-                node, _, _ = native_parse(fnam, options)
-            assert isinstance(node, MypyFile)
-            print(len(node.defs))
-            print((time.time() - t0) * 1000)
-            assert False, 1 / ((time.time() - t0) / 100000)
-
-    def test_parse_bench(self) -> None:
-        with temp_source("print('hello')\n" * 4000) as fnam:
-            import time
-
-            from mypy.errors import Errors
-            from mypy.options import Options
-            from mypy.parse import parse
-
-            o = Options()
-
-            for i in range(10):
-                with open(fnam, "rb") as f:
-                    data = f.read()
-                node = parse(data, fnam, "__main__", Errors(o), o)
-
-            t0 = time.time()
-            for i in range(25):
-                with open(fnam, "rb") as f:
-                    data = f.read()
-                node = parse(data, fnam, "__main__", Errors(o), o)
-            assert isinstance(node, MypyFile)
-            assert False, 1 / ((time.time() - t0) / 100000)
 
 
 @contextlib.contextmanager
