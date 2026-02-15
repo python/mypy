@@ -246,7 +246,7 @@ class TestNativeParse(unittest.TestCase):
 
     def test_deserialize_hello(self) -> None:
         with temp_source("print('hello')") as fnam:
-            node = native_parse(fnam, Options())
+            node, _, _ = native_parse(fnam, Options())
             assert isinstance(node, MypyFile)
 
     def test_deserialize_member_expr(self) -> None:
