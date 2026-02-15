@@ -1175,7 +1175,7 @@ MypyFile:1(
 @dec
 def foo():
     pass
-class C:    
+class C:
     @dec()
     @staticmethod
     def foo():
