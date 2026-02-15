@@ -524,16 +524,9 @@ def define_options(
         if help is not argparse.SUPPRESS:
             help += f" (inverse: {inverse})"
 
-        arg = group.add_argument(
-            flag, action="store_true", dest=dest, help=help
-        )
+        arg = group.add_argument(flag, action="store_true", dest=dest, help=help)
         dest = arg.dest
-        group.add_argument(
-            inverse,
-            action="store_false",
-            dest=dest,
-            help=argparse.SUPPRESS,
-        )
+        group.add_argument(inverse, action="store_false", dest=dest, help=argparse.SUPPRESS)
         if strict_flag:
             assert dest is not None
             strict_flag_names.append(flag)
