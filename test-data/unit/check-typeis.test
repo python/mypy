@@ -950,3 +950,51 @@ def main(x: Union[A, B]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/tuple.pyi]
+
+
+[case testTypeIsGeneric]
+from __future__ import annotations
+from typing import Any, Callable, TypeVar
+from typing_extensions import TypeIs
+
+T = TypeVar('T')
+
+def positive(x: T | int, checker: Callable[[Any], TypeIs[T]], default: int) -> int:
+    if checker(x):
+        reveal_type(x)  # N: Revealed type is "T`-1"
+        return default
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        return x
+
+def negative(x: T | int, checker: Callable[[Any], TypeIs[int]], default: T) -> T:
+    if checker(x):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        return default
+    else:
+        reveal_type(x)  # N: Revealed type is "T`-1"
+        return x
+[builtins fixtures/tuple.pyi]
+
+
+[case testTypeIsAwaitable]
+from __future__ import annotations
+from typing import Any, Awaitable, Callable, TypeVar, overload
+from typing_extensions import TypeIs
+
+T = TypeVar("T")
+AwaitableCallable = Callable[..., Awaitable[T]]
+
+@overload
+def is_async_callable(obj: AwaitableCallable[T]) -> TypeIs[AwaitableCallable[T]]: ...
+@overload
+def is_async_callable(obj: Any) -> TypeIs[AwaitableCallable[Any]]: ...
+def is_async_callable(obj): ...
+
+def main(f: Callable[[], int | Awaitable[int]] | Callable[[], Awaitable[int]]) -> None:
+    if is_async_callable(f):
+        reveal_type(f)  # N: Revealed type is "(def (*Any, **Any) -> typing.Awaitable[Any]) | (def () -> typing.Awaitable[builtins.int])"
+    else:
+        reveal_type(f)  # N: Revealed type is "def () -> builtins.int | typing.Awaitable[builtins.int]"
+
+[builtins fixtures/tuple.pyi]

@@ -236,7 +236,6 @@ class MessageBuilder:
         severity: str,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
         secondary_context: Context | None = None,
@@ -271,7 +270,6 @@ class MessageBuilder:
             context.column if context else -1,
             msg,
             severity=severity,
-            file=file,
             offset=offset,
             origin_span=origin_span,
             end_line=context.end_line if context else -1,
@@ -286,19 +284,15 @@ class MessageBuilder:
         context: Context | None,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
         secondary_context: Context | None = None,
     ) -> ErrorInfo:
         """Report an error message (unless disabled)."""
-        return self.report(
-            msg, context, "error", code=code, file=file, secondary_context=secondary_context
-        )
+        return self.report(msg, context, "error", code=code, secondary_context=secondary_context)
 
     def note(
         self,
         msg: str,
         context: Context,
-        file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
         *,
@@ -311,7 +305,6 @@ class MessageBuilder:
             msg,
             context,
             "note",
-            file=file,
             origin=origin,
             offset=offset,
             code=code,
@@ -323,7 +316,6 @@ class MessageBuilder:
         self,
         messages: str,
         context: Context,
-        file: str | None = None,
         offset: int = 0,
         code: ErrorCode | None = None,
         *,
@@ -332,13 +324,7 @@ class MessageBuilder:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(
-                msg,
-                context,
-                "note",
-                file=file,
-                offset=offset,
-                code=code,
-                secondary_context=secondary_context,
+                msg, context, "note", offset=offset, code=code, secondary_context=secondary_context
             )
 
     #
@@ -1030,18 +1016,18 @@ class MessageBuilder:
             for_function(callee), name, context, matches=matches
         )
         module = find_defining_module(self.modules, callee)
-        if module:
+        if (
+            module
+            and module.path != self.errors.file
+            and module.fullname not in ("builtins", "typing")
+        ):
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
                 fname = "Called function"
-            self.note(
-                f"{fname} defined here",
-                callee.definition,
-                file=module.path,
-                origin=context,
-                code=codes.CALL_ARG,
-            )
+            else:
+                fname = fname.split(" of ")[0]  # use short method names in the note
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(
@@ -1295,17 +1281,13 @@ class MessageBuilder:
             )
 
     def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent(
-            """\
+        return dedent("""\
         It is recommended for "__eq__" to work with arbitrary objects, for example:
             def __eq__(self, other: object) -> bool:
                 if not isinstance(other, {class_name}):
                     return NotImplemented
                 return <logic to compare two {class_name} instances>
-        """.format(
-                class_name=class_name
-            )
-        )
+        """.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
         self,
@@ -1802,7 +1784,7 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        source, target = format_type_distinctly(source_type, target_type, options=self.options)
         self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
@@ -3017,30 +2999,37 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             s += ", /"
             slash = True
 
-    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     definition = get_func_def(tp)
+
+    # Extract function name, prefer the "human-readable" name if available.
+    func_name = None
+    if tp.name:
+        func_name = tp.name.split()[0]  # skip "of Class" part
+    elif isinstance(definition, FuncDef):
+        func_name = definition.name
+
+    # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+    first_arg = None
     if (
         isinstance(definition, FuncDef)
         and hasattr(definition, "arguments")
         and not tp.from_concatenate
     ):
         definition_arg_names = [arg.variable.name for arg in definition.arguments]
-        if (
-            len(definition_arg_names) > len(tp.arg_names)
-            and definition_arg_names[0]
-            and not skip_self
-        ):
-            if s:
-                s = ", " + s
-            s = definition_arg_names[0] + s
-        s = f"{definition.name}({s})"
-    elif tp.name:
+        if len(definition_arg_names) > len(tp.arg_names) and definition_arg_names[0]:
+            first_arg = definition_arg_names[0]
+    else:
+        # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
-        if first_arg:
-            if s:
-                s = ", " + s
-            s = first_arg + s
-        s = f"{tp.name.split()[0]}({s})"  # skip "of Class" part
+
+    if tp.is_type_obj():
+        skip_self = True
+    if first_arg and not skip_self:
+        if s:
+            s = ", " + s
+        s = first_arg + s
+    if func_name:
+        s = f"{func_name}({s})"
     else:
         s = f"({s})"
 

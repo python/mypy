@@ -891,6 +891,15 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
+        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        group=strictness_group,
+        dest="allow_redefinition_old",
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-old",
+        default=False,
+        strict_flag=False,
         help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
@@ -899,7 +908,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics (experimental)",
+        help="Allow more flexible variable redefinition semantics",
         group=strictness_group,
     )
 
@@ -1076,10 +1085,12 @@ def define_options(
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
-    incremental_group.add_argument(
-        "--fixed-format-cache",
-        action="store_true",
-        help="Use new fast and compact fixed format cache",
+    add_invertible_flag(
+        "--no-fixed-format-cache",
+        dest="fixed_format_cache",
+        default=True,
+        help="Do not use new fixed format cache",
+        group=incremental_group,
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1373,6 +1384,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    mypyc: bool = False,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -1400,6 +1412,9 @@ def process_options(
 
     options = Options()
     strict_option_set = False
+    if mypyc:
+        # Mypyc has strict_bytes enabled by default
+        options.strict_bytes = True
 
     def set_strict_flags() -> None:
         nonlocal strict_option_set

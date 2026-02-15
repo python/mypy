@@ -710,6 +710,18 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
         encodevalue: _EnvironCodeFunc[AnyStr],
         decodevalue: _EnvironCodeFunc[AnyStr],
     ) -> None: ...
+    @overload
+    def get(self, key: AnyStr, default: None = None) -> AnyStr | None: ...
+    @overload
+    def get(self, key: AnyStr, default: AnyStr) -> AnyStr: ...
+    @overload
+    def get(self, key: AnyStr, default: _T) -> AnyStr | _T: ...
+    @overload
+    def pop(self, key: AnyStr) -> AnyStr: ...
+    @overload
+    def pop(self, key: AnyStr, default: AnyStr) -> AnyStr: ...
+    @overload
+    def pop(self, key: AnyStr, default: _T) -> AnyStr | _T: ...
     def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
@@ -1025,10 +1037,10 @@ def fdopen(
     mode: OpenTextMode = "r",
     buffering: int = -1,
     encoding: str | None = None,
-    errors: str | None = ...,
-    newline: str | None = ...,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    errors: str | None = None,
+    newline: str | None = None,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> TextIOWrapper: ...
 @overload
 def fdopen(
@@ -1038,8 +1050,8 @@ def fdopen(
     encoding: None = None,
     errors: None = None,
     newline: None = None,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> FileIO: ...
 @overload
 def fdopen(
@@ -1049,8 +1061,8 @@ def fdopen(
     encoding: None = None,
     errors: None = None,
     newline: None = None,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> BufferedRandom: ...
 @overload
 def fdopen(
@@ -1060,8 +1072,8 @@ def fdopen(
     encoding: None = None,
     errors: None = None,
     newline: None = None,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> BufferedWriter: ...
 @overload
 def fdopen(
@@ -1071,8 +1083,8 @@ def fdopen(
     encoding: None = None,
     errors: None = None,
     newline: None = None,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> BufferedReader: ...
 @overload
 def fdopen(
@@ -1082,8 +1094,8 @@ def fdopen(
     encoding: None = None,
     errors: None = None,
     newline: None = None,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> BinaryIO: ...
 @overload
 def fdopen(
@@ -1091,10 +1103,10 @@ def fdopen(
     mode: str,
     buffering: int = -1,
     encoding: str | None = None,
-    errors: str | None = ...,
-    newline: str | None = ...,
-    closefd: bool = ...,
-    opener: _Opener | None = ...,
+    errors: str | None = None,
+    newline: str | None = None,
+    closefd: bool = True,
+    opener: _Opener | None = None,
 ) -> IO[Any]: ...
 def close(fd: int) -> None: ...
 def closerange(fd_low: int, fd_high: int, /) -> None: ...
@@ -1395,19 +1407,48 @@ class _wrap_close:
     def write(self, s: str, /) -> int: ...
     def writelines(self, lines: Iterable[str], /) -> None: ...
 
-def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
-def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
-def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
-
-if sys.platform != "win32":
-    def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
-    def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+if sys.version_info >= (3, 14):
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
 
 else:
-    def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
-    def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+    def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
+    def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+    def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
 
-def system(command: StrOrBytesPath) -> int: ...
+if sys.platform != "win32":
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+    else:
+        def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+else:
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+
+    else:
+        def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
+        def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+
+if sys.version_info >= (3, 14):
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def system(command: StrOrBytesPath) -> int: ...
+
+else:
+    def system(command: StrOrBytesPath) -> int: ...
+
 @final
 class times_result(structseq[float], tuple[float, float, float, float, float]):
     if sys.version_info >= (3, 10):
@@ -1440,10 +1481,22 @@ if sys.platform == "win32":
         def startfile(filepath: StrOrBytesPath, operation: str = ...) -> None: ...
 
 else:
-    def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
-    def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
-    def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
-    def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+    else:
+        def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+        def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
+        def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
     def wait() -> tuple[int, int]: ...  # Unix only
     # Added to MacOS in 3.13
     if sys.platform != "darwin" or sys.version_info >= (3, 13):
@@ -1485,13 +1538,13 @@ else:
             env: _ExecEnv | None,  # None allowed starting in 3.13
             /,
             *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int = ...,
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] = ...,
         ) -> int: ...
         def posix_spawnp(
             path: StrOrBytesPath,
@@ -1499,13 +1552,13 @@ else:
             env: _ExecEnv | None,  # None allowed starting in 3.13
             /,
             *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int = ...,
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] = ...,
         ) -> int: ...
     else:
         def posix_spawn(
@@ -1514,13 +1567,13 @@ else:
             env: _ExecEnv,
             /,
             *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int = ...,
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] = ...,
         ) -> int: ...
         def posix_spawnp(
             path: StrOrBytesPath,
@@ -1528,13 +1581,13 @@ else:
             env: _ExecEnv,
             /,
             *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int = ...,
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] = ...,
         ) -> int: ...
 
     POSIX_SPAWN_OPEN: Final = 0
@@ -1621,12 +1674,12 @@ if sys.platform == "linux":
     MFD_HUGE_2GB: Final[int]
     MFD_HUGE_16GB: Final[int]
     def memfd_create(name: str, flags: int = ...) -> int: ...
-    def copy_file_range(src: int, dst: int, count: int, offset_src: int | None = ..., offset_dst: int | None = ...) -> int: ...
+    def copy_file_range(src: int, dst: int, count: int, offset_src: int | None = None, offset_dst: int | None = None) -> int: ...
 
 def waitstatus_to_exitcode(status: int) -> int: ...
 
 if sys.platform == "linux":
-    def pidfd_open(pid: int, flags: int = ...) -> int: ...
+    def pidfd_open(pid: int, flags: int = 0) -> int: ...
 
 if sys.version_info >= (3, 12) and sys.platform == "linux":
     PIDFD_NONBLOCK: Final = 2048
@@ -1650,8 +1703,8 @@ if sys.version_info >= (3, 10) and sys.platform == "linux":
         src: FileDescriptor,
         dst: FileDescriptor,
         count: int,
-        offset_src: int | None = ...,
-        offset_dst: int | None = ...,
+        offset_src: int | None = None,
+        offset_dst: int | None = None,
         flags: int = 0,
     ) -> int: ...
 

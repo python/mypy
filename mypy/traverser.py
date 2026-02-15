@@ -108,6 +108,10 @@ class TraverserVisitor(NodeVisitor[None]):
     should override visit methods to perform actions during
     traversal. Calling the superclass method allows reusing the
     traversal implementation.
+
+    TODO: split this into more limited visitor (e.g. statements-only etc).
+    This will improve performance since in many cases we don't need to recurse
+    all the way down in various visitors that subclass this.
     """
 
     def __init__(self) -> None:

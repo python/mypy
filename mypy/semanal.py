@@ -245,6 +245,7 @@ from mypy.typeanal import (
     TypeVarLikeList,
     analyze_type_alias,
     check_for_explicit_any,
+    check_vec_type_args,
     detect_diverging_alias,
     find_self_type,
     fix_instance,
@@ -493,10 +494,6 @@ class SemanticAnalyzer(
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
         self.all_exports: list[str] = []
-        # Map from module id to list of explicitly exported names (i.e. names in __all__).
-        # This is used by stubgen/stubtest, DO NOT use for any other purposes as it is
-        # not populated on incremental runs (nor in parallel mode).
-        self.export_map: dict[str, list[str]] = {}
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -724,7 +721,6 @@ class SemanticAnalyzer(
         if file_node.fullname == "typing_extensions":
             self.add_typing_extension_aliases(file_node)
         self.adjust_public_exports()
-        self.export_map[self.cur_mod_id] = self.all_exports
         self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
@@ -1108,7 +1104,7 @@ class SemanticAnalyzer(
             return typ
         p_last_type = get_proper_type(last_type.type)
         if not isinstance(p_last_type, TypedDictType):
-            self.fail("Unpack item in ** argument must be a TypedDict", last_type)
+            self.fail("Unpack item in ** parameter must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         overlap = set(typ.arg_names) & set(p_last_type.items)
@@ -2692,7 +2688,7 @@ class SemanticAnalyzer(
         if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(base):
             self.process_placeholder(
                 None, "tuple base", defn, force_progress=base != info.tuple_type
             )
@@ -3224,6 +3220,12 @@ class SemanticAnalyzer(
                     self.add_imported_symbol(
                         name, node, context=i, module_public=True, module_hidden=False
                     )
+                    # This is a (minimalist) copy of the logic in visit_import_from(), we need
+                    # to clean-up any remaining placeholders by replacing them with Var(Any).
+                    if isinstance(node.node, PlaceholderNode) and self.final_iteration:
+                        self.add_unknown_imported_symbol(
+                            name, i, target_name=None, module_public=True, module_hidden=False
+                        )
 
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
@@ -4055,7 +4057,11 @@ class SemanticAnalyzer(
         type_params: TypeVarLikeList | None
         all_type_params_names: list[str] | None
         if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
-            rvalue = s.rvalue.args[1]
+            rvalue = (
+                s.rvalue.args[1]
+                if s.rvalue.arg_kinds[1] == ARG_POS
+                else s.rvalue.args[s.rvalue.arg_names.index("value")]
+            )
             pep_695 = True
             type_params, all_type_params_names = self.analyze_type_alias_type_params(s.rvalue)
         else:
@@ -4243,7 +4249,9 @@ class SemanticAnalyzer(
             return False
         if not self.check_typevarlike_name(rvalue, name, rvalue):
             return False
-        if rvalue.arg_kinds.count(ARG_POS) != 2:
+        if rvalue.arg_kinds.count(ARG_POS) != (
+            2 - ("value" in rvalue.arg_names) - ("name" in rvalue.arg_names)
+        ):
             return False
 
         return True
@@ -6171,6 +6179,10 @@ class SemanticAnalyzer(
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
 
+        if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
+            # Apply restrictions specific to vec
+            check_vec_type_args(types, expr, self)
+
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.
 
@@ -6291,21 +6303,33 @@ class SemanticAnalyzer(
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
         if any(expr.generator.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         expr.generator.accept(self)
 
     def visit_set_comprehension(self, expr: SetComprehension) -> None:
         if any(expr.generator.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
         if any(expr.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         with self.enter(expr):

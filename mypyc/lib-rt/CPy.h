@@ -149,6 +149,9 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitLength(CPyTagged self);
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag);
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
@@ -331,6 +334,11 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 static inline int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
+    #if CPY_3_12_FEATURES
+        if (likely(PyUnstable_Long_IsCompact(lobj))) {
+            return PyUnstable_Long_CompactValue(lobj);
+        }
+    #else
         Py_ssize_t size = Py_SIZE(lobj);
         if (likely(size == 1)) {
             // Fast path
@@ -338,6 +346,7 @@ static inline int64_t CPyLong_AsInt64(PyObject *o) {
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     return CPyLong_AsInt64_(o);
@@ -599,8 +608,8 @@ static void CPy_DecRef(PyObject *p) {
 }
 
 CPy_NOINLINE
-static void CPy_XDecRef(PyObject *p) {
-    CPy_XDECREF(p);
+static void CPy_XDecRef(void *p) {
+    CPy_XDECREF((PyObject *)p);
 }
 
 static inline CPyTagged CPyObject_Size(PyObject *obj) {
@@ -784,7 +793,7 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
 int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
-
+int CPyBytes_Endswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
 
@@ -938,7 +947,7 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  _Py_Identifier *method);
+                                  PyObject *method);
 
 bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);

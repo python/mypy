@@ -1,7 +1,7 @@
 """
 This module contains high-level logic for fixed format serialization.
 
-Lower-level parts are implemented in C in mypyc/lib-rt/librt_internal.c
+Lower-level parts are implemented in C in mypyc/lib-rt/internal/librt_internal.c
 Short summary of low-level functionality:
 * integers are automatically serialized as 1, 2, or 4 bytes, or arbitrary length.
 * str/bytes are serialized as size (1, 2, or 4 bytes) followed by bytes buffer.
@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 1
+CACHE_VERSION: Final = 5
 
 SerializedError: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
 
@@ -89,11 +89,14 @@ class CacheMeta:
         data_mtime: int,
         data_file: str,
         suppressed: list[str],
+        imports_ignored: dict[int, list[str]],
         options: dict[str, object],
+        suppressed_deps_opts: bytes,
         dep_prios: list[int],
         dep_lines: list[int],
         dep_hashes: list[bytes],
         interface_hash: bytes,
+        trans_dep_hash: bytes,
         error_lines: list[SerializedError],
         version_id: str,
         ignore_all: bool,
@@ -108,13 +111,16 @@ class CacheMeta:
         self.data_mtime = data_mtime  # mtime of data_file
         self.data_file = data_file  # path of <id>.data.json or <id>.data.ff
         self.suppressed = suppressed  # dependencies that weren't imported
+        self.imports_ignored = imports_ignored  # type ignore codes by line
         self.options = options  # build options snapshot
+        self.suppressed_deps_opts = suppressed_deps_opts  # hash of import-related options
         # dep_prios and dep_lines are both aligned with dependencies + suppressed
         self.dep_prios = dep_prios
         self.dep_lines = dep_lines
         # dep_hashes list is aligned with dependencies only
         self.dep_hashes = dep_hashes  # list of interface_hash for dependencies
         self.interface_hash = interface_hash  # hash representing the public interface
+        self.trans_dep_hash = trans_dep_hash  # hash of import structure (transitive)
         self.error_lines = error_lines
         self.version_id = version_id  # mypy version for cache invalidation
         self.ignore_all = ignore_all  # if errors were ignored
@@ -130,11 +136,14 @@ class CacheMeta:
             "data_mtime": self.data_mtime,
             "dependencies": self.dependencies,
             "suppressed": self.suppressed,
+            "imports_ignored": {str(line): codes for line, codes in self.imports_ignored.items()},
             "options": self.options,
+            "suppressed_deps_opts": self.suppressed_deps_opts.hex(),
             "dep_prios": self.dep_prios,
             "dep_lines": self.dep_lines,
             "dep_hashes": [dep.hex() for dep in self.dep_hashes],
             "interface_hash": self.interface_hash.hex(),
+            "trans_dep_hash": self.trans_dep_hash.hex(),
             "error_lines": self.error_lines,
             "version_id": self.version_id,
             "ignore_all": self.ignore_all,
@@ -154,11 +163,16 @@ class CacheMeta:
                 data_mtime=meta["data_mtime"],
                 data_file=data_file,
                 suppressed=meta["suppressed"],
+                imports_ignored={
+                    int(line): codes for line, codes in meta["imports_ignored"].items()
+                },
                 options=meta["options"],
+                suppressed_deps_opts=bytes.fromhex(meta["suppressed_deps_opts"]),
                 dep_prios=meta["dep_prios"],
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
+                trans_dep_hash=bytes.fromhex(meta["trans_dep_hash"]),
                 error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
@@ -176,11 +190,17 @@ class CacheMeta:
         write_str_list(data, self.dependencies)
         write_int(data, self.data_mtime)
         write_str_list(data, self.suppressed)
+        write_int_bare(data, len(self.imports_ignored))
+        for line, codes in self.imports_ignored.items():
+            write_int(data, line)
+            write_str_list(data, codes)
         write_json(data, self.options)
+        write_bytes(data, self.suppressed_deps_opts)
         write_int_list(data, self.dep_prios)
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
+        write_bytes(data, self.trans_dep_hash)
         write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
@@ -201,17 +221,22 @@ class CacheMeta:
                 data_mtime=read_int(data),
                 data_file=data_file,
                 suppressed=read_str_list(data),
+                imports_ignored={
+                    read_int(data): read_str_list(data) for _ in range(read_int_bare(data))
+                },
                 options=read_json(data),
+                suppressed_deps_opts=read_bytes(data),
                 dep_prios=read_int_list(data),
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
+                trans_dep_hash=read_bytes(data),
                 error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
             )
-        except ValueError:
+        except (ValueError, AssertionError):
             return None
 
 

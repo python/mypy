@@ -38,7 +38,7 @@ main:1: error: Invalid syntax  [syntax]
 main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
-def f(): # E: Type signature has too many arguments  [syntax]
+def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
@@ -246,7 +246,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 main:6: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
-def f(x: int) -> None: pass  # N: "f" defined here
+def f(x: int) -> None: pass
 f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
@@ -357,11 +357,11 @@ a.x = ''  # E: Incompatible types in assignment (expression has type "str", vari
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
 from typing import List, TypeVar
-x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Missing type parameters for generic type "list"  [type-arg]
+x: List  # E: Missing type arguments for generic type "List"  [type-arg]
+y: list  # E: Missing type arguments for generic type "list"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
-z: L  # E: Missing type parameters for generic type "L"  [type-arg]
+z: L  # E: Missing type arguments for generic type "L"  [type-arg]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeUnionAttribute]
@@ -382,7 +382,7 @@ def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
 def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     pass
 
-def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+def h(x) -> None:  # E: Function is missing a type annotation for one or more parameters  [no-untyped-def]
     pass
 
 def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
@@ -534,7 +534,8 @@ d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of "x"  [has-type]  # E: Name "x" is used before definition  [used-before-def]
+y = x  # E: Cannot determine type of "x"  [has-type] \
+       # E: Name "x" is used before definition  [used-before-def]
 reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
@@ -545,11 +546,11 @@ from typing import cast
 x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
 
 [case testErrorCodeInvalidCommentSignature]
-def f(x):  # E: Type signature has too few arguments  [syntax]
+def f(x):  # E: Type signature has too few parameters  [syntax]
     # type: () -> None
     pass
 
-def g(x):  # E: Type signature has too many arguments  [syntax]
+def g(x):  # E: Type signature has too many parameters  [syntax]
     # type: (int, int) -> None
     pass
 
@@ -598,15 +599,15 @@ from typing import Callable
 
 def f() -> None: pass
 
-x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
-
 class A:
     def g(self) -> None: pass
 
-y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
-
 c: Callable[[], None]
-z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
+
+def main() -> None:
+    x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
+    y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+    z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
@@ -865,6 +866,20 @@ class Foo:
             return 1
         return 2
 [builtins fixtures/list.pyi]
+
+[case testRedundantExpressionsUnionWithAny]
+# flags: --enable-error-code redundant-expr
+from typing import Any, Awaitable, Union
+ok_list: list[Union[Any, Awaitable]]
+for y in ok_list:
+    z = 1 if isinstance(y, Awaitable) else 2
+
+bad_list: list[Awaitable]
+for y in bad_list:
+    z = 1 if isinstance(y, Awaitable) else 2  # E: If condition is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple

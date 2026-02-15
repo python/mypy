@@ -5,16 +5,15 @@ The protocol of communication with the coordinator is as following:
 * Read (pickled) build options from command line.
 * Populate status file with pid and socket address.
 * Receive build sources from coordinator.
-* Load graph using the sources, and send "ok" to coordinator.
-* Receive SCC structure from coordinator, and ack it with an "ok".
+* Load graph using the sources, and send ack to coordinator.
+* Receive SCC structure from coordinator, and ack it.
 * Receive an SCC id from coordinator, process it, and send back the results.
-* When prompted by coordinator (with a "final" message), cleanup and shutdown.
+* When prompted by coordinator (with a scc_id=None message), cleanup and shutdown.
 """
 
 from __future__ import annotations
 
 import argparse
-import base64
 import gc
 import json
 import os
@@ -24,12 +23,25 @@ import sys
 import time
 from typing import NamedTuple
 
+from librt.base64 import b64decode
+
 from mypy import util
-from mypy.build import SCC, BuildManager, load_graph, load_plugins, process_stale_scc
+from mypy.build import (
+    AckMessage,
+    BuildManager,
+    GraphMessage,
+    SccRequestMessage,
+    SccResponseMessage,
+    SccsDataMessage,
+    SourcesDataMessage,
+    load_graph,
+    load_plugins,
+    process_stale_scc,
+)
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
 from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCServer, receive, send
+from mypy.ipc import IPCException, IPCServer, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.options import Options
 from mypy.util import read_py_file
@@ -61,7 +73,7 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    options_dict = pickle.loads(base64.b64decode(args.options_data))
+    options_dict = pickle.loads(b64decode(args.options_data))
     options_obj = Options()
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
@@ -70,9 +82,13 @@ def main(argv: list[str]) -> None:
     status_file = args.status_file
     server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
 
-    with open(status_file, "w") as f:
-        json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
-        f.write("\n")
+    try:
+        with open(status_file, "w") as f:
+            json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
+            f.write("\n")
+    except Exception as exc:
+        print(f"Error writing status file {status_file}:", exc)
+        raise
 
     fscache = FileSystemCache()
     cached_read = fscache.read
@@ -82,8 +98,9 @@ def main(argv: list[str]) -> None:
     try:
         with server:
             serve(server, ctx)
-    except OSError:
-        pass
+    except (OSError, IPCException) as exc:
+        if options.verbosity >= 1:
+            print("Error communicating with coordinator:", exc)
     except Exception as exc:
         report_internal_error(exc, errors.file, 0, errors, options)
     finally:
@@ -95,8 +112,7 @@ def main(argv: list[str]) -> None:
 
 
 def serve(server: IPCServer, ctx: ServerContext) -> None:
-    data = receive(server)
-    sources = [BuildSource(*st) for st in data["sources"]]
+    sources = SourcesDataMessage.read(receive(server)).sources
     manager = setup_worker_manager(sources, ctx)
     if manager is None:
         return
@@ -117,35 +133,37 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
 
     # Notify worker we are done loading graph.
-    send(server, {"status": "ok"})
-    data = receive(server)
-    sccs = [SCC(set(mod_ids), scc_id, deps) for (mod_ids, scc_id, deps) in data["sccs"]]
+    send(server, AckMessage())
+
+    # Compare worker graph and coordinator, with parallel parser we will only use the latter.
+    coordinator_graph = GraphMessage.read(receive(server), manager).graph
+    assert coordinator_graph.keys() == graph.keys()
+    for id in graph:
+        assert graph[id].dependencies_set == coordinator_graph[id].dependencies_set
+        assert graph[id].suppressed_set == coordinator_graph[id].suppressed_set
+    send(server, AckMessage())
+
+    sccs = SccsDataMessage.read(receive(server)).sccs
     manager.scc_by_id = {scc.id: scc for scc in sccs}
     manager.top_order = [scc.id for scc in sccs]
 
     # Notify coordinator we are ready to process SCCs.
-    send(server, {"status": "ok"})
+    send(server, AckMessage())
     while True:
-        data = receive(server)
-        if "final" in data:
+        scc_id = SccRequestMessage.read(receive(server)).scc_id
+        if scc_id is None:
             manager.dump_stats()
             break
-        scc_id = data["scc_id"]
         scc = manager.scc_by_id[scc_id]
         t0 = time.time()
         try:
             result = process_stale_scc(graph, scc, manager)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.metastore.commit()
-        except CompileError as e:
-            blocker = {
-                "messages": e.messages,
-                "use_stdout": e.use_stdout,
-                "module_with_blocker": e.module_with_blocker,
-            }
-            send(server, {"scc_id": scc_id, "blocker": blocker})
+        except CompileError as blocker:
+            send(server, SccResponseMessage(scc_id=scc_id, blocker=blocker))
         else:
-            send(server, {"scc_id": scc_id, "result": result})
+            send(server, SccResponseMessage(scc_id=scc_id, result=result))
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 

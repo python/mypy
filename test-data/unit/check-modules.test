@@ -3184,7 +3184,7 @@ from b import no_such_export
 [file b.py]
 from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar1_no_parallel]
+[case testCyclicUndefinedImportWithStar1]
 import a
 [file a.py]
 from b import no_such_export
@@ -3192,9 +3192,8 @@ from b import no_such_export
 from a import *
 [out]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar2_no_parallel]
+[case testCyclicUndefinedImportWithStar2]
 import a
 [file a.py]
 from b import no_such_export
@@ -3204,8 +3203,6 @@ from c import *
 from a import *
 [out]
 tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar3]
 import test1
@@ -3246,3 +3243,49 @@ tmp/b.py:3: note:      Superclass:
 tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental]
+import a
+[file a.py]
+import b  # type: ignore[import]
+[file b.py]
+[delete b.py.2]
+[out]
+[out2]
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental2]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b  # type: ignore[import-not-found]
+[file b.py.2]
+[out]
+[out2]
+tmp/a.py:1: error: Unused "type: ignore" comment
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental3]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b  # type: ignore[import-not-found]
+[file b.py]
+[delete b.py.2]
+[out]
+tmp/a.py:1: error: Unused "type: ignore" comment
+[out2]
+
+[case testImportErrorStaleLoadedFromCacheIncremental]
+import a
+[file a.py]
+import b
+import c
+[file c.py]
+x: int
+[file c.py.2]
+x: str
+[out]
+tmp/a.py:1: error: Cannot find implementation or library stub for module named "b"
+tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+tmp/a.py:1: error: Cannot find implementation or library stub for module named "b"
+tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
