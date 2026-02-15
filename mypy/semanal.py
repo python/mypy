@@ -448,7 +448,7 @@ class SemanticAnalyzer(
     def __init__(
         self,
         modules: dict[str, MypyFile],
-        missing_modules: set[str],
+        missing_modules: dict[str, int],
         incomplete_namespaces: set[str],
         errors: Errors,
         plugin: Plugin,
