@@ -203,10 +203,9 @@ def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | 
         data: Buffer containing serialized data
         stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
     """
-    # Read location
     read_loc(data, stmt)
 
-    # Read metadata flags as a single integer bitfield
+    # Metadata flags as a single integer bitfield
     flags = read_int(data)
 
     # Extract individual flags using bitwise operations
@@ -232,7 +231,6 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
 
     data = ReadBuffer(import_bytes)
 
-    # Read list header
     expect_tag(data, LIST_GEN)
     n_imports = read_int_bare(data)
 
@@ -242,29 +240,24 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
         tag = read_tag(data)
 
         if tag == IMPORT_METADATA:
-            # Read Import fields
             name = read_str(data)
             relative = read_int(data)
 
-            # Read optional as_name
             has_asname = read_bool(data)
             if has_asname:
                 asname = read_str(data)
             else:
                 asname = None
 
-            # Create Import node and read common metadata
             # Note: relative imports are handled via ImportFrom, so relative should be 0 here
             stmt = Import([(name, asname)])
             _read_and_set_import_metadata(data, stmt)
             imports.append(stmt)
 
         elif tag == IMPORTFROM_METADATA:
-            # Read ImportFrom fields
             module = read_str(data)
             relative = read_int(data)
 
-            # Read list of names
             expect_tag(data, LIST_GEN)
             n_names = read_int_bare(data)
             names: list[tuple[str, str | None]] = []
@@ -278,17 +271,14 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
                     asname = None
                 names.append((name, asname))
 
-            # Create ImportFrom node and read common metadata
             stmt = ImportFrom(module, relative, names)
             _read_and_set_import_metadata(data, stmt)
             imports.append(stmt)
 
         elif tag == IMPORTALL_METADATA:
-            # Read ImportAll fields
             module = read_str(data)
             relative = read_int(data)
 
-            # Create ImportAll node and read common metadata
             stmt = ImportAll(module, relative)
             _read_and_set_import_metadata(data, stmt)
             imports.append(stmt)
@@ -315,7 +305,6 @@ def native_parse(
     state = State(options)
     defs = read_statements(state, data, n)
 
-    # Deserialize import metadata
     imports = deserialize_imports(import_bytes)
 
     node = MypyFile(defs, imports)
@@ -363,7 +352,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         var = Var(fdef.name)
         var.line = fdef.line
         var.is_ready = False
-        # Create Decorator wrapping the FuncDef
         stmt = Decorator(fdef, decorators, var)
         stmt.line = line
         stmt.column = column
@@ -380,13 +368,11 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
     elif tag == nodes.ASSIGNMENT_STMT:
         lvalues = read_expression_list(state, data)
         rvalue = read_expression(state, data)
-        # Read type annotation
         has_type = read_bool(data)
         if has_type:
             type_annotation = read_type(state, data)
         else:
             type_annotation = None
-        # Read new_syntax flag
         new_syntax = read_bool(data)
         a = AssignmentStmt(lvalues, rvalue, type=type_annotation, new_syntax=new_syntax)
         read_loc(data, a)
@@ -419,7 +405,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
             elif_exprs.append(read_expression(state, data))
             elif_bodies.append(read_block(state, data))
 
-        # Read else clause
         has_else = read_bool(data)
         if has_else:
             else_body = read_block(state, data)
@@ -432,7 +417,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
 
         # Process elif clauses in reverse order
         for i in range(len(elif_exprs) - 1, -1, -1):
-            # Create an IfStmt for this elif
             elif_stmt = IfStmt([elif_exprs[i]], [elif_bodies[i]], current_else)
             # Set location from the elif expression
             elif_stmt.line = elif_exprs[i].line
@@ -449,7 +433,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
             current_else = Block([elif_stmt])
             set_line_column_range(current_else, elif_stmt)
 
-        # Create the main if statement
         if_stmt = IfStmt([expr], [body], current_else)
         read_loc(data, if_stmt)
         expect_end_tag(data)
@@ -465,13 +448,11 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.RAISE_STMT:
-        # Read exception expression (optional)
         has_exc = read_bool(data)
         if has_exc:
             exc = read_expression(state, data)
         else:
             exc = None
-        # Read from expression (optional)
         has_from = read_bool(data)
         if has_from:
             from_expr = read_expression(state, data)
@@ -482,9 +463,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.ASSERT_STMT:
-        # Read test expression
         test = read_expression(state, data)
-        # Read optional message expression
         has_msg = read_bool(data)
         if has_msg:
             msg = read_expression(state, data)
@@ -503,15 +482,10 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.FOR_STMT:
-        # Read index (target)
         index = read_expression(state, data)
-        # Read iterator expression
         expr = read_expression(state, data)
-        # Read body
         body = read_block(state, data)
-        # Read else clause
         else_body = read_optional_block(state, data)
-        # Read is_async flag
         is_async = read_bool(data)
         stmt = ForStmt(index, expr, body, else_body)
         stmt.is_async = is_async
@@ -519,25 +493,19 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.WITH_STMT:
-        # Read number of items
         n = read_int(data)
         expr_list = []
         target_list: list[Expression | None] = []
-        # Read each item
         for _ in range(n):
-            # Read context expression
             context_expr = read_expression(state, data)
             expr_list.append(context_expr)
-            # Read optional target
             has_target = read_bool(data)
             if has_target:
                 target = read_expression(state, data)
                 target_list.append(target)
             else:
                 target_list.append(None)
-        # Read body
         body = read_block(state, data)
-        # Read is_async flag
         is_async = read_bool(data)
         stmt = WithStmt(expr_list, target_list, body)
         stmt.is_async = is_async
@@ -560,13 +528,10 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.IMPORT:
-        # Read number of imports
         n = read_int(data)
         ids = []
         for _ in range(n):
-            # Read import name
             name = read_str(data)
-            # Read as_name (optional)
             has_asname = read_bool(data)
             if has_asname:
                 asname = read_str(data)
@@ -578,19 +543,12 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.IMPORT_FROM:
-        # Read relative import level
         relative = read_int(data)
-
-        # Read module name (empty string for "from . import x")
-        module_id = read_str(data)
-
-        # Read number of imported names
+        module_id = read_str(data)  # Empty string for "from . import x"
         n = read_int(data)
         names = []
         for _ in range(n):
-            # Read imported name
             name = read_str(data)
-            # Read optional alias
             has_asname = read_bool(data)
             if has_asname:
                 asname = read_str(data)
@@ -603,10 +561,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.IMPORT_ALL:
-        # Read module name (empty string for "from . import *")
-        module_id = read_str(data)
-
-        # Read relative import level
+        module_id = read_str(data)  # Empty string for "from . import *"
         relative = read_int(data)
 
         stmt = ImportAll(module_id, relative)
@@ -620,14 +575,12 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
     elif tag == nodes.TRY_STMT:
         return read_try_stmt(state, data)
     elif tag == nodes.DEL_STMT:
-        # Read the target expression
         expr = read_expression(state, data)
         stmt = DelStmt(expr)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.GLOBAL_DECL:
-        # Read number of names
         n = read_int(data)
         decl_names = []
         for _ in range(n):
@@ -637,7 +590,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.NONLOCAL_DECL:
-        # Read number of names
         n = read_int(data)
         decl_names = []
         for _ in range(n):
@@ -647,25 +599,20 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.MATCH_STMT:
-        # Read subject expression
         subject = read_expression(state, data)
-        # Read number of cases
         n_cases = read_int(data)
         patterns = []
         guards: list[Expression | None] = []
         bodies = []
         for _ in range(n_cases):
-            # Read pattern
             pattern = read_pattern(state, data)
             patterns.append(pattern)
-            # Read optional guard
             has_guard = read_bool(data)
             if has_guard:
                 guard = read_expression(state, data)
                 guards.append(guard)
             else:
                 guards.append(None)
-            # Read body
             body = read_block(state, data)
             bodies.append(body)
         stmt = MatchStmt(subject, patterns, guards, bodies)
@@ -689,16 +636,13 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
     for _ in range(n_args):
         arg_name = read_str(data)
         arg_kind_int = read_int(data)
-        # Convert integer to ArgKind enum using ARG_KINDS tuple
         arg_kind = ARG_KINDS[arg_kind_int]
-        # Read type annotation
         has_type = read_bool(data)
         if has_type:
             ann = read_type(state, data)
             has_ann = True
         else:
             ann = None
-        # Read default value
         has_default = read_bool(data)
         if has_default:
             default = read_expression(state, data)
@@ -727,25 +671,18 @@ def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
     type_params: list[TypeParam] = []
     n = read_int_bare(data)
     for _ in range(n):
-        # Read type param kind
         kind = read_int(data)
-
-        # Read name
         name = read_str(data)
-
-        # Read upper bound
         has_bound = read_bool(data)
         if has_bound:
             upper_bound = read_type(state, data)
         else:
             upper_bound = None
 
-        # Read values (for constrained TypeVar)
         expect_tag(data, LIST_GEN)
         n_values = read_int_bare(data)
         values = [read_type(state, data) for _ in range(n_values)]
 
-        # Read default
         has_default = read_bool(data)
         if has_default:
             default = read_type(state, data)
@@ -760,10 +697,7 @@ def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
 def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     state.num_funcs += 1
 
-    # Function name
     name = read_str(data)
-
-    # Parameters
     arguments, has_ann = read_parameters(state, data)
 
     if special_function_elide_names(name):
@@ -771,7 +705,6 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
             arg.pos_only = True
 
     body = read_block(state, data)
-
     is_async = read_bool(data)
 
     # Type parameters (PEP 695)
@@ -781,7 +714,6 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     else:
         type_params = None
 
-    # Return type annotation
     has_return_type = read_bool(data)
     if has_return_type:
         return_type = read_type(state, data)
@@ -818,16 +750,10 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
 
 
 def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
-    # Class name
     name = read_str(data)
-
-    # Body
     body = read_block(state, data)
-
-    # Base classes
     base_type_exprs = read_expression_list(state, data)
 
-    # Decorators
     expect_tag(data, LIST_GEN)
     n_decorators = read_int_bare(data)
     decorators = [read_expression(state, data) for _ in range(n_decorators)]
@@ -869,22 +795,15 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
 
 def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     """Read PEP 695 type alias statement."""
-    # Read name (NameExpr)
     name = read_expression(state, data)
     assert isinstance(name, NameExpr), f"Expected NameExpr for type alias name, got {type(name)}"
 
-    # Read type parameters
     n_type_params = read_int_bare(data)
     if n_type_params > 0:
         type_params = []
         for _ in range(n_type_params):
-            # Read type param kind
             kind = read_int(data)
-
-            # Read name
             param_name = read_str(data)
-
-            # Read upper bound
             has_bound = read_bool(data)
             if has_bound:
                 upper_bound = read_type(state, data)
@@ -896,7 +815,6 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
             n_values = read_int_bare(data)
             values = [read_type(state, data) for _ in range(n_values)]
 
-            # Read default
             has_default = read_bool(data)
             if has_default:
                 default = read_type(state, data)
@@ -907,7 +825,6 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     else:
         type_params = []
 
-    # Read value expression (the type on RHS of type alias)
     value_expr = read_expression(state, data)
 
     # Wrap the value expression in a LambdaExpr as expected by TypeAliasStmt
@@ -931,13 +848,9 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
 
 
 def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
-    # Read try body
     body = read_block(state, data)
-
-    # Read number of except handlers
     num_handlers = read_int(data)
 
-    # Read exception types for each handler
     types_list: list[Expression | None] = []
     for _ in range(num_handlers):
         has_type = read_bool(data)
@@ -947,7 +860,6 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
         else:
             types_list.append(None)
 
-    # Read variable names for each handler
     vars_list: list[NameExpr | None] = []
     for _ in range(num_handlers):
         has_name = read_bool(data)
@@ -958,20 +870,17 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
         else:
             vars_list.append(None)
 
-    # Read handler bodies
     handlers = []
     for _ in range(num_handlers):
         handler_body = read_block(state, data)
         handlers.append(handler_body)
 
-    # Read else body (optional)
     has_else = read_bool(data)
     if has_else:
         else_body = read_block(state, data)
     else:
         else_body = None
 
-    # Read finally body (optional)
     has_finally = read_bool(data)
     if has_finally:
         finally_body = read_block(state, data)
@@ -1104,13 +1013,11 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
     """Read a pattern node from the buffer."""
     tag = read_tag(data)
     if tag == nodes.AS_PATTERN:
-        # Read optional pattern
         has_pattern = read_bool(data)
         if has_pattern:
             pattern = read_pattern(state, data)
         else:
             pattern = None
-        # Read optional name
         has_name = read_bool(data)
         if has_name:
             name_str = read_str(data)
@@ -1123,7 +1030,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return as_pattern
     elif tag == nodes.OR_PATTERN:
-        # Read number of patterns
         n = read_int(data)
         patterns = [read_pattern(state, data) for _ in range(n)]
         or_pattern = OrPattern(patterns)
@@ -1131,14 +1037,12 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return or_pattern
     elif tag == nodes.VALUE_PATTERN:
-        # Read value expression
         expr = read_expression(state, data)
         value_pattern = ValuePattern(expr)
         read_loc(data, value_pattern)
         expect_end_tag(data)
         return value_pattern
     elif tag == nodes.SINGLETON_PATTERN:
-        # Read singleton value
         singleton_tag = read_tag(data)
         if singleton_tag == LITERAL_NONE:
             value = None
@@ -1150,7 +1054,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return singleton_pattern
     elif tag == nodes.SEQUENCE_PATTERN:
-        # Read number of patterns
         n = read_int(data)
         patterns = [read_pattern(state, data) for _ in range(n)]
         sequence_pattern = SequencePattern(patterns)
@@ -1171,7 +1074,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return starred_pattern
     elif tag == nodes.MAPPING_PATTERN:
-        # Read number of key-value pairs
         n = read_int(data)
         keys = []
         values = []
@@ -1180,7 +1082,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
             value = read_pattern(state, data)
             keys.append(key)
             values.append(value)
-        # Read optional rest pattern
         has_rest = read_bool(data)
         if has_rest:
             rest_str = read_str(data)
@@ -1193,12 +1094,9 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return mapping_pattern
     elif tag == nodes.CLASS_PATTERN:
-        # Read class reference expression
         class_ref = cast(RefExpr, read_expression(state, data))
-        # Read number of positional patterns
         n_positional = read_int(data)
         positionals = [read_pattern(state, data) for _ in range(n_positional)]
-        # Read number of keyword patterns
         n_keywords = read_int(data)
         keyword_keys = []
         keyword_values = []
@@ -1363,26 +1261,18 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_COMPREHENSION:
-        # Read key expression
         key = read_expression(state, data)
-        # Read value expression
         value = read_expression(state, data)
-        # Read number of generators
         n_generators = read_int(data)
-        # Read all indices (targets)
         indices = [read_expression(state, data) for _ in range(n_generators)]
-        # Read all sequences (iters)
         sequences = [read_expression(state, data) for _ in range(n_generators)]
-        # Read all condlists (ifs for each generator)
         condlists = [read_expression_list(state, data) for _ in range(n_generators)]
-        # Read all is_async flags
         is_async = [read_bool(data) for _ in range(n_generators)]
         expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.YIELD_EXPR:
-        # Read optional value expression
         has_value = read_bool(data)
         if has_value:
             value = read_expression(state, data)
@@ -1393,7 +1283,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.YIELD_FROM_EXPR:
-        # Read value expression (required for yield from)
         value = read_expression(state, data)
         expr = YieldFromExpr(value)
         read_loc(data, expr)
@@ -1436,11 +1325,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         return result
     elif tag == nodes.COMPARISON_EXPR:
         left = read_expression(state, data)
-        # Read operators list
         expect_tag(data, LIST_INT)
         n_ops = read_int_bare(data)
         ops = [cmp_ops[read_int_bare(data)] for _ in range(n_ops)]
-        # Read comparators list
         comparators = read_expression_list(state, data)
         assert len(ops) == len(comparators)
         expr = ComparisonExpr(ops, [left] + comparators)
@@ -1455,7 +1342,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_EXPR:
-        # Read keys
         expect_tag(data, LIST_GEN)
         n_keys = read_int_bare(data)
         keys: list[Expression | None] = []
@@ -1465,7 +1351,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 keys.append(read_expression(state, data))
             else:
                 keys.append(None)
-        # Read values
         values = read_expression_list(state, data)
         # Zip keys and values into items
         items = list(zip(keys, values))
@@ -1474,26 +1359,20 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.COMPLEX_EXPR:
-        # Read real part
         expect_tag(data, LITERAL_FLOAT)
         real = read_float_bare(data)
-        # Read imaginary part
         expect_tag(data, LITERAL_FLOAT)
         imag = read_float_bare(data)
-        # Create complex value
         value = complex(real, imag)
         expr = ComplexExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.SLICE_EXPR:
-        # Read begin_index (lower in Ruff)
         has_begin = read_bool(data)
         begin_index = read_expression(state, data) if has_begin else None
-        # Read end_index (upper in Ruff)
         has_end = read_bool(data)
         end_index = read_expression(state, data) if has_end else None
-        # Read stride (step in Ruff)
         has_stride = read_bool(data)
         stride = read_expression(state, data) if has_stride else None
         expr = SliceExpr(begin_index, end_index, stride)
@@ -1511,11 +1390,8 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.CONDITIONAL_EXPR:
-        # Read if_expr (value when condition is true)
         if_expr = read_expression(state, data)
-        # Read cond (the condition)
         cond = read_expression(state, data)
-        # Read else_expr (value when condition is false)
         else_expr = read_expression(state, data)
         expr = ConditionalExpr(cond, if_expr, else_expr)
         read_loc(data, expr)
@@ -1540,13 +1416,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:
-        # Read parameters
         arguments, has_ann = read_parameters(state, data)
-
-        # Read body block
         body = read_block(state, data)
 
-        # Create lambda expression
         if has_ann:
             typ = CallableType(
                 [
@@ -1567,9 +1439,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.NAMED_EXPR:
-        # Read target expression
         target = read_expression(state, data)
-        # Read value expression
         value = read_expression(state, data)
         # AssignmentExpr expects target to be a NameExpr
         if not isinstance(target, NameExpr):
@@ -1583,7 +1453,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.STAR_EXPR:
-        # Read the wrapped expression
         wrapped_expr = read_expression(state, data)
         expr = StarExpr(wrapped_expr)
         read_loc(data, expr)
@@ -1597,7 +1466,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.AWAIT_EXPR:
-        # Read awaited expression
         value = read_expression(state, data)
         expr = AwaitExpr(value)
         read_loc(data, expr)
@@ -1695,17 +1563,11 @@ def read_expression_list(state: State, data: ReadBuffer) -> list[Expression]:
 
 def read_generator_expr(state: State, data: ReadBuffer) -> GeneratorExpr:
     """Helper function to read comprehension data (shared by Generator, ListComp, SetComp)"""
-    # Read element expression
     left_expr = read_expression(state, data)
-    # Read number of generators
     n_generators = read_int(data)
-    # Read all indices (targets)
     indices = [read_expression(state, data) for _ in range(n_generators)]
-    # Read all sequences (iters)
     sequences = [read_expression(state, data) for _ in range(n_generators)]
-    # Read all condlists (ifs for each generator)
     condlists = [read_expression_list(state, data) for _ in range(n_generators)]
-    # Read all is_async flags
     is_async = [read_bool(data) for _ in range(n_generators)]
     return GeneratorExpr(left_expr, indices, sequences, condlists, is_async)
 
@@ -1746,7 +1608,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
 
     This performs validation and error reporting similar to mypy/fastparse.py.
     """
-    # Read callee
     callee_type = read_type(state, data)
 
     # Read positional arguments
