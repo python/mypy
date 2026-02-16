@@ -369,6 +369,9 @@ def prepare_class_def(
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
 
+    if attrs.get("acyclic") is True:
+        ir.is_acyclic = True
+
     free_list_len = attrs.get("free_list_len")
     if free_list_len is not None:
         line = attrs_lines["free_list_len"]

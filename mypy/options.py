@@ -8,6 +8,8 @@ from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
 
+from librt.internal import WriteBuffer, write_bool, write_str
+
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
@@ -76,6 +78,10 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "untyped_calls_exclude",
     }
 ) - {"debug_cache"}
+
+# OPTIONS_AFFECTING_CACHE without "platform", as a sorted tuple for fast iteration.
+# "platform" is handled separately in options_snapshot().
+OPTIONS_AFFECTING_CACHE_NO_PLATFORM: Final = tuple(sorted(OPTIONS_AFFECTING_CACHE - {"platform"}))
 
 # Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
@@ -608,19 +614,29 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> dict[str, object]:
-        result: dict[str, object] = {}
-        for opt in OPTIONS_AFFECTING_CACHE:
+    def select_options_affecting_cache(self) -> tuple[str, list[object]]:
+        """Return (platform, [values...]) for options that affect the cache.
+
+        The list contains values for OPTIONS_AFFECTING_CACHE_NO_PLATFORM
+        in sorted attribute name order. Keys are omitted since the cache
+        is invalidated when the mypy version changes, and keys are constant
+        on any specific mypy version.
+        """
+        result: list[object] = []
+        for opt in OPTIONS_AFFECTING_CACHE_NO_PLATFORM:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):
                 val = sorted([code.code for code in val])
-            result[opt] = val
-        return result
+            result.append(val)
+        return self.platform, result
 
-    def dep_import_options(self) -> dict[str, object]:
-        # These are options that can affect dependent modules as well.
-        return {
-            "ignore_missing_imports": self.ignore_missing_imports,
-            "follow_imports": self.follow_imports,
-            "follow_imports_for_stubs": self.follow_imports_for_stubs,
-        }
+    def dep_import_options(self) -> bytes:
+        """Return opaque bytes with options that can affect dependent modules as well.
+
+        The value can be compared for equality to detect changed options.
+        """
+        buf = WriteBuffer()
+        write_bool(buf, self.ignore_missing_imports)
+        write_str(buf, self.follow_imports)
+        write_bool(buf, self.follow_imports_for_stubs)
+        return buf.getvalue()

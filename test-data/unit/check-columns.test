@@ -134,7 +134,7 @@ def foobar(): pass
 [builtins fixtures/module.pyi]
 
 [case testColumnUnexpectedOrMissingKeywordArg]
-def f(): pass  # N:1: "f" defined here
+def f(): pass
 # TODO: Point to "x" instead
 (f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
 def g(*, x: int) -> None: pass
@@ -143,7 +143,7 @@ def g(*, x: int) -> None: pass
 [case testColumnDefinedHere]
 class A: pass
 if int():
-    def f(a: 'A') -> None: pass # N:5: "f" defined here
+    def f(a: 'A') -> None: pass
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
@@ -375,7 +375,7 @@ from typing import TypeVar, List
 
 T = TypeVar('T', int, str)
 
-def g(x): pass  # N:1: "g" defined here
+def g(x): pass
 
 def f(x: T) -> T:
     (x.bad) # E:6: "int" has no attribute "bad" \
@@ -384,8 +384,7 @@ def f(x: T) -> T:
     y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
     del 1[0] # E:5: "int" has no attribute "__delitem__"
     bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
-    # XXX: Disabled because the column differs in 3.8
-    # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
+    aa: List[int] = ['' for x in [1]] # E:22: List comprehension has incompatible type List[str]; expected List[int]
     cc = 1 .bad # E:10: "int" has no attribute "bad"
     n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x

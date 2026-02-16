@@ -14,7 +14,6 @@ The protocol of communication with the coordinator is as following:
 from __future__ import annotations
 
 import argparse
-import base64
 import gc
 import json
 import os
@@ -23,6 +22,8 @@ import platform
 import sys
 import time
 from typing import NamedTuple
+
+from librt.base64 import b64decode
 
 from mypy import util
 from mypy.build import (
@@ -40,7 +41,7 @@ from mypy.build import (
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
 from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCServer, receive, send
+from mypy.ipc import IPCException, IPCServer, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.options import Options
 from mypy.util import read_py_file
@@ -72,7 +73,7 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    options_dict = pickle.loads(base64.b64decode(args.options_data))
+    options_dict = pickle.loads(b64decode(args.options_data))
     options_obj = Options()
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
@@ -81,9 +82,13 @@ def main(argv: list[str]) -> None:
     status_file = args.status_file
     server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
 
-    with open(status_file, "w") as f:
-        json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
-        f.write("\n")
+    try:
+        with open(status_file, "w") as f:
+            json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
+            f.write("\n")
+    except Exception as exc:
+        print(f"Error writing status file {status_file}:", exc)
+        raise
 
     fscache = FileSystemCache()
     cached_read = fscache.read
@@ -93,7 +98,7 @@ def main(argv: list[str]) -> None:
     try:
         with server:
             serve(server, ctx)
-    except OSError as exc:
+    except (OSError, IPCException) as exc:
         if options.verbosity >= 1:
             print("Error communicating with coordinator:", exc)
     except Exception as exc:
