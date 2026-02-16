@@ -465,8 +465,7 @@ class ASTConverter:
             and self.type_ignores
             and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[first]
-            del self.type_ignores[first]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
