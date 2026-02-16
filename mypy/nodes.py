@@ -1451,7 +1451,6 @@ class Var(SymbolNode):
             assert tag == mypy.types.CALLABLE_TYPE
             setter_type = mypy.types.CallableType.read(data)
         v.setter_type = setter_type
-        v.is_ready = False  # Override True default set in __init__
         v._fullname = read_str(data)
         (
             v.is_self,
