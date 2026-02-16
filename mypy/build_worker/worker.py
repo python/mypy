@@ -146,7 +146,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
 
     # Compare worker graph and coordinator, with parallel parser we will only use the latter.
     graph_data = GraphMessage.read(receive(server), manager)
-    assert manager.missing_modules == graph_data.missing_modules
+    assert set(manager.missing_modules) == graph_data.missing_modules
     coordinator_graph = graph_data.graph
     assert coordinator_graph.keys() == graph.keys()
     for id in graph:

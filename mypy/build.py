@@ -3985,7 +3985,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     # Broadcast graph to workers before computing SCCs to save a bit of time.
     # TODO: check if we can optimize by sending only part of the graph needed for given SCC.
     # For example only send modules in the SCC and their dependencies.
-    graph_message = GraphMessage(graph=graph, missing_modules=manager.missing_modules)
+    graph_message = GraphMessage(graph=graph, missing_modules=set(manager.missing_modules))
     buf = WriteBuffer()
     graph_message.write(buf)
     graph_data = buf.getvalue()
