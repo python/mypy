@@ -910,7 +910,7 @@ class BuildManager:
         # Resolved paths for each module in build.
         self.path_by_id: dict[str, str] = {}
         # Packages for which we know presence or absence of __getattr__().
-        self.know_partial_packages: dict[str, bool] = {}
+        self.known_partial_packages: dict[str, bool] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -3356,8 +3356,8 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
     """
     while "." in id:
         ancestor, _ = id.rsplit(".", 1)
-        if ancestor in manager.know_partial_packages:
-            return manager.know_partial_packages[ancestor]
+        if ancestor in manager.known_partial_packages:
+            return manager.known_partial_packages[ancestor]
         if ancestor in manager.modules:
             ancestor_mod: MypyFile | None = manager.modules[ancestor]
         else:
@@ -3374,7 +3374,7 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
                 ancestor_st.tree = None
         if ancestor_mod is not None:
             # Bail out soon, complete subpackage found
-            manager.know_partial_packages[ancestor] = ancestor_mod.is_partial_stub_package
+            manager.known_partial_packages[ancestor] = ancestor_mod.is_partial_stub_package
             return ancestor_mod.is_partial_stub_package
         id = ancestor
     return False
