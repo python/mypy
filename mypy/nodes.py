@@ -4999,7 +4999,7 @@ def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
 
 def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
     packed = read_int(data)
-    return [packed & 1 << i != 0 for i in range(num_flags)]
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
