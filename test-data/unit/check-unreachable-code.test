@@ -1606,7 +1606,7 @@ x = 0  # not unreachable
 
 [case testUnendingForLoop]
 # flags: --warn-unreachable
-from typing import Generator, NoReturn, TypeVar
+from typing import Generator, NoReturn, TypeVar, Generic
 
 def generator() -> Generator[int, None, NoReturn]:
     while True:
