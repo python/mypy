@@ -1257,3 +1257,25 @@ FMT: Final = "{} {}"
 
 def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+
+[case testIsSpace]
+def test_isspace_basic() -> None:
+    assert " ".isspace()
+    assert "\t".isspace()
+    assert "\n".isspace()
+    assert "\r".isspace()
+    assert "\f".isspace()
+    assert "\v".isspace()
+    assert "  \t\n".isspace()
+    assert not "".isspace()
+    assert not "a".isspace()
+    assert not " a".isspace()
+    assert not "a ".isspace()
+    assert not "hello".isspace()
+
+def test_isspace_unicode() -> None:
+    assert "\u00A0".isspace()
+    assert "\u2000".isspace()
+    assert "\u200A".isspace()
+    assert "\u3000".isspace()
+    assert not "\u0041".isspace()
