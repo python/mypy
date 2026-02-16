@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Final
-
 from mypyc.analysis.blockfreq import frequently_executed_blocks
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     DEBUG_ERRORS,
     PREFIX_MAP,
@@ -12,7 +11,6 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
-from mypyc.codegen.cstring import c_string_initializer
 from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -682,7 +680,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.value is not None:
             if isinstance(op.value, str):
                 c_str = c_string_initializer(op.value.encode("utf-8", "surrogatepass"))
-                self.emitter.emit_line(f'PyErr_SetString(PyExc_{op.class_name}, {c_str});')
+                self.emitter.emit_line(f"PyErr_SetString(PyExc_{op.class_name}, {c_str});")
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
                     "PyErr_SetObject(PyExc_{}, {});".format(
@@ -941,7 +939,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 c_string_initializer(self.source_path.encode("utf-8")),
                 c_string_initializer(op.traceback_entry[0].encode("utf-8")),
                 c_string_initializer(class_name.encode("utf-8")),
-                c_string_initializer(attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX).encode("utf-8")),
+                c_string_initializer(
+                    attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX).encode("utf-8")
+                ),
                 op.traceback_entry[1],
                 globals_static,
             )
