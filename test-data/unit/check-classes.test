@@ -8921,31 +8921,31 @@ from numbers import Number, Complex, Real, Rational, Integral
 
 def f1(x: Number) -> None: pass
 f1(1)  # E: Argument 1 to "f1" has incompatible type "int"; expected "Number" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f2(x: Complex) -> None: pass
 f2(1)  # E: Argument 1 to "f2" has incompatible type "int"; expected "Complex" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f3(x: Real) -> None: pass
 f3(1)  # E: Argument 1 to "f3" has incompatible type "int"; expected "Real" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f4(x: Rational) -> None: pass
 f4(1)  # E: Argument 1 to "f4" has incompatible type "int"; expected "Rational" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f5(x: Integral) -> None: pass
 f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 

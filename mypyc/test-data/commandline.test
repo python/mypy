@@ -321,4 +321,4 @@ def f(b: bytes) -> None: pass
 f(bytearray())
 
 [out]
-a.py:1: error: Option --strict-bytes cannot be disabled when using mypyc
+a.py: error: Option --strict-bytes cannot be disabled when using mypyc
