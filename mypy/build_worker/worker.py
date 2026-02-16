@@ -112,6 +112,12 @@ def main(argv: list[str]) -> None:
 
 
 def serve(server: IPCServer, ctx: ServerContext) -> None:
+    """Main server loop of the worker.
+
+    Receive initial state from the coordinator, then process each
+    SCC checking request and reply to client (coordinator). See module
+    docstring for more details on the protocol.
+    """
     sources = SourcesDataMessage.read(receive(server)).sources
     manager = setup_worker_manager(sources, ctx)
     if manager is None:
@@ -165,20 +171,19 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         try:
             for id in scc.mod_ids:
                 state = graph[id]
-                # Extra step below is needed only because we are using local graph.
+                # Extra if below is needed only because we are using local graph.
                 # TODO: clone options when switching to coordinator graph.
                 if state.tree is None:
+                    # Parse early to get errors related data, such as ignored
+                    # and skipped lines before replaying the errors.
                     state.parse_file()
                 else:
                     state.setup_errors()
-                state.source = None
                 if id in scc_message.import_errors:
                     manager.errors.set_file(state.xpath, id, state.options)
                     for err_info in scc_message.import_errors[id]:
                         manager.errors.add_error_info(err_info)
-                if id in graph_data.from_cache:
-                    state.verify_dependencies(suppressed_only=True)
-            result = process_stale_scc(graph, scc, manager)
+            result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.metastore.commit()
         except CompileError as blocker:

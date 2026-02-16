@@ -437,7 +437,7 @@ def build_inner(
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
     errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
-    # Record import errors so that they sn be replayed by the workers.
+    # Record import errors so that they can be replayed by the workers.
     if workers:
         errors.global_watcher = True
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
@@ -909,6 +909,8 @@ class BuildManager:
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
         # Resolved paths for each module in build.
         self.path_by_id: dict[str, str] = {}
+        # Packages for which we know presence or absence of __getattr__().
+        self.know_partial_packages: dict[str, bool] = {}
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -2402,7 +2404,7 @@ class State:
             state.compute_dependencies()
             if manager.workers:
                 # We don't need parsed trees in coordinator process, we parse only to
-                # compute dependencies.
+                # compute dependencies. Keep temporary tree until the caller uses it
                 if not temporary:
                     state.tree = None
                     del manager.modules[id]
@@ -3353,23 +3355,28 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
     defines a module-level __getattr__ (a.k.a. partial stub package).
     """
     while "." in id:
-        parent, _ = id.rsplit(".", 1)
-        if parent in manager.modules:
-            parent_mod: MypyFile | None = manager.modules[parent]
+        ancestor, _ = id.rsplit(".", 1)
+        if ancestor in manager.know_partial_packages:
+            return manager.know_partial_packages[ancestor]
+        if ancestor in manager.modules:
+            ancestor_mod: MypyFile | None = manager.modules[ancestor]
         else:
-            # Parent is not in build, try quickly if we can find it.
+            # Ancestor is not in build, try quickly if we can find it.
             try:
-                parent_st = State.new_state(
-                    id=parent, path=None, source=None, manager=manager, temporary=True
+                ancestor_st = State.new_state(
+                    id=ancestor, path=None, source=None, manager=manager, temporary=True
                 )
             except (ModuleNotFound, CompileError):
-                parent_mod = None
+                ancestor_mod = None
             else:
-                parent_mod = parent_st.tree
-        if parent_mod is not None:
+                ancestor_mod = ancestor_st.tree
+                # We will not need this anymore.
+                ancestor_st.tree = None
+        if ancestor_mod is not None:
             # Bail out soon, complete subpackage found
-            return parent_mod.is_partial_stub_package
-        id = parent
+            manager.know_partial_packages[ancestor] = ancestor_mod.is_partial_stub_package
+            return ancestor_mod.is_partial_stub_package
+        id = ancestor
     return False
 
 
@@ -4103,7 +4110,7 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
 
 
 def process_stale_scc(
-    graph: Graph, ascc: SCC, manager: BuildManager
+    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str] | None = None
 ) -> dict[str, tuple[str, list[str]]]:
     """Process the modules in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
@@ -4168,7 +4175,9 @@ def process_stale_scc(
     stale = scc
     for id in stale:
         # Re-generate import errors in case this module was loaded from the cache.
-        if graph[id].meta:
+        # Deserialized states all have meta=None, so the caller should specify
+        # explicitly which of them are from cache.
+        if graph[id].meta or from_cache and id in from_cache:
             graph[id].verify_dependencies(suppressed_only=True)
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
@@ -4581,6 +4590,7 @@ class GraphMessage(IPCMessage):
     def __init__(self, *, graph: Graph, missing_modules: set[str]) -> None:
         self.graph = graph
         self.missing_modules = missing_modules
+        # Send this data separately as it will be lost during state serialization.
         self.from_cache = {mod_id for mod_id in graph if graph[mod_id].meta}
 
     @classmethod
