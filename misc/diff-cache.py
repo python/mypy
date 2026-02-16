@@ -35,6 +35,35 @@ def merge_deps(all: dict[str, set[str]], new: dict[str, set[str]]) -> None:
         all.setdefault(k, set()).update(v)
 
 
+def sort_deps(
+    dependencies: list[str], suppressed: list[str], dep_prios: list[int], dep_lines: list[int]
+) -> tuple[list[str], list[str], list[int], list[int]]:
+    """Sort dependencies and suppressed independently, keeping prios/lines aligned."""
+    all_deps = list(zip(dependencies + suppressed, dep_prios, dep_lines))
+    num_deps = len(dependencies)
+    sorted_deps = sorted(all_deps[:num_deps])
+    sorted_supp = sorted(all_deps[num_deps:])
+    if sorted_deps:
+        deps_t, prios1_t, lines1_t = zip(*sorted_deps)
+        deps_out = list(deps_t)
+        prios1 = list(prios1_t)
+        lines1 = list(lines1_t)
+    else:
+        deps_out = []
+        prios1 = []
+        lines1 = []
+    if sorted_supp:
+        supp_t, prios2_t, lines2_t = zip(*sorted_supp)
+        supp_out = list(supp_t)
+        prios2 = list(prios2_t)
+        lines2 = list(lines2_t)
+    else:
+        supp_out = []
+        prios2 = []
+        lines2 = []
+    return deps_out, supp_out, prios1 + prios2, lines1 + lines2
+
+
 def normalize_meta(meta: CacheMeta) -> None:
     """Normalize a CacheMeta instance to avoid spurious diffs.
 
@@ -42,30 +71,9 @@ def normalize_meta(meta: CacheMeta) -> None:
     """
     meta.mtime = 0
     meta.data_mtime = 0
-    all_deps = list(zip(meta.dependencies + meta.suppressed, meta.dep_prios, meta.dep_lines))
-    num_deps = len(meta.dependencies)
-    sorted_deps = sorted(all_deps[:num_deps])
-    sorted_supp = sorted(all_deps[num_deps:])
-    if sorted_deps:
-        deps, prios1, lines1 = zip(*sorted_deps)
-        meta.dependencies = list(deps)
-        prios1 = list(prios1)
-        lines1 = list(lines1)
-    else:
-        meta.dependencies = []
-        prios1 = []
-        lines1 = []
-    if sorted_supp:
-        supp, prios2, lines2 = zip(*sorted_supp)
-        meta.suppressed = list(supp)
-        prios2 = list(prios2)
-        lines2 = list(lines2)
-    else:
-        meta.suppressed = []
-        prios2 = []
-        lines2 = []
-    meta.dep_prios = prios1 + prios2
-    meta.dep_lines = lines1 + lines2
+    meta.dependencies, meta.suppressed, meta.dep_prios, meta.dep_lines = sort_deps(
+        meta.dependencies, meta.suppressed, meta.dep_prios, meta.dep_lines
+    )
 
 
 def serialize_meta_ff(meta: CacheMeta, version_prefix: bytes) -> bytes:
@@ -83,23 +91,9 @@ def normalize_json_meta(obj: dict[str, Any]) -> None:
     obj["mtime"] = 0
     obj["data_mtime"] = 0
     if "dependencies" in obj:
-        all_deps: list[str] = obj["dependencies"] + obj["suppressed"]
-        num_deps = len(obj["dependencies"])
-        thing = list(zip(all_deps, obj["dep_prios"], obj["dep_lines"]))
-        sorted_deps = sorted(thing[:num_deps])
-        sorted_supp = sorted(thing[num_deps:])
-        if sorted_deps:
-            deps, prios1, lines1 = zip(*sorted_deps)
-        else:
-            deps, prios1, lines1 = (), (), ()
-        if sorted_supp:
-            supp, prios2, lines2 = zip(*sorted_supp)
-        else:
-            supp, prios2, lines2 = (), (), ()
-        obj["dependencies"] = deps
-        obj["suppressed"] = supp
-        obj["dep_prios"] = prios1 + prios2
-        obj["dep_lines"] = lines1 + lines2
+        obj["dependencies"], obj["suppressed"], obj["dep_prios"], obj["dep_lines"] = sort_deps(
+            obj["dependencies"], obj["suppressed"], obj["dep_prios"], obj["dep_lines"]
+        )
 
 
 def load(cache: MetadataStore, s: str) -> Any:
