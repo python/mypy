@@ -42,13 +42,7 @@ def normalize_meta(meta: CacheMeta) -> None:
     """
     meta.mtime = 0
     meta.data_mtime = 0
-    all_deps = list(
-        zip(
-            meta.dependencies + meta.suppressed,
-            meta.dep_prios,
-            meta.dep_lines,
-        )
-    )
+    all_deps = list(zip(meta.dependencies + meta.suppressed, meta.dep_prios, meta.dep_lines))
     num_deps = len(meta.dependencies)
     sorted_deps = sorted(all_deps[:num_deps])
     sorted_supp = sorted(all_deps[num_deps:])
