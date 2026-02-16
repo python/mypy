@@ -1340,7 +1340,7 @@ class Emitter:
         src: str,
     ) -> None:
         func = "CPy_TypeErrorTraceback"
-        type_str = f'"{self.pretty_name(typ)}"'
+        type_str = c_string_initializer(self.pretty_name(typ).encode("utf-8"))
         return self._emit_traceback(
             func, source_path, module_name, traceback_entry, type_str=type_str, src=src
         )
@@ -1357,10 +1357,10 @@ class Emitter:
         if self.context.strict_traceback_checks:
             assert traceback_entry[1] >= 0, "Traceback cannot have a negative line number"
         globals_static = self.static_name("globals", module_name)
-        line = '%s("%s", "%s", %d, %s' % (
+        line = "%s(%s, %s, %d, %s" % (
             func,
-            source_path.replace("\\", "\\\\"),
-            traceback_entry[0],
+            c_string_initializer(source_path.encode("utf-8")),
+            c_string_initializer(traceback_entry[0].encode("utf-8")),
             traceback_entry[1],
             globals_static,
         )

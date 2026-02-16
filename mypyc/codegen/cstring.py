@@ -1,8 +1,8 @@
 """Encode valid C string literals from Python strings.
 
 If a character is not allowed in C string literals, it is either emitted
-as a simple escape sequence (e.g. '\\n'), or an octal escape sequence
-with exactly three digits ('\\oXXX'). Question marks are escaped to
+as a simple escape sequence (e.g. '\\n'), or a hexadecimal escape sequence
+with exactly two digits ('\\xXX'). Question marks are escaped to
 prevent trigraphs in the string literal from being interpreted. Note
 that '\\?' is an invalid escape sequence in Python.
 
@@ -13,9 +13,9 @@ be interpreted as part of the escape sequence. Therefore, it is
 unexpectedly parsed as ['A', 'B', 0xCDEF].
 
 Emitting ("AB\\xCD" "EF") would avoid this behaviour. However, we opt
-for simplicity and use octal escape sequences instead. They do not
-suffer from the same issue as they are defined to parse at most three
-octal digits.
+for simplicity and use hexadecimal escape sequences with exactly two
+digits instead. They do not suffer from the same issue as they are
+defined to parse exactly two hexadecimal digits.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from __future__ import annotations
 import string
 from typing import Final
 
-CHAR_MAP: Final = [f"\\{i:03o}" for i in range(256)]
+CHAR_MAP: Final = [f"\\{i:02x}" for i in range(256)]
 
 # It is safe to use string.printable as it always uses the C locale.
 for c in string.printable:

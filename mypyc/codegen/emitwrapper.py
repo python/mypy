@@ -16,6 +16,7 @@ from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
 from mypyc.common import (
     BITMAP_BITS,
@@ -77,9 +78,9 @@ def generate_traceback_code(
     # even if there is no `traceback_name`. This is because the error will
     # have originated here and so we need it in the traceback.
     globals_static = emitter.static_name("globals", module_name)
-    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
-        source_path.replace("\\", "\\\\"),
-        fn.traceback_name or fn.name,
+    traceback_code = "CPy_AddTraceback(%s, %s, %d, %s);" % (
+        c_string_initializer(source_path.encode("utf-8")),
+        c_string_initializer((fn.traceback_name or fn.name).encode("utf-8")),
         fn.line,
         globals_static,
     )
@@ -97,7 +98,7 @@ def reorder_arg_groups(groups: dict[ArgKind, list[RuntimeArg]]) -> list[RuntimeA
 
 
 def make_static_kwlist(args: list[RuntimeArg]) -> str:
-    arg_names = "".join(f'"{arg.name}", ' for arg in args)
+    arg_names = "".join(f'{c_string_initializer(arg.name.encode("utf-8"))}, ' for arg in args)
     return f"static const char * const kwlist[] = {{{arg_names}0}};"
 
 
@@ -158,7 +159,8 @@ def generate_wrapper_function(
     emitter.emit_line(make_static_kwlist(reordered_args))
     fmt = make_format_string(fn.name, groups)
     # Define the arguments the function accepts (but no types yet)
-    emitter.emit_line(f'static CPyArg_Parser parser = {{"{fmt}", kwlist, 0}};')
+    fmt_c = c_string_initializer(fmt.encode("utf-8"))
+    emitter.emit_line(f"static CPyArg_Parser parser = {{{fmt_c}, kwlist, 0}};")
 
     for arg in real_args:
         emitter.emit_line(
@@ -263,8 +265,10 @@ def generate_legacy_wrapper_function(
     arg_ptrs += [f"&obj_{arg.name}" for arg in reordered_args]
 
     emitter.emit_lines(
-        'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", "{}", kwlist{})) {{'.format(
-            make_format_string(None, groups), fn.name, "".join(", " + n for n in arg_ptrs)
+        "if (!CPyArg_ParseTupleAndKeywords(args, kw, {}, {}, kwlist{})) {{".format(
+            c_string_initializer(make_format_string(None, groups).encode("utf-8")),
+            c_string_initializer(fn.name.encode("utf-8")),
+            "".join(", " + n for n in arg_ptrs),
         ),
         "return NULL;",
         "}",

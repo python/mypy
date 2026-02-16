@@ -12,6 +12,7 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -680,8 +681,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: Better escaping of backspaces and such
         if op.value is not None:
             if isinstance(op.value, str):
-                message = op.value.replace('"', '\\"')
-                self.emitter.emit_line(f'PyErr_SetString(PyExc_{op.class_name}, "{message}");')
+                c_str = c_string_initializer(op.value.encode("utf-8", "surrogatepass"))
+                self.emitter.emit_line(f'PyErr_SetString(PyExc_{op.class_name}, {c_str});')
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
                     "PyErr_SetObject(PyExc_{}, {});".format(
@@ -895,7 +896,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 return "NAN"
             return r
         elif isinstance(reg, CString):
-            return '"' + encode_c_string_literal(reg.value) + '"'
+            return c_string_initializer(reg.value)
         else:
             return self.emitter.reg(reg)
 
@@ -935,12 +936,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             ), "AttributeError traceback cannot have a negative line number"
         globals_static = self.emitter.static_name("globals", self.module_name)
         self.emit_line(
-            'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
+            "CPy_AttributeError(%s, %s, %s, %s, %d, %s);"
             % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                class_name,
-                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                c_string_initializer(self.source_path.encode("utf-8")),
+                c_string_initializer(op.traceback_entry[0].encode("utf-8")),
+                c_string_initializer(class_name.encode("utf-8")),
+                c_string_initializer(attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX).encode("utf-8")),
                 op.traceback_entry[1],
                 globals_static,
             )
@@ -961,30 +962,3 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint64_t)"
         else:
             return ""
-
-
-_translation_table: Final[dict[int, str]] = {}
-
-
-def encode_c_string_literal(b: bytes) -> str:
-    """Convert bytestring to the C string literal syntax (with necessary escaping).
-
-    For example, b'foo\n' gets converted to 'foo\\n' (note that double quotes are not added).
-    """
-    if not _translation_table:
-        # Initialize the translation table on the first call.
-        d = {
-            ord("\n"): "\\n",
-            ord("\r"): "\\r",
-            ord("\t"): "\\t",
-            ord('"'): '\\"',
-            ord("\\"): "\\\\",
-        }
-        for i in range(256):
-            if i not in d:
-                if i < 32 or i >= 127:
-                    d[i] = "\\x%.2x" % i
-                else:
-                    d[i] = chr(i)
-        _translation_table.update(str.maketrans(d))
-    return b.decode("latin1").translate(_translation_table)
