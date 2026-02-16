@@ -1269,3 +1269,33 @@ def test_isspace() -> None:
         c = chr(i)
         a: Any = c
         assert c.isspace() == a.isspace()
+
+[case testIsAlnum]
+def test_isalnum_basic() -> None:
+    assert "abc".isalnum()
+    assert "ABC".isalnum()
+    assert "abc123".isalnum()
+    assert "123".isalnum()
+    assert not "".isalnum()
+    assert not " ".isalnum()
+    assert not "abc!".isalnum()
+    assert not "hello world".isalnum()
+    assert not "abc-123".isalnum()
+
+def test_isalnum_unicode() -> None:
+    # Single chars: letters and digits from various scripts
+    assert "\u00E9".isalnum()        # é  (UCS-1 Latin letter)
+    assert "\u0660".isalnum()        # ٠  (UCS-2 Arabic-Indic digit)
+    assert "\u4E2D".isalnum()        # 中 (UCS-2 CJK ideograph)
+    assert "\U00010400".isalnum()    # 𐐀 (UCS-4 Deseret capital letter long I)
+    assert not "\u2000".isalnum()    # EN QUAD (whitespace)
+    assert not "\u0021".isalnum()    # !
+    assert not "\u00B6".isalnum()    # ¶  (pilcrow sign, punctuation)
+
+    # Mixed Unicode letters and digits — all alnum
+    assert "\u00E9\u0660".isalnum()         # é٠
+    assert "\u4E2D\u0041\u0660".isalnum()   # 中A٠
+
+    # Unicode letter/digit mixed with punctuation — not alnum
+    assert not "\u00E9!".isalnum()
+    assert not "\u4E2D\u2000".isalnum()     # CJK + whitespace
