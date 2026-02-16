@@ -86,7 +86,7 @@ def run_cmd(input: str) -> tuple[int, str]:
         elif input.startswith("mypy ") and " -- " in input:
             # For mypy commands, options come before --, so insert before --
             input = input.replace(" -- ", " --no-pretty -- ", 1)
-        elif input.startswith("dmypy run ") or input.startswith("dmypy start"):
+        elif input.startswith(("dmypy run ", "dmypy start")):
             # dmypy commands without -- need the separator added
             input += " -- --no-pretty"
         elif input.startswith("mypy "):

@@ -524,9 +524,16 @@ def define_options(
         if help is not argparse.SUPPRESS:
             help += f" (inverse: {inverse})"
 
-        arg = group.add_argument(flag, action="store_true", dest=dest, help=help)
+        arg = group.add_argument(
+            flag, action="store_false" if default else "store_true", dest=dest, help=help
+        )
         dest = arg.dest
-        group.add_argument(inverse, action="store_false", dest=dest, help=argparse.SUPPRESS)
+        group.add_argument(
+            inverse,
+            action="store_true" if default else "store_false",
+            dest=dest,
+            help=argparse.SUPPRESS,
+        )
         if strict_flag:
             assert dest is not None
             strict_flag_names.append(flag)
@@ -1000,7 +1007,7 @@ def define_options(
     )
     add_invertible_flag(
         "--pretty",
-        default=True,
+        default=False,
         help="Use visually nicer output in error messages:"
         " Use soft word wrap, show source code snippets,"
         " and show error location markers",
