@@ -8,6 +8,7 @@ This also includes some unit tests.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -76,19 +77,76 @@ def parse_script(input: list[str]) -> list[list[str]]:
     return steps
 
 
+def _add_no_pretty_to_dmypy(input: str) -> str:
+    """Add --no-pretty to a dmypy run/start command that has no -- separator.
+
+    For dmypy run/start, mypy flags are passed as positional args after --.
+    When the command has no --, we need to insert -- before the positional args
+    and append --no-pretty.  We must keep any dmypy-specific named flags
+    (like --export-types, --log-file FILE) before the -- separator.
+    """
+    # Match: "dmypy run" or "dmypy start", then the rest of the args
+    m = re.match(r"(dmypy (?:run|start))\s*(.*)", input)
+    if not m:
+        return input
+    prefix = m.group(1)
+    rest = m.group(2)
+
+    # Known dmypy run/start flags that take no value
+    no_value_flags = {"--export-types", "--verbose", "-v"}
+    # Known dmypy run/start flags that take a value
+    value_flags = {"--log-file", "--timeout", "--junit-xml", "--perf-stats-file"}
+
+    parts = rest.split()
+    dmypy_flags: list[str] = []
+    positional: list[str] = []
+    i = 0
+    while i < len(parts):
+        if parts[i] in no_value_flags:
+            dmypy_flags.append(parts[i])
+            i += 1
+        elif parts[i] in value_flags:
+            dmypy_flags.append(parts[i])
+            if i + 1 < len(parts):
+                dmypy_flags.append(parts[i + 1])
+            i += 2
+        elif parts[i].startswith("-") and "=" in parts[i]:
+            # Handle --flag=value style for known flags
+            flag_name = parts[i].split("=")[0]
+            if flag_name in value_flags:
+                dmypy_flags.append(parts[i])
+            else:
+                positional.append(parts[i])
+            i += 1
+        else:
+            positional.append(parts[i])
+            i += 1
+
+    dmypy_part = " ".join(dmypy_flags)
+    positional_part = " ".join(positional)
+    result = prefix
+    if dmypy_part:
+        result += " " + dmypy_part
+    result += " -- "
+    if positional_part:
+        result += positional_part + " "
+    result += "--no-pretty"
+    return result
+
+
 def run_cmd(input: str) -> tuple[int, str]:
     if input[1:].startswith("mypy run --") and "--show-error-codes" not in input:
         input += " --hide-error-codes"
     if "--pretty" not in input:
-        if input.startswith("dmypy ") and " -- " in input:
-            # For dmypy commands, mypy flags come after --, so append at end
+        if input.startswith(("dmypy run ", "dmypy start")) and " -- " in input:
+            # For dmypy run/start, mypy flags come after --, so append at end
             input += " --no-pretty"
         elif input.startswith("mypy ") and " -- " in input:
             # For mypy commands, options come before --, so insert before --
             input = input.replace(" -- ", " --no-pretty -- ", 1)
         elif input.startswith(("dmypy run ", "dmypy start")):
-            # dmypy commands without -- need the separator added
-            input += " -- --no-pretty"
+            # dmypy run/start without -- need the separator added
+            input = _add_no_pretty_to_dmypy(input)
         elif input.startswith("mypy "):
             input += " --no-pretty"
     if input.startswith("dmypy "):
