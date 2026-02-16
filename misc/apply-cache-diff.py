@@ -46,7 +46,7 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
             else:
                 data_bytes = data.encode() if isinstance(data, str) else data
             cache.write(file, data_bytes)
-            if file.endswith(".meta.ff"):
+            if file.endswith(".meta.ff") and "@deps" not in file:
                 buf = ReadBuffer(data_bytes[2:])
                 meta = CacheMeta.read(buf, data_file="")
                 assert meta is not None
