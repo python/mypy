@@ -1682,7 +1682,7 @@ def bar4(gen: ShuffledGenerator[NoReturn, None, int]) -> int:  # E: Missing retu
 
     y = 0
 
-def baz4(gen: GeneratorSubtype[NoReturn, None, int]) -> int:
+def baz4(gen: ShuffledGenerator[NoReturn, None, int]) -> int:
     for x in gen:
         pass
 [builtins fixtures/tuple.pyi]
