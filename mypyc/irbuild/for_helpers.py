@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar, cast
 
+from mypy.checkexpr import try_getting_literal
 from mypy.nodes import (
     ARG_POS,
     CallExpr,
@@ -274,7 +275,8 @@ def sequence_from_generator_preallocate_helper(
                         if isinstance(typ, LiteralType)
                         else TupleGet(sequence, i, line)
                     )
-                    for i, typ in enumerate(proper_types)
+                    # TODO: I think after pulling in recent changes I need to figure out how to handle this change in the `if` block
+                    for i, typ in enumerate(map(try_getting_literal, proper_type.items))
                 ]
 
             items = list(map(builder.add, get_item_ops))
