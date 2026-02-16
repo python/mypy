@@ -724,7 +724,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       all_types:       Map {Expression: Type} from all modules (enabled by export_types)
       options:         Build options
-      missing_modules: Set of modules that could not be imported encountered so far
+      missing_modules: Modules that could not be imported (or intentionally skipped)
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
       fg_deps:         A fine-grained dependency map
@@ -785,7 +785,7 @@ class BuildManager:
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
         self.import_map: dict[str, set[str]] = {}
-        self.missing_modules: set[str] = set()
+        self.missing_modules: dict[str, int] = {}
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
         # fg_deps holds the dependencies of every module that has been
         # processed. We store this in BuildManager so that we can compute
@@ -2147,8 +2147,16 @@ During implementation more wrinkles were found.
 """
 
 
+class SuppressionReason:
+    NOT_FOUND: Final = 1
+    SKIPPED: Final = 2
+
+
 class ModuleNotFound(Exception):
     """Control flow exception to signal that a module was not found."""
+
+    def __init__(self, reason: int = SuppressionReason.NOT_FOUND) -> None:
+        self.reason = reason
 
 
 class State:
@@ -2280,9 +2288,9 @@ class State:
                     root_source,
                     skip_diagnose=temporary,
                 )
-            except ModuleNotFound:
+            except ModuleNotFound as exc:
                 if not temporary:
-                    manager.missing_modules.add(id)
+                    manager.missing_modules[id] = exc.reason
                 raise
             if follow_imports == "silent":
                 ignore_all = True
@@ -3040,9 +3048,13 @@ class State:
         buf = WriteBuffer()
         import_options = self.manager.import_options
         for dep in sorted(self.suppressed):
+            # Using .get() is a bit defensive, but just in case we have a bug elsewhere
+            # (e.g. in the daemon), it is better to get a stale cache than a crash.
+            reason = self.manager.missing_modules.get(dep, SuppressionReason.NOT_FOUND)
             if self.priorities.get(dep) != PRI_INDIRECT:
                 write_str_bare(buf, dep)
                 write_bytes_bare(buf, import_options[dep])
+                write_int_bare(buf, reason)
         return buf.getvalue()
 
     def write_cache(self) -> tuple[CacheMeta, str] | None:
@@ -3229,7 +3241,12 @@ def find_module_and_diagnose(
                     skipping_ancestor(manager, id, result, ancestor_for)
                 else:
                     skipping_module(manager, caller_line, caller_state, id, result)
-            raise ModuleNotFound
+            reason = SuppressionReason.SKIPPED
+            if options.ignore_missing_imports:
+                # Performance optimization: when we are ignoring imports, there is no
+                # difference for the caller between skipped import and actually missing one.
+                reason = SuppressionReason.NOT_FOUND
+            raise ModuleNotFound(reason=reason)
         if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
         return result, follow_imports
@@ -3754,7 +3771,7 @@ def load_graph(
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
-                manager.missing_modules.add(dep)
+                manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
                 if not manager.use_fine_grained_cache():
@@ -3810,10 +3827,10 @@ def load_graph(
     # modules that are back in graph. We need to do this after the loop to cover an edge
     # case where a namespace package ancestor is shared by a typed and an untyped package.
     for st in graph.values():
-        for dep in st.suppressed:
+        for dep in st.suppressed.copy():
             if dep in graph:
                 st.add_dependency(dep)
-                manager.missing_modules.discard(dep)
+                manager.missing_modules.pop(dep, None)
     # Second, in the initial loop we skip indirect dependencies, so to make indirect dependencies
     # behave more consistently with regular ones, we suppress them manually here (when needed).
     for st in graph.values():
