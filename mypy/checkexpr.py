@@ -82,6 +82,7 @@ from mypy.nodes import (
     ParamSpecExpr,
     PlaceholderNode,
     PromoteExpr,
+    RUNTIME_PROTOCOL_DECOS,
     RefExpr,
     RevealExpr,
     SetComprehension,
@@ -772,8 +773,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 and tp.is_type_obj()
                 and tp.type_object().is_protocol
                 and not tp.type_object().runtime_protocol
+                and not self._is_runtime_checkable_call(expr)
             ):
                 self.chk.fail(message_registry.RUNTIME_PROTOCOL_EXPECTED, e)
+
+    def _is_runtime_checkable_call(self, expr: Expression) -> bool:
+        """Check if expr is a call to runtime_checkable() wrapping a protocol."""
+        if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
+            return expr.callee.fullname in RUNTIME_PROTOCOL_DECOS
+        return False
 
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):

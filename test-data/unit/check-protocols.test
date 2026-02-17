@@ -1718,6 +1718,24 @@ if isinstance(x, R):
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testRuntimeCheckableCalledAsFunctionInIsinstance]
+from typing import Protocol, runtime_checkable
+
+class P(Protocol):
+    def meth(self) -> None:
+        pass
+
+x: object
+
+# runtime_checkable() used as a function call rather than a decorator
+if isinstance(x, runtime_checkable(P)):
+    reveal_type(x)  # N: Revealed type is "__main__.P"
+
+if issubclass(type(x), runtime_checkable(P)):
+    pass
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testRuntimeIterableProtocolCheck]
 from typing import Iterable, List, Union
 
