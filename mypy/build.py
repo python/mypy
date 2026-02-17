@@ -799,7 +799,9 @@ class BuildManager:
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
-        # These allow quickly skipping logging and stats collection calls
+        # These allow quickly skipping logging and stats collection calls. Note
+        # that some stats impact mypy behavior, so be careful when skipping stats
+        # collection calls.
         self.stats_enabled = self.options.dump_build_stats
         self.logging_enabled = self.options.verbosity >= 1
         self.tracing_enabled = self.options.verbosity >= 2
