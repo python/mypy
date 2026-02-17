@@ -143,6 +143,7 @@ from mypy.types import (
     EllipsisType,
     Instance,
     RawExpressionType,
+    TupleType,
     Type,
     TypeList,
     TypeOfAny,
@@ -904,6 +905,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         args = tuple(read_type(state, data) for i in range(n))
+        empty_tuple_index = read_bool(data)
         # Read optional original_str_expr
         t = read_tag(data)
         if t == LITERAL_NONE:
@@ -923,6 +925,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         unbound = UnboundType(
             name,
             args,
+            empty_tuple_index=empty_tuple_index,
             original_str_expr=original_str_expr,
             original_str_fallback=original_str_fallback,
         )
@@ -967,6 +970,16 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         read_loc(data, type_list)
         expect_end_tag(data)
         return type_list
+    elif tag == types.TUPLE_TYPE:
+        # Read items list
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        items = [read_type(state, data) for i in range(n)]
+        implicit = read_bool(data)
+        tuple_type = TupleType(items, _dummy_fallback, implicit=implicit)
+        read_loc(data, tuple_type)
+        expect_end_tag(data)
+        return tuple_type
     elif tag == types.ELLIPSIS_TYPE:
         # EllipsisType has no attributes
         ellipsis_type = EllipsisType()
