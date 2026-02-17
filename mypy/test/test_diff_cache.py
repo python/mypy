@@ -12,8 +12,7 @@ import time
 import unittest
 
 _MISC_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "misc",
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "misc"
 )
 _DIFF_CACHE_PATH = os.path.join(_MISC_DIR, "diff-cache.py")
 _APPLY_CACHE_DIFF_PATH = os.path.join(_MISC_DIR, "apply-cache-diff.py")
@@ -38,8 +37,16 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             with open(os.path.join(src_dir, "b.py"), "w") as f:
                 f.write("import a\ndef foo() -> int:\n    return 1\n")
             result = subprocess.run(
-                [sys.executable, "-m", "mypy", "--sqlite-cache", "--cache-fine-grained",
-                 "--cache-dir", cache1, "b.py"],
+                [
+                    sys.executable,
+                    "-m",
+                    "mypy",
+                    "--sqlite-cache",
+                    "--cache-fine-grained",
+                    "--cache-dir",
+                    cache1,
+                    "b.py",
+                ],
                 cwd=src_dir,
                 capture_output=True,
                 text=True,
@@ -59,8 +66,17 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             with open(os.path.join(src_dir, "c.py"), "w") as f:
                 f.write("import a\ny: str = 'world'\n")
             result = subprocess.run(
-                [sys.executable, "-m", "mypy", "--sqlite-cache", "--cache-fine-grained",
-                 "--cache-dir", cache2, "b.py", "c.py"],
+                [
+                    sys.executable,
+                    "-m",
+                    "mypy",
+                    "--sqlite-cache",
+                    "--cache-fine-grained",
+                    "--cache-dir",
+                    cache2,
+                    "b.py",
+                    "c.py",
+                ],
                 cwd=src_dir,
                 capture_output=True,
                 text=True,
@@ -69,7 +85,8 @@ class DiffCacheIntegrationTests(unittest.TestCase):
 
             # Find the Python version subdirectory (e.g. "3.14")
             subdirs = [
-                e for e in os.listdir(cache1)
+                e
+                for e in os.listdir(cache1)
                 if os.path.isdir(os.path.join(cache1, e)) and e[0].isdigit()
             ]
             assert len(subdirs) == 1, f"Expected one version subdir, got {subdirs}"
@@ -77,8 +94,14 @@ class DiffCacheIntegrationTests(unittest.TestCase):
 
             # Run diff-cache.py with --sqlite
             result = subprocess.run(
-                [sys.executable, _DIFF_CACHE_PATH, "--sqlite",
-                 os.path.join(cache1, ver), os.path.join(cache2, ver), output_file],
+                [
+                    sys.executable,
+                    _DIFF_CACHE_PATH,
+                    "--sqlite",
+                    os.path.join(cache1, ver),
+                    os.path.join(cache2, ver),
+                    output_file,
+                ],
                 capture_output=True,
                 text=True,
             )
@@ -105,14 +128,14 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             # dependency recorded in @root.deps.json.
             assert "@root.deps.json" in keys
             root_deps = json.loads(data["@root.deps.json"])
-            assert set(root_deps.keys()) == {"<a.x>", "<a>"}, (
-                f"Unexpected root deps keys: {sorted(root_deps.keys())}"
-            )
+            assert set(root_deps.keys()) == {
+                "<a.x>",
+                "<a>",
+            }, f"Unexpected root deps keys: {sorted(root_deps.keys())}"
             assert sorted(root_deps["<a.x>"]) == ["b.foo"]
             assert sorted(root_deps["<a>"]) == ["b.foo", "c"]
 
             # Apply the diff to a copy of cache1 and verify the result.
-            cache1_ver = os.path.join(cache1, ver)
             cache2_ver = os.path.join(cache2, ver)
             patched = os.path.join(src_dir, "patched")
             patched_ver = os.path.join(patched, ver)
@@ -132,8 +155,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
 
             # Apply the diff
             result = subprocess.run(
-                [sys.executable, _APPLY_CACHE_DIFF_PATH, "--sqlite",
-                 patched_ver, output_file],
+                [sys.executable, _APPLY_CACHE_DIFF_PATH, "--sqlite", patched_ver, output_file],
                 capture_output=True,
                 text=True,
             )
@@ -158,9 +180,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                     if name.endswith(".meta.ff"):
                         # mtimes legitimately differ, but content should not be identical
                         # to the pre-apply version (it was updated by the diff)
-                        assert after[name] != before.get(name), (
-                            f"{name} unchanged after apply"
-                        )
+                        assert after[name] != before.get(name), f"{name} unchanged after apply"
                     else:
                         assert after[name] == target[name], f"{name} differs from target"
 
@@ -168,9 +188,10 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             from mypy.util import json_loads
 
             applied_root_deps = json_loads(after["@root.deps.json"])
-            assert set(applied_root_deps.keys()) == {"<a.x>", "<a>"}, (
-                f"Unexpected applied root deps keys: {sorted(applied_root_deps.keys())}"
-            )
+            assert set(applied_root_deps.keys()) == {
+                "<a.x>",
+                "<a>",
+            }, f"Unexpected applied root deps keys: {sorted(applied_root_deps.keys())}"
             assert sorted(applied_root_deps["<a.x>"]) == ["b.foo"]
             assert sorted(applied_root_deps["<a>"]) == ["b.foo", "c"]
         finally:
