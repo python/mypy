@@ -1,4 +1,4 @@
-"""Tests for misc/diff-cache.py."""
+"""Integration tests for misc/diff-cache.py and misc/apply-cache-diff.py."""
 
 from __future__ import annotations
 
@@ -19,12 +19,12 @@ _APPLY_CACHE_DIFF_PATH = os.path.join(_MISC_DIR, "apply-cache-diff.py")
 
 
 class DiffCacheIntegrationTests(unittest.TestCase):
-    """Integration test: run mypy twice with different sources, then diff the caches."""
+    """Run mypy twice with different sources, diff the caches, and apply the diff."""
 
     def test_diff_cache_produces_valid_json(self) -> None:
         # Use a single source directory with two cache directories so that
         # source paths in the cache metadata are identical between runs.
-        # Only b.py changes between the two runs.
+        # b.py is modified and c.py is added in the second run.
         src_dir = tempfile.mkdtemp()
         output_file = os.path.join(tempfile.mkdtemp(), "diff.json")
         try:
