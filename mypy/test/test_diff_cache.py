@@ -43,7 +43,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 0, f"mypy run 1 failed: {result.stderr}")
+            assert result.returncode == 0, f"mypy run 1 failed: {result.stderr}"
 
             # Sleep so that mtimes will be different between runs
             time.sleep(1)
@@ -51,24 +51,26 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             # Touch a.py to change its mtime without modifying content
             os.utime(os.path.join(src_dir, "a.py"))
 
-            # Modify b.py and run mypy for cache2
+            # Modify b.py and add a new c.py, then run mypy for cache2
             with open(os.path.join(src_dir, "b.py"), "w") as f:
                 f.write("import a\ndef foo() -> str:\n    return 'hello'\n")
+            with open(os.path.join(src_dir, "c.py"), "w") as f:
+                f.write("import a\ny: str = 'world'\n")
             result = subprocess.run(
                 [sys.executable, "-m", "mypy", "--cache-fine-grained",
-                 "--cache-dir", cache2, "b.py"],
+                 "--cache-dir", cache2, "b.py", "c.py"],
                 cwd=src_dir,
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 0, f"mypy run 2 failed: {result.stderr}")
+            assert result.returncode == 0, f"mypy run 2 failed: {result.stderr}"
 
             # Find the Python version subdirectory (e.g. "3.14")
             subdirs = [
                 e for e in os.listdir(cache1)
                 if os.path.isdir(os.path.join(cache1, e)) and e[0].isdigit()
             ]
-            self.assertEqual(len(subdirs), 1, f"Expected one version subdir, got {subdirs}")
+            assert len(subdirs) == 1, f"Expected one version subdir, got {subdirs}"
             ver = subdirs[0]
 
             # Run diff-cache.py
@@ -78,25 +80,24 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(
-                result.returncode, 0,
-                f"diff-cache.py failed: {result.stderr}",
-            )
+            assert result.returncode == 0, f"diff-cache.py failed: {result.stderr}"
 
             # Verify the output is valid JSON
             with open(output_file) as f:
                 data = json.load(f)
-            self.assertIsInstance(data, dict)
-            self.assertGreater(len(data), 0, "Expected non-empty diff")
+            assert isinstance(data, dict)
+            assert len(data) > 0, "Expected non-empty diff"
 
-            # Only modified files should appear in the diff.
-            # b.py changed, so b.meta.ff, b.data.ff, and b.deps.json should be present.
+            # Only modified or new files should appear in the diff.
+            # b.py changed and c.py is new, so both should be present.
             # a.py did not change, so no a.* keys should appear.
             keys = set(data.keys())
             b_keys = {k for k in keys if "/b." in k or k.startswith("b.")}
+            c_keys = {k for k in keys if "/c." in k or k.startswith("c.")}
             a_keys = {k for k in keys if "/a." in k or k.startswith("a.")}
-            self.assertTrue(b_keys, f"Expected b.* entries in diff, got keys: {keys}")
-            self.assertFalse(a_keys, f"Unexpected a.* entries in diff: {a_keys}")
+            assert len(a_keys) == 0, f"Unexpected a.* entries in diff: {a_keys}"
+            assert len(b_keys) == 2, f"Expected 2 b.* entries in diff, got: {b_keys}"
+            assert len(c_keys) == 3, f"Expected 3 c.* entries in diff, got: {c_keys}"
         finally:
             shutil.rmtree(src_dir, ignore_errors=True)
             shutil.rmtree(os.path.dirname(output_file), ignore_errors=True)
