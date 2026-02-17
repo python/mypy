@@ -11,9 +11,9 @@ import tempfile
 import time
 import unittest
 
-_MISC_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "misc"
-)
+from mypy.test.config import PREFIX
+
+_MISC_DIR = os.path.join(PREFIX, "misc")
 _DIFF_CACHE_PATH = os.path.join(_MISC_DIR, "diff-cache.py")
 _APPLY_CACHE_DIFF_PATH = os.path.join(_MISC_DIR, "apply-cache-diff.py")
 
@@ -27,6 +27,8 @@ class DiffCacheIntegrationTests(unittest.TestCase):
         # b.py is modified and c.py is added in the second run.
         src_dir = tempfile.mkdtemp()
         output_file = os.path.join(tempfile.mkdtemp(), "diff.json")
+        env = os.environ.copy()
+        env["PYTHONPATH"] = PREFIX
         try:
             cache1 = os.path.join(src_dir, "cache1")
             cache2 = os.path.join(src_dir, "cache2")
@@ -50,6 +52,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 cwd=src_dir,
                 capture_output=True,
                 text=True,
+                env=env,
             )
             assert result.returncode == 0, f"mypy run 1 failed: {result.stderr}"
 
@@ -80,6 +83,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 cwd=src_dir,
                 capture_output=True,
                 text=True,
+                env=env,
             )
             assert result.returncode == 0, f"mypy run 2 failed: {result.stderr}"
 
@@ -104,6 +108,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                env=env,
             )
             assert result.returncode == 0, f"diff-cache.py failed: {result.stderr}"
 
@@ -158,6 +163,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
                 [sys.executable, _APPLY_CACHE_DIFF_PATH, "--sqlite", patched_ver, output_file],
                 capture_output=True,
                 text=True,
+                env=env,
             )
             assert result.returncode == 0, f"apply-cache-diff.py failed: {result.stderr}"
 
