@@ -1602,6 +1602,20 @@ Medal.silver = 2  # E: Cannot assign to final attribute "silver"
 [builtins fixtures/enum.pyi]
 
 
+[case testEnumPrivateNameNotFinal]
+# Private names (__x) are not enum members and should not be final
+from enum import Enum
+
+class MyEnum(Enum):
+    __config = "some_value"
+    A = 1
+    B = 2
+
+# __config is not a member so reassignment should be allowed
+MyEnum._MyEnum__config = "other_value"
+[builtins fixtures/enum.pyi]
+
+
 [case testEnumFinalValuesCannotRedefineValueProp]
 from enum import Enum
 class Types(Enum):

@@ -3841,9 +3841,13 @@ class SemanticAnalyzer(
                         and isinstance(cur_node.node, Var)
                         and not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)
                     ):
-                        # Double underscored members are writable on an `Enum`.
+                        # Double underscored names are writable on an `Enum`:
+                        # - Dunders (__x__) are not enum members
+                        # - Private names (__x) are not enum members (since Python 3.11)
                         # (Except read-only `__members__` but that is handled in type checker)
-                        cur_node.node.is_final = s.is_final_def = not is_dunder(cur_node.node.name)
+                        cur_node.node.is_final = s.is_final_def = not cur_node.node.name.startswith(
+                            "__"
+                        )
 
                 # Special case: deferred initialization of a final attribute in __init__.
                 # In this case we just pretend this is a valid final definition to suppress
