@@ -1103,12 +1103,11 @@ class BuildManager:
             self.stderr.flush()
 
     def add_stats(self, **kwds: Any) -> None:
-        if self.stats_enabled:
-            for key, value in kwds.items():
-                if key in self.stats:
-                    self.stats[key] += value
-                else:
-                    self.stats[key] = value
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
