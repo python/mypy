@@ -51,9 +51,10 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             # Touch a.py to change its mtime without modifying content
             os.utime(os.path.join(src_dir, "a.py"))
 
-            # Modify b.py and add a new c.py, then run mypy for cache2
+            # Modify b.py to access a.x (adding a fine-grained dependency),
+            # and add a new c.py, then run mypy for cache2
             with open(os.path.join(src_dir, "b.py"), "w") as f:
-                f.write("import a\ndef foo() -> str:\n    return 'hello'\n")
+                f.write("import a\ndef foo() -> str:\n    return str(a.x)\n")
             with open(os.path.join(src_dir, "c.py"), "w") as f:
                 f.write("import a\ny: str = 'world'\n")
             result = subprocess.run(
@@ -98,6 +99,16 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             assert len(a_keys) == 0, f"Unexpected a.* entries in diff: {a_keys}"
             assert len(b_keys) == 2, f"Expected 2 b.* entries in diff, got: {b_keys}"
             assert len(c_keys) == 3, f"Expected 3 c.* entries in diff, got: {c_keys}"
+
+            # The new access to a.x in b.py should create a fine-grained
+            # dependency recorded in @root.deps.json.
+            assert "@root.deps.json" in keys
+            root_deps = json.loads(data["@root.deps.json"])
+            assert set(root_deps.keys()) == {"<a.x>", "<a>"}, (
+                f"Unexpected root deps keys: {sorted(root_deps.keys())}"
+            )
+            assert sorted(root_deps["<a.x>"]) == ["b.foo"]
+            assert sorted(root_deps["<a>"]) == ["b.foo", "c"]
         finally:
             shutil.rmtree(src_dir, ignore_errors=True)
             shutil.rmtree(os.path.dirname(output_file), ignore_errors=True)
