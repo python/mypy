@@ -3990,9 +3990,8 @@ def find_stale_sccs(
             else:
                 assert stale_indirect is not None
                 fresh_msg = f"stale due to stale indirect dep(s): first {stale_indirect}"
-
-        if manager.logging_enabled:
             scc_str = " ".join(ascc.mod_ids)
+
         if fresh:
             if manager.tracing_enabled:
                 manager.trace(f"Found {fresh_msg} SCC ({scc_str})")
