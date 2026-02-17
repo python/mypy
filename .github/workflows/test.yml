@@ -224,20 +224,16 @@ jobs:
         path: ast_serialize
 
     - if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
-      run: |
-        cd ast_serialize
-
-    - if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
       uses: PyO3/maturin-action@v1
       with:
         target: aarch64
         args: --release --out dist
+        working-directory: ast_serialize
 
     - if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
       run: |
         ls dist
         pip install dist/*
-        cd ..
         python3 -c 'import ast_serialize; print(ast_serialize("no way")[1])'
 
     - name: Setup tox environment
