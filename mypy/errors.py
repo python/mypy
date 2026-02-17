@@ -9,8 +9,27 @@ from itertools import chain
 from typing import Final, Literal, NoReturn, TextIO, TypeVar
 from typing_extensions import Self
 
+from librt.internal import (
+    ReadBuffer,
+    WriteBuffer,
+    read_bool,
+    read_int as read_int_bare,
+    write_bool,
+    write_int as write_int_bare,
+)
+
 from mypy import errorcodes as codes
-from mypy.cache import ErrorTuple
+from mypy.cache import (
+    ErrorTuple,
+    read_int,
+    read_int_list,
+    read_str,
+    read_str_opt,
+    write_int,
+    write_int_list,
+    write_str,
+    write_str_opt,
+)
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.nodes import Context
@@ -136,6 +155,49 @@ class ErrorInfo:
         if parent_error is not None:
             assert severity == "note", "Only notes can specify parent errors"
         self.parent_error = parent_error
+
+    def write(self, buf: WriteBuffer) -> None:
+        assert self.parent_error is None, "Parent errors not supported yet"
+        write_int_bare(buf, len(self.import_ctx))
+        for file, line in self.import_ctx:
+            write_str(buf, file)
+            write_int(buf, line)
+        type, function = self.local_ctx
+        write_str_opt(buf, type)
+        write_str_opt(buf, function)
+        write_int(buf, self.line)
+        write_int(buf, self.column)
+        write_int(buf, self.end_line)
+        write_int(buf, self.end_column)
+        write_str(buf, self.severity)
+        write_str(buf, self.message)
+        write_str_opt(buf, self.code.code if self.code else None)
+        write_bool(buf, self.blocker)
+        write_bool(buf, self.only_once)
+        write_str_opt(buf, self.module)
+        write_str_opt(buf, self.target)
+        write_int_list(buf, list(self.origin_span))
+        write_int(buf, self.priority)
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> ErrorInfo:
+        return ErrorInfo(
+            import_ctx=[(read_str(buf), read_int(buf)) for _ in range(read_int_bare(buf))],
+            local_ctx=(read_str_opt(buf), read_str_opt(buf)),
+            line=read_int(buf),
+            column=read_int(buf),
+            end_line=read_int(buf),
+            end_column=read_int(buf),
+            severity=read_str(buf),
+            message=read_str(buf),
+            code=mypy_error_codes[code] if (code := read_str_opt(buf)) else None,
+            blocker=read_bool(buf),
+            only_once=read_bool(buf),
+            module=read_str_opt(buf),
+            target=read_str_opt(buf),
+            origin_span=read_int_list(buf),
+            priority=read_int(buf),
+        )
 
 
 class ErrorWatcher:
@@ -425,6 +487,11 @@ class Errors:
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
 
+    # Set this flag to record all raw report() calls. Recorded error (per file) can
+    # be replayed using by calling set_file() and add_error_info().
+    global_watcher = False
+    recorded: dict[str, list[ErrorInfo]]
+
     _watchers: list[ErrorWatcher]
 
     def __init__(
@@ -457,6 +524,8 @@ class Errors:
         self.target_module = None
         self.seen_import_error = False
         self._watchers = []
+        self.global_watcher = False
+        self.recorded = defaultdict(list)
 
     def reset(self) -> None:
         self.initialize()
@@ -604,6 +673,8 @@ class Errors:
             target=self.current_target(),
             parent_error=parent_error,
         )
+        if self.global_watcher:
+            self.recorded[self.file].append(info)
         self.add_error_info(info)
         return info
 
@@ -873,19 +944,14 @@ class Errors:
             return
 
         used_ignored_lines = self.used_ignored_lines[file]
-
-        # If the whole file is ignored, ignore it.
-        if used_ignored_lines:
-            _, used_codes = min(used_ignored_lines.items())
-            if codes.FILE.code in used_codes:
-                return
-
         for line, ignored_codes in self.ignored_lines[file].items():
+            if line in self.skipped_lines[file]:
+                continue
             if ignored_codes:
                 continue
 
-            # If the ignore is itself unused and that would be warned about, let
-            # that error stand alone
+            # If the `type: ignore` is itself unused and that would be warned about,
+            # let that error stand alone
             if is_warning_unused_ignores and not used_ignored_lines[line]:
                 continue
 

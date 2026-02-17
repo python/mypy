@@ -112,6 +112,12 @@ def main(argv: list[str]) -> None:
 
 
 def serve(server: IPCServer, ctx: ServerContext) -> None:
+    """Main server loop of the worker.
+
+    Receive initial state from the coordinator, then process each
+    SCC checking request and reply to client (coordinator). See module
+    docstring for more details on the protocol.
+    """
     sources = SourcesDataMessage.read(receive(server)).sources
     manager = setup_worker_manager(sources, ctx)
     if manager is None:
@@ -130,13 +136,18 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         gc.unfreeze()
         gc.enable()
     for id in graph:
-        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
+        manager.import_map[id] = graph[id].dependencies_set
+    # Ignore errors during local graph loading to check that receiving
+    # early errors from coordinator works correctly.
+    manager.errors.reset()
 
     # Notify worker we are done loading graph.
     send(server, AckMessage())
 
     # Compare worker graph and coordinator, with parallel parser we will only use the latter.
-    coordinator_graph = GraphMessage.read(receive(server), manager).graph
+    graph_data = GraphMessage.read(receive(server), manager)
+    assert set(manager.missing_modules) == graph_data.missing_modules
+    coordinator_graph = graph_data.graph
     assert coordinator_graph.keys() == graph.keys()
     for id in graph:
         assert graph[id].dependencies_set == coordinator_graph[id].dependencies_set
@@ -150,14 +161,29 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     # Notify coordinator we are ready to process SCCs.
     send(server, AckMessage())
     while True:
-        scc_id = SccRequestMessage.read(receive(server)).scc_id
+        scc_message = SccRequestMessage.read(receive(server))
+        scc_id = scc_message.scc_id
         if scc_id is None:
             manager.dump_stats()
             break
         scc = manager.scc_by_id[scc_id]
         t0 = time.time()
         try:
-            result = process_stale_scc(graph, scc, manager)
+            for id in scc.mod_ids:
+                state = graph[id]
+                # Extra if below is needed only because we are using local graph.
+                # TODO: clone options when switching to coordinator graph.
+                if state.tree is None:
+                    # Parse early to get errors related data, such as ignored
+                    # and skipped lines before replaying the errors.
+                    state.parse_file()
+                else:
+                    state.setup_errors()
+                if id in scc_message.import_errors:
+                    manager.errors.set_file(state.xpath, id, state.options)
+                    for err_info in scc_message.import_errors[id]:
+                        manager.errors.add_error_info(err_info)
+            result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.metastore.commit()
         except CompileError as blocker:

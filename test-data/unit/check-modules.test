@@ -2233,12 +2233,12 @@ main:2: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
 
-[case testFailedImportFromTwoModules]
+-- Parallel mode gives only_once notes once *per worker*
+[case testFailedImportFromTwoModules_no_parallel]
 import c
 import b
 [file b.py]
 import c
-
 [out]
 -- TODO: it would be better for this to be in the other order
 tmp/b.py:1: error: Cannot find implementation or library stub for module named "c"

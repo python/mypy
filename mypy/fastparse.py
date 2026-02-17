@@ -463,20 +463,17 @@ class ASTConverter:
             ismodule
             and stmts
             and self.type_ignores
-            and min(self.type_ignores) < self.get_lineno(stmts[0])
+            and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[min(self.type_ignores)]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
                     message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
-                    line=min(self.type_ignores),
+                    line=first,
                     column=0,
                     blocker=False,
                 )
-            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.FILE.code
-            )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
