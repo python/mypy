@@ -15,7 +15,7 @@ One or two sentences describing it
 ## Onboarding experience
 
 Did it build and run as documented?
-    
+
 See the assignment for details; if everything works out of the box,
 there is no need to write much here. If the first project(s) you picked
 ended up being unsuitable, you can describe the "onboarding experience"
