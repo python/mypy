@@ -39,6 +39,7 @@ from typing import (
     TypeAlias as _TypeAlias,
     TypedDict,
     cast,
+    final,
 )
 
 from librt.base64 import b64encode
@@ -2186,6 +2187,7 @@ class ModuleNotFound(Exception):
         self.reason = reason
 
 
+@final
 class State:
     """The state for a module.
 
@@ -2272,9 +2274,8 @@ class State:
     # Mapping from line number to type ignore codes on this line (for imports only).
     imports_ignored: dict[int, list[str]]
 
-    @classmethod
+    @staticmethod
     def new_state(
-        cls,
         id: str | None,
         path: str | None,
         source: str | None,
@@ -2364,7 +2365,7 @@ class State:
             error_lines = []
             imports_ignored = {}
 
-        state = cls(
+        state = State(
             manager=manager,
             order=State.order_counter,
             id=id,
