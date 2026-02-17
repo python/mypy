@@ -1,6 +1,9 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdbool.h>
+
+#define BASE64_EXPORTS
+
 #include "librt_base64.h"
 #include "libbase64.h"
 #include "pythoncapi_compat.h"
