@@ -7929,6 +7929,58 @@ from a import b  # type: ignore[attr-defined]
 main:2: error: Unused "type: ignore" comment
 [out2]
 
+[case testConfigWarnUnusedSectionIncremental]
+# flags: --config-file=tmp/mypy.ini
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a  # touch
+[file a.py]
+import foo  # type: ignore
+[file mypy.ini]
+\[mypy]
+warn_unused_configs = true
+\[mypy-bar]
+\[mypy-foo]
+[file mypy.ini.3]
+\[mypy]
+warn_unused_configs = true
+\[mypy-foo]
+[out]
+tmp/mypy.ini: note: unused section(s): [mypy-bar]
+[out2]
+tmp/mypy.ini: note: unused section(s): [mypy-bar]
+[out3]
+
+[case testConfigWarnUnusedSectionIncrementalTOML]
+# flags: --config-file tmp/pyproject.toml
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a  # touch
+[file a.py]
+import foo  # type: ignore
+[file pyproject.toml]
+\[tool.mypy]
+warn_unused_configs = true
+\[[tool.mypy.overrides]]
+module = "bar"
+\[[tool.mypy.overrides]]
+module = "foo"
+warn_unreachable = true
+[file pyproject.toml.3]
+\[tool.mypy]
+warn_unused_configs = true
+\[[tool.mypy.overrides]]
+module = "foo"
+[out]
+tmp/pyproject.toml: note: unused section(s): module = ['bar']
+[out2]
+tmp/pyproject.toml: note: unused section(s): module = ['bar']
+[out3]
+
 [case testAddedMissingModuleSkip]
 # flags: --follow-imports=skip
 import mod

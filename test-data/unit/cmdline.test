@@ -535,7 +535,6 @@ variable has type "bytes")
 [file mypy.ini]
 \[mypy]
 warn_unused_configs = True
-incremental = False
 \[mypy-bar]
 \[mypy-foo]
 \[mypy-baz.*]
@@ -555,7 +554,7 @@ incremental = False
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+mypy.ini: note: unused section(s): [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
 [case testPackageRootEmpty]

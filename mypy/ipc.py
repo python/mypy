@@ -53,9 +53,8 @@ class IPCBase:
     This contains logic shared between the client and server, such as reading
     and writing.
     We want to be able to send multiple "messages" over a single connection and
-    to be able to separate the messages. We do this by encoding the messages
-    in an alphabet that does not contain spaces, then adding a space for
-    separation. The last framed message is also followed by a space.
+    to be able to separate the messages. We do this by prefixing each message
+    with its size in a fixed format.
     """
 
     connection: _IPCHandle
