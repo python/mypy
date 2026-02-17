@@ -227,7 +227,7 @@ jobs:
       run: |
         cd ast_serialize
 
-    - іf: ${{ matrix.os == 'ubuntu-24.04-arm' }}
+    - if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
       uses: PyO3/maturin-action@v1
       with:
         target: aarch64
