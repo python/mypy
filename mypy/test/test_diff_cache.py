@@ -31,13 +31,13 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             cache1 = os.path.join(src_dir, "cache1")
             cache2 = os.path.join(src_dir, "cache2")
 
-            # Write sources and run mypy for cache1
+            # Write sources and run mypy for cache1 (using sqlite cache)
             with open(os.path.join(src_dir, "a.py"), "w") as f:
                 f.write("x: int = 1\n")
             with open(os.path.join(src_dir, "b.py"), "w") as f:
                 f.write("import a\ndef foo() -> int:\n    return 1\n")
             result = subprocess.run(
-                [sys.executable, "-m", "mypy", "--cache-fine-grained",
+                [sys.executable, "-m", "mypy", "--sqlite-cache", "--cache-fine-grained",
                  "--cache-dir", cache1, "b.py"],
                 cwd=src_dir,
                 capture_output=True,
@@ -57,7 +57,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             with open(os.path.join(src_dir, "c.py"), "w") as f:
                 f.write("import a\ny: str = 'world'\n")
             result = subprocess.run(
-                [sys.executable, "-m", "mypy", "--cache-fine-grained",
+                [sys.executable, "-m", "mypy", "--sqlite-cache", "--cache-fine-grained",
                  "--cache-dir", cache2, "b.py", "c.py"],
                 cwd=src_dir,
                 capture_output=True,
@@ -73,9 +73,9 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             assert len(subdirs) == 1, f"Expected one version subdir, got {subdirs}"
             ver = subdirs[0]
 
-            # Run diff-cache.py
+            # Run diff-cache.py with --sqlite
             result = subprocess.run(
-                [sys.executable, _DIFF_CACHE_PATH,
+                [sys.executable, _DIFF_CACHE_PATH, "--sqlite",
                  os.path.join(cache1, ver), os.path.join(cache2, ver), output_file],
                 capture_output=True,
                 text=True,
