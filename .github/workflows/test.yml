@@ -233,7 +233,7 @@ jobs:
     - if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
       run: |
         pip install ast_serialize/dist/ast_serialize-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl
-        python3 -c 'import ast_serialize; print(ast_serialize("no way")[1])'
+        python3 -c 'import ast_serialize; print(ast_serialize.parse("no way")[1])'
 
     - name: Setup tox environment
       run: |
