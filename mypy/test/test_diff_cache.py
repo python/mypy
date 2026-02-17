@@ -11,11 +11,12 @@ import tempfile
 import time
 import unittest
 
-_DIFF_CACHE_PATH = os.path.join(
+_MISC_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "misc",
-    "diff-cache.py",
 )
+_DIFF_CACHE_PATH = os.path.join(_MISC_DIR, "diff-cache.py")
+_APPLY_CACHE_DIFF_PATH = os.path.join(_MISC_DIR, "apply-cache-diff.py")
 
 
 class DiffCacheIntegrationTests(unittest.TestCase):
@@ -109,6 +110,69 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             )
             assert sorted(root_deps["<a.x>"]) == ["b.foo"]
             assert sorted(root_deps["<a>"]) == ["b.foo", "c"]
+
+            # Apply the diff to a copy of cache1 and verify the result.
+            cache1_ver = os.path.join(cache1, ver)
+            cache2_ver = os.path.join(cache2, ver)
+            patched = os.path.join(src_dir, "patched")
+            patched_ver = os.path.join(patched, ver)
+            shutil.copytree(cache1, patched)
+
+            # Snapshot cache entries before applying the diff
+            from mypy.metastore import SqliteMetadataStore
+
+            def read_all(cache_dir: str) -> dict[str, bytes]:
+                store = SqliteMetadataStore(cache_dir)
+                result = {name: store.read(name) for name in store.list_all()}
+                assert store.db is not None
+                store.db.close()
+                return result
+
+            before = read_all(patched_ver)
+
+            # Apply the diff
+            result = subprocess.run(
+                [sys.executable, _APPLY_CACHE_DIFF_PATH, "--sqlite",
+                 patched_ver, output_file],
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, f"apply-cache-diff.py failed: {result.stderr}"
+
+            after = read_all(patched_ver)
+
+            # a.py entries should be unchanged
+            for name in before:
+                if name.startswith("a.") or "/a." in name:
+                    assert name in after, f"{name} missing after apply"
+                    assert before[name] == after[name], f"{name} changed after apply"
+
+            # b.py and c.py entries should match cache2 after applying the diff.
+            # Skip .meta.ff files since they contain mtimes that legitimately differ.
+            target = read_all(cache2_ver)
+            for prefix in ("b.", "c."):
+                for name in target:
+                    if not (name.startswith(prefix) or f"/{prefix}" in name):
+                        continue
+                    assert name in after, f"{name} missing after apply"
+                    if name.endswith(".meta.ff"):
+                        # mtimes legitimately differ, but content should not be identical
+                        # to the pre-apply version (it was updated by the diff)
+                        assert after[name] != before.get(name), (
+                            f"{name} unchanged after apply"
+                        )
+                    else:
+                        assert after[name] == target[name], f"{name} differs from target"
+
+            # Verify fine-grained deps were applied correctly
+            from mypy.util import json_loads
+
+            applied_root_deps = json_loads(after["@root.deps.json"])
+            assert set(applied_root_deps.keys()) == {"<a.x>", "<a>"}, (
+                f"Unexpected applied root deps keys: {sorted(applied_root_deps.keys())}"
+            )
+            assert sorted(applied_root_deps["<a.x>"]) == ["b.foo"]
+            assert sorted(applied_root_deps["<a>"]) == ["b.foo", "c"]
         finally:
             shutil.rmtree(src_dir, ignore_errors=True)
             shutil.rmtree(os.path.dirname(output_file), ignore_errors=True)
