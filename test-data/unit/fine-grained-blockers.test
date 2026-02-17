@@ -502,7 +502,7 @@ def f(x: int) -> None: ...
 def f(x: str) -> None: ...
 [out]
 ==
-mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
+a.py: error: cannot decode file: 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -518,7 +518,7 @@ def f(x: int) -> None: ...
 def f(x: str) -> None: ...
 [out]
 ==
-mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
+a.py: error: cannot decode file: 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -532,6 +532,6 @@ a.f(1)
 [file a.py.2]
 def f(x: str) -> None: ...
 [out]
-mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
+a.py: error: cannot decode file: 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
 ==
 main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
