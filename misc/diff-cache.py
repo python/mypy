@@ -8,7 +8,6 @@ many cases instead of full cache artifacts.
 from __future__ import annotations
 
 import argparse
-import base64
 import os
 import sys
 from collections import defaultdict
@@ -16,6 +15,7 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from librt import base64
 from librt.internal import ReadBuffer, WriteBuffer
 
 from mypy.cache import CacheMeta
