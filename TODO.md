@@ -8,4 +8,3 @@ The current implementation uses octal escape sequences (`\XXX`) but the tests ex
 2. [x] Update CHAR_MAP to use hex escapes instead of octal escapes
 3. [x] Keep simple escape sequences for special chars (\n, \r, \t, etc.)
 4. [x] Update the docstring to reflect correct format (\xXX instead of \oXXX)
-
