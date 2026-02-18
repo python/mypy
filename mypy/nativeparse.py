@@ -955,6 +955,8 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         union = UnionType(items, uses_pep604_syntax=uses_pep604_syntax)
         union.original_str_expr = original_str_expr
         union.original_str_fallback = original_str_fallback
+        if original_str_expr is not None:
+            union.is_evaluated = False
         read_loc(data, union)
         expect_end_tag(data)
         return union
