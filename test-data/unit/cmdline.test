@@ -117,7 +117,7 @@ sub.pkg contains __init__.py but is not a valid Python package name
 [file a.py]
 # coding: uft-8
 [out]
-mypy: can't decode file 'a.py': unknown encoding: uft-8
+a.py: error: cannot decode file: unknown encoding: uft-8
 == Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
@@ -416,7 +416,7 @@ int_pow.py:11: note: Revealed type is "Any"
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
-mypy: can't read file 'nope.py': No such file or directory
+mypy: error: cannot read file 'nope.py': No such file or directory
 == Return code: 2
 
 [case testModulesAndPackages]
@@ -535,7 +535,6 @@ variable has type "bytes")
 [file mypy.ini]
 \[mypy]
 warn_unused_configs = True
-incremental = False
 \[mypy-bar]
 \[mypy-foo]
 \[mypy-baz.*]
@@ -555,7 +554,7 @@ incremental = False
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+mypy.ini: note: unused section(s): [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
 [case testPackageRootEmpty]
@@ -631,7 +630,7 @@ c.py:1: error: Name "fail" is not defined
 \[mypy]
 files = config.py
 [out]
-mypy: can't read file 'override.py': No such file or directory
+mypy: error: cannot read file 'override.py': No such file or directory
 == Return code: 2
 
 [case testErrorSummaryOnSuccess]
@@ -688,7 +687,8 @@ Found 2 errors in 2 files (checked 2 source files)
 [case testErrorSummaryOnBadUsage]
 # cmd: mypy --error-summary missing.py
 [out]
-mypy: can't read file 'missing.py': No such file or directory
+mypy: error: cannot read file 'missing.py': No such file or directory
+Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
@@ -763,7 +763,7 @@ imp.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#miss
 [file a.pyd]
 # coding: uft-8
 [out]
-mypy: stubgen does not support .pyd files: 'a.pyd'
+a.pyd: error: stubgen does not support .pyd files
 == Return code: 2
 
 [case testDuplicateModules]
