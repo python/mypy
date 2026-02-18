@@ -4054,7 +4054,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if (
+            op_name in operators.op_methods_that_shortcut
+            and is_same_type(left_type, right_type)
+            and not (
+                # We consider typevars with equal IDs "same types" even if some narrowing
+                # has been applied. However, different bounds here might come from union
+                # expansion applied earlier, so we are not supposed to check them as
+                # being same types here. For plain union items `is_same_type` will
+                # return false, but not for typevars having these items as bounds.
+                # See testReversibleOpOnTypeVarProtocol.
+                isinstance(left_type, TypeVarType)
+                and isinstance(right_type, TypeVarType)
+                and not is_same_type(left_type.upper_bound, right_type.upper_bound)
+            )
+        ):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
@@ -4174,10 +4188,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
 
         if allow_reverse:
-            left_variants = [base_type]
+            left_variants = self._union_items_from_typevar(base_type)
             base_type = get_proper_type(base_type)
-            if isinstance(base_type, UnionType):
-                left_variants = list(flatten_nested_unions(base_type.relevant_items()))
+
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -4215,13 +4228,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
             # TODO: Can we use `type_overrides_set()` here?
-            right_variants = [(right_type, arg)]
-            right_type = get_proper_type(right_type)
-            if isinstance(right_type, UnionType):
+            right_variants: list[tuple[Type, Expression]]
+            p_right = get_proper_type(right_type)
+            if isinstance(p_right, (UnionType, TypeVarType)):
                 right_variants = [
                     (item, TempNode(item, context=context))
-                    for item in flatten_nested_unions(right_type.relevant_items())
+                    for item in self._union_items_from_typevar(right_type)
                 ]
+            else:
+                # Preserve argument identity if we do not intend to modify it
+                right_variants = [(right_type, arg)]
+            right_type = p_right
 
             all_results = []
             all_inferred = []
@@ -4270,6 +4287,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_kinds=[ARG_POS],
                 context=context,
             )
+
+    def _union_items_from_typevar(self, typ: Type) -> list[Type]:
+        variants = [typ]
+        typ = get_proper_type(typ)
+        base_type = typ
+        if unwrapped := (isinstance(typ, TypeVarType) and not typ.values):
+            typ = get_proper_type(typ.upper_bound)
+        if is_union := isinstance(typ, UnionType):
+            variants = list(flatten_nested_unions(typ.relevant_items()))
+        if is_union and unwrapped:
+            # If not a union, keep the original type
+            assert isinstance(base_type, TypeVarType)
+            variants = [base_type.copy_modified(upper_bound=item) for item in variants]
+        return variants
 
     def check_boolean_op(self, e: OpExpr) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
