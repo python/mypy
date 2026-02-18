@@ -75,6 +75,30 @@ The quality of our own coverage measurement is quiet limited as it's very annoyi
 
 The result of the coverage analyzer was that 49/51 branches were already covered under existing test suite. Of these 3, 2 were unreachable by design so impossible to test. So I added the one test for the branch I could reach and created 3 different tests for path coverage. This was also very difficult to look at the existing test suite and try to figure out if the path had already been covered so I did my best to try and figure it out, but it's almost impossible to actually check on such a large test suite.
 
+### `comparing_type_narrowing_help@mypy/checker.py`
+Lizard's output for `covering_type_narrowing_helper` in `mypy/checker.py` is as follows:
+
+```
+  NLOC    CCN   token  PARAM  length  location
+------------------------------------------------
+    126     30     618      2      171  comparison_type_narrowing_helper@6452-6622@mypy/checker.py
+```
+
+By manually counting the number of decision points (if, elif, logical and/or, and loop constructs) I obtained 29 decision points, resulting in a cyclomatic complexity of 30, which matches Lizard’s output.
+
+Initially, some logical operators inside compound conditions were easy to overlook, but after including each logical clause as a decision point, the manual count aligned with the tool. Therefore, the results are consistent and clear.
+
+This function is both complex and fairly long. With an NLOC of 126 and total length of 171 lines, it is noticeably larger than what is typically considered simple or easy to maintain. The nested conditional structure contributes significantly to the high cyclomatic complexity.
+
+The purpose of comparison_type_narrowing_helper() is to support mypy’s type checker by analyzing comparison expressions (such as x == y, x is y, membership checks, and chained comparisons) and determining how variable types can be narrowed based on the comparison outcome. It returns type maps describing the narrowed types for different execution branches. Because Python comparisons and type relationships are rich and varied, the function must handle many special cases, which largely explains the high complexity.
+
+There are no try/except blocks in this function, so exception handling is not taken into account in the cyclomatic complexity measurement. 
+
+The documentation of the function gives a overview of its purpose. However, given the large number of branches and special cases, the documentation does not fully describe all possible outcomes. Understanding the exact behavior in edge cases requires reading the implementation. Additional comments would help.
+
+The result of the coverage analysis for comparison_type_narrowing_helper() showed that most branches (13/14) were already exercised by the existing mypy test suite. However, Branch 2 was determined to be unreachable by design, making it impossible to cover through additional tests. I then chose to think about path coverage. To improve coverage, I therefore added two additional tests focused on path coverage, ensuring that different combinations of comparison and membership logic are exercised. Identifying whether particular paths were already covered was challenging due to the size and complexity of the existing test suite.
+
+
 
 ## Refactoring
 
