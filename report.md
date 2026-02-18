@@ -32,6 +32,26 @@ for each project, along with reason(s) why you changed to a different one.
 4. Are exceptions taken into account in the given measurements?
 5. Is the documentation clear w.r.t. all the possible outcomes?
 
+### `solve_constraints@mypy/solve.py`
+Lizard's output for `solve_constraints` in `mypy/solve.py` is as follows:
+```
+  NLOC    CCN   token  PARAM  length  location
+------------------------------------------------
+    57     30     423      5      86  solve_constraints@41-126@mypy/solve.py
+```
+
+By manually counting the number of `if`, `for` and `else` statements we got a CC of **18**, not matching the 30 reported by Lizard. The difference lies in logical clauses and list comprehensions, which were initially overlooked.
+
+With counting each logical clause (e.g., `and`, `or`) as well as the `for` and `if` statements inside of comprehensions, we arrive at a CC of **30**, matching Lizard's output.
+
+This function in particular is just complex, but not aggressively long. Although 57 lines of code is at the upper end of what should be considered acceptable. Further this function in particular clearly has a lot of different responsibilities (handling three separate boolean flags), which could be a sign that it is possible to reduce its complexity by refactoring those out as separate handlers.
+
+The purpose of the function in to solve type constraints for type variables in the checked program. Which is a core part of the type checking process.
+
+There are no exceptions raised in this function, so they are not taken into account.
+
+The documentation for the function is not very clear. The code is somewhat descriptive but lacks a lot of comments given its complexity and the docstring only gives a very high-level overview. I also feel that the naming of a lot of stuff may be a little to generic, there is a lot of `solve_x`.
+
 ## Refactoring
 
 Plan for refactoring complex code:
