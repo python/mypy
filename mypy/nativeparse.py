@@ -736,15 +736,15 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         typ = None
 
     func_def = FuncDef(name, arguments, body, typ=typ, type_args=type_params)
-    if typ:
-        # TODO: This seems wasteful, can we avoid it?
-        func_def.unanalyzed_type = typ.copy_modified()
-
-        typ.definition = func_def
-        typ.line = func_def.line
     if is_async:
         func_def.is_coroutine = True
     read_loc(data, func_def)
+    if typ:
+        typ.line = func_def.line
+        typ.column = func_def.column
+        typ.definition = func_def
+        # TODO: This seems wasteful, can we avoid it?
+        func_def.unanalyzed_type = typ.copy_modified()
     expect_end_tag(data)
     return func_def
 
