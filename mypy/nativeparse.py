@@ -300,7 +300,9 @@ def native_parse(
         node.path = filename
         return node, [], []
 
-    b, errors, ignores, import_bytes = parse_to_binary_ast(filename, options, skip_function_bodies)
+    b, errors, ignores, import_bytes, is_partial_package = parse_to_binary_ast(
+        filename, options, skip_function_bodies
+    )
     data = ReadBuffer(b)
     n = read_int(data)
     state = State(options)
@@ -310,6 +312,7 @@ def native_parse(
 
     node = MypyFile(defs, imports)
     node.path = filename
+    node.is_partial_stub_package = is_partial_package
     # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores
@@ -329,11 +332,11 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes]:
-    ast_bytes, errors, ignores, import_bytes = ast_serialize.parse(
+) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool]:
+    ast_bytes, errors, ignores, import_bytes, is_partial_package = ast_serialize.parse(
         filename, skip_function_bodies, python_version=options.python_version
     )
-    return ast_bytes, errors, ignores, import_bytes
+    return ast_bytes, errors, ignores, import_bytes, is_partial_package
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
