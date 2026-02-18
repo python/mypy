@@ -52,6 +52,30 @@ There are no exceptions raised in this function, so they are not taken into acco
 
 The documentation for the function is not very clear. The code is somewhat descriptive but lacks a lot of comments given its complexity and the docstring only gives a very high-level overview. I also feel that the naming of a lot of stuff may be a little to generic, there is a lot of `solve_x`.
 
+
+
+### `is_overlapping_types@mypy/meet.py`
+Lizard's output for `is_overlapping_types` in `mypy/meet.py` is as follows:
+```
+  NLOC    CCN   token  PARAM  length  location
+------------------------------------------------
+    168     81     1185      6      322  is_overlapping_types@336-657@./mypy/meet.py
+```
+
+With counting each logical clause (e.g., `and`, `or`) as well as the `for` and `if` statements inside of comprehensions, we arrive at a CC of **80**, being off by one compared to lizard output. The difference of 1 compared to Lizard’s result is likely due to how the tool counts certain Python-specific constructs, it might count the generator expression for example.
+
+The purpose of is_overlapping_types() is to check whether two mypy types overlap at runtime, meaning whether it is possible for any value to be both left and right. It is used for reachability checks and for verifying whether overload variants or unions might match. Since it must handle many different type categories and each category requires its own branching rules and return paths, it is in my opinion, justified that this function has a high cyclomatic complexity, but some of this logic I think should be moved out into helper function to improve readability.
+
+There are no exceptions or try/catch blocks. The function contains a few asserts for paths that should never occur as sanity checks, but in general it attempts to explicitly handle every case and return early instead of relying on a generic try/catch.
+
+There is quiet a bit of documentation around the different branches.
+
+
+The quality of our own coverage measurement is quiet limited as it's very annoying to add new paths and requires quiet a bit of boilerplate. This function has no ternary operators or excpetions so that is not applicable here. I did not use an automated tool for this one.
+
+The result of the coverage analyzer was that 49/51 branches were already covered under existing test suite. Of these 3, 2 were unreachable by design so impossible to test. So I added the one test for the branch I could reach and created 3 different tests for path coverage. This was also very difficult to look at the existing test suite and try to figure out if the path had already been covered so I did my best to try and figure it out, but it's almost impossible to actually check on such a large test suite.
+
+
 ## Refactoring
 
 Plan for refactoring complex code:
