@@ -726,7 +726,7 @@ def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> 
 @functools.lru_cache
 def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
     parent_dir = os.path.dirname(dir)
-    if parent_dir == dir:
+    if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
     else:
         parent_gitignores = find_gitignores(parent_dir)

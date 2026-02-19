@@ -112,6 +112,11 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
+        - name: Parallel tests with py314-windows-64, interpreted
+          python: '3.14'
+          os: windows-latest
+          toxenv: py
+          tox_extra_args: "-n 2 --mypy-num-workers=2 mypy/test/testcheck.py -k 'incremental or modules or classes'"
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'

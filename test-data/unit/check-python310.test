@@ -1773,42 +1773,38 @@ match m4:
         reveal_type(a4)  # N: Revealed type is "builtins.str"
         reveal_type(b4)  # N: Revealed type is "builtins.str"
 
-# properly handles unpack when all other patterns are not sequences
 m5: tuple[int, Unpack[tuple[float, ...]]] | None
 match m5:
     case (a5, b5):
         reveal_type(a5)  # N: Revealed type is "builtins.int"
         reveal_type(b5)  # N: Revealed type is "builtins.float"
 
-# currently can't handle combing unpacking with other sequence patterns, if this happens revert to worst case
-# of combing all types
 m6: tuple[int, Unpack[tuple[float, ...]]] | list[str]
 match m6:
     case (a6, b6):
-        reveal_type(a6)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
-        reveal_type(b6)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
+        reveal_type(a6)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(b6)  # N: Revealed type is "builtins.float | builtins.str"
 
-# but do still separate types from non unpacked types
 m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, str]
 match m7:
     case (a7, b7, *rest7):
-        reveal_type(a7)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
-        reveal_type(b7)  # N: Revealed type is "builtins.int | builtins.float | builtins.str"
-        reveal_type(rest7)  # N: Revealed type is "builtins.list[builtins.int | builtins.float]"
+        reveal_type(a7)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(b7)  # N: Revealed type is "builtins.float | builtins.str"
+        reveal_type(rest7)  # N: Revealed type is "builtins.list[builtins.float]"
 
 # verify that if we are unpacking, it will get the type of the sequence if the tuple is too short
 m8: tuple[int, str] | list[float]
 match m8:
     case (a8, b8, *rest8):
-        reveal_type(a8)  # N: Revealed type is "builtins.float | builtins.int"
-        reveal_type(b8)  # N: Revealed type is "builtins.float | builtins.str"
+        reveal_type(a8)  # N: Revealed type is "builtins.int | builtins.float"
+        reveal_type(b8)  # N: Revealed type is "builtins.str | builtins.float"
         reveal_type(rest8)  # N: Revealed type is "builtins.list[builtins.float]"
 
 m9: tuple[str, str, int] | tuple[str, str]
 match m9:
     case (a9, *rest9):
         reveal_type(a9)  # N: Revealed type is "builtins.str"
-        reveal_type(rest9)  # N: Revealed type is "builtins.list[builtins.str | builtins.int]"
+        reveal_type(rest9)  # N: Revealed type is "builtins.list[builtins.str | builtins.int] | builtins.list[builtins.str]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -2261,15 +2257,23 @@ match foo:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testMatchUnionTwoTuplesNoCrash]
-var: tuple[int, int] | tuple[str, str]
+[case testMatchUnionTwoTuples]
+# flags: --strict-equality --warn-unreachable
 
-# TODO: we can infer better here.
-match var:
-    case (42, a):
-        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
-    case ("yes", b):
-        reveal_type(b)  # N: Revealed type is "builtins.int | builtins.str"
+def main(var: tuple[int, int] | tuple[str, str]):
+    match var:
+        case (42, a):
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+        case ("yes", b):
+            reveal_type(b)  # N: Revealed type is "builtins.str"
+
+
+def main2(var: tuple[int, int] | tuple[str, str] | tuple[str, int]):
+    match var:
+        case (42, a):
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+        case ("yes", b):
+            reveal_type(b)  # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]

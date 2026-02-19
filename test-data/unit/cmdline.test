@@ -60,7 +60,10 @@ undef
 [out]
 dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+dir/a.py: note: Common resolutions include:
+dir/a.py: note:     a) using `--exclude` to avoid checking one of them,
+dir/a.py: note:     b) adding `__init__.py` somewhere,
+dir/a.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -114,7 +117,7 @@ sub.pkg contains __init__.py but is not a valid Python package name
 [file a.py]
 # coding: uft-8
 [out]
-mypy: can't decode file 'a.py': unknown encoding: uft-8
+a.py: error: cannot decode file: unknown encoding: uft-8
 == Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
@@ -126,7 +129,10 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [out]
 two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+two/mod/__init__.py: note: Common resolutions include:
+two/mod/__init__.py: note:     a) using `--exclude` to avoid checking one of them,
+two/mod/__init__.py: note:     b) adding `__init__.py` somewhere,
+two/mod/__init__.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
@@ -410,7 +416,7 @@ int_pow.py:11: note: Revealed type is "Any"
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
-mypy: can't read file 'nope.py': No such file or directory
+mypy: error: cannot read file 'nope.py': No such file or directory
 == Return code: 2
 
 [case testModulesAndPackages]
@@ -529,7 +535,6 @@ variable has type "bytes")
 [file mypy.ini]
 \[mypy]
 warn_unused_configs = True
-incremental = False
 \[mypy-bar]
 \[mypy-foo]
 \[mypy-baz.*]
@@ -549,7 +554,7 @@ incremental = False
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+mypy.ini: note: unused section(s): [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
 [case testPackageRootEmpty]
@@ -625,7 +630,7 @@ c.py:1: error: Name "fail" is not defined
 \[mypy]
 files = config.py
 [out]
-mypy: can't read file 'override.py': No such file or directory
+mypy: error: cannot read file 'override.py': No such file or directory
 == Return code: 2
 
 [case testErrorSummaryOnSuccess]
@@ -682,7 +687,8 @@ Found 2 errors in 2 files (checked 2 source files)
 [case testErrorSummaryOnBadUsage]
 # cmd: mypy --error-summary missing.py
 [out]
-mypy: can't read file 'missing.py': No such file or directory
+mypy: error: cannot read file 'missing.py': No such file or directory
+Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
@@ -738,12 +744,26 @@ expected "str"
     test_between(1  +       1)
                  ^~~~~~~~~~~~
 
+[case testErrorMarkerSkipsLeftSpace]
+# cmd: mypy --pretty --show-error-codes imp.py
+[file imp.py]
+try:
+    import foobar
+except ValueError:
+    pass
+[out]
+imp.py:2: error: Cannot find implementation or library stub for module named
+"foobar"  [import-not-found]
+        import foobar
+        ^
+imp.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd
 [file a.pyd]
 # coding: uft-8
 [out]
-mypy: stubgen does not support .pyd files: 'a.pyd'
+a.pyd: error: stubgen does not support .pyd files
 == Return code: 2
 
 [case testDuplicateModules]
@@ -760,7 +780,9 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
 src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewhere, b) using `--explicit-package-bases` or adjusting MYPYPATH
+src/foo/bar.py: note: Common resolutions include:
+src/foo/bar.py: note:     a) adding `__init__.py` somewhere,
+src/foo/bar.py: note:     b) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -956,6 +978,16 @@ bpkg.*
 1()
 [out]
 c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineExcludeGitignoreOnlyWithinTree]
+# cmd: mypy --exclude-gitignore b
+[file .gitignore]
+b
+[file b/.git/config]
+[file b/bpkg.py]
+1()
+[out]
+b/bpkg.py:1: error: "int" not callable
 
 [case testCmdlineCfgExclude]
 # cmd: mypy .

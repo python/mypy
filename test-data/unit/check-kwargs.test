@@ -77,55 +77,55 @@ def g(): f(0, a=1)
 
 [case testInvalidKeywordArgument]
 import typing
-def f(a: 'A') -> None: pass # N: "f" defined here
+def f(a: 'A') -> None: pass
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
 [case testKeywordMisspelling]
 class A: pass
-def f(other: 'A') -> None: pass # N: "f" defined here
+def f(other: 'A') -> None: pass
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 
 [case testMultipleKeywordsForMisspelling]
 class A: pass
 class B: pass
-def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
+def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "other"?
 
 [case testKeywordMisspellingDifferentType]
 class A: pass
 class B: pass
-def f(other: 'A') -> None: pass # N: "f" defined here
+def f(other: 'A') -> None: pass
 f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 
 [case testKeywordMisspellingInheritance]
 class A: pass
 class B(A): pass
 class C: pass
-def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
+def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass
 f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingFloatInt]
-def f(atter: float, btter: int) -> None: pass # N: "f" defined here
+def f(atter: float, btter: int) -> None: pass
 x: int = 5
 f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingVarArgs]
 class A: pass
-def f(other: 'A', *atter: 'A') -> None: pass # N: "f" defined here
+def f(other: 'A', *atter: 'A') -> None: pass
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 [builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingOnlyVarArgs]
 class A: pass
-def f(*other: 'A') -> None: pass # N: "f" defined here
+def f(*other: 'A') -> None: pass
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"
 [builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingVarArgsDifferentTypes]
 class A: pass
 class B: pass
-def f(other: 'B', *atter: 'A') -> None: pass # N: "f" defined here
+def f(other: 'B', *atter: 'A') -> None: pass
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 [builtins fixtures/tuple.pyi]
 
@@ -253,7 +253,7 @@ f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "B | 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
 import typing
 class A: pass
-def f(x, y=A()): pass  # N: "f" defined here
+def f(x, y=A()): pass
 f(x=A(), y=A())
 f(y=A(), x=A())
 f(y=A())      # E: Missing positional argument "x" in call to "f"
@@ -411,7 +411,7 @@ class A: pass
 
 [case testKeywordArgumentAndCommentSignature]
 import typing
-def f(x): # type: (int) -> str # N: "f" defined here
+def f(x): # type: (int) -> str
     pass
 f(x='') # E: Argument "x" to "f" has incompatible type "str"; expected "int"
 f(x=0)
@@ -420,7 +420,7 @@ f(y=0) # E: Unexpected keyword argument "y" for "f"
 [case testKeywordArgumentAndCommentSignature2]
 import typing
 class A:
-    def f(self, x): # type: (int) -> str  # N: "f" of "A" defined here
+    def f(self, x): # type: (int) -> str
         pass
 A().f(x='') # E: Argument "x" to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
@@ -463,7 +463,7 @@ f(*(1, 2))  # E: Too many arguments for "f"
 [case testUnexpectedMethodKwargInNestedClass]
 class A:
     class B:
-        def __init__(self) -> None:  # N: "B" defined here
+        def __init__(self) -> None:
             pass
 A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
 
@@ -476,12 +476,9 @@ class A:
     def __init__(self) -> None:
         pass
 [out]
--- Note that the messages appear "out of order" because the m.py:3
--- message is really an attachment to the main:2 error and should be
--- reported with it.
 tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
 main:2: error: Unexpected keyword argument "x" for "A"
-tmp/m.py:3: note: "A" defined here
+main:2: note: "A" defined in "m"
 
 [case testStarArgsAndKwArgsSpecialCase]
 from typing import Dict, Mapping
