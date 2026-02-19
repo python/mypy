@@ -44,6 +44,7 @@ from mypy.cache import (
     read_bool,
     read_int,
     read_str,
+    read_str_opt,
     read_tag,
 )
 from mypy.nodes import (
@@ -142,9 +143,11 @@ from mypy.types import (
     CallableType,
     EllipsisType,
     Instance,
+    ProperType,
     RawExpressionType,
     TupleType,
     Type,
+    TypedDictType,
     TypeList,
     TypeOfAny,
     UnboundType,
@@ -985,6 +988,26 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         read_loc(data, tuple_type)
         expect_end_tag(data)
         return tuple_type
+    elif tag == types.TYPED_DICT_TYPE:
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        keys = [read_str_opt(data) for i in range(n)]
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        values = [read_type(state, data) for i in range(n)]
+        td_items = {}
+        extra_items_from = []
+        for key, val in zip(keys, values):
+            if key is None:
+                assert isinstance(val, ProperType)
+                extra_items_from.append(val)
+            else:
+                td_items[key] = val
+        typeddict_type = TypedDictType(td_items, set(), set(), _dummy_fallback)
+        typeddict_type.extra_items_from = extra_items_from
+        read_loc(data, typeddict_type)
+        expect_end_tag(data)
+        return typeddict_type
     elif tag == types.ELLIPSIS_TYPE:
         # EllipsisType has no attributes
         ellipsis_type = EllipsisType()
