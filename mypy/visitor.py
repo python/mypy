@@ -543,6 +543,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_dict_expr(self, o: mypy.nodes.DictExpr, /) -> T:
         raise NotImplementedError()
 
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr, /) -> T:
+        raise NotImplementedError()
+
     def visit_tuple_expr(self, o: mypy.nodes.TupleExpr, /) -> T:
         raise NotImplementedError()
 
