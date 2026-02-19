@@ -112,6 +112,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr, /) -> T:
+        pass
+
+    @abstractmethod
     def visit_tuple_expr(self, o: mypy.nodes.TupleExpr, /) -> T:
         pass
 

@@ -2765,6 +2765,29 @@ class DictExpr(Expression):
         return visitor.visit_dict_expr(self)
 
 
+class TemplateStrExpr(Expression):
+    """Template string expression t'...'."""
+
+    __slots__ = ("items",)
+    __match_args__ = ("items",)
+
+    # Each item is either:
+    #   - a StrExpr (literal string segment), or
+    #   - a tuple (value_expr, source_text, conversion, format_spec_expr)
+    #     where conversion is str | None ("r", "s", "a", or None)
+    #     and format_spec_expr is Expression | None
+    items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+
+    def __init__(
+        self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    ) -> None:
+        super().__init__()
+        self.items = items
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_template_str_expr(self)
+
+
 class TupleExpr(Expression):
     """Tuple literal expression (..., ...)
 

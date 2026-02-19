@@ -78,6 +78,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -1685,19 +1686,21 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # TemplateStr(expr* values)
-    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
-        self.fail(
-            ErrorMessage("PEP 750 template strings are not yet supported"),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        e = TempNode(AnyType(TypeOfAny.from_error))
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
+        items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
+        for value in n.values:
+            if isinstance(value, ast_Interpolation):
+                val_expr = self.visit(value.value)
+                val_expr.set_line(value.lineno, value.col_offset)
+                conversion = None if value.conversion < 0 else chr(value.conversion)
+                format_spec = (
+                    self.visit(value.format_spec) if value.format_spec is not None else None
+                )
+                items.append((val_expr, value.str, conversion, format_spec))
+            else:
+                items.append(self.visit(value))
+        e = TemplateStrExpr(items)
         return self.set_line(e, n)
-
-    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
-    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
-        assert False, "Unreachable"
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:

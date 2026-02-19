@@ -497,6 +497,15 @@ class StrConv(NodeVisitor[str]):
     def visit_dict_expr(self, o: mypy.nodes.DictExpr) -> str:
         return self.dump([[k, v] for k, v in o.items], o)
 
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr) -> str:
+        items_repr: list[object] = []
+        for item in o.items:
+            if isinstance(item, tuple):
+                items_repr.append(item[0])  # value expression
+            else:
+                items_repr.append(item)
+        return self.dump(items_repr, o)
+
     def visit_set_expr(self, o: mypy.nodes.SetExpr) -> str:
         return self.dump(o.items, o)
 

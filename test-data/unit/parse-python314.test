@@ -1,5 +1,68 @@
-[case testTemplateString]
+[case testTemplateStringSimple]
 x = 'mypy'
 t'Hello {x}'
 [out]
-main:2: error: PEP 750 template strings are not yet supported
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    TemplateStrExpr:2(
+      StrExpr(Hello )
+      NameExpr(x))))
+
+[case testTemplateStringWithConversion]
+x = 'mypy'
+T'Hello {x!r}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    TemplateStrExpr:2(
+      StrExpr(Hello )
+      NameExpr(x))))
+
+[case testTemplateStringWithOnlyFormatSpecifier]
+x = 'mypy'
+t'Hello {x:<30}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    TemplateStrExpr:2(
+      StrExpr(Hello )
+      NameExpr(x))))
+
+[case testTemplateStringWithFormatSpecifierAndConversion]
+x = 'mypy'
+t'Hello {x!s:<30}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    TemplateStrExpr:2(
+      StrExpr(Hello )
+      NameExpr(x))))
+
+[case testTemplateStringWithFormatSpecifierExpression]
+x = 'mypy'
+y = 30
+t'Hello {x!s:<{y+y}}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(30))
+  ExpressionStmt:3(
+    TemplateStrExpr:3(
+      StrExpr(Hello )
+      NameExpr(x))))
