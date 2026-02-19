@@ -1689,7 +1689,7 @@ class ASTConverter:
     def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
         items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
         for value in n.values:
-            if isinstance(value, ast_Interpolation):
+            if isinstance(value, ast_Interpolation):  # type: ignore[misc]
                 val_expr = self.visit(value.value)
                 val_expr.set_line(value.lineno, value.col_offset)
                 conversion = None if value.conversion < 0 else chr(value.conversion)
