@@ -884,7 +884,7 @@ class Job(Generic[_P, _R_co]):
     def __init__(self, target: Callable[_P, _R_co]) -> None:
         self.target = target
 
-def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None: # N: "run_job" defined here
+def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
     ...
 
 
@@ -2211,7 +2211,7 @@ from typing import Callable
 
 _P = ParamSpec("_P")
 
-def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
     predicate()  # E: Too few arguments
     predicate(*args)  # E: Too few arguments
     predicate(**kwargs)  # E: Too few arguments
@@ -2235,7 +2235,7 @@ from typing import Callable
 
 _P = ParamSpec("_P")
 
-def run(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+def run(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
     predicate()  # E: Too few arguments
     predicate(1)  # E: Too few arguments
     predicate(1, *args)  # E: Too few arguments
