@@ -91,8 +91,6 @@ files = [
 
 if sys.version_info >= (3, 12):
     files.append("run-python312.test")
-if sys.version_info >= (3, 14):
-    files.append("run-python314.test")
 
 setup_format = """\
 from setuptools import setup
