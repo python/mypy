@@ -2120,11 +2120,42 @@ def fix_instance(
         env[tv.id] = arg
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
+    t.args = tuple(args)
+    fix_type_var_tuple_argument(t)
     if not t.type.has_type_var_tuple_type:
-        with state.strict_optional_set(options.strict_optional):
-            fixed = expand_type(t, env)
-        assert isinstance(fixed, Instance)
-        t.args = fixed.args
+        # Special-case only when the user is applying this generic using just the
+        # non-default type parameters (e.g. Foo[Y, X] inside class Foo[X, Y, Z=object]).
+        # In that case we want to preserve the user-written order of type arguments
+        # instead of letting expand_type() potentially canonicalize/reorder them.
+        from mypy.types import TypeVarType
+
+        own_tvars = [tv for tv in t.type.defn.type_vars if isinstance(tv, TypeVarType)]
+
+        # Index of the first TypeVar that has a default; all earlier ones are
+        # "non-default" parameters like X, Y in Foo[X, Y, Z=object].
+        first_default = len(own_tvars)
+        for i, tv in enumerate(own_tvars):
+            if tv.default is not None:
+                first_default = i
+                break
+
+        def is_own_tvar(arg: Type) -> bool:
+            return isinstance(arg, TypeVarType) and any(arg.id == tv.id for tv in own_tvars)
+
+        # Only skip expand_type() when:
+        #   * all provided args are this class's own TypeVars
+        #   * and we are only filling the non-default prefix (e.g. Foo[Y, X])
+        #
+        # This avoids interfering with more advanced cases where defaults are
+        # recursive, refer to other TypeVars, come from other files, etc.
+        if args and len(args) <= first_default and all(is_own_tvar(arg) for arg in args):
+            # Keep t.args as-is. Defaults will be handled elsewhere as usual.
+            pass
+        else:
+            with state.strict_optional_set(options.strict_optional):
+                fixed = expand_type(t, env)
+            assert isinstance(fixed, Instance)
+            t.args = fixed.args
 
 
 def instantiate_type_alias(
