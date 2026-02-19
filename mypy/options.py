@@ -76,6 +76,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "strict_bytes",
         "fixed_format_cache",
         "untyped_calls_exclude",
+        "enable_incomplete_feature",  # Added to ensure cache is invalidated when this flag changes
     }
 ) - {"debug_cache"}
 
