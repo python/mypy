@@ -1259,23 +1259,13 @@ def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
 
 [case testIsSpace]
-def test_isspace_basic() -> None:
-    assert " ".isspace()
-    assert "\t".isspace()
-    assert "\n".isspace()
-    assert "\r".isspace()
-    assert "\f".isspace()
-    assert "\v".isspace()
-    assert "  \t\n".isspace()
-    assert not "".isspace()
-    assert not "a".isspace()
-    assert not " a".isspace()
-    assert not "a ".isspace()
-    assert not "hello".isspace()
+from typing import Any
 
-def test_isspace_unicode() -> None:
-    assert "\u00A0".isspace()
-    assert "\u2000".isspace()
-    assert "\u200A".isspace()
-    assert "\u3000".isspace()
-    assert not "\u0041".isspace()
+def test_isspace() -> None:
+    # Verify correctness across all Unicode codepoints.
+    # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
+    # Any forces generic dispatch so we compare our primitive against stdlib's
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isspace() == a.isspace()

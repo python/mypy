@@ -636,10 +636,20 @@ bool CPyStr_IsSpace(PyObject *str) {
     Py_ssize_t len = PyUnicode_GET_LENGTH(str);
     if (len == 0) return false;
 
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            if (!_Py_ascii_whitespace[data[i]])
+                return false;
+        }
+        return true;
+    }
+
     int kind = PyUnicode_KIND(str);
     const void *data = PyUnicode_DATA(str);
     for (Py_ssize_t i = 0; i < len; i++) {
-        if (!Py_UNICODE_ISSPACE(PyUnicode_READ(kind, data, i)))
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (!Py_UNICODE_ISSPACE(ch))
             return false;
     }
     return true;
