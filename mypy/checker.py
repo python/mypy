@@ -4619,7 +4619,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Store best known type for variable if type inference failed.
 
         If a program ignores error on type inference error, the variable should get some
-        inferred type so that it can used later on in the program. Example:
+        inferred type so that it can be used later on in the program. Example:
 
           x = []  # type: ignore
           x.append(1)   # Should be ok!
@@ -4654,6 +4654,82 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     return not any(item.variables for item in typ.items)
         return False
 
+    def infer_rvalue_with_fallback_context(
+        self,
+        lvalue_type: Type | None,
+        rvalue: Expression,
+        preferred_context: Type | None,
+        fallback_context: Type | None,
+        inferred: Var | None,
+        always_allow_any: bool,
+    ) -> Type:
+        """Infer rvalue type in two type context and select the best one.
+
+        See comments below for supported fallback scenarios.
+        """
+        assert fallback_context is not preferred_context
+        # TODO: make assignment checking correct in presence of walrus in r.h.s.
+        # We may accept r.h.s. twice. In presence of walrus this can lead to weird
+        # false negatives and "back action". A proper solution would be to use
+        # binder.accumulate_type_assignments() and assign the types inferred for type
+        # context that is ultimately used. This is however tricky with redefinitions.
+        # For now we simply disable second accept in cases known to cause problems,
+        # see e.g. testAssignToOptionalTupleWalrus.
+        binder_version = self.binder.version
+
+        fallback_context_used = False
+        with (
+            self.msg.filter_errors(save_filtered_errors=True) as local_errors,
+            self.local_type_map as type_map,
+        ):
+            rvalue_type = self.expr_checker.accept(
+                rvalue, type_context=preferred_context, always_allow_any=always_allow_any
+            )
+
+        # There are two cases where we want to try re-inferring r.h.s. in a fallback
+        # type context. First case is when redefinitions are allowed, and we got
+        # invalid type when using the preferred (empty) type context.
+        redefinition_fallback = inferred is not None and not is_valid_inferred_type(
+            rvalue_type, self.options
+        )
+        # Try re-inferring r.h.s. in empty context for union with explicit annotation,
+        # and use it results in a narrower type. This helps with various practical
+        # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
+        union_fallback = (
+            inferred is None
+            and isinstance(get_proper_type(lvalue_type), UnionType)
+            and binder_version == self.binder.version
+        )
+
+        # Skip literal types, as they have special logic (for better errors).
+        if (redefinition_fallback or union_fallback) and not is_literal_type_like(rvalue_type):
+            with (
+                self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
+                self.local_type_map as alt_type_map,
+            ):
+                alt_rvalue_type = self.expr_checker.accept(
+                    rvalue, fallback_context, always_allow_any=always_allow_any
+                )
+            if (
+                not alt_local_errors.has_new_errors()
+                and is_valid_inferred_type(alt_rvalue_type, self.options)
+                and (
+                    # For redefinition fallback we are fine getting not a subtype.
+                    redefinition_fallback
+                    # Skip Any type, since it is special cased in binder.
+                    or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
+                    and is_proper_subtype(alt_rvalue_type, rvalue_type)
+                )
+            ):
+                fallback_context_used = True
+                rvalue_type = alt_rvalue_type
+                self.store_types(alt_type_map)
+
+        if not fallback_context_used:
+            self.msg.add_errors(local_errors.filtered_errors())
+            self.store_types(type_map)
+        return rvalue_type
+
     def check_simple_assignment(
         self,
         lvalue_type: Type | None,
@@ -4679,81 +4755,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # and a variable without annotation) then we start with an empty context,
             # since this gives somewhat more intuitive behavior. The only exception
             # is TypedDicts, they are often useless without context.
-            if is_typeddict_type_context(lvalue_type):
-                preferred_context = lvalue_type
-                fallback_context = lvalue_type
-            elif inferred is not None:
-                preferred_context = None
-                fallback_context = lvalue_type
-            else:
-                preferred_context = lvalue_type
-                fallback_context = None
+            try_fallback = (
+                inferred is not None or isinstance(get_proper_type(lvalue_type), UnionType)
+            ) and not self.simple_rvalue(rvalue)
 
-            # TODO: make assignment checking correct in presence of walrus in r.h.s.
-            # We may accept r.h.s. twice. In presence of walrus this can lead to weird
-            # false negatives and "back action". A proper solution would be to use
-            # binder.accumulate_type_assignments() and assign the types inferred for type
-            # context that is ultimately used. This is however tricky with redefinitions.
-            # For now we simply disable second accept in cases known to cause problems,
-            # see e.g. testAssignToOptionalTupleWalrus.
-            binder_version = self.binder.version
-
-            fallback_context_used = False
-            with (
-                self.msg.filter_errors(save_filtered_errors=True) as local_errors,
-                self.local_type_map as type_map,
-            ):
+            if not try_fallback or lvalue_type is None or is_typeddict_type_context(lvalue_type):
                 rvalue_type = self.expr_checker.accept(
-                    rvalue, type_context=preferred_context, always_allow_any=always_allow_any
+                    rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
+            else:
+                if inferred is not None:
+                    preferred = None
+                    fallback = lvalue_type
+                else:
+                    preferred = lvalue_type
+                    fallback = None
 
-            # There are two cases where we want to try re-inferring r.h.s. in a fallback
-            # type context. First case is when redefinitions are allowed, and we got
-            # invalid type when using the preferred (empty) type context.
-            redefinition_fallback = inferred is not None and not is_valid_inferred_type(
-                rvalue_type, self.options
-            )
-            # Try re-inferring r.h.s. in empty context for union with explicit annotation,
-            # and use it results in a narrower type. This helps with various practical
-            # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
-            union_fallback = (
-                inferred is None
-                and isinstance(get_proper_type(lvalue_type), UnionType)
-                and binder_version == self.binder.version
-            )
-
-            if (
-                fallback_context is not preferred_context
-                and (redefinition_fallback or union_fallback)
-                # Skip literal types, as they have special logic (for better errors).
-                and not is_literal_type_like(rvalue_type)
-                and not self.simple_rvalue(rvalue)
-            ):
-                with (
-                    self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
-                    self.local_type_map as alt_type_map,
-                ):
-                    alt_rvalue_type = self.expr_checker.accept(
-                        rvalue, fallback_context, always_allow_any=always_allow_any
-                    )
-                if (
-                    not alt_local_errors.has_new_errors()
-                    and is_valid_inferred_type(alt_rvalue_type, self.options)
-                    and (
-                        # For redefinition fallback we are fine getting not a subtype.
-                        redefinition_fallback
-                        # Skip Any type, since it is special cased in binder.
-                        or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
-                        and is_proper_subtype(alt_rvalue_type, rvalue_type)
-                    )
-                ):
-                    fallback_context_used = True
-                    rvalue_type = alt_rvalue_type
-                    self.store_types(alt_type_map)
-
-            if not fallback_context_used:
-                self.msg.add_errors(local_errors.filtered_errors())
-                self.store_types(type_map)
+                rvalue_type = self.infer_rvalue_with_fallback_context(
+                    lvalue_type, rvalue, preferred, fallback, inferred, always_allow_any
+                )
 
             if (
                 inferred is not None
@@ -9517,9 +9537,7 @@ def ambiguous_enum_equality_keys(t: Type) -> set[str]:
     return result
 
 
-def is_typeddict_type_context(lvalue_type: Type | None) -> bool:
-    if lvalue_type is None:
-        return False
+def is_typeddict_type_context(lvalue_type: Type) -> bool:
     lvalue_type = get_proper_type(lvalue_type)
     if isinstance(lvalue_type, TypedDictType):
         return True
