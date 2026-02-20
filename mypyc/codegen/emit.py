@@ -1373,7 +1373,9 @@ class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
             components: list[str] = []
             level += 1
             for item in sorted(obj, key=_mypyc_safe_key):
-                item_repr, item_readable, item_recursive = self.format(item, context, maxlevels, level)
+                item_repr, item_readable, item_recursive = self.format(
+                    item, context, maxlevels, level
+                )
                 components.append(item_repr)
                 readable = readable and item_readable
                 recursive = recursive or item_recursive
