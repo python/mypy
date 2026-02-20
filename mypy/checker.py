@@ -4421,7 +4421,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if (
                 self.options.allow_redefinition_new
                 and isinstance(lvalue.node, Var)
-                and lvalue.node.is_inferred
+                and (lvalue.node.is_inferred or lvalue.node.is_argument)
             ):
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
