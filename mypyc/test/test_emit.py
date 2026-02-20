@@ -33,11 +33,7 @@ class TestPformatDeterministic(unittest.TestCase):
         env = dict(os.environ)
         env["PYTHONHASHSEED"] = str(seed)
         proc = subprocess.run(
-            [sys.executable, "-c", script],
-            capture_output=True,
-            check=True,
-            text=True,
-            env=env,
+            [sys.executable, "-c", script], capture_output=True, check=True, text=True, env=env
         )
         return proc.stdout.strip()
 
@@ -71,22 +67,19 @@ class TestPformatDeterministic(unittest.TestCase):
         assert pprint._safe_key is original_safe_key
 
     def test_frozenset_output_is_stable_across_hash_seeds(self) -> None:
-        script = textwrap.dedent(
-            """
+        script = textwrap.dedent("""
             from mypyc.codegen.emit import pformat_deterministic
 
             fs_small = frozenset({("a", 1)})
             fs_large = frozenset({("a", 1), ("b", 2)})
             literal = frozenset({fs_small, fs_large})
             print(pformat_deterministic(literal, 80))
-            """
-        )
+            """)
         outputs = {self.run_with_hash_seed(script, seed) for seed in self.HASH_SEEDS}
         assert len(outputs) == 1
 
     def test_nested_output_is_stable_across_hash_seeds(self) -> None:
-        script = textwrap.dedent(
-            """
+        script = textwrap.dedent("""
             from mypyc.codegen.emit import pformat_deterministic
 
             nested_frozen = frozenset({("m", 0), ("n", 1)})
@@ -94,8 +87,7 @@ class TestPformatDeterministic(unittest.TestCase):
             item_b = ("outer", 2, frozenset({("x", 3)}))
             literal = frozenset({item_a, item_b})
             print(pformat_deterministic(literal, 120))
-            """
-        )
+            """)
         outputs = {self.run_with_hash_seed(script, seed) for seed in self.HASH_SEEDS}
         assert len(outputs) == 1
 
