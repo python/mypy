@@ -937,7 +937,6 @@ class MessageBuilder:
         else:
             msg = "Too few arguments" + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
-        self.note_defined_here(callee, context)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = f'Missing named argument "{name}"' + for_function(callee)
@@ -950,7 +949,6 @@ class MessageBuilder:
         else:
             msg = "Too many arguments" + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
-        self.note_defined_here(callee, context)
         self.maybe_note_about_special_args(callee, context)
 
     def too_many_arguments_from_typed_dict(
@@ -972,7 +970,6 @@ class MessageBuilder:
         else:
             msg = "Too many positional arguments" + for_function(callee)
         self.fail(msg, context)
-        self.note_defined_here(callee, context)
         self.maybe_note_about_special_args(callee, context)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
