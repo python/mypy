@@ -377,7 +377,9 @@ class TypeAliasType(Type):
 
         # TODO: this logic duplicates the one in expand_type_by_instance().
         if self.alias.tvar_tuple_index is None:
-            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
+            mapping: dict[TypeVarId, Type] = {
+                v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)
+            }
         else:
             prefix = self.alias.tvar_tuple_index
             suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1

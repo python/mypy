@@ -4675,6 +4675,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 get_proper_type(lvalue_type), AnyType
             )
 
+            # If redefinitions are allowed (i.e. we have --allow-redefinition-new
+            # and a variable without annotation) then we start with an empty context,
+            # since this gives somewhat more intuitive behavior. The only exception
+            # is TypedDicts, they are often useless without context.
+            if is_typeddict_type_context(lvalue_type):
+                preferred_context = lvalue_type
+                fallback_context = lvalue_type
+            elif inferred is not None:
+                preferred_context = None
+                fallback_context = lvalue_type
+            else:
+                preferred_context = lvalue_type
+                fallback_context = None
+
             # TODO: make assignment checking correct in presence of walrus in r.h.s.
             # We may accept r.h.s. twice. In presence of walrus this can lead to weird
             # false negatives and "back action". A proper solution would be to use
@@ -4684,62 +4698,60 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # see e.g. testAssignToOptionalTupleWalrus.
             binder_version = self.binder.version
 
-            empty_context_used = False
+            fallback_context_used = False
             with (
                 self.msg.filter_errors(save_filtered_errors=True) as local_errors,
                 self.local_type_map as type_map,
             ):
                 rvalue_type = self.expr_checker.accept(
-                    rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
+                    rvalue, type_context=preferred_context, always_allow_any=always_allow_any
                 )
 
-            # There are two cases where we want to try re-inferring r.h.s. in an empty
+            # There are two cases where we want to try re-inferring r.h.s. in a fallback
             # type context. First case is when redefinitions are allowed, and we got
-            # errors when using the original type context.
-            redefinition_fallback = local_errors.has_new_errors() and inferred is not None
-            # Try re-inferring r.h.s. in empty context also for unions, and use that if
-            # it results in a narrower type. This helps with various practical examples,
-            # see e.g. testOptionalTypeNarrowedByGenericCall.
-            union_fallback = binder_version == self.binder.version and isinstance(
-                get_proper_type(lvalue_type), UnionType
+            # invalid type when using the preferred (empty) type context.
+            redefinition_fallback = inferred is not None and not is_valid_inferred_type(
+                rvalue_type, self.options
+            )
+            # Try re-inferring r.h.s. in empty context for union with explicit annotation,
+            # and use it results in a narrower type. This helps with various practical
+            # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
+            union_fallback = (
+                inferred is None
+                and isinstance(get_proper_type(lvalue_type), UnionType)
+                and binder_version == self.binder.version
             )
 
             if (
-                lvalue_type is not None
+                fallback_context is not preferred_context
                 and (redefinition_fallback or union_fallback)
                 # Skip literal types, as they have special logic (for better errors).
                 and not is_literal_type_like(rvalue_type)
                 and not self.simple_rvalue(rvalue)
-                # Skip TypedDicts as well, they aren't very useful without context.
-                and not is_typeddict_type_context(lvalue_type)
             ):
                 with (
                     self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
                     self.local_type_map as alt_type_map,
                 ):
                     alt_rvalue_type = self.expr_checker.accept(
-                        rvalue, None, always_allow_any=always_allow_any
+                        rvalue, fallback_context, always_allow_any=always_allow_any
                     )
-                if redefinition_fallback:
-                    # In case of redefinition we always accept the result in empty context
-                    # (even if it results in errors as well). This gives better errors that
-                    # will not confuse the user into thinking redefinition was not allowed.
-                    empty_context_used = True
-                    self.msg.add_errors(alt_local_errors.filtered_errors())
-                    rvalue_type = alt_rvalue_type
-                    self.store_types(alt_type_map)
-                elif (
+                if (
                     not alt_local_errors.has_new_errors()
-                    # Skip Any type, since it is special cased in binder.
-                    and not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_valid_inferred_type(alt_rvalue_type, self.options)
-                    and is_proper_subtype(alt_rvalue_type, rvalue_type)
+                    and (
+                        # For redefinition fallback we are fine getting not a subtype.
+                        redefinition_fallback
+                        # Skip Any type, since it is special cased in binder.
+                        or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
+                        and is_proper_subtype(alt_rvalue_type, rvalue_type)
+                    )
                 ):
-                    empty_context_used = True
+                    fallback_context_used = True
                     rvalue_type = alt_rvalue_type
                     self.store_types(alt_type_map)
 
-            if not empty_context_used:
+            if not fallback_context_used:
                 self.msg.add_errors(local_errors.filtered_errors())
                 self.store_types(type_map)
 
@@ -6091,7 +6103,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if isinstance(typ, UnionType):
             callables = []
-            uncallables = []
+            uncallables: list[Type] = []
             for subtype in typ.items:
                 # Use unsound_partition when handling unions in order to
                 # allow the expected type discrimination.

@@ -796,10 +796,10 @@ class MessageBuilder:
                     )
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
-                    expected_types = list(expected_type.items)
+                    expected_types = get_proper_types(expected_type.items)
                 else:
                     expected_types = [expected_type]
-                for type in get_proper_types(expected_types):
+                for type in expected_types:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)

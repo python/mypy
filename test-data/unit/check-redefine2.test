@@ -1226,3 +1226,14 @@ from typing import Union
 x: Union[list[str], list[int]]
 x = []
 reveal_type(x)  # N: Revealed type is "builtins.list[Never]"
+
+[case testNewRedefineRedefineToSubtypeItem]
+# flags: --allow-redefinition-new --local-partial-types
+class Super: ...
+class Sub(Super): ...
+
+if bool():
+    x = [Super(), Super()]
+else:
+    x = [Sub(), Sub()]
+    reveal_type(x[0])  # N: Revealed type is "__main__.Sub"

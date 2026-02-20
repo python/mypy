@@ -293,7 +293,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         unpack_index = None
         if isinstance(current_type, TupleType):
-            inner_types = current_type.items
+            inner_types: list[Type] = current_type.items
             unpack_index = find_unpack_in_list(inner_types)
             if unpack_index is None:
                 size_diff = len(inner_types) - required_patterns
@@ -315,7 +315,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if len(inner_types) - 1 > required_patterns and star_position is None:
                     return self.early_non_match()
         elif isinstance(current_type, AnyType):
-            inner_type: Type = AnyType(TypeOfAny.from_another_any, current_type)
+            inner_type = AnyType(TypeOfAny.from_another_any, current_type)
             inner_types = [inner_type] * len(o.patterns)
         elif isinstance(current_type, Instance) and self.chk.type_is_iterable(current_type):
             inner_type = self.chk.iterable_item_type(current_type, o)
