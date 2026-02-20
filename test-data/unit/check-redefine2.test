@@ -1088,10 +1088,10 @@ def f() -> None:
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
 def func() -> None:
-    l = None
+    l = None # E: Need type annotation for "l"
 
     if int():
-        l = [] # E: Need type annotation for "l"
+        l = []
         l.append(1)
     reveal_type(l) # N: Revealed type is "None | builtins.list[Any]"
 [builtins fixtures/list.pyi]
@@ -1197,3 +1197,32 @@ x = 0
 if int():
     x = ""
 reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineSequentialRedefinitionToEmpty]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a",  "b", "c"]
+if bool():
+    items = ["a",  "b", "c"]
+elif bool():
+    items = [item.split() for item in items]
+else:
+    items = []  # OK
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineSequentialRedefinitionToEmpty2]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a", "b", "c"]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+items = [item.split() for item in items]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+items = []
+# This is consistent with old behavior (see below), but we may want to change this.
+reveal_type(items)  # N: Revealed type is "builtins.list[Never]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowFromUnionToEmpyListOld]
+from typing import Union
+x: Union[list[str], list[int]]
+x = []
+reveal_type(x)  # N: Revealed type is "builtins.list[Never]"
