@@ -1015,7 +1015,6 @@ class MessageBuilder:
         self.note_defined_here(callee, context)
 
     def note_defined_here(self, callee: CallableType, context: Context) -> None:
-        """Add a note pointing to the definition of the callee."""
         module = find_defining_module(self.modules, callee)
         if (
             module
