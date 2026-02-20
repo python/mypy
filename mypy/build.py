@@ -3194,20 +3194,21 @@ def module_not_found(
 
         if reason == ModuleNotFoundReason.NOT_FOUND and not errors.prefer_simple_messages():
             top_level_target = target.split(".")[0]
-            known_modules = get_known_modules(
-                manager.find_module_cache.stdlib_py_versions,
-                manager.options.python_version,
-            )
-            matches = best_matches(top_level_target, known_modules, n=3)
-            matches = [m for m in matches if m.lower() != top_level_target.lower()]
-            if matches:
-                errors.report(
-                    line,
-                    0,
-                    f'Did you mean {pretty_seq(matches, "or")}?',
-                    severity="note",
-                    code=code,
+            if not top_level_target.startswith("_"):
+                known_modules = get_known_modules(
+                    manager.find_module_cache.stdlib_py_versions,
+                    manager.options.python_version,
                 )
+                matches = best_matches(top_level_target, known_modules, n=3)
+                matches = [m for m in matches if m.lower() != top_level_target.lower()]
+                if matches:
+                    errors.report(
+                        line,
+                        0,
+                        f'Did you mean {pretty_seq(matches, "or")}?',
+                        severity="note",
+                        code=code,
+                    )
 
         dist = stub_distribution_name(target)
         for note in notes:
