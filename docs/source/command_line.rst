@@ -1162,7 +1162,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
+.. option:: --enable-incomplete-feature {InlineTypedDict,PreciseTupleTypes,TypeForm}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1173,6 +1173,14 @@ Enabling incomplete/experimental features
     features.
 
 List of currently incomplete/experimental features:
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"width": int, "description": str}:
+         return {"width": 42, "description": "test"}
 
 * ``PreciseTupleTypes``: this feature will infer more precise tuple types in
   various scenarios. Before variadic types were added to the Python type system
@@ -1208,14 +1216,6 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
-
-* ``InlineTypedDict``: this feature enables non-standard syntax for inline
-  :ref:`TypedDicts <typeddict>`, for example:
-
-  .. code-block:: python
-
-     def test_values() -> {"width": int, "description": str}:
-         return {"width": 42, "description": "test"}
 
 * ``TypeForm``: this feature enables ``TypeForm``, as described in
   `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
