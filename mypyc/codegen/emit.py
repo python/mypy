@@ -1290,48 +1290,135 @@ def native_function_doc_initializer(func: FuncIR) -> str:
 
 def pformat_deterministic(obj: object, width: int) -> str:
     """Pretty-print `obj` with deterministic sorting for mypyc literal types."""
-    # Temporarily override pprint._safe_key to get deterministic ordering of containers.
-    default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
-    pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
-
-    try:
-        printer = _DeterministicPrettyPrinter(width=width, compact=True, sort_dicts=True)
-        return printer.pformat(obj)
-    finally:
-        # Always restore the original key to avoid affecting other pprint users.
-        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
+    printer = _DeterministicPrettyPrinter(width=width, compact=True, sort_dicts=True)
+    return printer.pformat(obj)
 
 
-def _mypyc_safe_key(obj: object) -> str:
-    """A custom sort key implementation for pprint that makes the output deterministic
-    for all literal types supported by mypyc.
+def _mypyc_safe_key(obj: object) -> tuple[str, tuple[object, ...] | str]:
+    """Build a deterministic recursive key for sorting mypyc literal values."""
+    typ = type(obj)
+    if typ is tuple:
+        return ("tuple", tuple(_mypyc_safe_key(item) for item in obj))
+    if typ is list:
+        return ("list", tuple(_mypyc_safe_key(item) for item in obj))
+    if typ is dict:
+        items = tuple(
+            sorted((_mypyc_safe_key(key), _mypyc_safe_key(value)) for key, value in obj.items())
+        )
+        return ("dict", items)
+    if typ is set:
+        return ("set", tuple(sorted(_mypyc_safe_key(item) for item in obj)))
+    if typ is frozenset:
+        return ("frozenset", tuple(sorted(_mypyc_safe_key(item) for item in obj)))
+    return (f"{typ.__module__}.{typ.__qualname__}", repr(obj))
 
-    This is NOT safe for use as a sort key for other types, so we MUST replace the
-    original pprint._safe_key once we've pprinted our object.
 
-    Since this is a bit hacky, see for context https://github.com/python/mypy/pull/20012
-    """
-    return str(type(obj)) + pprint.pformat(obj, compact=True, sort_dicts=True)
+def _recursion_repr(obj: object) -> str:
+    return f"<Recursion on {type(obj).__name__} with id={id(obj)}>"
 
 
 class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
-    """PrettyPrinter that sorts set/frozenset elements deterministically."""
+    """PrettyPrinter that uses deterministic sorting for literal containers."""
 
     _dispatch = pprint.PrettyPrinter._dispatch.copy()
 
-    def _pprint_set(
+    def _safe_repr(
+        self, obj: object, context: dict[int, int], maxlevels: int | None, level: int
+    ) -> tuple[str, bool, bool]:
+        typ = type(obj)
+        repr_fn = getattr(typ, "__repr__", None)
+
+        if isinstance(obj, dict) and repr_fn is dict.__repr__:
+            if not obj:
+                return "{}", True, False
+            obj_id = id(obj)
+            if maxlevels and level >= maxlevels:
+                return "{...}", False, obj_id in context
+            if obj_id in context:
+                return _recursion_repr(obj), False, True
+            context[obj_id] = 1
+            readable = True
+            recursive = False
+            components: list[str] = []
+            level += 1
+            items = (
+                sorted(obj.items(), key=lambda item: _mypyc_safe_key(item[0]))
+                if self._sort_dicts
+                else obj.items()
+            )
+            for key, value in items:
+                key_repr, key_readable, key_recursive = self.format(key, context, maxlevels, level)
+                value_repr, value_readable, value_recursive = self.format(
+                    value, context, maxlevels, level
+                )
+                components.append(f"{key_repr}: {value_repr}")
+                readable = readable and key_readable and value_readable
+                recursive = recursive or key_recursive or value_recursive
+            del context[obj_id]
+            return "{%s}" % ", ".join(components), readable, recursive
+
+        if isinstance(obj, (set, frozenset)) and repr_fn is typ.__repr__:
+            if not obj:
+                return repr(obj), True, False
+            obj_id = id(obj)
+            if maxlevels and level >= maxlevels:
+                if typ is set:
+                    return "{...}", False, obj_id in context
+                return "frozenset({...})", False, obj_id in context
+            if obj_id in context:
+                return _recursion_repr(obj), False, True
+            context[obj_id] = 1
+            readable = True
+            recursive = False
+            components: list[str] = []
+            level += 1
+            for item in sorted(obj, key=_mypyc_safe_key):
+                item_repr, item_readable, item_recursive = self.format(item, context, maxlevels, level)
+                components.append(item_repr)
+                readable = readable and item_readable
+                recursive = recursive or item_recursive
+            del context[obj_id]
+            if typ is set:
+                return "{%s}" % ", ".join(components), readable, recursive
+            return "frozenset({%s})" % ", ".join(components), readable, recursive
+
+        return super()._safe_repr(obj, context, maxlevels, level)
+
+    def _pprint_dict(
         self,
-        object: set[object] | frozenset[object],
+        obj: dict[object, object],
         stream: SupportsWrite[str],
         indent: int,
         allowance: int,
         context: dict[int, int],
         level: int,
     ) -> None:
-        if not object:
-            stream.write(repr(object))
+        write = stream.write
+        write("{")
+        if self._indent_per_level > 1:
+            write((self._indent_per_level - 1) * " ")
+        if obj:
+            items = (
+                sorted(obj.items(), key=lambda item: _mypyc_safe_key(item[0]))
+                if self._sort_dicts
+                else obj.items()
+            )
+            self._format_dict_items(items, stream, indent, allowance + 1, context, level)
+        write("}")
+
+    def _pprint_set(
+        self,
+        obj: set[object] | frozenset[object],
+        stream: SupportsWrite[str],
+        indent: int,
+        allowance: int,
+        context: dict[int, int],
+        level: int,
+    ) -> None:
+        if not obj:
+            stream.write(repr(obj))
             return
-        typ = type(object)
+        typ = type(obj)
         if typ is set:
             stream.write("{")
             endchar = "}"
@@ -1339,9 +1426,10 @@ class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
             stream.write("frozenset({")
             endchar = "})"
             indent += len("frozenset(")
-        items = sorted(object, key=_mypyc_safe_key)
+        items = sorted(obj, key=_mypyc_safe_key)
         self._format_items(items, stream, indent, allowance + len(endchar), context, level)
         stream.write(endchar)
 
+    _dispatch[dict.__repr__] = _pprint_dict
     _dispatch[set.__repr__] = _pprint_set
     _dispatch[frozenset.__repr__] = _pprint_set
