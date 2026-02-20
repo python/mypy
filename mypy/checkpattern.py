@@ -315,7 +315,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if len(inner_types) - 1 > required_patterns and star_position is None:
                     return self.early_non_match()
         elif isinstance(current_type, AnyType):
-            inner_type = AnyType(TypeOfAny.from_another_any, current_type)
+            inner_type: Type = AnyType(TypeOfAny.from_another_any, current_type)
             inner_types = [inner_type] * len(o.patterns)
         elif isinstance(current_type, Instance) and self.chk.type_is_iterable(current_type):
             inner_type = self.chk.iterable_item_type(current_type, o)
