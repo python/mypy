@@ -335,6 +335,8 @@ class ConditionalTypeBinder:
                 # or `isinstance` does not change the type of the value.
                 continue
 
+            # Remove exact duplicates to save pointless work later, this is
+            # a micro-optimization for --allow-redefinition-new.
             seen_types = set()
             resulting_types = []
             for rv in resulting_values:
