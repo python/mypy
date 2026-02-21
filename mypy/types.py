@@ -3988,7 +3988,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.alias is None:
             return "<alias (unfixed)>"
         if self.reveal_simple_types:
-            return t.alias.name
+            type_str = t.alias.name
+            if t.args:
+                type_str += f"[{self.list_str(t.args)}]"
+            return type_str
         if not t.is_recursive:
             return get_proper_type(t).accept(self)
         if self.dotted_aliases is None:

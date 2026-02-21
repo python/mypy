@@ -2759,4 +2759,8 @@ class User(TypedDict):
 
 def bar(x: int, **kwargs: Unpack[User]) -> None: ...
 reveal_type(bar)  # N: Revealed type is "def (x: int, **kwargs: **TypedDict(User, {'age': int, 'name': str}))"
+
+Alias = tuple[T, S]
+x: Alias[int, str]
+reveal_type(x)  # N: Revealed type is "Alias[int, str]"
 [builtins fixtures/tuple.pyi]
