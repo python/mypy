@@ -1098,6 +1098,15 @@ class IRBuilder:
         """Is the given module one compiled by mypyc?"""
         return self.mapper.is_native_module(module)
 
+    def is_same_group_module(self, module: str) -> bool:
+        """Is the given module in the same compilation group as the current module?
+
+        Modules in the same group share a compiled C extension and can reference
+        each other's C-level symbols directly. Modules in separate groups (separate
+        compilation mode) must use the Python import system instead.
+        """
+        return self.mapper.group_map.get(module) == self.mapper.group_map.get(self.module_name)
+
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         return self.mapper.is_native_ref_expr(expr)
 

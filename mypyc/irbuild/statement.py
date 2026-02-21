@@ -372,7 +372,14 @@ def split_import_group_to_python_and_native(
     flat_list = []
     for imp in group:
         for mod_id, as_name in imp.ids:
-            flat_list.append((mod_id, as_name, imp.line, builder.is_native_module(mod_id)))
+            flat_list.append(
+                (
+                    mod_id,
+                    as_name,
+                    imp.line,
+                    builder.is_native_module(mod_id) and builder.is_same_group_module(mod_id),
+                )
+            )
     result = []
     i = 0
     while i < len(flat_list):
@@ -455,7 +462,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     names = [name for name, _ in node.names]
     as_names = [as_name or name for name, as_name in node.names]
 
-    if builder.is_native_module(id):
+    if builder.is_native_module(id) and builder.is_same_group_module(id):
         import_from_native(builder, id, names, as_names, node.line)
     else:
         names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
