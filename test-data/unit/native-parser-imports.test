@@ -143,7 +143,7 @@ elif PY2:
 else:
     import reachable_else
 [out]
-7: import reachable_else
+6: import reachable_else
 
 [case testMypyOnlyImport]
 # Imports in TYPE_CHECKING blocks are mypy_only
@@ -330,3 +330,404 @@ if PY2:
 from reachable import *
 [out]
 3: from reachable import *
+
+[case testNotPY2]
+# not PY2 should be always true
+if not PY2:
+    import always_reachable
+[out]
+3: import always_reachable
+
+[case testNotPY3]
+# not PY3 should be always false
+if not PY3:
+    import unreachable
+import reachable
+[out]
+4: import reachable
+
+[case testNotPY3Else]
+# not PY3 else branch should be reachable
+if not PY3:
+    import unreachable_if
+else:
+    import reachable_else
+[out]
+5: import reachable_else
+
+[case testBoolAndAlwaysTrueWithMypyTrue]
+# PY3 and TYPE_CHECKING - both true, result is mypy_true
+from typing import TYPE_CHECKING
+if PY3 and TYPE_CHECKING:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_import [mypy_only]
+
+[case testBoolAndAlwaysTrueWithUnknown]
+# PY3 and unknown - result is unknown, both branches reachable
+if PY3 and some_var:
+    import maybe_reachable
+else:
+    import also_maybe_reachable
+[out]
+3: import maybe_reachable
+5: import also_maybe_reachable
+
+[case testBoolAndAlwaysFalseWithAnything]
+# PY2 and anything - result is always false
+if PY2 and some_var:
+    import unreachable
+import reachable
+[out]
+4: import reachable
+
+[case testBoolAndMypyFalseWithAlwaysTrue]
+# not TYPE_CHECKING and PY3 - result is mypy_false, else is mypy_only
+from typing import TYPE_CHECKING
+if not TYPE_CHECKING and PY3:
+    import runtime_only
+else:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+6: import mypy_only_import [mypy_only]
+
+[case testBoolAndMypyTrueOnly]
+# MYPY and TYPE_CHECKING - both mypy_true, result is mypy_true
+from typing import TYPE_CHECKING
+if MYPY and TYPE_CHECKING:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_import [mypy_only]
+
+[case testBoolOrAlwaysTrueWithAnything]
+# PY3 or anything - result is always true
+if PY3 or some_var:
+    import always_reachable
+else:
+    import unreachable_else
+[out]
+3: import always_reachable
+
+[case testBoolOrMypyTrueWithAlwaysFalse]
+# TYPE_CHECKING or PY2 - result is mypy_true
+from typing import TYPE_CHECKING
+if TYPE_CHECKING or PY2:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_import [mypy_only]
+
+[case testBoolOrMypyFalseOnly]
+# not MYPY or not TYPE_CHECKING - all mypy_false, result is mypy_false, else is mypy_only
+from typing import TYPE_CHECKING
+if not MYPY or not TYPE_CHECKING:
+    import runtime_only
+else:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+6: import mypy_only_import [mypy_only]
+
+[case testBoolOrAlwaysFalseWithUnknown]
+# PY2 or unknown - result is unknown, both branches reachable
+if PY2 or some_var:
+    import maybe_reachable
+else:
+    import also_maybe_reachable
+[out]
+3: import maybe_reachable
+5: import also_maybe_reachable
+
+[case testBoolOrAllFalse]
+# PY2 or not TYPE_CHECKING - all false values, result is always_false, else is unreachable
+from typing import TYPE_CHECKING
+if PY2 or not TYPE_CHECKING:
+    import runtime_only
+else:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+6: import mypy_only_import
+
+[case testBoolComplexAndOr]
+# Complex: (PY3 and TYPE_CHECKING) or PY2 - evaluates to mypy_true
+from typing import TYPE_CHECKING
+if (PY3 and TYPE_CHECKING) or PY2:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_import [mypy_only]
+
+[case testBoolMultipleOr]
+# Multiple or: PY2 or PY2 or TYPE_CHECKING - result is mypy_true
+from typing import TYPE_CHECKING
+if PY2 or PY2 or TYPE_CHECKING:
+    import mypy_only_import
+[out]
+2: from typing import TYPE_CHECKING
+4: import mypy_only_import [mypy_only]
+
+[case testBoolMultipleAnd]
+# Multiple and: PY3 and PY3 and PY3 - result is always_true
+if PY3 and PY3 and PY3:
+    import always_reachable
+else:
+    import unreachable_else
+[out]
+3: import always_reachable
+
+[case testVersionInfoIndexMajor]
+# sys.version_info[0] == 3 should be always true for Python 3.10
+import sys
+if sys.version_info[0] == 3:
+    import reachable_py3
+else:
+    import unreachable_not_py3
+[out]
+2: import sys
+4: import reachable_py3
+
+[case testVersionInfoIndexMajorNotEqual]
+# sys.version_info[0] == 2 should be always false for Python 3.10
+import sys
+if sys.version_info[0] == 2:
+    import unreachable_py2
+import reachable
+[out]
+2: import sys
+5: import reachable
+
+[case testVersionInfoIndexMinor]
+# sys.version_info[1] >= 10 should be always true for Python 3.10
+import sys
+if sys.version_info[1] >= 10:
+    import reachable_310_plus
+else:
+    import unreachable_pre_310
+[out]
+2: import sys
+4: import reachable_310_plus
+
+[case testVersionInfoIndexMinorLess]
+# sys.version_info[1] < 10 should be always false for Python 3.10
+import sys
+if sys.version_info[1] < 10:
+    import unreachable_pre_310
+import reachable
+[out]
+2: import sys
+5: import reachable
+
+[case testVersionInfoIndexMinorGreater]
+# sys.version_info[1] > 9 should be always true for Python 3.10
+import sys
+if sys.version_info[1] > 9:
+    import reachable_310_plus
+[out]
+2: import sys
+4: import reachable_310_plus
+
+[case testVersionInfoIndexLessOrEqual]
+# sys.version_info[0] <= 3 should be always true for Python 3.10
+import sys
+if sys.version_info[0] <= 3:
+    import reachable_py3_or_less
+[out]
+2: import sys
+4: import reachable_py3_or_less
+
+[case testVersionInfoIndexNotEqual]
+# sys.version_info[0] != 2 should be always true for Python 3.10
+import sys
+if sys.version_info[0] != 2:
+    import reachable_not_py2
+[out]
+2: import sys
+4: import reachable_not_py2
+
+[case testVersionInfoSliceExplicit]
+# sys.version_info[:2] >= (3, 10) should be always true for Python 3.10
+import sys
+if sys.version_info[:2] >= (3, 10):
+    import reachable_310_plus
+else:
+    import unreachable_pre_310
+[out]
+2: import sys
+4: import reachable_310_plus
+
+[case testVersionInfoSliceExplicitBothBounds]
+# sys.version_info[0:2] >= (3, 10) should be always true for Python 3.10
+import sys
+if sys.version_info[0:2] >= (3, 10):
+    import reachable_310_plus
+[out]
+2: import sys
+4: import reachable_310_plus
+
+[case testVersionInfoSliceExplicitLess]
+# sys.version_info[:2] < (3, 10) should be always false for Python 3.10
+import sys
+if sys.version_info[:2] < (3, 10):
+    import unreachable_pre_310
+import reachable
+[out]
+2: import sys
+5: import reachable
+
+[case testVersionInfoSliceSingleElement]
+# sys.version_info[:1] >= (3,) should be always true for Python 3.10
+import sys
+if sys.version_info[:1] >= (3,):
+    import reachable_py3
+[out]
+2: import sys
+4: import reachable_py3
+
+[case testVersionInfoSliceSingleElementLess]
+# sys.version_info[:1] < (3,) should be always false for Python 3.10
+import sys
+if sys.version_info[:1] < (3,):
+    import unreachable_py2
+import reachable
+[out]
+2: import sys
+5: import reachable
+
+[case testVersionInfoReversedOperands]
+# (3, 8) <= sys.version_info should be always true for Python 3.10
+import sys
+if (3, 8) <= sys.version_info:
+    import reachable_38_plus
+[out]
+2: import sys
+4: import reachable_38_plus
+
+[case testVersionInfoReversedGreater]
+# (3, 11) > sys.version_info should be always true for Python 3.10
+import sys
+if (3, 11) > sys.version_info:
+    import reachable_pre_311
+[out]
+2: import sys
+4: import reachable_pre_311
+
+[case testVersionInfoReversedEquals]
+# (3, 10) == sys.version_info should be always true for Python 3.10
+import sys
+if (3, 10) == sys.version_info:
+    import reachable_exactly_310
+[out]
+2: import sys
+4: import reachable_exactly_310
+
+[case testVersionInfoEquals]
+# sys.version_info == (3, 10) should be always true for Python 3.10
+import sys
+if sys.version_info == (3, 10):
+    import reachable_exactly_310
+else:
+    import unreachable_not_310
+[out]
+2: import sys
+4: import reachable_exactly_310
+
+[case testVersionInfoNotEquals]
+# sys.version_info != (3, 9) should be always true for Python 3.10
+import sys
+if sys.version_info != (3, 9):
+    import reachable_not_39
+[out]
+2: import sys
+4: import reachable_not_39
+
+[case testVersionInfoNotEqualsExact]
+# sys.version_info != (3, 10) should be always false for Python 3.10
+import sys
+if sys.version_info != (3, 10):
+    import unreachable_not_310
+import reachable
+[out]
+2: import sys
+5: import reachable
+
+[case testVersionInfoSliceMinorOnly]
+# sys.version_info[1:2] >= (10,) should be always true for Python 3.10
+import sys
+if sys.version_info[1:2] >= (10,):
+    import reachable_minor_10_plus
+[out]
+2: import sys
+4: import reachable_minor_10_plus
+
+[case testAttributeTypeChecking]
+# typing.TYPE_CHECKING should be recognized as mypy_true
+import typing
+if typing.TYPE_CHECKING:
+    import mypy_only_import
+[out]
+2: import typing
+4: import mypy_only_import [mypy_only]
+
+[case testAttributeMYPY]
+# foo.MYPY should be recognized as mypy_true
+import foo
+if foo.MYPY:
+    import mypy_only_import
+[out]
+2: import foo
+4: import mypy_only_import [mypy_only]
+
+[case testAttributePY2]
+# bar.PY2 should be recognized as always_false
+import bar
+if bar.PY2:
+    import unreachable
+import reachable
+[out]
+2: import bar
+5: import reachable
+
+[case testAttributePY3]
+# baz.PY3 should be recognized as always_true
+import baz
+if baz.PY3:
+    import always_reachable
+[out]
+2: import baz
+4: import always_reachable
+
+[case testVersionInfoWithBoolAnd]
+# Combining version check with TYPE_CHECKING using and
+import sys
+from typing import TYPE_CHECKING
+if sys.version_info >= (3, 8) and TYPE_CHECKING:
+    import mypy_only_import
+[out]
+2: import sys
+3: from typing import TYPE_CHECKING
+5: import mypy_only_import [mypy_only]
+
+[case testVersionInfoWithBoolOr]
+# Combining version check with PY2 using or - should be always_true
+import sys
+if sys.version_info >= (3, 8) or PY2:
+    import always_reachable
+else:
+    import unreachable_else
+[out]
+2: import sys
+4: import always_reachable
+
+[case testComplexBoolVersionMypyUnknown]
+# Complex: (MYPY or unknown) evaluates to MYPY_TRUE, and version_info >= (3,8) is ALWAYS_TRUE
+# ALWAYS_TRUE and MYPY_TRUE evaluates to MYPY_TRUE
+import sys
+if sys.version_info >= (3, 8) and (MYPY or unknown_var):
+    import mypy_only_import
+[out]
+3: import sys
+5: import mypy_only_import [mypy_only]
