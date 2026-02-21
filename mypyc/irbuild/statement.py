@@ -465,6 +465,13 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     if builder.is_native_module(id) and builder.is_same_group_module(id):
         import_from_native(builder, id, names, as_names, node.line)
     else:
+        for name in names:
+            submodule_id = f"{id}.{name}"
+            if builder.is_native_module(submodule_id) and builder.is_same_group_module(
+                submodule_id
+            ):
+                # NOT IMPLEMENTED: native submodule of a non-native (or cross-group) package
+                assert False
         names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
         if as_names == names:
             # Reuse names tuple to reduce verbosity.

@@ -62,6 +62,20 @@ import other_pkg.helper
 assert f() == 42
 assert g() is other_pkg.helper
 
+[case testNativeSubmoduleOfNonNativePackageFrom]
+# separate: [(["native.py", "pkg/other_mod.py"], "testgroup")]
+from pkg import other_mod
+
+def f() -> int:
+    return other_mod.func()
+[file pkg/__init__.py]
+[file pkg/other_mod.py]
+def func() -> int:
+    return 42
+[file driver.py]
+from native import f
+assert f() == 42
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
