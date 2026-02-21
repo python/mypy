@@ -476,12 +476,12 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
 
 
-IMPORT_GROUP_NATIVE_MODULE: Final = 0
-IMPORT_GROUP_NATIVE_ATTR: Final = 1
-IMPORT_GROUP_NON_NATIVE: Final = 2
+IMPORT_NATIVE_MODULE: Final = 0
+IMPORT_NATIVE_ATTR: Final = 1
+IMPORT_NON_NATIVE: Final = 2
 
 
-class ImportFromGroup:
+class ImportFromBucket:
     def __init__(self, kind: int, names: list[str], as_names: list[str]) -> None:
         self.kind = kind
         self.names = names
@@ -496,35 +496,35 @@ def import_from_native(
     #   native submodule
     #   something else (i.e. non-native)
     #
-    # For each we have a separate implementation for good efficiency. We group related things
+    # For each we have a separate implementation for good efficiency. We put related things
     # together.
-    groups = group_import_from_native(builder, module_id, names, as_names)
-    for group in groups:
-        if group.kind == IMPORT_GROUP_NATIVE_MODULE:
+    buckets = classify_import_from_native(builder, module_id, names, as_names)
+    for bucket in buckets:
+        if bucket.kind == IMPORT_NATIVE_MODULE:
             assert False
-        elif group.kind == IMPORT_GROUP_NATIVE_ATTR:
+        elif bucket.kind == IMPORT_NATIVE_ATTR:
             # TODO: Do it here
             pass
         else:
-            assert group.kind == IMPORT_GROUP_NON_NATIVE
+            assert bucket.kind == IMPORT_NON_NATIVE
             assert False
 
 
-def group_import_from_native(
+def classify_import_from_native(
     builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
-) -> list[ImportFromGroup]:
+) -> list[ImportFromBucket]:
     # First build a flat list of each import
     flat_list = []
     for name, as_name in zip(names, as_names):
         if builder.is_native_module(f"{module_id}.name"):
-            kind = IMPORT_GROUP_NATIVE_MODULE
+            kind = IMPORT_NATIVE_MODULE
         elif True:  # TODO: We should have a more precise check here?
-            kind = IMPORT_GROUP_NATIVE_ATTR
+            kind = IMPORT_NATIVE_ATTR
         else:
-            kind = IMPORT_GROUP_NON_NATIVE
+            kind = IMPORT_NON_NATIVE
         flat_list.append((kind, name, as_name))
 
-    # Group similar imports based on kinds
+    # Put consecutive similar imports into buckets based on kinds
     result = []
     i = 0
     while i < len(flat_list):
@@ -534,7 +534,7 @@ def group_import_from_native(
         while i < len(flat_list) and flat_list[i][0] == kind:
             i += 1
         result.append(
-            ImportFromGroup(kind, [t[1] for t in flat_list[i0:i]], [t[2] for t in flat_list[i0:i]])
+            ImportFromBucket(kind, [t[1] for t in flat_list[i0:i]], [t[2] for t in flat_list[i0:i]])
         )
 
     return result
