@@ -192,110 +192,27 @@ class State:
         )
 
 
-def expect_end_tag(data: ReadBuffer) -> None:
-    assert read_tag(data) == END_TAG
-
-
-def expect_tag(data: ReadBuffer, tag: Tag) -> None:
-    assert read_tag(data) == tag
-
-
-def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | ImportAll) -> None:
-    """Read location and metadata flags from buffer and set them on the import statement.
-
-    Args:
-        data: Buffer containing serialized data
-        stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
-    """
-    read_loc(data, stmt)
-
-    # Metadata flags as a single integer bitfield
-    flags = read_int(data)
-
-    # Extract individual flags using bitwise operations
-    # Bit 0: is_top_level
-    # Bit 1: is_unreachable
-    # Bit 2: is_mypy_only
-    stmt.is_top_level = (flags & 0x01) != 0
-    stmt.is_unreachable = (flags & 0x02) != 0
-    stmt.is_mypy_only = (flags & 0x04) != 0
-
-
-def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
-    """Deserialize import metadata from bytes into mypy AST nodes.
-
-    Args:
-        import_bytes: Serialized import metadata from the Rust parser
-
-    Returns:
-        List of Import and ImportFrom AST nodes with location and metadata
-    """
-    if not import_bytes:
-        return []
-
-    data = ReadBuffer(import_bytes)
-
-    expect_tag(data, LIST_GEN)
-    n_imports = read_int_bare(data)
-
-    imports: list[ImportBase] = []
-
-    for _ in range(n_imports):
-        tag = read_tag(data)
-
-        if tag == IMPORT_METADATA:
-            name = read_str(data)
-            relative = read_int(data)
-
-            has_asname = read_bool(data)
-            if has_asname:
-                asname = read_str(data)
-            else:
-                asname = None
-
-            # Note: relative imports are handled via ImportFrom, so relative should be 0 here
-            stmt = Import([(name, asname)])
-            _read_and_set_import_metadata(data, stmt)
-            imports.append(stmt)
-
-        elif tag == IMPORTFROM_METADATA:
-            module = read_str(data)
-            relative = read_int(data)
-
-            expect_tag(data, LIST_GEN)
-            n_names = read_int_bare(data)
-            names: list[tuple[str, str | None]] = []
-
-            for _ in range(n_names):
-                name = read_str(data)
-                has_asname = read_bool(data)
-                if has_asname:
-                    asname = read_str(data)
-                else:
-                    asname = None
-                names.append((name, asname))
-
-            stmt = ImportFrom(module, relative, names)
-            _read_and_set_import_metadata(data, stmt)
-            imports.append(stmt)
-
-        elif tag == IMPORTALL_METADATA:
-            module = read_str(data)
-            relative = read_int(data)
-
-            stmt = ImportAll(module, relative)
-            _read_and_set_import_metadata(data, stmt)
-            imports.append(stmt)
-
-        else:
-            raise ValueError(f"Unexpected tag in import metadata: {tag}")
-
-    return imports
-
-
 def native_parse(
     filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+    """Parse a Python file using the native Rust-based parser.
+
+    Uses the ast_serialize Rust extension to parse Python code and deserialize
+    the resulting AST directly into mypy's native AST representation.
+
+    Args:
+        filename: Path to the Python source file to parse
+        options: Mypy options affecting parsing behavior (e.g., Python version)
+        skip_function_bodies: If True, many function and method bodies are omitted from
+            the AST, useful for parsing stubs or extracting signatures without full
+            implementation details
+
+    Returns:
+        A tuple containing:
+        - MypyFile: The parsed AST as a mypy AST node
+        - list[dict[str, Any]]: List of parse errors and deserialization errors
+        - TypeIgnores: List of (line_number, ignored_codes) tuples for type: ignore comments
+    """
     # If the path is a directory, return empty AST (matching fastparse behavior)
     # This can happen for packages that only contain .pyc files without source
     if os.path.isdir(filename):
@@ -319,6 +236,14 @@ def native_parse(
     # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores
+
+
+def expect_end_tag(data: ReadBuffer) -> None:
+    assert read_tag(data) == END_TAG
+
+
+def expect_tag(data: ReadBuffer, tag: Tag) -> None:
+    assert read_tag(data) == tag
 
 
 def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
@@ -2030,3 +1955,96 @@ def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Stateme
     elif last_if_stmt is not None:
         ret.append(last_if_stmt)
     return ret
+
+
+def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
+    """Deserialize import metadata from bytes into mypy AST nodes.
+
+    Args:
+        import_bytes: Serialized import metadata from the Rust parser
+
+    Returns:
+        List of Import and ImportFrom AST nodes with location and metadata
+    """
+    if not import_bytes:
+        return []
+
+    data = ReadBuffer(import_bytes)
+
+    expect_tag(data, LIST_GEN)
+    n_imports = read_int_bare(data)
+
+    imports: list[ImportBase] = []
+
+    for _ in range(n_imports):
+        tag = read_tag(data)
+
+        if tag == IMPORT_METADATA:
+            name = read_str(data)
+            relative = read_int(data)
+
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+
+            # Note: relative imports are handled via ImportFrom, so relative should be 0 here
+            stmt = Import([(name, asname)])
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        elif tag == IMPORTFROM_METADATA:
+            module = read_str(data)
+            relative = read_int(data)
+
+            expect_tag(data, LIST_GEN)
+            n_names = read_int_bare(data)
+            names: list[tuple[str, str | None]] = []
+
+            for _ in range(n_names):
+                name = read_str(data)
+                has_asname = read_bool(data)
+                if has_asname:
+                    asname = read_str(data)
+                else:
+                    asname = None
+                names.append((name, asname))
+
+            stmt = ImportFrom(module, relative, names)
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        elif tag == IMPORTALL_METADATA:
+            module = read_str(data)
+            relative = read_int(data)
+
+            stmt = ImportAll(module, relative)
+            _read_and_set_import_metadata(data, stmt)
+            imports.append(stmt)
+
+        else:
+            raise ValueError(f"Unexpected tag in import metadata: {tag}")
+
+    return imports
+
+
+def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | ImportAll) -> None:
+    """Read location and metadata flags from buffer and set them on the import statement.
+
+    Args:
+        data: Buffer containing serialized data
+        stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
+    """
+    read_loc(data, stmt)
+
+    # Metadata flags as a single integer bitfield
+    flags = read_int(data)
+
+    # Extract individual flags using bitwise operations
+    # Bit 0: is_top_level
+    # Bit 1: is_unreachable
+    # Bit 2: is_mypy_only
+    stmt.is_top_level = (flags & 0x01) != 0
+    stmt.is_unreachable = (flags & 0x02) != 0
+    stmt.is_mypy_only = (flags & 0x04) != 0
