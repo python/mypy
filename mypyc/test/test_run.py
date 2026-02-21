@@ -244,6 +244,14 @@ class TestRun(MypycDataSuite):
                 module_paths.append(fn)
 
                 shutil.copyfile(fn, os.path.join(os.path.dirname(fn), name + "_interpreted.py"))
+            elif fn.endswith("__init__.py"):
+                pkg_dir = os.path.dirname(fn)
+                if os.path.basename(pkg_dir).startswith("other"):
+                    name = pkg_dir.replace(os.sep, ".")
+                    module_names.append(name)
+                    sources.append(build.BuildSource(fn, name, None))
+                    to_delete.append(fn)
+                    module_paths.append(fn)
 
         for source in sources:
             options.per_module_options.setdefault(source.module, {})["mypyc"] = True

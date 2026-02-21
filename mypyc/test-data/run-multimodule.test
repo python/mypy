@@ -42,6 +42,26 @@ except TypeError:
 else:
     assert False
 
+[case testImportNonNativeSubmoduleFrom]
+# separate: [(["native.py", "other_pkg/__init__.py"], "testgroup")]
+import types
+from other_pkg import helper
+
+def f() -> int:
+    return helper.func()
+
+def g() -> types.ModuleType:
+    return helper
+[file other_pkg/__init__.py]
+[file other_pkg/helper.py]
+def func() -> int:
+    return 42
+[file driver.py]
+from native import f, g
+import other_pkg.helper
+assert f() == 42
+assert g() is other_pkg.helper
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 

@@ -524,8 +524,25 @@ def import_from_native(
                 )
         else:
             assert bucket.kind == IMPORT_NON_NATIVE
-            # NOT IMPLEMENTED
-            assert False
+            # Import a non-native submodule of a native package (e.g., the submodule
+            # is a regular Python module). Use the Python import system.
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
+            builder.call_c(
+                import_from_many_op,
+                [
+                    builder.load_str(module_id),
+                    names_literal,
+                    as_names_literal,
+                    builder.load_globals_dict(),
+                ],
+                line,
+            )
 
 
 def classify_import_from_native(
