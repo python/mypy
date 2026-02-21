@@ -25,7 +25,7 @@ from mypy.cache import (
 )
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
-from mypy.nodes import ExpressionStmt, MemberExpr, MypyFile
+from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
