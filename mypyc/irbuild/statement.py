@@ -456,8 +456,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     as_names = [as_name or name for name, as_name in node.names]
 
     if builder.is_native_module(id):
-        import_from_native(builder, id, names, as_names)
-        assert False
+        import_from_native(builder, id, names, as_names, node.line)
     else:
         names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
         if as_names == names:
@@ -489,24 +488,36 @@ class ImportFromBucket:
 
 
 def import_from_native(
-    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
+    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str], line: int
 ) -> None:
     # Imported names can each be one of three:
     #   attribute of native module
     #   native submodule
-    #   something else (i.e. non-native)
+    #   non-native submodule of a native module
     #
     # For each we have a separate implementation for good efficiency. We put related things
     # together.
     buckets = classify_import_from_native(builder, module_id, names, as_names)
     for bucket in buckets:
         if bucket.kind == IMPORT_NATIVE_MODULE:
+            # NOT IMPLEMENTED
             assert False
         elif bucket.kind == IMPORT_NATIVE_ATTR:
-            # TODO: Do it here
-            pass
+            builder.gen_import(module_id, line)
+            module_obj = builder.load_module(module_id)
+            globals_dict = builder.load_globals_dict()
+            for name, as_name in zip(bucket.names, bucket.as_names):
+                attr = builder.py_get_attr(module_obj, name, line)
+                builder.gen_method_call(
+                    globals_dict,
+                    "__setitem__",
+                    [builder.load_str(as_name), attr],
+                    result_type=None,
+                    line=line,
+                )
         else:
             assert bucket.kind == IMPORT_NON_NATIVE
+            # NOT IMPLEMENTED
             assert False
 
 
@@ -516,12 +527,13 @@ def classify_import_from_native(
     # First build a flat list of each import
     flat_list = []
     for name, as_name in zip(names, as_names):
-        if builder.is_native_module(f"{module_id}.name"):
+        submodule_id = f"{module_id}.{name}"
+        if builder.is_native_module(submodule_id):
             kind = IMPORT_NATIVE_MODULE
-        elif True:  # TODO: We should have a more precise check here?
-            kind = IMPORT_NATIVE_ATTR
-        else:
+        elif submodule_id in builder.graph:
             kind = IMPORT_NON_NATIVE
+        else:
+            kind = IMPORT_NATIVE_ATTR
         flat_list.append((kind, name, as_name))
 
     # Put consecutive similar imports into buckets based on kinds
