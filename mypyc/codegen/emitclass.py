@@ -264,8 +264,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if generate_full:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
-        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+        if not cl.is_acyclic:
+            fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
+            fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
@@ -344,8 +345,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         init_fn = cl.get_method("__init__")
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
-        generate_traverse_for_class(cl, traverse_name, emitter)
-        emit_line()
+        if not cl.is_acyclic:
+            generate_traverse_for_class(cl, traverse_name, emitter)
+            emit_line()
         generate_clear_for_class(cl, clear_name, emitter)
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
@@ -378,7 +380,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if generate_full:
+    if generate_full and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -412,9 +414,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     if generate_full:
-        generate_setup_for_class(
-            cl, defaults_fn, vtable_name, shadow_vtable_name, coroutine_setup_name, emitter
-        )
+        generate_setup_for_class(cl, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
@@ -606,7 +606,6 @@ def generate_setup_for_class(
     defaults_fn: FuncIR | None,
     vtable_name: str,
     shadow_vtable_name: str | None,
-    coroutine_setup_name: str,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -624,7 +623,8 @@ def generate_setup_for_class(
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
         emitter.emit_line("Py_SET_REFCNT(self, 1);")
-        emitter.emit_line("PyObject_GC_Track(self);")
+        if not cl.is_acyclic:
+            emitter.emit_line("PyObject_GC_Track(self);")
         if defaults_fn is not None:
             emit_attr_defaults_func_call(defaults_fn, "self", emitter)
         emitter.emit_line("return (PyObject *)self;")
@@ -656,18 +656,11 @@ def generate_setup_for_class(
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
             if value != "NULL":
-                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
+                emitter.set_undefined_value(f"self->{emitter.attr(attr)}", rtype)
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
         emit_attr_defaults_func_call(defaults_fn, "self", emitter)
-
-    # Initialize function wrapper for callable classes. As opposed to regular functions,
-    # each instance of a callable class needs its own wrapper because they might be instantiated
-    # inside other functions.
-    if cl.coroutine_name:
-        emitter.emit_line(f"if ({NATIVE_PREFIX}{coroutine_setup_name}((PyObject *)self) != 1)")
-        emitter.emit_line("  return NULL;")
 
     emitter.emit_line("return (PyObject *)self;")
     emitter.emit_line("}")
@@ -940,7 +933,8 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if not cl.is_acyclic:
+        emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
@@ -1203,10 +1197,11 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
-        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line("} else {")
+        emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 

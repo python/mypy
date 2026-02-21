@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -337,6 +338,8 @@ class Assign(BaseAssign):
         (self.src,) = new
 
     def stolen(self) -> list[Value]:
+        if not self.dest.type.is_refcounted:
+            return []
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -773,9 +776,10 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.error_kind = desc.error_kind
+        super().__init__(line)
         self.args = args
         self.type = desc.return_type
-        self.error_kind = desc.error_kind
         self.desc = desc
 
     def sources(self) -> list[Value]:
@@ -849,7 +853,8 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: LiteralValue, rtype: RType) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
         self.type = rtype
 
@@ -1547,7 +1552,7 @@ class FloatOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
@@ -1605,7 +1610,7 @@ class FloatComparisonOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
@@ -1678,8 +1683,35 @@ class SetMem(Op):
 
 
 @final
+class GetElement(RegisterOp):
+    """Get the value of a struct element from a struct value."""
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, src: Value, field: str, line: int = -1) -> None:
+        super().__init__(line)
+        assert isinstance(src.type, (RStruct, RVec))
+        self.type = src.type.field_type(field)
+        self.src = src
+        self.src_type = src.type
+        self.field = field
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_get_element(self)
+
+
+@final
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element.
+    """Get the address of a struct element from a pointer to a struct.
+
+    If you have a struct value, use GetElement instead.
 
     Note that you may need to use KeepAlive to avoid the struct
     being freed, if it's reference counted, such as PyObject *.
@@ -1689,6 +1721,7 @@ class GetElementPtr(RegisterOp):
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
+        assert not isinstance(src.type, (RStruct, RVec))
         self.type = pointer_rprimitive
         self.src = src
         self.src_type = src_type
@@ -1718,7 +1751,7 @@ class SetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct), src.type
+        assert isinstance(src.type, (RStruct, RVec)), src.type
         self.type = src.type
         self.src = src
         self.item = item
@@ -1800,7 +1833,8 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
+    def __init__(self, src: list[Value], line: int = -1, *, steal: bool = False) -> None:
+        super().__init__(line)
         assert src
         self.src = src
         self.steal = steal
@@ -2003,6 +2037,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_set_mem(self, op: SetMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_element(self, op: GetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

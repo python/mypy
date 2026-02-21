@@ -2116,7 +2116,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
-                (callee_type, inferred_args) = self.infer_function_type_arguments_pass2(
+                callee_type, inferred_args = self.infer_function_type_arguments_pass2(
                     callee_type,
                     args,
                     arg_kinds,
@@ -2918,7 +2918,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
+            with self.msg.filter_errors(filter_revealed_type=True) as w:
                 with self.chk.local_type_map as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
@@ -3679,7 +3679,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             self.msg.unsupported_operand_types("in", left_type, right_type, e)
                         else:
                             container_type = UnionType.make_union(container_types)
-                            if self.dangerous_comparison(
+                            if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
                                 left_type,
                                 container_type,
                                 original_container=right_type,
@@ -3702,7 +3702,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # testCustomEqCheckStrictEquality for an example.
                 if not w.has_new_errors() and operator in ("==", "!="):
                     right_type = self.accept(right)
-                    if self.dangerous_comparison(left_type, right_type):
+                    if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
+                        left_type, right_type
+                    ):
                         # Show the most specific literal types possible
                         left_type = try_getting_literal(left_type)
                         right_type = try_getting_literal(right_type)
@@ -3711,7 +3713,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
-                if self.dangerous_comparison(left_type, right_type, identity_check=True):
+                if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
+                    left_type, right_type, identity_check=True
+                ):
                     # Show the most specific literal types possible
                     left_type = try_getting_literal(left_type)
                     right_type = try_getting_literal(right_type)
@@ -4282,29 +4286,32 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         assert e.op in ("and", "or")  # Checked by visit_op_expr
 
+        left_map: mypy.checker.TypeMap
+        right_map: mypy.checker.TypeMap
         if e.right_always:
-            left_map: mypy.checker.TypeMap = None
-            right_map: mypy.checker.TypeMap = {}
+            left_map, right_map = {e.left: UninhabitedType()}, {}
         elif e.right_unreachable:
-            left_map, right_map = {}, None
+            left_map, right_map = {}, {e.right: UninhabitedType()}
         elif e.op == "and":
             right_map, left_map = self.chk.find_isinstance_check(e.left)
         elif e.op == "or":
             left_map, right_map = self.chk.find_isinstance_check(e.left)
 
-        # If left_map is None then we know mypy considers the left expression
+        # If left_map is unreachable then we know mypy considers the left expression
         # to be redundant.
+        left_unreachable = mypy.checker.is_unreachable_map(left_map)
         if (
             codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes
-            and left_map is None
+            and left_unreachable
             # don't report an error if it's intentional
             and not e.right_always
         ):
             self.msg.redundant_left_operand(e.op, e.left)
 
+        right_unreachable = mypy.checker.is_unreachable_map(right_map)
         if (
             self.chk.should_report_unreachable_issues()
-            and right_map is None
+            and right_unreachable
             # don't report an error if it's intentional
             and not e.right_unreachable
         ):
@@ -4314,16 +4321,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             right_map, e.right, self._combined_context(expanded_left_type)
         )
 
-        if left_map is None and right_map is None:
+        if left_unreachable and right_unreachable:
             return UninhabitedType()
 
-        if right_map is None:
+        if right_unreachable:
             # The boolean expression is statically known to be the left value
-            assert left_map is not None
             return left_type
-        if left_map is None:
+        if left_unreachable:
             # The boolean expression is statically known to be the right value
-            assert right_map is not None
             return right_type
 
         if e.op == "and":
@@ -5907,14 +5912,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
                 # values are only part of the comprehension when all conditions are true
                 true_map, false_map = self.chk.find_isinstance_check(condition)
-
-                if true_map:
-                    self.chk.push_type_map(true_map)
+                self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-                    if true_map is None:
+                    if mypy.checker.is_unreachable_map(true_map):
                         self.msg.redundant_condition_in_comprehension(False, condition)
-                    elif false_map is None:
+                    elif mypy.checker.is_unreachable_map(false_map):
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
@@ -5925,9 +5928,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
         if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-            if if_map is None:
+            if mypy.checker.is_unreachable_map(if_map):
                 self.msg.redundant_condition_in_if(False, e.cond)
-            elif else_map is None:
+            elif mypy.checker.is_unreachable_map(else_map):
                 self.msg.redundant_condition_in_if(True, e.cond)
 
         if ctx is None:
@@ -5941,7 +5944,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ctx_else_type = self.analyze_cond_branch(
                 else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
             )
-            ctx = make_simplified_union([ctx_if_type, ctx_else_type])
+            if has_ambiguous_uninhabited_component(ctx_if_type):
+                ctx = ctx_else_type
+            elif has_ambiguous_uninhabited_component(ctx_else_type):
+                ctx = ctx_if_type
+            else:
+                ctx = make_simplified_union([ctx_if_type, ctx_else_type])
 
         if_type = self.analyze_cond_branch(
             if_map, e.if_expr, context=ctx, allow_none_return=allow_none_return
@@ -5963,14 +5971,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def analyze_cond_branch(
         self,
-        map: dict[Expression, Type] | None,
+        map: dict[Expression, Type],
         node: Expression,
         context: Type | None,
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
     ) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
-            if map is None:
+            if mypy.checker.is_unreachable_map(map):
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
@@ -6462,7 +6470,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Collect symbols targeted by NameExprs and MemberExprs,
         # to be looked up by TypeAnalyser when binding the
         # UnboundTypes corresponding to those expressions.
-        (name_exprs, member_exprs) = all_name_and_member_expressions(maybe_type_expr)
+        name_exprs, member_exprs = all_name_and_member_expressions(maybe_type_expr)
         sym_for_name = {e.name: SymbolTableNode(UNBOUND_IMPORTED, e.node) for e in name_exprs} | {
             e_name: SymbolTableNode(UNBOUND_IMPORTED, e.node)
             for e in member_exprs
@@ -6634,6 +6642,20 @@ class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True
+
+
+def has_ambiguous_uninhabited_component(t: Type) -> bool:
+    return t.accept(HasAmbiguousUninhabitedComponentsQuery())
+
+
+class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
+    """Visitor for querying whether a type has an ambiguous UninhabitedType component."""
+
+    def __init__(self) -> None:
+        super().__init__(types.ANY_STRATEGY)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return t.ambiguous
 
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:

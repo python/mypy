@@ -2,10 +2,10 @@ import _tkinter
 import sys
 import tkinter
 from _typeshed import MaybeNone
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from tkinter.font import _FontDescription
-from typing import Any, Literal, TypedDict, overload, type_check_only
-from typing_extensions import Never, TypeAlias, Unpack
+from typing import Any, Literal, TypedDict, TypeVar, overload, type_check_only
+from typing_extensions import Never, ParamSpec, TypeAlias, Unpack
 
 __all__ = [
     "Button",
@@ -53,6 +53,9 @@ _Padding: TypeAlias = (
 _Statespec: TypeAlias = tuple[Unpack[tuple[str, ...]], Any]
 _ImageStatespec: TypeAlias = tuple[Unpack[tuple[str, ...]], tkinter._Image | str]
 _VsapiStatespec: TypeAlias = tuple[Unpack[tuple[str, ...]], int]
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
 
 class _Layout(TypedDict, total=False):
     side: Literal["left", "right", "top", "bottom"]
@@ -201,10 +204,15 @@ class Style:
     def theme_use(self, themename: None = None) -> str: ...
 
 class Widget(tkinter.Widget):
-    def __init__(self, master: tkinter.Misc | None, widgetname, kw=None) -> None: ...
+    def __init__(self, master: tkinter.Misc | None, widgetname: str | None, kw: dict[str, Any] | None = None) -> None: ...
     def identify(self, x: int, y: int) -> str: ...
-    def instate(self, statespec, callback=None, *args, **kw): ...
-    def state(self, statespec=None): ...
+    @overload
+    def instate(self, statespec: Sequence[str], callback: None = None) -> bool: ...
+    @overload
+    def instate(
+        self, statespec: Sequence[str], callback: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs
+    ) -> Literal[False] | _T: ...
+    def state(self, statespec: Sequence[str] | None = None) -> tuple[str, ...]: ...
 
 class Button(Widget):
     def __init__(

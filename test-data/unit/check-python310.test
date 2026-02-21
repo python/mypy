@@ -36,26 +36,32 @@ match m:
     case other:
         reveal_type(other)  # N: Revealed type is "Any"
 
-[case testMatchLiteralPatternAlreadyNarrower-skip]
-m: bool
+[case testMatchLiteralPatternBoolIntAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 
-match m:
-    case 1:
-        reveal_type(m)  # This should probably be unreachable, but isn't detected as such.
+def foo(m: bool, x: int):
+    match m:
+        case 1:
+            reveal_type(m)  # N: Revealed type is "Literal[1]"
+
+    match m:
+        case x:
+            reveal_type(m)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testMatchLiteralPatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 m: int
 
 match m:
     case "str":
-        reveal_type(m)
+        reveal_type(m)  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 -- Value Pattern --
 
 [case testMatchValuePatternNarrows]
+# flags: --strict-equality --warn-unreachable
 import b
 m: object
 
@@ -66,6 +72,7 @@ match m:
 b: int
 
 [case testMatchValuePatternAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 import b
 m: bool
 
@@ -76,6 +83,7 @@ match m:
 b: int
 
 [case testMatchValuePatternIntersect]
+# flags: --strict-equality --warn-unreachable
 import b
 
 class A: ...
@@ -89,7 +97,7 @@ class B: ...
 b: B
 
 [case testMatchValuePatternUnreachable]
-# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+# flags: --strict-equality --warn-unreachable
 import b
 
 m: int
@@ -399,7 +407,7 @@ match d.tag:
         reveal_type(d)  # N: Revealed type is "__main__.B"
         reveal_type(d.num)  # N: Revealed type is "builtins.int"
 
-[case testMatchSequenceUnion-skip]
+[case testMatchSequenceUnion]
 from typing import List, Union
 m: Union[List[List[str]], str]
 
@@ -491,6 +499,7 @@ b: str
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternCapturesWrongKeyType]
+# flags: --strict-equality --warn-unreachable
 # This is not actually unreachable, as a subclass of dict could accept keys with different types
 from typing import Dict
 import b
@@ -572,6 +581,7 @@ a: str
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictUnreachable]
+# flags: --strict-equality --warn-unreachable
 # TypedDict keys are always str, so this is actually unreachable
 from typing import TypedDict
 import b
@@ -584,9 +594,9 @@ m: A
 
 match m:
     case {1: v}:
-        reveal_type(v)
+        reveal_type(v)  # E: Statement is unreachable
     case {b.b: v2}:
-        reveal_type(v2)
+        reveal_type(v2)  # E: Statement is unreachable
 [file b.py]
 b: int
 [typing fixtures/typing-typeddict.pyi]
@@ -1099,7 +1109,7 @@ match m:
         pass
 
 [case testMatchClassPatternCallable]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Callable, Any
 
 class FnImpl:
@@ -1542,11 +1552,12 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
-    case a if isinstance(a, int):
-        reveal_type(a)
+    case a if isinstance(a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+        reveal_type(a)  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchSubjectAssignExprWithGuard]
@@ -1735,6 +1746,96 @@ match m6:
 
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequenceWildcardRefutability]
+# flags: --strict-equality --warn-unreachable
+def f1(x: int | list[int]):
+    match x:
+        case [*foo]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f2(x: object):
+    match x:
+        case [*foo]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.object]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.object]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f3(x: int | list[int]):
+    match x:
+        case [1, *foo]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+            reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleUnions]
+from typing_extensions import Unpack
+
+m1: tuple[int, str] | None
+match m1:
+    case (a1, b1):
+        reveal_type(a1)  # N: Revealed type is "builtins.int"
+        reveal_type(b1)  # N: Revealed type is "builtins.str"
+
+m2: tuple[int, str] | tuple[float, str]
+match m2:
+    case (a2, b2):
+        reveal_type(a2)  # N: Revealed type is "builtins.int | builtins.float"
+        reveal_type(b2)  # N: Revealed type is "builtins.str"
+
+m3: tuple[int] | tuple[float, str]
+match m3:
+    case (a3, b3):
+        reveal_type(a3)  # N: Revealed type is "builtins.float"
+        reveal_type(b3)  # N: Revealed type is "builtins.str"
+
+m4: tuple[int] | list[str]
+match m4:
+    case (a4, b4):
+        reveal_type(a4)  # N: Revealed type is "builtins.str"
+        reveal_type(b4)  # N: Revealed type is "builtins.str"
+
+m5: tuple[int, Unpack[tuple[float, ...]]] | None
+match m5:
+    case (a5, b5):
+        reveal_type(a5)  # N: Revealed type is "builtins.int"
+        reveal_type(b5)  # N: Revealed type is "builtins.float"
+
+m6: tuple[int, Unpack[tuple[float, ...]]] | list[str]
+match m6:
+    case (a6, b6):
+        reveal_type(a6)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(b6)  # N: Revealed type is "builtins.float | builtins.str"
+
+m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, str]
+match m7:
+    case (a7, b7, *rest7):
+        reveal_type(a7)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(b7)  # N: Revealed type is "builtins.float | builtins.str"
+        reveal_type(rest7)  # N: Revealed type is "builtins.list[builtins.float]"
+
+# verify that if we are unpacking, it will get the type of the sequence if the tuple is too short
+m8: tuple[int, str] | list[float]
+match m8:
+    case (a8, b8, *rest8):
+        reveal_type(a8)  # N: Revealed type is "builtins.int | builtins.float"
+        reveal_type(b8)  # N: Revealed type is "builtins.str | builtins.float"
+        reveal_type(rest8)  # N: Revealed type is "builtins.list[builtins.float]"
+
+m9: tuple[str, str, int] | tuple[str, str]
+match m9:
+    case (a9, *rest9):
+        reveal_type(a9)  # N: Revealed type is "builtins.str"
+        reveal_type(rest9)  # N: Revealed type is "builtins.list[builtins.str | builtins.int] | builtins.list[builtins.str]"
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testMatchEnumSingleChoice]
 from enum import Enum
 from typing import NoReturn
@@ -1749,7 +1850,10 @@ def f(m: Medal) -> None:
     match m:
         case Medal.GOLD:
             always_assigned = 1
-            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            # Ideally, this should narrow to literal
+            # However `expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)`
+            # in checker.py means we expand the type to a LiteralType and then because there is no
+            # net change we don't end up inserting the LiteralType into the type map
             reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
@@ -1869,7 +1973,8 @@ match m:
         assert_never(unreachable)
 [builtins fixtures/enum.pyi]
 
-[case testMatchLiteralPatternEnumCustomEquals-skip]
+[case testMatchLiteralPatternEnumCustomEquals]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -1882,9 +1987,9 @@ m: Medal
 
 match m:
     case Medal.gold:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
-    case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
+    case _:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver] | Literal[__main__.Medal.bronze]"
 [builtins fixtures/enum.pyi]
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
@@ -2026,7 +2131,8 @@ match c:
         assert_never(c) # E: Argument 1 to "assert_never" has incompatible type "Literal['red']"; expected "Never"
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMatchAsPatternIntersection-skip]
+[case testMatchAsPatternIntersection]
+# flags: --strict-equality --warn-unreachable
 class A: pass
 class B: pass
 class C: pass
@@ -2037,7 +2143,7 @@ def f(x: A) -> None:
             reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
         case C() as y:
             reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C">"
-    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B"> | __main__.<subclass of "__main__.A" and "__main__.C">"
 
 [case testMatchWithBreakAndContinue]
 def f(x: int | str | None) -> None:
@@ -2178,15 +2284,23 @@ match foo:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testMatchUnionTwoTuplesNoCrash]
-var: tuple[int, int] | tuple[str, str]
+[case testMatchUnionTwoTuples]
+# flags: --strict-equality --warn-unreachable
 
-# TODO: we can infer better here.
-match var:
-    case (42, a):
-        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
-    case ("yes", b):
-        reveal_type(b)  # N: Revealed type is "builtins.int | builtins.str"
+def main(var: tuple[int, int] | tuple[str, str]):
+    match var:
+        case (42, a):
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+        case ("yes", b):
+            reveal_type(b)  # N: Revealed type is "builtins.str"
+
+
+def main2(var: tuple[int, int] | tuple[str, str] | tuple[str, int]):
+    match var:
+        case (42, a):
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+        case ("yes", b):
+            reveal_type(b)  # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
@@ -3311,3 +3425,44 @@ def type_object(field_type: type[object]) -> str:
             return "bar"
     return ret
 [builtins fixtures/dict.pyi]
+
+
+[case testMatchFinalClass]
+from typing import final, NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+class Types:
+
+    @final
+    class A:
+        pass
+
+    @final
+    class B:
+        pass
+
+def foo(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case Types.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case Types.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+
+
+class TypeTypes:
+    A: type[Types.A] = Types.A
+    B: type[Types.B] = Types.B
+
+
+def bar(cls: type[Types.A | Types.B]) -> None:
+    match cls:
+        case TypeTypes.A:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.A]"
+        case TypeTypes.B:
+            reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
+        case _:
+            assert_never(cls)
+[builtins fixtures/tuple.pyi]

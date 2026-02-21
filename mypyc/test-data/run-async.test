@@ -1493,7 +1493,7 @@ class T:
         return 3
 
 def is_coroutine(fn):
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # type: ignore[operator]
         return inspect.iscoroutinefunction(fn)
 
     # inspect on older python versions does not support function-like objects.
@@ -1739,3 +1739,138 @@ async def m_future_with_reraised_exception(first_exc: Exception, second_exc: Exc
         return await make_future(first_exc)
     except type(first_exc):
         raise second_exc
+
+[case testCPyFunctionWithFreedInstance]
+import asyncio
+
+from functools import wraps
+from typing import Any
+
+class ctx_man:
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+def with_ctx_man():
+    def decorator(f):
+        @wraps(f)
+        async def inner():
+            async with ctx_man():
+                return await f()
+
+        return inner
+
+    return decorator
+
+async def func() -> int:
+    return 33
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_native():
+    assert asyncio.run(run_wrapped()) == 33
+
+[file driver.py]
+import asyncio
+
+from native import test_native, with_ctx_man
+
+async def func() -> int:
+    return 42
+
+async def run_wrapped():
+    wrapped = with_ctx_man()(func)
+    return await wrapped()
+
+def test_interpreted():
+    assert asyncio.run(run_wrapped()) == 42
+
+# Run multiple times to test that the CPyFunction attribute is still
+# set correctly after reusing a freed instance of the inner callable class object.
+for i in range(10):
+    test_interpreted()
+    test_native()
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
+
+[case testNestedCoroutineCallsAnotherNestedFunction]
+import asyncio
+import functools
+import inspect
+from typing import Any, Callable, TypeVar, cast
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def mult_different_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper_async(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+            wrapper = wrapper_async
+        else:
+            @functools.wraps(fn)
+            def wrapper_non_async(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+            wrapper = wrapper_non_async
+
+        return cast(F, wrapper)
+
+    return decorate
+
+def mult_same_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+        else:
+            @functools.wraps(fn)
+            def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+
+        return cast(F, wrapper)
+
+    return decorate
+
+@mult_different_wrapper_names(3)
+def identity(x: int):
+    return x
+
+@mult_different_wrapper_names(5)
+async def async_identity(x: int):
+    return x
+
+@mult_same_wrapper_names(2)
+def times_two(x: int):
+    return x * 2
+
+@mult_same_wrapper_names(4)
+async def async_times_two(x: int):
+    return x * 2
+
+def test_nested_coroutine_calls_another_nested_function():
+    assert identity(1) == 3
+    assert asyncio.run(async_identity(2)) == 10
+
+    assert times_two(3) == 12
+    assert asyncio.run(async_times_two(4)) == 32
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...

@@ -2241,7 +2241,7 @@ class CallableType(FunctionLike):
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
-        definition: Bogus[SymbolNode] = _dummy,
+        definition: Bogus[SymbolNode | None] = _dummy,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         line: int = _dummy_int,
         column: int = _dummy_int,
@@ -3223,7 +3223,6 @@ class LiteralType(ProperType):
         super().__init__(line, column)
         self.value = value
         self.fallback = fallback
-        self._hash = -1  # Cached hash value
 
     # NOTE: Enum types are always truthy by default, but this can be changed
     #       in subclasses, so we need to get the truthyness from the Enum
@@ -3253,13 +3252,12 @@ class LiteralType(ProperType):
         return visitor.visit_literal_type(self)
 
     def __hash__(self) -> int:
-        if self._hash == -1:
-            self._hash = hash((self.value, self.fallback))
-        return self._hash
+        # Intentionally a subset of __eq__ for perf
+        return hash(self.value)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LiteralType):
-            return self.fallback == other.fallback and self.value == other.value
+            return self.value == other.value and self.fallback == other.fallback
         else:
             return NotImplemented
 

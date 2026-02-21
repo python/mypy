@@ -1,4 +1,4 @@
-[case testAllBase64Features_librt_experimental]
+[case testAllBase64Features_librt]
 from typing import Any, cast
 import base64
 import binascii
@@ -204,14 +204,7 @@ def test_urlsafe_b64decode_errors() -> None:
         with assertRaises(ValueError):
             b64decode(b)
 
-[case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
-# This also ensures librt.base64 can be built without experimental features
-import librt.base64
-
-def test_b64encode_not_available() -> None:
-    assert not hasattr(librt.base64, "b64encode")
-
-[case testBase64UsedAtTopLevelOnly_librt_experimental]
+[case testBase64UsedAtTopLevelOnly_librt]
 from librt.base64 import b64encode
 
 # The only reference to b64encode is at module top level

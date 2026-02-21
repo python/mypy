@@ -463,20 +463,17 @@ class ASTConverter:
             ismodule
             and stmts
             and self.type_ignores
-            and min(self.type_ignores) < self.get_lineno(stmts[0])
+            and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[min(self.type_ignores)]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
                     message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
-                    line=min(self.type_ignores),
+                    line=first,
                     column=0,
                     blocker=False,
                 )
-            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.FILE.code
-            )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
@@ -634,7 +631,7 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (if_block_with_overload, if_unknown_truth_value) = (
+                    if_block_with_overload, if_unknown_truth_value = (
                         self._get_executable_if_block_with_overloads(stmt)
                     )
 
@@ -1001,21 +998,21 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEPARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,

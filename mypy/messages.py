@@ -229,81 +229,65 @@ class MessageBuilder:
         """
         return self.errors.prefer_simple_messages()
 
+    def span_from_context(self, ctx: Context) -> Iterable[int]:
+        """This determines where a type: ignore for a given context has effect."""
+        if not isinstance(ctx, Expression):
+            return [ctx.line]
+        return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+
     def report(
         self,
         msg: str,
-        context: Context | None,
+        context: Context,
         severity: str,
+        offset: int = 0,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
-        origin: Context | None = None,
-        offset: int = 0,
-        secondary_context: Context | None = None,
+        origin_context: Context | None,
         parent_error: ErrorInfo | None = None,
     ) -> ErrorInfo:
         """Report an error or note (unless disabled).
 
-        Note that context controls where error is reported, while origin controls
-        where # type: ignore comments have effect.
+        Note that context controls where error is reported, while origin_context
+        controls where # type: ignore comments have effect.
         """
 
-        def span_from_context(ctx: Context) -> Iterable[int]:
-            """This determines where a type: ignore for a given context has effect."""
-            if not isinstance(ctx, Expression):
-                return range(ctx.line, ctx.line + 1)
-            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
-
-        origin_span: Iterable[int] | None
-        if origin is not None:
-            origin_span = span_from_context(origin)
-        elif context is not None:
-            origin_span = span_from_context(context)
-        else:
-            origin_span = None
-
-        if secondary_context is not None:
-            assert origin_span is not None
-            origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
+        origin_span = self.span_from_context(context)
+        if origin_context is not None:
+            origin_span = itertools.chain(origin_span, self.span_from_context(origin_context))
 
         return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
             msg,
+            code=code,
             severity=severity,
-            file=file,
             offset=offset,
             origin_span=origin_span,
             end_line=context.end_line if context else -1,
             end_column=context.end_column if context else -1,
-            code=code,
             parent_error=parent_error,
         )
 
     def fail(
         self,
         msg: str,
-        context: Context | None,
+        context: Context,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
-        secondary_context: Context | None = None,
+        origin_context: Context | None = None,
     ) -> ErrorInfo:
         """Report an error message (unless disabled)."""
-        return self.report(
-            msg, context, "error", code=code, file=file, secondary_context=secondary_context
-        )
+        return self.report(msg, context, "error", code=code, origin_context=origin_context)
 
     def note(
         self,
         msg: str,
         context: Context,
-        file: str | None = None,
-        origin: Context | None = None,
         offset: int = 0,
         *,
         code: ErrorCode | None = None,
-        secondary_context: Context | None = None,
+        origin_context: Context | None = None,
         parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report a note (unless disabled)."""
@@ -311,11 +295,9 @@ class MessageBuilder:
             msg,
             context,
             "note",
-            file=file,
-            origin=origin,
             offset=offset,
             code=code,
-            secondary_context=secondary_context,
+            origin_context=origin_context,
             parent_error=parent_error,
         )
 
@@ -323,22 +305,22 @@ class MessageBuilder:
         self,
         messages: str,
         context: Context,
-        file: str | None = None,
         offset: int = 0,
-        code: ErrorCode | None = None,
         *,
-        secondary_context: Context | None = None,
+        code: ErrorCode | None = None,
+        origin_context: Context | None = None,
+        parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
-        for msg in messages.splitlines():
+        for msg in dedent(messages.lstrip("\n")).splitlines():
             self.report(
                 msg,
                 context,
                 "note",
-                file=file,
-                offset=offset,
+                offset,
                 code=code,
-                secondary_context=secondary_context,
+                origin_context=origin_context,
+                parent_error=parent_error,
             )
 
     #
@@ -1030,18 +1012,18 @@ class MessageBuilder:
             for_function(callee), name, context, matches=matches
         )
         module = find_defining_module(self.modules, callee)
-        if module:
+        if (
+            module
+            and module.path != self.errors.file
+            and module.fullname not in ("builtins", "typing")
+        ):
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
                 fname = "Called function"
-            self.note(
-                f"{fname} defined here",
-                callee.definition,
-                file=module.path,
-                origin=context,
-                code=codes.CALL_ARG,
-            )
+            else:
+                fname = fname.split(" of ")[0]  # use short method names in the note
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(
@@ -1259,7 +1241,7 @@ class MessageBuilder:
         arg_type_in_supertype: Type,
         supertype: str,
         context: Context,
-        secondary_context: Context,
+        origin_context: Context,
     ) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype, self.options)
@@ -1270,42 +1252,29 @@ class MessageBuilder:
             ),
             context,
             code=codes.OVERRIDE,
-            secondary_context=secondary_context,
+            origin_context=origin_context,
         )
         if name != "__post_init__":
             # `__post_init__` is special, it can be incompatible by design.
             # So, this note is misleading.
-            self.note(
-                "This violates the Liskov substitution principle",
-                context,
-                code=codes.OVERRIDE,
-                secondary_context=secondary_context,
-            )
-            self.note(
-                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-                context,
-                code=codes.OVERRIDE,
-                secondary_context=secondary_context,
-            )
-
-        if name == "__eq__" and type_name:
-            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
+            invariant_message = """
+            This violates the Liskov substitution principle
+            See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+            """
             self.note_multiline(
-                multiline_msg, context, code=codes.OVERRIDE, secondary_context=secondary_context
+                invariant_message, context, code=codes.OVERRIDE, origin_context=origin_context
             )
-
-    def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent(
-            """\
-        It is recommended for "__eq__" to work with arbitrary objects, for example:
-            def __eq__(self, other: object) -> bool:
-                if not isinstance(other, {class_name}):
-                    return NotImplemented
-                return <logic to compare two {class_name} instances>
-        """.format(
-                class_name=class_name
+        if name == "__eq__" and type_name:
+            eq_message = """
+            It is recommended for "__eq__" to work with arbitrary objects, for example:
+                def __eq__(self, other: object) -> bool:
+                    if not isinstance(other, {class_name}):
+                        return NotImplemented
+                    return <logic to compare two {class_name} instances>
+            """.format(class_name=type_name)
+            self.note_multiline(
+                eq_message, context, code=codes.OVERRIDE, origin_context=origin_context
             )
-        )
 
     def return_type_incompatible_with_supertype(
         self,
@@ -1802,7 +1771,7 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        source, target = format_type_distinctly(source_type, target_type, options=self.options)
         self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
@@ -3375,7 +3344,7 @@ def append_numbers_notes(
 ) -> list[str]:
     """Explain if an unsupported type from "numbers" is used in a subtype check."""
     if expected_type.type.fullname in UNSUPPORTED_NUMBERS_TYPES:
-        notes.append('Types from "numbers" aren\'t supported for static type checking')
+        notes.append('Types from "numbers" are not supported for static type checking')
         notes.append("See https://peps.python.org/pep-0484/#the-numeric-tower")
         notes.append("Consider using a protocol instead, such as typing.SupportsFloat")
     return notes

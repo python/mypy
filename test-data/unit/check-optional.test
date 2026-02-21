@@ -221,14 +221,14 @@ x()  # E: "dict[str, int]" not callable
 [case testNoneClassVariable]
 from typing import Optional
 class C:
-    x = None  # type: int
+    x: int
     def __init__(self) -> None:
         self.x = 0
 
 [case testNoneClassVariableInInit]
 from typing import Optional
 class C:
-    x = None  # type: int
+    x: int
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
@@ -240,8 +240,8 @@ class C:
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
         self.y = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testOverloadWithNone]
 from foo import *

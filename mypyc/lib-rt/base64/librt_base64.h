@@ -1,17 +1,6 @@
 #ifndef LIBRT_BASE64_H
 #define LIBRT_BASE64_H
 
-#ifndef MYPYC_EXPERIMENTAL
-
-static int
-import_librt_base64(void)
-{
-    // All librt.base64 features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
-
 #include <Python.h>
 
 #define LIBRT_BASE64_ABI_VERSION 1
@@ -57,7 +46,5 @@ import_librt_base64(void)
     }
     return 0;
 }
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_BASE64_H
