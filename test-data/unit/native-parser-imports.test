@@ -112,7 +112,7 @@ import reachable
 6: import reachable
 
 [case testUnreachableWithTopLevel]
-# Unreachable imports are still marked as top_level correctly
+# Unreachable imports together with top_level flag handling
 def f():
     if PY2:
         import unreachable_func
@@ -135,8 +135,7 @@ else:
 2: import sys
 4: import reachable_version_check
 
-[case testAllBranchesUnreachable]
-# When all branches are unreachable, no imports appear
+[case testMultipeBranchesUnreachable]
 if PY2:
     import unreachable_if
 elif PY2:
