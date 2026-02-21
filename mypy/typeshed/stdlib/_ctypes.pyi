@@ -1,28 +1,29 @@
 import _typeshed
+import builtins
 import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
 from types import GenericAlias
-from typing import Any, ClassVar, Generic, TypeVar, final, overload, type_check_only
+from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 _T = TypeVar("_T")
 _CT = TypeVar("_CT", bound=_CData)
 
-FUNCFLAG_CDECL: int
-FUNCFLAG_PYTHONAPI: int
-FUNCFLAG_USE_ERRNO: int
-FUNCFLAG_USE_LASTERROR: int
-RTLD_GLOBAL: int
-RTLD_LOCAL: int
+FUNCFLAG_CDECL: Final = 0x1
+FUNCFLAG_PYTHONAPI: Final = 0x4
+FUNCFLAG_USE_ERRNO: Final = 0x8
+FUNCFLAG_USE_LASTERROR: Final = 0x10
+RTLD_GLOBAL: Final[int]
+RTLD_LOCAL: Final[int]
 
 if sys.version_info >= (3, 11):
-    CTYPES_MAX_ARGCOUNT: int
+    CTYPES_MAX_ARGCOUNT: Final[int]
 
 if sys.version_info >= (3, 12):
-    SIZEOF_TIME_T: int
+    SIZEOF_TIME_T: Final[int]
 
 if sys.platform == "win32":
     # Description, Source, HelpFile, HelpContext, scode
@@ -37,8 +38,8 @@ if sys.platform == "win32":
 
     def CopyComPointer(src: _PointerLike, dst: _PointerLike | _CArgObject) -> int: ...
 
-    FUNCFLAG_HRESULT: int
-    FUNCFLAG_STDCALL: int
+    FUNCFLAG_HRESULT: Final = 0x2
+    FUNCFLAG_STDCALL: Final = 0x0
 
     def FormatError(code: int = ...) -> str: ...
     def get_last_error() -> int: ...
@@ -195,24 +196,45 @@ class CFuncPtr(_PointerLike, _CData, metaclass=_PyCFuncPtrType):
 _GetT = TypeVar("_GetT")
 _SetT = TypeVar("_SetT")
 
-# This class is not exposed. It calls itself _ctypes.CField.
-@final
-@type_check_only
-class _CField(Generic[_CT, _GetT, _SetT]):
-    offset: int
-    size: int
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
+    @final
+    class CField(Generic[_CT, _GetT, _SetT]):
+        offset: int
+        size: int
+        name: str
+        type: builtins.type[_CT]
+        byte_offset: int
+        byte_size: int
+        is_bitfield: bool
+        bit_offset: int
+        bit_size: int
+        is_anonymous: bool
         @overload
-        def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+        def __get__(self, instance: None, owner: builtins.type[Any] | None = None, /) -> Self: ...
         @overload
-        def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
-    else:
-        @overload
-        def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
-        @overload
-        def __get__(self, instance: Any, owner: type[Any] | None, /) -> _GetT: ...
+        def __get__(self, instance: Any, owner: builtins.type[Any] | None = None, /) -> _GetT: ...
+        def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
-    def __set__(self, instance: Any, value: _SetT, /) -> None: ...
+    _CField = CField
+
+else:
+    @final
+    @type_check_only
+    class _CField(Generic[_CT, _GetT, _SetT]):
+        offset: int
+        size: int
+        if sys.version_info >= (3, 10):
+            @overload
+            def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+            @overload
+            def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
+        else:
+            @overload
+            def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
+            @overload
+            def __get__(self, instance: Any, owner: type[Any] | None, /) -> _GetT: ...
+
+        def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
 # This class is not exposed. It calls itself _ctypes.UnionType.
 @type_check_only
@@ -265,6 +287,10 @@ class Structure(_CData, metaclass=_PyCStructType):
     _anonymous_: ClassVar[Sequence[str]]
     if sys.version_info >= (3, 13):
         _align_: ClassVar[int]
+
+    if sys.version_info >= (3, 14):
+        # _layout_ can be defined by the user, but is not always present.
+        _layout_: ClassVar[Literal["ms", "gcc-sysv"]]
 
     def __init__(self, *args: Any, **kw: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...

@@ -51,14 +51,14 @@ if sys.version_info >= (3, 11):
     def localcontext(
         ctx: Context | None = None,
         *,
-        prec: int | None = ...,
-        rounding: str | None = ...,
-        Emin: int | None = ...,
-        Emax: int | None = ...,
-        capitals: int | None = ...,
-        clamp: int | None = ...,
-        traps: dict[_TrapType, bool] | None = ...,
-        flags: dict[_TrapType, bool] | None = ...,
+        prec: int | None = None,
+        rounding: str | None = None,
+        Emin: int | None = None,
+        Emax: int | None = None,
+        capitals: int | None = None,
+        clamp: int | None = None,
+        traps: dict[_TrapType, bool] | None = None,
+        flags: dict[_TrapType, bool] | None = None,
     ) -> _ContextManager: ...
 
 else:

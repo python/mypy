@@ -118,9 +118,8 @@ import os
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import Callable, Final, NamedTuple, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from collections.abc import Callable, Sequence
+from typing import Final, NamedTuple, TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -129,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -555,7 +555,7 @@ class BlockedUpdate(NamedTuple):
     messages: list[str]
 
 
-UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = NormalUpdate | BlockedUpdate
 
 
 def update_module_isolated(
@@ -592,7 +592,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -631,6 +631,8 @@ def update_module_isolated(
 
     # Find any other modules brought in by imports.
     changed_modules = [(st.id, st.xpath) for st in new_modules]
+    for m in new_modules:
+        manager.import_map[m.id] = set(m.dependencies + m.suppressed)
 
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
@@ -726,7 +728,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -1003,7 +1006,7 @@ def reprocess_nodes(
     for target in targets:
         if target == module_id:
             for info in graph[module_id].early_errors:
-                manager.errors.add_error_info(info)
+                manager.errors.add_error_info(info, file=graph[module_id].xpath)
 
     # Strip semantic analysis information.
     saved_attrs: SavedAttributes = {}

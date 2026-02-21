@@ -26,13 +26,11 @@ will be incomplete.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from itertools import groupby
-from typing import TYPE_CHECKING, Callable, Final, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
-import mypy.build
 import mypy.state
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
@@ -55,7 +53,6 @@ from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
-from mypy.util import is_typeshed_file
 
 if TYPE_CHECKING:
     from mypy.build import Graph, State
@@ -106,6 +103,17 @@ def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> N
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
     if "builtins" in scc:
         cleanup_builtin_scc(graph["builtins"])
+
+    # Report TypeForm profiling stats
+    if len(scc) >= 1:
+        # Get manager from any state in the SCC (they all share the same manager)
+        manager = graph[scc[0]].manager
+        analyzer = manager.semantic_analyzer
+        manager.add_stats(
+            type_expression_parse_count=analyzer.type_expression_parse_count,
+            type_expression_full_parse_success_count=analyzer.type_expression_full_parse_success_count,
+            type_expression_full_parse_failure_count=analyzer.type_expression_full_parse_failure_count,
+        )
 
 
 def cleanup_builtin_scc(state: State) -> None:
@@ -347,12 +355,12 @@ def process_top_level_function(
 
 
 TargetInfo: _TypeAlias = tuple[
-    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 # Same as above but includes module as first item.
 FullTargetInfo: _TypeAlias = tuple[
-    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 
@@ -406,11 +414,6 @@ def semantic_analyze_target(
         )
         if isinstance(node, Decorator):
             infer_decorator_signature_if_simple(node, analyzer)
-    for dep in analyzer.imports:
-        state.add_dependency(dep)
-        priority = mypy.build.PRI_LOW
-        if priority <= state.priorities.get(dep, priority):
-            state.priorities[dep] = priority
 
     # Clear out some stale data to avoid memory leaks and astmerge
     # validity check confusion
@@ -446,10 +449,11 @@ def check_type_arguments_in_targets(
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
+    assert state.tree
     analyzer = TypeArgumentAnalyzer(
         errors,
         state.options,
-        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.tree.is_typeshed_file(state.options),
         state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():

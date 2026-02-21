@@ -55,6 +55,13 @@ new_tuple_with_length_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+load_empty_tuple_constant_op = custom_op(
+    arg_types=[],
+    return_type=tuple_rprimitive,
+    c_function_name="CPyTuple_LoadEmptyTupleConstant",
+    error_kind=ERR_NEVER,
+)
+
 # PyTuple_SET_ITEM does no error checking,
 # and should only be used to fill in brand new tuples.
 new_tuple_set_item_op = custom_op(

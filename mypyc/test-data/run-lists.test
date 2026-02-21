@@ -479,6 +479,8 @@ def test_in_operator_various_cases() -> None:
     assert list_in_mixed(type)
 
 [case testListBuiltFromGenerator]
+from typing import Final
+abc: Final = "abc"
 def test_from_gen() -> None:
     source_a = ["a", "b", "c"]
     a = list(x + "f2" for x in source_a)
@@ -498,6 +500,10 @@ def test_from_gen() -> None:
     source_str = "abcd"
     f = list("str:" + x for x in source_str)
     assert f == ["str:a", "str:b", "str:c", "str:d"]
+def test_known_length() -> None:
+    # not built from generator but doesnt need its own test either
+    built = [str(x) for x in [*abc, *"def", *b"ghi", ("j", "k"), *("l", "m", "n")]]
+    assert built == ['a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n']
 
 [case testNext]
 from typing import List

@@ -76,6 +76,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -107,6 +108,10 @@ class TraverserVisitor(NodeVisitor[None]):
     should override visit methods to perform actions during
     traversal. Calling the superclass method allows reusing the
     traversal implementation.
+
+    TODO: split this into more limited visitor (e.g. statements-only etc).
+    This will improve performance since in many cases we don't need to recurse
+    all the way down in various visitors that subclass this.
     """
 
     def __init__(self) -> None:
@@ -288,6 +293,9 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         o.expr.accept(self)
+
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        pass
 
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         o.expr.accept(self)
@@ -504,7 +512,7 @@ class ExtendedTraverserVisitor(TraverserVisitor):
     In addition to the base traverser it:
         * has visit_ methods for leaf nodes
         * has common method that is called for all nodes
-        * allows to skip recursing into a node
+        * allows skipping recursing into a node
 
     Note that this traverser still doesn't visit some internal
     mypy constructs like _promote expression and Var.
@@ -737,6 +745,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
             return
         super().visit_cast_expr(o)
 
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_form_expr(o)
+
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         if not self.visit(o):
             return
@@ -933,6 +946,41 @@ def has_return_statement(fdef: FuncBase) -> bool:
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
+
+
+class NameAndMemberCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name_exprs: list[NameExpr] = []
+        self.member_exprs: list[MemberExpr] = []
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        self.name_exprs.append(o)
+        super().visit_name_expr(o)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        self.member_exprs.append(o)
+        super().visit_member_expr(o)
+
+
+def all_name_and_member_expressions(node: Expression) -> tuple[list[NameExpr], list[MemberExpr]]:
+    v = NameAndMemberCollector()
+    node.accept(v)
+    return (v.name_exprs, v.member_exprs)
+
+
+class StringSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        self.found = True
+
+
+def has_str_expression(node: Expression) -> bool:
+    v = StringSeeker()
+    node.accept(v)
+    return v.found
 
 
 class FuncCollectorBase(TraverserVisitor):

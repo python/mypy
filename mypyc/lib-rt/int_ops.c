@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #ifndef _WIN32
 // On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
 // PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
@@ -14,6 +18,17 @@
 // can't use the above trick
 #define CPyLong_FromSsize_t PyLong_FromSsize_t
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#  if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+#    define CPY_CLZ(x) __builtin_clzll((unsigned long long)(x))
+#    define CPY_BITS 64
+#  else
+#    define CPY_CLZ(x) __builtin_clz((unsigned int)(x))
+#    define CPY_BITS 32
+#  endif
+#endif
+
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
@@ -385,7 +400,7 @@ int64_t CPyLong_AsInt64_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -438,7 +453,7 @@ int32_t CPyLong_AsInt32_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -480,7 +495,7 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
 }
 
 void CPyInt32_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
 }
 
 // i16 unboxing slow path
@@ -495,7 +510,7 @@ int16_t CPyLong_AsInt16_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -537,7 +552,7 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 }
 
 void CPyInt16_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
 // u8 unboxing slow path
@@ -552,7 +567,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_UINT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
             return CPY_LL_UINT_ERROR;
         }
     }
@@ -560,7 +575,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
 }
 
 void CPyUInt8_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
 }
 
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
@@ -580,4 +595,115 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         return PyFloat_AsDouble(result);
     }
     return 1.0;
+}
+
+static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, int little_endian, int signed_flag) {
+    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
+    PyObject *result = PyBytes_FromStringAndSize(NULL, length);
+    if (!result) {
+        return NULL;
+    }
+    unsigned char *bytes = (unsigned char *)PyBytes_AS_STRING(result);
+#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
+#else
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+#endif
+    if (res < 0) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
+}
+
+// int.to_bytes(length, byteorder, signed=False)
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    if (!PyUnicode_Check(byteorder)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "byteorder must be str");
+        return NULL;
+    }
+    const char *order = PyUnicode_AsUTF8(byteorder);
+    if (!order) {
+        Py_DECREF(pyint);
+        return NULL;
+    }
+    int little_endian;
+    if (strcmp(order, "big") == 0) {
+        little_endian = 0;
+    } else if (strcmp(order, "little") == 0) {
+        little_endian = 1;
+    } else {
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    PyObject *result = CPyLong_ToBytes(pyint, length, little_endian, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, byteorder="little", signed=False)
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 1, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, "big", signed=False)
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 0, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.bit_length()
+CPyTagged CPyTagged_BitLength(CPyTagged self) {
+    // Handle zero
+    if (self == 0) {
+        return 0;
+    }
+
+    // Fast path for small (tagged) ints
+    if (CPyTagged_CheckShort(self)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(self);
+        Py_ssize_t absval = val < 0 ? -val : val;
+        int bits = 0;
+        if (absval) {
+#if defined(_MSC_VER)
+    #if defined(_WIN64)
+            unsigned long idx;
+            if (_BitScanReverse64(&idx, (unsigned __int64)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #else
+            unsigned long idx;
+            if (_BitScanReverse(&idx, (unsigned long)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
+            bits = (int)(CPY_BITS - CPY_CLZ(absval));
+#else
+            // Fallback to loop if no builtin
+            while (absval) {
+                absval >>= 1;
+                bits++;
+            }
+#endif
+        }
+        return bits << 1;
+    }
+
+    // Slow path for big ints
+    PyObject *pyint = CPyTagged_AsObject(self);
+    int bits = _PyLong_NumBits(pyint);
+    Py_DECREF(pyint);
+    if (bits < 0) {
+        // _PyLong_NumBits sets an error on failure
+        return CPY_INT_TAG;
+    }
+    return bits << 1;
 }

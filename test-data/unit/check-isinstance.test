@@ -1,4 +1,5 @@
 [case testForcedAssignment]
+# flags: --warn-unreachable
 x = 1 # type: object
 y = 1
 def f(): x, y  # Prevent independent redefinition
@@ -8,6 +9,7 @@ y = x
 [builtins fixtures/tuple.pyi]
 
 [case testJoinAny]
+# flags: --warn-unreachable
 from typing import List, Any
 
 x: List[Any]
@@ -24,6 +26,7 @@ x * 2
 [builtins fixtures/list.pyi]
 
 [case testGeneratorExpressionTypes]
+# flags: --warn-unreachable
 class A: y = 1
 x = [A()]
 y = [x]
@@ -33,23 +36,25 @@ z = [a.y for b in y for a in b]
 [builtins fixtures/list.pyi]
 
 [case testIsinstanceNestedTuple]
+# flags: --warn-unreachable
 from typing import Union, List, Tuple, Dict
 
 def f(x: Union[int, str, List]) -> None:
     if isinstance(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+        x[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
         x[1]
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if isinstance(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x[1]
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testClassAttributeInitialization]
+# flags: --warn-unreachable
 class A:
     x: int
     def __init__(self) -> None:
@@ -58,6 +63,7 @@ class A:
         w = self.y
 
 [case testAssignmentSubtypes]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo(x: Union[str, int]):
@@ -76,6 +82,7 @@ y = [x]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testFunctionDefaultArgs]
+# flags: --warn-unreachable
 class A: pass
 class B(A): y = 1
 
@@ -86,6 +93,7 @@ def foo(x: A = B()):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceFancyConditionals]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -102,6 +110,7 @@ while isinstance(x, B):
 [builtins fixtures/isinstance.pyi]
 
 [case testSubtypingWithAny]
+# flags: --warn-unreachable
 class A:
     y = 1
 
@@ -119,10 +128,12 @@ if int():
 reveal_type(x)  # N: Revealed type is "__main__.A"
 
 [case testSingleMultiAssignment]
+# flags: --warn-unreachable
 x = 'a'
 (x,) = ('a',)
 
 [case testUnionMultiAssignment]
+# flags: --warn-unreachable
 from typing import Union
 x: Union[int, str]
 if int():
@@ -135,6 +146,7 @@ if int():
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionIfZigzag]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
@@ -148,6 +160,7 @@ def f(x: Union[int, str]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testTwoLoopsUnion]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -167,6 +180,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testComplicatedBlocks]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -191,7 +205,7 @@ def bar() -> None:
         x + 'a'
         while bool():
             x + 'a'         # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
             x = foo()
             if bool():
                 continue
@@ -201,6 +215,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionTryExcept]
+# flags: --warn-unreachable
 class A:
     y = A()
 
@@ -221,6 +236,7 @@ except:
 x.z           # E: "A" has no attribute "z"
 
 [case testUnionTryExcept2]
+# flags: --warn-unreachable
 class A:
     y = A()
 
@@ -242,6 +258,7 @@ else:
 x.z
 
 [case testUnionTryExcept3]
+# flags: --warn-unreachable
 class A:
     y = A()
 
@@ -253,7 +270,7 @@ def f(): x # Prevent redefinition of x
 x = B()
 try:
     raise BaseException()
-    x = A()
+    x = A()  # E: Statement is unreachable
 except:
     pass
 x.z
@@ -285,6 +302,7 @@ x.z           # E: "A" has no attribute "z"
 [builtins fixtures/exception.pyi]
 
 [case testUnionTryExcept4]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -303,6 +321,7 @@ while bool():
 [builtins fixtures/exception.pyi]
 
 [case testUnionTryFinally]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -320,6 +339,7 @@ finally:
 x.b
 
 [case testUnionTryFinally2]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -338,6 +358,7 @@ finally:
 x.b      # E: "A" has no attribute "b"
 
 [case testUnionTryFinally3]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -356,6 +377,7 @@ finally:
 x.b
 
 [case testUnionTryFinally4]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -378,6 +400,7 @@ while 2:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionTryFinally5]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -391,10 +414,11 @@ while 2:
     finally:
         x.b    # E: "A" has no attribute "b"
         break
-        x.b
-    x.b
+        x.b  # E: Statement is unreachable
+    x.b  # E: Statement is unreachable
 
 [case testUnionTryFinally6]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -412,6 +436,7 @@ def f() -> int:
         return x.b # E: "A" has no attribute "b"
 
 [case testUnionListIsinstance]
+# flags: --warn-unreachable
 from typing import Union, List
 
 def f(x: Union[List[int], List[str], int]) -> None:
@@ -422,20 +447,21 @@ def f(x: Union[List[int], List[str], int]) -> None:
             a + 'x' # E: Unsupported operand types for + ("int" and "str")
 
         # type of a?
-        reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+        reveal_type(x) # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
         x + 1 # E: Unsupported operand types for + ("list[int]" and "int") \
               # E: Unsupported operand types for + ("list[str]" and "int") \
-              # N: Left operand is of type "Union[list[int], list[str]]"
+              # N: Left operand is of type "list[int] | list[str]"
     else:
         x[0] # E: Value of type "int" is not indexable
         x + 1
-    x[0] # E: Value of type "Union[list[int], list[str], int]" is not indexable
+    x[0] # E: Value of type "list[int] | list[str] | int" is not indexable
     x + 1 # E: Unsupported operand types for + ("list[int]" and "int") \
           # E: Unsupported operand types for + ("list[str]" and "int") \
-          # N: Left operand is of type "Union[list[int], list[str], int]"
+          # N: Left operand is of type "list[int] | list[str] | int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionListIsinstance2]
+# flags: --warn-unreachable
 from typing import Union, List
 
 class A:
@@ -455,6 +481,7 @@ def f(x: Union[A, B, C]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionStrictDefnBasic]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -465,7 +492,7 @@ if int():
     x = x + 1
     x = foo()
     x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
 if isinstance(x, str):
    x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
@@ -473,6 +500,7 @@ if isinstance(x, str):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testSubtypeRedefinitionBasic]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: pass
@@ -487,6 +515,7 @@ x.y        # OK: x is known to be a B
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceBasic]
+# flags: --warn-unreachable
 from typing import Union
 x: Union[int, str]
 if isinstance(x, str):
@@ -498,6 +527,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceIndexing]
+# flags: --warn-unreachable
 from typing import Union
 x: Union[int, str]
 j = [x]
@@ -510,6 +540,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceSubClassMember]
+# flags: --warn-unreachable
 from typing import Union
 
 class Animal: pass
@@ -520,7 +551,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = None  # type: Animal
+    pet: Animal
 
 h = House()
 h.pet = Dog()
@@ -530,9 +561,9 @@ while bool():
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
         y = h.pet.paws + 1   # E: Unsupported operand types for + ("str" and "int") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
             break
@@ -541,6 +572,7 @@ while bool():
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceSubClassReset]
+# flags: --warn-unreachable
 class A:
     pass
 
@@ -559,6 +591,7 @@ if isinstance(x.a, B):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceTuple]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: pass
@@ -578,10 +611,11 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
+    v.method3('xyz') # E: Item "B" of "B | C" has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNeverWidens]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: pass
@@ -594,10 +628,11 @@ reveal_type(a)  # N: Revealed type is "__main__.A"
 
 b = A()  # type: Union[A, B]
 assert isinstance(b, (A, B, C))
-reveal_type(b)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(b)  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/isinstance.pyi]
 
 [case testMemberAssignmentChanges]
+# flags: --warn-unreachable
 from typing import Union
 
 class Dog:
@@ -606,7 +641,7 @@ class Dog:
 pet = Dog()
 
 pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
-                # N: Left operand is of type "Union[int, str]"
+                # N: Left operand is of type "int | str"
 pet.paws = 'a'
 pet.paws + 'a'
 pet.paws = 1
@@ -614,6 +649,7 @@ pet.paws + 1
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceSubClassMemberHard]
+# flags: --warn-unreachable
 from typing import Union
 
 class Animal:
@@ -625,7 +661,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = None  # type: Animal
+    pet: Animal
 
 h = House()
 h.pet = Dog()
@@ -635,7 +671,7 @@ if isinstance(h.pet, Dog):
         for i in [1]:
             # TODO: should we allow this if iterable is of length one or zero?
             h.pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
-                              # N: Left operand is of type "Union[int, str]"
+                              # N: Left operand is of type "int | str"
             if bool():
                 break
             h.pet.paws = 1
@@ -648,6 +684,7 @@ if isinstance(h.pet, Dog):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceReturn]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> None:
@@ -668,6 +705,7 @@ foo()
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceBadBreak]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> None:
@@ -678,12 +716,13 @@ def foo() -> None:
     else:
         pass
     y = x + 'asdad'    # E: Unsupported operand types for + ("int" and "str") \
-                       # N: Left operand is of type "Union[int, str]"
+                       # N: Left operand is of type "int | str"
 
 foo()
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion]
+# flags: --warn-unreachable
 from typing import Union, List
 
 x: Union[int, str, List[int]]
@@ -697,14 +736,15 @@ while bool():
         x + [1]
     x + 'a'           # E: Unsupported operand types for + ("int" and "str") \
                       # E: Unsupported operand types for + ("list[int]" and "str") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion2]
+# flags: --warn-unreachable
 from typing import Union, List
 x: Union[int, str, List[int]]
 while bool():
@@ -718,10 +758,11 @@ while bool():
     x + 'a'           # E: Unsupported operand types for + ("list[int]" and "str")
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion3]
+# flags: --warn-unreachable
 from typing import Union, List
 
 while bool():
@@ -731,17 +772,20 @@ while bool():
     if isinstance(x, int):
         x + 1
         break
-    elif isinstance(x, str):
+    elif isinstance(x, str):  # E: Statement is unreachable
         x + 'a'
         break
-    x + [1]           # These lines aren't reached because x was an int
+    x + [1]           # These lines aren't reached because x was an int  # E: Statement is unreachable
     x + 'a'
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
+
+
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRemovingTypeRepeatedly]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -749,30 +793,31 @@ def foo() -> Union[int, str]: pass
 for i in [1, 2]:
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
 x + 'a'                    # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                           # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyRepeatedly]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -780,9 +825,9 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1     # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 
 x = 1
 x + 1
@@ -794,12 +839,13 @@ x + 'a'
 
 x = foo()
 x + 1     # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -807,7 +853,7 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
@@ -815,11 +861,12 @@ x + 1
 
 while bool():
       x + 1    # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
+               # N: Left operand is of type "int | str"
       x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop2]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -827,7 +874,7 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
@@ -837,10 +884,11 @@ for i in [1]:
       x = 'a'
 
 x + 1    # E: Unsupported operand types for + ("str" and "int") \
-         # N: Left operand is of type "Union[int, str]"
+         # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop3]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -856,7 +904,7 @@ while bool():
 else:
     x + 1
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 1
 for y in [1]:
     x + 1
@@ -865,10 +913,11 @@ for y in [1]:
 else:
     x + 1
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopWhile4]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -889,18 +938,19 @@ x + 'a'
 x = 1
 while bool():
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     if bool():
         x = 'a'
         continue
 else:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopFor4]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -921,18 +971,19 @@ x + 'a'
 x = 1
 for y in [1]:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     if bool():
         x = 'a'
         continue
 else:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyNestedLoop]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -950,7 +1001,7 @@ for y in [1]:
 else:
     x + 1
 x + 1 # E: Unsupported operand types for + ("str" and "int") \
-      # N: Left operand is of type "Union[int, str]"
+      # N: Left operand is of type "int | str"
 x = 1
 while bool():
     while bool():
@@ -961,10 +1012,11 @@ while bool():
 else:
     x + 1
 x + 1 # E: Unsupported operand types for + ("str" and "int") \
-      # N: Left operand is of type "Union[int, str]"
+      # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopLong]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: a = 1
@@ -974,7 +1026,7 @@ def foo() -> Union[int, str, A]: pass
 def bar() -> None:
     x = foo()
     x + 1  # E: Unsupported left operand type for + ("A") \
-           # N: Left operand is of type "Union[int, str, A]" \
+           # N: Left operand is of type "int | str | A" \
            # E: Unsupported operand types for + ("str" and "int")
     if isinstance(x, A):
        x.a
@@ -1007,11 +1059,12 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
+             x.a     # E: Item "str" of "str | A" has no attribute "a"
           x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testWhileExitCondition1]
+# flags: --warn-unreachable
 from typing import Union
 x = 1  # type: Union[int, str]
 while isinstance(x, int):
@@ -1024,6 +1077,7 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testWhileExitCondition2]
+# flags: --warn-unreachable
 from typing import Union
 x = 1  # type: Union[int, str]
 while isinstance(x, int):
@@ -1032,15 +1086,16 @@ while isinstance(x, int):
     x = 'a'
 else:
     reveal_type(x)  # N: Revealed type is "builtins.str"
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testWhileLinkedList]
+# flags: --warn-unreachable
 from typing import Union
 LinkedList = Union['Cons', 'Nil']
 class Nil: pass
 class Cons:
-    tail = None  # type: LinkedList
+    tail: LinkedList
 def last(x: LinkedList) -> Nil:
     while isinstance(x, Cons):
         x = x.tail
@@ -1048,10 +1103,12 @@ def last(x: LinkedList) -> Nil:
 [builtins fixtures/isinstance.pyi]
 
 [case testReturnAndFlow]
+# flags: --warn-unreachable
 def foo() -> int:
     return 1 and 2
-    return 'a'
+    return 'a'  # E: Statement is unreachable
 [case testCastIsinstance]
+# flags: --warn-unreachable
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -1066,15 +1123,17 @@ x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableCode]
+# flags: --warn-unreachable
 x = 1 # type: int
 
 while bool():
     x = 'a'           # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     break
-    x = 'a'           # Note: no error because unreachable code
+    x = 'a'           # Note: no error because unreachable code  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableCode2]
+# flags: --warn-unreachable
 x = 1
 while bool():
     try:
@@ -1083,50 +1142,56 @@ while bool():
         continue
     else:
         continue
-    x + 'a'
+    x + 'a'  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableWhileTrue]
+# flags: --warn-unreachable
 def f(x: int) -> None:
     while True:
         if x:
             return
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableAssertFalse]
+# flags: --warn-unreachable
 def f() -> None:
     assert False
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableAssertFalse2]
+# flags: --warn-unreachable
 def f() -> None:
     # The old parser doesn't understand the syntax below
     assert False, "hi"
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableReturnOrAssertFalse]
+# flags: --warn-unreachable
 def f(x: int) -> int:
     if x:
         return x
     else:
         assert False
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableTryExcept]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         f()
         return
     except BaseException:
         return
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableTryExceptElse]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         f()
@@ -1134,41 +1199,46 @@ def f() -> None:
         return
     else:
         return
-    1()
+    1()  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableTryReturnFinally1]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         return
     finally:
         pass
-    1()
+    1()  # E: Statement is unreachable
 
 [case testUnreachableTryReturnFinally2]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         pass
     finally:
         return
-    1()
+    1()  # E: Statement is unreachable
 
 [case testUnreachableTryReturnExceptRaise]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         return
     except:
         raise
-    1()
+    1()  # E: Statement is unreachable
 
 [case testUnreachableReturnLambda]
+# flags: --warn-unreachable
 from typing import Callable
 def g(t: Callable[[int], int]) -> int: pass
 def f() -> int:
     return g(lambda x: x)
-    1()
+    1()  # E: Statement is unreachable
 
 [case testIsinstanceAnd]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -1181,6 +1251,7 @@ if isinstance(x, B) and 1:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceShortcircuit]
+# flags: --warn-unreachable
 class A:
     pass
 
@@ -1200,6 +1271,7 @@ if not isinstance(x, B) and x.flag: # E: "A" has no attribute "flag"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceExpression]
+# flags: --warn-unreachable
 class A:
     pass
 
@@ -1214,6 +1286,7 @@ x.flag if isinstance(x, B) else 0
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAnd]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -1236,6 +1309,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAndSpecialCase]
+# flags: --warn-unreachable
 class A:
     # Ensure A.__add__ and int.__add__ are different to
     # force 'isinstance(y, int)' checks below to never succeed.
@@ -1250,15 +1324,18 @@ class C(A):
 x = B() # type: A
 y = C() # type: A
 
-if isinstance(x, B) and isinstance(y, int):
-    1() # type checking skipped
-if isinstance(y, int) and isinstance(x, B):
-    1() # type checking skipped
-if isinstance(y, int) and y > 42:
-    1() # type checking skipped
+if isinstance(x, B) and isinstance(y, int):  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures
+    1() # E: Statement is unreachable
+if isinstance(y, int) and isinstance(x, B):  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures \
+                                             # E: Right operand of "and" is never evaluated
+    1() # E: Statement is unreachable
+if isinstance(y, int) and y > 42:  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures \
+                                   # E: Right operand of "and" is never evaluated
+    1() # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testReturnWithCallExprAndIsinstance]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
@@ -1270,6 +1347,7 @@ def foo(): pass
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceOr1]
+# flags: --warn-unreachable
 from typing import Optional
 
 def f(a: bool, x: object) -> Optional[int]:
@@ -1280,6 +1358,7 @@ def f(a: bool, x: object) -> Optional[int]:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOr2]
+# flags: --warn-unreachable
 from typing import Optional
 
 def g(a: bool, x: object) -> Optional[int]:
@@ -1290,15 +1369,17 @@ def g(a: bool, x: object) -> Optional[int]:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOr3]
+# flags: --warn-unreachable
 from typing import Optional
 
 def h(a: bool, x: object) -> Optional[int]:
     if a or isinstance(x, int):
         return None
-    return x # E: Incompatible return value type (got "object", expected "Optional[int]")
+    return x # E: Incompatible return value type (got "object", expected "int | None")
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWithOverlappingUnionType]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[float, int]) -> None:
@@ -1309,6 +1390,7 @@ def f(x: Union[float, int]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWithOverlappingUnionType2]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: pass
@@ -1322,10 +1404,8 @@ def f(x: Union[A, B]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWithOverlappingPromotionTypes]
+# flags: --warn-unreachable
 from typing import Union
-
-class FloatLike: pass
-class IntLike(FloatLike): pass
 
 def f1(x: Union[float, int]) -> None:
     # We ignore promotions in isinstance checks
@@ -1334,13 +1414,18 @@ def f1(x: Union[float, int]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 
+class FloatLike: pass
+class IntLike(FloatLike): pass
+
 def f2(x: Union[FloatLike, IntLike]) -> None:
-    # ...but not regular subtyping relationships
     if isinstance(x, FloatLike):
-        reveal_type(x)  # N: Revealed type is "Union[__main__.FloatLike, __main__.IntLike]"
+        reveal_type(x)  # N: Revealed type is "__main__.FloatLike"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfSuperclass]
+# flags: --warn-unreachable
 class A: pass
 class B(A): pass
 
@@ -1348,12 +1433,13 @@ x = B()
 if isinstance(x, A):
     reveal_type(x)  # N: Revealed type is "__main__.B"
 if not isinstance(x, A):
-    reveal_type(x)  # unreachable
+    reveal_type(x)  # E: Statement is unreachable
     x = A()
 reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfNonoverlapping]
+# flags: --warn-unreachable
 class A: pass
 class B: pass
 
@@ -1366,6 +1452,7 @@ reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstance.pyi]
 
 [case testAssertIsinstance]
+# flags: --warn-unreachable
 def f(x: object):
     assert isinstance(x, int)
     y = 0 # type: int
@@ -1373,6 +1460,7 @@ def f(x: object):
 [builtins fixtures/isinstance.pyi]
 
 [case testUnionAssertIsinstance]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[str, int]):
@@ -1382,6 +1470,7 @@ def f(x: Union[str, int]):
 [builtins fixtures/isinstance.pyi]
 
 [case testAnyAssertIsinstance]
+# flags: --warn-unreachable
 from typing import Any
 
 def f(x: Any):
@@ -1390,6 +1479,7 @@ def f(x: Any):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfGenericClassRetainsParameters]
+# flags: --warn-unreachable
 from typing import List, Union
 
 def f(x: Union[List[int], str]) -> None:
@@ -1397,10 +1487,11 @@ def f(x: Union[List[int], str]) -> None:
         x[0]() # E: "int" not callable
     else:
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.list[builtins.int] | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceOrIsinstance]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -1411,23 +1502,23 @@ class C(A):
 
 x1 = A()
 if isinstance(x1, B) or isinstance(x1, C):
-    reveal_type(x1) # N: Revealed type is "Union[__main__.B, __main__.C]"
+    reveal_type(x1) # N: Revealed type is "__main__.B | __main__.C"
     f = x1.flag  # type: int
 else:
     reveal_type(x1) # N: Revealed type is "__main__.A"
     f = 0
 reveal_type(x1) # N: Revealed type is "__main__.A"
 x2 = A()
-if isinstance(x2, A) or isinstance(x2, C):
+if isinstance(x2, A) or isinstance(x2, C):  # E: Right operand of "or" is never evaluated
     reveal_type(x2) # N: Revealed type is "__main__.A"
     f = x2.flag # E: "A" has no attribute "flag"
 else:
-    # unreachable
-    1()
+    1()  # E: Statement is unreachable
 reveal_type(x2) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
 [case testComprehensionIsInstance]
+# flags: --warn-unreachable
 from typing import List, Union
 a = [] # type: List[Union[int, str]]
 l = [x for x in a if isinstance(x, int)]
@@ -1439,6 +1530,7 @@ reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceInWrongOrderInBooleanOp]
+# flags: --warn-unreachable
 class A:
     m = 1
 
@@ -1448,8 +1540,9 @@ def f(x: object) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndOr]
+# flags: --warn-unreachable
 class A:
-    a = None  # type: A
+    a: 'A'
 
 def f(x: object) -> None:
     b = isinstance(x, A) and x.a or A()
@@ -1457,42 +1550,46 @@ def f(x: object) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceWithUnknownType]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[int, str], typ: type) -> None:
     if isinstance(x, (typ, int)):
         x + 1  # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+               # N: Left operand is of type "int | str"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithBoundedType]
+# flags: --warn-unreachable
 from typing import Union, Type
 
 class A: pass
 
 def f(x: Union[int, A], a: Type[A]) -> None:
     if isinstance(x, (a, int)):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.A"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, __main__.A]"
+    reveal_type(x) # N: Revealed type is "builtins.int | __main__.A"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithEmtpy2ndArg]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
     if isinstance(x, ()):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithTypeObject]
+# flags: --warn-unreachable
 from typing import Union, Type
 
 class A: pass
@@ -1504,15 +1601,16 @@ def f(x: Union[int, A], a: Type[A]) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.int"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A"
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | __main__.A"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassUnreachable]
+# flags: --warn-unreachable
 from typing import Type, Sequence, Union
 
 x: Type[str]
-if issubclass(x, int):
-    reveal_type(x)  # unreachable block
+if issubclass(x, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+    reveal_type(x)  # E: Statement is unreachable
 
 class X: pass
 class Y(X): pass
@@ -1520,79 +1618,83 @@ class Z(X): pass
 
 a: Union[Type[Y], Type[Z]]
 if issubclass(a, X):
-    reveal_type(a)  # N: Revealed type is "Union[type[__main__.Y], type[__main__.Z]]"
+    reveal_type(a)  # N: Revealed type is "type[__main__.Y] | type[__main__.Z]"
 else:
-    reveal_type(a)  # unreachable block
+    reveal_type(a)  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions1]
+# flags: --warn-unreachable
 from typing import Union, List, Tuple, Dict, Type
 def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions2]
+# flags: --warn-unreachable
 from typing import Union, List, Tuple, Dict, Type
 
 def f(x: Type[Union[int, str, List]]) -> None:
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions3]
+# flags: --warn-unreachable
 from typing import Union, List, Tuple, Dict, Type
 
 def f(x: Type[Union[int, str, List]]) -> None:
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclass]
+# flags: --warn-unreachable
 from typing import Type, ClassVar
 
 class Goblin:
@@ -1620,6 +1722,7 @@ def test_issubclass(cls: Type[Goblin]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassDeepHierarchy]
+# flags: --warn-unreachable
 from typing import Type, ClassVar
 
 class Mob: pass
@@ -1673,6 +1776,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassTuple]
+# flags: --warn-unreachable
 from typing import Type, ClassVar
 
 class Mob: pass
@@ -1719,7 +1823,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
 
     if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
-        reveal_type(cls)  # N: Revealed type is "Union[type[__main__.GoblinDigger], type[__main__.GoblinAmbusher]]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.GoblinDigger] | type[__main__.GoblinAmbusher]"
         cls.level
         cls.job
         g = cls()
@@ -1729,6 +1833,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassBuiltins]
+# flags: --warn-unreachable
 from typing import List, Type
 
 class MyList(List): pass
@@ -1747,7 +1852,23 @@ def f(cls: Type[object]) -> None:
         cls()[0] + 1
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIssubclassTypeVar]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar
+
+ClassT = TypeVar("ClassT", bound=type)
+
+def directed_meet(cls0: ClassT, cls1: ClassT) -> ClassT | None:
+    if issubclass(cls1, cls0):
+        return cls1
+    if issubclass(cls0, cls1):
+        return cls0
+    return None
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsinstanceTypeArgs]
+# flags: --warn-unreachable
 from typing import Iterable, TypeVar
 x = 1
 isinstance(x, Iterable)
@@ -1758,12 +1879,14 @@ isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot b
 [typing fixtures/typing-full.pyi]
 
 [case testIsinstanceAnyAlias]
+# flags: --warn-unreachable
 from typing import Any
 A = Any
 isinstance(object(), A)  # E: Cannot use isinstance() with Any type
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceTypeArgsAliases]
+# flags: --warn-unreachable
 from typing import Iterable, TypeVar
 x = 1
 T = TypeVar('T')
@@ -1778,6 +1901,7 @@ isinstance(x, It2)  # E: Parameterized generics cannot be used with class or ins
 [typing fixtures/typing-full.pyi]
 
 [case testIssubclassTypeArgs]
+# flags: --warn-unreachable
 from typing import Iterable, TypeVar
 x = int
 issubclass(x, Iterable)
@@ -1787,7 +1911,7 @@ issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used 
 [typing fixtures/typing-full.pyi]
 
 [case testIssubclassWithMetaclasses]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 class FooMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
 class Bar: ...
@@ -1801,6 +1925,7 @@ if issubclass(fm, Bar):
 [builtins fixtures/isinstance.pyi]
 
 [case testIssubclassWithMetaclassesStrictOptional]
+# flags: --warn-unreachable
 class FooMetaclass(type): ...
 class BarMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
@@ -1818,6 +1943,7 @@ if issubclass(fm, Baz):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
+# flags: --warn-unreachable
 from typing import TypeVar
 
 class A: pass
@@ -1838,6 +1964,7 @@ def f(x: T) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound1]
+# flags: --warn-unreachable
 from typing import Union, TypeVar
 
 class A:
@@ -1858,12 +1985,13 @@ def f(x: T) -> T:
         reveal_type(x)      # N: Revealed type is "T`-1"
         x.a                 # E: "T" has no attribute "a"
         x.b
-    x.a                     # E: Item "B" of the upper bound "Union[A, B]" of type variable "T" has no attribute "a"
-    x.b                     # E: Item "A" of the upper bound "Union[A, B]" of type variable "T" has no attribute "b"
+    x.a                     # E: Item "B" of the upper bound "A | B" of type variable "T" has no attribute "a"
+    x.b                     # E: Item "A" of the upper bound "A | B" of type variable "T" has no attribute "b"
     return x
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2]
+# flags: --warn-unreachable
 from typing import Union, TypeVar
 
 class A:
@@ -1882,31 +2010,34 @@ def f(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndTypeType]
+# flags: --warn-unreachable
 from typing import Type
 def f(x: Type[int]) -> None:
     if isinstance(x, type):
         reveal_type(x) # N: Revealed type is "type[builtins.int]"
     else:
-        reveal_type(x)  # Unreachable
+        reveal_type(x)  # E: Statement is unreachable
     reveal_type(x) # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceVariableSubstitution]
+# flags: --warn-unreachable
 T = (int, str)
 U = (list, T)
 x: object = None
 
 if isinstance(x, T):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 if isinstance(x, U):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.list[Any], builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.list[Any] | builtins.int | builtins.str"
 
 if isinstance(x, (set, (list, T))):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.set[Any] | builtins.list[Any] | builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTooFewArgs]
+# flags: --warn-unreachable
 isinstance() # E: Missing positional arguments "x", "t" in call to "isinstance"
 x: object
 if isinstance(): # E: Missing positional arguments "x", "t" in call to "isinstance"
@@ -1918,6 +2049,7 @@ if isinstance(x): # E: Missing positional argument "t" in call to "isinstance"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsSubclassTooFewArgs]
+# flags: --warn-unreachable
 from typing import Type
 
 issubclass() # E: Missing positional arguments "x", "t" in call to "issubclass"
@@ -1930,8 +2062,9 @@ if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTooManyArgs]
+# flags: --warn-unreachable
 isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
-         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, tuple[Any, ...]]"
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "type | tuple[Any, ...]"
 x: object
 if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # N: Revealed type is "builtins.object"
@@ -1940,6 +2073,7 @@ if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceNarrowAnyExplicit]
+# flags: --warn-unreachable
 from typing import Any
 
 def narrow_any_to_str_then_reassign_to_int() -> None:
@@ -1952,6 +2086,7 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNarrowAnyImplicit]
+# flags: --warn-unreachable
 def foo(): ...
 
 def narrow_any_to_str_then_reassign_to_int() -> None:
@@ -1964,6 +2099,7 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
+# flags: --warn-unreachable
 from typing import List, Optional
 
 x: List[int]
@@ -1972,41 +2108,43 @@ y: Optional[int]
 if y in x:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 if y not in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInListOfOptional]
+# flags: --warn-unreachable
 from typing import List, Optional
 
 x: List[Optional[int]]
 y: Optional[int]
 
 if y not in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
+# flags: --warn-unreachable
 from typing import List, Optional
 
 x: List[str]
 y: Optional[int]
 
 if y in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListNested]
+# flags: --warn-unreachable
 from typing import List, Optional, Any
 
 x: Optional[int]
@@ -2016,11 +2154,11 @@ nested_any: List[List[Any]]
 if lst in nested_any:
     reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
 if x in nested_any:
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInTuple]
+# flags: --warn-unreachable
 from typing import Optional
 class A: pass
 class B(A): pass
@@ -2030,11 +2168,12 @@ y: Optional[B]
 if y in (B(), C()):
     reveal_type(y) # N: Revealed type is "__main__.B"
 else:
-    reveal_type(y) # N: Revealed type is "Union[__main__.B, None]"
+    reveal_type(y) # N: Revealed type is "__main__.B | None"
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testNarrowTypeAfterInNamedTuple]
+# flags: --warn-unreachable
 from typing import NamedTuple, Optional
 class NT(NamedTuple):
     x: int
@@ -2043,13 +2182,14 @@ nt: NT
 
 y: Optional[int]
 if y not in nt:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testNarrowTypeAfterInDict]
+# flags: --warn-unreachable
 from typing import Dict, Optional
 x: Dict[str, int]
 y: Optional[str]
@@ -2057,34 +2197,36 @@ y: Optional[str]
 if y in x:
     reveal_type(y) # N: Revealed type is "builtins.str"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 if y not in x:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testNarrowTypeAfterInNoAnyOrObject]
+# flags: --warn-unreachable
 from typing import Any, List, Optional
 x: List[Any]
 z: List[object]
 
 y: Optional[int]
 if y in x:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 
 if y not in z:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInUserDefined]
+# flags: --warn-unreachable
 from typing import Container, Optional
 
 class C(Container[int]):
@@ -2094,18 +2236,19 @@ class C(Container[int]):
 y: Optional[int]
 # We never trust user defined types
 if y in C():
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 if y not in C():
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInSet]
+# flags: --warn-unreachable
 from typing import Optional, Set
 s: Set[str]
 
@@ -2113,15 +2256,16 @@ y: Optional[str]
 if y in {'a', 'b', 'c'}:
     reveal_type(y) # N: Revealed type is "builtins.str"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 if y not in s:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/set.pyi]
 [out]
 
 [case testNarrowTypeAfterInTypedDict]
+# flags: --warn-unreachable
 from typing import Optional, TypedDict
 class TD(TypedDict):
     a: int
@@ -2138,6 +2282,7 @@ def f() -> None:
 [out]
 
 [case testIsinstanceWidensWithAnyArg]
+# flags: --warn-unreachable
 from typing import Any
 class A: ...
 B: Any
@@ -2149,25 +2294,28 @@ reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWidensUnionWithAnyArg]
+# flags: --warn-unreachable
 from typing import Any, Union
 class A: ...
 B: Any
 x: Union[A, B]
-reveal_type(x)  # N: Revealed type is "Union[__main__.A, Any]"
+reveal_type(x)  # N: Revealed type is "__main__.A | Any"
 assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceIgnoredImport]
+# flags: --warn-unreachable
 from typing import Union
 from foo import A  # type: ignore
 def f(x: Union[A, str]) -> None:
-    x.method_only_in_a()  # E: Item "str" of "Union[Any, str]" has no attribute "method_only_in_a"
+    x.method_only_in_a()  # E: Item "str" of "Any | str" has no attribute "method_only_in_a"
     if isinstance(x, A):
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceIgnoredImportDualAny]
+# flags: --warn-unreachable
 from typing import Any
 from foo import Bad, OtherBad  # type: ignore
 x: Any
@@ -2196,6 +2344,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
+# flags: --warn-unreachable
 from typing import Optional, Union
 
 class A: pass
@@ -2218,7 +2367,7 @@ def foo2(x: Optional[str]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import Optional, Union
 
 class A: pass
@@ -2242,6 +2391,7 @@ def foo2(x: Optional[str]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneCheckDoesNotMakeTypeVarOptional]
+# flags: --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar('T')
@@ -2262,7 +2412,7 @@ def foo_while(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar('T')
@@ -2276,24 +2426,25 @@ def foo(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneAndGenericTypesOverlapNoStrictOptional]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import Union, Optional, List
 
 # Note: this test is indirectly making sure meet.is_overlapping_types
 # correctly ignores 'None' in unions.
 
 def foo(x: Optional[List[str]]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | None"
     assert isinstance(x, list)
     reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
 
 def bar(x: Union[List[str], List[int], None]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int] | None"
     assert isinstance(x, list)
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNoneAndGenericTypesOverlapStrictOptional]
+# flags: --warn-unreachable
 from typing import Union, Optional, List
 
 # This test is the same as the one above, except for strict-optional.
@@ -2301,30 +2452,32 @@ from typing import Union, Optional, List
 # of completeness.
 
 def foo(x: Optional[List[str]]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | None"
     assert isinstance(x, list)
     reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
 
 def bar(x: Union[List[str], List[int], None]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int] | None"
     assert isinstance(x, list)
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpression]
+# flags: --warn-unreachable
 from typing import Union, List, Tuple
 
 def f(var: Union[List[str], Tuple[str, str], str]) -> None:
-    reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], tuple[builtins.str, builtins.str], builtins.str]"
+    reveal_type(var)  # N: Revealed type is "builtins.list[builtins.str] | tuple[builtins.str, builtins.str] | builtins.str"
     if isinstance(var, (list, *(str, int))):
-        reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.str]"
+        reveal_type(var)  # N: Revealed type is "builtins.list[builtins.str] | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpressionAndVariable]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(var: Union[int, str]) -> None:
-    reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
     some_types = (str, tuple)
     another_type = list
     if isinstance(var, (*some_types, another_type)):
@@ -2332,12 +2485,14 @@ def f(var: Union[int, str]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithWrongStarExpression]
+# flags: --warn-unreachable
 var = 'some string'
 if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
     pass
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceAdHocIntersectionBasic]
+# flags: --warn-unreachable
 class A:
     def f1(self) -> int: ...
 class B:
@@ -2439,7 +2594,7 @@ class B:
 
     def t3(self) -> None:
         if isinstance(self, (A1, A2)):
-            reveal_type(self)           # N: Revealed type is "Union[__main__.<subclass of "__main__.A1" and "__main__.B">, __main__.<subclass of "__main__.A2" and "__main__.B">]"
+            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "__main__.A1" and "__main__.B"> | __main__.<subclass of "__main__.A2" and "__main__.B">"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[1]")
 
@@ -2624,15 +2779,15 @@ class D: pass
 
 v1: A
 if isinstance(v1, (B, C)):
-    reveal_type(v1)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
+    reveal_type(v1)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B"> | __main__.<subclass of "__main__.A" and "__main__.C">"
 
 v2: Union[A, B]
 if isinstance(v2, C):
-    reveal_type(v2)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.C">]"
+    reveal_type(v2)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "__main__.B" and "__main__.C">"
 
 v3: Union[A, B]
 if isinstance(v3, (C, D)):
-    reveal_type(v3)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.A" and "__main__.D">, __main__.<subclass of "__main__.B" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.D">]"
+    reveal_type(v3)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "__main__.A" and "__main__.D"> | __main__.<subclass of "__main__.B" and "__main__.C"> | __main__.<subclass of "__main__.B" and "__main__.D">"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionSameNames]
@@ -2698,129 +2853,8 @@ else:
     reveal_type(x)        # N: Revealed type is "type[__main__.A]"
 [builtins fixtures/isinstance.pyi]
 
-[case testTypeEqualsCheck]
-from typing import Any
-
-y: Any
-if type(y) == int:
-    reveal_type(y) # N: Revealed type is "builtins.int"
-
-
-[case testMultipleTypeEqualsCheck]
-from typing import Any
-
-x: Any
-y: Any
-if type(x) == type(y) == int:
-    reveal_type(y) # N: Revealed type is "builtins.int"
-    reveal_type(x) # N: Revealed type is "builtins.int"
-
-[case testTypeEqualsCheckUsingIs]
-from typing import Any
-
-y: Any
-if type(y) is int:
-    reveal_type(y) # N: Revealed type is "builtins.int"
-
-[case testTypeEqualsCheckUsingIsNonOverlapping]
-# flags: --warn-unreachable
-from typing import Union
-
-y: str
-if type(y) is int:  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
-    y # E: Statement is unreachable
-else:
-    reveal_type(y) # N: Revealed type is "builtins.str"
-[builtins fixtures/isinstance.pyi]
-
-[case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
-# flags: --warn-unreachable
-from typing import Union
-
-class A: ...
-class B: ...
-class C(A): ...
-x: Union[B, C]
-# C instance cannot be exactly its parent A, we need reversed subtyping relationship
-# here (type(parent) is Child).
-if type(x) is A:
-    reveal_type(x)  # E: Statement is unreachable
-else:
-    reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
-[builtins fixtures/isinstance.pyi]
-
-[case testTypeEqualsNarrowingUnionWithElse]
-from typing import Union
-
-x: Union[int, str]
-if type(x) is int:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-
-[case testTypeEqualsMultipleTypesShouldntNarrow]
-# make sure we don't do any narrowing if there are multiple types being compared
-
-from typing import Union
-
-x: Union[int, str]
-if type(x) == int == str:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-
-# mypy thinks int isn't defined unless we include this
-[builtins fixtures/primitives.pyi]
-
-[case testTypeNotEqualsCheck]
-from typing import Union
-
-x: Union[int, str]
-if type(x) != int:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-
-# mypy thinks int isn't defined unless we include this
-[builtins fixtures/primitives.pyi]
-
-[case testTypeNotEqualsCheckUsingIsNot]
-from typing import Union
-
-x: Union[int, str]
-if type(x) is not int:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-
-[case testNarrowInElseCaseIfFinal]
-from typing import final, Union
-@final
-class C:
-    pass
-class D:
-    pass
-
-x: Union[C, D]
-if type(x) is C:
-    reveal_type(x)  # N: Revealed type is "__main__.C"
-else:
-    reveal_type(x)  # N: Revealed type is "__main__.D"
-[case testNarrowInIfCaseIfFinalUsingIsNot]
-from typing import final, Union
-@final
-class C:
-    pass
-class D:
-    pass
-
-x: Union[C, D]
-if type(x) is not C:
-    reveal_type(x)  # N: Revealed type is "__main__.D"
-else:
-    reveal_type(x)  # N: Revealed type is "__main__.C"
-
 [case testHasAttrExistingAttribute]
+# flags: --warn-unreachable
 class C:
     x: int
 c: C
@@ -2832,6 +2866,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeInstance]
+# flags: --warn-unreachable
 class B: ...
 b: B
 if hasattr(b, "x"):
@@ -2841,18 +2876,21 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeFunction]
+# flags: --warn-unreachable
 def foo(x: int) -> None: ...
 if hasattr(foo, "x"):
     reveal_type(foo.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeClassObject]
+# flags: --warn-unreachable
 class C: ...
 if hasattr(C, "x"):
     reveal_type(C.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeTypeType]
+# flags: --warn-unreachable
 from typing import Type
 class C: ...
 c: Type[C]
@@ -2861,6 +2899,7 @@ if hasattr(c, "x"):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeTypeVar]
+# flags: --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -2873,6 +2912,7 @@ def foo(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeChained]
+# flags: --warn-unreachable
 class B: ...
 b: B
 if hasattr(b, "x"):
@@ -2882,6 +2922,7 @@ elif hasattr(b, "y"):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeNested]
+# flags: --warn-unreachable
 class A: ...
 class B: ...
 
@@ -2905,6 +2946,7 @@ if hasattr(x, "x") or hasattr(x, "y"):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrPreciseType]
+# flags: --warn-unreachable
 class A: ...
 
 x: A
@@ -2913,6 +2955,7 @@ if hasattr(x, "a") and isinstance(x.a, int):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeUnion]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: ...
@@ -2921,13 +2964,14 @@ class B:
 
 xu: Union[A, B]
 if hasattr(xu, "x"):
-    reveal_type(xu)  # N: Revealed type is "Union[__main__.A, __main__.B]"
-    reveal_type(xu.x)  # N: Revealed type is "Union[Any, builtins.int]"
+    reveal_type(xu)  # N: Revealed type is "__main__.A | __main__.B"
+    reveal_type(xu.x)  # N: Revealed type is "Any | builtins.int"
 else:
     reveal_type(xu)  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeOuterUnion]
+# flags: --warn-unreachable
 from typing import Union
 
 class A: ...
@@ -2942,6 +2986,7 @@ if isinstance(xu, B) and hasattr(xu, "x"):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrDoesntInterfereGetAttr]
+# flags: --warn-unreachable
 class C:
     def __getattr__(self, attr: str) -> str: ...
 
@@ -2951,6 +2996,7 @@ if hasattr(c, "foo"):
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeLiteral]
+# flags: --warn-unreachable
 from typing import Final
 class B: ...
 b: B
@@ -2962,6 +3008,7 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrDeferred]
+# flags: --warn-unreachable
 def foo() -> str: ...
 
 class Test:
@@ -2976,6 +3023,7 @@ class Test:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrModule]
+# flags: --warn-unreachable
 import mod
 
 if hasattr(mod, "y"):
@@ -2997,6 +3045,7 @@ x: int
 [builtins fixtures/module.pyi]
 
 [case testHasAttrDoesntInterfereModuleGetAttr]
+# flags: --warn-unreachable
 import mod
 
 if hasattr(mod, "y"):
@@ -3006,22 +3055,42 @@ if hasattr(mod, "y"):
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
 
+[case testMultipleHasAttr-xfail]
+# flags: --warn-unreachable
+# https://github.com/python/mypy/issues/20596
+from __future__ import annotations
+from typing import Any
+
+def len(obj: object) -> Any: ...
+
+def f(x: type | str):
+    if (
+        hasattr(x, "__origin__")
+        and x.__origin__ is list
+        and hasattr(x, "__args__")
+        and len(x.__args__) == 1
+    ):
+        reveal_type(x.__args__[0])  # N: Revealed type is "Any"
+[builtins fixtures/module.pyi]
+
 [case testTypeIsntLostAfterNarrowing]
+# flags: --warn-unreachable
 from typing import Any
 
 var: Any
 reveal_type(var)  # N: Revealed type is "Any"
 assert isinstance(var, (bool, str))
-reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+reveal_type(var)  # N: Revealed type is "builtins.bool | builtins.str"
 
 if isinstance(var, bool):
     reveal_type(var)  # N: Revealed type is "builtins.bool"
 
 # Type of var shouldn't fall back to Any
-reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+reveal_type(var)  # N: Revealed type is "builtins.bool | builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testReuseIntersectionForRepeatedIsinstanceCalls]
+# flags: --warn-unreachable
 
 class A: ...
 class B: ...
@@ -3033,3 +3102,142 @@ if isinstance(a, B):
     c = a
 
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceTypeAny]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(x: object, t: type[Any]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceObject]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def foo(x: object, t: object):
+    if isinstance(x, t):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type[object] | tuple[type[object], ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceOrExprInTuple]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+def f1(x: object):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f2(x: Any):
+    if isinstance(x, str | (int, dict)):  # E: Argument 2 to "isinstance" has incompatible type "object"; expected "type | tuple[Any, ...]"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    if type(x) == str | (int, dict):
+        reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/primitives.pyi]
+
+[case testIsInstanceUnionOfTuples]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Iterator, final
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+def extract(
+    values: object,
+    ts: (
+        tuple[type[T1]]
+        | tuple[type[T1], type[T2]]
+        | tuple[type[T1], type[T2], type[T3]]
+    )
+) -> Iterator[T1 | T2 | T3]:
+    if isinstance(values, ts):
+        reveal_type(values)  # N: Revealed type is "T1`-1 | T2`-2 | T3`-3"
+        yield values
+    raise
+
+class A: ...
+class B: ...
+
+def f1(x: A | B, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+def f2(x: object, t: tuple[type[A]] | tuple[type[B]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+@final
+class FA: ...
+@final
+class FB: ...
+
+def g1(x: FA | FB, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+
+def g2(x: object, t: tuple[type[FA]] | tuple[type[FB]]):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.FA | __main__.FB"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/primitives.pyi]
+
+
+[case testIsInstanceTypeVarBoundToType]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import TypeVar, Protocol
+
+class A(Protocol):
+    x: int
+
+T = TypeVar("T", bound=type[A])
+
+def foo(x: object, t: T):
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
+
+
+[case testIsInstanceFinalTypeObject]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import final
+
+@final
+class A: ...
+
+def f1(x: A, t: type[A]):
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+def f2(x: A | None, t: type[A]):
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+
+    if isinstance(x, t):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+[builtins fixtures/isinstancelist.pyi]

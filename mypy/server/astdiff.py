@@ -53,8 +53,7 @@ Summary of how this works for certain kinds of differences:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias, Union
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
@@ -114,7 +113,7 @@ from mypy.util import get_prefix
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
-Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
+Primitive: _TypeAlias = str | float | int | bool  # float is for Literal[3.14] support.
 SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
@@ -435,6 +434,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.flavor,
             snapshot_type(typ.upper_bound),
             snapshot_type(typ.default),
+            snapshot_type(typ.prefix),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:
@@ -518,7 +518,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         raise RuntimeError
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
-        return ("TypeType", snapshot_type(typ.item))
+        return ("TypeType", snapshot_type(typ.item), typ.is_type_form)
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> SnapshotItem:
         assert typ.alias is not None
