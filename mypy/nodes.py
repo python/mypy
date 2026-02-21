@@ -1312,7 +1312,8 @@ class Var(SymbolNode):
         self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
-        # Is this initialized explicitly to a non-None value in class body?
+        # Is this variable declared in class body? The name is confusing, but it
+        # is a very old attribute, and changing will break some plugins.
         self.is_initialized_in_class = False
         self.is_staticmethod = False
         self.is_classmethod = False
