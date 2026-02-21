@@ -5,13 +5,13 @@ Use a Rust extension to generate a serialized AST, and deserialize the AST direc
 to a mypy AST.
 
 NOTE: This is heavily work in progress. To use this, you need to manually build the
-      ast_serialize Rust extension, see instructions in https://github.com/mypyc/ast_serialize.
+      ast_serialize Rust extension. More information at https://github.com/mypyc/ast_serialize.
 
 Expected benefits over mypy.fastparse:
- * No intermediate non-mypyc AST created, to improve performance
+ * No intermediate non-mypyc Python-level AST created, to improve performance
  * Parsing doesn't need GIL => use multithreading to construct serialized ASTs in parallel
  * Produce import dependencies without having to build an AST => helps parallel type checking
- * Support all Python syntax even if running mypy on an older Python version
+ * Support all Python syntax even if mypy is running on an older Python version
  * Generate an AST even if there are syntax errors
  * Potential to support incremental parsing (quickly process modified sections in a file)
  * Stripping function bodies in third-party code can happen earlier, for extra performance
