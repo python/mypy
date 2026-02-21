@@ -397,6 +397,14 @@ str_ssize_t_size_op = custom_op(
     error_kind=ERR_NEG_INT,
 )
 
+method_op(
+    name="isspace",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsSpace",
+    error_kind=ERR_NEVER,
+)
+
 # obj.decode()
 method_op(
     name="decode",

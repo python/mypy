@@ -77,6 +77,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "strict_bytes",
         "fixed_format_cache",
         "untyped_calls_exclude",
+        "enable_incomplete_feature",
     }
 ) - {"debug_cache"}
 
