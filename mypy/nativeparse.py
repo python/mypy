@@ -980,6 +980,138 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         assert False, tag
 
 
+def stringify_type_name(typ: Type) -> str | None:
+    """Extract qualified name from a type (for Arg constructor detection)."""
+    if isinstance(typ, UnboundType):
+        return typ.name
+    return None
+
+
+def extract_arg_name(typ: Type) -> str | None:
+    """Extract argument name from a type (for Arg name parameter)."""
+    if isinstance(typ, RawExpressionType) and typ.base_type_name == "builtins.str":
+        return typ.literal_value  # type: ignore[return-value]
+    elif isinstance(typ, UnboundType):
+        # String literals in type context are parsed as UnboundType (forward references)
+        # For Arg names, these are typically simple names without dots
+        if typ.name == "None":
+            return None
+        # Return the name as-is (it's the argument name)
+        return typ.name
+    return None  # Invalid, but let validation handle it
+
+
+def read_call_type(state: State, data: ReadBuffer) -> Type:
+    """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
+
+    This performs validation and error reporting similar to mypy/fastparse.py.
+    """
+    callee_type = read_type(state, data)
+
+    # Read positional arguments
+    expect_tag(data, LIST_GEN)
+    n_args = read_int_bare(data)
+    args = [read_type(state, data) for _ in range(n_args)]
+
+    # Read keyword arguments
+    expect_tag(data, LIST_GEN)
+    n_kwargs = read_int_bare(data)
+    kwargs = []
+    for _ in range(n_kwargs):
+        tag_kw = read_tag(data)
+        if tag_kw == LITERAL_NONE:
+            kw_name = None
+        elif tag_kw == LITERAL_STR:
+            kw_name = read_str_bare(data)
+        else:
+            assert False, f"Unexpected tag for keyword name: {tag_kw}"
+        kw_value = read_type(state, data)
+        kwargs.append((kw_name, kw_value))
+
+    # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
+    constructor = stringify_type_name(callee_type)
+
+    # We'll read location before processing errors so we can report them correctly
+    invalid = AnyType(TypeOfAny.from_error)
+    read_loc(data, invalid)
+    expect_end_tag(data)
+
+    if not constructor:
+        # ARG_CONSTRUCTOR_NAME_EXPECTED
+        state.add_error(
+            message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value,
+            invalid.line,
+            invalid.column,
+            blocker=True,
+            code="misc",
+        )
+        return invalid
+
+    # Extract type and name from arguments
+    name: str | None = None
+    name_set_from_positional = False
+    default_type = AnyType(TypeOfAny.special_form)
+    typ: Type = default_type
+    typ_set_from_positional = False
+
+    # Process positional arguments
+    for i, arg in enumerate(args):
+        if i == 0:
+            typ = arg
+            typ_set_from_positional = True
+        elif i == 1:
+            name = extract_arg_name(arg)
+            name_set_from_positional = True
+        else:
+            # ARG_CONSTRUCTOR_TOO_MANY_ARGS
+            state.add_error(
+                message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value,
+                invalid.line,
+                invalid.column,
+                blocker=True,
+                code="misc",
+            )
+
+    # Process keyword arguments
+    for kw_name, kw_value in kwargs:
+        if kw_name == "name":
+            # MULTIPLE_VALUES_FOR_NAME_KWARG
+            if name is not None and name_set_from_positional:
+                state.add_error(
+                    message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
+                    invalid.line,
+                    invalid.column,
+                    blocker=True,
+                    code="misc",
+                )
+            name = extract_arg_name(kw_value)
+        elif kw_name == "type":
+            # MULTIPLE_VALUES_FOR_TYPE_KWARG
+            if typ is not default_type and typ_set_from_positional:
+                state.add_error(
+                    message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
+                    invalid.line,
+                    invalid.column,
+                    blocker=True,
+                    code="misc",
+                )
+            typ = kw_value
+        else:
+            # ARG_CONSTRUCTOR_UNEXPECTED_ARG
+            state.add_error(
+                message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
+                invalid.line,
+                invalid.column,
+                blocker=True,
+                code="misc",
+            )
+
+    # Create CallableArgument
+    call_arg = CallableArgument(typ, name, constructor)
+    set_line_column_range(call_arg, invalid)
+    return call_arg
+
+
 def read_pattern(state: State, data: ReadBuffer) -> Pattern:
     """Read a pattern node from the buffer."""
     tag = read_tag(data)
@@ -1551,138 +1683,6 @@ def read_loc(data: ReadBuffer, node: Context) -> None:
     node.column = column
     node.end_line = line + read_int_bare(data)
     node.end_column = column + read_int_bare(data)
-
-
-def stringify_type_name(typ: Type) -> str | None:
-    """Extract qualified name from a type (for Arg constructor detection)."""
-    if isinstance(typ, UnboundType):
-        return typ.name
-    return None
-
-
-def extract_arg_name(typ: Type) -> str | None:
-    """Extract argument name from a type (for Arg name parameter)."""
-    if isinstance(typ, RawExpressionType) and typ.base_type_name == "builtins.str":
-        return typ.literal_value  # type: ignore[return-value]
-    elif isinstance(typ, UnboundType):
-        # String literals in type context are parsed as UnboundType (forward references)
-        # For Arg names, these are typically simple names without dots
-        if typ.name == "None":
-            return None
-        # Return the name as-is (it's the argument name)
-        return typ.name
-    return None  # Invalid, but let validation handle it
-
-
-def read_call_type(state: State, data: ReadBuffer) -> Type:
-    """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
-
-    This performs validation and error reporting similar to mypy/fastparse.py.
-    """
-    callee_type = read_type(state, data)
-
-    # Read positional arguments
-    expect_tag(data, LIST_GEN)
-    n_args = read_int_bare(data)
-    args = [read_type(state, data) for _ in range(n_args)]
-
-    # Read keyword arguments
-    expect_tag(data, LIST_GEN)
-    n_kwargs = read_int_bare(data)
-    kwargs = []
-    for _ in range(n_kwargs):
-        tag_kw = read_tag(data)
-        if tag_kw == LITERAL_NONE:
-            kw_name = None
-        elif tag_kw == LITERAL_STR:
-            kw_name = read_str_bare(data)
-        else:
-            assert False, f"Unexpected tag for keyword name: {tag_kw}"
-        kw_value = read_type(state, data)
-        kwargs.append((kw_name, kw_value))
-
-    # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
-    constructor = stringify_type_name(callee_type)
-
-    # We'll read location before processing errors so we can report them correctly
-    invalid = AnyType(TypeOfAny.from_error)
-    read_loc(data, invalid)
-    expect_end_tag(data)
-
-    if not constructor:
-        # ARG_CONSTRUCTOR_NAME_EXPECTED
-        state.add_error(
-            message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value,
-            invalid.line,
-            invalid.column,
-            blocker=True,
-            code="misc",
-        )
-        return invalid
-
-    # Extract type and name from arguments
-    name: str | None = None
-    name_set_from_positional = False
-    default_type = AnyType(TypeOfAny.special_form)
-    typ: Type = default_type
-    typ_set_from_positional = False
-
-    # Process positional arguments
-    for i, arg in enumerate(args):
-        if i == 0:
-            typ = arg
-            typ_set_from_positional = True
-        elif i == 1:
-            name = extract_arg_name(arg)
-            name_set_from_positional = True
-        else:
-            # ARG_CONSTRUCTOR_TOO_MANY_ARGS
-            state.add_error(
-                message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value,
-                invalid.line,
-                invalid.column,
-                blocker=True,
-                code="misc",
-            )
-
-    # Process keyword arguments
-    for kw_name, kw_value in kwargs:
-        if kw_name == "name":
-            # MULTIPLE_VALUES_FOR_NAME_KWARG
-            if name is not None and name_set_from_positional:
-                state.add_error(
-                    message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
-                    invalid.line,
-                    invalid.column,
-                    blocker=True,
-                    code="misc",
-                )
-            name = extract_arg_name(kw_value)
-        elif kw_name == "type":
-            # MULTIPLE_VALUES_FOR_TYPE_KWARG
-            if typ is not default_type and typ_set_from_positional:
-                state.add_error(
-                    message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
-                    invalid.line,
-                    invalid.column,
-                    blocker=True,
-                    code="misc",
-                )
-            typ = kw_value
-        else:
-            # ARG_CONSTRUCTOR_UNEXPECTED_ARG
-            state.add_error(
-                message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
-                invalid.line,
-                invalid.column,
-                blocker=True,
-                code="misc",
-            )
-
-    # Create CallableArgument
-    call_arg = CallableArgument(typ, name, constructor)
-    set_line_column_range(call_arg, invalid)
-    return call_arg
 
 
 def strip_contents_from_if_stmt(stmt: IfStmt) -> None:
