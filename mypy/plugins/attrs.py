@@ -1107,7 +1107,7 @@ def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
 
     return {
         name: (
-            get_proper_type(reduce(meet_types, f_types))  # type: ignore[call-arg, misc, unused-ignore]  # HAX
+            get_proper_type(reduce(meet_types, f_types))
             if len(f_types) == len(types)
             else UninhabitedType()
         )
