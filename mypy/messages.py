@@ -1744,6 +1744,7 @@ class MessageBuilder:
 
         # Nothing special here; just create the note:
         visitor = TypeStrVisitor(options=self.options)
+        visitor.reveal_simple_types = self.options.reveal_simple_types
         self.note(f'Revealed type is "{typ.accept(visitor)}"', context)
 
     def reveal_locals(self, type_map: dict[str, Type | None], context: Context) -> None:
@@ -1754,6 +1755,7 @@ class MessageBuilder:
             self.note("Revealed local types are:", context)
             for k, v in sorted_locals.items():
                 visitor = TypeStrVisitor(options=self.options)
+                visitor.reveal_simple_types = self.options.reveal_simple_types
                 self.note(f"    {k}: {v.accept(visitor) if v is not None else None}", context)
         else:
             self.note("There are no locals to reveal", context)

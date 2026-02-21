@@ -2737,3 +2737,19 @@ def f() -> None:
 [file mypy.ini]
 \[mypy]
 disallow_redefinition = true
+
+[case testRevealSimpleTypes]
+# flags: --reveal-simple-types
+from typing_extensions import TypeVarTuple, Unpack, TypedDict
+
+Ts = TypeVarTuple("Ts")
+def foo(x: int, *xs: Unpack[Ts]) -> tuple[int, Unpack[Ts]]: ...
+reveal_type(foo)  # N: Revealed type is "def [Ts] (x: int, *xs: *Ts) -> tuple[int, *Ts]"
+
+class Options(TypedDict):
+    rate: int
+    template: str
+
+def bar(x: int, **kwargs: Unpack[Options]) -> None: ...
+reveal_type(bar)  # N: Revealed type is "def (x: int, **kwargs: **TypedDict(Options, {'rate': int, 'template': str}))"
+[builtins fixtures/tuple.pyi]
