@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Set as AbstractSet
 from contextlib import contextmanager
 from typing import NamedTuple, overload
 
@@ -246,6 +246,17 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
+    def narrow_type_by_identity_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[dict[Expression, Type] | None, dict[Expression, Type] | None]:
+        raise NotImplementedError
+
+    @abstractmethod
     def check_deprecated(self, node: Node | None, context: Context) -> None:
         raise NotImplementedError
 
@@ -270,6 +281,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
         raise NotImplementedError
 
     @abstractmethod

@@ -947,6 +947,8 @@ def f(x: i64) -> i64:
     elif not x:
         return 6
     return 3
+def unary_not(x: i64) -> bool:
+    return not x
 [out]
 def f(x):
     x :: i64
@@ -964,6 +966,12 @@ L3:
 L4:
 L5:
     return 3
+def unary_not(x):
+    x :: i64
+    r0 :: bit
+L0:
+    r0 = x == 0
+    return r0
 
 [case testI64AssignMixed_64bit]
 from mypy_extensions import i64

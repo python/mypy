@@ -27,16 +27,19 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union, final
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
     RStruct,
     RTuple,
     RType,
+    RUnion,
+    RVec,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -44,6 +47,7 @@ from mypyc.ir.rtypes import (
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_fixed_width_rtype,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -334,6 +338,8 @@ class Assign(BaseAssign):
         (self.src,) = new
 
     def stolen(self) -> list[Value]:
+        if not self.dest.type.is_refcounted:
+            return []
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -688,7 +694,7 @@ class PrimitiveDescription:
     Primitives get lowered into lower-level ops before code generation.
 
     If c_function_name is provided, a primitive will be lowered into a CallC op.
-    Otherwise custom logic will need to be implemented to transform the
+    Otherwise, custom logic will need to be implemented to transform the
     primitive into lower-level ops.
     """
 
@@ -707,6 +713,8 @@ class PrimitiveDescription:
         extra_int_constants: list[tuple[int, RType]],
         priority: int,
         is_pure: bool,
+        experimental: bool,
+        dependencies: list[Dependency] | None,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -729,9 +737,28 @@ class PrimitiveDescription:
         self.is_pure: Final = is_pure
         if is_pure:
             assert error_kind == ERR_NEVER
+        # Experimental primitives are not used unless mypyc experimental features are
+        # explicitly enabled
+        self.experimental = experimental
+        # Dependencies for the primitive, such as a capsule that needs to imported
+        # and configured to call the primitive.
+        self.dependencies = dependencies
+        # Native integer types such as u8 can cause ambiguity in primitive
+        # matching, since these are assignable to plain int *and* vice versa.
+        # If this flag is set, the primitive has native integer types and must
+        # be matched using more complex rules.
+        self.is_ambiguous = any(has_fixed_width_int(t) for t in arg_types)
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
+
+
+def has_fixed_width_int(t: RType) -> bool:
+    if isinstance(t, RTuple):
+        return any(has_fixed_width_int(t) for t in t.types)
+    elif isinstance(t, RUnion):
+        return any(has_fixed_width_int(t) for t in t.items)
+    return is_fixed_width_rtype(t)
 
 
 @final
@@ -749,9 +776,10 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.error_kind = desc.error_kind
+        super().__init__(line)
         self.args = args
         self.type = desc.return_type
-        self.error_kind = desc.error_kind
         self.desc = desc
 
     def sources(self) -> list[Value]:
@@ -825,7 +853,8 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: LiteralValue, rtype: RType) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
         self.type = rtype
 
@@ -1045,10 +1074,17 @@ class TupleGet(RegisterOp):
 
     def __init__(self, src: Value, index: int, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
+        assert isinstance(
+            src.type, RTuple
+        ), f"TupleGet only operates on tuples, not {type(src.type).__name__}"
+        src_len = len(src.type.types)
         self.src = src
         self.index = index
-        assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
-        assert index >= 0
+        if index < 0:
+            self.index += src_len
+        assert (
+            self.index <= src_len - 1
+        ), f"Index out of range.\nsource type: {src.type}\nindex: {index}"
         self.type = src.type.types[index]
         self.is_borrowed = borrow
 
@@ -1073,11 +1109,19 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False) -> None:
+    def __init__(
+        self, src: Value, typ: RType, line: int, *, borrow: bool = False, unchecked: bool = False
+    ) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
+        # If true, don't incref the result.
         self.is_borrowed = borrow
+        # If true, don't perform a runtime type check (only changes the static type of
+        # the operand). Used when we know that the cast will always succeed.
+        self.is_unchecked = unchecked
+        if unchecked:
+            self.error_kind = ERR_NEVER
 
     def sources(self) -> list[Value]:
         return [self.src]
@@ -1171,6 +1215,7 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
     ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
+    INDEX_ERROR: Final = "IndexError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
@@ -1189,7 +1234,7 @@ class RaiseStandardError(RegisterOp):
 
 
 # True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, list[bool]]
+StealsDescription = bool | list[bool]
 
 
 @final
@@ -1213,6 +1258,8 @@ class CallC(RegisterOp):
         var_arg_idx: int = -1,
         *,
         is_pure: bool = False,
+        returns_null: bool = False,
+        dependencies: list[Dependency] | None = None,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1227,7 +1274,13 @@ class CallC(RegisterOp):
         # and all the arguments are immutable. Pure functions support
         # additional optimizations. Pure functions never fail.
         self.is_pure = is_pure
-        if is_pure:
+        # The function might return a null value that does not indicate
+        # an error.
+        self.returns_null = returns_null
+        # Dependencies (such as capsules) that must be imported and initialized before
+        # calling this function (used for C functions exported from librt).
+        self.dependencies = dependencies
+        if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 
     def sources(self) -> list[Value]:
@@ -1499,7 +1552,7 @@ class FloatOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
@@ -1557,7 +1610,7 @@ class FloatComparisonOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.lhs, self.rhs) = new
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
@@ -1630,8 +1683,35 @@ class SetMem(Op):
 
 
 @final
+class GetElement(RegisterOp):
+    """Get the value of a struct element from a struct value."""
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, src: Value, field: str, line: int = -1) -> None:
+        super().__init__(line)
+        assert isinstance(src.type, (RStruct, RVec))
+        self.type = src.type.field_type(field)
+        self.src = src
+        self.src_type = src.type
+        self.field = field
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_get_element(self)
+
+
+@final
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element.
+    """Get the address of a struct element from a pointer to a struct.
+
+    If you have a struct value, use GetElement instead.
 
     Note that you may need to use KeepAlive to avoid the struct
     being freed, if it's reference counted, such as PyObject *.
@@ -1641,6 +1721,7 @@ class GetElementPtr(RegisterOp):
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
+        assert not isinstance(src.type, (RStruct, RVec))
         self.type = pointer_rprimitive
         self.src = src
         self.src_type = src_type
@@ -1670,7 +1751,7 @@ class SetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct), src.type
+        assert isinstance(src.type, (RStruct, RVec)), src.type
         self.type = src.type
         self.src = src
         self.item = item
@@ -1752,7 +1833,8 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
+    def __init__(self, src: list[Value], line: int = -1, *, steal: bool = False) -> None:
+        super().__init__(line)
         assert src
         self.src = src
         self.steal = steal
@@ -1955,6 +2037,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_set_mem(self, op: SetMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_element(self, op: GetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

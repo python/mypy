@@ -154,8 +154,6 @@ file:2: error: Syntax error in type comment "A B"
 [case testMissingBracket]
 def foo(
 [out]
-file:1: error: Unexpected EOF while parsing
-[out version>=3.10]
 file:1: error: '(' was never closed
 
 [case testInvalidSignatureInComment1]
@@ -250,13 +248,13 @@ file:1: error: Function has duplicate type signatures
 def f(x, y): # type: (X, Y, Z) -> z
   pass
 [out]
-file:1: error: Type signature has too many arguments
+file:1: error: Type signature has too many parameters
 
 [case testTooFewTypes]
 def f(x, y): # type: (X) -> z
   pass
 [out]
-file:1: error: Type signature has too few arguments
+file:1: error: Type signature has too few parameters
 
 [case testCommentFunctionAnnotationVarArgMispatch-skip]
 # see mypy issue #1997

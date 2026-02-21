@@ -1,0 +1,46 @@
+[case testTimeBasic_librt_experimental]
+import time as stdlib_time
+from librt.time import time
+
+def test_time_returns_float() -> None:
+    result = time()
+    assert isinstance(result, float)
+
+def test_time_is_reasonable() -> None:
+    # Should return a Unix timestamp, which should be a large positive number
+    result = time()
+    # Check it's after year 2020 (timestamp > 1577836800)
+    assert result > 1577836800.0
+    # Check it's before year 2100 (timestamp < 4102444800)
+    assert result < 4102444800.0
+
+def test_time_increments() -> None:
+    t1 = time()
+    t2 = time()
+    # Time should not go backwards (allowing for same value due to precision)
+    assert t2 >= t1
+
+def test_time_comparable_to_stdlib() -> None:
+    # Our time() should return similar values to stdlib time.time()
+    our_time = time()
+    std_time = stdlib_time.time()
+    # Should be within 0.25 seconds of each other (usually should be much less,
+    # but keep it relatively high to avoid test flakiness in CI)
+    assert abs(our_time - std_time) < 0.25
+
+[case testTimeNotAvailableInNonExperimentalBuild_librt_time]
+# This also ensures librt.time can be built without experimental features
+import librt.time
+
+def test_time_not_available() -> None:
+    assert not hasattr(librt.time, "time")
+
+[case testTimeUsedAtTopLevelOnly_librt_experimental]
+from librt.time import time
+
+# The only reference to time() is at module top level
+current_time = time()
+
+def test_top_level_only_time() -> None:
+    assert isinstance(current_time, float)
+    assert current_time > 0.0

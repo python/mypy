@@ -64,6 +64,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.default.accept(self)
 
     def visit_param_spec(self, t: ParamSpecType, /) -> None:
+        # TODO: do we need to traverse prefix here?
         t.default.accept(self)
 
     def visit_parameters(self, t: Parameters, /) -> None:

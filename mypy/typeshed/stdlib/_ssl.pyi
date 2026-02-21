@@ -13,7 +13,7 @@ from ssl import (
     SSLZeroReturnError as SSLZeroReturnError,
 )
 from typing import Any, ClassVar, Final, Literal, TypedDict, final, overload, type_check_only
-from typing_extensions import NotRequired, Self, TypeAlias, deprecated
+from typing_extensions import NotRequired, Self, TypeAlias, deprecated, disjoint_base
 
 _PasswordType: TypeAlias = Callable[[], str | bytes | bytearray] | str | bytes | bytearray
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
@@ -67,7 +67,7 @@ if sys.platform == "win32":
 
 def txt2obj(txt: str, name: bool = False) -> tuple[int, str, str, str]: ...
 def nid2obj(nid: int, /) -> tuple[int, str, str, str]: ...
-
+@disjoint_base
 class _SSLContext:
     check_hostname: bool
     keylog_filename: str | None

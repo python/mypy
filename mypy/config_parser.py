@@ -8,23 +8,21 @@ import re
 import sys
 from io import StringIO
 
-from mypy.errorcodes import error_codes
-
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
 
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import Never, TypeAlias
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import Any, Final, TextIO, TypeAlias
+from typing_extensions import Never
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
-_CONFIG_VALUE_TYPES: TypeAlias = Union[
-    str, bool, int, float, dict[str, str], list[str], tuple[int, int]
-]
+_CONFIG_VALUE_TYPES: TypeAlias = (
+    str | bool | int | float | dict[str, str] | list[str] | tuple[int, int]
+)
 _INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
@@ -85,15 +83,6 @@ def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[s
         ]
     else:
         complain(v)
-
-
-def validate_codes(codes: list[str]) -> list[str]:
-    invalid_codes = set(codes) - set(error_codes.keys())
-    if invalid_codes:
-        raise argparse.ArgumentTypeError(
-            f"Invalid error code(s): {', '.join(sorted(invalid_codes))}"
-        )
-    return codes
 
 
 def validate_package_allow_list(allow_list: list[str]) -> list[str]:
@@ -209,8 +198,8 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
         [p.strip() for p in split_commas(s)]
     ),
     "enable_incomplete_feature": lambda s: [p.strip() for p in split_commas(s)],
-    "disable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
-    "enable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
+    "disable_error_code": lambda s: [p.strip() for p in split_commas(s)],
+    "enable_error_code": lambda s: [p.strip() for p in split_commas(s)],
     "package_root": lambda s: [p.strip() for p in split_commas(s)],
     "cache_dir": expand_path,
     "python_executable": expand_path,
@@ -234,8 +223,8 @@ toml_config_types.update(
         "always_false": try_split,
         "untyped_calls_exclude": lambda s: validate_package_allow_list(try_split(s)),
         "enable_incomplete_feature": try_split,
-        "disable_error_code": lambda s: validate_codes(try_split(s)),
-        "enable_error_code": lambda s: validate_codes(try_split(s)),
+        "disable_error_code": lambda s: try_split(s),
+        "enable_error_code": lambda s: try_split(s),
         "package_root": try_split,
         "exclude": str_or_array_as_list,
         "packages": try_split,
@@ -515,7 +504,12 @@ def parse_section(
 
     for key in section:
         invert = False
+        # Here we use `key` for original config section key, and `options_key` for
+        # the corresponding Options attribute.
         options_key = key
+        # Match aliasing for command line flag.
+        if key.endswith("allow_redefinition"):
+            options_key += "_old"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:
@@ -526,7 +520,7 @@ def parse_section(
             )
             continue
         else:
-            dv = getattr(template, key, None)
+            dv = getattr(template, options_key, None)
             if dv is None:
                 if key.endswith("_report"):
                     report_type = key[:-7].replace("_", "-")
@@ -537,17 +531,17 @@ def parse_section(
                     continue
                 if key.startswith("x_"):
                     pass  # Don't complain about `x_blah` flags
-                elif key.startswith("no_") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("no_") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("allow") and hasattr(template, "dis" + key):
-                    options_key = "dis" + key
+                elif key.startswith("allow") and hasattr(template, "dis" + options_key):
+                    options_key = "dis" + options_key
                     invert = True
-                elif key.startswith("disallow") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("disallow") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("show_") and hasattr(template, "hide_" + key[5:]):
-                    options_key = "hide_" + key[5:]
+                elif key.startswith("show_") and hasattr(template, "hide_" + options_key[5:]):
+                    options_key = "hide_" + options_key[5:]
                     invert = True
                 elif key == "strict":
                     pass  # Special handling below

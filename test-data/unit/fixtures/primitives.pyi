@@ -13,6 +13,8 @@ class object:
 
 class type:
     def __init__(self, x: object) -> None: pass
+    # Real implementation returns UnionType
+    def __or__(self, value: object, /) -> object: pass
 
 class int:
     # Note: this is a simplification of the actual signature
@@ -37,16 +39,19 @@ class bytes(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class bytearray(Sequence[int]):
     def __init__(self, x: bytes) -> None: pass
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class memoryview(Sequence[int]):
     def __init__(self, x: bytes) -> None: pass
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class tuple(Generic[T]):
     def __contains__(self, other: object) -> bool: pass
 class list(Sequence[T]):
@@ -58,6 +63,7 @@ class dict(Mapping[T, V]):
     def __iter__(self) -> Iterator[T]: pass
 class set(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
+    def __contains__(self, o: object, /) -> bool: pass
 class frozenset(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
 class function: pass
@@ -72,3 +78,5 @@ class range(Sequence[int]):
     def __contains__(self, other: object) -> bool: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
+
+class BaseException: pass

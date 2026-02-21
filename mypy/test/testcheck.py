@@ -5,11 +5,11 @@ from __future__ import annotations
 import os
 import re
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
 from mypy import build
-from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -23,11 +23,16 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
+    remove_typevar_ids,
 )
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -39,8 +44,6 @@ import pytest
 typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python version specific features:
-if sys.version_info < (3, 10):
-    typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
 if sys.version_info < (3, 12):
@@ -134,6 +137,14 @@ class TypeCheckSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
 
+        if options.num_workers:
+            options.fixed_format_cache = True
+            if testcase.output_files:
+                raise pytest.skip("Reports are not supported in parallel mode")
+            # Note: do not use this unless really needed!
+            if testcase.name.endswith("_no_parallel"):
+                raise pytest.skip("Test not supported in parallel mode yet")
+
         # Enable some options automatically based on test file name.
         if "columns" in testcase.file:
             options.show_column_numbers = True
@@ -141,10 +152,8 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "union-error" not in testcase.file:
-            options.force_union_syntax = True
 
-        if incremental_step and options.incremental:
+        if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
@@ -155,20 +164,34 @@ class TypeCheckSuite(DataSuite):
 
         sources = []
         for module_name, program_path, program_text in module_data:
-            # Always set to none so we're forced to reread the module in incremental mode
+            # Always set to None, so we're forced to reread the module in incremental mode
             sources.append(
                 BuildSource(program_path, module_name, None if incremental_step else program_text)
             )
 
         plugin_dir = os.path.join(test_data_prefix, "plugins")
-        sys.path.insert(0, plugin_dir)
 
+        worker_env = None
+        if options.num_workers > 0:
+            worker_env = os.environ.copy()
+            # Make sure we are running tests with current worktree files, *not* with
+            # an installed version of mypy.
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            worker_env["PYTHONPATH"] = os.pathsep.join([root_dir, plugin_dir])
+            worker_env["MYPY_TEST_PREFIX"] = root_dir
+            worker_env["MYPY_ALT_LIB_PATH"] = test_temp_dir
+
+        sys.path.insert(0, plugin_dir)
         res = None
+        blocker = False
         try:
-            res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
+            res = build.build(
+                sources=sources, options=options, alt_lib_path=test_temp_dir, worker_env=worker_env
+            )
             a = res.errors
         except CompileError as e:
             a = e.messages
+            blocker = True
         finally:
             assert sys.path[0] == plugin_dir
             del sys.path[0]
@@ -195,11 +218,15 @@ class TypeCheckSuite(DataSuite):
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a, incremental_step=incremental_step)
 
+        if options.num_workers > 0:
+            # TypeVarIds are not stable in parallel checking, normalize.
+            a = remove_typevar_ids(a)
+            output = remove_typevar_ids(output)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
             if options.cache_dir != os.devnull:
-                self.verify_cache(module_data, res.errors, res.manager, res.graph)
+                self.verify_cache(module_data, res.manager, blocker, incremental_step)
 
             name = "targets"
             if incremental_step:
@@ -210,7 +237,8 @@ class TypeCheckSuite(DataSuite):
                 for module, target in res.manager.processed_targets
                 if module in testcase.test_modules
             ]
-            if expected is not None:
+            # TODO: check targets in parallel mode (e.g. per SCC).
+            if options.num_workers == 0 and expected is not None:
                 assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = "" if incremental_step == 2 else str(incremental_step - 1)
@@ -231,39 +259,24 @@ class TypeCheckSuite(DataSuite):
     def verify_cache(
         self,
         module_data: list[tuple[str, str, str]],
-        a: list[str],
         manager: build.BuildManager,
-        graph: Graph,
+        blocker: bool,
+        step: int,
     ) -> None:
-        # There should be valid cache metadata for each module except
-        # for those that had an error in themselves or one of their
-        # dependencies.
-        error_paths = self.find_error_message_paths(a)
-        busted_paths = {m.path for id, m in manager.modules.items() if graph[id].transitive_error}
-        modules = self.find_module_files(manager)
-        modules.update({module_name: path for module_name, path, text in module_data})
-        missing_paths = self.find_missing_cache_files(modules, manager)
-        # We would like to assert error_paths.issubset(busted_paths)
-        # but this runs into trouble because while some 'notes' are
-        # really errors that cause an error to be marked, many are
-        # just notes attached to other errors.
-        assert error_paths or not busted_paths, "Some modules reported error despite no errors"
-        if not missing_paths == busted_paths:
-            raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
+        if not blocker:
+            # There should be valid cache metadata for each module except
+            # in case of a blocking error in themselves or one of their
+            # dependencies.
+            modules = self.find_module_files(manager)
+            modules.update({module_name: path for module_name, path, text in module_data})
+            missing_paths = self.find_missing_cache_files(modules, manager)
+            if missing_paths:
+                raise AssertionError(f"cache data missing for {missing_paths} on run {step}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)
         with open(cachedir_tag) as f:
             assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
-
-    def find_error_message_paths(self, a: list[str]) -> set[str]:
-        hits = set()
-        for line in a:
-            m = re.match(r"([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):", line)
-            if m:
-                p = m.group(1)
-                hits.add(p)
-        return hits
 
     def find_module_files(self, manager: build.BuildManager) -> dict[str, str]:
         return {id: module.path for id, module in manager.modules.items()}
