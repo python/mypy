@@ -2175,7 +2175,8 @@ class C(Generic[T]):
 
     @classmethod
     def meth(cls) -> None:
-        cls.x  # E: Access to generic instance variables via class is ambiguous
+        cls.x  # E: Cannot access instance-only attribute "x" on class object \
+               # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]

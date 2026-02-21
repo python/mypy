@@ -1191,10 +1191,13 @@ def analyze_class_attribute_access(
     if info.slots and name in info.slots:
         mx.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name))
 
-    # If a final attribute was declared on `self` in `__init__`, then it
-    # can't be accessed on the class object.
-    if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        mx.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR.format(node.node.name))
+    if node.implicit and isinstance(node.node, Var):
+        if node.node.is_final:
+            # If a final attribute was declared on `self` in `__init__`, then it
+            # can't be accessed on the class object.
+            mx.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR.format(node.node.name))
+        elif not mx.is_lvalue and not defined_in_superclass(info, name):
+            mx.fail(message_registry.CANNOT_ACCESS_INSTANCE_ONLY_ATTR.format(node.node.name))
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
@@ -1574,3 +1577,12 @@ def meta_has_operator(item: Type, op_method: str, named_type: Callable[[str], In
     item = instance_fallback(item, named_type)
     meta = item.type.metaclass_type or named_type("builtins.type")
     return meta.type.has_readable_member(op_method)
+
+
+def defined_in_superclass(info: TypeInfo, name: str) -> bool:
+    """Check if a variable has an explicit value at class level in any of superclasses."""
+    for base in info.mro[1:]:
+        if (node := base.names.get(name)) is not None:
+            if not node.implicit and isinstance(node.node, Var) and node.node.has_explicit_value:
+                return True
+    return False
