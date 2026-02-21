@@ -73,8 +73,11 @@ def f() -> int:
 def func() -> int:
     return 42
 [file driver.py]
-from native import f
-assert f() == 42
+import native
+import pkg.other_mod
+assert native.f() == 42
+# other_mod should be in native's namespace and be the same object as pkg.other_mod
+assert native.other_mod is pkg.other_mod
 
 [case testMultiModuleFastpaths]
 [file other_main.py]

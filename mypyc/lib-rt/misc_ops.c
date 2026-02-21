@@ -1123,20 +1123,60 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
 }
 
 PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void)) {
+    PyObject *parent_module = NULL;
+    PyObject *child_name = NULL;
+    Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+    if (name_len < 0) {
+        return NULL;
+    }
+    Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+    if (dot >= 0) {
+        // Import the parent package first to preserve import ordering semantics.
+        PyObject *parent_name = PyUnicode_Substring(module_name, 0, dot);
+        if (parent_name == NULL) {
+            return NULL;
+        }
+        child_name = PyUnicode_Substring(module_name, dot + 1, name_len);
+        if (child_name == NULL) {
+            Py_DECREF(parent_name);
+            return NULL;
+        }
+        parent_module = PyImport_Import(parent_name);
+        Py_DECREF(parent_name);
+        if (parent_module == NULL) {
+            Py_DECREF(child_name);
+            return NULL;
+        }
+    }
+
     PyObject *modobj = init_fn();
     if (modobj == NULL) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
         return NULL;
     }
 
     PyObject *module_dict = PyImport_GetModuleDict();
     if (module_dict == NULL) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
         return NULL;
     }
 
     if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
         return NULL;
     }
 
+    if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
+        Py_DECREF(parent_module);
+        Py_DECREF(child_name);
+        return NULL;
+    }
+
+    Py_XDECREF(parent_module);
+    Py_XDECREF(child_name);
     return modobj;
 }
 

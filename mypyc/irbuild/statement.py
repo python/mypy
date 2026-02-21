@@ -574,8 +574,13 @@ def import_from_non_native(
     module = None
     for bucket in buckets:
         if bucket.kind == IMPORT_NATIVE_SUBMODULE:
-            # NOT IMPLEMENTED: native submodule of a non-native (or cross-group) package
-            assert False
+            # 'from p import mod' where p.mod is a native module — equivalent to
+            # 'import p.mod as as_name' for each name. Reuse the native import logic.
+            group = [
+                (f"{module_id}.{name}", as_name, line)
+                for name, as_name in zip(bucket.names, bucket.as_names)
+            ]
+            transform_imports_without_grouping(builder, group)
         else:
             assert bucket.kind == IMPORT_REGULAR
             names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
