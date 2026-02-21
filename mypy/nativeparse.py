@@ -339,7 +339,13 @@ def parse_to_binary_ast(
     ast_bytes, errors, ignores, import_bytes, is_partial_package = ast_serialize.parse(
         filename, skip_function_bodies, python_version=options.python_version
     )
-    return ast_bytes, errors, ignores, import_bytes, is_partial_package
+    return (
+        ast_bytes,
+        cast("list[dict[str, Any]]", errors),
+        ignores,
+        import_bytes,
+        is_partial_package,
+    )
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
