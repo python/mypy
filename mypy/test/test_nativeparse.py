@@ -220,8 +220,11 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
 
 
 @unittest.skipUnless(has_nativeparse, "nativeparse not available")
-class TestNativeParse(unittest.TestCase):
+class TestNativeParserBinaryFormat(unittest.TestCase):
     def test_trivial_binary_data(self) -> None:
+        # A quick sanity check to ensure the serialized data looks as expected. Only covers
+        # a few AST nodes.
+
         def int_enc(n: int) -> int:
             return (n + 10) << 1
 
@@ -254,18 +257,6 @@ class TestNativeParse(unittest.TestCase):
                 + locs(1, 0, 1, 14)
                 + [END_TAG, END_TAG]
             )
-
-    def test_deserialize_hello(self) -> None:
-        with temp_source("print('hello')") as fnam:
-            node, _, _ = native_parse(fnam, Options())
-            assert isinstance(node, MypyFile)
-
-    def test_deserialize_member_expr(self) -> None:
-        with temp_source("foo_bar.xyz2") as fnam:
-            node, _, _ = native_parse(fnam, Options())
-            assert isinstance(node, MypyFile)
-            assert isinstance(node.defs[0], ExpressionStmt)
-            assert isinstance(node.defs[0].expr, MemberExpr)
 
 
 @contextlib.contextmanager
