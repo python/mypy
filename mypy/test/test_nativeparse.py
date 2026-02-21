@@ -90,11 +90,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         with temp_source(source) as fnam:
-            try:
-                node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
-            except ValueError as e:
-                print(f"Parse failed: {e}")
-                assert False
+            node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
             node.path = "main"
             a = node.str_with_options(options).split("\n")
             a = [format_error(err) for err in errors] + a
@@ -132,11 +128,7 @@ def test_parser_imports(testcase: DataDrivenTestCase) -> None:
 
     try:
         with temp_source(source) as fnam:
-            try:
-                node, errors, type_ignores = native_parse(fnam, options)
-            except ValueError as e:
-                print(f"Parse failed: {e}")
-                assert False
+            node, errors, type_ignores = native_parse(fnam, options)
 
             # Extract and format reachable imports
             a = format_reachable_imports(node)
