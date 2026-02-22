@@ -1174,17 +1174,17 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing import Final
-            x_final: Final = 2
+            X_FINAL: Final = 2
             """,
-            runtime="x_final = 1",
-            error="x_final",
+            runtime="X_FINAL = 1",
+            error="X_FINAL",
         )
         yield Case(
             stub="""
             from typing import Final
-            x_final_ok: Final = 1
+            X_FINAL_OK: Final = 1
             """,
-            runtime="x_final_ok = 1",
+            runtime="X_FINAL_OK = 1",
             error=None,
         )
 

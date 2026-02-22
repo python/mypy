@@ -1279,15 +1279,6 @@ def verify_var(
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
-    if stub.final_value is not None and stub.final_value != runtime:
-        yield Error(
-            object_path,
-            f"is inconsistent, stub value {stub.final_value!r} differs from runtime value {runtime!r}",
-            stub,
-            runtime,
-            stub_desc=repr(stub.final_value),
-        )
-
     if (
         stub.is_initialized_in_class
         and is_read_only_property(runtime)
@@ -1332,6 +1323,14 @@ def verify_var(
                 stub,
                 runtime,
             )
+    elif stub.final_value is not None and stub.final_value != runtime:
+        yield Error(
+            object_path,
+            f"is inconsistent, stub value {stub.final_value!r} differs from runtime value",
+            stub,
+            runtime,
+            stub_desc=repr(stub.final_value),
+        )
 
 
 @verify.register(nodes.OverloadedFuncDef)
