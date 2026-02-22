@@ -1197,3 +1197,11 @@ x = 0
 if int():
     x = ""
 reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineListComprehension-xfail]
+# flags: --allow-redefinition-new --local-partial-types
+def process(items: list[str]) -> None:
+    reveal_type(items) # N: Revealed type is "builtins.list[builtins.str]"
+    items = [item.split() for item in items]
+    reveal_type(items) # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+[builtins fixtures/primitives.pyi]
