@@ -9326,7 +9326,6 @@ def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
         left,
         right,
         ignore_promotions=True,
-        prohibit_none_typevar_overlap=True,
         overlap_for_overloads=True,
     )
 

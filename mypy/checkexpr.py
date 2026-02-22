@@ -6400,7 +6400,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 # Note: this call should match the one in narrow_declared_type().
                 if skip_non_overlapping and not is_overlapping_types(
-                    known_type, restriction, prohibit_none_typevar_overlap=True
+                    known_type, restriction
                 ):
                     return None
                 narrowed = narrow_declared_type(known_type, restriction)
