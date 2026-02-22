@@ -3154,13 +3154,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.binder.unreachable()
             return
         for s in b.body:
-            if (
-                self.current_node_deferred
-                # In these cases we need to continue checking to make sure all
-                # expressions are present in type map (even if they are just Any).
-                and not self.options.mypyc
-                and not self.options.export_types
-            ):
+            # If we export types, we need to continue checking to make sure all
+            # expressions are present in type map (even if most have type Any).
+            if self.current_node_deferred and not self.options.export_types:
                 # With current deferral logic there is no point continuing to
                 # type-check current function, as we will not infer more types,
                 # will not show errors, and each expression is inferred as Any.
