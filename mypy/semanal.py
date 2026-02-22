@@ -2087,6 +2087,27 @@ class SemanticAnalyzer(
             self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
+
+        if (
+            "__eq__" in defn.info.names
+            and "__hash__" not in defn.info.names
+            and not defn.info.is_protocol
+        ):
+            # If a class defines `__eq__` without `__hash__`, it's no longer hashable.
+            # Excludes Protocol from consideration as we don't want to enforce unhashability
+            # of their instances.
+            hash_none = Var("__hash__", NoneType())
+            hash_none.info = defn.info
+            hash_none.set_line(defn)
+            hash_none.is_classvar = True
+            # Making a class hashable is allowed even if its parents weren't.
+            # The only possible consequence of this LSP violation would be
+            # `assert child.__hash__ is None` no longer passing, probably nobody
+            # cares about that - it's impossible to statically restrict to non-hashable
+            # anyway.
+            hash_none.allow_incompatible_override = True
+            self.add_symbol("__hash__", hash_none, defn)
+
         self.leave_class()
 
     def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
@@ -3349,6 +3370,22 @@ class SemanticAnalyzer(
         self.process__all__(s)
         self.process__deletable__(s)
         self.process__slots__(s)
+        self.process__hash__(s)
+
+    def process__hash__(self, s: AssignmentStmt) -> None:
+        # Allow overriding `__hash__ = None` in subclasses.
+        if (
+            isinstance(self.type, TypeInfo)
+            and len(s.lvalues) == 1
+            and isinstance(s.lvalues[0], NameExpr)
+            and s.lvalues[0].name == "__hash__"
+            and s.lvalues[0].kind == MDEF
+            and isinstance(s.rvalue, NameExpr)
+            and s.rvalue.name == "None"
+        ):
+            var = s.lvalues[0].node
+            if isinstance(var, Var):
+                var.allow_incompatible_override = True
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.

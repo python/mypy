@@ -2345,6 +2345,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Will always fail to typecheck below, since we know the node is a method
                 original_type = NoneType()
 
+        if isinstance(original_node, Var) and original_node.allow_incompatible_override:
+            return False
+
         always_allow_covariant = False
         if is_settable_property(defn) and (
             is_settable_property(original_node) or isinstance(original_node, Var)
@@ -3597,19 +3600,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 return
 
             for base in lvalue_node.info.mro[1:]:
-                # The type of "__slots__" and some other attributes usually doesn't need to
-                # be compatible with a base class. We'll still check the type of "__slots__"
-                # against "object" as an exception.
-                if lvalue_node.allow_incompatible_override and not (
-                    lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
+                if (
+                    lvalue_node.name == "__hash__"
+                    and base.fullname == "builtins.object"
+                    and isinstance(get_proper_type(lvalue_type), NoneType)
                 ):
+                    # allow `__hash__ = None` if the overridden `__hash__` comes from object
+                    # This isn't LSP-compliant, but too common in real code.
                     continue
 
                 if is_private(lvalue_node.name):
                     continue
 
                 base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
-                # TODO: if the r.h.s. is a descriptor, we should check setter override as well.
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (
+                    isinstance(base_node, Var)
+                    and base_node.allow_incompatible_override
+                    and not (
+                        lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
+                    )
+                ):
+                    continue
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
