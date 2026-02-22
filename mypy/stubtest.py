@@ -12,7 +12,6 @@ import copy
 import enum
 import functools
 import importlib
-import importlib.machinery
 import inspect
 import os
 import pkgutil
@@ -35,11 +34,11 @@ from typing_extensions import is_typeddict
 
 import mypy.build
 import mypy.checkexpr
-import mypy.checkmember
 import mypy.erasetype
 import mypy.modulefinder
 import mypy.nodes
 import mypy.state
+import mypy.subtypes
 import mypy.types
 import mypy.version
 from mypy import nodes
@@ -1540,9 +1539,46 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     for decorator in dec.original_decorators:
         resulting_func = apply_decorator_to_funcitem(decorator, func)
         if resulting_func is None:
+            # We couldn't figure out how to apply the decorator by transforming nodes, so try to
+            # reconstitute a FuncDef from the resulting type of the decorator
+            # This is worse because e.g. we lose the values of defaults
+            dec_type = mypy.types.get_proper_type(dec.type)
+            callable_type = None
+            if isinstance(dec_type, mypy.types.Instance):
+                callable_type = mypy.subtypes.find_member(
+                    "__call__", dec_type, dec_type, is_operator=True
+                )
+            elif isinstance(dec_type, mypy.types.CallableType):
+                callable_type = dec_type
+
+            callable_type = mypy.types.get_proper_type(callable_type)
+            if isinstance(callable_type, mypy.types.CallableType):
+                return _resolve_funcitem_from_callable_type(callable_type)
             return None
+
         func = resulting_func
     return func
+
+
+def _resolve_funcitem_from_callable_type(typ: mypy.types.CallableType) -> nodes.FuncDef:
+    args: list[nodes.Argument] = []
+
+    for i, (arg_type, arg_kind, arg_name) in enumerate(
+        zip(typ.arg_types, typ.arg_kinds, typ.arg_names, strict=True)
+    ):
+        var_name = arg_name if arg_name is not None else f"__arg{i}"
+        var = nodes.Var(var_name, arg_type)
+        pos_only = arg_name is None and arg_kind == nodes.ARG_POS
+        args.append(
+            nodes.Argument(
+                variable=var,
+                type_annotation=arg_type,
+                initializer=None,  # CallableType doesn't store the values of defaults
+                kind=arg_kind,
+                pos_only=pos_only,
+            )
+        )
+    return nodes.FuncDef(name=typ.name or "", arguments=args, body=nodes.Block([]), typ=typ)
 
 
 @verify.register(nodes.Decorator)
