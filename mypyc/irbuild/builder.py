@@ -58,7 +58,13 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import (
+    BITMAP_BITS,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    SELF_NAME,
+    TEMP_ATTR_NAME,
+    shared_lib_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -465,7 +471,19 @@ class IRBuilder:
         self.activate_block(needs_import)
         if self.is_native_module(module):
             func = self.add(LoadGlobal(c_pointer_rprimitive, f"CPyInit_{exported_name(module)}"))
-            value = self.call_c(native_import_op, [self.load_str(module, line), func], line)
+            group_name = self.mapper.group_map.get(self.module_name)
+            if group_name is not None:
+                shared_lib_mod_name = shared_lib_name(group_name)
+                mod_dict = self.call_c(get_module_dict_op, [], line)
+                shared_lib_obj = self.primitive_op(
+                    dict_get_item_op, [mod_dict, self.load_str(shared_lib_mod_name, line)], line
+                )
+                shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
+            else:
+                shared_lib_file = self.none_object(line)
+            value = self.call_c(
+                native_import_op, [self.load_str(module, line), func, shared_lib_file], line
+            )
         else:
             value = self.call_c(import_op, [self.load_str(module, line)], line)
         self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))

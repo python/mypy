@@ -1122,7 +1122,8 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
-PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void)) {
+PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void),
+                                 PyObject *shared_lib_file) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
     Py_ssize_t name_len = PyUnicode_GetLength(module_name);
@@ -1185,11 +1186,58 @@ PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(voi
             return NULL;
         }
         PyErr_Clear();
-        if (PyObject_SetAttrString(modobj, "__file__", module_name) < 0) {
+        // Derive __file__ from the shared library's __file__ (root directory)
+        // and the module name with dots converted to path separators.
+        // E.g. for module "a.b.c" and shared lib "/path/to/group__mypyc.so",
+        // we construct "/path/to/a/b/c.so".
+        PyObject *derived_file = NULL;
+        if (shared_lib_file != NULL && shared_lib_file != Py_None &&
+                PyUnicode_Check(shared_lib_file)) {
+            Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
+            // Find last '/' to extract directory
+            Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
+            // Build the module path by replacing dots with '/'
+            PyObject *dot_str = PyUnicode_FromString(".");
+            PyObject *slash_str = PyUnicode_FromString("/");
+            if (dot_str == NULL || slash_str == NULL) {
+                Py_XDECREF(dot_str);
+                Py_XDECREF(slash_str);
+                Py_XDECREF(parent_module);
+                Py_XDECREF(child_name);
+                return NULL;
+            }
+            PyObject *module_path = PyUnicode_Replace(module_name, dot_str, slash_str, -1);
+            Py_DECREF(dot_str);
+            Py_DECREF(slash_str);
+            if (module_path == NULL) {
+                Py_XDECREF(parent_module);
+                Py_XDECREF(child_name);
+                return NULL;
+            }
+            if (sep >= 0) {
+                PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
+                if (dir != NULL) {
+                    derived_file = PyUnicode_FromFormat("%U/%U.so", dir, module_path);
+                    Py_DECREF(dir);
+                }
+            } else {
+                derived_file = PyUnicode_FromFormat("%U.so", module_path);
+            }
+            Py_DECREF(module_path);
+        }
+        if (derived_file == NULL && !PyErr_Occurred()) {
+            // Fallback: use module_name as __file__
+            derived_file = module_name;
+            Py_INCREF(derived_file);
+        }
+        if (derived_file == NULL ||
+                PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
+            Py_XDECREF(derived_file);
             Py_XDECREF(parent_module);
             Py_XDECREF(child_name);
             return NULL;
         }
+        Py_DECREF(derived_file);
     } else {
         Py_DECREF(file);
     }

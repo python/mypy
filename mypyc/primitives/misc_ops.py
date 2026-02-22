@@ -139,8 +139,8 @@ import_op = custom_op(
 
 # Import a native module (plain)
 native_import_op = custom_op(
-    # (module name, C module init function)
-    arg_types=[str_rprimitive, c_pointer_rprimitive],
+    # (module name, C module init function, shared lib __file__)
+    arg_types=[str_rprimitive, c_pointer_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyImport_ImportNative",
     error_kind=ERR_MAGIC,
