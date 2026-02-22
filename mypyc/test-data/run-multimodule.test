@@ -74,6 +74,7 @@ def func() -> int:
     return 42
 [file driver.py]
 import importlib.machinery
+import os
 import native
 import pkg.other_mod
 assert native.f() == 42
@@ -82,6 +83,10 @@ assert native.other_mod is pkg.other_mod
 # native-to-native import should preserve module metadata such as __file__
 ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
 assert any(native.other_mod.__file__.endswith(s) for s in ext_suffixes), native.other_mod.__file__
+# The directory of __file__ should reflect the package structure relative to the root
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(native.other_mod.__file__) == os.path.join(root_dir, "pkg"), \
+    native.other_mod.__file__
 
 [case testNativeSubmoduleOfNativePackageFrom]
 # separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
@@ -95,6 +100,7 @@ def func() -> int:
     return 42
 [file driver.py]
 import importlib.machinery
+import os
 import native
 import other_pkg.other_sub
 assert native.f() == 42
@@ -102,6 +108,57 @@ assert native.other_sub is other_pkg.other_sub
 # Fast path import should preserve __file__ as a proper extension path
 ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
 assert any(native.other_sub.__file__.endswith(s) for s in ext_suffixes), native.other_sub.__file__
+# The directory of __file__ should reflect the package structure relative to the root
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(native.other_sub.__file__) == os.path.join(root_dir, "other_pkg"), \
+    native.other_sub.__file__
+
+[case testNativeTopLevelModuleFileDir]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.func()
+[file other_top.py]
+def func() -> int:
+    return 99
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import other_top
+assert native.f() == 99
+# Top-level native module __file__ directory should match the shared lib's directory
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(other_top.__file__.endswith(s) for s in ext_suffixes), other_top.__file__
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(other_top.__file__) == root_dir, other_top.__file__
+
+[case testNativeDeeplyNestedSubmoduleFileDir]
+# separate: [(["native.py", "other_a/__init__.py", "other_a/other_b/__init__.py", "other_a/other_b/other_c.py"], "testgroup")]
+from other_a.other_b import other_c
+
+def f() -> int:
+    return other_c.func()
+[file other_a/__init__.py]
+[file other_a/other_b/__init__.py]
+[file other_a/other_b/other_c.py]
+def func() -> int:
+    return 77
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import other_a.other_b.other_c
+assert native.f() == 77
+assert native.other_c is other_a.other_b.other_c
+# Deeply nested module __file__ should have correct extension suffix
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_c.__file__.endswith(s) for s in ext_suffixes), native.other_c.__file__
+# The directory should reflect the full package hierarchy
+root_dir = os.path.dirname(native.__file__)
+expected_dir = os.path.join(root_dir, "other_a", "other_b")
+assert os.path.dirname(native.other_c.__file__) == expected_dir, native.other_c.__file__
 
 [case testMultiModuleFastpaths]
 [file other_main.py]
