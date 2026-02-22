@@ -387,7 +387,22 @@ class ConditionalTypeBinder:
                             type = simplified
             if current_value is None or not is_same_type(type, current_value.type):
                 self._put(key, type, from_assignment=True)
-                changed = True
+                if current_value is not None or extract_var_from_literal_hash(key) is None:
+                    # We definitely learned something new
+                    changed = True
+                else:
+                    # If there is no current value compare with the declaration. This prevents
+                    # reporting false changes in cases like this:
+                    #     x: int
+                    #     if foo():
+                    #         x = 1
+                    #     else:
+                    #         x = 2
+                    # We check partial types and widening in accept_loop() separately, so
+                    # this should be safe.
+                    changed = declaration_type is not None and not is_same_type(
+                        type, declaration_type
+                    )
 
         self.frames[-1].unreachable = not frames
 
