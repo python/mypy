@@ -1326,7 +1326,7 @@ def verify_var(
     elif stub.final_value is not None and stub.final_value != runtime:
         yield Error(
             object_path,
-            f"is inconsistent, stub value {stub.final_value!r} differs from runtime value",
+            f"is inconsistent, stub value for Final var differs from runtime value",
             stub,
             runtime,
             stub_desc=repr(stub.final_value),
