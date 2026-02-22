@@ -1285,6 +1285,7 @@ def verify_var(
             f"is inconsistent, stub value {stub.final_value!r} differs from runtime value {runtime!r}",
             stub,
             runtime,
+            stub_desc=repr(stub.final_value),
         )
 
     if (
