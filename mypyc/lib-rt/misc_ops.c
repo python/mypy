@@ -1175,6 +1175,25 @@ PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(voi
         return NULL;
     }
 
+    // The fast path bypasses extension import machinery that usually sets __file__.
+    // Keep behavior compatible by ensuring the attribute exists.
+    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    if (file == NULL) {
+        if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            Py_XDECREF(parent_module);
+            Py_XDECREF(child_name);
+            return NULL;
+        }
+        PyErr_Clear();
+        if (PyObject_SetAttrString(modobj, "__file__", module_name) < 0) {
+            Py_XDECREF(parent_module);
+            Py_XDECREF(child_name);
+            return NULL;
+        }
+    } else {
+        Py_DECREF(file);
+    }
+
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
     return modobj;

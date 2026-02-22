@@ -63,21 +63,44 @@ assert f() == 42
 assert g() is other_pkg.helper
 
 [case testNativeSubmoduleOfNonNativePackageFrom]
-# separate: [(["native.py", "pkg/other_mod.py"], "testgroup")]
+# separate: [(["native.py", "pkg/other_mod.py", "other_native.py"], "testgroup")]
 from pkg import other_mod
+import other_native
 
 def f() -> int:
     return other_mod.func()
+[file other_native.py]
+def marker() -> int:
+    return 1
 [file pkg/__init__.py]
 [file pkg/other_mod.py]
 def func() -> int:
     return 42
 [file driver.py]
+import os.path
 import native
 import pkg.other_mod
 assert native.f() == 42
 # other_mod should be in native's namespace and be the same object as pkg.other_mod
 assert native.other_mod is pkg.other_mod
+# native-to-native import should preserve module metadata such as __file__
+assert os.path.splitext(native.other_native.__file__)[1] != '.py'
+
+[case testNativeSubmoduleOfNativePackageFrom]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+
+def f() -> int:
+    return other_sub.func()
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 42
+[file driver.py]
+import native
+import other_pkg.other_sub
+assert native.f() == 42
+assert native.other_sub is other_pkg.other_sub
 
 [case testMultiModuleFastpaths]
 [file other_main.py]

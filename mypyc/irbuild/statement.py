@@ -495,8 +495,11 @@ def import_from_native(
     buckets = classify_import_from_native(builder, module_id, names, as_names)
     for bucket in buckets:
         if bucket.kind == IMPORT_NATIVE_MODULE:
-            # NOT IMPLEMENTED
-            assert False
+            group: list[tuple[str, str | None, int]] = [
+                (f"{module_id}.{name}", as_name, line)
+                for name, as_name in zip(bucket.names, bucket.as_names)
+            ]
+            transform_imports_without_grouping(builder, group)
         elif bucket.kind == IMPORT_NATIVE_ATTR:
             builder.gen_import(module_id, line)
             module_obj = builder.load_module(module_id)
@@ -576,7 +579,7 @@ def import_from_non_native(
         if bucket.kind == IMPORT_NATIVE_SUBMODULE:
             # 'from p import mod' where p.mod is a native module — equivalent to
             # 'import p.mod as as_name' for each name. Reuse the native import logic.
-            group = [
+            group: list[tuple[str, str | None, int]] = [
                 (f"{module_id}.{name}", as_name, line)
                 for name, as_name in zip(bucket.names, bucket.as_names)
             ]
