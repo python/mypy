@@ -4401,8 +4401,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         index_lvalue = None
         inferred = None
 
-        if self.is_definition(lvalue) and (
-            not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
+        # When revisiting the initial assignment (for example in a loop),
+        # treat is as regular if redefinitions are allowed.
+        skip_definition = (
+            self.options.allow_redefinition_new
+            and isinstance(lvalue, NameExpr)
+            and isinstance(lvalue.node, Var)
+            and lvalue.node.is_inferred
+            and lvalue.node.type is not None
+            # Indexes in for loops require special handling, we need to reset them to
+            # a literal value on each loop, but binder doesn't work well with literals.
+            and not lvalue.node.is_index_var
+        )
+
+        if (
+            self.is_definition(lvalue)
+            and (not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var))
+            and not skip_definition
         ):
             if isinstance(lvalue, NameExpr):
                 assert isinstance(lvalue.node, Var)
@@ -4725,7 +4740,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             inferred.type, PartialType
                         ):
                             # Widen the type to the union of original and new type.
-                            self.widened_vars.append(inferred.name)
+                            if not inferred.is_index_var:
+                                # Skip index variables as they are reset on each loop.
+                                self.widened_vars.append(inferred.name)
                             self.set_inferred_type(inferred, lvalue, lvalue_type)
                             self.binder.put(lvalue, rvalue_type)
                             # TODO: A bit hacky, maybe add a binder method that does put and
