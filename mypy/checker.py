@@ -1486,7 +1486,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 ):
                     show_error = False
 
-                if show_error:
+                if show_error and not self.current_node_deferred:
                     may_be_abstract = (
                         body_is_trivial
                         and defn.info is not FUNC_NO_INFO
@@ -1494,9 +1494,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
                     )
                     if self.options.warn_no_return:
-                        if not self.current_node_deferred and not isinstance(
-                            return_type, (NoneType, AnyType)
-                        ):
+                        if not isinstance(return_type, (NoneType, AnyType)):
                             # Control flow fell off the end of a function that was
                             # declared to return a non-None type.
                             if isinstance(return_type, UninhabitedType):
