@@ -287,7 +287,6 @@ class LastKnownValueEraser(TypeTranslator):
         return new
 
 
-
 def shallow_erase_type_for_equality(typ: Type) -> ProperType:
     """Erase type variables from Instance's"""
     p_typ = get_proper_type(typ)
