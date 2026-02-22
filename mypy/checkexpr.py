@@ -6399,9 +6399,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 isinstance(get_proper_type(known_type), AnyType) and self.chk.current_node_deferred
             ):
                 # Note: this call should match the one in narrow_declared_type().
-                if skip_non_overlapping and not is_overlapping_types(
-                    known_type, restriction
-                ):
+                if skip_non_overlapping and not is_overlapping_types(known_type, restriction):
                     return None
                 narrowed = narrow_declared_type(known_type, restriction)
                 if isinstance(get_proper_type(narrowed), UninhabitedType):

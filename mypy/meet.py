@@ -650,9 +650,7 @@ def is_overlapping_erased_types(
 ) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(
-        erase_type(left),
-        erase_type(right),
-        ignore_promotions=ignore_promotions,
+        erase_type(left), erase_type(right), ignore_promotions=ignore_promotions
     )
 
 
