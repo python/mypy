@@ -138,6 +138,12 @@ def get_mypyc_attrs(
     lines: dict[MypycAttr, int] = {}
 
     def set_mypyc_attr(key: str, value: Any, line: int) -> None:
+        if (
+            (key == "native_class" and value is False and attrs.get("allow_interpreted_subclasses") is True)
+            or (key == "allow_interpreted_subclasses" and value is True and attrs.get("native_class") is False)
+        ):
+            errors.error("'allow_interpreted_subclasses' cannot be True if 'native_class' is False"
+
         if key in MYPYC_ATTRS:
             attrs[key] = value
             lines[key] = line
