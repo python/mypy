@@ -1002,7 +1002,7 @@ y: U
 reveal_type(x)  # N: Revealed type is "builtins.int | None"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 
-U[int]  # E: Type application targets a non-generic function or class
+U[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 O[int]  # E: Bad number of arguments for type alias, expected 0, given 1 \
         # E: Type application is only supported for generic classes
 
