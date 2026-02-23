@@ -9397,13 +9397,7 @@ def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
     #     def foo(x: None) -> None: ..
     #     @overload
     #     def foo(x: T) -> Foo[T]: ...
-    return is_overlapping_types(
-        left,
-        right,
-        ignore_promotions=True,
-        prohibit_none_typevar_overlap=True,
-        overlap_for_overloads=True,
-    )
+    return is_overlapping_types(left, right, ignore_promotions=True, overlap_for_overloads=True)
 
 
 def is_private(node_name: str) -> bool:
