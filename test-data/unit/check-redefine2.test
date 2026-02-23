@@ -1098,6 +1098,33 @@ def func() -> None:
     reveal_type(l) # N: Revealed type is "None | builtins.list[Any]"
 [builtins fixtures/list.pyi]
 
+[case testNewRedefineLoopProgressiveWidening]
+# flags: --allow-redefinition-new --local-partial-types
+def foo() -> None:
+    while int():
+        if int():
+            x = 1
+        elif isinstance(x, list):
+            x = ""
+        elif isinstance(x, str):
+            x = None
+        else:
+            x = [1]
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int] | builtins.str | None"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNewRedefineAnyOrEmptyUnpackInLoop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def foo() -> None:
+    while int():
+        data: Any
+        x, y = data or ([], [])
+        # Requiring an annotation may be better, but we want to preserve old behaviour.
+        reveal_type(x)  # N: Revealed type is "Any | builtins.list[Never]"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNewRedefineNarrowingSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
 from typing import Any, Union
