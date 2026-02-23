@@ -1091,13 +1091,27 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternIsNotType]
-a = 1
-m: object
+# flags: --strict-equality --warn-unreachable
+from typing import Any
 
-match m:
-    case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
-        reveal_type(i)
-        reveal_type(j)
+def match_int(m: object, a: int):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
+            reveal_type(i)  # E: Statement is unreachable
+            reveal_type(j)
+
+def match_int_str(m: object, a: int | str):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int" \
+                       # E: Expected type in class pattern; found "builtins.str"
+            reveal_type(i)  # E: Statement is unreachable
+            reveal_type(j)
+
+def match_int_any(m: object, a: int | Any):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
+            reveal_type(i)  # N: Revealed type is "Any"
+            reveal_type(j)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternAny]
 from typing import Any
@@ -1300,15 +1314,15 @@ def f4(T: type[Example | Example2]) -> None:
 
 def f5(T: type[Example | Example2]) -> None:
     match Example("a"):
-        case T(value):  # E: Expected type in class pattern; found "type[__main__.Example] | type[__main__.Example2]"
-            reveal_type(value)  # E: Statement is unreachable
+        case T(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
         case anything:
             reveal_type(anything)  # N: Revealed type is "__main__.Example"
 
 def f6(T: type[Example | Example2]) -> None:
     match T("a"):
-        case T(value):  # E: Expected type in class pattern; found "type[__main__.Example] | type[__main__.Example2]"
-            reveal_type(value)  # E: Statement is unreachable
+        case T(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
         case anything:
             reveal_type(anything)  # N: Revealed type is "__main__.Example | __main__.Example2"
 
