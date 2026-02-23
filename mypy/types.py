@@ -6,7 +6,6 @@ import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Final,
@@ -97,18 +96,6 @@ JsonDict: _TypeAlias = dict[str, Any]
 # Literal[...].
 LiteralValue: _TypeAlias = int | str | bool | float
 
-
-# If we only import type_visitor in the middle of the file, mypy
-# breaks, and if we do it at the top, it breaks at runtime because of
-# import cycle issues, so we do it at the top while typechecking and
-# then again in the middle at runtime.
-# We should be able to remove this once we are switched to the new
-# semantic analyzer!
-if TYPE_CHECKING:
-    from mypy.type_visitor import (
-        SyntheticTypeVisitor as SyntheticTypeVisitor,
-        TypeVisitor as TypeVisitor,
-    )
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
 TYPE_NAMES: Final = ("builtins.type", "typing.Type")
