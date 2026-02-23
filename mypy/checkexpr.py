@@ -292,9 +292,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     # Type context for type inference
     type_context: list[Type | None]
 
-    # cache resolved types in some cases
-    resolved_type: dict[Expression, ProperType]
-
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
@@ -325,8 +322,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self.type_overrides: dict[Expression, Type] = {}
         self.strfrm_checker = StringFormatterChecker(self.chk, self.msg)
 
-        self.resolved_type = {}
-
         # Callee in a call expression is in some sense both runtime context and
         # type context, because we support things like C[int](...). Store information
         # on whether current expression is a callee, to give better error messages
@@ -345,7 +340,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self._literal_false: Instance | None = None
 
     def reset(self) -> None:
-        self.resolved_type = {}
         self.expr_cache.clear()
 
     def visit_name_expr(self, e: NameExpr) -> Type:
@@ -5098,16 +5092,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if self.chk.current_node_deferred:
             # Guarantees that all items will be Any, we'll reject it anyway.
             return None
-        rt = self.resolved_type.get(e, None)
-        if rt is not None:
-            return rt if isinstance(rt, Instance) else None
         values: list[Type] = []
         # Preserve join order while avoiding O(n) lookups at every iteration
         values_set: set[Type] = set()
         for item in e.items:
             if isinstance(item, StarExpr):
                 # fallback to slow path
-                self.resolved_type[e] = NoneType()
                 return None
 
             typ = self.accept(item)
@@ -5117,14 +5107,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         vt = self._first_or_join_fast_item(values)
         if vt is None:
-            self.resolved_type[e] = NoneType()
             return None
-        ct = self.chk.named_generic_type(container_fullname, [vt])
-        if not self.in_lambda_expr:
-            # We cannot cache results in lambdas - their bodies can be accepted in
-            # error-suppressing watchers too early
-            self.resolved_type[e] = ct
-        return ct
+        return self.chk.named_generic_type(container_fullname, [vt])
 
     def _first_or_join_fast_item(self, items: list[Type]) -> Type | None:
         if len(items) == 1 and not self.chk.current_node_deferred:
@@ -5312,10 +5296,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Guarantees that all items will be Any, we'll reject it anyway.
             return None
 
-        rt = self.resolved_type.get(e, None)
-        if rt is not None:
-            return rt if isinstance(rt, Instance) else None
-
         keys: list[Type] = []
         values: list[Type] = []
         # Preserve join order while avoiding O(n) lookups at every iteration
@@ -5332,7 +5312,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 ):
                     stargs = (st.args[0], st.args[1])
                 else:
-                    self.resolved_type[e] = NoneType()
                     return None
             else:
                 key_t = self.accept(key)
@@ -5346,23 +5325,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         kt = self._first_or_join_fast_item(keys)
         if kt is None:
-            self.resolved_type[e] = NoneType()
             return None
 
         vt = self._first_or_join_fast_item(values)
         if vt is None:
-            self.resolved_type[e] = NoneType()
             return None
 
         if stargs and (stargs[0] != kt or stargs[1] != vt):
-            self.resolved_type[e] = NoneType()
             return None
-        dt = self.chk.named_generic_type("builtins.dict", [kt, vt])
-        if not self.in_lambda_expr:
-            # We cannot cache results in lambdas - their bodies can be accepted in
-            # error-suppressing watchers too early
-            self.resolved_type[e] = dt
-        return dt
+        return self.chk.named_generic_type("builtins.dict", [kt, vt])
 
     def check_typeddict_literal_in_context(
         self, e: DictExpr, typeddict_context: TypedDictType
