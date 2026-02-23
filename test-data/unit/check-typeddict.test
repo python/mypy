@@ -1007,7 +1007,7 @@ class D(TypedDict):
     b: NotRequired[str]
 
 def test(d: D) -> None:
-    reveal_type(d.get)  # N: Revealed type is "Overload(def (k: builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
+    reveal_type(d.get)  # N: Revealed type is "Overload(def (builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
