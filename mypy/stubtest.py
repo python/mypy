@@ -1521,7 +1521,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         ):
             return func
         if decorator.fullname == "builtins.classmethod":
-            if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
+            if func.arguments[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
                 raise StubtestFailure(
                     f"unexpected class parameter name {func.arguments[0].variable.name!r} "
                     f"in {dec.fullname}"
@@ -1553,14 +1553,16 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
 
             callable_type = mypy.types.get_proper_type(callable_type)
             if isinstance(callable_type, mypy.types.CallableType):
-                return _resolve_funcitem_from_callable_type(callable_type)
+                return _resolve_funcitem_from_callable_type(dec, callable_type)
             return None
 
         func = resulting_func
     return func
 
 
-def _resolve_funcitem_from_callable_type(typ: mypy.types.CallableType) -> nodes.FuncDef | None:
+def _resolve_funcitem_from_callable_type(
+    dec: nodes.Decorator, typ: mypy.types.CallableType
+) -> nodes.FuncDef | None:
     if (
         typ.arg_kinds == [nodes.ARG_STAR, nodes.ARG_STAR2]
         and (var_arg := typ.var_arg()) is not None
@@ -1587,7 +1589,18 @@ def _resolve_funcitem_from_callable_type(typ: mypy.types.CallableType) -> nodes.
                 pos_only=pos_only,
             )
         )
-    return nodes.FuncDef(name=typ.name or "", arguments=args, body=nodes.Block([]), typ=typ)
+
+    if dec.func.is_class:
+        if not args:
+            return None
+        # Munge classmethods, similar to logic in _resolve_funcitem_from_decorator
+        if args[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
+            return None
+        args.pop(0)
+
+    ret = nodes.FuncDef(name=typ.name or "", arguments=args, body=nodes.Block([]), typ=typ)
+    ret.is_class = dec.func.is_class
+    return ret
 
 
 @verify.register(nodes.Decorator)
