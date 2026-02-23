@@ -1081,9 +1081,11 @@ def f() -> None:
         x = a()
 
         while int():
-            x = [x]
+            # Use tuple to make revealed type a bit more compact.
+            x = (x,)
 
-    reveal_type(x) # N: Revealed type is "Any | builtins.list[Any]"
+    reveal_type(x) # N: Revealed type is "Any | tuple[Any | tuple[Any | tuple[Any | tuple[Any]]]]"
+[builtins fixtures/tuple.pyi]
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
