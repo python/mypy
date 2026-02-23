@@ -39,7 +39,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         ):
             raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
         self.strict_file.write_text(
-            "For this version of mypy, the list of flags enabled by strict is: " + strict_part
+            "For this version of mypy, the flags enabled by strict are: " + strict_part
         )
 
     def _verify_error_codes(self) -> None:

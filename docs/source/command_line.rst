@@ -1159,7 +1159,9 @@ format into the specified directory.
     ``mypy[reports]``.
 
 
-Enabling incomplete/experimental features
+.. _enabling-incomplete-experimental-features:
+
+Experimental features
 *****************************************
 
 .. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
@@ -1219,6 +1221,11 @@ List of currently incomplete/experimental features:
 
 * ``TypeForm``: this feature enables ``TypeForm``, as described in
   `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
+
+.. option:: --find-occurrences CLASS.MEMBER
+
+    This flag will make mypy print out all usages of a class member
+    based on static type information. This feature is experimental.
 
 
 Miscellaneous
