@@ -569,6 +569,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.early_non_match()
         elif isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
             typ = fill_typevars_with_any(p_typ.type_object())
+            type_range = TypeRange(typ, is_upper_bound=False)
         elif (
             isinstance(type_info, Var)
             and type_info.type is not None
@@ -578,8 +579,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             fallback = self.chk.named_type("builtins.function")
             any_type = AnyType(TypeOfAny.unannotated)
             typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
-        elif isinstance(p_typ, TypeType) and isinstance(p_typ.item, NoneType):
+            type_range = TypeRange(typ, is_upper_bound=False)
+        elif isinstance(p_typ, TypeType):
             typ = p_typ.item
+            type_range = TypeRange(p_typ.item, is_upper_bound=True)
         elif not isinstance(p_typ, AnyType):
             self.msg.fail(
                 message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(
@@ -588,9 +591,11 @@ class PatternChecker(PatternVisitor[PatternType]):
                 o,
             )
             return self.early_non_match()
+        else:
+            type_range = get_type_range(typ)
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type, [get_type_range(typ)], o, default=current_type
+            current_type, [type_range], o, default=current_type
         )
         if is_uninhabited(new_type):
             return self.early_non_match()
