@@ -5323,6 +5323,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 var.is_inferred_def = True
+                                # In case current node was deferred, start from blank slate.
+                                if isinstance(var.node, Var):
+                                    var.node.type = None
                                 self.check_assignment(var, self.temp_node(t, var))
                         self.accept(s.handlers[i])
                         var = s.vars[i]
