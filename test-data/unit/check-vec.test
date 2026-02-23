@@ -43,3 +43,7 @@ T = TypeVar("T")
 
 def bad_generic_func(v: vec[T]) -> None: ...  # E: Invalid item type for "vec"
 [builtins fixtures/len.pyi]
+
+[case testLenNoArgs]
+len()  # E: Too few arguments for "len"
+[builtins fixtures/len.pyi]

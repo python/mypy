@@ -1134,7 +1134,7 @@ def test_underscore() -> None:
     B()
 
 [case testGlobalRedefinition_toplevel]
-# mypy: allow-redefinition
+# mypy: allow-redefinition-old
 i = 0
 i += 1
 i = "foo"

@@ -972,3 +972,14 @@ def i_times_s(s, n):
 L0:
     r0 = CPyStr_Multiply(s, n)
     return r0
+
+[case testStrIsSpace]
+def is_space(x: str) -> bool:
+    return x.isspace()
+[out]
+def is_space(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsSpace(x)
+    return r0

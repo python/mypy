@@ -1792,7 +1792,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.PARAM_TYPE_EXPECTED, fdef)
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
@@ -2601,7 +2601,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             original_arg_type,
                             supertype,
                             context,
-                            secondary_context=node,
+                            origin_context=node,
                         )
                         emitted_msg = True
 
@@ -6687,7 +6687,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
-                    operands[i], *conditional_types(expr_type, [target])
+                    operands[i],
+                    *conditional_types(expr_type, [target], consider_promotion_overlap=True),
                 )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
@@ -6724,7 +6725,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target = TypeRange(target_type, is_upper_bound=False)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
-                            operands[i], *conditional_types(expr_type, [target])
+                            operands[i],
+                            *conditional_types(
+                                expr_type, [target], consider_promotion_overlap=True
+                            ),
                         )
                         all_else_maps.append(else_map)
                 continue
@@ -6736,13 +6740,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             or_else_maps: list[TypeMap] = []
             for expr_type in union_expr_type.items:
                 if has_custom_eq_checks(expr_type):
-                    # Always include union items with custom __eq__ in the type
+                    # Always include the union items with custom __eq__ in the type
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
                 expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
                 for j in expr_indices:
                     if j in custom_eq_indices:
+                        if i == j:
+                            continue
+                        # If we compare to a target with custom __eq__, we cannot narrow at all
+                        if is_overlapping_none(expr_type) and not is_overlapping_none(
+                            operand_types[j]
+                        ):
+                            # Narrow away from None. This is unsound, we're hoping that no one
+                            # has a custom __eq__ that returns True for None.
+                            or_if_maps.append({operands[i]: remove_optional(expr_type)})
+                        else:
+                            or_if_maps.append({operands[i]: expr_type})
                         continue
                     target_type = operand_types[j]
                     if should_coerce_literals:
@@ -6750,7 +6765,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     target = TypeRange(target_type, is_upper_bound=False)
 
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, [target], default=expr_type)
+                        operands[i],
+                        *conditional_types(
+                            expr_type, [target], default=expr_type, consider_promotion_overlap=True
+                        ),
                     )
                     or_if_maps.append(if_map)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
@@ -7918,9 +7936,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if isinstance(typ, UnionType):
             type_ranges = [self.get_type_range_of_type(item) for item in typ.items]
-            is_upper_bound = any(t.is_upper_bound for t in type_ranges if t is not None)
             item = make_simplified_union([t.item for t in type_ranges if t is not None])
-            return TypeRange(item, is_upper_bound=is_upper_bound)
+            return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # If a type is generic, `isinstance` can only narrow its variables to Any.
             any_parameterized = fill_typevars_with_any(typ.type_object())
@@ -7936,6 +7953,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             is_upper_bound = True
             if isinstance(typ.item, NoneType):
                 # except for Type[None], because "'NoneType' is not an acceptable base type"
+                is_upper_bound = False
+            if isinstance(typ.item, Instance) and typ.item.type.is_final:
                 is_upper_bound = False
             return TypeRange(typ.item, is_upper_bound=is_upper_bound)
         if isinstance(typ, AnyType):
@@ -8252,6 +8271,7 @@ def conditional_types(
     default: None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type | None, Type | None]: ...
 
 
@@ -8262,6 +8282,7 @@ def conditional_types(
     default: Type,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type, Type]: ...
 
 
@@ -8271,6 +8292,7 @@ def conditional_types(
     default: Type | None = None,
     *,
     consider_runtime_isinstance: bool = True,
+    consider_promotion_overlap: bool = False,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -8301,24 +8323,39 @@ def conditional_types(
             enum_name = target.fallback.type.fullname
             current_type = try_expanding_sum_type_to_union(current_type, enum_name)
 
+    proposed_type: Type
+    remaining_type: Type
+
     proper_type = get_proper_type(current_type)
     # factorize over union types: isinstance(A|B, C) -> yes = A_yes | B_yes
     if isinstance(proper_type, UnionType):
-        result: list[tuple[Type | None, Type | None]] = [
-            conditional_types(
+        yes_items: list[Type] = []
+        no_items: list[Type] = []
+        for union_item in proper_type.items:
+            yes_type, no_type = conditional_types(
                 union_item,
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
+                consider_promotion_overlap=consider_promotion_overlap,
             )
-            for union_item in get_proper_types(proper_type.items)
-        ]
-        # separate list of tuples into two lists
-        yes_types, no_types = zip(*result)
-        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
-    else:
-        proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
+            yes_items.append(yes_type)
+            no_items.append(no_type)
+
+        proposed_type = make_simplified_union(yes_items)
+        remaining_type = make_simplified_union(no_items)
+        return proposed_type, remaining_type
+
+    proposed_type = make_simplified_union([type_range.item for type_range in proposed_type_ranges])
+    items = proposed_type.items if isinstance(proposed_type, UnionType) else [proposed_type]
+    for i in range(len(items)):
+        item = get_proper_type(items[i])
+        # Avoid ever narrowing to a NewType. The principle is values of NewType should only be
+        # produce by explicit wrapping
+        while isinstance(item, Instance) and item.type.is_newtype:
+            item = item.type.bases[0]
+        items[i] = item
+    proposed_type = get_proper_type(UnionType.make_union(items))
 
     if isinstance(proper_type, AnyType):
         return proposed_type, current_type
@@ -8345,9 +8382,17 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+    if not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=not consider_promotion_overlap
+    ):
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
+    if consider_promotion_overlap and not is_overlapping_types(
+        current_type, proposed_type, ignore_promotions=True
+    ):
+        # We set consider_promotion_overlap when comparing equality. This is one of the places
+        # at runtime where subtyping with promotion does happen to match runtime semantics
+        return default, default
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
         [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]
@@ -8650,7 +8695,7 @@ def flatten_types_if_tuple(t: Type) -> list[Type]:
     """Flatten a nested sequence of tuples into one list of nodes."""
     t = get_proper_type(t)
     if isinstance(t, UnionType):
-        return [b for a in t.items for b in flatten_types_if_tuple(a)]
+        return [UnionType.make_union([b for a in t.items for b in flatten_types_if_tuple(a)])]
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types_if_tuple(a)]
     elif is_named_instance(t, "builtins.tuple"):

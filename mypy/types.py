@@ -1627,9 +1627,6 @@ class Instance(ProperType):
         self.args = tuple(args)
         self.type_ref: str | None = None
 
-        # True if recovered after incorrect number of type arguments error
-        self.invalid = False
-
         # This field keeps track of the underlying Literal[...] value associated with
         # this instance, if one is known.
         #

@@ -5176,7 +5176,7 @@ def g(y: T) -> T:
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "x"
-c.py:4: note: Called function defined here
+a.py:2: note: Called function defined in "c"
 
 [case testGenericFineCallableInBound]
 import a
@@ -6053,9 +6053,9 @@ a.py:1: error: "int" not callable
 [file a.py.2]
 1()
 [out]
-mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
 ==
-mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
 
 [case testNonExistentFileOnCommandLine2]
 # cmd: mypy a.py
@@ -9124,15 +9124,15 @@ x = ''
 x = 1
 
 [out]
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 ==
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
@@ -10522,7 +10522,7 @@ m.py:9: error: Too many arguments for "foo"
 m.py:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"
-partial.py:4: note: "foo" defined here
+m.py:10: note: "foo" defined in "partial"
 
 [case testReplaceFunctionWithDecoratedFunctionIndirect]
 from b import f
@@ -11531,4 +11531,4 @@ def lol() -> None: pass
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-b.py:1: note: "lol" defined here
+a.py:2: note: "lol" defined in "b"

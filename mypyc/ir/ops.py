@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -1690,7 +1691,7 @@ class GetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct)
+        assert isinstance(src.type, (RStruct, RVec))
         self.type = src.type.field_type(field)
         self.src = src
         self.src_type = src.type
@@ -1720,7 +1721,7 @@ class GetElementPtr(RegisterOp):
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
-        assert not isinstance(src.type, RStruct)
+        assert not isinstance(src.type, (RStruct, RVec))
         self.type = pointer_rprimitive
         self.src = src
         self.src_type = src_type
@@ -1750,7 +1751,7 @@ class SetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct), src.type
+        assert isinstance(src.type, (RStruct, RVec)), src.type
         self.type = src.type
         self.src = src
         self.item = item

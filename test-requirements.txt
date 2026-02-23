@@ -22,7 +22,7 @@ identify==2.6.15
     # via pre-commit
 iniconfig==2.1.0
     # via pytest
-librt==0.7.8 ; platform_python_implementation != "PyPy"
+librt==0.8.0 ; platform_python_implementation != "PyPy"
     # via -r mypy-requirements.txt
 lxml==6.0.2 ; python_version < "3.15"
     # via -r test-requirements.in

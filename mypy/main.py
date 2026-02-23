@@ -23,12 +23,7 @@ if platform.python_implementation() == "PyPy":
     sys.exit(2)
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import (
-    get_config_module_names,
-    parse_config_file,
-    parse_version,
-    validate_package_allow_list,
-)
+from mypy.config_parser import parse_config_file, parse_version, validate_package_allow_list
 from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
@@ -221,26 +216,6 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
-    if (
-        options.warn_unused_configs
-        and options.unused_configs
-        and not options.incremental
-        and not options.non_interactive
-    ):
-        print(
-            "Warning: unused section(s) in {}: {}".format(
-                options.config_file,
-                get_config_module_names(
-                    options.config_file,
-                    [
-                        glob
-                        for glob in options.per_module_options.keys()
-                        if glob in options.unused_configs
-                    ],
-                ),
-            ),
-            file=stderr,
-        )
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
     return res, messages, blockers
 
@@ -891,6 +866,15 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
+        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        group=strictness_group,
+        dest="allow_redefinition_old",
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-old",
+        default=False,
+        strict_flag=False,
         help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
@@ -899,7 +883,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics (experimental)",
+        help="Allow more flexible variable redefinition semantics",
         group=strictness_group,
     )
 
@@ -1076,10 +1060,12 @@ def define_options(
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
-    incremental_group.add_argument(
-        "--fixed-format-cache",
-        action="store_true",
-        help="Use new fast and compact fixed format cache",
+    add_invertible_flag(
+        "--no-fixed-format-cache",
+        dest="fixed_format_cache",
+        default=True,
+        help="Do not use new fixed format cache",
+        group=incremental_group,
     )
     incremental_group.add_argument(
         "--skip-version-check",

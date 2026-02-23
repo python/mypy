@@ -1005,6 +1005,66 @@ def f(x: Custom | None, y: int | None):
         reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingCustomEqualityUnion4]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+def f(x: Custom | None, y: Custom):
+    if x == y:
+        # We unsoundly special case None and narrow x to Custom here
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | None"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualityUnion5]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom1:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+class Custom2:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom1 | int, y: Custom2 | int):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom1 | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.Custom2 | builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom1 | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.Custom2 | builtins.int"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingCustomEqualitySubclass]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+class CustomSub(Custom):
+    def __eq__(self, other: object) -> bool:
+        raise
+
+def f(x: Custom, y: CustomSub):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(y)  # N: Revealed type is "__main__.CustomSub"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(y)  # N: Revealed type is "__main__.CustomSub"
+[builtins fixtures/tuple.pyi]
+
 [case testNarrowingUnreachableCases]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
@@ -1606,6 +1666,21 @@ if isinstance(t, (list, tuple)) and isinstance(t, tuple):
 else:
     reveal_type(t)  # N: Revealed type is "Any"
 reveal_type(t)  # N: Revealed type is "Any"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNarrowingAnyUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from unknown import A, AA  # E: Cannot find implementation or library stub for module named "unknown" \
+                           # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+class B: ...
+
+def f(x: A | B) -> None:
+    if isinstance(x, (AA, B)):
+        reveal_type(x)  # N: Revealed type is "Any | __main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNarrowingLenItemAndLenCompare]
@@ -3508,7 +3583,6 @@ def convert_type(target_type: Type[TargetType]) -> TargetType:
 from __future__ import annotations
 from typing import Literal
 
-# TODO: the behaviour on some of these test cases is incorrect
 def f1(number: float, i: int):
     if number == i:
         reveal_type(number)  # N: Revealed type is "builtins.float"
@@ -3516,22 +3590,30 @@ def f1(number: float, i: int):
 
 def f2(number: float, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # E: Statement is unreachable
-        reveal_type(five)
+        reveal_type(number)  # N: Revealed type is "builtins.float"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
 
 def f3(number: float | int, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # N: Revealed type is "Literal[5]"
+        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+
+def f8(number: float | Literal[5], five: Literal[5]):
+    if number == five:
+        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(five)  # N: Revealed type is "Literal[5]"
+    else:
+        reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(five)  # N: Revealed type is "Literal[5]"
 
 def f4(number: float | None, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.float | None"
+        reveal_type(number)  # N: Revealed type is "builtins.float"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 def f5(number: float | int, i: int):
     if number == i:
-        reveal_type(number)  # N: Revealed type is "builtins.int"
+        reveal_type(number)  # N: Revealed type is "builtins.float | builtins.int"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 def f6(number: float | complex, i: int):
@@ -3545,7 +3627,7 @@ class Custom:
 def f7(number: float, x: Custom | int):
     if number == x:
         reveal_type(number)  # N: Revealed type is "builtins.float"
-        reveal_type(x)  # N: Revealed type is "__main__.Custom"
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.int"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingAnyNegativeIntersection-xfail]
@@ -3635,7 +3717,7 @@ def main(
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
 
     if v_all == v_bytes:
-        reveal_type(v_all)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
     if v_all == v_bytearray:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
@@ -3643,4 +3725,104 @@ def main(
     if v_all == v_memoryview:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeVsSubclass]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType
+
+M1 = NewType("M1", int)
+M2 = NewType("M2", int)
+
+def check_m(base: int, m1: M1, m2: M2):
+    if m1 == m2:  # E: Non-overlapping equality check (left operand type: "M1", right operand type: "M2")
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(m2)  # N: Revealed type is "__main__.M2"
+
+    if m1 == base:
+        # We do not narrow base
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(base)  # N: Revealed type is "builtins.int"
+        if m2 == base:
+            reveal_type(m2)  # N: Revealed type is "__main__.M2"
+            reveal_type(base)  # N: Revealed type is "builtins.int"
+
+# We do narrow for subclasses! (assuming no custom equality)
+class A: ...
+class A1(A): ...
+class A2(A): ...
+
+def check_a(base: A, a1: A1, a2: A2):
+    if a1 == a2:  # E: Non-overlapping equality check (left operand type: "A1", right operand type: "A2")
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(a2)  # N: Revealed type is "__main__.A2"
+
+    if a1 == base:
+        # We do narrow base
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(base)  # N: Revealed type is "__main__.A1"
+        if a2 == base:  # E: Non-overlapping equality check (left operand type: "A2", right operand type: "A1")
+            reveal_type(a2)  # N: Revealed type is "__main__.A2"
+            reveal_type(base)  # N: Revealed type is "__main__.A1"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeFromObject]
+# mypy: strict-equality, warn-unreachable
+from __future__ import annotations
+from typing import NewType
+
+UserId = NewType("UserId", int)
+
+def f1(whatever: object, uid: UserId):
+    # The general principle is that we should not be able to produce a value of NewType
+    # without there being explicit wrapping somewhere
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+
+class Other: ...
+
+def f2(whatever: object, uid: UserId | Other):
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int | __main__.Other"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId | __main__.Other"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeNested]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+Path = NewType("Path", str)
+NormPath = NewType("NormPath", Path)
+
+def op(normpath: NormPath, path: Path):
+    if normpath == path:
+        # No narrowing
+        reveal_type(normpath)  # N: Revealed type is "__main__.NormPath"
+        reveal_type(path)  # N: Revealed type is "__main__.Path"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeSharedValue]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+UserId = NewType("UserId", int)
+TeamId = NewType("TeamId", int)
+INVALID = 123
+
+def get_owner(uid: UserId, tid: TeamId):
+    # No narrowing for INVALID
+    if uid == INVALID:
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+        reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+        reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+        if tid == INVALID:
+            reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+            reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+            reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+            return None
 [builtins fixtures/primitives.pyi]

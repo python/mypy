@@ -11,6 +11,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    DecRef,
     Extend,
     FloatComparisonOp,
     FloatNeg,
@@ -19,6 +20,7 @@ from mypyc.ir.ops import (
     GetElement,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     IntOp,
     KeepAlive,
@@ -88,6 +90,12 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return CLEAN
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill:
+        return CLEAN
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill:
         return CLEAN
 
     def visit_call(self, op: Call) -> GenAndKill:
