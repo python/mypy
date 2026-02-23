@@ -1560,9 +1560,18 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     return func
 
 
-def _resolve_funcitem_from_callable_type(typ: mypy.types.CallableType) -> nodes.FuncDef:
-    args: list[nodes.Argument] = []
+def _resolve_funcitem_from_callable_type(typ: mypy.types.CallableType) -> nodes.FuncDef | None:
+    if (
+        typ.arg_kinds == [nodes.ARG_STAR, nodes.ARG_STAR2]
+        and (var_arg := typ.var_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_arg.typ), mypy.types.AnyType)
+        and (var_kwarg := typ.kw_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_kwarg.typ), mypy.types.AnyType)
+    ):
+        # There isn't a FuncDef we can invent corresponding to a Callable[..., T]
+        return None
 
+    args: list[nodes.Argument] = []
     for i, (arg_type, arg_kind, arg_name) in enumerate(
         zip(typ.arg_types, typ.arg_kinds, typ.arg_names, strict=True)
     ):
