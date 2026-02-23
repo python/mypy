@@ -1111,6 +1111,18 @@ def foo() -> None:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int] | builtins.str | None"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testNewRedefineAnyOrEmptyUnpackInLoop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def foo() -> None:
+    while int():
+        data: Any
+        x, y = data or ([], [])
+        # Requiring an annotation may be better, but we want to preserve old behaviour.
+        reveal_type(x)  # N: Revealed type is "Any | builtins.list[Never]"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNewRedefineNarrowingSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
 from typing import Any, Union

@@ -4799,7 +4799,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # This additional check is to give an error instead of inferring
                     # a useless type like None | list[Never] in case of "double-partial"
                     # types that are not supported yet, see issue #20257.
-                    or not is_proper_subtype(rvalue_type, inferred.type)
+                    or not is_subtype(rvalue_type, inferred.type)
                 )
             ):
                 self.msg.need_annotation_for_var(inferred, inferred, self.options)
