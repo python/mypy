@@ -1171,6 +1171,22 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL: Final = 2
+            """,
+            runtime="X_FINAL = 1",
+            error="X_FINAL",
+        )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL_OK: Final = 1
+            """,
+            runtime="X_FINAL_OK = 1",
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:

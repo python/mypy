@@ -4885,9 +4885,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
         if alias.python_3_12_type_alias:
             return self.type_alias_type_type()
-        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
-            # An invalid alias, error already has been reported
-            return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.
         # For example:
         #     A = List[Tuple[T, T]]

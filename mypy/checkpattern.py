@@ -293,7 +293,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         unpack_index = None
         if isinstance(current_type, TupleType):
-            inner_types = current_type.items
+            inner_types: list[Type] = current_type.items
             unpack_index = find_unpack_in_list(inner_types)
             if unpack_index is None:
                 size_diff = len(inner_types) - required_patterns
