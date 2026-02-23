@@ -22,26 +22,33 @@ def lookup_fully_qualified(
     This function should *not* be used to find a module. Those should be looked
     in the modules dictionary.
     """
-    head = name
+    # 1. Exclude the names of ad hoc instance intersections from step 2.
+    i = name.find("<subclass ")
+    head = name if i == -1 else name[:i]
     rest = []
-    # 1. Find a module tree in modules dictionary.
+    # 2. Find a module tree in modules dictionary.
     while True:
         if "." not in head:
             if raise_on_missing:
                 assert "." in head, f"Cannot find module for {name}"
             return None
+        # TODO: this logic is not correct as it confuses a submodule and a local symbol.
+        # A potential solution may be to use format like pkg.mod:Cls.method for fullname,
+        # but this is a relatively big change.
         head, tail = head.rsplit(".", maxsplit=1)
         rest.append(tail)
         mod = modules.get(head)
         if mod is not None:
             break
     names = mod.names
-    # 2. Find the symbol in the module tree.
+    # 3. Find the symbol in the module tree.
     if not rest:
         # Looks like a module, don't use this to avoid confusions.
         if raise_on_missing:
             assert rest, f"Cannot find {name}, got a module symbol"
         return None
+    if i != -1:
+        rest[0] += name[i:]
     while True:
         key = rest.pop()
         if key not in names:

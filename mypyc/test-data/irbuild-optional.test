@@ -251,28 +251,22 @@ def f(x: Union[int, A]) -> int:
 [out]
 def f(x):
     x :: union[int, __main__.A]
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
-    r4, r5 :: int
-    r6 :: __main__.A
-    r7 :: int
+    r0 :: bit
+    r1, r2 :: int
+    r3 :: __main__.A
+    r4 :: int
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(x, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyLong_Check(x)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int, x)
-    r5 = CPyTagged_Add(r4, 2)
-    return r5
+    r1 = unbox(int, x)
+    r2 = CPyTagged_Add(r1, 2)
+    return r2
 L2:
-    r6 = borrow cast(__main__.A, x)
-    r7 = r6.a
+    r3 = borrow cast(__main__.A, x)
+    r4 = r3.a
     keep_alive x
-    return r7
+    return r4
 L3:
     unreachable
 
@@ -317,7 +311,7 @@ def get(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -396,7 +390,7 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -409,7 +403,7 @@ L1:
 L2:
     r8 = __main__.B :: type
     r9 = get_element_ptr o ob_type :: PyObject
-    r10 = load_mem r9 :: builtins.object*
+    r10 = borrow load_mem r9 :: builtins.object*
     keep_alive o
     r11 = r10 == r8
     if r11 goto L3 else goto L4 :: bool
@@ -462,7 +456,7 @@ def f(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -494,7 +488,7 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool

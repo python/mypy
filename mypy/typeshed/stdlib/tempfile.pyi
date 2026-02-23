@@ -13,12 +13,9 @@ from _typeshed import (
     WriteableBuffer,
 )
 from collections.abc import Iterable, Iterator
-from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Literal, overload
-from typing_extensions import Self
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
+from types import GenericAlias, TracebackType
+from typing import IO, Any, AnyStr, Final, Generic, Literal, overload
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "NamedTemporaryFile",
@@ -37,7 +34,7 @@ __all__ = [
 ]
 
 # global variables
-TMP_MAX: int
+TMP_MAX: Final[int]
 tempdir: str | None
 template: str
 
@@ -387,7 +384,7 @@ class SpooledTemporaryFile(IO[AnyStr], _SpooledTemporaryFileBase):
     def write(self: SpooledTemporaryFile[bytes], s: ReadableBuffer) -> int: ...
     @overload
     def write(self, s: AnyStr) -> int: ...
-    @overload
+    @overload  # type: ignore[override]
     def writelines(self: SpooledTemporaryFile[str], iterable: Iterable[str]) -> None: ...
     @overload
     def writelines(self: SpooledTemporaryFile[bytes], iterable: Iterable[ReadableBuffer]) -> None: ...
@@ -399,8 +396,7 @@ class SpooledTemporaryFile(IO[AnyStr], _SpooledTemporaryFileBase):
     def seekable(self) -> bool: ...
     def writable(self) -> bool: ...
     def __next__(self) -> AnyStr: ...  # type: ignore[override]
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class TemporaryDirectory(Generic[AnyStr]):
     name: AnyStr
@@ -458,8 +454,7 @@ class TemporaryDirectory(Generic[AnyStr]):
     def cleanup(self) -> None: ...
     def __enter__(self) -> AnyStr: ...
     def __exit__(self, exc: type[BaseException] | None, value: BaseException | None, tb: TracebackType | None) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # The overloads overlap, but they should still work fine.
 @overload
@@ -476,6 +471,7 @@ def mkstemp(
 def mkdtemp(suffix: str | None = None, prefix: str | None = None, dir: StrPath | None = None) -> str: ...
 @overload
 def mkdtemp(suffix: bytes | None = None, prefix: bytes | None = None, dir: BytesPath | None = None) -> bytes: ...
+@deprecated("Deprecated since Python 2.3. Use `mkstemp()` or `NamedTemporaryFile(delete=False)` instead.")
 def mktemp(suffix: str = "", prefix: str = "tmp", dir: StrPath | None = None) -> str: ...
 def gettempdirb() -> bytes: ...
 def gettempprefixb() -> bytes: ...

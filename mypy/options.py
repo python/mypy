@@ -4,7 +4,11 @@ import pprint
 import re
 import sys
 import sysconfig
-from typing import Any, Callable, Final, Mapping, Pattern
+from collections.abc import Callable
+from re import Pattern
+from typing import Any, Final
+
+from librt.internal import WriteBuffer, write_bool, write_str
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -19,7 +23,8 @@ class BuildType:
 
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
-    "allow_redefinition",
+    "allow_redefinition_old",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -42,6 +47,7 @@ PER_MODULE_OPTIONS: Final = {
     "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
+    "follow_untyped_imports",
     "ignore_errors",
     "ignore_missing_imports",
     "implicit_optional",
@@ -50,6 +56,7 @@ PER_MODULE_OPTIONS: Final = {
     "mypyc",
     "strict_concatenate",
     "strict_equality",
+    "strict_equality_for_none",
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
@@ -66,8 +73,16 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
+        "strict_bytes",
+        "fixed_format_cache",
+        "untyped_calls_exclude",
+        "enable_incomplete_feature",
     }
 ) - {"debug_cache"}
+
+# OPTIONS_AFFECTING_CACHE without "platform", as a sorted tuple for fast iteration.
+# "platform" is handled separately in options_snapshot().
+OPTIONS_AFFECTING_CACHE_NO_PLATFORM: Final = tuple(sorted(OPTIONS_AFFECTING_CACHE - {"platform"}))
 
 # Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
@@ -75,7 +90,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+TYPE_FORM: Final = "TypeForm"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
@@ -113,6 +129,8 @@ class Options:
         self.ignore_missing_imports = False
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
+        # Typecheck modules without stubs or py.typed marker
+        self.follow_untyped_imports = False
         self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
@@ -130,6 +148,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -174,7 +193,11 @@ class Options:
         self.warn_return_any = False
 
         # Report importing or using deprecated features as errors instead of notes.
-        self.report_deprecated_as_error = False
+        self.report_deprecated_as_note = False
+
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
@@ -206,11 +229,21 @@ class Options:
 
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
-        self.allow_redefinition = False
+        self.allow_redefinition_old = False
+
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and at different nesting levels
+        self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Extend the logic of `strict_equality` to comparisons with `None`.
+        self.strict_equality_for_none = False
+
+        # Disable treating bytearray and memoryview as subtypes of bytes
+        self.strict_bytes = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
@@ -266,6 +299,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = False
+        self.fixed_format_cache = True
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False
@@ -331,6 +365,7 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        self.num_workers: int = 0
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
@@ -371,31 +406,25 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable new experimental type inference algorithm.
+        # Disable new type inference algorithm.
         self.old_type_inference = False
-        # Deprecated reverse version of the above, do not use.
-        self.new_type_inference = False
+        # Disable expression cache (for debugging).
+        self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-        self.force_uppercase_builtins = False
-        self.force_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
 
-    def use_lowercase_names(self) -> bool:
-        if self.python_version >= (3, 9):
-            return not self.force_uppercase_builtins
-        return False
-
-    def use_or_syntax(self) -> bool:
-        if self.python_version >= (3, 10):
-            return not self.force_union_syntax
-        return False
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
 
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)
@@ -415,18 +444,20 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
-        # Process `--enable-error-code` and `--disable-error-code` flags
-        disabled_codes = set(self.disable_error_code)
-        enabled_codes = set(self.enable_error_code)
+        """Process `--enable-error-code` and `--disable-error-code` flags."""
+        disabled_code_names = set(self.disable_error_code)
+        enabled_code_names = set(self.enable_error_code)
 
-        valid_error_codes = set(error_codes.keys())
+        valid_error_code_names = set(error_codes.keys())
 
-        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
-        if invalid_codes:
-            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+        invalid_code_names_here = (
+            enabled_code_names | disabled_code_names
+        ) - valid_error_code_names
+        if invalid_code_names_here:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
-        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_code_names}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_code_names}
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
@@ -440,6 +471,16 @@ class Options:
                 error_callback(f"Unknown incomplete feature: {feature}")
             if feature in COMPLETE_FEATURES:
                 warning_callback(f"Warning: {feature} is already enabled by default")
+
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
@@ -465,7 +506,6 @@ class Options:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
-
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
@@ -575,11 +615,29 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: dict[str, object] = {}
-        for opt in OPTIONS_AFFECTING_CACHE:
+    def select_options_affecting_cache(self) -> tuple[str, list[object]]:
+        """Return (platform, [values...]) for options that affect the cache.
+
+        The list contains values for OPTIONS_AFFECTING_CACHE_NO_PLATFORM
+        in sorted attribute name order. Keys are omitted since the cache
+        is invalidated when the mypy version changes, and keys are constant
+        on any specific mypy version.
+        """
+        result: list[object] = []
+        for opt in OPTIONS_AFFECTING_CACHE_NO_PLATFORM:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):
                 val = sorted([code.code for code in val])
-            result[opt] = val
-        return result
+            result.append(val)
+        return self.platform, result
+
+    def dep_import_options(self) -> bytes:
+        """Return opaque bytes with options that can affect dependent modules as well.
+
+        The value can be compared for equality to detect changed options.
+        """
+        buf = WriteBuffer()
+        write_bool(buf, self.ignore_missing_imports)
+        write_str(buf, self.follow_imports)
+        write_bool(buf, self.follow_imports_for_stubs)
+        return buf.getvalue()

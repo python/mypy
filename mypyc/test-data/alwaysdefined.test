@@ -166,8 +166,7 @@ IfConditionalAndNonConditional1: [x]
 IfConditionalAndNonConditional2: []
 
 [case testAlwaysDefinedExpressions]
-from typing import Dict, List, Set, Optional, cast
-from typing_extensions import Final
+from typing import Dict, Final, List, Set, Optional, cast
 
 import other
 
@@ -307,7 +306,7 @@ def f() -> int:
 
 [file other.py]
 # Not compiled
-from typing_extensions import Final
+from typing import Final
 
 Y: Final = 3
 
@@ -730,3 +729,13 @@ class NestedFunc:
 -- TODO: Support nested functions.
 NestedFunc: []
 f___init___NestedFunc_obj: []
+
+[case testAlwaysDefinedWithVecSetItem]
+from librt.vecs import vec
+
+class C:
+    def __init__(self, v: vec[C]) -> None:
+        self.v = v
+        self.v[0] = self
+[out]
+C: [v]

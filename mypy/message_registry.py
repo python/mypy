@@ -11,11 +11,12 @@ from __future__ import annotations
 from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
+from mypy.errorcodes import ErrorCode
 
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: codes.ErrorCode | None = None
+    code: ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
@@ -125,8 +126,8 @@ ONLY_CLASS_APPLICATION: Final = ErrorMessage(
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
 )
-ARGUMENT_TYPE_EXPECTED: Final = ErrorMessage(
-    "Function is missing a type annotation for one or more arguments", codes.NO_UNTYPED_DEF
+PARAM_TYPE_EXPECTED: Final = ErrorMessage(
+    "Function is missing a type annotation for one or more parameters", codes.NO_UNTYPED_DEF
 )
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
     'Keyword argument only valid with "str" key type in call to "dict"'
@@ -175,7 +176,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
     "Access to generic instance variables via class is ambiguous"
 )
 GENERIC_CLASS_VAR_ACCESS: Final = "Access to generic class variables is ambiguous"
-BARE_GENERIC: Final = "Missing type parameters for generic type {}"
+BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
@@ -188,7 +189,6 @@ INVALID_PARAM_SPEC_LOCATION_NOTE: Final = (
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
-CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
@@ -224,7 +224,7 @@ SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
 
 # Self-type
 MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
-    "Self argument missing for a non-static method (or an invalid type for self)"
+    '"self" parameter missing for a non-static method (or an invalid type for self)'
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
@@ -238,10 +238,16 @@ DEPENDENT_FINAL_IN_CLASS_BODY: Final = ErrorMessage(
 CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
     'Cannot access final instance attribute "{}" on class object'
 )
+CANNOT_ACCESS_INSTANCE_ONLY_ATTR: Final = (
+    'Cannot access instance-only attribute "{}" on class object'
+)
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Disjoint bases
+INCOMPATIBLE_DISJOINT_BASES: Final = ErrorMessage('Class "{}" has incompatible disjoint bases')
+
 # Enum
-ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'
 )
 
@@ -254,7 +260,6 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = ErrorMessage(
     'Cannot override class variable (previously declared on base class "{}") with instance '
     "variable"
 )
-CLASS_VAR_WITH_TYPEVARS: Final = "ClassVar cannot contain type variables"
 CLASS_VAR_WITH_GENERIC_SELF: Final = "ClassVar cannot contain Self type in generic classes"
 CLASS_VAR_OUTSIDE_OF_CLASS: Final = "ClassVar can only be used for assignments in class body"
 
@@ -306,14 +311,14 @@ INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', code
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )
-ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
-    "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
+ELLIPSIS_WITH_OTHER_TYPEPARAMS: Final = ErrorMessage(
+    "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
-    "Type signature has too many arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_MANY_PARAMS: Final = ErrorMessage(
+    "Type signature has too many parameters", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
-    "Type signature has too few arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_FEW_PARAMS: Final = ErrorMessage(
+    "Type signature has too few parameters", codes.SYNTAX
 )
 ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
 ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(
@@ -348,6 +353,14 @@ TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
 
 TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
     "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
+    "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
+)
+
+TYPE_VAR_REDECLARED_IN_NESTED_CLASS: Final = ErrorMessage(
+    'Type variable "{}" is bound by an outer class', codes.VALID_TYPE
 )
 
 TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(

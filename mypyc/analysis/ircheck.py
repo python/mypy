@@ -17,10 +17,12 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    Float,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -42,28 +44,36 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RArray,
     RInstance,
     RPrimitive,
     RType,
     RUnion,
+    RVec,
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_c_py_ssize_t_rprimitive,
+    is_fixed_width_rtype,
     is_float_rprimitive,
     is_object_rprimitive,
+    is_pointer_rprimitive,
     list_rprimitive,
+    pointer_rprimitive,
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
@@ -148,7 +158,7 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         for op in block.ops:
             for source in op.sources():
-                if isinstance(source, Integer):
+                if isinstance(source, (Integer, Float, Undef)):
                     pass
                 elif isinstance(source, Op):
                     if source not in valid_ops:
@@ -178,7 +188,7 @@ disjoint_types = {
     set_rprimitive.name,
     tuple_rprimitive.name,
     range_rprimitive.name,
-}
+} | set(KNOWN_NATIVE_TYPES)
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:
@@ -195,7 +205,7 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
             if src.name in disjoint_types and dest.name in disjoint_types:
                 return src.name == dest.name
             return src.size == dest.size
-        if isinstance(src, RInstance):
+        if isinstance(src, (RInstance, RVec)):
             return is_object_rprimitive(dest)
         if isinstance(src, RUnion):
             # IR doesn't have the ability to narrow unions based on
@@ -204,6 +214,29 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
         return False
 
     return True
+
+
+def is_valid_ptr_displacement_type(rtype: RType) -> bool:
+    """Check if rtype is a valid displacement type for pointer arithmetic."""
+    if not (is_fixed_width_rtype(rtype) or is_c_py_ssize_t_rprimitive(rtype)):
+        return False
+    assert isinstance(rtype, RPrimitive)
+    return rtype.size == pointer_rprimitive.size
+
+
+def is_pointer_arithmetic(op: IntOp) -> bool:
+    """Check if op is add/subtract targeting pointer_rprimitive and integer of the same size."""
+    if op.op not in (IntOp.ADD, IntOp.SUB):
+        return False
+    if not is_pointer_rprimitive(op.type):
+        return False
+    left = op.lhs.type
+    right = op.rhs.type
+    if is_pointer_rprimitive(left):
+        return is_valid_ptr_displacement_type(right)
+    if is_pointer_rprimitive(right):
+        return is_valid_ptr_displacement_type(left)
+    return False
 
 
 class OpChecker(OpVisitor[None]):
@@ -236,6 +269,10 @@ class OpChecker(OpVisitor[None]):
     def expect_non_float(self, op: Op, v: Value) -> None:
         if is_float_rprimitive(v.type):
             self.fail(op, "Float not expected")
+
+    def expect_primitive_type(self, op: Op, v: Value) -> None:
+        if not isinstance(v.type, RPrimitive):
+            self.fail(op, f"RPrimitive expected, got {type(v.type).__name__}")
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
@@ -291,8 +328,6 @@ class OpChecker(OpVisitor[None]):
             expected_type = "builtins.str"
         elif isinstance(op.value, bytes):
             expected_type = "builtins.bytes"
-        elif isinstance(op.value, bool):
-            expected_type = "builtins.object"
         elif isinstance(op.value, float):
             expected_type = "builtins.float"
         elif isinstance(op.value, complex):
@@ -395,13 +430,37 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_int_op(self, op: IntOp) -> None:
+        self.expect_primitive_type(op, op.lhs)
+        self.expect_primitive_type(op, op.rhs)
         self.expect_non_float(op, op.lhs)
         self.expect_non_float(op, op.rhs)
+        left = op.lhs.type
+        right = op.rhs.type
+        op_str = op.op_str[op.op]
+        if (
+            isinstance(left, RPrimitive)
+            and isinstance(right, RPrimitive)
+            and left.is_signed != right.is_signed
+            and (
+                op_str in ("+", "-", "*", "/", "%")
+                or (op_str not in ("<<", ">>") and left.size != right.size)
+            )
+            and not is_pointer_arithmetic(op)
+        ):
+            self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)
         self.expect_non_float(op, op.lhs)
         self.expect_non_float(op, op.rhs)
+        left = op.lhs.type
+        right = op.rhs.type
+        if (
+            isinstance(left, RPrimitive)
+            and isinstance(right, RPrimitive)
+            and left.is_signed != right.is_signed
+        ):
+            self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
 
     def visit_float_op(self, op: FloatOp) -> None:
         self.expect_float(op, op.lhs)
@@ -420,7 +479,13 @@ class OpChecker(OpVisitor[None]):
     def visit_set_mem(self, op: SetMem) -> None:
         pass
 
+    def visit_get_element(self, op: GetElement) -> None:
+        pass
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
+        pass
+
+    def visit_set_element(self, op: SetElement) -> None:
         pass
 
     def visit_load_address(self, op: LoadAddress) -> None:

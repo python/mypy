@@ -25,14 +25,18 @@ from mypy.types import (
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RInstance,
     RTuple,
     RType,
     RUnion,
+    RVec,
     bool_rprimitive,
+    bytearray_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    frozenset_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -63,6 +67,8 @@ class Mapper:
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
         self.symbol_fullnames: set[str] = set()
+        # The corresponding generator class that implements a generator/async function
+        self.fdef_to_generator: dict[FuncDef, ClassIR] = {}
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -70,6 +76,10 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
+            if typ.type.is_newtype:
+                # Unwrap NewType to its base type for rprimitive mapping
+                assert len(typ.type.bases) == 1, typ.type.bases
+                return self.type_to_rtype(typ.type.bases[0])
             if typ.type.fullname == "builtins.int":
                 return int_rprimitive
             elif typ.type.fullname == "builtins.float":
@@ -80,6 +90,8 @@ class Mapper:
                 return str_rprimitive
             elif typ.type.fullname == "builtins.bytes":
                 return bytes_rprimitive
+            elif typ.type.fullname == "builtins.bytearray":
+                return bytearray_rprimitive
             elif typ.type.fullname == "builtins.list":
                 return list_rprimitive
             # Dict subclasses are at least somewhat common and we
@@ -89,6 +101,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
                 return set_rprimitive
+            elif typ.type.fullname == "builtins.frozenset":
+                return frozenset_rprimitive
             elif typ.type.fullname == "builtins.tuple":
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":
@@ -110,6 +124,10 @@ class Mapper:
                 return int16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
+            elif typ.type.fullname == "librt.vecs.vec":
+                return RVec(self.type_to_rtype(typ.args[0]))
+            elif typ.type.fullname in KNOWN_NATIVE_TYPES:
+                return KNOWN_NATIVE_TYPES[typ.type.fullname]
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):

@@ -1,7 +1,7 @@
 # Test cases for "range" objects, "for" and "while" loops (compile and run)
 
 [case testFor]
-from typing import List, Tuple
+from typing import Any, List, Tuple
 def count(n: int) -> None:
     for i in range(n):
         print(i)
@@ -19,6 +19,10 @@ def list_iter(l: List[int]) -> None:
     for i in l:
         print(i)
 def tuple_iter(l: Tuple[int, ...]) -> None:
+    for i in l:
+        print(i)
+def empty_tuple_iter(l: Tuple[()]) -> None:
+    i: Any
     for i in l:
         print(i)
 def str_iter(l: str) -> None:
@@ -39,7 +43,7 @@ def count_down_short() -> None:
 [file driver.py]
 from native import (
     count, list_iter, list_rev_iter, list_rev_iter_lol, count_between, count_down, count_double,
-    count_down_short, tuple_iter, str_iter,
+    count_down_short, tuple_iter, empty_tuple_iter, str_iter,
 )
 count(5)
 list_iter(list(reversed(range(5))))
@@ -52,6 +56,7 @@ count_down_short()
 print('==')
 list_rev_iter_lol(list(reversed(range(5))))
 tuple_iter((1, 2, 3))
+empty_tuple_iter(())
 str_iter("abc")
 [out]
 0
@@ -545,3 +550,29 @@ def test_range_object() -> None:
         r4 = range(4, 12, 0)
     except ValueError as e:
         assert "range() arg 3 must not be zero" in str(e)
+
+[case testNamedTupleLoop]
+from collections.abc import Iterable
+from typing import NamedTuple, Any
+from typing_extensions import Self
+
+
+class Vector2(NamedTuple):
+    x: int
+    y: float
+
+    @classmethod
+    def from_iter(cls, iterable: Iterable[Any]) -> Self:
+        return cls(*iter(iterable))
+
+    def __neg__(self) -> Self:
+        return self.from_iter(-c for c in self)
+
+[file driver.py]
+import native
+print(-native.Vector2(2, -3.1))
+print([x for x in native.Vector2(4, -5.2)])
+
+[out]
+Vector2(x=-2, y=3.1)
+\[4, -5.2]

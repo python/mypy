@@ -45,7 +45,7 @@ from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
 from mypy.traverser import ExtendedTraverserVisitor
-from mypy.types import Type, UninhabitedType
+from mypy.types import Type, UninhabitedType, get_proper_type
 
 
 class BranchState:
@@ -206,11 +206,13 @@ class DefinedVariableTracker:
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
         # in things like try/except/finally statements.
         self.disable_branch_skip = False
+        self.in_finally = False
 
     def copy(self) -> DefinedVariableTracker:
         result = DefinedVariableTracker()
         result.scopes = [s.copy() for s in self.scopes]
         result.disable_branch_skip = self.disable_branch_skip
+        result.in_finally = self.in_finally
         return result
 
     def _scope(self) -> Scope:
@@ -295,6 +297,8 @@ class DefinedVariableTracker:
 class Loop:
     def __init__(self) -> None:
         self.has_break = False
+        # variables defined in every loop branch with `break`
+        self.break_vars: set[str] | None = None
 
 
 class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
@@ -395,11 +399,13 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
                 continue
             b.accept(self)
             self.tracker.next_branch()
-        if o.else_body:
-            if not o.else_body.is_unreachable:
-                o.else_body.accept(self)
-            else:
+        if o.unreachable_else:
+            self.tracker.skip_branch()
+        elif o.else_body:
+            if o.else_body.is_unreachable:
                 self.tracker.skip_branch()
+            else:
+                o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
     def visit_match_stmt(self, o: MatchStmt) -> None:
@@ -472,6 +478,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             has_break = loop.has_break
             if has_break:
                 self.tracker.start_branch_statement()
+                if loop.break_vars is not None:
+                    for bv in loop.break_vars:
+                        self.tracker.record_definition(bv)
                 self.tracker.next_branch()
             o.else_body.accept(self)
             if has_break:
@@ -504,10 +513,19 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_break_stmt(o)
         if self.loops:
             self.loops[-1].has_break = True
+            # Track variables that are definitely defined at the point of break
+            if len(self.tracker._scope().branch_stmts) > 0:
+                branch = self.tracker._scope().branch_stmts[-1].branches[-1]
+                if self.loops[-1].break_vars is None:
+                    self.loops[-1].break_vars = set(branch.must_be_defined)
+                else:
+                    # we only want variables that have been defined in each branch
+                    self.loops[-1].break_vars.intersection_update(branch.must_be_defined)
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if isinstance(self.type_map.get(o.expr, None), (UninhabitedType, type(None))):
+        typ = self.type_map.get(o.expr)
+        if typ is None or isinstance(get_proper_type(typ), UninhabitedType):
             self.tracker.skip_branch()
         super().visit_expression_stmt(o)
 
@@ -578,7 +596,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.end_branch_statement()
 
         if o.finally_body is not None:
+            self.tracker.in_finally = True
             o.finally_body.accept(self)
+            self.tracker.in_finally = False
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
@@ -619,7 +639,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.name in self.builtins and self.tracker.in_scope(ScopeType.Global):
             return
-        if self.tracker.is_possibly_undefined(o.name):
+        if (
+            self.tracker.is_possibly_undefined(o.name)
+            and self.tracker.in_finally == self.tracker.disable_branch_skip
+        ):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
             # We don't want to report the error on the same variable multiple times.

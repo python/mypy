@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
+from collections.abc import Callable, Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Literal
+from typing import IO, Any, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -30,19 +30,12 @@ except ImportError:
 
 T = TypeVar("T")
 
-if sys.version_info >= (3, 9):
-    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
-else:
-    with importlib_resources.path(
-        "mypy",  # mypy-c doesn't support __package__
-        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-    ) as _resource:
-        TYPESHED_DIR = str(_resource.parent / "typeshed")
-
+TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
 DEFAULT_SOURCE_OFFSET: Final = 4
+CODE_START: Final = " " * DEFAULT_SOURCE_OFFSET
 DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
@@ -74,7 +67,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
 
 
 def is_sunder(name: str) -> bool:
-    return not is_dunder(name) and name.startswith("_") and name.endswith("_")
+    return not is_dunder(name) and name.startswith("_") and name.endswith("_") and name != "_"
 
 
 def split_module_names(mod_name: str) -> list[str]:
@@ -490,10 +483,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):  # noqa: UP036
+    if sys.version_info[:2] < (3, 10):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.7 or lower is not supported; "
-            "please upgrade to 3.8 or newer".format(name=program)
+            "Running {name} with Python 3.9 or lower is not supported; "
+            "please upgrade to 3.10 or newer".format(name=program)
         )
 
 
@@ -577,10 +570,17 @@ def hash_digest(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
+def hash_digest_bytes(data: bytes) -> bytes:
+    """Compute a hash digest of some data.
+
+    Similar to above but returns a bytes object.
+    """
+    return hashlib.sha1(data).digest()
+
+
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
-    if sys.platform == "win32":
-        assert False, "curses is not available on Windows"
+    assert sys.platform != "win32", "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
     gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
@@ -647,8 +647,7 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32"
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # needed to find win specific sys apis
             winver = sys.getwindowsversion()
             if (
                 winver.major < MINIMUM_WINDOWS_MAJOR_VT100
@@ -670,11 +669,12 @@ class FancyFormatter:
             )
             self.initialize_vt100_colors()
             return True
-        return False
+        assert False, "Running not on Windows"
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if sys.platform == "win32" or not CURSES_ENABLED:
+        is_win = sys.platform == "win32"
+        if is_win or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
@@ -730,6 +730,14 @@ class FancyFormatter:
             start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
+    def is_marker_line(self, line: str) -> bool:
+        s_line = line.lstrip()
+        return (
+            line.startswith(CODE_START)
+            and s_line.startswith("^")
+            and set(s_line).issubset({"^", "~"})
+        )
+
     def fit_in_terminal(
         self, messages: list[str], fixed_terminal_width: int | None = None
     ) -> list[str]:
@@ -737,12 +745,12 @@ class FancyFormatter:
         width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
         for i, error in enumerate(messages):
-            if ": error:" in error:
+            # TODO: detecting source code highlights through an indent can be surprising.
+            if not error.startswith(CODE_START) and ": error:" in error:
                 loc, msg = error.split("error:", maxsplit=1)
                 msg = soft_wrap(msg, width, first_offset=len(loc) + len("error: "))
                 new_messages[i] = loc + "error:" + msg
-            if error.startswith(" " * DEFAULT_SOURCE_OFFSET) and "^" not in error:
-                # TODO: detecting source code highlights through an indent can be surprising.
+            elif error.startswith(CODE_START) and not self.is_marker_line(error):
                 # Restore original error message and error location.
                 error = error[DEFAULT_SOURCE_OFFSET:]
                 marker_line = messages[i + 1]
@@ -769,7 +777,12 @@ class FancyFormatter:
 
     def colorize(self, error: str) -> str:
         """Colorize an output line by highlighting the status and error code."""
-        if ": error:" in error:
+        # TODO: detecting source code highlights through an indent can be surprising.
+        if error.startswith(CODE_START):
+            if not self.is_marker_line(error):
+                return self.style(error, "none", dim=True)
+            return self.style(error, "red")
+        elif ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
             if self.hide_error_codes:
                 return (
@@ -791,11 +804,6 @@ class FancyFormatter:
             loc, msg = error.split("note:", maxsplit=1)
             formatted = self.highlight_quote_groups(self.underline_link(msg))
             return loc + self.style("note:", "blue") + formatted
-        elif error.startswith(" " * DEFAULT_SOURCE_OFFSET):
-            # TODO: detecting source code highlights through an indent can be surprising.
-            if "^" not in error:
-                return self.style(error, "none", dim=True)
-            return self.style(error, "red")
         else:
             return error
 

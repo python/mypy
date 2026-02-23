@@ -23,7 +23,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import bitmap_rprimitive
 
 
-def insert_uninit_checks(ir: FuncIR) -> None:
+def insert_uninit_checks(ir: FuncIR, strict_traceback_checks: bool) -> None:
     # Remove dead blocks from the CFG, which helps avoid spurious
     # checks due to unused error handling blocks.
     cleanup_cfg(ir.blocks)
@@ -33,11 +33,11 @@ def insert_uninit_checks(ir: FuncIR) -> None:
         ir.blocks, cfg, set(ir.arg_regs), all_values(ir.arg_regs, ir.blocks)
     )
 
-    ir.blocks = split_blocks_at_uninits(ir.blocks, must_defined.before)
+    ir.blocks = split_blocks_at_uninits(ir.blocks, must_defined.before, strict_traceback_checks)
 
 
 def split_blocks_at_uninits(
-    blocks: list[BasicBlock], pre_must_defined: AnalysisDict[Value]
+    blocks: list[BasicBlock], pre_must_defined: AnalysisDict[Value], strict_traceback_checks: bool
 ) -> list[BasicBlock]:
     new_blocks: list[BasicBlock] = []
 
@@ -69,13 +69,18 @@ def split_blocks_at_uninits(
                     and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
                     and not isinstance(op, LoadAddress)
                 ):
-                    new_block, error_block = BasicBlock(), BasicBlock()
-                    new_block.error_handler = error_block.error_handler = cur_block.error_handler
-                    new_blocks += [error_block, new_block]
-
                     if src not in init_registers_set:
                         init_registers.append(src)
                         init_registers_set.add(src)
+
+                    # XXX: if src.name is empty, it should be a
+                    # temp... and it should be OK??
+                    if not src.name:
+                        continue
+
+                    new_block, error_block = BasicBlock(), BasicBlock()
+                    new_block.error_handler = error_block.error_handler = cur_block.error_handler
+                    new_blocks += [error_block, new_block]
 
                     if not src.type.error_overlap:
                         cur_block.ops.append(
@@ -99,6 +104,10 @@ def split_blocks_at_uninits(
                             op.line,
                         )
 
+                    if strict_traceback_checks:
+                        assert (
+                            op.line >= 0
+                        ), f"Cannot raise an error with a negative line number for op {op}"
                     raise_std = RaiseStandardError(
                         RaiseStandardError.UNBOUND_LOCAL_ERROR,
                         f'local variable "{src.name}" referenced before assignment',

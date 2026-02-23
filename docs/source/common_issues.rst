@@ -218,6 +218,14 @@ daemon <mypy_daemon>`, which can speed up incremental mypy runtimes by
 a factor of 10 or more. :ref:`Remote caching <remote-cache>` can
 make cold mypy runs several times faster.
 
+Furthermore: as of `mypy 1.13 <https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html>`_,
+mypy allows use of the orjson library for handling the cache instead of the stdlib json, for
+improved performance. You can ensure the presence of orjson using the faster-cache extra:
+
+    python3 -m pip install -U mypy[faster-cache]
+
+Mypy may depend on orjson by default in the future.
+
 Types of empty collections
 --------------------------
 
@@ -427,8 +435,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 8):
-       # Python 3.8+ specific definitions and imports
+   if sys.version_info >= (3, 13):
+       # Python 3.13+ specific definitions and imports
    else:
        # Other definitions and imports
 
@@ -455,7 +463,7 @@ Example:
    # The rest of this file doesn't apply to Windows.
 
 Some other expressions exhibit similar behavior; in particular,
-:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
+:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY`` or ``TYPE_CHECKING``, and any variable
 whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
@@ -505,11 +513,15 @@ to see the types of all local variables at once. Example:
    #     b: builtins.str
 .. note::
 
-   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
-   don't exist in Python. If you try to run your program, you'll have to
-   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
-   run your code. Both are always available and you don't need to import
-   them.
+    ``reveal_type`` and ``reveal_locals`` are handled specially by mypy during
+    type checking, and don't have to be defined or imported.
+
+    However, if you want to run your code,
+    you'll have to remove any ``reveal_type`` and ``reveal_locals``
+    calls from your program or else Python will give you an error at runtime.
+
+    Alternatively, you can import ``reveal_type`` from ``typing_extensions``
+    or ``typing`` (on Python 3.11 and newer)
 
 .. _silencing-linters:
 
@@ -719,7 +731,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerReturn(A):
         # A more specific return type is fine
-        def test(self, t: Sequence[int]) -> List[str]:  # OK
+        def test(self, t: Sequence[int]) -> list[str]:  # OK
             ...
 
     class GeneralizedReturn(A):
@@ -734,7 +746,7 @@ not necessary:
 .. code-block:: python
 
     class NarrowerArgument(A):
-        def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
+        def test(self, t: list[int]) -> Sequence[str]:  # type: ignore[override]
             ...
 
 .. _unreachable:
@@ -757,7 +769,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python
@@ -819,3 +831,30 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+.. _incorrect-self:
+
+Incorrect use of ``Self``
+-------------------------
+
+``Self`` is not the type of the current class; it's a type variable with upper
+bound of the current class. That is, it represents the type of the current class
+or of potential subclasses.
+
+.. code-block:: python
+
+    from typing import Self
+
+    class Foo:
+        @classmethod
+        def constructor(cls) -> Self:
+            # Instead, either call cls() or change the annotation to -> Foo
+            return Foo()  # error: Incompatible return value type (got "Foo", expected "Self")
+
+    class Bar(Foo):
+        ...
+
+    reveal_type(Foo.constructor())  # note: Revealed type is "Foo"
+    # In the context of the subclass Bar, the Self return type promises
+    # that the return value will be Bar
+    reveal_type(Bar.constructor())  # note: Revealed type is "Bar"

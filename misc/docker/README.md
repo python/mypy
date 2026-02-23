@@ -12,7 +12,7 @@ Why use Docker?
 Mypyc tests can be significantly faster in a Docker container than
 running natively on macOS.
 
-Also, if it's inconvient to install the necessary dependencies on the
+Also, if it's inconvenient to install the necessary dependencies on the
 host operating system, or there are issues getting some tests to pass
 on the host operating system, using a container can be an easy
 workaround.

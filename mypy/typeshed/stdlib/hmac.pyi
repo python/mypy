@@ -1,11 +1,11 @@
+from _hashlib import _HashObject, compare_digest as compare_digest
 from _typeshed import ReadableBuffer, SizedBuffer
 from collections.abc import Callable
-from hashlib import _Hash as _HashlibHash
 from types import ModuleType
-from typing import AnyStr, overload
+from typing import overload
 from typing_extensions import TypeAlias
 
-_DigestMod: TypeAlias = str | Callable[[], _HashlibHash] | ModuleType
+_DigestMod: TypeAlias = str | Callable[[], _HashObject] | ModuleType
 
 trans_5C: bytes
 trans_36: bytes
@@ -20,6 +20,7 @@ def new(key: bytes | bytearray, msg: ReadableBuffer | None, digestmod: _DigestMo
 def new(key: bytes | bytearray, *, digestmod: _DigestMod) -> HMAC: ...
 
 class HMAC:
+    __slots__ = ("_hmac", "_inner", "_outer", "block_size", "digest_size")
     digest_size: int
     block_size: int
     @property
@@ -30,8 +31,4 @@ class HMAC:
     def hexdigest(self) -> str: ...
     def copy(self) -> HMAC: ...
 
-@overload
-def compare_digest(a: ReadableBuffer, b: ReadableBuffer, /) -> bool: ...
-@overload
-def compare_digest(a: AnyStr, b: AnyStr, /) -> bool: ...
 def digest(key: SizedBuffer, msg: ReadableBuffer, digest: _DigestMod) -> bytes: ...

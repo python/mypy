@@ -1,12 +1,12 @@
 import pickle
 import sys
+from _pickle import _BufferCallback, _ReducedType
 from _typeshed import HasFileno, SupportsWrite, Unused
 from abc import ABCMeta
 from builtins import type as Type  # alias to avoid name clash
 from collections.abc import Callable
 from copyreg import _DispatchTableType
 from multiprocessing import connection
-from pickle import _ReducedType
 from socket import socket
 from typing import Any, Final
 
@@ -19,7 +19,14 @@ HAVE_SEND_HANDLE: Final[bool]
 
 class ForkingPickler(pickle.Pickler):
     dispatch_table: _DispatchTableType
-    def __init__(self, file: SupportsWrite[bytes], protocol: int | None = ...) -> None: ...
+    def __init__(
+        self,
+        file: SupportsWrite[bytes],
+        protocol: int | None = None,
+        fix_imports: bool = True,
+        buffer_callback: _BufferCallback = None,
+        /,
+    ) -> None: ...
     @classmethod
     def register(cls, type: Type, reduce: Callable[[Any], _ReducedType]) -> None: ...
     @classmethod
@@ -43,7 +50,8 @@ if sys.platform == "win32":
         def detach(self) -> int: ...
 
 else:
-    ACKNOWLEDGE: Final[bool]
+    if sys.version_info < (3, 14):
+        ACKNOWLEDGE: Final[bool]
 
     def recvfds(sock: socket, size: int) -> list[int]: ...
     def send_handle(conn: HasFileno, handle: int, destination_pid: Unused) -> None: ...

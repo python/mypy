@@ -5,40 +5,55 @@ from __future__ import annotations
 import pprint
 import sys
 import textwrap
-from typing import Callable, Final
+from collections.abc import Callable
+from typing import Final
 
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    HAVE_IMMORTAL,
+    MODULE_PREFIX,
     NATIVE_PREFIX,
+    PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    use_vectorcall,
+    TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FuncDecl
-from mypyc.ir.ops import BasicBlock, Value
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
+from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
+    NAMESPACE_STATIC,
+    NAMESPACE_TYPE,
+    NAMESPACE_TYPE_VAR,
+    BasicBlock,
+    Value,
+)
 from mypyc.ir.rtypes import (
     RInstance,
     RPrimitive,
     RTuple,
     RType,
     RUnion,
+    RVec,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
+    is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_native_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -50,13 +65,23 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
+    vec_api_by_item_type,
+    vec_item_type_tags,
 )
 from mypyc.namegen import NameGenerator, exported_name
+from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_type
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
 DEBUG_ERRORS: Final = False
+
+PREFIX_MAP: Final = {
+    NAMESPACE_STATIC: STATIC_PREFIX,
+    NAMESPACE_TYPE: TYPE_PREFIX,
+    NAMESPACE_MODULE: MODULE_PREFIX,
+    NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
+}
 
 
 class HeaderDeclaration:
@@ -97,6 +122,7 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
+        strict_traceback_checks: bool,
         group_name: str | None = None,
         group_map: dict[str, str | None] | None = None,
     ) -> None:
@@ -124,6 +150,8 @@ class EmitterContext:
         self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
+        # See mypyc/options.py for context.
+        self.strict_traceback_checks = strict_traceback_checks
 
 
 class ErrorHandler:
@@ -168,6 +196,7 @@ class Emitter:
         context: EmitterContext,
         value_names: dict[Value, str] | None = None,
         capi_version: tuple[int, int] | None = None,
+        filepath: str | None = None,
     ) -> None:
         self.context = context
         self.capi_version = capi_version or sys.version_info[:2]
@@ -175,6 +204,7 @@ class Emitter:
         self.value_names = value_names or {}
         self.fragments: list[str] = []
         self._indent = 0
+        self.filepath = filepath
 
     # Low-level operations
 
@@ -195,7 +225,7 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string represention.
+        """Build a C comment with an object's string representation.
 
         If the comment exceeds the line length limit, it's wrapped into a
         multiline string (with the extra lines indented to be aligned with
@@ -315,6 +345,13 @@ class Emitter:
         else:
             return ctype + " "
 
+    def set_undefined_value(self, target: str, rtype: RType) -> None:
+        if isinstance(rtype, RVec):
+            self.emit_line(f"{target}.len = -1;")
+            self.emit_line(f"{target}.buf = NULL;")
+        else:
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+
     def c_undefined_value(self, rtype: RType) -> str:
         if not rtype.is_unboxed:
             return "NULL"
@@ -322,6 +359,8 @@ class Emitter:
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
             return self.tuple_undefined_value(rtype)
+        elif isinstance(rtype, RVec):
+            return f"({self.ctype(rtype)}) {{ -1, NULL }}"
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -397,9 +436,6 @@ class Emitter:
         if value:
             self.emit_line("}")
 
-    def use_vectorcall(self) -> bool:
-        return use_vectorcall(self.capi_version)
-
     def emit_undefined_attr_check(
         self,
         rtype: RType,
@@ -427,6 +463,12 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
+        elif isinstance(rtype, RVec):
+            if compare == "==":
+                return f"{value}.len < 0"
+            elif compare == "!=":
+                return f"{value}.len >= 0"
+            assert False, compare
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 
@@ -458,6 +500,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
+        elif isinstance(item_type, RVec):
+            return f"{tuple_expr_in_c}.f{i}.len {compare} -1"
         else:
             check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
             if rtuple.error_overlap and check_exception:
@@ -477,6 +521,8 @@ class Emitter:
                 return f"{{ {int_rprimitive.c_undefined} }}"
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
+        elif isinstance(rtype, RVec):
+            return "{ -1, NULL }"
         else:
             return self.c_undefined_value(rtype)
 
@@ -510,9 +556,15 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            self.emit_line(f"Py_XINCREF({dest}.buf);")
         elif not rtype.is_unboxed:
-            # Always inline, since this is a simple op
-            self.emit_line("CPy_INCREF(%s);" % dest)
+            # Always inline, since this is a simple but very hot op
+            if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                self.emit_line("CPy_INCREF(%s);" % dest)
+            else:
+                self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(
@@ -535,12 +587,23 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            if rare:
+                self.emit_line(f"CPy_XDecRef({dest}.buf);")
+            else:
+                self.emit_line(f"CPy_XDECREF({dest}.buf);")
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                self.emit_line(f"CPy_{x}DECREF({dest});")
+                if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                    self.emit_line(f"CPy_{x}DECREF({dest});")
+                else:
+                    self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
+        elif rtype.is_refcounted:
+            assert False, f"dec_ref not implemented for {rtype}"
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -606,12 +669,12 @@ class Emitter:
             is_list_rprimitive(typ)
             or is_dict_rprimitive(typ)
             or is_set_rprimitive(typ)
+            or is_frozenset_rprimitive(typ)
             or is_str_rprimitive(typ)
             or is_range_rprimitive(typ)
             or is_float_rprimitive(typ)
             or is_int_rprimitive(typ)
-            or is_bool_rprimitive(typ)
-            or is_bit_rprimitive(typ)
+            or is_bool_or_bit_rprimitive(typ)
             or is_fixed_width_rtype(typ)
         ):
             if declare_dest:
@@ -622,6 +685,8 @@ class Emitter:
                 prefix = "PyDict"
             elif is_set_rprimitive(typ):
                 prefix = "PySet"
+            elif is_frozenset_rprimitive(typ):
+                prefix = "PyFrozenSet"
             elif is_str_rprimitive(typ):
                 prefix = "PyUnicode"
             elif is_range_rprimitive(typ):
@@ -631,7 +696,7 @@ class Emitter:
             elif is_int_rprimitive(typ) or is_fixed_width_rtype(typ):
                 # TODO: Range check for fixed-width types?
                 prefix = "PyLong"
-            elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+            elif is_bool_or_bit_rprimitive(typ):
                 prefix = "PyBool"
             else:
                 assert False, f"unexpected primitive type: {typ}"
@@ -645,7 +710,17 @@ class Emitter:
         elif is_bytes_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
-            check = "(PyBytes_Check({}) || PyByteArray_Check({}))"
+            check = "(PyBytes_Check({}))"
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
+        elif is_bytearray_rprimitive(typ):
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            check = "(PyByteArray_Check({}))"
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
@@ -706,6 +781,18 @@ class Emitter:
             self.emit_line(f"{dest} = {src};")
             if optional:
                 self.emit_line("}")
+        elif is_native_rprimitive(typ):
+            # Native primitive types have type check functions of form "CPy<Name>_Check(...)".
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            short_name = typ.name.rsplit(".", 1)[-1]
+            check = f"(CPy{short_name}_Check({src}))"
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check, optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
         elif isinstance(typ, RUnion):
             self.emit_union_cast(
                 src, dest, typ, declare_dest, error, optional, src_type, raise_exception
@@ -713,6 +800,40 @@ class Emitter:
         elif isinstance(typ, RTuple):
             assert not optional
             self.emit_tuple_cast(src, dest, typ, declare_dest, error, src_type)
+        elif isinstance(typ, RVec):
+            if declare_dest:
+                self.emit_line(f"PyObject *{dest};")
+            # Build type check expression based on vec kind
+            api_name = vec_api_by_item_type.get(typ.item_type)
+            depth = typ.depth()
+            if api_name:
+                # Specialized vec types (vec[i64], vec[i32], etc.)
+                check = f"(Py_TYPE({src}) == {api_name}.boxed_type)"
+            elif depth == 0:
+                # Generic vec types (vec[T], vec[T | None]) with reference type items
+                item_type_c = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecTApi.boxed_type && "
+                    f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
+                )
+            else:
+                # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
+                else:
+                    type_value = self.vec_item_type_c(typ)
+                check = (
+                    f"(Py_TYPE({src}) == VecNestedApi.boxed_type && "
+                    f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
+                    f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
+                )
+            if likely:
+                check = f"(likely{check})"
+            self.emit_arg_check(src, dest, typ, check, optional)
+            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line("}")
         else:
             assert False, "Cast not implemented: %s" % typ
 
@@ -737,7 +858,7 @@ class Emitter:
             self.emit_traceback(error.source_path, error.module_name, error.traceback_entry)
             self.emit_line("goto %s;" % error.label)
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             self.emit_line("return %s;" % error.value)
 
     def emit_union_cast(
@@ -856,6 +977,7 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             error: What happens on error
             raise_exception: If True, also raise TypeError on failure
+            optional: If True, NULL src value is allowed and will map to error value
             borrow: If True, create a borrowed reference
 
         """
@@ -866,7 +988,7 @@ class Emitter:
         elif isinstance(error, GotoHandler):
             failure = "goto %s;" % error.label
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             failure = "return %s;" % error.value
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
@@ -882,7 +1004,7 @@ class Emitter:
             self.emit_line("else {")
             self.emit_line(failure)
             self.emit_line("}")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line(f"char {dest};")
@@ -987,9 +1109,55 @@ class Emitter:
             self.emit_line("}")
             if optional:
                 self.emit_line("}")
+        elif isinstance(typ, RVec):
+            if declare_dest:
+                self.emit_line(f"{self.ctype(typ)} {dest};")
 
+            if optional:
+                self.emit_line(f"if ({src} == NULL) {{")
+                self.emit_line(f"{dest} = {self.c_error_value(typ)};")
+                self.emit_line("} else {")
+
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                self.emit_line(f"{dest} = {specialized_api_name}.unbox({src});")
+            else:
+                depth = typ.depth()
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
+                else:
+                    type_value = self.vec_item_type_c(typ)
+                if depth == 0:
+                    self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
+                else:
+                    self.emit_line(f"{dest} = VecNestedApi.unbox({src}, {type_value}, {depth});")
+
+            self.emit_line(f"if (VEC_IS_ERROR({dest})) {{")
+            self.emit_line(failure)
+            self.emit_line("}")
+
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Unboxing not implemented: %s" % typ
+
+    def vec_item_type_c(self, typ: RVec) -> str:
+        item_type = typ.unwrap_item_type()
+        type_c_ptr = self.type_c_ptr(item_type)
+        # Can never be None, since we unwrapped the item type above
+        assert type_c_ptr is not None
+        type_value = f"(size_t){type_c_ptr}"
+        if typ.is_optional():
+            type_value = f"({type_value} | 1)"
+        return type_value
+
+    def type_c_ptr(self, typ: RPrimitive | RInstance) -> str | None:
+        if isinstance(typ, RPrimitive) and typ.is_refcounted:
+            return "&" + builtin_names[typ.name][1]
+        elif isinstance(typ, RInstance):
+            return self.type_struct_name(typ.class_ir)
+        return None
 
     def emit_box(
         self, src: str, dest: str, typ: RType, declare_dest: bool = False, can_borrow: bool = False
@@ -1008,7 +1176,7 @@ class Emitter:
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line(f"{declaration}{dest} = CPyTagged_StealAsObject({src});")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # N.B: bool is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount
             # when this comes directly from a Box op.
@@ -1030,17 +1198,35 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
-            self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
-            self.emit_line(f"if (unlikely({dest} == NULL))")
-            self.emit_line("    CPyError_OutOfMemory();")
-            # TODO: Fail if dest is None
-            for i in range(0, len(typ.types)):
-                if not typ.is_unboxed:
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
-                else:
-                    inner_name = self.temp_name()
-                    self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+            if not typ.types:
+                self.emit_line(f"{declaration}{dest} = CPyTuple_LoadEmptyTupleConstant();")
+            else:
+                self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
+                self.emit_line(f"if (unlikely({dest} == NULL))")
+                self.emit_line("    CPyError_OutOfMemory();")
+
+                # TODO: Fail if dest is None
+                for i in range(len(typ.types)):
+                    if not typ.is_unboxed:
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
+                    else:
+                        inner_name = self.temp_name()
+                        self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+        elif isinstance(typ, RVec):
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                api = specialized_api_name
+            elif typ.depth() > 0:
+                api = "VecNestedApi"
+            else:
+                api = "VecTApi"
+                # Empty vecs of this sort don't describe item type, so it needs to be
+                # passed explicitly.
+                item_type = self.vec_item_type_c(typ)
+                self.emit_line(f"{declaration}{dest} = {api}.box({src}, {item_type});")
+                return
+            self.emit_line(f"{declaration}{dest} = {api}.box({src});")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1054,6 +1240,8 @@ class Emitter:
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"if ({value}.len < 0) {{")
         elif rtype.error_overlap:
             # The error value is also valid as a normal value, so we need to also check
             # for a raised exception.
@@ -1078,6 +1266,8 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_VISIT({target}.buf);")
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1102,11 +1292,38 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_CLEAR({target}.buf);")
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")
         else:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
+
+    def emit_reuse_clear(self, target: str, rtype: RType) -> None:
+        """Emit attribute clear before object is added into freelist.
+
+        Assume that 'target' represents a C expression that refers to a
+        struct member, such as 'self->x'.
+
+        Unlike emit_gc_clear(), initialize attribute value to match a freshly
+        allocated object.
+        """
+        if isinstance(rtype, RTuple):
+            for i, item_type in enumerate(rtype.types):
+                self.emit_reuse_clear(f"{target}.f{i}", item_type)
+        elif not rtype.is_refcounted:
+            self.emit_line(f"{target} = {rtype.c_undefined};")
+        elif isinstance(rtype, RPrimitive) and rtype.name == "builtins.int":
+            self.emit_line(f"if (CPyTagged_CheckLong({target})) {{")
+            self.emit_line(f"CPyTagged __tmp = {target};")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("Py_XDECREF(CPyTagged_LongAsObject(__tmp));")
+            self.emit_line("} else {")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("}")
+        else:
+            self.emit_gc_clear(target, rtype)
 
     def emit_traceback(
         self, source_path: str, module_name: str, traceback_entry: tuple[str, int]
@@ -1137,6 +1354,8 @@ class Emitter:
         type_str: str = "",
         src: str = "",
     ) -> None:
+        if self.context.strict_traceback_checks:
+            assert traceback_entry[1] >= 0, "Traceback cannot have a negative line number"
         globals_static = self.static_name("globals", module_name)
         line = '%s("%s", "%s", %d, %s' % (
             func,
@@ -1159,6 +1378,25 @@ class Emitter:
         self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
         self.emit_line(failure)
         self.emit_line("}")
+
+    def emit_cpyfunction_instance(
+        self, fn: FuncIR, name: str, filepath: str, error_stmt: str
+    ) -> str:
+        module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
+        cname = f"{PREFIX}{fn.cname(self.names)}"
+        wrapper_name = f"{cname}_wrapper"
+        cfunc = f"(PyCFunction){cname}"
+        func_flags = "METH_FASTCALL | METH_KEYWORDS"
+        doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
+        has_self_arg = "true" if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD else "false"
+
+        code_flags = "CO_COROUTINE"
+        self.emit_line(
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
+        )
+        self.emit_line(f"if (unlikely(!{wrapper_name}))")
+        self.emit_line(error_stmt)
+        return wrapper_name
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
@@ -1191,3 +1429,11 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     # Multi-line result
     res.append(indent + ", ".join(current))
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
+
+
+def native_function_doc_initializer(func: FuncIR) -> str:
+    text_sig = get_text_signature(func)
+    if text_sig is None:
+        return "NULL"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))

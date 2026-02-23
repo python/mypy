@@ -25,11 +25,7 @@ async def greet_every_two_seconds() -> None:
         print('After', n)
         n += 1
 
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(greet_every_two_seconds())
-finally:
-    loop.close()
+asyncio.run(greet_every_two_seconds())
 [out]
 Prev 0
 After 0
@@ -56,9 +52,7 @@ async def print_sum(x: int, y: int) -> None:
     result = await compute(x, y)  # The type of result will be int (is extracted from Future[int]
     print("%s + %s = %s" % (x, y, result))
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(print_sum(1, 2))
-loop.close()
+asyncio.run(print_sum(1, 2))
 [out]
 Compute 1 + 2 ...
 1 + 2 = 3
@@ -72,12 +66,13 @@ async def slow_operation(future: 'Future[str]') -> None:
     await asyncio.sleep(0.01)
     future.set_result('Future is done!')
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
-loop.run_until_complete(future)
-print(future.result())
-loop.close()
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))
+    await future
+    print(future.result())
+
+asyncio.run(main())
 [out]
 Future is done!
 
@@ -95,10 +90,13 @@ def got_result(future: 'Future[str]') -> None:
     print(future.result())
     loop.stop()
 
-loop = asyncio.get_event_loop() # type: AbstractEventLoop
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Here create a task with the function. (The Task need a Future[T] as first argument)
-future.add_done_callback(got_result)  # and assign the callback to the future
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))  # Here create a task with the function. (The Task need a Future[T] as first argument)
+    future.add_done_callback(got_result)  # and assign the callback to the future
+
+loop = asyncio.new_event_loop()  # type: AbstractEventLoop
+loop.run_until_complete(main())
 try:
     loop.run_forever()
 finally:
@@ -119,13 +117,14 @@ async def factorial(name, number) -> None:
         f *= i
     print("Task %s: factorial(%s) = %s" % (name, number, f))
 
-loop = asyncio.get_event_loop()
-tasks = [
-    asyncio.Task(factorial("A", 2)),
-    asyncio.Task(factorial("B", 3)),
-    asyncio.Task(factorial("C", 4))]
-loop.run_until_complete(asyncio.wait(tasks))
-loop.close()
+async def main() -> None:
+    tasks = [
+        asyncio.Task(factorial("A", 2)),
+        asyncio.Task(factorial("B", 3)),
+        asyncio.Task(factorial("C", 4))]
+    await asyncio.wait(tasks)
+
+asyncio.run(main())
 [out]
 Task A: Compute factorial(2)...
 Task B: Compute factorial(2)...
@@ -143,6 +142,8 @@ import typing
 from typing import Any
 import asyncio
 from asyncio import Future
+
+future: Future[int]
 
 async def h4() -> int:
     x = await future
@@ -162,12 +163,14 @@ async def h() -> None:
     x = await h2()
     print("h: %s" % x)
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[int]
-future.set_result(42)
-loop.run_until_complete(h())
-print("Outside %s" % future.result())
-loop.close()
+async def main() -> None:
+    global future
+    future = asyncio.Future()
+    future.set_result(42)
+    await h()
+    print("Outside %s" % future.result())
+
+asyncio.run(main())
 [out]
 h3: 42
 h2: 42
@@ -182,13 +185,13 @@ from asyncio import Future
 
 async def h4() -> "Future[int]":
     await asyncio.sleep(0.01)
-    f = asyncio.Future() #type: Future[int]
+    f = asyncio.Future()  # type: Future[int]
     return f
 
 async def h3() -> "Future[Future[int]]":
     x = await h4()
     x.set_result(42)
-    f = asyncio.Future() #type: Future[Future[int]]
+    f = asyncio.Future()  # type: Future[Future[int]]
     f.set_result(x)
     return f
 
@@ -205,9 +208,7 @@ async def h() -> None:
     print(normalize(y))
     print(normalize(x))
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(h())
-loop.close()
+asyncio.run(h())
 [out]
 Before
 42
@@ -221,6 +222,8 @@ from typing import Any
 import asyncio
 from asyncio import Future
 
+future: Future["A"]
+
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -229,12 +232,14 @@ async def h() -> None:
     x = await future
     print("h: %s" % x.x)
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[A]
-future.set_result(A(42))
-loop.run_until_complete(h())
-print("Outside %s" % future.result().x)
-loop.close()
+async def main() -> None:
+    global future
+    future = asyncio.Future()
+    future.set_result(A(42))
+    await h()
+    print("Outside %s" % future.result().x)
+
+asyncio.run(main())
 [out]
 h: 42
 Outside 42
@@ -255,11 +260,7 @@ async def test() -> None:
     await greet()
     x = await greet()  # Error
 
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(test())
-finally:
-    loop.close()
+asyncio.run(test())
 [out]
 _program.py:11: error: Function does not return a value (it only ever returns None)
 
@@ -277,10 +278,7 @@ async def print_sum(x: int, y: int) -> None:
     result = await compute(x, y)
     print("%s + %s = %s" % (x, y, result))
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(print_sum(1, 2))
-loop.close()
-
+asyncio.run(print_sum(1, 2))
 [out]
 _program.py:8: error: Incompatible return value type (got "str", expected "int")
 
@@ -293,12 +291,13 @@ async def slow_operation(future: 'Future[str]') -> None:
     await asyncio.sleep(1)
     future.set_result(42)  # Error
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
-loop.run_until_complete(future)
-print(future.result())
-loop.close()
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))
+    await future
+    print(future.result())
+
+asyncio.run(main())
 [out]
 _program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
 
@@ -312,12 +311,13 @@ async def slow_operation(future: 'Future[int]') -> None:
     await asyncio.sleep(1)
     future.set_result(42)
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Error
-loop.run_until_complete(future)
-print(future.result())
-loop.close()
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))  # Error
+    await future
+    print(future.result())
+
+asyncio.run(main())
 [out]
 _program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
@@ -328,14 +328,15 @@ from asyncio import Future
 
 async def slow_operation(future: 'Future[int]') -> None:
     await asyncio.sleep(1)
-    future.set_result('42')  #Try to set an str as result to a Future[int]
+    future.set_result('42')  # Try to set an str as result to a Future[int]
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Error
-loop.run_until_complete(future)
-print(future.result())
-loop.close()
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))  # Error
+    await future
+    print(future.result())
+
+asyncio.run(main())
 [out]
 _program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
 _program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
@@ -354,11 +355,13 @@ def got_result(future: 'Future[int]') -> None:
     print(future.result())
     loop.stop()
 
-loop = asyncio.get_event_loop() # type: AbstractEventLoop
-future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
-future.add_done_callback(got_result)  # Error
+async def main() -> None:
+    future = asyncio.Future()  # type: Future[str]
+    asyncio.Task(slow_operation(future))
+    future.add_done_callback(got_result)  # Error
 
+loop = asyncio.new_event_loop()
+loop.run_until_complete(main())
 try:
     loop.run_forever()
 finally:
@@ -374,13 +377,13 @@ from asyncio import Future
 
 async def h4() -> Future[int]:
     await asyncio.sleep(1)
-    f = asyncio.Future() #type: Future[int]
+    f = asyncio.Future()  # type: Future[int]
     return f
 
 async def h3() -> Future[Future[Future[int]]]:
     x = await h4()
     x.set_result(42)
-    f = asyncio.Future() #type: Future[Future[int]]
+    f = asyncio.Future()  # type: Future[Future[int]]
     f.set_result(x)
     return f
 
@@ -393,9 +396,7 @@ async def h() -> None:
     print(y)
     print(x)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(h())
-loop.close()
+asyncio.run(h())
 [out]
 _program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[Future[Future[int]]]")
 
@@ -407,13 +408,13 @@ from asyncio import Future
 
 async def h4() -> Future[int]:
     await asyncio.sleep(1)
-    f = asyncio.Future() #type: Future[int]
+    f = asyncio.Future()  # type: Future[int]
     return f
 
 async def h3() -> Future[int]:
     x = await h4()
     x.set_result(42)
-    f = asyncio.Future() #type: Future[Future[int]]
+    f = asyncio.Future()  # type: Future[Future[int]]
     f.set_result(x)
     return f
 
@@ -424,9 +425,7 @@ async def h() -> None:
     print(y)
     print(x)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(h())
-loop.close()
+asyncio.run(h())
 [out]
 _program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
 _program.py:16: note: Maybe you forgot to use "await"?
@@ -437,6 +436,8 @@ from typing import Any
 import asyncio
 from asyncio import Future
 
+future: Future["A"]
+
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -446,16 +447,18 @@ class B:
         self.x = x
 
 async def h() -> None:
-    x = await future # type: B # Error
+    x = await future  # type: B  # Error
     print("h: %s" % x.x)
 
-loop = asyncio.get_event_loop()
-future = asyncio.Future()  # type: Future[A]
-future.set_result(A(42))
-loop.run_until_complete(h())
-loop.close()
+async def main() -> None:
+    global future
+    future = asyncio.Future()
+    future.set_result(A(42))
+    await h()
+
+asyncio.run(main())
 [out]
-_program.py:15: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+_program.py:17: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testForwardRefToBadAsyncShouldNotCrash_newsemanal]
 from typing import TypeVar

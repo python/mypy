@@ -116,7 +116,7 @@ L0:
     return r0
 
 [case testFinalConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 X: Final = -1
 Y: Final = -(1 + 3*2)
@@ -182,13 +182,70 @@ def int_to_int(n):
 L0:
     return n
 
-[case testIntUnaryPlus]
+[case testIntUnaryOps]
+def unary_minus(n: int) -> int:
+    x = -n
+    return x
 def unary_plus(n: int) -> int:
     x = +n
     return x
+def unary_invert(n: int) -> int:
+    x = ~n
+    return x
 [out]
+def unary_minus(n):
+    n, r0, x :: int
+L0:
+    r0 = CPyTagged_Negate(n)
+    x = r0
+    return x
 def unary_plus(n):
     n, x :: int
 L0:
     x = n
     return x
+def unary_invert(n):
+    n, r0, x :: int
+L0:
+    r0 = CPyTagged_Invert(n)
+    x = r0
+    return x
+
+[case testIntToBytes]
+def f(x: int) -> bytes:
+    return x.to_bytes(2, "big")
+def g(x: int) -> bytes:
+    return x.to_bytes(4, "little", signed=True)
+def h(x: int, byteorder: str) -> bytes:
+    return x.to_bytes(8, byteorder)
+
+[out]
+def f(x):
+    x :: int
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToBigEndianBytes(x, 2, 0)
+    return r0
+def g(x):
+    x :: int
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToLittleEndianBytes(x, 4, 1)
+    return r0
+def h(x, byteorder):
+    x :: int
+    byteorder :: str
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToBytes(x, 8, byteorder, 0)
+    return r0
+
+[case testIntBitLength]
+def f(x: int) -> int:
+    return x.bit_length()
+[out]
+def f(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_BitLength(x)
+    return r0

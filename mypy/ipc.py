@@ -1,4 +1,4 @@
-"""Cross platform abstractions for inter-process communication
+"""Cross-platform abstractions for inter-process communication
 
 On Unix, this uses AF_UNIX sockets.
 On Windows, this uses NamedPipes.
@@ -6,14 +6,21 @@ On Windows, this uses NamedPipes.
 
 from __future__ import annotations
 
-import base64
-import codecs
+import json
 import os
 import shutil
+import struct
 import sys
 import tempfile
+from abc import abstractmethod
+from collections.abc import Callable
+from select import select
 from types import TracebackType
-from typing import Callable, Final
+from typing import Final
+from typing_extensions import Self
+
+from librt.base64 import urlsafe_b64encode
+from librt.internal import ReadBuffer, WriteBuffer
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -30,7 +37,12 @@ else:
 
     _IPCHandle = socket.socket
 
+# Size of the message packed as !L, i.e. 4 bytes in network order (big-endian).
+HEADER_SIZE = 4
 
+
+# TODO: we should make sure consistent exceptions are raised on different platforms.
+# Currently we raise either IPCException or OSError for equivalent conditions.
 class IPCException(Exception):
     """Exception for IPC issues."""
 
@@ -41,9 +53,8 @@ class IPCBase:
     This contains logic shared between the client and server, such as reading
     and writing.
     We want to be able to send multiple "messages" over a single connection and
-    to be able to separate the messages. We do this by encoding the messages
-    in an alphabet that does not contain spaces, then adding a space for
-    separation. The last framed message is also followed by a space.
+    to be able to separate the messages. We do this by prefixing each message
+    with its size in a fixed format.
     """
 
     connection: _IPCHandle
@@ -51,21 +62,29 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        self.message_size: int | None = None
         self.buffer = bytearray()
 
-    def frame_from_buffer(self) -> bytearray | None:
+    def frame_from_buffer(self) -> bytes | None:
         """Return a full frame from the bytes we have in the buffer."""
-        space_pos = self.buffer.find(b" ")
-        if space_pos == -1:
+        size = len(self.buffer)
+        if size < HEADER_SIZE:
             return None
-        # We have a full frame
-        bdata = self.buffer[:space_pos]
-        self.buffer = self.buffer[space_pos + 1 :]
-        return bdata
+        if self.message_size is None:
+            self.message_size = struct.unpack("!L", self.buffer[:HEADER_SIZE])[0]
+        if size < self.message_size + HEADER_SIZE:
+            return None
+        # We have a full frame, avoid extra copy in case we get a large frame.
+        bdata = memoryview(self.buffer)[HEADER_SIZE : HEADER_SIZE + self.message_size]
+        self.buffer = self.buffer[HEADER_SIZE + self.message_size :]
+        self.message_size = None
+        return bytes(bdata)
 
     def read(self, size: int = 100000) -> str:
+        return self.read_bytes(size).decode("utf-8")
+
+    def read_bytes(self, size: int = 100000) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
-        bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
                 # Check if we already have a message in the buffer before
@@ -116,16 +135,19 @@ class IPCBase:
                 self.buffer.extend(more)
 
         if not bdata:
-            # Socket was empty and we didn't get any frame.
+            # Socket was empty, and we didn't get any frame.
             # This should only happen if the socket was closed.
-            return ""
-        return codecs.decode(bdata, "base64").decode("utf8")
+            return b""
+        return bdata
 
     def write(self, data: str) -> None:
+        self.write_bytes(data.encode("utf-8"))
+
+    def write_bytes(self, data: bytes) -> None:
         """Write to an IPC connection."""
 
-        # Frame the data by urlencoding it and separating by space.
-        encoded_data = codecs.encode(data.encode("utf8"), "base64") + b" "
+        # Frame the data by adding fixed size header.
+        encoded_data = struct.pack("!L", len(data)) + data
 
         if sys.platform == "win32":
             try:
@@ -213,9 +235,7 @@ class IPCServer(IPCBase):
 
     def __init__(self, name: str, timeout: float | None = None) -> None:
         if sys.platform == "win32":
-            name = r"\\.\pipe\{}-{}.pipe".format(
-                name, base64.urlsafe_b64encode(os.urandom(6)).decode()
-            )
+            name = r"\\.\pipe\{}-{}.pipe".format(name, urlsafe_b64encode(os.urandom(6)).decode())
         else:
             name = f"{name}.sock"
         super().__init__(name, timeout)
@@ -271,7 +291,7 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
-            except socket.timeout as e:
+            except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
 
@@ -303,7 +323,135 @@ class IPCServer(IPCBase):
     def connection_name(self) -> str:
         if sys.platform == "win32":
             return self.name
+        elif sys.platform == "gnu0":
+            # GNU/Hurd returns empty string from getsockname()
+            # for AF_UNIX sockets
+            return os.path.join(self.sock_directory, self.name)
         else:
             name = self.sock.getsockname()
             assert isinstance(name, str)
             return name
+
+
+class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
+
+
+def read_status(status_file: str) -> dict[str, object]:
+    """Read status file.
+
+    Raise BadStatus if the status file doesn't exist or contains
+    invalid JSON or the JSON is not a dict.
+    """
+    if not os.path.isfile(status_file):
+        raise BadStatus("No status file found")
+    with open(status_file) as f:
+        try:
+            data = json.load(f)
+        except Exception as e:
+            raise BadStatus(f"Malformed status file: {str(e)}") from e
+    if not isinstance(data, dict):
+        raise BadStatus(f"Invalid status file (not a dict): {data}")
+    return data
+
+
+def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+    """Wait until some connections are readable.
+
+    Return index of each readable connection in the original list.
+    """
+    if sys.platform == "win32":
+        # Windows doesn't support select() on named pipes. Instead, start an overlapped
+        # ReadFile on each pipe (which internally creates an event via CreateEventW),
+        # then WaitForMultipleObjects on those events for efficient OS-level waiting.
+        # Any data consumed by the probe reads is stored into each connection's buffer
+        # so the subsequent read_bytes() call will find it via frame_from_buffer().
+        WAIT_FAILED = 0xFFFFFFFF
+        pending: list[tuple[int, _winapi.Overlapped]] = []
+        events: list[int] = []
+        ready: list[int] = []
+
+        for i, conn in enumerate(conns):
+            try:
+                ov, err = _winapi.ReadFile(conn.connection, 1, overlapped=True)
+            except OSError:
+                # Broken/closed pipe. Mimic Linux behavior here, caller will get
+                # the exception when trying to read from this socket.
+                ready.append(i)
+                continue
+            if err == _winapi.ERROR_IO_PENDING:
+                events.append(ov.event)
+                pending.append((i, ov))
+            else:
+                # Data was immediately available (err == 0 or ERROR_MORE_DATA)
+                _, err = ov.GetOverlappedResult(True)
+                data = ov.getbuffer()
+                if data:
+                    conn.buffer.extend(data)
+                ready.append(i)
+
+        # Wait only if nothing is immediately ready and there are pending operations
+        if not ready and events:
+            timeout_ms = int(timeout * 1000) if timeout is not None else _winapi.INFINITE
+            res = _winapi.WaitForMultipleObjects(events, False, timeout_ms)
+            if res == WAIT_FAILED:
+                for _, ov in pending:
+                    ov.cancel()
+                raise IPCException(f"Failed to wait for connections: {_winapi.GetLastError()}")
+
+        # Check which pending operations completed, cancel the rest
+        for i, ov in pending:
+            if _winapi.WaitForSingleObject(ov.event, 0) == _winapi.WAIT_OBJECT_0:
+                _, err = ov.GetOverlappedResult(True)
+                data = ov.getbuffer()
+                if data:
+                    conns[i].buffer.extend(data)
+                ready.append(i)
+            else:
+                ov.cancel()
+
+        return ready
+
+    else:
+        connections = [conn.connection for conn in conns]
+        ready, _, _ = select(connections, [], [], timeout)
+        return [connections.index(r) for r in ready]
+
+
+def send(connection: IPCBase, data: IPCMessage) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be a non-abstract IPCMessage. We assume that a single send call is a
+    single frame to be sent.
+    """
+    buf = WriteBuffer()
+    data.write(buf)
+    connection.write_bytes(buf.getvalue())
+
+
+def receive(connection: IPCBase) -> ReadBuffer:
+    """Receive single encoded IPCMessage frame from a connection.
+
+    Raise OSError if the data received is not valid.
+    """
+    bdata = connection.read_bytes()
+    if not bdata:
+        raise OSError("No data received")
+    return ReadBuffer(bdata)
+
+
+class IPCMessage:
+    @classmethod
+    @abstractmethod
+    def read(cls, buf: ReadBuffer) -> Self:
+        raise NotImplementedError
+
+    @abstractmethod
+    def write(self, buf: WriteBuffer) -> None:
+        raise NotImplementedError

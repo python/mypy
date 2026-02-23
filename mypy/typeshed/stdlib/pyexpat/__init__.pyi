@@ -1,8 +1,9 @@
+import sys
 from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
 from pyexpat import errors as errors, model as model
 from typing import Any, Final, final
-from typing_extensions import TypeAlias
+from typing_extensions import CapsuleType, TypeAlias
 from xml.parsers.expat import ExpatError as ExpatError
 
 EXPAT_VERSION: Final[str]  # undocumented
@@ -29,6 +30,11 @@ class XMLParserType:
     def UseForeignDTD(self, flag: bool = True, /) -> None: ...
     def GetReparseDeferralEnabled(self) -> bool: ...
     def SetReparseDeferralEnabled(self, enabled: bool, /) -> None: ...
+    if sys.version_info >= (3, 10):
+        # Added in Python 3.10.20, 3.11.15, 3.12.3, 3.13.10, 3.14.1
+        def SetAllocTrackerActivationThreshold(self, threshold: int, /) -> None: ...
+        def SetAllocTrackerMaximumAmplification(self, max_factor: float, /) -> None: ...
+
     @property
     def intern(self) -> dict[str, str]: ...
     buffer_size: int
@@ -78,3 +84,5 @@ def ErrorString(code: int, /) -> str: ...
 def ParserCreate(
     encoding: str | None = None, namespace_separator: str | None = None, intern: dict[str, Any] | None = None
 ) -> XMLParserType: ...
+
+expat_CAPI: CapsuleType

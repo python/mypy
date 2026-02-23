@@ -23,6 +23,7 @@ NamedTuple = 0
 Type = 0
 ClassVar = 0
 Final = 0
+Literal = 0
 NoReturn = 0
 Never = 0
 NewType = 0
@@ -34,8 +35,8 @@ TYPE_CHECKING = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
-U = TypeVar('U')
-V = TypeVar('V')
+S_contra = TypeVar('S_contra', contravariant=True)
+R_co = TypeVar('R_co', covariant=True)
 
 class Iterable(Protocol[T_co]):
     def __iter__(self) -> Iterator[T_co]: pass
@@ -43,8 +44,8 @@ class Iterable(Protocol[T_co]):
 class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
-class Generator(Iterator[T], Generic[T, U, V]):
-    def __iter__(self) -> Generator[T, U, V]: pass
+class Generator(Iterator[T_co], Generic[T_co, S_contra, R_co]):
+    def __iter__(self) -> Generator[T_co, S_contra, R_co]: pass
 
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
@@ -55,10 +56,10 @@ class Mapping(Iterable[T], Generic[T, T_co]):
     def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
 
-class Awaitable(Protocol[T]):
-    def __await__(self) -> Generator[Any, Any, T]: pass
+class Awaitable(Protocol[T_co]):
+    def __await__(self) -> Generator[Any, Any, T_co]: pass
 
-class Coroutine(Awaitable[V], Generic[T, U, V]): pass
+class Coroutine(Awaitable[R_co], Generic[T_co, S_contra, R_co]): pass
 
 def final(meth: T) -> T: pass
 

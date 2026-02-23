@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 import mypy.subtypes
 from mypy.erasetype import erase_typevars
@@ -242,7 +242,7 @@ class PolyTranslator(TypeTranslator):
         self.bound_tvars -= set(found_vars)
 
         assert isinstance(result, ProperType) and isinstance(result, CallableType)
-        result.variables = list(result.variables) + found_vars
+        result.variables = result.variables + tuple(found_vars)
         return result
 
     def visit_type_var(self, t: TypeVarType) -> Type:

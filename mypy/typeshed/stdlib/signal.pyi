@@ -61,8 +61,8 @@ class Handlers(IntEnum):
     SIG_DFL = 0
     SIG_IGN = 1
 
-SIG_DFL: Handlers
-SIG_IGN: Handlers
+SIG_DFL: Final = Handlers.SIG_DFL
+SIG_IGN: Final = Handlers.SIG_IGN
 
 _SIGNUM: TypeAlias = int | Signals
 _HANDLER: TypeAlias = Callable[[int, FrameType | None], Any] | int | Handlers | None
@@ -77,45 +77,45 @@ else:
     def getsignal(signalnum: _SIGNUM, /) -> _HANDLER: ...
     def signal(signalnum: _SIGNUM, handler: _HANDLER, /) -> _HANDLER: ...
 
-SIGABRT: Signals
-SIGFPE: Signals
-SIGILL: Signals
-SIGINT: Signals
-SIGSEGV: Signals
-SIGTERM: Signals
+SIGABRT: Final = Signals.SIGABRT
+SIGFPE: Final = Signals.SIGFPE
+SIGILL: Final = Signals.SIGILL
+SIGINT: Final = Signals.SIGINT
+SIGSEGV: Final = Signals.SIGSEGV
+SIGTERM: Final = Signals.SIGTERM
 
 if sys.platform == "win32":
-    SIGBREAK: Signals
-    CTRL_C_EVENT: Signals
-    CTRL_BREAK_EVENT: Signals
+    SIGBREAK: Final = Signals.SIGBREAK
+    CTRL_C_EVENT: Final = Signals.CTRL_C_EVENT
+    CTRL_BREAK_EVENT: Final = Signals.CTRL_BREAK_EVENT
 else:
     if sys.platform != "linux":
-        SIGINFO: Signals
-        SIGEMT: Signals
-    SIGALRM: Signals
-    SIGBUS: Signals
-    SIGCHLD: Signals
-    SIGCONT: Signals
-    SIGHUP: Signals
-    SIGIO: Signals
-    SIGIOT: Signals
-    SIGKILL: Signals
-    SIGPIPE: Signals
-    SIGPROF: Signals
-    SIGQUIT: Signals
-    SIGSTOP: Signals
-    SIGSYS: Signals
-    SIGTRAP: Signals
-    SIGTSTP: Signals
-    SIGTTIN: Signals
-    SIGTTOU: Signals
-    SIGURG: Signals
-    SIGUSR1: Signals
-    SIGUSR2: Signals
-    SIGVTALRM: Signals
-    SIGWINCH: Signals
-    SIGXCPU: Signals
-    SIGXFSZ: Signals
+        SIGINFO: Final = Signals.SIGINFO
+        SIGEMT: Final = Signals.SIGEMT
+    SIGALRM: Final = Signals.SIGALRM
+    SIGBUS: Final = Signals.SIGBUS
+    SIGCHLD: Final = Signals.SIGCHLD
+    SIGCONT: Final = Signals.SIGCONT
+    SIGHUP: Final = Signals.SIGHUP
+    SIGIO: Final = Signals.SIGIO
+    SIGIOT: Final = Signals.SIGABRT  # alias
+    SIGKILL: Final = Signals.SIGKILL
+    SIGPIPE: Final = Signals.SIGPIPE
+    SIGPROF: Final = Signals.SIGPROF
+    SIGQUIT: Final = Signals.SIGQUIT
+    SIGSTOP: Final = Signals.SIGSTOP
+    SIGSYS: Final = Signals.SIGSYS
+    SIGTRAP: Final = Signals.SIGTRAP
+    SIGTSTP: Final = Signals.SIGTSTP
+    SIGTTIN: Final = Signals.SIGTTIN
+    SIGTTOU: Final = Signals.SIGTTOU
+    SIGURG: Final = Signals.SIGURG
+    SIGUSR1: Final = Signals.SIGUSR1
+    SIGUSR2: Final = Signals.SIGUSR2
+    SIGVTALRM: Final = Signals.SIGVTALRM
+    SIGWINCH: Final = Signals.SIGWINCH
+    SIGXCPU: Final = Signals.SIGXCPU
+    SIGXFSZ: Final = Signals.SIGXFSZ
 
     class ItimerError(OSError): ...
     ITIMER_PROF: int
@@ -127,9 +127,9 @@ else:
         SIG_UNBLOCK = 1
         SIG_SETMASK = 2
 
-    SIG_BLOCK = Sigmasks.SIG_BLOCK
-    SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
-    SIG_SETMASK = Sigmasks.SIG_SETMASK
+    SIG_BLOCK: Final = Sigmasks.SIG_BLOCK
+    SIG_UNBLOCK: Final = Sigmasks.SIG_UNBLOCK
+    SIG_SETMASK: Final = Sigmasks.SIG_SETMASK
     def alarm(seconds: int, /) -> int: ...
     def getitimer(which: int, /) -> tuple[float, float]: ...
     def pause() -> None: ...
@@ -147,13 +147,13 @@ else:
     else:
         def sigwait(sigset: Iterable[int], /) -> _SIGNUM: ...
     if sys.platform != "darwin":
-        SIGCLD: Signals
-        SIGPOLL: Signals
-        SIGPWR: Signals
-        SIGRTMAX: Signals
-        SIGRTMIN: Signals
+        SIGCLD: Final = Signals.SIGCHLD  # alias
+        SIGPOLL: Final = Signals.SIGIO  # alias
+        SIGPWR: Final = Signals.SIGPWR
+        SIGRTMAX: Final = Signals.SIGRTMAX
+        SIGRTMIN: Final = Signals.SIGRTMIN
         if sys.version_info >= (3, 11):
-            SIGSTKFLT: Signals
+            SIGSTKFLT: Final = Signals.SIGSTKFLT
 
         @final
         class struct_siginfo(structseq[int], tuple[int, int, int, int, int, int, int]):
@@ -181,8 +181,7 @@ else:
 def strsignal(signalnum: _SIGNUM, /) -> str | None: ...
 def valid_signals() -> set[Signals]: ...
 def raise_signal(signalnum: _SIGNUM, /) -> None: ...
-def set_wakeup_fd(fd: int, /, *, warn_on_full_buffer: bool = ...) -> int: ...
+def set_wakeup_fd(fd: int, /, *, warn_on_full_buffer: bool = True) -> int: ...
 
-if sys.version_info >= (3, 9):
-    if sys.platform == "linux":
-        def pidfd_send_signal(pidfd: int, sig: int, siginfo: None = None, flags: int = ..., /) -> None: ...
+if sys.platform == "linux":
+    def pidfd_send_signal(pidfd: int, sig: int, siginfo: None = None, flags: int = 0, /) -> None: ...

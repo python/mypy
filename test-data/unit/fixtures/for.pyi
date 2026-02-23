@@ -15,6 +15,7 @@ class function: pass
 class ellipsis: pass
 class bool: pass
 class int: pass # for convenience
+class float: pass  # for convenience
 class str:  # for convenience
     def upper(self) -> str: ...
 
