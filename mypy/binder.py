@@ -312,24 +312,22 @@ class ConditionalTypeBinder:
             keys = list(set(keys))
         for key in keys:
             current_value = self._get(key)
-            resulting_values = [f.types.get(key, current_value) for f in frames]
+            all_resulting_values = [f.types.get(key, current_value) for f in frames]
             # Keys can be narrowed using two different semantics. The new semantics
             # is enabled for plain variables when bind_all is true, and it allows
             # variable types to be widened using subsequent assignments. This is
             # tricky to support for instance attributes (primarily due to deferrals),
             # so we don't use it for them.
             old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
-            if old_semantics and any(x is None for x in resulting_values):
+            if old_semantics and any(x is None for x in all_resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
                 # know anything about key in at least one possible frame.
                 continue
 
-            resulting_values = [x for x in resulting_values if x is not None]
+            resulting_values = [x for x in all_resulting_values if x is not None]
 
-            if all_reachable and all(
-                x is not None and not x.from_assignment for x in resulting_values
-            ):
+            if all_reachable and all(not x.from_assignment for x in resulting_values):
                 # Do not synthesize a new type if we encountered a conditional block
                 # (if, while or match-case) without assignments.
                 # See check-isinstance.test::testNoneCheckDoesNotMakeTypeVarOptional
@@ -337,21 +335,28 @@ class ConditionalTypeBinder:
                 # or `isinstance` does not change the type of the value.
                 continue
 
-            current_type = resulting_values[0]
-            assert current_type is not None
-            type = current_type.type
+            # Remove exact duplicates to save pointless work later, this is
+            # a micro-optimization for --allow-redefinition-new.
+            seen_types = set()
+            resulting_types = []
+            for rv in resulting_values:
+                assert rv is not None
+                if rv.type in seen_types:
+                    continue
+                resulting_types.append(rv.type)
+                seen_types.add(rv.type)
+
+            type = resulting_types[0]
             declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
-                if not all(
-                    t is not None and is_same_type(type, t.type) for t in resulting_values[1:]
-                ):
+                if not all(is_same_type(type, t) for t in resulting_types[1:]):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 possible_types = []
-                for t in resulting_values:
+                for t in resulting_types:
                     assert t is not None
-                    possible_types.append(t.type)
+                    possible_types.append(t)
                 if len(possible_types) == 1:
                     # This is to avoid calling get_proper_type() unless needed, as this may
                     # interfere with our (hacky) TypeGuard support.

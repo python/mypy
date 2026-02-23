@@ -200,11 +200,11 @@ def h(arg=0, /): ...
 i = lambda arg=0, /: arg
 
 f(1)
-g(1)
+reveal_type(g(1))  # N: Revealed type is "Any"
 h()
 h(1)
-i()
-i(1)
+reveal_type(i())  # N: Revealed type is "Any"
+reveal_type(i(1))  # N: Revealed type is "Any"
 f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
 g(arg=0)  # E: Unexpected keyword argument "arg"
 h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
