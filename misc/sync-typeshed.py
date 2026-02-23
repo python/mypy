@@ -143,6 +143,7 @@ def main() -> None:
         action="store_true",
         help="Whether to make a PR with the changes (default to no)",
     )
+    parser.add_argument("--no-branch", action="store_true", help="Skip creating a new branch")
     args = parser.parse_args()
 
     check_state()
@@ -152,19 +153,23 @@ def main() -> None:
             raise ValueError("GITHUB_TOKEN environment variable must be set")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Stash patches before checking out a new branch
-        typeshed_patches = os.path.join("misc", "typeshed_patches")
-        tmp_patches = os.path.join(tmpdir, "typeshed_patches")
-        shutil.copytree(typeshed_patches, tmp_patches)
+        if not args.no_branch:
+            # Stash patches before checking out a new branch
+            typeshed_patches = os.path.join("misc", "typeshed_patches")
+            tmp_patches = os.path.join(tmpdir, "typeshed_patches")
+            shutil.copytree(typeshed_patches, tmp_patches)
 
-        branch_name = "mypybot/sync-typeshed"
-        subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
+            branch_name = "mypybot/sync-typeshed"
+            subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
 
-        # Copy the stashed patches back
-        shutil.rmtree(typeshed_patches, ignore_errors=True)
-        shutil.copytree(tmp_patches, typeshed_patches)
-        if subprocess.run(["git", "diff", "--quiet", "--exit-code"], check=False).returncode != 0:
-            subprocess.run(["git", "commit", "-am", "Update typeshed patches"], check=True)
+            # Copy the stashed patches back
+            shutil.rmtree(typeshed_patches, ignore_errors=True)
+            shutil.copytree(tmp_patches, typeshed_patches)
+            if (
+                subprocess.run(["git", "diff", "--quiet", "--exit-code"], check=False).returncode
+                != 0
+            ):
+                subprocess.run(["git", "commit", "-am", "Update typeshed patches"], check=True)
 
         if not args.typeshed_dir:
             tmp_typeshed = os.path.join(tmpdir, "typeshed")

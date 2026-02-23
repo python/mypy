@@ -2097,7 +2097,6 @@ def fix_instance(
             # Already wrong arg count error, don't emit missing type parameters error as well.
             disallow_any = False
         t.args = ()
-        arg_count = 0
 
     args: list[Type] = [*(t.args[:max_tv_count])]
     any_type: AnyType | None = None
@@ -2550,7 +2549,6 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
                 t,
                 code=codes.TYPE_ARG,
             )
-            t.invalid = True
         return False
     return True
 

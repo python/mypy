@@ -1126,7 +1126,7 @@ main:13:1: error: Value of type variable "T" of "SameA" cannot be "str"
 class A: ...
 Bad = A[int] # type: ignore
 
-reveal_type(Bad) # N: Revealed type is "Any"
+reveal_type(Bad) # N: Revealed type is "def () -> __main__.A"
 [out]
 
 [case testSubscriptionOfBuiltinAliases]
