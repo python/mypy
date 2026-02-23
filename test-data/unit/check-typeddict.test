@@ -1007,7 +1007,7 @@ class D(TypedDict):
     b: NotRequired[str]
 
 def test(d: D) -> None:
-    reveal_type(d.get)  # N: Revealed type is "Overload(def (k: builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
+    reveal_type(d.get)  # N: Revealed type is "Overload(def (builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1151,12 +1151,12 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
         # N: Possible overload variants: \
-        # N:     def get(self, k: str) -> object \
+        # N:     def get(self, str, /) -> object \
         # N:     def get(self, str, object, /) -> object \
         # N:     def [V] get(self, str, V, /) -> object
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
                  # N: Possible overload variants: \
-                 # N:     def get(self, k: str) -> object \
+                 # N:     def get(self, str, /) -> object \
                  # N:     def get(self, str, object, /) -> object \
                  # N:     def [V] get(self, str, int | V, /) -> object
 x = d.get('z')
