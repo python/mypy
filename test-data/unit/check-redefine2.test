@@ -1295,3 +1295,32 @@ if bool():
 else:
     x = [Sub(), Sub()]
     reveal_type(x[0])  # N: Revealed type is "__main__.Sub"
+
+[case testNewRedefineFunctionArgumentsFullContext]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def process(items: list[Optional[str]]) -> None:
+    if not items:
+        items = [None]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str | None]"
+    process(items)  # OK
+
+[case testNewRedefineFunctionArgumentsEmptyContext]
+# flags: --allow-redefinition-new --local-partial-types
+def process1(items: list[str]) -> None:
+    items = [item.split() for item in items]
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+
+def process2(items: list[str]) -> None:
+    if bool():
+        items = [item.split() for item in items]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+
+def process3(items: list[str]) -> None:
+    if bool():
+        items = []
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/primitives.pyi]

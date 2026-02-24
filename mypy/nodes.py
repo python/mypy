@@ -2368,6 +2368,9 @@ class CallExpr(Expression):
         analyzed: Expression | None = None,
     ) -> None:
         super().__init__()
+        if not arg_names:
+            arg_names = [None] * len(args)
+
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds  # ARG_ constants
