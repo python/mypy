@@ -795,6 +795,13 @@ def define_options(
         description="Detect code that is sound but redundant or problematic.",
     )
     add_invertible_flag(
+        "--warn-redundant-annotation",
+        default=False,
+        strict_flag=False,
+        help="Warn when an annotation is the same as its inferred type",
+        group=lint_group,
+    )
+    add_invertible_flag(
         "--warn-redundant-casts",
         default=False,
         strict_flag=True,

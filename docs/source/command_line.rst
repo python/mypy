@@ -477,6 +477,11 @@ Configuring warnings
 The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
+.. option:: --warn-redundant-annotation
+
+    This flag will make mypy report an error when a function local variable uses
+    an unnecessary annotation in an assignment that can safely be removed.
+
 .. option:: --warn-redundant-casts
 
     This flag will make mypy report an error whenever your code uses
