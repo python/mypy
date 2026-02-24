@@ -173,7 +173,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared.copy_modified(
             upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
         )
-    elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
+    elif not is_overlapping_types(declared, narrowed):
         if state.strict_optional:
             return UninhabitedType()
         else:
@@ -308,10 +308,6 @@ def is_object(t: ProperType) -> bool:
     return isinstance(t, Instance) and t.type.fullname == "builtins.object"
 
 
-def is_none_typevarlike_overlap(t1: ProperType, t2: ProperType) -> bool:
-    return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
-
-
 def is_none_object_overlap(t1: ProperType, t2: ProperType) -> bool:
     return (
         isinstance(t1, NoneType)
@@ -337,15 +333,12 @@ def is_overlapping_types(
     left: Type,
     right: Type,
     ignore_promotions: bool = False,
-    prohibit_none_typevar_overlap: bool = False,
     overlap_for_overloads: bool = False,
     seen_types: set[tuple[Type, Type]] | None = None,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
     If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
-    If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
-    TypeVars (in both strict-optional and non-strict-optional mode).
     If 'overlap_for_overloads' is True, we check for overlaps more strictly (to avoid false
     positives), for example: None only overlaps with explicitly optional types, Any
     doesn't overlap with anything except object, we don't ignore positional argument names.
@@ -433,10 +426,6 @@ def is_overlapping_types(
     # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    if prohibit_none_typevar_overlap:
-        if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
-            return False
-
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         """Encode the kind of overlapping check to perform.
 
@@ -446,7 +435,6 @@ def is_overlapping_types(
             left,
             right,
             ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
             overlap_for_overloads=overlap_for_overloads,
             seen_types=seen_types.copy(),
         )
@@ -662,10 +650,7 @@ def is_overlapping_erased_types(
 ) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(
-        erase_type(left),
-        erase_type(right),
-        ignore_promotions=ignore_promotions,
-        prohibit_none_typevar_overlap=True,
+        erase_type(left), erase_type(right), ignore_promotions=ignore_promotions
     )
 
 

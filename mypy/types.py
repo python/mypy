@@ -6,7 +6,6 @@ import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Final,
@@ -97,18 +96,6 @@ JsonDict: _TypeAlias = dict[str, Any]
 # Literal[...].
 LiteralValue: _TypeAlias = int | str | bool | float
 
-
-# If we only import type_visitor in the middle of the file, mypy
-# breaks, and if we do it at the top, it breaks at runtime because of
-# import cycle issues, so we do it at the top while typechecking and
-# then again in the middle at runtime.
-# We should be able to remove this once we are switched to the new
-# semantic analyzer!
-if TYPE_CHECKING:
-    from mypy.type_visitor import (
-        SyntheticTypeVisitor as SyntheticTypeVisitor,
-        TypeVisitor as TypeVisitor,
-    )
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
 TYPE_NAMES: Final = ("builtins.type", "typing.Type")
@@ -377,7 +364,9 @@ class TypeAliasType(Type):
 
         # TODO: this logic duplicates the one in expand_type_by_instance().
         if self.alias.tvar_tuple_index is None:
-            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
+            mapping: dict[TypeVarId, Type] = {
+                v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)
+            }
         else:
             prefix = self.alias.tvar_tuple_index
             suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
@@ -1626,9 +1615,6 @@ class Instance(ProperType):
         self.type = typ
         self.args = tuple(args)
         self.type_ref: str | None = None
-
-        # True if recovered after incorrect number of type arguments error
-        self.invalid = False
 
         # This field keeps track of the underlying Literal[...] value associated with
         # this instance, if one is known.

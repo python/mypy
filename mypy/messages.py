@@ -796,10 +796,10 @@ class MessageBuilder:
                     )
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
-                    expected_types = list(expected_type.items)
+                    expected_types = get_proper_types(expected_type.items)
                 else:
                     expected_types = [expected_type]
-                for type in get_proper_types(expected_types):
+                for type in expected_types:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)
@@ -941,6 +941,7 @@ class MessageBuilder:
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = f'Missing named argument "{name}"' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
+        self.note_defined_here(callee, context)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
@@ -1011,6 +1012,9 @@ class MessageBuilder:
         self.unexpected_keyword_argument_for_function(
             for_function(callee), name, context, matches=matches
         )
+        self.note_defined_here(callee, context)
+
+    def note_defined_here(self, callee: CallableType, context: Context) -> None:
         module = find_defining_module(self.modules, callee)
         if (
             module
