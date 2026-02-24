@@ -21,7 +21,9 @@ reveal_type(i2)  # N: Revealed type is "def (x: Literal['A|B'])"
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralWithBackslash]
+[case testLiteralWithBackslash-skip]
+-- This should be an xfail but since it fails on *only* Windows, not consistently, we must skip instead.
+-- TODO: someday this test should simply pass. Once https://github.com/python/mypy/issues/20884 is fixed.
 -- This test case is more to test mypy backslash handling than anything else
 from typing import Literal
 x: Literal[" \ "] = 1 # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[' \\ ']")
