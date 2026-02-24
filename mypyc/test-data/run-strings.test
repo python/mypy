@@ -1299,3 +1299,37 @@ def test_isalnum_unicode() -> None:
     # Unicode letter/digit mixed with punctuation — not alnum
     assert not "\u00E9!".isalnum()
     assert not "\u4E2D\u2000".isalnum()     # CJK + whitespace
+
+[case testIsDigit]
+from typing import Any
+
+def test_isdigit() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isdigit() == a.isdigit()
+
+def test_isdigit_strings() -> None:
+    # ASCII digits
+    assert "0123456789".isdigit()
+    assert not "".isdigit()
+    assert not " ".isdigit()
+    assert not "a".isdigit()
+    assert not "abc".isdigit()
+    assert not "!@#".isdigit()
+
+    # Mixed ASCII
+    assert not "123abc".isdigit()
+    assert not "abc123".isdigit()
+    assert not "12 34".isdigit()
+    assert not "123!".isdigit()
+
+    # Unicode digits
+    assert "\u0660\u0661\u0662".isdigit()
+    assert "\u00b2\u00b3".isdigit()
+    assert "123\U0001d7ce\U0001d7cf\U0001d7d0".isdigit()
+
+    # Mixed digits and Unicode non-digits
+    assert not "\u00e9\u00e8".isdigit()
+    assert not "123\u00e9".isdigit()
+    assert not "\U0001d7ce!".isdigit()
