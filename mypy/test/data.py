@@ -547,7 +547,8 @@ def expand_errors(input: list[str], output: list[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in re.split(r"(?!\\)#\s*(?=[ENW]\s*:)", input[i])[1:]:
             m = re.search(
-                r"^([ENW])\s*:((?P<col>\d+):)?(?P<message>(?:\\#|[^#])*)$", possible_err_comment.strip()
+                r"^([ENW])\s*:((?P<col>\d+):)?(?P<message>(?:\\#|[^#])*)$",
+                possible_err_comment.strip(),
             )
             if m:
                 if m.group(1) == "E":
