@@ -32,6 +32,26 @@ necessary.
 Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
 and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
+### Added optional error code `type-comment`
+
+A new disabled by default error code `type-comment` was added. If enabled with
+`--enable-error-code type-comment`, mypy will generate errors if legacy type comments instead of
+type annotations are used.
+
+```py
+a = 2  # type: int
+a: int = 2
+
+def func(a, b):
+    # type: (int, str) -> bool
+    ...
+
+def func(a: int, b: str) -> bool:
+    ...
+```
+
+Contributed by Marc Mueller (PR [20616](https://github.com/python/mypy/pull/20616)).
+
 ## Mypy 1.19
 
 We’ve just uploaded mypy 1.19.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).

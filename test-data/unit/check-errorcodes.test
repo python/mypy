@@ -1335,3 +1335,25 @@ def process(response1: int,response2: int) -> int: # E: Overloaded function sign
 
 def process(response1,response2)-> Union[float,int]:
    return response1 + response2
+
+[case testLegacyTypeComments]
+# flags: --enable-error-code type-comment
+a = 2  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+
+for b in ():  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    ...
+
+with f() as foo:  # type: int  # type: ignore[name-defined]  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    ...
+
+def func(d, e):  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    # type: (str, int) -> bool
+    ...
+
+async def func2():  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    # type: () -> None
+
+    async for c in g():  # type: int  # type: ignore[name-defined]  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+        ...
+
+[builtins fixtures/tuple.pyi]

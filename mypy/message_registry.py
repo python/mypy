@@ -311,8 +311,9 @@ INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', code
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )
-TYPE_COMMENT_DEPRECATED: Final = ErrorMessage(
-    "Using type comments with mypy is deprecated, use inline annotations instead", codes.MISC
+TYPE_COMMENT_SOFT_DEPRECATED: Final = ErrorMessage(
+    "Using type comments with mypy is (soft-)deprecated, use inline annotations instead",
+    codes.TYPE_COMMENT,
 )
 ELLIPSIS_WITH_OTHER_TYPEPARAMS: Final = ErrorMessage(
     "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
