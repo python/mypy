@@ -34,6 +34,11 @@ with text "abc..."
   this allows for multiple comments on the same line. Example: `# E: ... # This type fails`.
   Use `\` to escape a `#` character to include it in the error message. Example:
   `# E: This error message includes the \# character once # new comment`.
+  Note that there is no support by the test file format for using `\\` to escape a backslash;
+  the sequence `\\#` is interpreted as `\` followed by an escaped `#`, and `\\\#` as
+  two `\` followed by an escaped `#`.
+  Note also: in all other contexts, such as line-continuation, the backslash acts
+  as it normally would in a Python source file.
 - repeating ` # E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
