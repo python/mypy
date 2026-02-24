@@ -3357,7 +3357,7 @@ class SemanticAnalyzer(
 
         Return true if special casing was applied.
         """
-        if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1:
+        if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1 or s.type is not None:
             # Not of form 'X = X'
             return False
         lvalue = s.lvalues[0]
