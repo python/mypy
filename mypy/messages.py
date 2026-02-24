@@ -516,13 +516,9 @@ class MessageBuilder:
                 )
                 if typ_format == '"None"':
                     var_name: str | None = None
-                    if isinstance(context, MemberExpr) and isinstance(
-                        context.expr, NameExpr
-                    ):
+                    if isinstance(context, MemberExpr) and isinstance(context.expr, NameExpr):
                         var_name = context.expr.name
-                    elif isinstance(context, MemberExpr) and isinstance(
-                        context.expr, MemberExpr
-                    ):
+                    elif isinstance(context, MemberExpr) and isinstance(context.expr, MemberExpr):
                         var_name = get_member_expr_fullname(context.expr)
                     elif isinstance(context, NameExpr):
                         var_name = context.name
