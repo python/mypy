@@ -42,6 +42,10 @@ with text "abc..."
 - repeating ` # E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` work exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
+- lines that begin with `--` are test-file-format comments, and will not appear in the tested python
+  source code
+- some test files are run in a special way by the test runner; this is typically documented in
+  test-file-format comments at the top of the test file
 - optional `[builtins fixtures/...]` tells the type checker to use
 `builtins` stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the `# E: ` notation: it indicates that
