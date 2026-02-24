@@ -1694,7 +1694,7 @@ class A:
         self.x = 1
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
 
 [case testPropertyNameIsChecked]
 class A:
@@ -1779,7 +1779,7 @@ class A:
 a = A()
 a.f.xx
 a.f = '' # E: Property "f" defined in "A" is read-only
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
 
 [case testPropertyWithSetter]
 import typing
@@ -1796,7 +1796,7 @@ a.f.x # E: "int" has no attribute "x"
 a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 a.f = 1
 reveal_type(a.f)  # N: Revealed type is "builtins.int"
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
 
 [case testPropertyWithDeleterButNoSetter]
 import typing
@@ -1810,7 +1810,60 @@ class A:
 a = A()
 a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
+
+[case testPropertyAccessOnClass]
+class Foo:
+    @property
+    def bar(self) -> bool:
+        return True
+
+    reveal_type(bar)  # N: Revealed type is "builtins.property"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.property"
+reveal_type(Foo.bar(Foo()))  # E: "property" not callable \
+                             # N: Revealed type is "Any"
+reveal_type(Foo.bar.fget(Foo()))  # E: "None" not callable \
+                                  # N: Revealed type is "Any"
+
+class Bar:
+    @property
+    def bar(self) -> bool:
+        return True
+    @bar.setter
+    def bar(self, bar: bool) -> None:
+        pass
+
+    reveal_type(bar)  # N: Revealed type is "builtins.property"
+
+reveal_type(Bar.bar)  # N: Revealed type is "builtins.property"
+reveal_type(Bar.bar(Bar()))  # E: "property" not callable \
+                             # N: Revealed type is "Any"
+reveal_type(Bar.bar.fget(Bar()))  # E: "None" not callable \
+                                  # N: Revealed type is "Any"
+[builtins fixtures/property-full.pyi]
+
+[case testPropertyAccessOnClass2]
+import functools
+from functools import cached_property
+
+class Foo:
+    @cached_property
+    def foo(self) -> bool:
+        return True
+
+    @functools.cached_property
+    def bar(self) -> bool:
+        return True
+
+    reveal_type(foo)  # N: Revealed type is "functools.cached_property[Any]"
+    reveal_type(bar)  # N: Revealed type is "functools.cached_property[Any]"
+
+reveal_type(Foo.foo)  # N: Revealed type is "functools.cached_property[Any]"
+reveal_type(Foo.bar)  # N: Revealed type is "functools.cached_property[Any]"
+Foo.foo(Foo())  # E: "cached_property[Any]" not callable
+Foo.bar(Foo())  # E: "cached_property[Any]" not callable
+[builtins fixtures/property-full.pyi]
 
 -- Descriptors
 -- -----------
@@ -9357,12 +9410,36 @@ class B:
 
 class C(B):
     prop = A.prop
-    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+    prop_t = AT.prop
 
 reveal_type(C().prop)  # N: Revealed type is "builtins.str"
 C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
 reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
 C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
+
+[case testPropertyAliasClassAccess]
+class A:
+    @property
+    def ro(self) -> int: ...
+
+    @property
+    def rw(self) -> int: ...
+    @rw.setter
+    def rw(self, val: int) -> None: ...
+
+class B:
+    ro = A.ro
+    rw = A.rw
+
+reveal_type(A.ro)  # N: Revealed type is "builtins.property"
+reveal_type(A.rw)  # N: Revealed type is "builtins.property"
+reveal_type(B.ro)  # N: Revealed type is "builtins.property"
+reveal_type(B.rw)  # N: Revealed type is "builtins.property"
+reveal_type(B().ro)  # E: Invalid self argument "B" to attribute function "ro" with type "Callable[[A], int]" \
+                     # N: Revealed type is "builtins.int"
+reveal_type(B().rw)  # E: Invalid self argument "B" to attribute function "rw" with type "Callable[[A], int]" \
+                     # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
 [case testClassEqDecoratedAbstractNote]

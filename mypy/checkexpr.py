@@ -362,18 +362,27 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         if isinstance(node, Var):
             # Variable reference.
-            result = self.analyze_var_ref(node, e)
-            if isinstance(result, PartialType):
-                result = self.chk.handle_partial_var_type(result, lvalue, node, e)
+            property_type = self.chk.get_property_instance(node)
+            if property_type is not None:
+                result = property_type
+            else:
+                result = self.analyze_var_ref(node, e)
+                if isinstance(result, PartialType):
+                    result = self.chk.handle_partial_var_type(result, lvalue, node, e)
         elif isinstance(node, Decorator):
-            result = self.analyze_var_ref(node.var, e)
+            property_type = self.chk.get_property_instance(node)
+            if property_type is not None:
+                result = property_type
+            else:
+                result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, OverloadedFuncDef):
-            if node.type is None:
+            result = node.type
+            if result is None:
                 if self.chk.in_checked_function() and node.items:
                     self.chk.handle_cannot_determine_type(node.name, e)
                 result = AnyType(TypeOfAny.from_error)
-            else:
-                result = node.type
+            elif property_type := self.chk.get_property_instance(node):
+                result = property_type
         elif isinstance(node, (FuncDef, TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
             result = self.analyze_static_reference(node, e, e.is_alias_rvalue or lvalue)
         else:
