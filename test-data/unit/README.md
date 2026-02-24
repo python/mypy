@@ -29,10 +29,12 @@ Add the test in this format anywhere in the file:
 - `# E: abc...` indicates that this line should result in type check error
 with text "abc..."
 - note a space after `E:` and `flags:`
-- `# E:12` adds column number to the expected error
+- `# E:12` adds column number to the expected error. Example: `# E:12: Incompatible [etc...]`.
+- ` # ` will normally terminate the error message that comes before it;
+  this allows for multiple comments on the same line. Example: `# E: [etc...] # This fails`.
 - use `\` to escape the `#` character and indicate that the rest of the line is part of
-the error message
-- repeating `# E: ` several times in one line indicates multiple expected errors in one line
+the error message. Example: `# E: This message includes the \# character once :) # new comment`.
+- repeating ` # E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
 - optional `[builtins fixtures/...]` tells the type checker to use
@@ -45,6 +47,8 @@ the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
 - to add tests for a feature that hasn't been implemented yet, append `-xfail`
   to the end of the test name
+- to mark a test as to-be-skipped, append `-skip`. For more on the distinction
+  between xfail and skip, see https://docs.pytest.org/en/stable/how-to/skipping.html
 - to run just this test, use `pytest -n0 -k testNewSyntaxBasics`
 
 
