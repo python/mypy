@@ -4409,6 +4409,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and isinstance(lvalue.node, Var)
             and lvalue.node.is_inferred
             and lvalue.node.type is not None
+            and not isinstance(lvalue.node.type, PartialType)
             # Indexes in for loops require special handling, we need to reset them to
             # a literal value on each loop, but binder doesn't work well with literals.
             and not lvalue.node.is_index_var
