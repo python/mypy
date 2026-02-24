@@ -395,7 +395,7 @@ class ConditionalTypeBinder:
                 if current_value is not None or extract_var_from_literal_hash(key) is None:
                     # We definitely learned something new
                     changed = True
-                else:
+                elif not changed:
                     # If there is no current value compare with the declaration. This prevents
                     # reporting false changes in cases like this:
                     #     x: int

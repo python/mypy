@@ -1158,6 +1158,18 @@ class C:
 def defer() -> int: ...
 [builtins fixtures/list.pyi]
 
+[case testNewRedefineCorrectChangedOnPop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def foo() -> None:
+    name: Optional[str] = None
+    name = None
+    for i in [1, 2, 3]:
+        reveal_type(name)  # N: Revealed type is "None | builtins.str"
+        if bool():
+            name = "a"
+
 [case testNewRedefinePartialTypeForUnderscore]
 # flags: --allow-redefinition-new --local-partial-types
 
