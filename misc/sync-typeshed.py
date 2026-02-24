@@ -153,23 +153,20 @@ def main() -> None:
             raise ValueError("GITHUB_TOKEN environment variable must be set")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        if not args.no_branch:
-            # Stash patches before checking out a new branch
-            typeshed_patches = os.path.join("misc", "typeshed_patches")
-            tmp_patches = os.path.join(tmpdir, "typeshed_patches")
-            shutil.copytree(typeshed_patches, tmp_patches)
+        # Stash patches before checking out a new branch
+        typeshed_patches = os.path.join("misc", "typeshed_patches")
+        tmp_patches = os.path.join(tmpdir, "typeshed_patches")
+        shutil.copytree(typeshed_patches, tmp_patches)
 
-            branch_name = "mypybot/sync-typeshed"
+        branch_name = "mypybot/sync-typeshed"
+        if not args.no_branch:
             subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
 
-            # Copy the stashed patches back
-            shutil.rmtree(typeshed_patches, ignore_errors=True)
-            shutil.copytree(tmp_patches, typeshed_patches)
-            if (
-                subprocess.run(["git", "diff", "--quiet", "--exit-code"], check=False).returncode
-                != 0
-            ):
-                subprocess.run(["git", "commit", "-am", "Update typeshed patches"], check=True)
+        # Copy the stashed patches back
+        shutil.rmtree(typeshed_patches, ignore_errors=True)
+        shutil.copytree(tmp_patches, typeshed_patches)
+        if subprocess.run(["git", "diff", "--quiet", "--exit-code"], check=False).returncode != 0:
+            subprocess.run(["git", "commit", "-am", "Update typeshed patches"], check=True)
 
         if not args.typeshed_dir:
             tmp_typeshed = os.path.join(tmpdir, "typeshed")
