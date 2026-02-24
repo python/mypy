@@ -40,7 +40,7 @@ with text "abc..."
   Note also: in all other contexts, such as line-continuation, the backslash acts
   as it normally would in a Python source file.
 - repeating ` # E: ` several times in one line indicates multiple expected errors in one line
-- `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
+- `W: ...` and `N: ...` work exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
 - optional `[builtins fixtures/...]` tells the type checker to use
 `builtins` stubs from the indicated file (see Fixtures section below)
