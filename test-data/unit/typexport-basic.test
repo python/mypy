@@ -345,7 +345,7 @@ CallExpr(5) : T`1
 MemberExpr(5) : def () -> T`1
 NameExpr(5) : A[T`1]
 
-[case testGenericFunctionCallWithTypeApp-skip]
+[case testGenericFunctionCallWithTypeApp-xfail]
 ## CallExpr|TypeApplication|NameExpr
 from typing import Any, TypeVar, Tuple
 T = TypeVar('T')

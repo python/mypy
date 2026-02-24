@@ -1392,7 +1392,7 @@ target:
     D: TypeInfo<5>
     NewType: Var<4>
 
-[case testCallable_symtable-skip]
+[case testCallable_symtable-xfail]
 # The TypeInfo is currently not being merged correctly
 import target
 [file target.py]
