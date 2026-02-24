@@ -30,10 +30,10 @@ Add the test in this format anywhere in the file:
 with text "abc..."
 - note a space after `E:` and `flags:`
 - `# E:12` adds column number to the expected error. Example: `# E:12: ...`.
-- ` # ` will normally terminate the error message that comes before it;
-  this allows for multiple comments on the same line. Example: `# E: ... # This fails`.
-- use `\` to escape the `#` character and indicate that the rest of the line is part of
-the error message. Example: `# E: This message includes the \# character once :) # new comment`.
+- ` # ` will terminate the error message that comes before it;
+  this allows for multiple comments on the same line. Example: `# E: ... # This type fails`.
+  Use `\` to escape a `#` character to include it in the error message. Example:
+  `# E: This error message includes the \# character once # new comment`.
 - repeating ` # E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
