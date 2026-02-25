@@ -132,6 +132,8 @@ from mypy.config_parser import parse_mypy_comments
 from mypy.fixup import fixup_module
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
+from mypy.known_modules import get_known_modules, reset_known_modules_cache
+from mypy.messages import best_matches, pretty_seq
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
     BuildSource as BuildSource,
@@ -150,8 +152,6 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
-from mypy.known_modules import get_known_modules, reset_known_modules_cache
-from mypy.messages import best_matches, pretty_seq
 from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
@@ -3196,8 +3196,7 @@ def module_not_found(
             top_level_target = target.split(".")[0]
             if not top_level_target.startswith("_"):
                 known_modules = get_known_modules(
-                    manager.find_module_cache.stdlib_py_versions,
-                    manager.options.python_version,
+                    manager.find_module_cache.stdlib_py_versions, manager.options.python_version
                 )
                 matches = best_matches(top_level_target, known_modules, n=3)
                 matches = [m for m in matches if m.lower() != top_level_target.lower()]
