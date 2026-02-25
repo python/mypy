@@ -354,31 +354,22 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_type: Type
         rest_type = current_type
         if isinstance(current_type, TupleType) and unpack_index is None:
-            narrowed_inner_types = []
-            inner_rest_types = []
-            for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                narrowed_inner_type, inner_rest_type = (
-                    self.chk.conditional_types_with_intersection(
-                        inner_type, [get_type_range(new_inner_type)], o, default=inner_type
-                    )
-                )
-                narrowed_inner_types.append(narrowed_inner_type)
-                inner_rest_types.append(inner_rest_type)
-            if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
-                new_type = TupleType(narrowed_inner_types, current_type.partial_fallback)
-            else:
+            if any(is_uninhabited(typ) for typ in new_inner_types):
                 new_type = UninhabitedType()
+            else:
+                new_type = TupleType(new_inner_types, current_type.partial_fallback)
 
-            if all(is_uninhabited(typ) for typ in inner_rest_types):
+            num_always_match = sum(is_uninhabited(typ) for typ in rest_inner_types)
+            if num_always_match == len(rest_inner_types):
                 # All subpatterns always match, so we can apply negative narrowing
-                rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
-            elif sum(not is_uninhabited(typ) for typ in inner_rest_types) == 1:
+                rest_type = UninhabitedType()
+            elif num_always_match == len(rest_inner_types) - 1:
                 # Exactly one subpattern may conditionally match, the rest always match.
                 # We can apply negative narrowing to this one position.
                 rest_type = TupleType(
                     [
                         curr if is_uninhabited(rest) else rest
-                        for curr, rest in zip(inner_types, inner_rest_types)
+                        for curr, rest in zip(inner_types, rest_inner_types)
                     ],
                     current_type.partial_fallback,
                 )

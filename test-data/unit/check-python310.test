@@ -1773,6 +1773,27 @@ def f3(x: int | list[int]):
             reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequenceTupleAsPattern]
+# flags: --strict-equality --warn-unreachable
+
+def f1(x: tuple[list[int], list[int]]):
+    match x:
+        case _, []:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case [], _:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+
+def f2(x: tuple[list[int], list[int]]):
+    match x:
+        case a, b:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case [], _:
+            reveal_type(x)  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+
 [case testMatchTupleUnions]
 from typing_extensions import Unpack
 
