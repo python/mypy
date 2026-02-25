@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Iterable, Iterator
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from mypyc.ir.ops import (
     Assign,
@@ -57,8 +57,6 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-
-_EMPTY: tuple[set, set] = (set(), set())
 
 
 class CFG:
@@ -177,6 +175,8 @@ class AnalysisResult(Generic[T]):
 
 
 GenAndKill = tuple[set[T], set[T]]
+
+_EMPTY: GenAndKill[Any] = (set(), set())
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
