@@ -58,7 +58,6 @@ from mypyc.ir.ops import (
     Value,
 )
 
-
 _EMPTY: tuple[set, set] = (set(), set())
 
 
