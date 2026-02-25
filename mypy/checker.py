@@ -4720,7 +4720,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # and use it results in a narrower type. This helps with various practical
         # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
         union_fallback = (
-            inferred is None
+            preferred_context is not None
             and isinstance(get_proper_type(lvalue_type), UnionType)
             and binder_version == self.binder.version
         )
@@ -4739,9 +4739,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 not alt_local_errors.has_new_errors()
                 and is_valid_inferred_type(alt_rvalue_type, self.options)
                 and (
-                    # For redefinition fallback we are fine getting not a subtype.
-                    redefinition_fallback
-                    or argument_redefinition_fallback
+                    # For redefinition fallbacks we are fine getting not a subtype.
+                    inferred is not None
                     # Skip Any type, since it is special cased in binder.
                     or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
