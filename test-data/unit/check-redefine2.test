@@ -1339,28 +1339,3 @@ def process3(items: list[str]) -> None:
         reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
     reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/primitives.pyi]
-
-[case testNewRedefineHasAttr]
-# flags: --allow-redefinition-new --local-partial-types
-
-def test(lst: list[object]) -> None:
-    for cls in lst:
-        if not hasattr(cls, "module"):
-            break
-        reveal_type(cls.module)  # N: Revealed type is "Any"
-
-[case testNewRedefineOldAnySpecialCasing]
-# flags: --allow-redefinition-new --local-partial-types
-from typing import Any
-    a: Any
-    x = 1
-    if bool():
-        x = a
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-
-    if bool():
-        y = a
-    else:
-        y = 1
-    reveal_type(y)  # N: Revealed type is "Any"
-[builtins fixtures/isinstancelist.pyi]

@@ -4706,8 +4706,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # There are two cases where we want to try re-inferring r.h.s. in a fallback
         # type context. First case is when redefinitions are allowed, and we got
         # invalid type when using the preferred (empty) type context.
-        redefinition_fallback = inferred is not None and not is_valid_inferred_type(
-            rvalue_type, self.options
+        redefinition_fallback = (
+            inferred is not None
+            and not inferred.is_argument
+            and not is_valid_inferred_type(rvalue_type, self.options)
+        )
+        # For function arguments the preference order is opposite, and we use errors
+        # during type-checking as the fallback trigger.
+        argument_redefinition_fallback = (
+            inferred is not None and inferred.is_argument and local_errors.has_new_errors()
         )
         # Try re-inferring r.h.s. in empty context for union with explicit annotation,
         # and use it results in a narrower type. This helps with various practical
@@ -4719,7 +4726,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         )
 
         # Skip literal types, as they have special logic (for better errors).
-        try_fallback = redefinition_fallback or union_fallback
+        try_fallback = redefinition_fallback or union_fallback or argument_redefinition_fallback
         if try_fallback and not is_literal_type_like(rvalue_type):
             with (
                 self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
@@ -4734,6 +4741,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and (
                     # For redefinition fallback we are fine getting not a subtype.
                     redefinition_fallback
+                    or argument_redefinition_fallback
                     # Skip Any type, since it is special cased in binder.
                     or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
@@ -4782,7 +4790,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
             else:
-                if inferred is not None:
+                # Prefer full type context for function arguments as this reduces
+                # false positives, see issue #19918 for discussion.
+                if inferred is not None and not inferred.is_argument:
                     preferred = None
                     fallback = lvalue_type
                 else:
