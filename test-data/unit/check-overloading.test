@@ -1932,7 +1932,11 @@ def test(x: object) -> object:
 def fn1(c: MyClass[Any]) -> int:
     return 1
 
+def fn_any(c: MyClass[Any]) -> Any:
+    return 1
+
 reveal_type(test(fn1))  # N: Revealed type is "__main__.Result1"
+reveal_type(test(fn_any))  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadWithNestedAnyInTupleCallableDoesNotCauseAmbiguity]
@@ -1968,8 +1972,12 @@ def select2(df: DataFrame[Any]) -> list[Hashable]:
 def select3(_: DataFrame[Any]) -> int:
     return 1
 
+def select_any(_: DataFrame[Any]) -> Any:
+    return 1
+
 reveal_type(DataFrame().loc[select2, "x"])  # N: Revealed type is "__main__.Series"
 reveal_type(DataFrame().loc[select3, "x"])  # N: Revealed type is "builtins.int"
+reveal_type(DataFrame().loc[select_any, "x"])  # N: Revealed type is "Any"
 [builtins fixtures/property.pyi]
 [typing fixtures/typing-full.pyi]
 
