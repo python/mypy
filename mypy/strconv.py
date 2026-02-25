@@ -506,7 +506,17 @@ class StrConv(NodeVisitor[str]):
         items_repr: list[object] = []
         for item in o.items:
             if isinstance(item, tuple):
-                items_repr.append(item[0])  # value expression
+                value_expr, source, conversion, format_spec = item
+                interpolation: list[object] = [
+                    ("Value", [value_expr]),
+                    f"Source({source!r})",
+                    f"Conversion({conversion!r})",
+                ]
+                if format_spec is None:
+                    interpolation.append("FormatSpec(None)")
+                else:
+                    interpolation.append(("FormatSpec", [format_spec]))
+                items_repr.append(("Interpolation", interpolation))
             else:
                 items_repr.append(item)
         return self.dump(items_repr, o)

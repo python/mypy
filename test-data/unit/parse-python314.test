@@ -9,7 +9,37 @@ MypyFile:1(
   ExpressionStmt:2(
     TemplateStrExpr:2(
       StrExpr(Hello )
-      NameExpr(x))))
+      Interpolation(
+        Value(
+          NameExpr(x))
+        Source('x')
+        Conversion(None)
+        FormatSpec(None)))))
+
+[case testTemplateStringWithComplexExpression]
+x = 1
+y = 2
+t'Hello {x + y}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(2))
+  ExpressionStmt:3(
+    TemplateStrExpr:3(
+      StrExpr(Hello )
+      Interpolation(
+        Value(
+          OpExpr:3(
+            +
+            NameExpr(x)
+            NameExpr(y)))
+        Source('x + y')
+        Conversion(None)
+        FormatSpec(None)))))
 
 [case testTemplateStringWithConversion]
 x = 'mypy'
@@ -22,7 +52,12 @@ MypyFile:1(
   ExpressionStmt:2(
     TemplateStrExpr:2(
       StrExpr(Hello )
-      NameExpr(x))))
+      Interpolation(
+        Value(
+          NameExpr(x))
+        Source('x')
+        Conversion('r')
+        FormatSpec(None)))))
 
 [case testTemplateStringWithOnlyFormatSpecifier]
 x = 'mypy'
@@ -35,7 +70,13 @@ MypyFile:1(
   ExpressionStmt:2(
     TemplateStrExpr:2(
       StrExpr(Hello )
-      NameExpr(x))))
+      Interpolation(
+        Value(
+          NameExpr(x))
+        Source('x')
+        Conversion(None)
+        FormatSpec(
+          StrExpr(<30))))))
 
 [case testTemplateStringWithFormatSpecifierAndConversion]
 x = 'mypy'
@@ -48,7 +89,13 @@ MypyFile:1(
   ExpressionStmt:2(
     TemplateStrExpr:2(
       StrExpr(Hello )
-      NameExpr(x))))
+      Interpolation(
+        Value(
+          NameExpr(x))
+        Source('x')
+        Conversion('s')
+        FormatSpec(
+          StrExpr(<30))))))
 
 [case testTemplateStringWithFormatSpecifierExpression]
 x = 'mypy'
@@ -65,4 +112,26 @@ MypyFile:1(
   ExpressionStmt:3(
     TemplateStrExpr:3(
       StrExpr(Hello )
-      NameExpr(x))))
+      Interpolation(
+        Value(
+          NameExpr(x))
+        Source('x')
+        Conversion('s')
+        FormatSpec(
+          CallExpr:3(
+            MemberExpr:3(
+              StrExpr()
+              join)
+            Args(
+              ListExpr:3(
+                StrExpr(<)
+                CallExpr:3(
+                  MemberExpr:3(
+                    StrExpr({:{}})
+                    format)
+                  Args(
+                    OpExpr:3(
+                      +
+                      NameExpr(y)
+                      NameExpr(y))
+                    StrExpr()))))))))))
