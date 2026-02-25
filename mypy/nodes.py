@@ -1292,6 +1292,7 @@ class Var(SymbolNode):
         "has_explicit_value",
         "allow_incompatible_override",
         "invalid_partial_type",
+        "is_argument",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1352,6 +1353,8 @@ class Var(SymbolNode):
         # If True, this means we didn't manage to infer full type and fall back to
         # something like list[Any]. We may decide to not use such types as context.
         self.invalid_partial_type = False
+        # Is it a variable symbol for a function argument?
+        self.is_argument = False
 
     @property
     def name(self) -> str:
@@ -1415,8 +1418,6 @@ class Var(SymbolNode):
         write_flags(
             data,
             [
-                self.is_self,
-                self.is_cls,
                 self.is_initialized_in_class,
                 self.is_staticmethod,
                 self.is_classmethod,
@@ -1454,8 +1455,6 @@ class Var(SymbolNode):
         v.setter_type = setter_type
         v._fullname = read_str(data)
         (
-            v.is_self,
-            v.is_cls,
             v.is_initialized_in_class,
             v.is_staticmethod,
             v.is_classmethod,
@@ -1475,7 +1474,7 @@ class Var(SymbolNode):
             v.from_module_getattr,
             v.has_explicit_value,
             v.allow_incompatible_override,
-        ) = read_flags(data, num_flags=21)
+        ) = read_flags(data, num_flags=19)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))

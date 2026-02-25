@@ -4442,7 +4442,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if (
                 self.options.allow_redefinition_new
                 and isinstance(lvalue.node, Var)
-                and lvalue.node.is_inferred
+                # We allow redefinition for function arguments inside function body.
+                # Although we normally do this for variables without annotation, users
+                # don't have a choice to leave a function argument without annotation.
+                and (lvalue.node.is_inferred or lvalue.node.is_argument)
             ):
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
@@ -4710,8 +4713,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # There are two cases where we want to try re-inferring r.h.s. in a fallback
         # type context. First case is when redefinitions are allowed, and we got
         # invalid type when using the preferred (empty) type context.
-        redefinition_fallback = inferred is not None and not is_valid_inferred_type(
-            rvalue_type, self.options
+        redefinition_fallback = (
+            inferred is not None
+            and not inferred.is_argument
+            and not is_valid_inferred_type(rvalue_type, self.options)
+        )
+        # For function arguments the preference order is opposite, and we use errors
+        # during type-checking as the fallback trigger.
+        argument_redefinition_fallback = (
+            inferred is not None and inferred.is_argument and local_errors.has_new_errors()
         )
         # Try re-inferring r.h.s. in empty context for union with explicit annotation,
         # and use it results in a narrower type. This helps with various practical
@@ -4723,7 +4733,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         )
 
         # Skip literal types, as they have special logic (for better errors).
-        if (redefinition_fallback or union_fallback) and not is_literal_type_like(rvalue_type):
+        try_fallback = redefinition_fallback or union_fallback or argument_redefinition_fallback
+        if try_fallback and not is_literal_type_like(rvalue_type):
             with (
                 self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
                 self.local_type_map as alt_type_map,
@@ -4737,6 +4748,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and (
                     # For redefinition fallback we are fine getting not a subtype.
                     redefinition_fallback
+                    or argument_redefinition_fallback
                     # Skip Any type, since it is special cased in binder.
                     or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
@@ -4773,8 +4785,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
 
             # If redefinitions are allowed (i.e. we have --allow-redefinition-new
-            # and a variable without annotation) then we start with an empty context,
-            # since this gives somewhat more intuitive behavior. The only exception
+            # and a variable without annotation) or if a variable has union type we
+            # try inferring r.h.s. twice with a fallback type context. The only exception
             # is TypedDicts, they are often useless without context.
             try_fallback = (
                 inferred is not None or isinstance(get_proper_type(lvalue_type), UnionType)
@@ -4785,7 +4797,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
             else:
-                if inferred is not None:
+                # Prefer full type context for function arguments as this reduces
+                # false positives, see issue #19918 for discussion.
+                if inferred is not None and not inferred.is_argument:
                     preferred = None
                     fallback = lvalue_type
                 else:
