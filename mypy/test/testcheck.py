@@ -8,6 +8,7 @@ import sys
 import sysconfig
 import tempfile
 from pathlib import Path
+from types import ModuleType
 
 from mypy import build
 from mypy.errors import CompileError
@@ -27,12 +28,13 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
+lxml: ModuleType | None  # lxml is an optional dependency
 try:
     if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         lxml = None
     else:
-        import lxml  # type: ignore[import-untyped]
+        import lxml
 except ImportError:
     lxml = None
 

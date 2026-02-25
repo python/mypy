@@ -3473,11 +3473,10 @@ def module_not_found(
         msg, notes = reason.error_message_templates(daemon)
         if reason == ModuleNotFoundReason.NOT_FOUND:
             code = codes.IMPORT_NOT_FOUND
-        elif (
-            reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-            or reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        ):
+        elif reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
             code = codes.IMPORT_UNTYPED
+        elif reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
+            code = codes.IMPORT_UNTYPED_STUBS_AVAILABLE
         else:
             code = codes.IMPORT
         manager.error(line, msg.format(module=target), code=code)
