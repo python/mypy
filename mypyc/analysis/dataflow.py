@@ -559,8 +559,14 @@ def run_analysis(
             ops = list(reversed(ops))
         for op in ops:
             opgen, opkill = op.accept(gen_and_kill)
-            gen = (gen - opkill) | opgen
-            kill = (kill - opgen) | opkill
+            gen = gen - opkill if opkill else gen
+
+            if opgen:
+                gen = gen | opgen
+                kill = kill - opgen
+
+            kill = kill | opkill if opkill else kill
+
         block_gen[block] = gen
         block_kill[block] = kill
 
