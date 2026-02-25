@@ -389,6 +389,7 @@ class ASTConverter:
         self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
+        self.uses_template_strings = False
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
@@ -876,6 +877,7 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
+        self.uses_template_strings = False
         for ti in mod.type_ignores:
             parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
@@ -888,6 +890,7 @@ class ASTConverter:
         ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
         ret.is_stub = self.is_stub
         ret.path = self.path
+        ret.uses_template_strings = self.uses_template_strings
         return ret
 
     # --- stmt ---
@@ -1688,6 +1691,7 @@ class ASTConverter:
 
     # TemplateStr(expr* values)
     def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
+        self.uses_template_strings = True
         items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
         for value in n.values:
             if isinstance(value, ast_Interpolation):  # type: ignore[misc]
