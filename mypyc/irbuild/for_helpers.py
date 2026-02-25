@@ -579,6 +579,16 @@ def make_for_loop_generator(
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
+
+        elif (
+            expr.callee.fullname == "builtins.filter"
+            and len(expr.args) == 2
+            and all(k == ARG_POS for k in expr.arg_kinds)
+        ):
+            for_filter = ForFilter(builder, index, body_block, loop_exit, line, nested)
+            for_filter.init(index, expr.args[0], expr.args[1])
+            return for_filter
+
     if isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr) and not expr.args:
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
@@ -1267,6 +1277,76 @@ class ForZip(ForGenerator):
     def gen_cleanup(self) -> None:
         for gen in self.gens:
             gen.gen_cleanup()
+
+
+class ForFilter(ForGenerator):
+    """Generate optimized IR for a for loop over filter(f, iterable)."""
+
+    def need_cleanup(self) -> bool:
+        # The wrapped for loops might need cleanup. We might generate a
+        # redundant cleanup block, but that's okay.
+        return True
+
+    def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
+        self.filter_func_def = func
+        if (
+            isinstance(func, NameExpr)
+            and isinstance(func.node, Var)
+            and func.node.fullname == "builtins.None"
+        ):
+            self.filter_func_val = None
+        else:
+            self.filter_func_val = self.builder.accept(func)
+        self.iterable = iterable
+        self.index = index
+
+        self.gen = make_for_loop_generator(
+            self.builder,
+            self.index,
+            self.iterable,
+            self.body_block,
+            self.loop_exit,
+            self.line,
+            is_async=False,
+            nested=True,
+        )
+
+    def gen_condition(self) -> None:
+        self.gen.gen_condition()
+
+    def begin_body(self) -> None:
+        # 1. Assign the next item to the loop variable
+        self.gen.begin_body()
+
+        # 2. Call the filter function
+        builder = self.builder
+        line = self.line
+        item = builder.read(builder.get_assignment_target(self.index), line)
+
+        if self.filter_func_val is None:
+            result = item
+        else:
+            fake_call_expr = CallExpr(self.filter_func_def, [self.index], [ARG_POS], [None])
+
+            # I put this here to prevent a circular import
+            from mypyc.irbuild.expression import transform_call_expr
+
+            result = transform_call_expr(builder, fake_call_expr)
+            # result = builder.accept(fake_call_expr)
+
+        # Now, filter: only enter the body if func(item) is truthy
+        cont_block, rest_block = BasicBlock(), BasicBlock()
+        builder.add_bool_branch(result, rest_block, cont_block)
+        builder.activate_block(cont_block)
+        builder.nonlocal_control[-1].gen_continue(builder, line)
+        builder.goto_and_activate(rest_block)
+        # At this point, the rest of the loop body (user code) will be emitted
+
+    def gen_step(self) -> None:
+        self.gen.gen_step()
+
+    def gen_cleanup(self) -> None:
+        self.gen.gen_cleanup()
 
 
 def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
