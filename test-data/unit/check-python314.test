@@ -35,6 +35,10 @@ precision = 4
 t"result: {value:{width}.{precision}}"
 [builtins fixtures/f_string.pyi]
 
+[case testTemplateStringNestedExpressionsTypeChecked]
+t"{2:{3 + ''}}"  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/f_string.pyi]
+
 [case testIncrementalTemplateStringImplicitDependency]
 import m
 reveal_type(m.x)
