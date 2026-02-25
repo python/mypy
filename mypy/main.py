@@ -97,12 +97,8 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
-    if options.allow_redefinition_new and not options.local_partial_types:
-        fail(
-            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
-            stderr,
-            options,
-        )
+    if options.allow_redefinition_new:
+        options.local_partial_types = True
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -868,7 +864,7 @@ def define_options(
         strict_flag=False,
         help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
         group=strictness_group,
-        dest="allow_redefinition_old",
+        dest="allow_redefinition_new",
     )
 
     add_invertible_flag(

@@ -509,7 +509,7 @@ def parse_section(
         options_key = key
         # Match aliasing for command line flag.
         if key.endswith("allow_redefinition"):
-            options_key += "_old"
+            options_key += "_new"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:
@@ -590,6 +590,8 @@ def parse_section(
         results["disable_error_code"] = []
     if "enable_error_code" not in results:
         results["enable_error_code"] = []
+    if results.get("allow_redefinition_new"):
+        results["local_partial_types"] = True
 
     return results, report_dirs
 
