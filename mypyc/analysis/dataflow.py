@@ -59,6 +59,9 @@ from mypyc.ir.ops import (
 )
 
 
+_EMPTY: tuple[set, set] = (set(), set())
+
+
 class CFG:
     """Control-flow graph.
 
@@ -179,7 +182,7 @@ GenAndKill = tuple[set[T], set[T]]
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_goto(self, op: Goto) -> GenAndKill[T]:
-        return set(), set()
+        return _EMPTY
 
     @abstractmethod
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[T]:
@@ -317,16 +320,16 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
         self.strict_errors = strict_errors
 
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         # Loading an error value may undefine the register.
@@ -337,10 +340,10 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         # Array registers are special and we don't track the definedness of them.
-        return set(), set()
+        return _EMPTY
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_maybe_defined_regs(
@@ -392,27 +395,27 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
         self.args = args
 
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         if op.dest in self.args:
             return set(), {op.dest}
-        return set(), set()
+        return _EMPTY
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_borrowed_arguments(
@@ -435,13 +438,13 @@ def analyze_borrowed_arguments(
 
 class UndefinedVisitor(BaseAnalysisVisitor[Value]):
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         return set(), {op} if not op.is_void else set()
@@ -453,7 +456,7 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
         return set(), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def non_trivial_sources(op: Op) -> set[Value]:
@@ -472,10 +475,10 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         if not isinstance(op.value, (Integer, Float)):
             return {op.value}, set()
         else:
-            return set(), set()
+            return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         gen = non_trivial_sources(op)
@@ -494,10 +497,10 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return non_trivial_sources(op), set()
 
     def visit_inc_ref(self, op: IncRef) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_dec_ref(self, op: DecRef) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
@@ -559,13 +562,15 @@ def run_analysis(
             ops = list(reversed(ops))
         for op in ops:
             opgen, opkill = op.accept(gen_and_kill)
-            gen = gen - opkill if opkill else gen
+            if opkill:
+                gen -= opkill
 
             if opgen:
-                gen = gen | opgen
-                kill = kill - opgen
+                gen |= opgen
+                kill -= opgen
 
-            kill = kill | opkill if opkill else kill
+            if opkill:
+                kill |= opkill
 
         block_gen[block] = gen
         block_kill[block] = kill
