@@ -625,9 +625,9 @@ def run_analysis(
             op_before[label, idx] = cur
             opgen, opkill = op.accept(gen_and_kill)
             if opkill:
-                cur = (cur - opkill)
+                cur = cur - opkill
             if opgen:
-                cur = (cur | opgen)
+                cur = cur | opgen
             op_after[label, idx] = cur
     if backward:
         op_after, op_before = op_before, op_after
