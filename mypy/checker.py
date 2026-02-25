@@ -3427,6 +3427,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.options.allow_redefinition_new
                     and lvalue_type is not None
                     and not isinstance(lvalue_type, PartialType)
+                    and isinstance(lvalue, NameExpr)
+                    and isinstance(lvalue.node, Var)
+                    and lvalue.node.is_inferred
                 ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)

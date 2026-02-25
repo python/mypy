@@ -69,7 +69,7 @@ def f1() -> None:
         x: Union[int, str] = 0
         reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
         x = ""
-    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineUninitializedCodePath3]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1378,3 +1378,20 @@ async def test(x: Optional[str]) -> None:
     if x is None:
         x = await gen("foo")
     reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testNewRedefineNarrowingOnFirstAssignment]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+li: list[int]
+
+def test() -> None:
+    x: list[Any] = li
+    reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+
+    if bool():
+        y: list[Any] = li
+    else:
+        y = li
+    reveal_type(y)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/primitives.pyi]

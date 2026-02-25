@@ -318,7 +318,10 @@ class ConditionalTypeBinder:
             # variable types to be widened using subsequent assignments. This is
             # tricky to support for instance attributes (primarily due to deferrals),
             # so we don't use it for them.
-            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
+            var = extract_var_from_literal_hash(key)
+            old_semantics = (
+                not self.bind_all or var is None or not var.is_inferred and not var.is_argument
+            )
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
