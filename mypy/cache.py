@@ -266,6 +266,8 @@ DICT_STR_GEN: Final[Tag] = 30
 # Misc classes.
 EXTRA_ATTRS: Final[Tag] = 150
 DT_SPEC: Final[Tag] = 151
+# Four integers representing source file (line, column) range.
+LOCATION: Final[Tag] = 152
 
 END_TAG: Final[Tag] = 255
 

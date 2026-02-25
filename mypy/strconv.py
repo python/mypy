@@ -147,6 +147,8 @@ class StrConv(NodeVisitor[str]):
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, f"MaxPos({o.max_pos})")
+        if o.is_coroutine:
+            a.insert(1, "Async")
         if o.abstract_status in (mypy.nodes.IS_ABSTRACT, mypy.nodes.IMPLICITLY_ABSTRACT):
             a.insert(-1, "Abstract")
         if o.is_static:
@@ -183,6 +185,9 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ("TypeVars", o.type_vars))
         if o.metaclass:
             a.insert(1, f"Metaclass({o.metaclass.accept(self)})")
+        if o.keywords:
+            keyword_items = [f"{k}={v.accept(self)}" for k, v in o.keywords.items()]
+            a.insert(1, f"Keywords({', '.join(keyword_items)})")
         if o.decorators:
             a.insert(1, ("Decorators", o.decorators))
         if o.info and o.info._promote:

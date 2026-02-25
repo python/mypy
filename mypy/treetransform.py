@@ -259,12 +259,14 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_class_def(self, node: ClassDef) -> ClassDef:
+        keywords = [(key, self.expr(value)) for key, value in node.keywords.items()]
         new = ClassDef(
             node.name,
             self.block(node.defs),
             node.type_vars,
             self.expressions(node.base_type_exprs),
             self.optional_expr(node.metaclass),
+            keywords,
         )
         new.fullname = node.fullname
         new.info = node.info
