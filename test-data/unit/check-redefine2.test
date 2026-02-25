@@ -762,6 +762,21 @@ def f2() -> None:
             reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
+[case testNewRedefineNoWideningDeferred]
+# flags: --allow-redefinition-new --local-partial-types
+def deferred() -> None:
+    c: C
+    x = 1
+    if int():
+        x = c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
+
 [case testNewRedefineTryStatement]
 # flags: --allow-redefinition-new --local-partial-types
 class E(Exception): pass

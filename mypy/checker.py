@@ -1486,7 +1486,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 ):
                     show_error = False
 
-                if show_error:
+                if show_error and not self.current_node_deferred:
                     may_be_abstract = (
                         body_is_trivial
                         and defn.info is not FUNC_NO_INFO
@@ -1494,9 +1494,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
                     )
                     if self.options.warn_no_return:
-                        if not self.current_node_deferred and not isinstance(
-                            return_type, (NoneType, AnyType)
-                        ):
+                        if not isinstance(return_type, (NoneType, AnyType)):
                             # Control flow fell off the end of a function that was
                             # declared to return a non-None type.
                             if isinstance(return_type, UninhabitedType):
@@ -3154,6 +3152,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.binder.unreachable()
             return
         for s in b.body:
+            # If we export types, we need to continue checking to make sure all
+            # expressions are present in type map (even if most have type Any).
+            if self.current_node_deferred and not self.options.export_types:
+                # With current deferral logic there is no point continuing to
+                # type-check current function, as we will not infer more types,
+                # will not show errors, and each expression is inferred as Any.
+                return
             if self.binder.is_unreachable():
                 if not self.should_report_unreachable_issues():
                     break
@@ -4811,6 +4816,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and inferred is not None
                 and inferred.type is not None
                 and not inferred.is_final
+                and not self.current_node_deferred
             ):
                 new_inferred = remove_instance_last_known_values(rvalue_type)
                 # Should we widen the inferred type or the lvalue? Variables defined
