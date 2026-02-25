@@ -49,7 +49,9 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RInstance
 
-GenAndKill = tuple[set[None], set[None]]
+from mypyc.analysis.dataflow import GenAndKill as _DataflowGenAndKill
+
+GenAndKill = _DataflowGenAndKill[None]
 
 CLEAN: GenAndKill = (set(), set())
 DIRTY: GenAndKill = ({None}, {None})

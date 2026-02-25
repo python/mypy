@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Set as AbstractSet
 from typing import Any, Generic, TypeVar
 
 from mypyc.ir.ops import (
@@ -174,9 +174,9 @@ class AnalysisResult(Generic[T]):
         return f"before: {self.before}\nafter: {self.after}\n"
 
 
-GenAndKill = tuple[set[T], set[T]]
+GenAndKill = tuple[AbstractSet[T], AbstractSet[T]]
 
-_EMPTY: GenAndKill[Any] = (set(), set())
+_EMPTY: tuple[frozenset[Any], frozenset[Any]] = (frozenset(), frozenset())
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
