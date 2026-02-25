@@ -1792,9 +1792,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         arg_types = self.infer_arg_types_in_context(callee, args, arg_kinds, formal_to_actual)
 
-        if not self._detect_missing_positional_arg(
-            callee, arg_types, arg_kinds, args, context
-        ):
+        if not self._detect_missing_positional_arg(callee, arg_types, arg_kinds, args, context):
             self.check_argument_count(
                 callee,
                 arg_types,
@@ -2355,8 +2353,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """Try to identify a single missing positional argument using type alignment.
 
         If the caller and callee are just positional arguments and exactly one arg is missing,
-        we scan left to right to find which argument skipped. If only the last argument is missing, 
-        we return False since it's already handled in a desired manner. If there is an error, 
+        we scan left to right to find which argument skipped. If only the last argument is missing,
+        we return False since it's already handled in a desired manner. If there is an error,
         report it and return True, or return False to fall back to normal checking.
         """
         if not all(k == ARG_POS for k in callee.arg_kinds):
