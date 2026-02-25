@@ -34,3 +34,16 @@ width = 10
 precision = 4
 t"result: {value:{width}.{precision}}"
 [builtins fixtures/f_string.pyi]
+
+[case testIncrementalTemplateStringImplicitDependency]
+import m
+reveal_type(m.x)
+[file m.py]
+x = "foo"
+[file m.py.2]
+x = t"foo"
+[out1]
+main:2: note: Revealed type is "builtins.str"
+[out2]
+main:2: note: Revealed type is "string.templatelib.Template"
+[builtins fixtures/f_string.pyi]
