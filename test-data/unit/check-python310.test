@@ -620,7 +620,45 @@ match m:
         reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
 
--- Mapping patterns currently do not narrow --
+[case testMatchMappingPatternNarrowing]
+from typing import Mapping, Sequence
+
+def f1(x: dict[str, str] | list[str] | str) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f1_rest(x: dict[str, str] | list[str] | str) -> None:
+    match x:
+        case {**rest}:
+            reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2(x: Mapping[str, str] | Sequence[str] | str) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
+    match x:
+        case {**rest}:
+            reveal_type(x)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
 
 -- Class Pattern --
 

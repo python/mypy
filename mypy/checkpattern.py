@@ -508,12 +508,22 @@ class PatternChecker(PatternVisitor[PatternType]):
 
             captures[o.rest] = rest_type
 
+        else_type = current_type
         if can_match:
             # We can't narrow the type here, as Mapping key is invariant.
             new_type = self.type_context[-1]
+            if not o.keys:
+                # Match cannot be refuted, so narrow the remaining type
+                mapping = self.chk.named_type("typing.Mapping")
+                new_type, else_type = self.chk.conditional_types_with_intersection(
+                    current_type,
+                    [TypeRange(mapping, is_upper_bound=False)],
+                    o,
+                    default=current_type,
+                )
         else:
             new_type = UninhabitedType()
-        return PatternType(new_type, current_type, captures)
+        return PatternType(new_type, else_type, captures)
 
     def get_mapping_item_type(
         self, pattern: MappingPattern, mapping_type: Type, key: Expression
