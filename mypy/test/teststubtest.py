@@ -1171,6 +1171,22 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL: Final = 2
+            """,
+            runtime="X_FINAL = 1",
+            error="X_FINAL",
+        )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL_OK: Final = 1
+            """,
+            runtime="X_FINAL_OK = 1",
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
@@ -1706,6 +1722,16 @@ assert annotations
         yield Case(
             stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
             runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
+        yield Case(
+            stub="class E:\n  def __getitem__(self, item: object) -> object: ...",
+            runtime="class E:\n  def __getitem__(self, item: object, /) -> object: ...",
+            error="E.__getitem__",
+        )
+        yield Case(
+            stub="class F:\n  def __getitem__(self, item: object, /) -> object: ...",
+            runtime="class F:\n  def __getitem__(self, item: object) -> object: ...",
             error=None,
         )
 

@@ -3469,7 +3469,7 @@ L4:
     return 1
 
 [case testLocalRedefinition]
-# mypy: allow-redefinition
+# mypy: allow-redefinition-old
 def f() -> None:
     i = 0
     i += 1

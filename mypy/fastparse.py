@@ -463,20 +463,17 @@ class ASTConverter:
             ismodule
             and stmts
             and self.type_ignores
-            and min(self.type_ignores) < self.get_lineno(stmts[0])
+            and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[min(self.type_ignores)]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
                     message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
-                    line=min(self.type_ignores),
+                    line=first,
                     column=0,
                     blocker=False,
                 )
-            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.FILE.code
-            )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
@@ -916,7 +913,7 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-        if special_function_elide_names(n.name):
+        if self.options.pos_only_special_methods and special_function_elide_names(n.name):
             for arg in args:
                 arg.pos_only = True
 
@@ -1148,6 +1145,7 @@ class ASTConverter:
 
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
+        var.is_argument = True
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument

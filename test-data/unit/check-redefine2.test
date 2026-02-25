@@ -562,8 +562,8 @@ def f2() -> None:
 def f3(x) -> None:
     if int():
         x = 0
-        reveal_type(x) # N: Revealed type is "Any"
-    reveal_type(x) # N: Revealed type is "Any"
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "Any | builtins.int"
 
 [case tetNewRedefineDel]
 # flags: --allow-redefinition-new --local-partial-types
@@ -761,6 +761,21 @@ def f2() -> None:
         with D() as x:
             reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineNoWideningDeferred]
+# flags: --allow-redefinition-new --local-partial-types
+def deferred() -> None:
+    c: C
+    x = 1
+    if int():
+        x = c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
 
 [case testNewRedefineTryStatement]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1081,20 +1096,49 @@ def f() -> None:
         x = a()
 
         while int():
-            x = [x]
+            # Use tuple to make revealed type a bit more compact.
+            x = (x,)
 
-    reveal_type(x) # N: Revealed type is "Any | builtins.list[Any]"
+    reveal_type(x) # N: Revealed type is "Any | tuple[Any | tuple[Any | tuple[Any | tuple[Any]]]]"
+[builtins fixtures/tuple.pyi]
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
 def func() -> None:
-    l = None
+    l = None # E: Need type annotation for "l"
 
     if int():
-        l = [] # E: Need type annotation for "l"
+        l = []
         l.append(1)
     reveal_type(l) # N: Revealed type is "None | builtins.list[Any]"
 [builtins fixtures/list.pyi]
+
+[case testNewRedefineLoopProgressiveWidening]
+# flags: --allow-redefinition-new --local-partial-types
+def foo() -> None:
+    while int():
+        if int():
+            x = 1
+        elif isinstance(x, list):
+            x = ""
+        elif isinstance(x, str):
+            x = None
+        else:
+            x = [1]
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int] | builtins.str | None"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNewRedefineAnyOrEmptyUnpackInLoop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def foo() -> None:
+    while int():
+        data: Any
+        x, y = data or ([], [])
+        # Requiring an annotation may be better, but we want to preserve old behaviour.
+        reveal_type(x)  # N: Revealed type is "Any | builtins.list[Never]"
+[builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineNarrowingSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
@@ -1111,6 +1155,35 @@ def f() -> None:
     if x and int():
         reveal_type(x) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testNewRedefinitionPartialTypeInLoopDeferred]
+# flags: --allow-redefinition-new --local-partial-types
+
+def f(self) -> None:
+    x = []
+    for i in [1, 2, 3]:
+        C().x
+        x.append(1)
+    reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testNewRedefineCorrectChangedOnPop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def foo() -> None:
+    name: Optional[str] = None
+    name = None
+    for i in [1, 2, 3]:
+        reveal_type(name)  # N: Revealed type is "None | builtins.str"
+        if bool():
+            name = "a"
 
 [case testNewRedefinePartialTypeForUnderscore]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1197,3 +1270,72 @@ x = 0
 if int():
     x = ""
 reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineSequentialRedefinitionToEmpty]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a",  "b", "c"]
+if bool():
+    items = ["a",  "b", "c"]
+elif bool():
+    items = [item.split() for item in items]
+else:
+    items = []  # OK
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineSequentialRedefinitionToEmpty2]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a", "b", "c"]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+items = [item.split() for item in items]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+items = []
+# This is consistent with old behavior (see below), but we may want to change this.
+reveal_type(items)  # N: Revealed type is "builtins.list[Never]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowFromUnionToEmpyListOld]
+from typing import Union
+x: Union[list[str], list[int]]
+x = []
+reveal_type(x)  # N: Revealed type is "builtins.list[Never]"
+
+[case testNewRedefineRedefineToSubtypeItem]
+# flags: --allow-redefinition-new --local-partial-types
+class Super: ...
+class Sub(Super): ...
+
+if bool():
+    x = [Super(), Super()]
+else:
+    x = [Sub(), Sub()]
+    reveal_type(x[0])  # N: Revealed type is "__main__.Sub"
+
+[case testNewRedefineFunctionArgumentsFullContext]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def process(items: list[Optional[str]]) -> None:
+    if not items:
+        items = [None]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str | None]"
+    process(items)  # OK
+
+[case testNewRedefineFunctionArgumentsEmptyContext]
+# flags: --allow-redefinition-new --local-partial-types
+def process1(items: list[str]) -> None:
+    items = [item.split() for item in items]
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+
+def process2(items: list[str]) -> None:
+    if bool():
+        items = [item.split() for item in items]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+
+def process3(items: list[str]) -> None:
+    if bool():
+        items = []
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/primitives.pyi]

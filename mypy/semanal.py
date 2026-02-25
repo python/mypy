@@ -448,7 +448,7 @@ class SemanticAnalyzer(
     def __init__(
         self,
         modules: dict[str, MypyFile],
-        missing_modules: set[str],
+        missing_modules: dict[str, int],
         incomplete_namespaces: set[str],
         errors: Errors,
         plugin: Plugin,
@@ -6766,6 +6766,7 @@ class SemanticAnalyzer(
         return sym
 
     def is_visible_import(self, base_id: str, id: str) -> bool:
+        # TODO: can we reuse SCC-level tracking from build.py instead?
         if id in self.import_map[self.cur_mod_id]:
             # Fast path: module is imported locally.
             return True

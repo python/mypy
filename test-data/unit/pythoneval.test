@@ -1989,7 +1989,6 @@ a2 = replace()
 a2 = replace(a, x='spam')
 a2 = replace(a, x=42, q=42)
 [out]
-_testDataclassReplace.py:4: note: "replace" of "A" defined here
 _testDataclassReplace.py:9: note: Revealed type is "_testDataclassReplace.A"
 _testDataclassReplace.py:10: error: Too few arguments for "replace"
 _testDataclassReplace.py:11: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
@@ -2223,3 +2222,10 @@ def func(one: Dict[K, V], two: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V
 def caller(arg1: Mapping[K, V], arg2: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V2]]:
     _arg1 = arg1 if isinstance(arg1, dict) else dict(arg1)
     return func(_arg1, arg2)
+
+[case testStrictEqualityWithList]
+# flags: --strict-equality
+def f(x: int, y: list[str]):
+    x in y
+[out]
+_testStrictEqualityWithList.py:3: error: Non-overlapping container check (element type: "int", container item type: "str")
