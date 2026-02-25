@@ -4740,7 +4740,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and is_valid_inferred_type(alt_rvalue_type, self.options)
                 and (
                     # For redefinition fallbacks we are fine getting not a subtype.
-                    inferred is not None
+                    redefinition_fallback
+                    or argument_redefinition_fallback
                     # Skip Any type, since it is special cased in binder.
                     or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
