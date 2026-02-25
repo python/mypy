@@ -324,6 +324,7 @@ class MypyFile(SymbolNode):
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
+        "uses_template_strings",
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
@@ -362,6 +363,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package: bool
+    # True if module contains at least one t-string (PEP 750 TemplateStr).
+    uses_template_strings: bool
     # Plugin-created dependencies
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
@@ -394,6 +397,7 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
 
