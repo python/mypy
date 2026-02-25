@@ -15,7 +15,7 @@ a = t"{'foobar'}"
 [builtins fixtures/f_string.pyi]
 
 [case testTemplateStringWithoutExplicitImport]
-reveal_type(t"implicit import still works")  # N: Revealed type is "string.templatelib.Template"
+reveal_type(t"implicit import works")  # N: Revealed type is "string.templatelib.Template"
 [builtins fixtures/f_string.pyi]
 
 [case testTemplateStringExpressionsOk]
