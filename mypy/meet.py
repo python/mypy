@@ -229,6 +229,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         ):
             return original_declared
         return meet_types(original_declared, original_narrowed)
+    elif (
+        isinstance(declared, CallableType)
+        and isinstance(narrowed, CallableType)
+        and has_type_vars(declared.ret_type)
+    ):
+        return narrowed.copy_modified(
+            ret_type=narrow_declared_type(declared.ret_type, narrowed.ret_type)
+        )
+
     return original_narrowed
 
 

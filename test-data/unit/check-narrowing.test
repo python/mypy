@@ -3912,3 +3912,26 @@ def get_owner(uid: UserId, tid: TeamId):
             reveal_type(INVALID)  # N: Revealed type is "builtins.int"
             return None
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowCallableTypeVarByEquality]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def remove(path: str) -> None: ...
+def unlink(path: str) -> None: ...
+
+def f1(func: Callable[..., T], arg: str) -> T:
+    if func == remove:
+        reveal_type(func)  # N: Revealed type is "def (path: builtins.str) -> T`-1"
+        reveal_type(func(arg))  # N: Revealed type is "T`-1"
+        return func(arg)
+    return func(arg)
+
+def f2(func: Callable[..., T], arg: str) -> T:
+    if func in [unlink, remove]:
+        reveal_type(func)  # N: Revealed type is "def (path: builtins.str) -> T`-1"
+        reveal_type(func(arg))  # N: Revealed type is "T`-1"
+        return func(arg)
+    return func(arg)
+[builtins fixtures/primitives.pyi]
