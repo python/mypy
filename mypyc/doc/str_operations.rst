@@ -38,6 +38,8 @@ Methods
 * ``s1.find(s2: str)``
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
+* ``s.isspace()``
+* ``s.isalnum()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
 * ``s.lstrip(chars: str)``

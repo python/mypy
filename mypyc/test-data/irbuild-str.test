@@ -983,3 +983,14 @@ def is_space(x):
 L0:
     r0 = CPyStr_IsSpace(x)
     return r0
+
+[case testStrIsAlnum]
+def is_alnum(x: str) -> bool:
+    return x.isalnum()
+[out]
+def is_alnum(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAlnum(x)
+    return r0
