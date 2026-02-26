@@ -1393,3 +1393,19 @@ def test(x: Union[str, Int]) -> None:
     y: Union[str, Int]
     y = a
     reveal_type(y)  # N: Revealed type is "builtins.str | Any | builtins.int"
+
+[case testNewRedefineWidenedArgumentDeferral]
+# flags: --allow-redefinition-new --local-partial-types
+def foo(x: int) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    if bool():
+        x = "no"
+    c: C
+    c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
