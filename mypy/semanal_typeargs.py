@@ -122,7 +122,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_union_type(self, t: UnionType) -> None:
         super().visit_union_type(t)
-        t.items = flatten_nested_unions(t.items)
+        t.items = flatten_nested_unions(t.items, handle_recursive=False)
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)
