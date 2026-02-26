@@ -69,7 +69,7 @@ def f1() -> None:
         x: Union[int, str] = 0
         reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
         x = ""
-    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineUninitializedCodePath3]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1270,6 +1270,40 @@ x = 0
 if int():
     x = ""
 reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineNarrowingOnFirstAssignment]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+li: list[int]
+
+def test() -> None:
+    x: list[Any] = li
+    reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+
+    if bool():
+        y: list[Any] = li
+    else:
+        y = li
+    reveal_type(y)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineAnyNoSpecialCasing]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def test() -> None:
+    a: Any
+    x = 1
+    if bool():
+        x = a
+    reveal_type(x)  # N: Revealed type is "builtins.int | Any"
+
+    if bool():
+        y = a
+    else:
+        y = 1
+    reveal_type(y)  # N: Revealed type is "Any | builtins.int"
 
 [case testNewRedefineSequentialRedefinitionToEmpty]
 # flags: --allow-redefinition-new --local-partial-types

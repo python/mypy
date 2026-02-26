@@ -314,11 +314,13 @@ class ConditionalTypeBinder:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
             # Keys can be narrowed using two different semantics. The new semantics
-            # is enabled for plain variables when bind_all is true, and it allows
+            # is enabled for inferred variables when bind_all is true, and it allows
             # variable types to be widened using subsequent assignments. This is
-            # tricky to support for instance attributes (primarily due to deferrals),
-            # so we don't use it for them.
-            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
+            # not allowed for instance attributes and annotated variables.
+            var = extract_var_from_literal_hash(key)
+            old_semantics = (
+                not self.bind_all or var is None or not var.is_inferred and not var.is_argument
+            )
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
