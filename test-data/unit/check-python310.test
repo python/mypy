@@ -344,7 +344,8 @@ match x:
     case [str()]:
         pass
 
-[case testMatchSequencePatternWithInvalidClassPattern]
+[case testMatchSequencePatternWithTypeObject]
+# flags: --strict-equality --warn-unreachable
 class Example:
     __match_args__ = ("value",)
     def __init__(self, value: str) -> None:
@@ -353,10 +354,10 @@ class Example:
 SubClass: type[Example]
 
 match [SubClass("a"), SubClass("b")]:
-    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "type[__main__.Example]"
-        reveal_type(value)  # E: Cannot determine type of "value" \
-                            # N: Revealed type is "Any"
+    case [SubClass(value), *rest]:
+        reveal_type(value)  # N: Revealed type is "builtins.str"
         reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
+
 [builtins fixtures/tuple.pyi]
 
 # Narrowing union-based values via a literal pattern on an indexed/attribute subject
@@ -1256,6 +1257,84 @@ reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[builtins.dict
 reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(z)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict-full.pyi]
+
+[case testMatchClassPatternTypeObject]
+# flags: --strict-equality --warn-unreachable
+class Example:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def f1(subclass: type[Example]) -> None:
+    match subclass("a"):
+        case Example(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # E: Statement is unreachable
+
+def f2(subclass: type[Example]) -> None:
+    match Example("a"):
+        case subclass(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+def f3(subclass: type[Example]) -> None:
+    match subclass("a"):
+        case subclass(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+class Example2:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def f4(T: type[Example | Example2]) -> None:
+    match T("a"):
+        case Example(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example2"
+
+def f5(T: type[Example | Example2]) -> None:
+    match Example("a"):
+        case T(value):  # E: Expected type in class pattern; found "type[__main__.Example] | type[__main__.Example2]"
+            reveal_type(value)  # E: Statement is unreachable
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+def f6(T: type[Example | Example2]) -> None:
+    match T("a"):
+        case T(value):  # E: Expected type in class pattern; found "type[__main__.Example] | type[__main__.Example2]"
+            reveal_type(value)  # E: Statement is unreachable
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example | __main__.Example2"
+
+def f7(m: object, t: type[object]) -> None:
+    match m:
+        case t():
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchClassPatternTypeObjectGeneric]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+T = TypeVar("T")
+
+def print_test(m: object, typ: type[T]) -> T:
+    match m:
+        case typ():
+            reveal_type(m)  # N: Revealed type is "T`-1"
+            return m
+        case str():
+            reveal_type(m)  # N: Revealed type is "builtins.str"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+    raise
 
 [case testMatchNonFinalMatchArgs]
 class A:
