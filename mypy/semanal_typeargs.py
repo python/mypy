@@ -33,8 +33,10 @@ from mypy.types import (
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
+    UnionType,
     UnpackType,
     flatten_nested_tuples,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
     split_with_prefix_and_suffix,
@@ -117,6 +119,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # expand_type() but we can't do this here since it is not a translator visitor,
         # and we need to return an Instance instead of TupleType.
         super().visit_tuple_type(t)
+
+    def visit_union_type(self, t: UnionType) -> None:
+        super().visit_union_type(t)
+        t.items = flatten_nested_unions(t.items)
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)
