@@ -515,12 +515,14 @@ class PatternChecker(PatternVisitor[PatternType]):
             if not o.keys:
                 # Match cannot be refuted, so narrow the remaining type
                 mapping = self.chk.named_type("typing.Mapping")
-                new_type, else_type = self.chk.conditional_types_with_intersection(
+                if_type, else_type = self.chk.conditional_types_with_intersection(
                     current_type,
                     [TypeRange(mapping, is_upper_bound=False)],
                     o,
                     default=current_type,
                 )
+                if not isinstance(current_type, AnyType):
+                    new_type = if_type
         else:
             new_type = UninhabitedType()
         return PatternType(new_type, else_type, captures)

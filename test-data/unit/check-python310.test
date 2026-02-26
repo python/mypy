@@ -660,6 +660,20 @@ def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
             reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 
+[case testMatchMappingPatternNarrowingAny]
+from typing import Any
+
+def f1(x: Any) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "Any"
+
+def f2(x: Any) -> None:
+    match x:
+        case {"x": "y"}:
+            reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+
 -- Class Pattern --
 
 [case testMatchClassPatternCapturePositional]
