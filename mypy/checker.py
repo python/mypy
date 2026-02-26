@@ -32,7 +32,12 @@ from mypy.checkmember import (
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
-from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
+from mypy.erasetype import (
+    erase_type,
+    erase_typevars,
+    remove_instance_last_known_values,
+    shallow_erase_type_for_equality,
+)
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
     ErrorInfo,
@@ -6628,6 +6633,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             narrowable_indices={0},
                         )
 
+                        # TODO: This remove_optional code should no longer be needed. The only
+                        # thing it does is paper over a pre-existing deficiency in equality
+                        # narrowing w.r.t to enums.
                         # We only try and narrow away 'None' for now
                         if (
                             not is_unreachable_map(if_map)
@@ -6775,8 +6783,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
-                    operands[i],
-                    *conditional_types(expr_type, [target], consider_promotion_overlap=True),
+                    operands[i], *conditional_types(expr_type, [target], from_equality=True)
                 )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
@@ -6814,9 +6821,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
                             operands[i],
-                            *conditional_types(
-                                expr_type, [target], consider_promotion_overlap=True
-                            ),
+                            *conditional_types(expr_type, [target], from_equality=True),
                         )
                         all_else_maps.append(else_map)
                 continue
@@ -6855,7 +6860,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i],
                         *conditional_types(
-                            expr_type, [target], default=expr_type, consider_promotion_overlap=True
+                            expr_type, [target], default=expr_type, from_equality=True
                         ),
                     )
                     or_if_maps.append(if_map)
@@ -8359,7 +8364,7 @@ def conditional_types(
     default: None = None,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type | None, Type | None]: ...
 
 
@@ -8370,7 +8375,7 @@ def conditional_types(
     default: Type,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type, Type]: ...
 
 
@@ -8380,7 +8385,7 @@ def conditional_types(
     default: Type | None = None,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -8425,7 +8430,7 @@ def conditional_types(
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
-                consider_promotion_overlap=consider_promotion_overlap,
+                from_equality=from_equality,
             )
             yes_items.append(yes_type)
             no_items.append(no_type)
@@ -8470,17 +8475,23 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(
-        current_type, proposed_type, ignore_promotions=not consider_promotion_overlap
-    ):
-        # Expression is never of any type in proposed_type_ranges
-        return UninhabitedType(), default
-    if consider_promotion_overlap and not is_overlapping_types(
-        current_type, proposed_type, ignore_promotions=True
-    ):
-        # We set consider_promotion_overlap when comparing equality. This is one of the places
-        # at runtime where subtyping with promotion does happen to match runtime semantics
-        return default, default
+
+    if from_equality:
+        # We erase generic args because values with different generic types can compare equal
+        # For instance, cast(list[str], []) and cast(list[int], [])
+        proposed_type = shallow_erase_type_for_equality(proposed_type)
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=False):
+            # Equality narrowing is one of the places at runtime where subtyping with promotion
+            # does happen to match runtime semantics
+            # Expression is never of any type in proposed_type_ranges
+            return UninhabitedType(), default
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+            return default, default
+    else:
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+            # Expression is never of any type in proposed_type_ranges
+            return UninhabitedType(), default
+
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
         [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]
@@ -8726,13 +8737,7 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.bytearray",
-    "builtins.memoryview",
-    "builtins.list",
-    "builtins.dict",
-    "builtins.set",
-}
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {"builtins.bytearray", "builtins.memoryview"}
 
 
 def has_custom_eq_checks(t: Type) -> bool:
