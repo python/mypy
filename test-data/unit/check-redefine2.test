@@ -1321,6 +1321,30 @@ def process(items: list[Optional[str]]) -> None:
         reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str | None]"
     process(items)  # OK
 
+[case testNewRedefineUnionArgumentFallbackUnion]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Union, Optional, TypeVar, Sequence
+
+T = TypeVar("T")
+def gen(x: T) -> Union[str, T]: ...
+
+def test(x: Optional[str]) -> None:
+    if x is None:
+        x = gen("foo")
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testNewRedefineUnionArgumentFallbackAsync]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional, TypeVar
+
+T = TypeVar("T")
+async def gen(x: T) -> T: ...
+
+async def test(x: Optional[str]) -> None:
+    if x is None:
+        x = await gen("foo")
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
 [case testNewRedefineFunctionArgumentsEmptyContext]
 # flags: --allow-redefinition-new --local-partial-types
 def process1(items: list[str]) -> None:
