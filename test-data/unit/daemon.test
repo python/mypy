@@ -316,7 +316,7 @@ $ {python} -c "print('x=1')" >foo.py
 $ {python} -c "print('x=1')" >bar.py
 $ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.11 -- foo.py bar.py
 Success: no issues found in 2 source files
-$ {python} -c "import shutil; shutil.copy('.mypy_cache/3.11/bar.meta.json', 'asdf.json')"
+$ {python} -c "import shutil; shutil.copy('.mypy_cache/3.11/bar.meta.ff', 'asdf.ff')"
 -- update bar's timestamp but don't change the file
 $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('x=1')" >bar.py
@@ -328,7 +328,7 @@ Daemon is up and running
 $ dmypy stop
 Daemon stopped
 -- copy the original bar cache file back so that the mtime mismatches
-$ {python} -c "import shutil; shutil.copy('asdf.json', '.mypy_cache/3.11/bar.meta.json')"
+$ {python} -c "import shutil; shutil.copy('asdf.ff', '.mypy_cache/3.11/bar.meta.ff')"
 -- sleep guarantees timestamp changes
 $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('lol')" >foo.py
@@ -341,7 +341,7 @@ Found 1 error in 1 file (checked 2 source files)
 $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 -- make sure the meta file didn't get updated. we use this as an imperfect proxy for
 -- whether the source file got rehashed, which we don't want it to have been.
-$ {python} -c "x = open('.mypy_cache/3.11/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
+$ {python} -c "x = open('.mypy_cache/3.11/bar.meta.ff', 'rb').read(); y = open('asdf.ff', 'rb').read(); assert x == y"
 
 [case testDaemonSuggest]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary

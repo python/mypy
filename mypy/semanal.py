@@ -166,6 +166,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -448,7 +449,7 @@ class SemanticAnalyzer(
     def __init__(
         self,
         modules: dict[str, MypyFile],
-        missing_modules: set[str],
+        missing_modules: dict[str, int],
         incomplete_namespaces: set[str],
         errors: Errors,
         plugin: Plugin,
@@ -5850,6 +5851,15 @@ class SemanticAnalyzer(
                 key.accept(self)
             value.accept(self)
 
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> None:
+        for item in expr.items:
+            if isinstance(item, tuple):
+                item[0].accept(self)
+                if item[3] is not None:
+                    item[3].accept(self)
+            else:
+                item.accept(self)
+
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
             self.fail("can't use starred expression here", expr, blocker=True)
@@ -6766,6 +6776,7 @@ class SemanticAnalyzer(
         return sym
 
     def is_visible_import(self, base_id: str, id: str) -> bool:
+        # TODO: can we reuse SCC-level tracking from build.py instead?
         if id in self.import_map[self.cur_mod_id]:
             # Fast path: module is imported locally.
             return True

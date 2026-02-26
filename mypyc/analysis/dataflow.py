@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterable, Iterator
-from typing import Generic, TypeVar
+from collections.abc import Iterable, Iterator, Set as AbstractSet
+from typing import Any, Generic, TypeVar
 
 from mypyc.ir.ops import (
     Assign,
@@ -174,12 +174,14 @@ class AnalysisResult(Generic[T]):
         return f"before: {self.before}\nafter: {self.after}\n"
 
 
-GenAndKill = tuple[set[T], set[T]]
+GenAndKill = tuple[AbstractSet[T], AbstractSet[T]]
+
+_EMPTY: tuple[frozenset[Any], frozenset[Any]] = (frozenset(), frozenset())
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_goto(self, op: Goto) -> GenAndKill[T]:
-        return set(), set()
+        return _EMPTY
 
     @abstractmethod
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[T]:
@@ -196,6 +198,12 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     @abstractmethod
     def visit_set_mem(self, op: SetMem) -> GenAndKill[T]:
         raise NotImplementedError
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
 
     def visit_call(self, op: Call) -> GenAndKill[T]:
         return self.visit_register_op(op)
@@ -311,16 +319,16 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
         self.strict_errors = strict_errors
 
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         # Loading an error value may undefine the register.
@@ -331,10 +339,10 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         # Array registers are special and we don't track the definedness of them.
-        return set(), set()
+        return _EMPTY
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_maybe_defined_regs(
@@ -386,27 +394,27 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
         self.args = args
 
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         if op.dest in self.args:
             return set(), {op.dest}
-        return set(), set()
+        return _EMPTY
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_borrowed_arguments(
@@ -429,13 +437,13 @@ def analyze_borrowed_arguments(
 
 class UndefinedVisitor(BaseAnalysisVisitor[Value]):
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         return set(), {op} if not op.is_void else set()
@@ -447,7 +455,7 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
         return set(), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def non_trivial_sources(op: Op) -> set[Value]:
@@ -466,10 +474,10 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         if not isinstance(op.value, (Integer, Float)):
             return {op.value}, set()
         else:
-            return set(), set()
+            return _EMPTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         gen = non_trivial_sources(op)
@@ -488,10 +496,10 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return non_trivial_sources(op), set()
 
     def visit_inc_ref(self, op: IncRef) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
     def visit_dec_ref(self, op: DecRef) -> GenAndKill[Value]:
-        return set(), set()
+        return _EMPTY
 
 
 def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
@@ -553,8 +561,16 @@ def run_analysis(
             ops = list(reversed(ops))
         for op in ops:
             opgen, opkill = op.accept(gen_and_kill)
-            gen = (gen - opkill) | opgen
-            kill = (kill - opgen) | opkill
+            if opkill:
+                gen -= opkill
+
+            if opgen:
+                gen |= opgen
+                kill -= opgen
+
+            if opkill:
+                kill |= opkill
+
         block_gen[block] = gen
         block_kill[block] = kill
 
@@ -618,7 +634,10 @@ def run_analysis(
         for idx, op in ops_enum:
             op_before[label, idx] = cur
             opgen, opkill = op.accept(gen_and_kill)
-            cur = (cur - opkill) | opgen
+            if opkill:
+                cur = cur - opkill
+            if opgen:
+                cur = cur | opgen
             op_after[label, idx] = cur
     if backward:
         op_after, op_before = op_before, op_after

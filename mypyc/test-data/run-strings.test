@@ -1257,3 +1257,15 @@ FMT: Final = "{} {}"
 
 def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+
+[case testIsSpace]
+from typing import Any
+
+def test_isspace() -> None:
+    # Verify correctness across all Unicode codepoints.
+    # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
+    # Any forces generic dispatch so we compare our primitive against stdlib's
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isspace() == a.isspace()

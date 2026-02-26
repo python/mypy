@@ -130,7 +130,7 @@ main:4: error: Boolean literal expected as the "rename" argument to namedtuple()
 main:5: error: Boolean literal expected as the "rename" argument to namedtuple()
 main:5: error: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
 main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
-<ROOT>/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
+main:6: note: "namedtuple" defined in "collections"
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]

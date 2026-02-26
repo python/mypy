@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TempNode, TypeAlias, Var
+from mypy.nodes import ARG_POS, Expression, NameExpr, TempNode, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -232,11 +232,12 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def visit_sequence_pattern(self, o: SequencePattern) -> PatternType:
         #
-        # check for existence of a starred pattern
+        # Step 1. Check for existence of a starred pattern
         #
         current_type = get_proper_type(self.type_context[-1])
         if not self.can_match_sequence(current_type):
             return self.early_non_match()
+
         star_positions = [i for i, p in enumerate(o.patterns) if isinstance(p, StarredPattern)]
         star_position: int | None = None
         if len(star_positions) == 1:
@@ -248,11 +249,51 @@ class PatternChecker(PatternVisitor[PatternType]):
             required_patterns -= 1
 
         #
-        # get inner types of original type
+        # Step 2. If we have a union, recurse and return the combined result
+        #
+        if isinstance(current_type, UnionType):
+            match_types: list[Type] = []
+            rest_types: list[Type] = []
+            captures_list: dict[Expression, list[Type]] = {}
+
+            if star_position is not None:
+                star_pattern = o.patterns[star_position]
+                assert isinstance(star_pattern, StarredPattern)
+                star_expr = star_pattern.capture
+            else:
+                star_expr = None
+
+            for t in current_type.items:
+                match_type, rest_type, captures = self.accept(o, t)
+                match_types.append(match_type)
+                rest_types.append(rest_type)
+                if not is_uninhabited(match_type):
+                    for expr, typ in captures.items():
+                        p_typ = get_proper_type(typ)
+                        if expr not in captures_list:
+                            captures_list[expr] = []
+                        # Avoid adding in a list[Never] for empty list captures
+                        if (
+                            expr == star_expr
+                            and isinstance(p_typ, Instance)
+                            and p_typ.type.fullname == "builtins.list"
+                            and is_uninhabited(p_typ.args[0])
+                        ):
+                            continue
+                        captures_list[expr].append(typ)
+
+            return PatternType(
+                make_simplified_union(match_types),
+                make_simplified_union(rest_types),
+                {expr: make_simplified_union(types) for expr, types in captures_list.items()},
+            )
+
+        #
+        # Step 3. Get inner types of original type
         #
         unpack_index = None
         if isinstance(current_type, TupleType):
-            inner_types = current_type.items
+            inner_types: list[Type] = current_type.items
             unpack_index = find_unpack_in_list(inner_types)
             if unpack_index is None:
                 size_diff = len(inner_types) - required_patterns
@@ -273,18 +314,22 @@ class PatternChecker(PatternVisitor[PatternType]):
                 current_type = current_type.copy_modified(items=normalized_inner_types)
                 if len(inner_types) - 1 > required_patterns and star_position is None:
                     return self.early_non_match()
+        elif isinstance(current_type, AnyType):
+            inner_type = AnyType(TypeOfAny.from_another_any, current_type)
+            inner_types = [inner_type] * len(o.patterns)
+        elif isinstance(current_type, Instance) and self.chk.type_is_iterable(current_type):
+            inner_type = self.chk.iterable_item_type(current_type, o)
+            inner_types = [inner_type] * len(o.patterns)
         else:
-            inner_type = self.get_sequence_type(current_type, o)
-            if inner_type is None:
-                inner_type = self.chk.named_type("builtins.object")
+            inner_type = self.chk.named_type("builtins.object")
             inner_types = [inner_type] * len(o.patterns)
 
         #
-        # match inner patterns
+        # Step 4. Match inner patterns
         #
         contracted_new_inner_types: list[Type] = []
         contracted_rest_inner_types: list[Type] = []
-        captures: dict[Expression, Type] = {}
+        captures = {}  # dict[Expression, Type]
 
         contracted_inner_types = self.contract_starred_pattern_types(
             inner_types, star_position, required_patterns
@@ -304,10 +349,10 @@ class PatternChecker(PatternVisitor[PatternType]):
         )
 
         #
-        # Calculate new type
+        # Step 5. Calculate new type
         #
         new_type: Type
-        rest_type: Type = current_type
+        rest_type = current_type
         if isinstance(current_type, TupleType) and unpack_index is None:
             narrowed_inner_types = []
             inner_rest_types = []
@@ -349,31 +394,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
-            if isinstance(current_type, TypeVarType):
-                new_bound = self.narrow_sequence_child(current_type.upper_bound, new_inner_type, o)
-                new_type = current_type.copy_modified(upper_bound=new_bound)
-            else:
-                new_type = self.narrow_sequence_child(current_type, new_inner_type, o)
+            new_type = self.construct_sequence_child(current_type, new_inner_type)
+            new_type, possible_rest_type = self.chk.conditional_types_with_intersection(
+                current_type, [get_type_range(new_type)], o, default=current_type
+            )
+            if star_position is not None and len(o.patterns) == 1:
+                # Match cannot be refuted, so narrow the remaining type
+                rest_type = possible_rest_type
+
         return PatternType(new_type, rest_type, captures)
-
-    def get_sequence_type(self, t: Type, context: Context) -> Type | None:
-        t = get_proper_type(t)
-        if isinstance(t, AnyType):
-            return AnyType(TypeOfAny.from_another_any, t)
-        if isinstance(t, UnionType):
-            items = [self.get_sequence_type(item, context) for item in t.items]
-            not_none_items = [item for item in items if item is not None]
-            if not_none_items:
-                return make_simplified_union(not_none_items)
-            else:
-                return None
-
-        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
-            if isinstance(t, TupleType):
-                t = tuple_fallback(t)
-            return self.chk.iterable_item_type(t, context)
-        else:
-            return None
 
     def contract_starred_pattern_types(
         self, types: list[Type], star_pos: int | None, num_patterns: int
@@ -451,16 +480,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types += types[star_pos + 1 :]
 
         return new_types
-
-    def narrow_sequence_child(self, outer_type: Type, inner_type: Type, ctx: Context) -> Type:
-        new_type = self.construct_sequence_child(outer_type, inner_type)
-        if is_subtype(new_type, outer_type):
-            new_type, _ = self.chk.conditional_types_with_intersection(
-                outer_type, [get_type_range(new_type)], ctx, default=outer_type
-            )
-        else:
-            new_type = outer_type
-        return new_type
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures: dict[Expression, Type] = {}
@@ -770,6 +789,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
+        if isinstance(proper_type, TypeVarType):
+            new_bound = self.construct_sequence_child(proper_type.upper_bound, inner_type)
+            return proper_type.copy_modified(upper_bound=new_bound)
         if isinstance(proper_type, AnyType):
             return outer_type
         if isinstance(proper_type, UnionType):

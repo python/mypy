@@ -78,6 +78,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -388,6 +389,7 @@ class ASTConverter:
         self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
+        self.uses_template_strings = False
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
@@ -463,20 +465,17 @@ class ASTConverter:
             ismodule
             and stmts
             and self.type_ignores
-            and min(self.type_ignores) < self.get_lineno(stmts[0])
+            and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[min(self.type_ignores)]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
                     message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
-                    line=min(self.type_ignores),
+                    line=first,
                     column=0,
                     blocker=False,
                 )
-            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.FILE.code
-            )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
@@ -878,6 +877,7 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
+        self.uses_template_strings = False
         for ti in mod.type_ignores:
             parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
@@ -890,6 +890,7 @@ class ASTConverter:
         ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
         ret.is_stub = self.is_stub
         ret.path = self.path
+        ret.uses_template_strings = self.uses_template_strings
         return ret
 
     # --- stmt ---
@@ -916,7 +917,7 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-        if special_function_elide_names(n.name):
+        if self.options.pos_only_special_methods and special_function_elide_names(n.name):
             for arg in args:
                 arg.pos_only = True
 
@@ -1001,21 +1002,21 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEPARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
@@ -1148,6 +1149,7 @@ class ASTConverter:
 
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
+        var.is_argument = True
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument
@@ -1688,19 +1690,22 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # TemplateStr(expr* values)
-    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
-        self.fail(
-            ErrorMessage("PEP 750 template strings are not yet supported"),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        e = TempNode(AnyType(TypeOfAny.from_error))
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
+        self.uses_template_strings = True
+        items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
+        for value in n.values:
+            if isinstance(value, ast_Interpolation):  # type: ignore[misc]
+                val_expr = self.visit(value.value)
+                val_expr.set_line(value.lineno, value.col_offset)
+                conversion = None if value.conversion < 0 else chr(value.conversion)
+                format_spec = (
+                    self.visit(value.format_spec) if value.format_spec is not None else None
+                )
+                items.append((val_expr, value.str, conversion, format_spec))
+            else:
+                items.append(self.visit(value))
+        e = TemplateStrExpr(items)
         return self.set_line(e, n)
-
-    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
-    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
-        assert False, "Unreachable"
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:

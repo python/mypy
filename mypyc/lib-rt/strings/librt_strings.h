@@ -13,6 +13,7 @@ import_librt_strings(void)
 #else  // MYPYC_EXPERIMENTAL
 
 #include <Python.h>
+#include "librt_strings_common.h"
 
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility
@@ -29,17 +30,6 @@ import_librt_strings(void)
 #define LIBRT_STRINGS_API_LEN 14
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
-
-// Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 256
-
-typedef struct {
-    PyObject_HEAD
-    char *buf;  // Beginning of the buffer
-    Py_ssize_t len;  // Current length (number of bytes written)
-    Py_ssize_t capacity;  // Total capacity of the buffer
-    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
-} BytesWriterObject;
 
 typedef struct {
     PyObject_HEAD

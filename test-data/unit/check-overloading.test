@@ -4347,7 +4347,7 @@ class Wrapper2:
     @staticmethod
     def foo(x: int) -> int: ...
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
     @staticmethod
     def foo(x): pass
 
@@ -4358,7 +4358,7 @@ class Wrapper3:
     @overload
     @staticmethod
     def foo(x: str) -> str: ...
-    def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: Union[int, str]): pass  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 [builtins fixtures/staticmethod.pyi]
 
 [case testOverloadWithSwappedDecorators2]
@@ -4394,7 +4394,7 @@ class Wrapper3:
     def foo(x: int) -> int: ...
 
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @staticmethod
     def foo(x): pass

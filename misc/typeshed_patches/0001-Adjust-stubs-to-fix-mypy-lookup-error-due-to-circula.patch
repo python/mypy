@@ -1,0 +1,37 @@
+From 5c922a2484f2e18c7f901e62bb499b6414cf1090 Mon Sep 17 00:00:00 2001
+From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
+Date: Wed, 18 Feb 2026 13:11:02 +0100
+Subject: [PATCH] Adjust stubs to fix mypy lookup error due to circular
+ dependencies in stubs
+
+---
+ mypy/typeshed/stdlib/time.pyi | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/mypy/typeshed/stdlib/time.pyi b/mypy/typeshed/stdlib/time.pyi
+index 64a009318..d0853792b 100644
+--- a/mypy/typeshed/stdlib/time.pyi
++++ b/mypy/typeshed/stdlib/time.pyi
+@@ -1,16 +1,16 @@
+ import sys
+ from _typeshed import structseq
+-from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, final, type_check_only
++from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, Union, final, type_check_only
+ from typing_extensions import TypeAlias
+ 
+ _TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
+ 
+ if sys.version_info >= (3, 15):
+     # anticipate on https://github.com/python/cpython/pull/139224
+-    _SupportsFloatOrIndex: TypeAlias = SupportsFloat | SupportsIndex
++    _SupportsFloatOrIndex: TypeAlias = Union[SupportsFloat, SupportsIndex]
+ else:
+     # before, time functions only accept (subclass of) float, *not* SupportsFloat
+-    _SupportsFloatOrIndex: TypeAlias = float | SupportsIndex
++    _SupportsFloatOrIndex: TypeAlias = Union[float, SupportsIndex]
+ 
+ altzone: int
+ daylight: int
+-- 
+2.53.0
+
