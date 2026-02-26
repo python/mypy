@@ -1339,3 +1339,19 @@ def process3(items: list[str]) -> None:
         reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
     reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/primitives.pyi]
+
+[case testNewRedefineWidenedArgumentDeferral]
+# flags: --allow-redefinition-new --local-partial-types
+def foo(x: int) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    if bool():
+        x = "no"
+    c: C
+    c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
