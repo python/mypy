@@ -6805,7 +6805,9 @@ def _any_affects_overload_matching(arg_type: ProperType, formals: list[Type]) ->
 
     if isinstance(arg_type, Instance):
         if not all(
-            isinstance(f, Instance) and f.type == arg_type.type and len(f.args) == len(arg_type.args)
+            isinstance(f, Instance)
+            and f.type == arg_type.type
+            and len(f.args) == len(arg_type.args)
             for f in proper_formals
         ):
             return not all_same_types(formals)
