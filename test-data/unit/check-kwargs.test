@@ -587,11 +587,44 @@ main:41: error: Argument 1 to "foo" has incompatible type "**dict[str, str]"; ex
 [builtins fixtures/dict.pyi]
 
 [case testLiteralKwargs]
-from typing import Any, Literal
-kw: dict[Literal["a", "b"], Any]
-def func(a, b): ...
-func(**kw)
+from typing import Literal, Mapping, Iterable, Union
+def func(a: int, b: int) -> None: ...
 
-badkw: dict[Literal["one", 1], Any]
-func(**badkw)  # E: Argument after ** must have string keys
+class GOOD_KW:
+    def keys(self) -> Iterable[Literal["a", "b"]]: ...
+    def __getitem__(self, key: str) -> int: ...
+
+class BAD_KW:
+    def keys(self) -> Iterable[Literal["one", 1]]: ...
+    def __getitem__(self, key: str) -> int: ...
+
+def test(
+    good_kw: GOOD_KW,
+    bad_kw: BAD_KW,
+    good_dict: dict[Literal["a", "b"], int],
+    bad_dict: dict[Literal["one", 1], int],
+    good_mapping: Mapping[Literal["a", "b"], int],
+    bad_mapping: Mapping[Literal["one", 1], int],
+) -> None:
+    func(**good_kw)
+    func(**bad_kw)  # E: Argument after ** must have string keys
+    func(**good_dict)
+    func(**bad_dict)  # E: Argument after ** must have string keys
+    func(**good_mapping)
+    func(**bad_mapping)  # E: Argument after ** must have string keys
+
+def test_union(
+    good_kw: Union[GOOD_KW, dict[str, int]],
+    bad_kw: Union[BAD_KW, dict[str, int]],
+    good_dict: Union[dict[Literal["a", "b"], int], dict[str, int]],
+    bad_dict: Union[dict[Literal["one", 1], int], dict[str, int]],
+    good_mapping: Union[Mapping[Literal["a", "b"], int], dict[str, int]],
+    bad_mapping: Union[Mapping[Literal["one", 1], int], dict[str, int]],
+) -> None:
+    func(**good_kw)
+    func(**bad_kw)  # E: Argument after ** must have string keys
+    func(**good_dict)
+    func(**bad_dict)  # E: Argument after ** must have string keys
+    func(**good_mapping)
+    func(**bad_mapping)  # E: Argument after ** must have string keys
 [builtins fixtures/dict.pyi]
