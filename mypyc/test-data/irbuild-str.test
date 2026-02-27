@@ -994,3 +994,14 @@ def is_alnum(x):
 L0:
     r0 = CPyStr_IsAlnum(x)
     return r0
+
+[case testStrIsDigit]
+def is_digit(x: str) -> bool:
+    return x.isdigit()
+[out]
+def is_digit(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsDigit(x)
+    return r0

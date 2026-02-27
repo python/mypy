@@ -413,6 +413,14 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+method_op(
+    name="isdigit",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsDigit",
+    error_kind=ERR_NEVER,
+)
+
 
 # obj.decode()
 method_op(
