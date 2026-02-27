@@ -864,6 +864,13 @@ section of the command line docs.
    Include ``None`` in strict equality checks (requires :confval:`strict_equality`
    to be activated).
 
+.. confval:: strict_overload_subtyping
+
+   :type: boolean
+   :default: False
+
+   Require subtype overload order to match supertype overload order.
+
 .. confval:: strict_bytes
 
    :type: boolean

@@ -914,6 +914,14 @@ def define_options(
     )
 
     add_invertible_flag(
+        "--strict-overload-subtyping",
+        default=False,
+        strict_flag=False,
+        help="Require subtype overload order to match supertype overload order.",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
         "--strict-bytes",
         default=False,
         strict_flag=True,
