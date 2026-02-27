@@ -1065,6 +1065,92 @@ def f(x: Custom, y: CustomSub):
         reveal_type(y)  # N: Revealed type is "__main__.CustomSub"
 [builtins fixtures/tuple.pyi]
 
+[case testNarrowingCustomEqualityGeneric]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Union
+
+class Custom:
+    def __eq__(self, other: object) -> bool:
+        raise
+
+class Default: ...
+
+def f1(x: list[Custom] | Default, y: list[int]):
+    if x == y:  # E: Non-overlapping equality check (left operand type: "list[Custom] | Default", right operand type: "list[int]")
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom]"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom] | __main__.Default"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
+
+f1([], [])
+
+def f2(x: list[Custom] | Default, y: list[int] | list[Default]):
+    if x == y:  # E: Non-overlapping equality check (left operand type: "list[Custom] | Default", right operand type: "list[int] | list[Default]")
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom]"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[__main__.Default]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom] | __main__.Default"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[__main__.Default]"
+
+listcustom_or_default = Union[list[Custom], Default]
+listint_or_default = Union[list[int], list[Default]]
+
+def f2_with_alias(x: listcustom_or_default, y: listint_or_default):
+    if x == y:  # E: Non-overlapping equality check (left operand type: "list[Custom] | Default", right operand type: "list[int] | list[Default]")
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom]"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[__main__.Default]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.Custom] | __main__.Default"
+        reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[__main__.Default]"
+
+def f3(x: Custom | dict[str, str], y: dict[int, int]):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.dict[builtins.str, builtins.str]"
+        reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.Custom | builtins.dict[builtins.str, builtins.str]"
+        reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingRecursiveCallable]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Callable
+
+class A: ...
+class B: ...
+
+T = Callable[[A], "S"]
+S = Callable[[B], "T"]
+
+def f(x: S, y: T):
+    if x == y:  # E: Unsupported left operand type for == ("Callable[[B], T]")
+        reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
+        reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
+    else:
+        reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
+        reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingRecursiveUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Union
+
+class A: ...
+class B: ...
+
+T = Union[A, "S"]
+S = Union[B, "T"]  # E: Invalid recursive alias: a union item of itself
+
+def f(x: S, y: T):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "Any"
+        reveal_type(y)  # N: Revealed type is "__main__.A | Any"
+[builtins fixtures/tuple.pyi]
+
 [case testNarrowingUnreachableCases]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, Union
@@ -3726,4 +3812,127 @@ def main(
     if v_all == v_memoryview:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeVsSubclass]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType
+
+M1 = NewType("M1", int)
+M2 = NewType("M2", int)
+
+def check_m(base: int, m1: M1, m2: M2):
+    if m1 == m2:  # E: Non-overlapping equality check (left operand type: "M1", right operand type: "M2")
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(m2)  # N: Revealed type is "__main__.M2"
+
+    if m1 == base:
+        # We do not narrow base
+        reveal_type(m1)  # N: Revealed type is "__main__.M1"
+        reveal_type(base)  # N: Revealed type is "builtins.int"
+        if m2 == base:
+            reveal_type(m2)  # N: Revealed type is "__main__.M2"
+            reveal_type(base)  # N: Revealed type is "builtins.int"
+
+# We do narrow for subclasses! (assuming no custom equality)
+class A: ...
+class A1(A): ...
+class A2(A): ...
+
+def check_a(base: A, a1: A1, a2: A2):
+    if a1 == a2:  # E: Non-overlapping equality check (left operand type: "A1", right operand type: "A2")
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(a2)  # N: Revealed type is "__main__.A2"
+
+    if a1 == base:
+        # We do narrow base
+        reveal_type(a1)  # N: Revealed type is "__main__.A1"
+        reveal_type(base)  # N: Revealed type is "__main__.A1"
+        if a2 == base:  # E: Non-overlapping equality check (left operand type: "A2", right operand type: "A1")
+            reveal_type(a2)  # N: Revealed type is "__main__.A2"
+            reveal_type(base)  # N: Revealed type is "__main__.A1"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeFromObject]
+# mypy: strict-equality, warn-unreachable
+from __future__ import annotations
+from typing import NewType
+
+UserId = NewType("UserId", int)
+
+def f1(whatever: object, uid: UserId):
+    # The general principle is that we should not be able to produce a value of NewType
+    # without there being explicit wrapping somewhere
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+
+class Other: ...
+
+def f2(whatever: object, uid: UserId | Other):
+    if whatever == uid:
+        reveal_type(whatever)  # N: Revealed type is "builtins.int | __main__.Other"
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId | __main__.Other"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeNested]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+Path = NewType("Path", str)
+NormPath = NewType("NormPath", Path)
+
+def op(normpath: NormPath, path: Path):
+    if normpath == path:
+        # No narrowing
+        reveal_type(normpath)  # N: Revealed type is "__main__.NormPath"
+        reveal_type(path)  # N: Revealed type is "__main__.Path"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNewTypeSharedValue]
+# mypy: strict-equality, warn-unreachable
+from typing import NewType, Final
+
+UserId = NewType("UserId", int)
+TeamId = NewType("TeamId", int)
+INVALID = 123
+
+def get_owner(uid: UserId, tid: TeamId):
+    # No narrowing for INVALID
+    if uid == INVALID:
+        reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+        reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+        reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+        if tid == INVALID:
+            reveal_type(uid)  # N: Revealed type is "__main__.UserId"
+            reveal_type(tid)  # N: Revealed type is "__main__.TeamId"
+            reveal_type(INVALID)  # N: Revealed type is "builtins.int"
+            return None
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowCallableTypeVarByEquality]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def remove(path: str) -> None: ...
+def unlink(path: str) -> None: ...
+
+def f1(func: Callable[..., T], arg: str) -> T:
+    if func == remove:
+        reveal_type(func)  # N: Revealed type is "def (path: builtins.str) -> T`-1"
+        reveal_type(func(arg))  # N: Revealed type is "T`-1"
+        return func(arg)
+    return func(arg)
+
+def f2(func: Callable[..., T], arg: str) -> T:
+    if func in [unlink, remove]:
+        reveal_type(func)  # N: Revealed type is "def (path: builtins.str) -> T`-1"
+        reveal_type(func(arg))  # N: Revealed type is "T`-1"
+        return func(arg)
+    return func(arg)
 [builtins fixtures/primitives.pyi]

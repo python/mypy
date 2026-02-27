@@ -23,12 +23,7 @@ if platform.python_implementation() == "PyPy":
     sys.exit(2)
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import (
-    get_config_module_names,
-    parse_config_file,
-    parse_version,
-    validate_package_allow_list,
-)
+from mypy.config_parser import parse_config_file, parse_version, validate_package_allow_list
 from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
@@ -221,26 +216,6 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
-    if (
-        options.warn_unused_configs
-        and options.unused_configs
-        and not options.incremental
-        and not options.non_interactive
-    ):
-        print(
-            "Warning: unused section(s) in {}: {}".format(
-                options.config_file,
-                get_config_module_names(
-                    options.config_file,
-                    [
-                        glob
-                        for glob in options.per_module_options.keys()
-                        if glob in options.unused_configs
-                    ],
-                ),
-            ),
-            file=stderr,
-        )
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
     return res, messages, blockers
 
@@ -891,6 +866,15 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
+        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        group=strictness_group,
+        dest="allow_redefinition_old",
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-old",
+        default=False,
+        strict_flag=False,
         help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
@@ -899,7 +883,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics (experimental)",
+        help="Allow more flexible variable redefinition semantics",
         group=strictness_group,
     )
 
@@ -1261,6 +1245,8 @@ def define_options(
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
+    # --native-parser enables the native parser (experimental)
+    add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never

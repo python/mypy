@@ -324,6 +324,7 @@ class MypyFile(SymbolNode):
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
+        "uses_template_strings",
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
@@ -362,6 +363,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package: bool
+    # True if module contains at least one t-string (PEP 750 TemplateStr).
+    uses_template_strings: bool
     # Plugin-created dependencies
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
@@ -394,6 +397,7 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
 
@@ -759,7 +763,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             write_tag(data, LITERAL_NONE)
         else:
             self.impl.write(data)
-        write_flags(data, self, FUNCBASE_FLAGS)
+        write_flags(data, [self.is_property, self.is_class, self.is_static, self.is_final])
         write_str_opt(data, self.deprecated)
         write_int_opt(data, self.setter_index)
         write_tag(data, END_TAG)
@@ -779,7 +783,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             # set line for empty overload items, as not set in __init__
             if len(res.items) > 0:
                 res.set_line(res.impl.line)
-        read_flags(data, res, FUNCBASE_FLAGS)
+        res.is_property, res.is_class, res.is_static, res.is_final = read_flags(data, num_flags=4)
         res.deprecated = read_str_opt(data)
         res.setter_index = read_int_opt(data)
         # NOTE: res.info will be set in the fixup phase.
@@ -1067,7 +1071,25 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
         write_str(data, self._fullname)
-        write_flags(data, self, FUNCDEF_FLAGS)
+        write_flags(
+            data,
+            [
+                self.is_property,
+                self.is_class,
+                self.is_static,
+                self.is_final,
+                self.is_overload,
+                self.is_generator,
+                self.is_coroutine,
+                self.is_async_generator,
+                self.is_awaitable_coroutine,
+                self.is_decorated,
+                self.is_conditional,
+                self.is_trivial_body,
+                self.is_trivial_self,
+                self.is_mypy_only,
+            ],
+        )
         write_str_opt_list(data, self.arg_names)
         write_int_list(data, [int(ak.value) for ak in self.arg_kinds])
         write_int(data, self.abstract_status)
@@ -1088,7 +1110,22 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             typ = mypy.types.read_function_like(data, tag)
         ret = FuncDef(name, [], Block([]), typ)
         ret._fullname = read_str(data)
-        read_flags(data, ret, FUNCDEF_FLAGS)
+        (
+            ret.is_property,
+            ret.is_class,
+            ret.is_static,
+            ret.is_final,
+            ret.is_overload,
+            ret.is_generator,
+            ret.is_coroutine,
+            ret.is_async_generator,
+            ret.is_awaitable_coroutine,
+            ret.is_decorated,
+            ret.is_conditional,
+            ret.is_trivial_body,
+            ret.is_trivial_self,
+            ret.is_mypy_only,
+        ) = read_flags(data, num_flags=14)
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = read_str_opt_list(data)
         ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
@@ -1259,6 +1296,7 @@ class Var(SymbolNode):
         "has_explicit_value",
         "allow_incompatible_override",
         "invalid_partial_type",
+        "is_argument",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1279,7 +1317,8 @@ class Var(SymbolNode):
         self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
-        # Is this initialized explicitly to a non-None value in class body?
+        # Is this variable declared in class body? The name is confusing, but it
+        # is a very old attribute, and changing will break some plugins.
         self.is_initialized_in_class = False
         self.is_staticmethod = False
         self.is_classmethod = False
@@ -1318,6 +1357,8 @@ class Var(SymbolNode):
         # If True, this means we didn't manage to infer full type and fall back to
         # something like list[Any]. We may decide to not use such types as context.
         self.invalid_partial_type = False
+        # Is it a variable symbol for a function argument?
+        self.is_argument = False
 
     @property
     def name(self) -> str:
@@ -1378,7 +1419,30 @@ class Var(SymbolNode):
         mypy.types.write_type_opt(data, self.type)
         mypy.types.write_type_opt(data, self.setter_type)
         write_str(data, self._fullname)
-        write_flags(data, self, VAR_FLAGS)
+        write_flags(
+            data,
+            [
+                self.is_initialized_in_class,
+                self.is_staticmethod,
+                self.is_classmethod,
+                self.is_property,
+                self.is_settable_property,
+                self.is_suppressed_import,
+                self.is_classvar,
+                self.is_abstract_var,
+                self.is_final,
+                self.is_index_var,
+                self.final_unset_in_class,
+                self.final_set_in_init,
+                self.explicit_self_type,
+                self.is_ready,
+                self.is_inferred,
+                self.invalid_partial_type,
+                self.from_module_getattr,
+                self.has_explicit_value,
+                self.allow_incompatible_override,
+            ],
+        )
         write_literal(data, self.final_value)
         write_tag(data, END_TAG)
 
@@ -1393,9 +1457,28 @@ class Var(SymbolNode):
             assert tag == mypy.types.CALLABLE_TYPE
             setter_type = mypy.types.CallableType.read(data)
         v.setter_type = setter_type
-        v.is_ready = False  # Override True default set in __init__
         v._fullname = read_str(data)
-        read_flags(data, v, VAR_FLAGS)
+        (
+            v.is_initialized_in_class,
+            v.is_staticmethod,
+            v.is_classmethod,
+            v.is_property,
+            v.is_settable_property,
+            v.is_suppressed_import,
+            v.is_classvar,
+            v.is_abstract_var,
+            v.is_final,
+            v.is_index_var,
+            v.final_unset_in_class,
+            v.final_set_in_init,
+            v.explicit_self_type,
+            v.is_ready,
+            v.is_inferred,
+            v.invalid_partial_type,
+            v.from_module_getattr,
+            v.has_explicit_value,
+            v.allow_incompatible_override,
+        ) = read_flags(data, num_flags=19)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
@@ -2684,6 +2767,29 @@ class DictExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
+
+
+class TemplateStrExpr(Expression):
+    """Template string expression t'...'."""
+
+    __slots__ = ("items",)
+    __match_args__ = ("items",)
+
+    # Each item is either:
+    #   - a StrExpr (literal string segment), or
+    #   - a tuple (value_expr, source_text, conversion, format_spec_expr)
+    #     where conversion is str | None ("r", "s", "a", or None)
+    #     and format_spec_expr is Expression | None
+    items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+
+    def __init__(
+        self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    ) -> None:
+        super().__init__()
+        self.items = items
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_template_str_expr(self)
 
 
 class TupleExpr(Expression):
@@ -4035,7 +4141,22 @@ class TypeInfo(SymbolNode):
         mypy.types.write_type_opt(data, self.metaclass_type)
         mypy.types.write_type_opt(data, self.tuple_type)
         mypy.types.write_type_opt(data, self.typeddict_type)
-        write_flags(data, self, TypeInfo.FLAGS)
+        write_flags(
+            data,
+            [
+                self.is_abstract,
+                self.is_enum,
+                self.fallback_to_any,
+                self.meta_fallback_to_any,
+                self.is_named_tuple,
+                self.is_newtype,
+                self.is_protocol,
+                self.runtime_protocol,
+                self.is_final,
+                self.is_disjoint_base,
+                self.is_intersection,
+            ],
+        )
         write_json(data, self.metadata)
         if self.slots is None:
             write_tag(data, LITERAL_NONE)
@@ -4095,7 +4216,19 @@ class TypeInfo(SymbolNode):
         if (tag := read_tag(data)) != LITERAL_NONE:
             assert tag == mypy.types.TYPED_DICT_TYPE
             ti.typeddict_type = mypy.types.TypedDictType.read(data)
-        read_flags(data, ti, TypeInfo.FLAGS)
+        (
+            ti.is_abstract,
+            ti.is_enum,
+            ti.fallback_to_any,
+            ti.meta_fallback_to_any,
+            ti.is_named_tuple,
+            ti.is_newtype,
+            ti.is_protocol,
+            ti.runtime_protocol,
+            ti.is_final,
+            ti.is_disjoint_base,
+            ti.is_intersection,
+        ) = read_flags(data, num_flags=11)
         ti.metadata = read_json(data)
         tag = read_tag(data)
         if tag != LITERAL_NONE:
@@ -4882,15 +5015,18 @@ def set_flags(node: Node, flags: list[str]) -> None:
         setattr(node, name, True)
 
 
-def write_flags(data: WriteBuffer, node: SymbolNode, flags: list[str]) -> None:
-    for flag in flags:
-        write_bool(data, getattr(node, flag))
+def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
+    assert len(flags) <= 26, "This many flags not supported yet"
+    packed = 0
+    for i, flag in enumerate(flags):
+        if flag:
+            packed |= 1 << i
+    write_int(data, packed)
 
 
-def read_flags(data: ReadBuffer, node: SymbolNode, flags: list[str]) -> None:
-    for flag in flags:
-        if read_bool(data):
-            setattr(node, flag, True)
+def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
+    packed = read_int(data)
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -5023,6 +5159,76 @@ TYPE_INFO: Final[Tag] = 58
 TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
+
+EXPR_STMT: Final[Tag] = 160
+CALL_EXPR: Final[Tag] = 161
+NAME_EXPR: Final[Tag] = 162
+STR_EXPR: Final[Tag] = 163
+IMPORT: Final[Tag] = 164
+MEMBER_EXPR: Final[Tag] = 165
+OP_EXPR: Final[Tag] = 166
+INT_EXPR: Final[Tag] = 167
+IF_STMT: Final[Tag] = 168
+ASSIGNMENT_STMT: Final[Tag] = 169
+TUPLE_EXPR: Final[Tag] = 170
+BLOCK: Final[Tag] = 171
+INDEX_EXPR: Final[Tag] = 172
+LIST_EXPR: Final[Tag] = 173
+SET_EXPR: Final[Tag] = 174
+RETURN_STMT: Final[Tag] = 175
+WHILE_STMT: Final[Tag] = 176
+COMPARISON_EXPR: Final[Tag] = 177
+BOOL_OP_EXPR: Final[Tag] = 178
+FUNC_DEF_STMT: Final[Tag] = 179
+PASS_STMT: Final[Tag] = 180
+FLOAT_EXPR: Final[Tag] = 181
+UNARY_EXPR: Final[Tag] = 182
+DICT_EXPR: Final[Tag] = 183
+COMPLEX_EXPR: Final[Tag] = 184
+SLICE_EXPR: Final[Tag] = 185
+TEMP_NODE: Final[Tag] = 186
+RAISE_STMT: Final[Tag] = 187
+BREAK_STMT: Final[Tag] = 188
+CONTINUE_STMT: Final[Tag] = 189
+GENERATOR_EXPR: Final[Tag] = 190
+YIELD_EXPR: Final[Tag] = 191
+YIELD_FROM_EXPR: Final[Tag] = 192
+LIST_COMPREHENSION: Final[Tag] = 193
+SET_COMPREHENSION: Final[Tag] = 194
+DICT_COMPREHENSION: Final[Tag] = 195
+IMPORT_FROM: Final[Tag] = 196
+ASSERT_STMT: Final[Tag] = 197
+FOR_STMT: Final[Tag] = 198
+WITH_STMT: Final[Tag] = 199
+OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
+TRY_STMT: Final[Tag] = 201
+ELLIPSIS_EXPR: Final[Tag] = 202
+CONDITIONAL_EXPR: Final[Tag] = 203
+DEL_STMT: Final[Tag] = 204
+FSTRING_EXPR: Final[Tag] = 205
+FSTRING_INTERPOLATION: Final[Tag] = 206
+LAMBDA_EXPR: Final[Tag] = 207
+NAMED_EXPR: Final[Tag] = 208
+STAR_EXPR: Final[Tag] = 209
+BYTES_EXPR: Final[Tag] = 210
+GLOBAL_DECL: Final[Tag] = 211
+NONLOCAL_DECL: Final[Tag] = 212
+AWAIT_EXPR: Final[Tag] = 213
+BIG_INT_EXPR: Final[Tag] = 214
+IMPORT_ALL: Final[Tag] = 215
+MATCH_STMT: Final[Tag] = 216
+AS_PATTERN: Final[Tag] = 217
+OR_PATTERN: Final[Tag] = 218
+VALUE_PATTERN: Final[Tag] = 219
+SINGLETON_PATTERN: Final[Tag] = 220
+SEQUENCE_PATTERN: Final[Tag] = 221
+STARRED_PATTERN: Final[Tag] = 222
+MAPPING_PATTERN: Final[Tag] = 223
+CLASS_PATTERN: Final[Tag] = 224
+TYPE_ALIAS_STMT: Final[Tag] = 225
+IMPORT_METADATA: Final[Tag] = 226
+IMPORTFROM_METADATA: Final[Tag] = 227
+IMPORTALL_METADATA: Final[Tag] = 228
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

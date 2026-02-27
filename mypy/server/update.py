@@ -128,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -136,7 +137,6 @@ from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    Context,
     Decorator,
     FuncDef,
     ImportFrom,
@@ -296,7 +296,7 @@ class FineGrainedBuildManager:
                 if not changed_modules:
                     # Preserve state needed for the next update.
                     self.previous_targets_with_errors = self.manager.errors.targets()
-                    messages = self.manager.errors.new_messages(self.resolve_location_cb)
+                    messages = self.manager.errors.new_messages()
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
@@ -320,11 +320,8 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages(self.resolve_location_cb).copy()
+        self.previous_messages = self.manager.errors.new_messages().copy()
         return self.update(changed_modules, [])
-
-    def resolve_location_cb(self, fullname: str) -> Context | None:
-        return self.manager.resolve_location(self.graph, fullname)
 
     def flush_cache(self) -> None:
         """Flush AST cache.
@@ -595,7 +592,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -731,7 +728,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -1008,7 +1006,7 @@ def reprocess_nodes(
     for target in targets:
         if target == module_id:
             for info in graph[module_id].early_errors:
-                manager.errors.add_error_info(info)
+                manager.errors.add_error_info(info, file=graph[module_id].xpath)
 
     # Strip semantic analysis information.
     saved_attrs: SavedAttributes = {}

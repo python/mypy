@@ -264,8 +264,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if generate_full:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
-        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+        if not cl.is_acyclic:
+            fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
+            fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
@@ -344,8 +345,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         init_fn = cl.get_method("__init__")
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
-        generate_traverse_for_class(cl, traverse_name, emitter)
-        emit_line()
+        if not cl.is_acyclic:
+            generate_traverse_for_class(cl, traverse_name, emitter)
+            emit_line()
         generate_clear_for_class(cl, clear_name, emitter)
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
@@ -378,7 +380,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if generate_full:
+    if generate_full and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -621,7 +623,8 @@ def generate_setup_for_class(
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
         emitter.emit_line("Py_SET_REFCNT(self, 1);")
-        emitter.emit_line("PyObject_GC_Track(self);")
+        if not cl.is_acyclic:
+            emitter.emit_line("PyObject_GC_Track(self);")
         if defaults_fn is not None:
             emit_attr_defaults_func_call(defaults_fn, "self", emitter)
         emitter.emit_line("return (PyObject *)self;")
@@ -930,7 +933,8 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if not cl.is_acyclic:
+        emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations

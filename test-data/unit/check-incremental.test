@@ -2337,7 +2337,7 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [delete nonexistent.py.2]
 [out]
 [out2]
-mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -2938,7 +2938,7 @@ class Namespace:
 
 [file main.py]
 import ns
-user = ns.Namespace.user
+user = ns.Namespace().user
 
 [out1]
 tmp/main.py:2: error: Expression has type "Any"
@@ -5490,7 +5490,7 @@ class A:
 from a import A
 [file b.py.2]
 from a import A
-reveal_type(A.D.x)
+reveal_type(A.D().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
@@ -6976,11 +6976,10 @@ tmp/a.py:19: error: Too many arguments for "foo"
 tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 tmp/a.py:19: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 tmp/a.py:20: error: Unexpected keyword argument "a" for "foo"
-tmp/partial.py:4: note: "foo" defined here
+tmp/a.py:20: note: "foo" defined in "partial"
 [out2]
 tmp/a.py:8: error: Too many positional arguments for "foo"
 tmp/a.py:8: error: Argument 2 to "foo" has incompatible type "int"; expected "str"
-
 
 [case testStartUsingTypeGuard]
 import a
@@ -7722,77 +7721,281 @@ def lol() -> None: pass
 import a  # touch
 [out]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:1: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out2]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:1: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out3]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:2: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 [out4]
 tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:2: note: "lol" defined here
+tmp/a.py:2: note: "lol" defined in "b"
 
-[case testCachedUnexpectedKeywordArgumentNested]
+[case testMissingImportUnIgnoredInConfig]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[out]
+[out2]
+main:2: error: Cannot find implementation or library stub for module named "foo"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingImportUnIgnoredInConfig2]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[out]
+main:2: error: Cannot find implementation or library stub for module named "foo"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+
+[case testMissingImportUnIgnoredInConfig3]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file foo.py]
+bar = 1
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+follow_imports = skip
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+follow_imports = error
+[out]
+[out2]
+main:2: error: Import of "foo" ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testMissingImportUnIgnoredInConfig4]
+# flags: --config-file tmp/mypy.ini
+from foo import bar
+[file foo.py]
+bar = 1
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+follow_imports = error
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+follow_imports = skip
+[out]
+main:2: error: Import of "foo" ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+[out2]
+
+[case testMissingImportUnIgnoredInConfig5]
+# flags: --config-file tmp/mypy.ini --warn-unused-ignores
+from foo import bar  # type: ignore[import-not-found]
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[out]
+main:2: error: Unused "type: ignore" comment
+[out2]
+
+[case testMissingImportUnIgnoredInConfig6]
+# flags: --config-file tmp/mypy.ini  --warn-unused-ignores
+from foo import bar  # type: ignore[import-not-found]
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = False
+[file mypy.ini.2]
+\[mypy]
+\[mypy-foo]
+ignore_missing_imports = True
+[out]
+[out2]
+main:2: error: Unused "type: ignore" comment
+
+[case testIndirectDependencyReorderModulesNoCrash]
 import a
 [file a.py]
 import b
-b.lol(uhhhh=12) # tweak
 [file a.py.2]
+import pkg.mod
 import b
-b.lol(uhhhh=12)
 [file b.py]
-while True:
-    if True:
-        def lol() -> None: pass
+import foo
+import pkg
+x: pkg.mod.C
+[file pkg/__init__.py]
+[file pkg/mod.py]
+import c
+class C: ...
+# The chain of trivial stale modules is to force late load of pkg.mod,
+# otherwise the test can pass accidentally.
+[file c.py]
+import d
+[file c.py.2]
+import d  # touch
+[file d.py]
+import e
+[file d.py.2]
+import e  # touch
+[file e.py]
+[file foo.py]
+import bar
+[file bar.py]
+import pkg.mod
+[file bar.py.2]
 [out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:3: note: "lol" defined here
 [out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-tmp/b.py:3: note: "lol" defined here
+tmp/b.py:3: error: Name "pkg.mod.C" is not defined
 
-[case testCachedUnexpectedKeywordArgumentMethod]
+[case testIndirectDependencyReorderModulesNoCrash2]
+import m
+[file m.py]
 import a
+[file m.py.2]
+import a
+import d
 [file a.py]
 import b
-b.B().lol(uhhhh=12) # tweak
-[file a.py.2]
-import b
-b.B().lol(uhhhh=12)
+x: b.c.d.C
 [file b.py]
-class A:
-    def lol(self) -> None: pass
-class B:
-    def lol(self) -> None: pass
-class C:
-    def lol(self) -> None: pass
+import c
+[file c.py]
+import d
+[file c.py.2]
+[file d.py]
+import n1
+class C: ...
+# The chain of trivial stale modules is to force late load of d,
+# otherwise the test can pass accidentally.
+[file n1.py]
+import n2
+[file n1.py.2]
+import n2  # touch
+[file n2.py]
+import n3
+[file n2.py.2]
+import n3  # touch
+[file n3.py]
 [out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
-tmp/b.py:4: note: "lol" of "B" defined here
 [out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "B"
-tmp/b.py:4: note: "lol" of "B" defined here
+tmp/a.py:2: error: Name "b.c.d.C" is not defined
 
-[case testCachedUnexpectedKeywordArgumentMethod2]
-import a
-[file a.py]
-import b
-b.B.BB().lol(uhhhh=12) # tweak
-[file a.py.2]
-import b
-b.B.BB().lol(uhhhh=12)
-[file b.py]
-class A:
-    def lol(self) -> None: pass
-class B:
-    class BB:
-        def lol(self) -> None: pass
-class C:
-    def lol(self) -> None: pass
+[case testDeletedModuleFromImport]
+# flags: --ignore-missing-imports
+from a import b
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
 [out]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
-tmp/b.py:5: note: "lol" of "BB" defined here
 [out2]
-tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol" of "BB"
-tmp/b.py:5: note: "lol" of "BB" defined here
+main:2: error: Module "a" has no attribute "b"
+
+[case testDeletedModuleFromImport2]
+# flags: --ignore-missing-imports
+import a
+import a.b
+from a import b  # no error here
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
+[out]
+[out2]
+
+[case testDeletedModuleFromImport3]
+# flags: --warn-unused-ignores
+from a import b  # type: ignore[attr-defined]
+[file a/__init__.py]
+[file a/b.py]
+[delete a/b.py.2]
+[out]
+main:2: error: Unused "type: ignore" comment
+[out2]
+
+[case testConfigWarnUnusedSectionIncremental]
+# flags: --config-file=tmp/mypy.ini
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a  # touch
+[file a.py]
+import foo  # type: ignore
+[file mypy.ini]
+\[mypy]
+warn_unused_configs = true
+\[mypy-bar]
+\[mypy-foo]
+[file mypy.ini.3]
+\[mypy]
+warn_unused_configs = true
+\[mypy-foo]
+[out]
+tmp/mypy.ini: note: unused section(s): [mypy-bar]
+[out2]
+tmp/mypy.ini: note: unused section(s): [mypy-bar]
+[out3]
+
+[case testConfigWarnUnusedSectionIncrementalTOML]
+# flags: --config-file tmp/pyproject.toml
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a  # touch
+[file a.py]
+import foo  # type: ignore
+[file pyproject.toml]
+\[tool.mypy]
+warn_unused_configs = true
+\[[tool.mypy.overrides]]
+module = "bar"
+\[[tool.mypy.overrides]]
+module = "foo"
+warn_unreachable = true
+[file pyproject.toml.3]
+\[tool.mypy]
+warn_unused_configs = true
+\[[tool.mypy.overrides]]
+module = "foo"
+[out]
+tmp/pyproject.toml: note: unused section(s): module = ['bar']
+[out2]
+tmp/pyproject.toml: note: unused section(s): module = ['bar']
+[out3]
+
+[case testAddedMissingModuleSkip]
+# flags: --follow-imports=skip
+import mod
+[file mod.py.2]
+[out]
+main:2: error: Cannot find implementation or library stub for module named "mod"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+
+[case testDeletedModuleSkip]
+# flags: --follow-imports=skip
+import mod
+[file mod.py]
+[delete mod.py.2]
+[out]
+[out2]
+main:2: error: Cannot find implementation or library stub for module named "mod"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

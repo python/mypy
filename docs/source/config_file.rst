@@ -719,8 +719,8 @@ section of the command line docs.
     :default: False
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This *experimental* flag enables the redefinition of
-    unannotated variables with an arbitrary type. You will also need to enable
+    unrelated type. This flag enables the redefinition of unannotated
+    variables with an arbitrary type. You will also need to enable
     :confval:`local_partial_types`.
     Example:
 
@@ -748,10 +748,22 @@ section of the command line docs.
                 # Type of "x" is "str" here.
                 ...
 
+    Function arguments are special, changing their type within function body
+    is allowed even if they are annotated, but that annotation is used to infer
+    types of r.h.s. of all subsequent assignments. Such middle-ground semantics
+    provides good balance for majority of common use cases. For example:
+
+    .. code-block:: python
+
+        def process(values: list[float]) -> None:
+            if not values:
+                values = [0, 0, 0]
+            reveal_type(values)  # Revealed type is list[float]
+
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :confval:`local_partial_types`.
 
-.. confval:: allow_redefinition
+.. confval:: allow_redefinition_old
 
     :type: boolean
     :default: False
@@ -777,6 +789,14 @@ section of the command line docs.
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
 
+.. confval:: allow_redefinition
+
+    :type: boolean
+    :default: False
+
+    An alias to :confval:`allow_redefinition_old`, in mypy v2.0 this will point to
+    :confval:`allow_redefinition_new`, and will eventually became the default.
+
 .. confval:: local_partial_types
 
     :type: boolean
@@ -784,7 +804,7 @@ section of the command line docs.
 
     Disallows inferring variable type for ``None`` from two assignments in different scopes.
     This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
-    This will be enabled by default in a future mypy release.
+    This will be enabled by default in mypy v2.0 release.
 
 .. confval:: disable_error_code
 

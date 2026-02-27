@@ -327,9 +327,7 @@ class ConditionalTypeBinder:
 
             resulting_values = [x for x in resulting_values if x is not None]
 
-            if all_reachable and all(
-                x is not None and not x.from_assignment for x in resulting_values
-            ):
+            if all_reachable and all(not x.from_assignment for x in resulting_values):
                 # Do not synthesize a new type if we encountered a conditional block
                 # (if, while or match-case) without assignments.
                 # See check-isinstance.test::testNoneCheckDoesNotMakeTypeVarOptional
@@ -337,21 +335,28 @@ class ConditionalTypeBinder:
                 # or `isinstance` does not change the type of the value.
                 continue
 
-            current_type = resulting_values[0]
-            assert current_type is not None
-            type = current_type.type
+            # Remove exact duplicates to save pointless work later, this is
+            # a micro-optimization for --allow-redefinition-new.
+            seen_types = set()
+            resulting_types = []
+            for rv in resulting_values:
+                assert rv is not None
+                if rv.type in seen_types:
+                    continue
+                resulting_types.append(rv.type)
+                seen_types.add(rv.type)
+
+            type = resulting_types[0]
             declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
-                if not all(
-                    t is not None and is_same_type(type, t.type) for t in resulting_values[1:]
-                ):
+                if not all(is_same_type(type, t) for t in resulting_types[1:]):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 possible_types = []
-                for t in resulting_values:
+                for t in resulting_types:
                     assert t is not None
-                    possible_types.append(t.type)
+                    possible_types.append(t)
                 if len(possible_types) == 1:
                     # This is to avoid calling get_proper_type() unless needed, as this may
                     # interfere with our (hacky) TypeGuard support.
@@ -387,7 +392,22 @@ class ConditionalTypeBinder:
                             type = simplified
             if current_value is None or not is_same_type(type, current_value.type):
                 self._put(key, type, from_assignment=True)
-                changed = True
+                if current_value is not None or extract_var_from_literal_hash(key) is None:
+                    # We definitely learned something new
+                    changed = True
+                elif not changed:
+                    # If there is no current value compare with the declaration. This prevents
+                    # reporting false changes in cases like this:
+                    #     x: int
+                    #     if foo():
+                    #         x = 1
+                    #     else:
+                    #         x = 2
+                    # We check partial types and widening in accept_loop() separately, so
+                    # this should be safe.
+                    changed = declaration_type is not None and not is_same_type(
+                        type, declaration_type
+                    )
 
         self.frames[-1].unreachable = not frames
 
