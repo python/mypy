@@ -1127,8 +1127,8 @@ S = Callable[[B], "T"]
 
 def f(x: S, y: T):
     if x == y:  # E: Unsupported left operand type for == ("Callable[[B], T]")
-        reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
-        reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
+        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(y)
     else:
         reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
         reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
@@ -3842,16 +3842,16 @@ class A2(A): ...
 
 def check_a(base: A, a1: A1, a2: A2):
     if a1 == a2:  # E: Non-overlapping equality check (left operand type: "A1", right operand type: "A2")
-        reveal_type(a1)  # N: Revealed type is "__main__.A1"
-        reveal_type(a2)  # N: Revealed type is "__main__.A2"
+        reveal_type(a1)  # E: Statement is unreachable
+        reveal_type(a2)
 
     if a1 == base:
         # We do narrow base
         reveal_type(a1)  # N: Revealed type is "__main__.A1"
         reveal_type(base)  # N: Revealed type is "__main__.A1"
         if a2 == base:  # E: Non-overlapping equality check (left operand type: "A2", right operand type: "A1")
-            reveal_type(a2)  # N: Revealed type is "__main__.A2"
-            reveal_type(base)  # N: Revealed type is "__main__.A1"
+            reveal_type(a2)  # E: Statement is unreachable
+            reveal_type(base)
 [builtins fixtures/primitives.pyi]
 
 
