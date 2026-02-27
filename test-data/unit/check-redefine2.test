@@ -127,6 +127,12 @@ def test(lst: list[object]) -> None:
     if not hasattr(other, "foo"):
         return
     reveal_type(other.foo)  # N: Revealed type is "Any"
+
+    x = object()
+    if bool():
+        assert hasattr(x, "bar")
+        x.bar  # OK
+    x.bar  # E: "object" has no attribute "bar"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineGlobalVariableSimple]
