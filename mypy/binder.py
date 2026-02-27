@@ -390,7 +390,14 @@ class ConditionalTypeBinder:
                         )
                         if simplified == self.declarations[key]:
                             type = simplified
-            if current_value is None or not is_same_type(type, current_value.type):
+            if (
+                current_value is None
+                or not is_same_type(type, current_value.type)
+                # Manually carry over any narrowing from hasattr() from inner frames. This is
+                # a bit ad-hoc, but our handling of hasattr() is on best effort basis anyway.
+                or isinstance(p_type := get_proper_type(type), Instance)
+                and p_type.extra_attrs
+            ):
                 self._put(key, type, from_assignment=True)
                 if current_value is not None or extract_var_from_literal_hash(key) is None:
                     # We definitely learned something new

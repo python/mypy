@@ -114,6 +114,16 @@ def f1() -> None:
         reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.str | None"
 
+[case testNewRedefineHasAttr]
+# flags: --allow-redefinition-new --local-partial-types
+
+def test(lst: list[object]) -> None:
+    for cls in lst:
+        if not hasattr(cls, "module"):
+            break
+        reveal_type(cls.module)  # N: Revealed type is "Any"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNewRedefineGlobalVariableSimple]
 # flags: --allow-redefinition-new --local-partial-types
 if int():
