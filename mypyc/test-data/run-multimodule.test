@@ -199,6 +199,23 @@ assert get_sub() == "other_pkg", repr(get_sub())
 # Package __init__: __package__ should be the package name itself
 assert get_pkg() == "other_pkg", repr(get_pkg())
 
+[case testNativeImportFileAvailableAtInitTime-xfail]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+
+def f() -> int:
+    return other_sub.func()
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+# __file__ should be available during module initialization
+_file: str = __file__
+
+def func() -> int:
+    return 42
+[file driver.py]
+import native
+assert native.f() == 42
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 

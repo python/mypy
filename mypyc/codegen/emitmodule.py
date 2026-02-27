@@ -1190,9 +1190,9 @@ class GroupGenerator:
             n = f"CPyInit_{exported_name(module_name)}"
             declaration = f"PyObject *{n}(void)"
             emitter.context.declarations[n] = HeaderDeclaration(declaration + ";")
-        emitter.emit_lines(declaration, "{")
 
         if self.multi_phase_init:
+            emitter.emit_lines(declaration, "{")
             def_name = f"{module_prefix}module"
             emitter.emit_line(f"return PyModuleDef_Init(&{def_name});")
             emitter.emit_line("}")
@@ -1200,14 +1200,35 @@ class GroupGenerator:
 
         exec_func = f"CPyExec_{exported_name(module_name)}"
 
-        emitter.emit_line("PyObject* modname = NULL;")
-        # Store the module reference in a static and return it when necessary.
-        # This is separate from the *global* reference to the module that will
-        # be populated when it is imported by a compiled module. We want that
-        # reference to only be populated when the module has been successfully
-        # imported, whereas this we want to have to stop a circular import.
+        # Emit CPyInitOnly_* which creates the module object without executing
+        # the module body. This allows the caller to set up attributes like
+        # __file__ and __package__ before the module body runs.
+        if self.use_shared_lib:
+            init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
+            init_only_decl = f"PyObject *{init_only_name}(void)"
+            emitter.context.declarations[init_only_name] = HeaderDeclaration(
+                init_only_decl + ";"
+            )
+            module_static = self.module_internal_static_name(module_name, emitter)
+            emitter.emit_lines(init_only_decl, "{")
+            emitter.emit_lines(
+                f"if ({module_static}) {{",
+                f"Py_INCREF({module_static});",
+                f"return {module_static};",
+                "}",
+            )
+            emitter.emit_lines(
+                f"{module_static} = PyModule_Create(&{module_prefix}module);",
+                f"return {module_static};",
+            )
+            emitter.emit_lines("}")
+            emitter.emit_line("")
+
+        # Emit CPyInit_* / PyInit_* which creates the module and executes the body.
+        emitter.emit_lines(declaration, "{")
         module_static = self.module_internal_static_name(module_name, emitter)
 
+        emitter.emit_line("PyObject* modname = NULL;")
         emitter.emit_lines(
             f"if ({module_static}) {{",
             f"Py_INCREF({module_static});",
