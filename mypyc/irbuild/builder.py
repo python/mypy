@@ -481,8 +481,16 @@ class IRBuilder:
                 shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
             else:
                 shared_lib_file = self.none_object(line)
+            is_pkg = self.is_package_module(module)
             value = self.call_c(
-                native_import_op, [self.load_str(module, line), func, shared_lib_file], line
+                native_import_op,
+                [
+                    self.load_str(module, line),
+                    func,
+                    shared_lib_file,
+                    Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
+                ],
+                line,
             )
         else:
             value = self.call_c(import_op, [self.load_str(module, line)], line)
@@ -1124,6 +1132,11 @@ class IRBuilder:
         compilation mode) must use the Python import system instead.
         """
         return self.mapper.group_map.get(module) == self.mapper.group_map.get(self.module_name)
+
+    def is_package_module(self, module: str) -> bool:
+        """Is the given module a package (i.e., an __init__.py file)?"""
+        st = self.graph.get(module)
+        return st is not None and st.tree is not None and st.tree.is_package_init_file()
 
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         return self.mapper.is_native_ref_expr(expr)

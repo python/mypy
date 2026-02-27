@@ -1123,7 +1123,7 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
 }
 
 PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void),
-                                 PyObject *shared_lib_file) {
+                                 PyObject *shared_lib_file, Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
     Py_ssize_t name_len = PyUnicode_GetLength(module_name);
@@ -1174,6 +1174,34 @@ PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(voi
         Py_DECREF(parent_module);
         Py_DECREF(child_name);
         return NULL;
+    }
+
+    // Set __package__ if not already set. For a package (has __path__),
+    // __package__ is the module name itself. For a non-package submodule
+    // "a.b.c", it is "a.b". For a top-level non-package module, it is "".
+    PyObject *pkg = PyObject_GetAttrString(modobj, "__package__");
+    if (pkg == NULL || pkg == Py_None) {
+        Py_XDECREF(pkg);
+        PyErr_Clear();
+        PyObject *package_name;
+        if (is_package) {
+            package_name = module_name;
+            Py_INCREF(package_name);
+        } else if (dot >= 0) {
+            package_name = PyUnicode_Substring(module_name, 0, dot);
+        } else {
+            package_name = PyUnicode_FromString("");
+        }
+        if (package_name == NULL ||
+                PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
+            Py_XDECREF(package_name);
+            Py_XDECREF(parent_module);
+            Py_XDECREF(child_name);
+            return NULL;
+        }
+        Py_DECREF(package_name);
+    } else {
+        Py_DECREF(pkg);
     }
 
     // The fast path bypasses extension import machinery that usually sets __file__.

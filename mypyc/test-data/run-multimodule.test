@@ -160,6 +160,45 @@ root_dir = os.path.dirname(native.__file__)
 expected_dir = os.path.join(root_dir, "other_a", "other_b")
 assert os.path.dirname(native.other_c.__file__) == expected_dir, native.other_c.__file__
 
+[case testNativeImportPackageAttribute]
+# separate: [(["native.py", "other_top.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+import other_top
+from other_pkg import other_sub
+import other_pkg
+
+def get_top() -> str:
+    p = other_top.__package__
+    assert p is not None
+    return p
+
+def get_sub() -> str:
+    p = other_sub.__package__
+    assert p is not None
+    return p
+
+def get_pkg() -> str:
+    p = other_pkg.__package__
+    assert p is not None
+    return p
+[file other_top.py]
+def func() -> int:
+    return 1
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 2
+[file driver.py]
+from native import get_top, get_sub, get_pkg
+
+# Top-level module: __package__ should be "" (empty string)
+assert get_top() == "", repr(get_top())
+
+# Submodule: __package__ should be the parent package name
+assert get_sub() == "other_pkg", repr(get_sub())
+
+# Package __init__: __package__ should be the package name itself
+assert get_pkg() == "other_pkg", repr(get_pkg())
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
