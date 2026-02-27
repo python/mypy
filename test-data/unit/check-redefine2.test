@@ -116,6 +116,7 @@ def f1() -> None:
 
 [case testNewRedefineHasAttr]
 # flags: --allow-redefinition-new --local-partial-types
+from typing import Union
 
 def test(lst: list[object]) -> None:
     for cls in lst:
@@ -133,6 +134,17 @@ def test(lst: list[object]) -> None:
         assert hasattr(x, "bar")
         x.bar  # OK
     x.bar  # E: "object" has no attribute "bar"
+
+class C:
+    x: int
+
+u: Union[C, object]
+if hasattr(u, "x"):
+    # Ideally we should have Any | int here and below, but this is tricky
+    reveal_type(u.x)  # N: Revealed type is "Any"
+
+y = hasattr(u, "x") and u.x
+reveal_type(y)  # N: Revealed type is "Literal[False] | Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineGlobalVariableSimple]

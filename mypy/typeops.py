@@ -633,19 +633,20 @@ def make_simplified_union(
         # performance in the common case.
         erase_extra = False
         if extra_attrs_set is not None:
+            fallback = try_getting_instance_fallback(result)
+            if fallback is None:
+                return result
             if len(extra_attrs_set) > 1:  # This case is too tricky to handle.
                 erase_extra = True
             else:
                 # Check that all relevant items have the extra attributes.
                 for item in items:
                     instance = try_getting_instance_fallback(item)
-                    if instance and not instance.extra_attrs:
+                    if instance and instance.type == fallback.type and not instance.extra_attrs:
                         erase_extra = True
                         break
             if erase_extra:
-                fallback = try_getting_instance_fallback(result)
-                if fallback:
-                    fallback.extra_attrs = None
+                fallback.extra_attrs = None
 
     return result
 
