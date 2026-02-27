@@ -551,7 +551,7 @@ def parse_section(
                     dv = getattr(template, options_key, None)
                 else:
                     continue
-            ct = type(dv)
+            ct = type(dv) if dv is not None else None
         v: Any = None
         try:
             if ct is bool:

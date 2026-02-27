@@ -1081,7 +1081,6 @@ def _verify_signature(
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
             and stub_arg.variable.name.strip("_") != "cls"
-            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 f'stub parameter "{stub_arg.variable.name}" should be positional-only '
@@ -1323,6 +1322,14 @@ def verify_var(
                 stub,
                 runtime,
             )
+    elif stub.final_value is not None and stub.final_value != runtime:
+        yield Error(
+            object_path,
+            "is inconsistent, stub value for Final var differs from runtime value",
+            stub,
+            runtime,
+            stub_desc=repr(stub.final_value),
+        )
 
 
 @verify.register(nodes.OverloadedFuncDef)
@@ -2293,6 +2300,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.use_builtins_fixtures = use_builtins_fixtures
     options.show_traceback = args.show_traceback
     options.pdb = args.pdb
+    options.pos_only_special_methods = False
 
     if options.config_file:
 

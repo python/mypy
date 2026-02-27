@@ -166,6 +166,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -5849,6 +5850,15 @@ class SemanticAnalyzer(
             if key is not None:
                 key.accept(self)
             value.accept(self)
+
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> None:
+        for item in expr.items:
+            if isinstance(item, tuple):
+                item[0].accept(self)
+                if item[3] is not None:
+                    item[3].accept(self)
+            else:
+                item.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:

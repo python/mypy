@@ -69,6 +69,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "native_parser",
         "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
@@ -379,6 +380,8 @@ class Options:
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
+        # If True, use the native parser (experimental)
+        self.native_parser = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types
@@ -414,6 +417,9 @@ class Options:
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
+        # Treat special methods as being implicitly positional-only.
+        # Set to False when running stubtest.
+        self.pos_only_special_methods = True
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False

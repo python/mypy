@@ -344,7 +344,8 @@ match x:
     case [str()]:
         pass
 
-[case testMatchSequencePatternWithInvalidClassPattern]
+[case testMatchSequencePatternWithTypeObject]
+# flags: --strict-equality --warn-unreachable
 class Example:
     __match_args__ = ("value",)
     def __init__(self, value: str) -> None:
@@ -353,10 +354,10 @@ class Example:
 SubClass: type[Example]
 
 match [SubClass("a"), SubClass("b")]:
-    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "type[__main__.Example]"
-        reveal_type(value)  # E: Cannot determine type of "value" \
-                            # N: Revealed type is "Any"
+    case [SubClass(value), *rest]:
+        reveal_type(value)  # N: Revealed type is "builtins.str"
         reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
+
 [builtins fixtures/tuple.pyi]
 
 # Narrowing union-based values via a literal pattern on an indexed/attribute subject
@@ -1090,13 +1091,27 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternIsNotType]
-a = 1
-m: object
+# flags: --strict-equality --warn-unreachable
+from typing import Any
 
-match m:
-    case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
-        reveal_type(i)
-        reveal_type(j)
+def match_int(m: object, a: int):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
+            reveal_type(i)  # E: Statement is unreachable
+            reveal_type(j)
+
+def match_int_str(m: object, a: int | str):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int" \
+                       # E: Expected type in class pattern; found "builtins.str"
+            reveal_type(i)  # E: Statement is unreachable
+            reveal_type(j)
+
+def match_int_any(m: object, a: int | Any):
+    match m:
+        case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
+            reveal_type(i)  # N: Revealed type is "Any"
+            reveal_type(j)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternAny]
 from typing import Any
@@ -1256,6 +1271,84 @@ reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[builtins.dict
 reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(z)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict-full.pyi]
+
+[case testMatchClassPatternTypeObject]
+# flags: --strict-equality --warn-unreachable
+class Example:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def f1(subclass: type[Example]) -> None:
+    match subclass("a"):
+        case Example(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # E: Statement is unreachable
+
+def f2(subclass: type[Example]) -> None:
+    match Example("a"):
+        case subclass(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+def f3(subclass: type[Example]) -> None:
+    match subclass("a"):
+        case subclass(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+class Example2:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def f4(T: type[Example | Example2]) -> None:
+    match T("a"):
+        case Example(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example2"
+
+def f5(T: type[Example | Example2]) -> None:
+    match Example("a"):
+        case T(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example"
+
+def f6(T: type[Example | Example2]) -> None:
+    match T("a"):
+        case T(value):
+            reveal_type(value)  # N: Revealed type is "builtins.str"
+        case anything:
+            reveal_type(anything)  # N: Revealed type is "__main__.Example | __main__.Example2"
+
+def f7(m: object, t: type[object]) -> None:
+    match m:
+        case t():
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchClassPatternTypeObjectGeneric]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+T = TypeVar("T")
+
+def print_test(m: object, typ: type[T]) -> T:
+    match m:
+        case typ():
+            reveal_type(m)  # N: Revealed type is "T`-1"
+            return m
+        case str():
+            reveal_type(m)  # N: Revealed type is "builtins.str"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+    raise
 
 [case testMatchNonFinalMatchArgs]
 class A:
@@ -1772,6 +1865,82 @@ def f3(x: int | list[int]):
         case _:
             reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchSequenceTupleAsPattern]
+# flags: --strict-equality --warn-unreachable
+
+def f1(x: tuple[list[int], list[int]]):
+    match x:
+        case _, []:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case [], _:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+
+def f2(x: tuple[list[int], list[int]]):
+    match x:
+        case a, b:
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.list[builtins.int], builtins.list[builtins.int]]"
+        case [], _:
+            reveal_type(x)  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequenceTupleRegression]
+# flags: --strict-equality --warn-unreachable
+
+def f1(a: str | None, b: str | None):
+    # https://github.com/python/mypy/issues/14731
+    match (a, b):
+        case (None, _) | (_, None):
+            reveal_type(a)  # N: Revealed type is "builtins.str | None"
+            reveal_type(b)  # N: Revealed type is "builtins.str | None"
+        case (a, b):
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+            reveal_type(b)  # N: Revealed type is "builtins.str"
+
+def f2(x: tuple[int | str]):
+    # https://github.com/python/mypy/issues/14833#issuecomment-1454768900
+    match x:
+        case (int(),):
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.int]"
+        case (str(),):
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.str]"
+        case _:
+            reveal_type(x)  # E: Statement is unreachable
+
+def f4(x: tuple[int | str, str]):
+    # https://github.com/python/mypy/issues/18792
+    match x:
+        case (int(), y):
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+        case (str(), y):
+            reveal_type(x)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
+        case _:
+            reveal_type(x)  # E: Statement is unreachable
+
+class Add(tuple[int, int]): ...
+class Const(int): ...
+
+def f5(e: Add | Const) -> int:
+    # https://github.com/python/mypy/issues/17139
+    reveal_type(e)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.Add] | __main__.Const"
+    match e:
+        case Add((a, b)):
+            reveal_type(e)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.Add]"
+            return a + b
+        case Const(x):
+            reveal_type(e)  # N: Revealed type is "__main__.Const"
+            return x
+    reveal_type(e)  # E: Statement is unreachable
+
+def f6(d1: list[str], d2: list[str]):
+    # https://github.com/python/mypy/issues/19995
+    match (d1, d2):
+        case ([sym], _) | (_, [sym]):
+            reveal_type(sym)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
 
 [case testMatchTupleUnions]
 from typing_extensions import Unpack

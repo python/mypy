@@ -654,3 +654,63 @@ bool CPyStr_IsSpace(PyObject *str) {
     }
     return true;
 }
+
+bool CPyStr_IsAlnum(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    if (len == 0) return false;
+
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            if (!Py_ISALNUM(data[i]))
+                return false;
+        }
+        return true;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (!Py_UNICODE_ISALNUM(ch))
+            return false;
+    }
+    return true;
+}
+
+bool CPyStr_IsDigit(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    if (len == 0) return false;
+
+#define CHECK_ISDIGIT(TYPE, DATA, CHECK)              \
+    {                                                 \
+        const TYPE *data = (const TYPE *)(DATA);      \
+        for (Py_ssize_t i = 0; i < len; i++) {        \
+            if (!CHECK(data[i]))                      \
+                return false;                         \
+        }                                             \
+    }
+
+    // ASCII fast path
+    if (PyUnicode_IS_ASCII(str)) {
+        CHECK_ISDIGIT(Py_UCS1, PyUnicode_1BYTE_DATA(str), Py_ISDIGIT);
+        return true;
+    }
+
+    switch (PyUnicode_KIND(str)) {
+    case PyUnicode_1BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS1, PyUnicode_1BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    case PyUnicode_2BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS2, PyUnicode_2BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    case PyUnicode_4BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS4, PyUnicode_4BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    default:
+        Py_UNREACHABLE();
+    }
+    return true;
+
+#undef CHECK_ISDIGIT
+}

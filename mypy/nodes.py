@@ -324,6 +324,7 @@ class MypyFile(SymbolNode):
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
+        "uses_template_strings",
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
@@ -362,6 +363,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package: bool
+    # True if module contains at least one t-string (PEP 750 TemplateStr).
+    uses_template_strings: bool
     # Plugin-created dependencies
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
@@ -394,6 +397,7 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
 
@@ -1292,6 +1296,7 @@ class Var(SymbolNode):
         "has_explicit_value",
         "allow_incompatible_override",
         "invalid_partial_type",
+        "is_argument",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1312,7 +1317,8 @@ class Var(SymbolNode):
         self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
-        # Is this initialized explicitly to a non-None value in class body?
+        # Is this variable declared in class body? The name is confusing, but it
+        # is a very old attribute, and changing will break some plugins.
         self.is_initialized_in_class = False
         self.is_staticmethod = False
         self.is_classmethod = False
@@ -1351,6 +1357,8 @@ class Var(SymbolNode):
         # If True, this means we didn't manage to infer full type and fall back to
         # something like list[Any]. We may decide to not use such types as context.
         self.invalid_partial_type = False
+        # Is it a variable symbol for a function argument?
+        self.is_argument = False
 
     @property
     def name(self) -> str:
@@ -1414,8 +1422,6 @@ class Var(SymbolNode):
         write_flags(
             data,
             [
-                self.is_self,
-                self.is_cls,
                 self.is_initialized_in_class,
                 self.is_staticmethod,
                 self.is_classmethod,
@@ -1453,8 +1459,6 @@ class Var(SymbolNode):
         v.setter_type = setter_type
         v._fullname = read_str(data)
         (
-            v.is_self,
-            v.is_cls,
             v.is_initialized_in_class,
             v.is_staticmethod,
             v.is_classmethod,
@@ -1474,7 +1478,7 @@ class Var(SymbolNode):
             v.from_module_getattr,
             v.has_explicit_value,
             v.allow_incompatible_override,
-        ) = read_flags(data, num_flags=21)
+        ) = read_flags(data, num_flags=19)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
@@ -2763,6 +2767,29 @@ class DictExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
+
+
+class TemplateStrExpr(Expression):
+    """Template string expression t'...'."""
+
+    __slots__ = ("items",)
+    __match_args__ = ("items",)
+
+    # Each item is either:
+    #   - a StrExpr (literal string segment), or
+    #   - a tuple (value_expr, source_text, conversion, format_spec_expr)
+    #     where conversion is str | None ("r", "s", "a", or None)
+    #     and format_spec_expr is Expression | None
+    items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+
+    def __init__(
+        self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    ) -> None:
+        super().__init__()
+        self.items = items
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_template_str_expr(self)
 
 
 class TupleExpr(Expression):
@@ -5132,6 +5159,76 @@ TYPE_INFO: Final[Tag] = 58
 TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
+
+EXPR_STMT: Final[Tag] = 160
+CALL_EXPR: Final[Tag] = 161
+NAME_EXPR: Final[Tag] = 162
+STR_EXPR: Final[Tag] = 163
+IMPORT: Final[Tag] = 164
+MEMBER_EXPR: Final[Tag] = 165
+OP_EXPR: Final[Tag] = 166
+INT_EXPR: Final[Tag] = 167
+IF_STMT: Final[Tag] = 168
+ASSIGNMENT_STMT: Final[Tag] = 169
+TUPLE_EXPR: Final[Tag] = 170
+BLOCK: Final[Tag] = 171
+INDEX_EXPR: Final[Tag] = 172
+LIST_EXPR: Final[Tag] = 173
+SET_EXPR: Final[Tag] = 174
+RETURN_STMT: Final[Tag] = 175
+WHILE_STMT: Final[Tag] = 176
+COMPARISON_EXPR: Final[Tag] = 177
+BOOL_OP_EXPR: Final[Tag] = 178
+FUNC_DEF_STMT: Final[Tag] = 179
+PASS_STMT: Final[Tag] = 180
+FLOAT_EXPR: Final[Tag] = 181
+UNARY_EXPR: Final[Tag] = 182
+DICT_EXPR: Final[Tag] = 183
+COMPLEX_EXPR: Final[Tag] = 184
+SLICE_EXPR: Final[Tag] = 185
+TEMP_NODE: Final[Tag] = 186
+RAISE_STMT: Final[Tag] = 187
+BREAK_STMT: Final[Tag] = 188
+CONTINUE_STMT: Final[Tag] = 189
+GENERATOR_EXPR: Final[Tag] = 190
+YIELD_EXPR: Final[Tag] = 191
+YIELD_FROM_EXPR: Final[Tag] = 192
+LIST_COMPREHENSION: Final[Tag] = 193
+SET_COMPREHENSION: Final[Tag] = 194
+DICT_COMPREHENSION: Final[Tag] = 195
+IMPORT_FROM: Final[Tag] = 196
+ASSERT_STMT: Final[Tag] = 197
+FOR_STMT: Final[Tag] = 198
+WITH_STMT: Final[Tag] = 199
+OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
+TRY_STMT: Final[Tag] = 201
+ELLIPSIS_EXPR: Final[Tag] = 202
+CONDITIONAL_EXPR: Final[Tag] = 203
+DEL_STMT: Final[Tag] = 204
+FSTRING_EXPR: Final[Tag] = 205
+FSTRING_INTERPOLATION: Final[Tag] = 206
+LAMBDA_EXPR: Final[Tag] = 207
+NAMED_EXPR: Final[Tag] = 208
+STAR_EXPR: Final[Tag] = 209
+BYTES_EXPR: Final[Tag] = 210
+GLOBAL_DECL: Final[Tag] = 211
+NONLOCAL_DECL: Final[Tag] = 212
+AWAIT_EXPR: Final[Tag] = 213
+BIG_INT_EXPR: Final[Tag] = 214
+IMPORT_ALL: Final[Tag] = 215
+MATCH_STMT: Final[Tag] = 216
+AS_PATTERN: Final[Tag] = 217
+OR_PATTERN: Final[Tag] = 218
+VALUE_PATTERN: Final[Tag] = 219
+SINGLETON_PATTERN: Final[Tag] = 220
+SEQUENCE_PATTERN: Final[Tag] = 221
+STARRED_PATTERN: Final[Tag] = 222
+MAPPING_PATTERN: Final[Tag] = 223
+CLASS_PATTERN: Final[Tag] = 224
+TYPE_ALIAS_STMT: Final[Tag] = 225
+IMPORT_METADATA: Final[Tag] = 226
+IMPORTFROM_METADATA: Final[Tag] = 227
+IMPORTALL_METADATA: Final[Tag] = 228
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

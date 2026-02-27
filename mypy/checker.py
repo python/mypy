@@ -32,7 +32,12 @@ from mypy.checkmember import (
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
-from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
+from mypy.erasetype import (
+    erase_type,
+    erase_typevars,
+    remove_instance_last_known_values,
+    shallow_erase_type_for_equality,
+)
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
     ErrorInfo,
@@ -1486,7 +1491,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 ):
                     show_error = False
 
-                if show_error:
+                if show_error and not self.current_node_deferred:
                     may_be_abstract = (
                         body_is_trivial
                         and defn.info is not FUNC_NO_INFO
@@ -1494,9 +1499,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
                     )
                     if self.options.warn_no_return:
-                        if not self.current_node_deferred and not isinstance(
-                            return_type, (NoneType, AnyType)
-                        ):
+                        if not isinstance(return_type, (NoneType, AnyType)):
                             # Control flow fell off the end of a function that was
                             # declared to return a non-None type.
                             if isinstance(return_type, UninhabitedType):
@@ -3429,6 +3432,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.options.allow_redefinition_new
                     and lvalue_type is not None
                     and not isinstance(lvalue_type, PartialType)
+                    # Note that `inferred is not None` is not a reliable check here, because
+                    # simple assignments like x = "a" are inferred during semantic analysis.
+                    and isinstance(lvalue, NameExpr)
+                    and isinstance(lvalue.node, Var)
+                    and lvalue.node.is_inferred
                 ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
@@ -4401,8 +4409,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         index_lvalue = None
         inferred = None
 
-        if self.is_definition(lvalue) and (
-            not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
+        # When revisiting the initial assignment (for example in a loop),
+        # treat is as regular if redefinitions are allowed.
+        skip_definition = (
+            self.options.allow_redefinition_new
+            and isinstance(lvalue, NameExpr)
+            and isinstance(lvalue.node, Var)
+            and lvalue.node.is_inferred
+            and lvalue.node.type is not None
+            and not isinstance(lvalue.node.type, PartialType)
+            # Indexes in for loops require special handling, we need to reset them to
+            # a literal value on each loop, but binder doesn't work well with literals.
+            and not lvalue.node.is_index_var
+        )
+
+        if (
+            self.is_definition(lvalue)
+            and (not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var))
+            and not skip_definition
         ):
             if isinstance(lvalue, NameExpr):
                 assert isinstance(lvalue.node, Var)
@@ -4421,7 +4445,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if (
                 self.options.allow_redefinition_new
                 and isinstance(lvalue.node, Var)
-                and lvalue.node.is_inferred
+                # We allow redefinition for function arguments inside function body.
+                # Although we normally do this for variables without annotation, users
+                # don't have a choice to leave a function argument without annotation.
+                and (lvalue.node.is_inferred or lvalue.node.is_argument)
             ):
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
@@ -4619,7 +4646,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Store best known type for variable if type inference failed.
 
         If a program ignores error on type inference error, the variable should get some
-        inferred type so that it can used later on in the program. Example:
+        inferred type so that it can be used later on in the program. Example:
 
           x = []  # type: ignore
           x.append(1)   # Should be ok!
@@ -4654,6 +4681,91 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     return not any(item.variables for item in typ.items)
         return False
 
+    def infer_rvalue_with_fallback_context(
+        self,
+        lvalue_type: Type | None,
+        rvalue: Expression,
+        preferred_context: Type | None,
+        fallback_context: Type | None,
+        inferred: Var | None,
+        always_allow_any: bool,
+    ) -> Type:
+        """Infer rvalue type in two type context and select the best one.
+
+        See comments below for supported fallback scenarios.
+        """
+        assert fallback_context is not preferred_context
+        # TODO: make assignment checking correct in presence of walrus in r.h.s.
+        # We may accept r.h.s. twice. In presence of walrus this can lead to weird
+        # false negatives and "back action". A proper solution would be to use
+        # binder.accumulate_type_assignments() and assign the types inferred for type
+        # context that is ultimately used. This is however tricky with redefinitions.
+        # For now we simply disable second accept in cases known to cause problems,
+        # see e.g. testAssignToOptionalTupleWalrus.
+        binder_version = self.binder.version
+
+        fallback_context_used = False
+        with (
+            self.msg.filter_errors(save_filtered_errors=True) as local_errors,
+            self.local_type_map as type_map,
+        ):
+            rvalue_type = self.expr_checker.accept(
+                rvalue, type_context=preferred_context, always_allow_any=always_allow_any
+            )
+
+        # There are two cases where we want to try re-inferring r.h.s. in a fallback
+        # type context. First case is when redefinitions are allowed, and we got
+        # invalid type when using the preferred (empty) type context.
+        redefinition_fallback = (
+            inferred is not None
+            and not inferred.is_argument
+            and not is_valid_inferred_type(rvalue_type, self.options)
+        )
+        # For function arguments the preference order is opposite, and we use errors
+        # during type-checking as the fallback trigger.
+        argument_redefinition_fallback = (
+            inferred is not None and inferred.is_argument and local_errors.has_new_errors()
+        )
+        # Try re-inferring r.h.s. in empty context for union with explicit annotation,
+        # and use it results in a narrower type. This helps with various practical
+        # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
+        union_fallback = (
+            preferred_context is not None
+            and isinstance(get_proper_type(lvalue_type), UnionType)
+            and binder_version == self.binder.version
+        )
+
+        # Skip literal types, as they have special logic (for better errors).
+        try_fallback = redefinition_fallback or union_fallback or argument_redefinition_fallback
+        if try_fallback and not is_literal_type_like(rvalue_type):
+            with (
+                self.msg.filter_errors(save_filtered_errors=True) as alt_local_errors,
+                self.local_type_map as alt_type_map,
+            ):
+                alt_rvalue_type = self.expr_checker.accept(
+                    rvalue, fallback_context, always_allow_any=always_allow_any
+                )
+            if (
+                not alt_local_errors.has_new_errors()
+                and is_valid_inferred_type(alt_rvalue_type, self.options)
+                and (
+                    # For redefinition fallbacks we are fine getting not a subtype.
+                    redefinition_fallback
+                    or argument_redefinition_fallback
+                    # Skip Any type, since it is special cased in binder.
+                    or not isinstance(get_proper_type(alt_rvalue_type), AnyType)
+                    and is_proper_subtype(alt_rvalue_type, rvalue_type)
+                )
+            ):
+                fallback_context_used = True
+                rvalue_type = alt_rvalue_type
+                self.store_types(alt_type_map)
+
+        if not fallback_context_used:
+            self.msg.add_errors(local_errors.filtered_errors())
+            self.store_types(type_map)
+        return rvalue_type
+
     def check_simple_assignment(
         self,
         lvalue_type: Type | None,
@@ -4674,39 +4786,47 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             always_allow_any = lvalue_type is not None and not isinstance(
                 get_proper_type(lvalue_type), AnyType
             )
-            if inferred is None or is_typeddict_type_context(lvalue_type):
-                type_context = lvalue_type
-            else:
-                type_context = None
 
-            # TODO: make assignment checking correct in presence of walrus in r.h.s.
-            # Right now we can accept the r.h.s. up to four(!) times. In presence of
-            # walrus this can result in weird false negatives and "back action". A proper
-            # solution would be to:
-            #   * Refactor the code to reduce number of times we accept the r.h.s.
-            #   (two should be enough: empty context + l.h.s. context).
-            #   * For each accept use binder.accumulate_type_assignments() and assign
-            #   the types inferred for context that is ultimately used.
-            # For now we simply disable some logic that is known to cause problems in
-            # presence of walrus, see e.g. testAssignToOptionalTupleWalrus.
-            binder_version = self.binder.version
+            # If redefinitions are allowed (i.e. we have --allow-redefinition-new
+            # and a variable without annotation) or if a variable has union type we
+            # try inferring r.h.s. twice with a fallback type context. The only exception
+            # is TypedDicts, they are often useless without context.
+            try_fallback = (
+                inferred is not None or isinstance(get_proper_type(lvalue_type), UnionType)
+            ) and not self.simple_rvalue(rvalue)
 
-            rvalue_type = self.expr_checker.accept(
-                rvalue, type_context=type_context, always_allow_any=always_allow_any
-            )
-            if (
-                lvalue_type is not None
-                and type_context is None
-                and not is_valid_inferred_type(rvalue_type, self.options)
-            ):
-                # Inference in an empty type context didn't produce a valid type, so
-                # try using lvalue type as context instead.
+            if not try_fallback or lvalue_type is None or is_typeddict_type_context(lvalue_type):
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
-                if not is_valid_inferred_type(rvalue_type, self.options) and inferred is not None:
-                    self.msg.need_annotation_for_var(inferred, context, self.options)
-                    rvalue_type = rvalue_type.accept(SetNothingToAny())
+            else:
+                # Prefer full type context for function arguments as this reduces
+                # false positives, see issue #19918 for discussion.
+                if inferred is not None and not inferred.is_argument:
+                    preferred = None
+                    fallback = lvalue_type
+                else:
+                    preferred = lvalue_type
+                    fallback = None
+
+                rvalue_type = self.infer_rvalue_with_fallback_context(
+                    lvalue_type, rvalue, preferred, fallback, inferred, always_allow_any
+                )
+
+            if (
+                inferred is not None
+                and not is_valid_inferred_type(rvalue_type, self.options)
+                and (
+                    not inferred.type
+                    or isinstance(inferred.type, PartialType)
+                    # This additional check is to give an error instead of inferring
+                    # a useless type like None | list[Never] in case of "double-partial"
+                    # types that are not supported yet, see issue #20257.
+                    or not is_subtype(rvalue_type, inferred.type)
+                )
+            ):
+                self.msg.need_annotation_for_var(inferred, inferred, self.options)
+                rvalue_type = rvalue_type.accept(SetNothingToAny())
 
             if (
                 isinstance(lvalue, NameExpr)
@@ -4715,49 +4835,27 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not inferred.is_final
             ):
                 new_inferred = remove_instance_last_known_values(rvalue_type)
-                if not is_same_type(inferred.type, new_inferred):
-                    # Should we widen the inferred type or the lvalue? Variables defined
-                    # at module level or class bodies can't be widened in functions, or
-                    # in another module.
-                    if not self.refers_to_different_scope(lvalue):
-                        lvalue_type = make_simplified_union([inferred.type, new_inferred])
-                        if not is_same_type(lvalue_type, inferred.type) and not isinstance(
-                            inferred.type, PartialType
-                        ):
-                            # Widen the type to the union of original and new type.
-                            self.widened_vars.append(inferred.name)
-                            self.set_inferred_type(inferred, lvalue, lvalue_type)
-                            self.binder.put(lvalue, rvalue_type)
-                            # TODO: A bit hacky, maybe add a binder method that does put and
-                            #       updates declaration?
-                            lit = literal_hash(lvalue)
-                            if lit is not None:
-                                self.binder.declarations[lit] = lvalue_type
-            if (
-                isinstance(get_proper_type(lvalue_type), UnionType)
-                # Skip literal types, as they have special logic (for better errors).
-                and not is_literal_type_like(rvalue_type)
-                and not self.simple_rvalue(rvalue)
-                and binder_version == self.binder.version
-            ):
-                # Try re-inferring r.h.s. in empty context, and use that if it
-                # results in a narrower type. We don't do this always because this
-                # may cause some perf impact, plus we want to partially preserve
-                # the old behavior. This helps with various practical examples, see
-                # e.g. testOptionalTypeNarrowedByGenericCall.
-                with self.msg.filter_errors() as local_errors, self.local_type_map as type_map:
-                    alt_rvalue_type = self.expr_checker.accept(
-                        rvalue, None, always_allow_any=always_allow_any
-                    )
+                # Should we widen the inferred type or the lvalue? Variables defined
+                # at module level or class bodies can't be widened in functions, or
+                # in another module.
                 if (
-                    not local_errors.has_new_errors()
-                    # Skip Any type, since it is special cased in binder.
-                    and not isinstance(get_proper_type(alt_rvalue_type), AnyType)
-                    and is_valid_inferred_type(alt_rvalue_type, self.options)
-                    and is_proper_subtype(alt_rvalue_type, rvalue_type)
+                    not self.refers_to_different_scope(lvalue)
+                    and not isinstance(inferred.type, PartialType)
+                    and not is_proper_subtype(new_inferred, inferred.type)
                 ):
-                    rvalue_type = alt_rvalue_type
-                    self.store_types(type_map)
+                    lvalue_type = make_simplified_union([inferred.type, new_inferred])
+                    # Widen the type to the union of original and new type.
+                    if not inferred.is_index_var:
+                        # Skip index variables as they are reset on each loop.
+                        self.widened_vars.append(inferred.name)
+                    self.set_inferred_type(inferred, lvalue, lvalue_type)
+                    self.binder.put(lvalue, rvalue_type)
+                    # TODO: A bit hacky, maybe add a binder method that does put and
+                    #       updates declaration?
+                    lit = literal_hash(lvalue)
+                    if lit is not None:
+                        self.binder.declarations[lit] = lvalue_type
+
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
@@ -6065,7 +6163,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if isinstance(typ, UnionType):
             callables = []
-            uncallables = []
+            uncallables: list[Type] = []
             for subtype in typ.items:
                 # Use unsound_partition when handling unions in order to
                 # allow the expected type discrimination.
@@ -6540,6 +6638,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             narrowable_indices={0},
                         )
 
+                        # TODO: This remove_optional code should no longer be needed. The only
+                        # thing it does is paper over a pre-existing deficiency in equality
+                        # narrowing w.r.t to enums.
                         # We only try and narrow away 'None' for now
                         if (
                             not is_unreachable_map(if_map)
@@ -6687,8 +6788,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
-                    operands[i],
-                    *conditional_types(expr_type, [target], consider_promotion_overlap=True),
+                    operands[i], *conditional_types(expr_type, [target], from_equality=True)
                 )
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
@@ -6726,9 +6826,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         if_map, else_map = conditional_types_to_typemaps(
                             operands[i],
-                            *conditional_types(
-                                expr_type, [target], consider_promotion_overlap=True
-                            ),
+                            *conditional_types(expr_type, [target], from_equality=True),
                         )
                         all_else_maps.append(else_map)
                 continue
@@ -6767,7 +6865,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i],
                         *conditional_types(
-                            expr_type, [target], default=expr_type, consider_promotion_overlap=True
+                            expr_type, [target], default=expr_type, from_equality=True
                         ),
                     )
                     or_if_maps.append(if_map)
@@ -8271,7 +8369,7 @@ def conditional_types(
     default: None = None,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type | None, Type | None]: ...
 
 
@@ -8282,7 +8380,7 @@ def conditional_types(
     default: Type,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type, Type]: ...
 
 
@@ -8292,7 +8390,7 @@ def conditional_types(
     default: Type | None = None,
     *,
     consider_runtime_isinstance: bool = True,
-    consider_promotion_overlap: bool = False,
+    from_equality: bool = False,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -8337,7 +8435,7 @@ def conditional_types(
                 proposed_type_ranges,
                 default=union_item,
                 consider_runtime_isinstance=consider_runtime_isinstance,
-                consider_promotion_overlap=consider_promotion_overlap,
+                from_equality=from_equality,
             )
             yes_items.append(yes_type)
             no_items.append(no_type)
@@ -8382,17 +8480,23 @@ def conditional_types(
                 consider_runtime_isinstance=consider_runtime_isinstance,
             )
             return default, remainder
-    if not is_overlapping_types(
-        current_type, proposed_type, ignore_promotions=not consider_promotion_overlap
-    ):
-        # Expression is never of any type in proposed_type_ranges
-        return UninhabitedType(), default
-    if consider_promotion_overlap and not is_overlapping_types(
-        current_type, proposed_type, ignore_promotions=True
-    ):
-        # We set consider_promotion_overlap when comparing equality. This is one of the places
-        # at runtime where subtyping with promotion does happen to match runtime semantics
-        return default, default
+
+    if from_equality:
+        # We erase generic args because values with different generic types can compare equal
+        # For instance, cast(list[str], []) and cast(list[int], [])
+        proposed_type = shallow_erase_type_for_equality(proposed_type)
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=False):
+            # Equality narrowing is one of the places at runtime where subtyping with promotion
+            # does happen to match runtime semantics
+            # Expression is never of any type in proposed_type_ranges
+            return UninhabitedType(), default
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+            return default, default
+    else:
+        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+            # Expression is never of any type in proposed_type_ranges
+            return UninhabitedType(), default
+
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
         [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]
@@ -8638,13 +8742,7 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.bytearray",
-    "builtins.memoryview",
-    "builtins.list",
-    "builtins.dict",
-    "builtins.set",
-}
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {"builtins.bytearray", "builtins.memoryview"}
 
 
 def has_custom_eq_checks(t: Type) -> bool:
@@ -9322,13 +9420,7 @@ def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
     #     def foo(x: None) -> None: ..
     #     @overload
     #     def foo(x: T) -> Foo[T]: ...
-    return is_overlapping_types(
-        left,
-        right,
-        ignore_promotions=True,
-        prohibit_none_typevar_overlap=True,
-        overlap_for_overloads=True,
-    )
+    return is_overlapping_types(left, right, ignore_promotions=True, overlap_for_overloads=True)
 
 
 def is_private(node_name: str) -> bool:
@@ -9479,11 +9571,15 @@ def ambiguous_enum_equality_keys(t: Type) -> set[str]:
     return result
 
 
-def is_typeddict_type_context(lvalue_type: Type | None) -> bool:
-    if lvalue_type is None:
-        return False
-    lvalue_proper = get_proper_type(lvalue_type)
-    return isinstance(lvalue_proper, TypedDictType)
+def is_typeddict_type_context(lvalue_type: Type) -> bool:
+    lvalue_type = get_proper_type(lvalue_type)
+    if isinstance(lvalue_type, TypedDictType):
+        return True
+    if isinstance(lvalue_type, UnionType):
+        for item in lvalue_type.items:
+            if is_typeddict_type_context(item):
+                return True
+    return False
 
 
 def is_method(node: SymbolNode | None) -> bool:

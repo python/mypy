@@ -2222,3 +2222,10 @@ def func(one: Dict[K, V], two: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V
 def caller(arg1: Mapping[K, V], arg2: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V2]]:
     _arg1 = arg1 if isinstance(arg1, dict) else dict(arg1)
     return func(_arg1, arg2)
+
+[case testStrictEqualityWithList]
+# flags: --strict-equality
+def f(x: int, y: list[str]):
+    x in y
+[out]
+_testStrictEqualityWithList.py:3: error: Non-overlapping container check (element type: "int", container item type: "str")

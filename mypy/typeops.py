@@ -629,9 +629,23 @@ def make_simplified_union(
                 else:
                     extra_attrs_set.add(instance.extra_attrs)
 
-        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+        # Code below is awkward, because we don't want the extra checks to affect
+        # performance in the common case.
+        erase_extra = False
+        if extra_attrs_set is not None:
             fallback = try_getting_instance_fallback(result)
-            if fallback:
+            if fallback is None:
+                return result
+            if len(extra_attrs_set) > 1:  # This case is too tricky to handle.
+                erase_extra = True
+            else:
+                # Check that all relevant items have the extra attributes.
+                for item in items:
+                    instance = try_getting_instance_fallback(item)
+                    if instance and instance.type == fallback.type and not instance.extra_attrs:
+                        erase_extra = True
+                        break
+            if erase_extra:
                 fallback.extra_attrs = None
 
     return result
@@ -1220,16 +1234,16 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
         return typ
     elif isinstance(typ, LiteralType):
         return typ.fallback
-    elif isinstance(typ, NoneType):
+    elif isinstance(typ, (NoneType, AnyType)):
         return None  # Fast path for None, which is common
     elif isinstance(typ, FunctionLike):
         return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
     elif isinstance(typ, TupleType):
         return typ.partial_fallback
     elif isinstance(typ, TypedDictType):
         return typ.fallback
-    elif isinstance(typ, TypeVarType):
-        return try_getting_instance_fallback(typ.upper_bound)
     return None
 
 

@@ -62,7 +62,7 @@ class TypeCheckSuite(DataSuite):
             with tempfile.NamedTemporaryFile(prefix="test", dir=".") as temp_file:
                 temp_path = Path(temp_file.name)
                 if not temp_path.with_name(temp_path.name.upper()).exists():
-                    pytest.skip("File system is not case‐insensitive")
+                    pytest.skip("File system is not case-insensitive")
         if lxml is None and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (
@@ -136,6 +136,7 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.native_parser = bool(os.environ.get("TEST_NATIVE_PARSER"))
 
         if options.num_workers:
             options.fixed_format_cache = True

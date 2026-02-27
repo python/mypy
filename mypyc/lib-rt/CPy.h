@@ -781,6 +781,8 @@ Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged st
 CPyTagged CPyStr_Ord(PyObject *obj);
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
 bool CPyStr_IsSpace(PyObject *str);
+bool CPyStr_IsAlnum(PyObject *str);
+bool CPyStr_IsDigit(PyObject *str);
 
 // Bytes operations
 
