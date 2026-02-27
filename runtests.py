@@ -116,10 +116,7 @@ def run_cmd(name: str) -> int:
     if name in cmds:
         cmd = cmds[name]
     else:
-        if name.endswith(".test"):
-            cmd = ["pytest", f"mypy/test/testcheck.py::TypeCheckSuite::{name}"]
-        else:
-            cmd = ["pytest", "-n0", "-k", name]
+        cmd = ["pytest", "-n0", "-k", name]
     print(f"run {name}: {cmd}")
     proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
@@ -163,7 +160,7 @@ def main() -> None:
             "Run the given tests. If given no arguments, run everything except"
             + " pytest-extra and mypyc-extra. Unrecognized arguments will be"
             + " interpreted as individual test names / substring expressions"
-            + " (or, if they end in .test, individual test files)"
+            + " (which can end in .test, to specify individual test files)"
             + " and this script will try to run them."
         )
         if "-h" in args or "--help" in args:
