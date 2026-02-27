@@ -239,6 +239,15 @@ pytype_from_template_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Call __init_subclass__ on a type. Separated from CPyType_FromTemplate
+# so that class attributes can be set before __init_subclass__ is called.
+py_init_subclass_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPy_InitSubclass",
+    error_kind=ERR_FALSE,
+)
+
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.
 dataclass_sleight_of_hand = custom_op(

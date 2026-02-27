@@ -1113,6 +1113,39 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testInitSubclassWithClassVar]
+from typing import ClassVar
+
+class Base:
+    name: ClassVar[str] = "base"
+    required: ClassVar[int] = -1
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        cls.required = len(cls.name)
+
+class Child(Base):
+    name: ClassVar[str] = "child"
+
+class GrandChild(Child):
+    name: ClassVar[str] = "grandchild"
+
+class NoOverride(Base):
+    pass
+
+[file driver.py]
+from native import Base, Child, GrandChild, NoOverride
+
+# __init_subclass__ should see the subclass's own ClassVar values
+assert Child.name == "child"
+assert Child.required == 5, f"expected 5, got {Child.required}"
+
+assert GrandChild.name == "grandchild"
+assert GrandChild.required == 10, f"expected 10, got {GrandChild.required}"
+
+# No override should use inherited value
+assert NoOverride.name == "base"
+assert NoOverride.required == 4, f"expected 4, got {NoOverride.required}"
+
 [case testDefaultVars]
 from typing import Optional
 class A:

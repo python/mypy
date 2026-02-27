@@ -80,6 +80,7 @@ from mypyc.primitives.misc_ops import (
     import_op,
     not_implemented_op,
     py_calc_meta_op,
+    py_init_subclass_op,
     pytype_from_template_op,
     type_object_op,
 )
@@ -315,6 +316,10 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
+        # Call __init_subclass__ after class attributes have been set
+        if self.type_obj is not None:
+            self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
+
         attrs_with_defaults, default_assignments = find_attr_initializers(
             self.builder, self.cdef, self.skip_attr_default
         )
