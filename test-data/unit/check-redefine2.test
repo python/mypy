@@ -1398,6 +1398,60 @@ def process3(items: list[str]) -> None:
     reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/primitives.pyi]
 
+[case testNewRedefineNarrowingForNestedUnionWithAny]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any, Union
+
+a: Any
+Int = Union[int, Any]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "Any"
+
+[case testNewRedefineNarrowingForNestedUnionWithNone]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any, Union
+
+a: Any
+Int = Union[int, None]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "builtins.str | Any | builtins.int"
+
+[case testRegularNarrowingForNestedUnionWithAny]
+from typing import Any, Union
+
+a: Any
+Int = Union[int, Any]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "Any"
+
+[case testRegularNarrowingForNestedUnionWithNone]
+from typing import Any, Union
+
+a: Any
+Int = Union[int, None]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "builtins.str | Any | builtins.int"
+
 [case testNewRedefineWidenedArgumentDeferral]
 # flags: --allow-redefinition-new --local-partial-types
 def foo(x: int) -> None:
