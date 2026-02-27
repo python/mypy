@@ -4029,8 +4029,8 @@ class CollectAliasesVisitor(TypeQuery[list[mypy.nodes.TypeAlias]]):
         return res
 
 
-def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
-    if not isinstance(fullnames, tuple):
+def is_named_instance(t: Type, fullnames: str | Iterable[str]) -> TypeGuard[Instance]:
+    if isinstance(fullnames, str):
         fullnames = (fullnames,)
 
     t = get_proper_type(t)
