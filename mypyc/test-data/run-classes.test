@@ -5676,3 +5676,33 @@ def test_derived_acyclic() -> None:
     assert d.x == 3
     assert d.y == "hi"
     assert not gc.is_tracked(d)
+
+[case testTraitVtableGrandparentMethod]
+from typing import Any
+from mypy_extensions import trait, mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Base:
+    def value(self) -> Any:
+        return 42
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Middle(Base):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Child(Middle):
+    def derived(self) -> Any:
+        return self.value()
+
+class Concrete(Child):
+    pass
+
+[file driver.py]
+from native import Concrete
+c = Concrete()
+assert c.value() == 42
+assert c.derived() == 42
