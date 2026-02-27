@@ -122,6 +122,11 @@ def test(lst: list[object]) -> None:
         if not hasattr(cls, "module"):
             break
         reveal_type(cls.module)  # N: Revealed type is "Any"
+
+    other = object()
+    if not hasattr(other, "foo"):
+        return
+    reveal_type(other.foo)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineGlobalVariableSimple]
