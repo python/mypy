@@ -34,6 +34,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
     find_unpack_in_list,
+    flatten_nested_unions,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
@@ -314,11 +315,13 @@ class ConditionalTypeBinder:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
             # Keys can be narrowed using two different semantics. The new semantics
-            # is enabled for plain variables when bind_all is true, and it allows
+            # is enabled for inferred variables when bind_all is true, and it allows
             # variable types to be widened using subsequent assignments. This is
-            # tricky to support for instance attributes (primarily due to deferrals),
-            # so we don't use it for them.
-            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
+            # not allowed for instance attributes and annotated variables.
+            var = extract_var_from_literal_hash(key)
+            old_semantics = (
+                not self.bind_all or var is None or not var.is_inferred and not var.is_argument
+            )
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
@@ -503,24 +506,24 @@ class ConditionalTypeBinder:
                 # First case: a local/global variable without explicit annotation,
                 # in this case we just assign Any (essentially following the SSA logic).
                 self.put(expr, type)
-            elif isinstance(p_declared, UnionType) and any(
-                isinstance(get_proper_type(item), NoneType) for item in p_declared.items
-            ):
-                # Second case: explicit optional type, in this case we optimize for a common
-                # pattern when an untyped value used as a fallback replacing None.
-                new_items = [
-                    type if isinstance(get_proper_type(item), NoneType) else item
-                    for item in p_declared.items
-                ]
-                self.put(expr, UnionType(new_items))
-            elif isinstance(p_declared, UnionType) and any(
-                isinstance(get_proper_type(item), AnyType) for item in p_declared.items
-            ):
-                # Third case: a union already containing Any (most likely from an un-imported
-                # name), in this case we allow assigning Any as well.
-                self.put(expr, type)
+            elif isinstance(p_declared, UnionType):
+                all_items = flatten_nested_unions(p_declared.items)
+                if any(isinstance(get_proper_type(item), NoneType) for item in all_items):
+                    # Second case: explicit optional type, in this case we optimize for
+                    # a common pattern when an untyped value used as a fallback replacing None.
+                    new_items = [
+                        type if isinstance(get_proper_type(item), NoneType) else item
+                        for item in all_items
+                    ]
+                    self.put(expr, UnionType(new_items))
+                elif any(isinstance(get_proper_type(item), AnyType) for item in all_items):
+                    # Third case: a union already containing Any (most likely from
+                    # an un-imported name), in this case we allow assigning Any as well.
+                    self.put(expr, type)
+                else:
+                    # In all other cases we don't narrow to Any to minimize false negatives.
+                    self.put(expr, declared_type)
             else:
-                # In all other cases we don't narrow to Any to minimize false negatives.
                 self.put(expr, declared_type)
         elif isinstance(p_declared, AnyType):
             # Mirroring the first case above, we don't narrow to a precise type if the variable
