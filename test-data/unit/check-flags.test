@@ -2737,3 +2737,9 @@ def f() -> None:
 [file mypy.ini]
 \[mypy]
 disallow_redefinition = true
+
+[case testOnlyOneRedefinitionModeAllowed]
+# flags: --allow-redefinition --allow-redefinition-new --local-partial-types
+x = 1
+[out]
+main:1: error: --allow-redefinition-old and --allow-redefinition-new should not be used together

@@ -713,6 +713,17 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
+        if self.options.allow_redefinition_new and self.options.allow_redefinition_old:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail(
+                "--allow-redefinition-old and --allow-redefinition-new"
+                " should not be used together",
+                n,
+            )
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
