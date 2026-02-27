@@ -796,8 +796,8 @@ of the above sections.
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be
-    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates,
-    and makes arguments prepended via ``Concatenate`` positional-only. For example:
+    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates.
+    For example:
 
     .. code-block:: python
 
@@ -811,14 +811,20 @@ of the above sections.
            b: int
 
        def test(foo: Foo, bar: Bar) -> None:
-           # This is technically unsafe since foo can have a subtype of Foo at
-           # runtime, where type of key "b" is incompatible with int, see below
-           bar.update(foo)
+           # This is unsafe since foo can have a subtype of Foo at
+           # runtime, where type of key "b" is incompatible with int.
+           # See the usage below for an example of that unsafe situation.
+           bar.update(foo) # error: Argument 1 to "update" of "TypedDict" has incompatible type "Foo"; expected "TypedDict({'a': int, 'b'?: int})"  [typeddict-item]
 
        class Bad(Foo):
            b: str
        bad: Bad = {"a": 0, "b": "no"}
-       test(bad, bar)
+       innocent_bar: Bar = Bar(a=1, b=1)
+       print(innocent_bar) # {'a': 1, 'b': 1}; types are correct, all is good.
+       test(bad, innocent_bar)
+       print(innocent_bar) # {'a': 0, 'b': 'no'}; types are now incorrect, uh oh.
+
+    It also makes arguments prepended via ``Concatenate`` positional-only.
 
     In future more checks may be added to this flag if:
 
