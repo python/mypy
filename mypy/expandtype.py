@@ -223,7 +223,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # See: https://github.com/python/mypy/issues/16649
             return t.copy_modified(args=args)
 
-        if t.type.fullname == "builtins.tuple":
+        if t.type.fullname == "builtins.tuple" and len(args) > 0:
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
             if isinstance(arg, UnpackType):

@@ -2237,3 +2237,17 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testUnpackEmptyTupleInTypeAliasNoCrash]
+# https://github.com/python/mypy/issues/20913
+from typing import Unpack
+
+class C[*Ts]:
+    pass
+
+type T[T, *Ts] = C[*Ts]
+
+x: T[bool, Unpack[tuple[()]]]
+reveal_type(x)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple]]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
