@@ -1565,6 +1565,49 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_proxy_object(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class LazyObject:
+                def __init__(self, func: object) -> None: ...
+                def __bool__(self) -> bool: ...
+            """,
+            runtime="""
+            class LazyObject:
+                def __init__(self, func):
+                    self.__dict__["_wrapped"] = None
+                    self.__dict__["_setupfunc"] = func
+                def _setup(self):
+                    self.__dict__["_wrapped"] = self._setupfunc()
+                @property
+                def __class__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return type(self._wrapped)
+                def __bool__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return bool(self._wrapped)
+            """,
+            error='test_module.LazyObject.__class__',
+        )
+        yield Case(
+            stub="""
+            def default_value() -> bool: ...
+
+            DEFAULT_VALUE: bool
+            """,
+            runtime="""
+            def default_value():
+                return True
+
+            DEFAULT_VALUE = LazyObject(default_value)
+            bool(DEFAULT_VALUE)  # evaluate the lazy object
+            """,
+            error='test_module.DEFAULT_VALUE',
+        )
+
+    @collect_cases
     def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
         yield Case(
             stub="Z: int",
