@@ -224,6 +224,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return t.copy_modified(args=args)
 
         if t.type.fullname == "builtins.tuple":
+            if not args:
+                # After expansion, args is empty (e.g. Unpack[tuple[()]] expanded
+                # to nothing). Return the empty fixed-length tuple tuple[()].
+                return TupleType([], fallback=t.copy_modified(args=[]))
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
             if isinstance(arg, UnpackType):
@@ -519,7 +523,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
                 items.extend(self.expand_unpack(item))
             else:
-                items.append(item.accept(self))
+                expanded = item.accept(self)
+                if isinstance(expanded, UnpackType) and isinstance(
+                    expanded.type, TupleType
+                ):
+                    # Inline Unpack[tuple[X, Y]] -> X, Y
+                    # This also handles Unpack[tuple[()]] -> nothing
+                    items.extend(expanded.type.items)
+                    continue
+                items.append(expanded)
         return items
 
     def expand_type_tuple_with_unpack(self, typs: tuple[Type, ...]) -> list[Type]:
@@ -530,7 +542,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
                 items.extend(self.expand_unpack(item))
             else:
-                items.append(item.accept(self))
+                expanded = item.accept(self)
+                if isinstance(expanded, UnpackType) and isinstance(
+                    expanded.type, TupleType
+                ):
+                    # Inline Unpack[tuple[X, Y]] -> X, Y
+                    # This also handles Unpack[tuple[()]] -> nothing
+                    items.extend(expanded.type.items)
+                    continue
+                items.append(expanded)
         return items
 
     def visit_tuple_type(self, t: TupleType) -> Type:
