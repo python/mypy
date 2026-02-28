@@ -59,6 +59,7 @@ ClassVar: _SpecialForm = ...
 
 Final = 0
 Literal = 0
+NewType = 0
 TypedDict = 0
 
 class TypeVar:
@@ -1195,7 +1196,7 @@ class StubtestUnit(unittest.TestCase):
             import collections.abc
             import re
             import typing
-            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union
+            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union, type_check_only
             """,
             runtime="""
             import collections.abc
@@ -1266,6 +1267,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             _T = TypeVar("_T")
+            @type_check_only
             class _Spam(Generic[_T]):
                 def foo(self) -> None: ...
             IntFood = _Spam[int]
@@ -1643,6 +1645,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="x = 5", runtime="", error="x")
         yield Case(stub="def f(): ...", runtime="", error="f")
         yield Case(stub="class X: ...", runtime="", error="X")
+        yield Case(stub="class _X: ...", runtime="", error="_X")
         yield Case(
             stub="""
             from typing import overload
@@ -1699,6 +1702,8 @@ class StubtestUnit(unittest.TestCase):
             runtime="class FakeDelattrClass: ...",
             error="FakeDelattrClass.__delattr__",
         )
+        yield Case(stub="from typing import NewType", runtime="", error=None)
+        yield Case(stub="_Int = NewType('_Int', int)", runtime="", error=None)
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -2325,8 +2330,9 @@ assert annotations
         )
         yield Case(
             stub="""
-            from typing import TypedDict
+            from typing import TypedDict, type_check_only
 
+            @type_check_only
             class _Options(TypedDict):
                 a: str
                 b: int
@@ -2746,6 +2752,23 @@ assert annotations
             runtime="def func2() -> None: ...",
             error="func2",
         )
+        # The same is true for private types
+        yield Case(
+            stub="""
+            @type_check_only
+            class _P1: ...
+            """,
+            runtime="",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _P2: ...
+            """,
+            runtime="class _P2: ...",
+            error="_P2",
+        )
         # A type that exists at runtime is allowed to alias a type marked
         # as '@type_check_only' in the stubs.
         yield Case(
@@ -2762,8 +2785,9 @@ assert annotations
     def test_type_default_protocol(self) -> Iterator[Case]:
         yield Case(
             stub="""
-            from typing import Protocol
+            from typing import Protocol, type_check_only
 
+            @type_check_only
             class _FormatterClass(Protocol):
                 def __call__(self, *, prog: str) -> HelpFormatter: ...
 
