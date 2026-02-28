@@ -2737,3 +2737,31 @@ def f() -> None:
 [file mypy.ini]
 \[mypy]
 disallow_redefinition = true
+
+[case testRevealSimpleTypes_no_verbose_reveal]
+from typing import Generic, TypeVar, Callable
+from typing_extensions import TypeVarTuple, Unpack, TypedDict
+
+T = TypeVar("T", bound=int)
+S = TypeVar("S", default=list[T])
+
+class A(Generic[T, S]): ...
+reveal_type(A)  # N: Revealed type is "def [T <: int, S = list[T]] () -> __main__.A[T, S]"
+
+Ts = TypeVarTuple("Ts")
+def foo(x: int, *xs: Unpack[Ts]) -> tuple[int, Unpack[Ts]]: ...
+reveal_type(foo)  # N: Revealed type is "def [Ts] (x: int, *xs: *Ts) -> tuple[int, *Ts]"
+
+class User(TypedDict):
+    age: int
+    name: str
+
+def bar(x: int, **kwargs: Unpack[User]) -> None: ...
+reveal_type(bar)  # N: Revealed type is "def (x: int, **kwargs: **TypedDict(__main__.User, {'age': int, 'name': str}))"
+
+fn: Callable[[Unpack[Ts], Unpack[User]], tuple[Unpack[Ts]]]
+reveal_type(fn)  # N: Revealed type is "def [Ts] (*args: *Ts, **kwargs: **TypedDict(__main__.User, {'age': int, 'name': str})) -> tuple[*Ts]"
+
+fx: Callable[[int, Unpack[Ts], int], tuple[Unpack[Ts]]]
+reveal_type(fx)  # N: Revealed type is "def [Ts] (int, *args: *tuple[*Ts, int]) -> tuple[*Ts]"
+[builtins fixtures/tuple.pyi]

@@ -3741,12 +3741,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return f"<Deleted '{t.source}'>"
 
     def visit_instance(self, t: Instance, /) -> str:
+        fullname = t.type.fullname
+        if not self.options.reveal_verbose_types and fullname.startswith("builtins."):
+            fullname = t.type.name
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
             s = f"{t.last_known_value.accept(self)}?"
+
         else:
-            s = t.type.fullname or t.type.name or "<???>"
+            s = fullname or t.type.name or "<???>"
 
         if t.args:
             if t.type.fullname == "builtins.tuple":
@@ -3761,10 +3765,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_type_var(self, t: TypeVarType, /) -> str:
-        s = f"{t.name}`{t.id}"
+        if not self.options.reveal_verbose_types:
+            s = t.name
+        else:
+            s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
-        if t.has_default():
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3773,10 +3780,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = ""
         if t.prefix.arg_types:
             s += f"[{self.list_str(t.prefix.arg_types)}, **"
-        s += f"{t.name_with_suffix()}`{t.id}"
+        if not self.options.reveal_verbose_types:
+            s += t.name_with_suffix()
+        else:
+            s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
-        if t.has_default():
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3810,8 +3820,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"[{s}]"
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> str:
-        s = f"{t.name}`{t.id}"
-        if t.has_default():
+        if not self.options.reveal_verbose_types:
+            s = t.name
+        else:
+            s = f"{t.name}`{t.id}"
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3836,11 +3849,20 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]
+            if not name and not self.options.reveal_verbose_types:
+                # Avoid ambiguous (and weird) formatting for anonymous args/kwargs.
+                if t.arg_kinds[i] == ARG_STAR and isinstance(t.arg_types[i], UnpackType):
+                    name = "args"
+                elif t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
+                    name = "kwargs"
             if name:
                 s += name + ": "
             type_str = t.arg_types[i].accept(self)
             if t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
-                type_str = f"Unpack[{type_str}]"
+                if not self.options.reveal_verbose_types:
+                    type_str = f"**{type_str}"
+                else:
+                    type_str = f"Unpack[{type_str}]"
             s += type_str
             if t.arg_kinds[i].is_optional():
                 s += " ="
@@ -3867,7 +3889,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             vs = []
             for var in t.variables:
                 if isinstance(var, TypeVarType):
-                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f"{var.name} in {vals}")
@@ -3919,7 +3940,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:
-                prefix = repr(t.fallback.type.fullname) + ", "
+                if not self.options.reveal_verbose_types:
+                    prefix = t.fallback.type.fullname + ", "
+                else:
+                    prefix = repr(t.fallback.type.fullname) + ", "
         return f"TypedDict({prefix}{s})"
 
     def visit_raw_expression_type(self, t: RawExpressionType, /) -> str:
@@ -3970,6 +3994,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return type_str
 
     def visit_unpack_type(self, t: UnpackType, /) -> str:
+        if not self.options.reveal_verbose_types:
+            return f"*{t.type.accept(self)}"
         return f"Unpack[{t.type.accept(self)}]"
 
     def list_str(self, a: Iterable[Type], *, use_or_syntax: bool = False) -> str:
