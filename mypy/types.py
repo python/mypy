@@ -3850,6 +3850,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += "**"
             name = t.arg_names[i]
             if not name and not self.options.reveal_verbose_types:
+                # Avoid ambiguous (and weird) formatting for anonymous args/kwargs.
                 if t.arg_kinds[i] == ARG_STAR and isinstance(t.arg_types[i], UnpackType):
                     name = "args"
                 elif t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
