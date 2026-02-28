@@ -1589,7 +1589,7 @@ class StubtestUnit(unittest.TestCase):
                         self._setup()
                     return bool(self._wrapped)
             """,
-            error='test_module.LazyObject.__class__',
+            error="test_module.LazyObject.__class__",
         )
         yield Case(
             stub="""
@@ -1604,7 +1604,7 @@ class StubtestUnit(unittest.TestCase):
             DEFAULT_VALUE = LazyObject(default_value)
             bool(DEFAULT_VALUE)  # evaluate the lazy object
             """,
-            error='test_module.DEFAULT_VALUE',
+            error="test_module.DEFAULT_VALUE",
         )
 
     @collect_cases
