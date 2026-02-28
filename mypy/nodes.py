@@ -589,6 +589,7 @@ class FuncBase(Node):
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "is_type_check_only",  # Uses "@type_check_only"
+        "can_infer_self_attr",
         "_fullname",
     )
 
@@ -609,6 +610,7 @@ class FuncBase(Node):
         self.is_final = False
         self.is_explicit_override = False
         self.is_type_check_only = False
+        self.can_infer_self_attr = False
         # Name with module prefix
         self._fullname = ""
 

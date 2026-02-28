@@ -720,7 +720,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     #
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        if not self.recurse_into_functions:
+        if not self.recurse_into_functions and not defn.can_infer_self_attr:
             return
         with self.tscope.function_scope(defn):
             self._visit_overloaded_func_def(defn)
@@ -1196,7 +1196,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not self.recurse_into_functions:
+        if not self.recurse_into_functions and not defn.can_infer_self_attr:
             return
         with self.tscope.function_scope(defn):
             self.check_func_item(defn, name=defn.name)
@@ -1438,6 +1438,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         or self.options.preserve_asts
                         or not isinstance(defn, FuncDef)
                         or defn.has_self_attr_def
+                        or defn.can_infer_self_attr
                     ):
                         self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -5604,7 +5605,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def visit_decorator_inner(
         self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
     ) -> None:
-        if self.recurse_into_functions:
+        if self.recurse_into_functions or e.func.can_infer_self_attr:
             with self.tscope.function_scope(e.func):
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
 
@@ -7724,17 +7725,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 #    checked for compatibility with base classes elsewhere. Without this exception
                 #    mypy could require an annotation for an attribute that already has been
                 #    declared in a base class, which would be bad.
-                allow_none = (
-                    not self.options.local_partial_types
-                    or is_function
-                    or (is_class and self.is_defined_in_base_class(var))
-                )
-                if (
-                    allow_none
-                    and isinstance(var.type, PartialType)
-                    and var.type.type is None
-                    and not permissive
-                ):
+                if isinstance(var.type, PartialType) and var.type.type is None and not permissive:
                     var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
@@ -7809,6 +7800,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # This is an ugly hack to make partial generic self attributes behave
                     # as if --local-partial-types is always on (because it used to be like this).
                     disallow_other_scopes = True
+                if isinstance(var.type, PartialType) and var.type.type is None and var.info:
+                    disallow_other_scopes = False
 
                 scope_active = (
                     not disallow_other_scopes or scope.is_local == self.partial_types[-1].is_local

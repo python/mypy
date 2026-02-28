@@ -4658,6 +4658,14 @@ class SemanticAnalyzer(
                     for func in self.scope.functions:
                         if isinstance(func, FuncDef):
                             func.has_self_attr_def = True
+            if (
+                cur_node
+                and isinstance(cur_node.node, Var)
+                and cur_node.node.is_inferred
+                and cur_node.node.is_initialized_in_class
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_self_attr = True
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
