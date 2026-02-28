@@ -372,7 +372,8 @@ class Options:
         self.show_error_end: bool = False
         self.hide_error_codes = False
         self.show_error_code_links = False
-        self.reveal_simple_types = False
+        # This is an internal-only flag to simplify migrating test output.
+        self.reveal_verbose_types = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -434,7 +435,7 @@ class Options:
         self.mypyc_skip_c_generation = False
 
     def use_star_unpack(self) -> bool:
-        return self.python_version >= (3, 11)
+        return self.python_version >= (3, 11) or not self.reveal_verbose_types
 
     def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""

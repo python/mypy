@@ -990,12 +990,6 @@ def define_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--reveal-simple-types",
-        default=False,
-        help="Use compact (but potentially ambiguous) type representation in reveal_type()",
-        group=error_group,
-    )
-    add_invertible_flag(
         "--pretty",
         default=False,
         help="Use visually nicer output in error messages:"

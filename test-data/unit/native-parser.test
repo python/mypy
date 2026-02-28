@@ -2023,7 +2023,7 @@ def f(*args: *Ts) -> None:
 MypyFile:1(
   FuncDef:1(
     f
-    def (*args: Unpack[Ts?]) -> None?
+    def (*args: *Ts?) -> None?
     VarArg(
       Var(args))
     Block:2(
@@ -2037,7 +2037,7 @@ MypyFile:1(
     NameExpr(x)
     TempNode:1(
       Any)
-    tuple?[int?, Unpack[Ts?], str?]))
+    tuple?[int?, *Ts?, str?]))
 
 
 [case testLiteralStringType]

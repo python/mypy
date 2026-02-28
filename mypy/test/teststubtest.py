@@ -2756,7 +2756,7 @@ class StubtestMiscUnit(unittest.TestCase):
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
             'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
-            "def (number: builtins.int, text: builtins.str)\n"
+            "def (number: int, text: str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -2951,7 +2951,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        assert str(sig) == "def (arg: int | str)"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"

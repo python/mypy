@@ -137,6 +137,7 @@ class TypeCheckSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.native_parser = bool(os.environ.get("TEST_NATIVE_PARSER"))
+        options.reveal_verbose_types = not testcase.name.endswith("_no_verbose_reveal")
 
         if options.num_workers:
             options.fixed_format_cache = True

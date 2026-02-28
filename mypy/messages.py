@@ -1748,7 +1748,6 @@ class MessageBuilder:
 
         # Nothing special here; just create the note:
         visitor = TypeStrVisitor(options=self.options)
-        visitor.reveal_simple_types = self.options.reveal_simple_types
         self.note(f'Revealed type is "{typ.accept(visitor)}"', context)
 
     def reveal_locals(self, type_map: dict[str, Type | None], context: Context) -> None:
@@ -1759,7 +1758,6 @@ class MessageBuilder:
             self.note("Revealed local types are:", context)
             for k, v in sorted_locals.items():
                 visitor = TypeStrVisitor(options=self.options)
-                visitor.reveal_simple_types = self.options.reveal_simple_types
                 self.note(f"    {k}: {v.accept(visitor) if v is not None else None}", context)
         else:
             self.note("There are no locals to reveal", context)
@@ -2972,11 +2970,19 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         if tp.arg_kinds[i] == ARG_STAR2:
             s += "**"
         name = tp.arg_names[i]
+        if not name and not options.reveal_verbose_types:
+            if tp.arg_kinds[i] == ARG_STAR and isinstance(tp.arg_types[i], UnpackType):
+                name = "args"
+            elif tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
+                name = "kwargs"
         if name:
             s += name + ": "
         type_str = format_type_bare(tp.arg_types[i], options)
         if tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
-            type_str = f"Unpack[{type_str}]"
+            if options.reveal_verbose_types:
+                type_str = f"Unpack[{type_str}]"
+            else:
+                type_str = f"**{type_str}"
         s += type_str
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
