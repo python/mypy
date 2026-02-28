@@ -426,7 +426,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def f(x: T) -> T: pass
 
-y = f[int]  # E: Type application is only supported for generic classes
+y = f[int]  # E: Type application is only supported for generic classes and type aliases
 [out]
 
 
@@ -1004,7 +1004,7 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 
 U[int]  # E: Type application targets a non-generic function or class
 O[int]  # E: Bad number of arguments for type alias, expected 0, given 1 \
-        # E: Type application is only supported for generic classes
+        # E: Type application is only supported for generic classes and type aliases
 
 [case testAliasesInClassBodyNormalVsSubscripted]
 
@@ -1072,9 +1072,9 @@ reveal_type(ts) # N: Revealed type is "Any"
 us = UA.x # E: "<typing special form>" has no attribute "x"
 reveal_type(us) # N: Revealed type is "Any"
 
-xx = CA[str] + 1  # E: Type application is only supported for generic classes
-yy = TA[str]()  # E: Type application is only supported for generic classes
-zz = UA[str].x  # E: Type application is only supported for generic classes
+xx = CA[str] + 1  # E: Type application is only supported for generic classes and type aliases
+yy = TA[str]()  # E: Type application is only supported for generic classes and type aliases
+zz = UA[str].x  # E: Type application is only supported for generic classes and type aliases
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 [out]
