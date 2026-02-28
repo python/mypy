@@ -4011,12 +4011,13 @@ class SemanticAnalyzer(
                 python_3_12_type_alias=python_3_12_type_alias,
             )
 
-        # There can be only one variadic variable at most, the error is reported elsewhere.
+        # Check for multiple TypeVarTuples in type alias definition
         new_tvar_defs = []
         variadic = False
         for td in tvar_defs:
             if isinstance(td, TypeVarTupleType):
                 if variadic:
+                    self.fail("Can only use one TypeVarTuple in a type alias", rvalue)
                     continue
                 variadic = True
             new_tvar_defs.append(td)
