@@ -3786,7 +3786,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
-        if t.has_default():
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3889,7 +3889,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             vs = []
             for var in t.variables:
                 if isinstance(var, TypeVarType):
-                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f"{var.name} in {vals}")
