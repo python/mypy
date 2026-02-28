@@ -1541,7 +1541,7 @@ class C:
     def meth(cls) -> Self: ...
     @staticmethod
     def bad() -> Self: ...  # E: Static methods cannot use Self type \
-        # E: A function returning TypeVar should receive at least one argument containing the same TypeVar \
+        # E: A function returning TypeVar should have at least one same TypeVar parameter \
         # N: Consider using the upper bound "C" instead
 
 class D(C): ...

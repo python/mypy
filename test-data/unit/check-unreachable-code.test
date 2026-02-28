@@ -1567,7 +1567,7 @@ from typing import TypeVar
 
 T = TypeVar("T")
 class Foo:
-    def __setitem__(self, key: str, value: str) -> T:  # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    def __setitem__(self, key: str, value: str) -> T:  # E: A function returning TypeVar should have at least one same TypeVar parameter
         raise Exception
 
 def f() -> None:

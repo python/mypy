@@ -1599,9 +1599,9 @@ A = TypeVar('A')
 B = TypeVar('B')
 
 def f1(x: A) -> A: ...
-def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+def f2(x: A) -> B: ... # E: A function returning TypeVar should have at least one same TypeVar parameter
 def f3(x: B) -> B: ...
-def f4(x: int) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+def f4(x: int) -> A: ... # E: A function returning TypeVar should have at least one same TypeVar parameter
 
 y1 = f1
 if int():
@@ -1650,8 +1650,8 @@ B = TypeVar('B')
 T = TypeVar('T')
 def outer(t: T) -> None:
     def f1(x: A) -> A: ...
-    def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
-    def f3(x: T) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    def f2(x: A) -> B: ... # E: A function returning TypeVar should have at least one same TypeVar parameter
+    def f3(x: T) -> A: ... # E: A function returning TypeVar should have at least one same TypeVar parameter
     def f4(x: A) -> T: ...
     def f5(x: T) -> T: ...
 
@@ -1818,7 +1818,7 @@ from typing import TypeVar
 A = TypeVar('A')
 B = TypeVar('B')
 def f1(x: int, y: A) -> A: ...
-def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should have at least one same TypeVar parameter
 def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
