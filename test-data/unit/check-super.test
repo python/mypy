@@ -375,7 +375,7 @@ class A:
         return 1
 
 class B(A):
-    def g() -> None: # E: Method must have at least one argument. Did you forget the "self" argument?
+    def g() -> None: # E: Method must have at least one parameter. Did you forget the "self" parameter?
         super().f() # E: "super()" requires one or two positional arguments in enclosing function
     def h(self) -> None:
         def a() -> None:
