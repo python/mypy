@@ -1127,8 +1127,8 @@ S = Callable[[B], "T"]
 
 def f(x: S, y: T):
     if x == y:  # E: Unsupported left operand type for == ("Callable[[B], T]")
-        reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
-        reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
+        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(y)
     else:
         reveal_type(x)  # N: Revealed type is "def (__main__.B) -> def (__main__.A) -> ..."
         reveal_type(y)  # N: Revealed type is "def (__main__.A) -> def (__main__.B) -> ..."
@@ -2808,7 +2808,7 @@ while True:
         break
     x = str()
     if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
-        break
+        break  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop2]
@@ -2821,7 +2821,7 @@ class C: ...
 x = A()
 while True:
     if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
-        break
+        break  # E: Statement is unreachable
     x = B()
 [builtins fixtures/primitives.pyi]
 
@@ -3213,7 +3213,7 @@ def narrow_tuple(x: Literal['c'], overlap: list[Literal['b', 'c']], no_overlap: 
         reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in no_overlap:
-        reveal_type(x)  # N: Revealed type is "Literal['c']"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "Literal['c']"
 [builtins fixtures/tuple.pyi]
@@ -3255,8 +3255,8 @@ def f2(x: Any) -> None:
 
 def bad_compare_has_key(has_key: bool, key: str, s: tuple[str, ...]) -> None:
     if has_key == key in s:  # E: Non-overlapping equality check (left operand type: "bool", right operand type: "str")
-        reveal_type(has_key)  # N: Revealed type is "builtins.bool"
-        reveal_type(key)  # N: Revealed type is "builtins.str"
+        reveal_type(has_key)  # E: Statement is unreachable
+        reveal_type(key)
 
 def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
     if has_key == key in s:
@@ -3623,6 +3623,7 @@ def bar(y: Any):
         reveal_type(y) # N: Revealed type is "Any"
 [builtins fixtures/dict-full.pyi]
 
+
 [case testNarrowTypeVarType]
 # flags: --strict-equality --warn-unreachable
 from typing import TypeVar
@@ -3653,14 +3654,14 @@ TargetType = TypeVar("TargetType", int, float, str)
 # TODO: this behaviour is incorrect, it will be fixed by improving reachability
 def convert_type(target_type: Type[TargetType]) -> TargetType:
     if target_type == str:
-        return str()  # E: Incompatible return value type (got "str", expected "int") \
-                      # E: Incompatible return value type (got "str", expected "float")
+        return str()
     if target_type == int:
-        return int()  # E: Incompatible return value type (got "int", expected "str")
+        return int()
     if target_type == float:
-        return float()  # E: Incompatible return value type (got "float", expected "int") \
-                        # E: Incompatible return value type (got "float", expected "str")
+        return float()  # E: Incompatible return value type (got "float", expected "int")
     raise
+
+
 [builtins fixtures/primitives.pyi]
 
 
@@ -3841,16 +3842,16 @@ class A2(A): ...
 
 def check_a(base: A, a1: A1, a2: A2):
     if a1 == a2:  # E: Non-overlapping equality check (left operand type: "A1", right operand type: "A2")
-        reveal_type(a1)  # N: Revealed type is "__main__.A1"
-        reveal_type(a2)  # N: Revealed type is "__main__.A2"
+        reveal_type(a1)  # E: Statement is unreachable
+        reveal_type(a2)
 
     if a1 == base:
         # We do narrow base
         reveal_type(a1)  # N: Revealed type is "__main__.A1"
         reveal_type(base)  # N: Revealed type is "__main__.A1"
         if a2 == base:  # E: Non-overlapping equality check (left operand type: "A2", right operand type: "A1")
-            reveal_type(a2)  # N: Revealed type is "__main__.A2"
-            reveal_type(base)  # N: Revealed type is "__main__.A1"
+            reveal_type(a2)  # E: Statement is unreachable
+            reveal_type(base)
 [builtins fixtures/primitives.pyi]
 
 

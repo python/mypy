@@ -91,7 +91,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.A"
+        reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 class B: ...
 b: B
@@ -104,7 +104,7 @@ m: int
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -3049,7 +3049,7 @@ def x() -> tuple[Literal["test"]]: ...
 
 match x():
     case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
-        reveal_type(x)  # N: Revealed type is "def () -> tuple[Literal['test']]"
+        reveal_type(x)  # E: Statement is unreachable
     case foo:
         foo
 
