@@ -4310,40 +4310,53 @@ d.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
 [case testNonePartialType1]
+from typing import Optional
+import m
+
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
 import a
-a.y
 
 x = None
 
 def f() -> None:
     global x
-    x = 1
+    x = a.y
 [file a.py]
 y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
+main:5: error: Incompatible return value type (got "str | None", expected "int | None")
 
 [case testNonePartialType2]
+from typing import Optional
+import m
+
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from typing import TypeVar
 import a
-a.y
 
 x = None
 
-def f():
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+@dec
+def f() -> None:
     global x
-    x = 1
+    x = a.y
 [file a.py]
 y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
+main:5: error: Incompatible return value type (got "str | None", expected "int | None")
 
 [case testNonePartialType3]
 import a
@@ -4355,10 +4368,13 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 
 [case testNonePartialType4]
+from typing import Optional
 import a
+
+def foo() -> Optional[str]:
+    return a.y
 [file a.py]
 y = None
 def f() -> None:
@@ -4371,7 +4387,6 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 ==
 
 [case testSkippedClass1]
@@ -11532,3 +11547,98 @@ def lol() -> None: pass
 ==
 a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
 a.py:2: note: "lol" defined in "b"
+
+[case testPartialNoneTypeFineInClass]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from n import f
+class C:
+    x = None
+    def foo(self, x: int) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassDecorated]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import TypeVar
+from n import f
+
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+class C:
+    x = None
+    @dec
+    def foo(self, x: int) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassOverload]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import overload
+from n import f
+
+class C:
+    x = None
+    @overload
+    def foo(self) -> None: ...
+    @overload
+    def foo(self, x: int) -> None: ...
+    def foo(self, x: int = 0) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassNested]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import TypeVar
+from n import f
+
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+class C:
+    x = None
+    def foo(self, x: int) -> None:
+        @dec
+        def setup() -> None:
+            self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
