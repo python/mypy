@@ -369,14 +369,9 @@ else:
     async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
 
 if sys.version_info >= (3, 11):
-    @overload
     async def wait(
         fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
     ) -> tuple[set[_FT], set[_FT]]: ...
-    @overload
-    async def wait(
-        fs: Iterable[Task[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
-    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
 
 elif sys.version_info >= (3, 10):
     @overload
