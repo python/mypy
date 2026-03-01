@@ -6793,9 +6793,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         target = TypeRange(target_type, is_upper_bound=False)
                         for item in orig_type.items:
                             p_item = get_proper_type(item)
-                            is_enum = bool(
-                                ambiguous_enum_equality_keys(item) - {"<other>"}
-                            )
+                            is_enum = bool(ambiguous_enum_equality_keys(item) - {"<other>"})
                             if not is_enum and isinstance(p_item, (LiteralType, NoneType)):
                                 has_narrowable = True
                                 y, n = conditional_types(
@@ -6813,9 +6811,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 UnionType.make_union(no_items),
                             )
                             all_if_maps.append(if_map)
-                            if is_target_for_value_narrowing(
-                                get_proper_type(target_type)
-                            ):
+                            if is_target_for_value_narrowing(get_proper_type(target_type)):
                                 all_else_maps.append(else_map)
                     continue
 
