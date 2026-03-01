@@ -34,7 +34,7 @@ from mypy.lookup import lookup_fully_qualified
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder, format_type
+from mypy.messages import MessageBuilder, callable_name, format_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -1794,20 +1794,27 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         arg_types = self.infer_arg_types_in_context(callee, args, arg_kinds, formal_to_actual)
 
-        self.check_argument_count(
-            callee,
-            arg_types,
-            arg_kinds,
-            arg_names,
-            formal_to_actual,
-            context,
-            object_type,
-            callable_name,
-        )
+        if not self._detect_missing_positional_arg(callee, arg_types, arg_kinds, args, context):
+            self.check_argument_count(
+                callee,
+                arg_types,
+                arg_kinds,
+                arg_names,
+                formal_to_actual,
+                context,
+                object_type,
+                callable_name,
+            )
 
-        self.check_argument_types(
-            arg_types, arg_kinds, args, callee, formal_to_actual, context, object_type=object_type
-        )
+            self.check_argument_types(
+                arg_types,
+                arg_kinds,
+                args,
+                callee,
+                formal_to_actual,
+                context,
+                object_type=object_type,
+            )
 
         if (
             callee.is_type_obj()
@@ -2336,6 +2343,57 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # return type must be CallableType, since we give the right number of type
         # arguments.
         return self.apply_generic_arguments(callee_type, inferred_args, context)
+
+    def _detect_missing_positional_arg(
+        self,
+        callee: CallableType,
+        arg_types: list[Type],
+        arg_kinds: list[ArgKind],
+        args: list[Expression],
+        context: Context,
+    ) -> bool:
+        """Try to identify a single missing positional argument using type alignment.
+
+        If the caller and callee are just positional arguments and exactly one arg is missing,
+        we scan left to right to find which argument skipped. If only the last argument is missing,
+        we return False since it's already handled in a desired manner. If there is an error,
+        report it and return True, or return False to fall back to normal checking.
+        """
+        if not all(k == ARG_POS for k in callee.arg_kinds):
+            return False
+        if not all(k == ARG_POS for k in arg_kinds):
+            return False
+        if len(arg_kinds) != len(callee.arg_kinds) - 1:
+            return False
+
+        skip_idx: int | None = None
+        j = 0
+        for i in range(len(callee.arg_types)):
+            if j >= len(arg_types):
+                skip_idx = i
+                break
+            if is_subtype(arg_types[j], callee.arg_types[i], options=self.chk.options):
+                j += 1
+            elif skip_idx is None:
+                skip_idx = i
+            else:
+                return False
+
+        if skip_idx is None or j != len(arg_types):
+            return False
+
+        if skip_idx == len(callee.arg_types) - 1:
+            return False
+
+        param_name = callee.arg_names[skip_idx]
+        callee_name = callable_name(callee)
+        if param_name is None or callee_name is None:
+            return False
+
+        msg = f'Missing positional argument "{param_name}" in call to {callee_name}'
+        ctx = args[skip_idx] if skip_idx < len(args) else context
+        self.msg.fail(msg, ctx, code=codes.CALL_ARG)
+        return True
 
     def check_argument_count(
         self,
