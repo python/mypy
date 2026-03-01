@@ -22,14 +22,15 @@ from __future__ import annotations
 import os
 from typing import Any, Final, cast
 
-import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
+import ast_serialize  # type: ignore[import-not-found, unused-ignore]
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
     read_str as read_str_bare,
 )
 
-from mypy import message_registry, nodes, types
+from mypy import errorcodes as codes, message_registry, nodes, types
+from mypy.errorcodes import ErrorCode
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -178,17 +179,9 @@ class State:
         column: int,
         *,
         blocker: bool = False,
-        code: str | None = None,
+        code: ErrorCode = codes.MISC,
     ) -> None:
-        """Report an error at a specific location.
-
-        Args:
-            message: Error message to display
-            line: Line number where error occurred
-            column: Column number where error occurred
-            blocker: If True, this error blocks further analysis
-            code: Error code for categorization
-        """
+        """Report an error at a specific location."""
         self.errors.append(
             {"line": line, "column": column, "message": message, "blocker": blocker, "code": code}
         )
@@ -372,21 +365,17 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         # Build from the bottom up, starting with the final else body
         current_else = else_body
 
-        # Process elif clauses in reverse order
-        for i in range(len(elif_exprs) - 1, -1, -1):
-            elif_stmt = IfStmt([elif_exprs[i]], [elif_bodies[i]], current_else)
-            # Set location from the elif expression
-            elif_stmt.line = elif_exprs[i].line
-            elif_stmt.column = elif_exprs[i].column
-            # Set end location based on what follows
+        for elif_expr, elif_body in reversed(list(zip(elif_exprs, elif_bodies))):
+            elif_stmt = IfStmt([elif_expr], [elif_body], current_else)
+            elif_stmt.line = elif_expr.line
+            elif_stmt.column = elif_expr.column
             if current_else is not None:
                 elif_stmt.end_line = current_else.end_line
                 elif_stmt.end_column = current_else.end_column
             else:
-                elif_stmt.end_line = elif_bodies[i].end_line
-                elif_stmt.end_column = elif_bodies[i].end_column
+                elif_stmt.end_line = elif_body.end_line
+                elif_stmt.end_column = elif_body.end_column
 
-            # Wrap in a Block to become the else clause for the outer if
             current_else = Block([elif_stmt])
             set_line_column_range(current_else, elif_stmt)
 
@@ -1064,7 +1053,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
             invalid.line,
             invalid.column,
             blocker=True,
-            code="misc",
         )
         return invalid
 
@@ -1090,7 +1078,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 invalid.line,
                 invalid.column,
                 blocker=True,
-                code="misc",
             )
 
     # Process keyword arguments
@@ -1103,7 +1090,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     invalid.line,
                     invalid.column,
                     blocker=True,
-                    code="misc",
                 )
             name = extract_arg_name(kw_value)
         elif kw_name == "type":
@@ -1114,7 +1100,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     invalid.line,
                     invalid.column,
                     blocker=True,
-                    code="misc",
                 )
             typ = kw_value
         else:
@@ -1124,7 +1109,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 invalid.line,
                 invalid.column,
                 blocker=True,
-                code="misc",
             )
 
     # Create CallableArgument
@@ -1587,7 +1571,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
-    elif tag == nodes.NAMED_EXPR:
+    elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
         # AssignmentExpr expects target to be a NameExpr
@@ -1773,7 +1757,6 @@ def fail_merge_overload(state: State, node: IfStmt) -> None:
         node.line,
         node.column,
         blocker=False,
-        code="misc",
     )
 
 

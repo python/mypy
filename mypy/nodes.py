@@ -5314,6 +5314,7 @@ TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
+# Tags 160+ are shared with the ast_serialize Rust extension and must be kept in sync.
 EXPR_STMT: Final[Tag] = 160
 CALL_EXPR: Final[Tag] = 161
 NAME_EXPR: Final[Tag] = 162
@@ -5362,7 +5363,7 @@ DEL_STMT: Final[Tag] = 204
 FSTRING_EXPR: Final[Tag] = 205
 FSTRING_INTERPOLATION: Final[Tag] = 206
 LAMBDA_EXPR: Final[Tag] = 207
-NAMED_EXPR: Final[Tag] = 208
+ASSIGNMENT_EXPR: Final[Tag] = 208
 STAR_EXPR: Final[Tag] = 209
 BYTES_EXPR: Final[Tag] = 210
 GLOBAL_DECL: Final[Tag] = 211
