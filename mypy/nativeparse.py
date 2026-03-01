@@ -30,7 +30,6 @@ from librt.internal import (
 )
 
 from mypy import errorcodes as codes, message_registry, nodes, types
-from mypy.errorcodes import ErrorCode
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -48,6 +47,7 @@ from mypy.cache import (
     read_str_opt,
     read_tag,
 )
+from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -1753,10 +1753,7 @@ def is_stripped_if_stmt(stmt: Statement) -> bool:
 def fail_merge_overload(state: State, node: IfStmt) -> None:
     """Report an error when overloads cannot be merged due to unknown condition."""
     state.add_error(
-        message_registry.FAILED_TO_MERGE_OVERLOADS.value,
-        node.line,
-        node.column,
-        blocker=False,
+        message_registry.FAILED_TO_MERGE_OVERLOADS.value, node.line, node.column, blocker=False
     )
 
 
