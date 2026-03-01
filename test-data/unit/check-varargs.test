@@ -803,7 +803,7 @@ from typing_extensions import Unpack
 class Person(TypedDict):
     name: str
     age: int
-def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between argument names and ** TypedDict items: "name"
+def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between parameter names and ** TypedDict items: "name"
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
