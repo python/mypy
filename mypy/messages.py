@@ -47,6 +47,7 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     IndexExpr,
+    MemberExpr,
     MypyFile,
     NameExpr,
     ReturnStmt,
@@ -56,6 +57,7 @@ from mypy.nodes import (
     TypeInfo,
     Var,
     get_func_def,
+    get_member_expr_fullname,
     reverse_builtin_aliases,
 )
 from mypy.operators import op_methods, op_methods_to_symbols
@@ -512,6 +514,21 @@ class MessageBuilder:
                     context,
                     code=codes.UNION_ATTR,
                 )
+                if typ_format == '"None"':
+                    var_name: str | None = None
+                    if isinstance(context, MemberExpr) and isinstance(context.expr, NameExpr):
+                        var_name = context.expr.name
+                    elif isinstance(context, MemberExpr) and isinstance(context.expr, MemberExpr):
+                        var_name = get_member_expr_fullname(context.expr)
+                    elif isinstance(context, NameExpr):
+                        var_name = context.name
+                    if var_name is not None:
+                        self.note(
+                            'You can use "if {} is not None" to guard'
+                            " against a None value".format(var_name),
+                            context,
+                            code=codes.UNION_ATTR,
+                        )
                 return codes.UNION_ATTR
             elif isinstance(original_type, TypeVarType):
                 bound = get_proper_type(original_type.upper_bound)

@@ -921,12 +921,15 @@ a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
 
-for y in x: pass # E: Item "None" of "list[tuple[str, str]] | None" has no attribute "__iter__" (not iterable)
+for y in x: pass
 if x:
     for s, t in x:
-        reveal_type(s) # N: Revealed type is "builtins.str"
+        reveal_type(s)
 [builtins fixtures/dict.pyi]
 [out]
+main:7: error: Item "None" of "list[tuple[str, str]] | None" has no attribute "__iter__" (not iterable)
+main:7: note: You can use "if x is not None" to guard against a None value
+main:10: note: Revealed type is "builtins.str"
 
 [case testUnpackUnionNoCrashOnPartialNone2]
 from typing import Dict, Tuple, List, Any
@@ -936,12 +939,23 @@ x = None
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
 
-for y in x: pass # E: Item "None" of "list[tuple[str, str]] | None" has no attribute "__iter__" (not iterable)
+for y in x: pass
 if x:
     for s, t in x:
-        reveal_type(s) # N: Revealed type is "builtins.str"
+        reveal_type(s)
 [builtins fixtures/dict.pyi]
 [out]
+main:8: error: Item "None" of "list[tuple[str, str]] | None" has no attribute "__iter__" (not iterable)
+main:8: note: You can use "if x is not None" to guard against a None value
+main:11: note: Revealed type is "builtins.str"
+
+[case testUnionAttributeNoneNarrowingHint]
+from typing import Optional
+
+def f(s: Optional[str]) -> bool:
+    return s.startswith('x')  # E: Item "None" of "str | None" has no attribute "startswith" \
+                              # N: You can use "if s is not None" to guard against a None value
+[builtins fixtures/ops.pyi]
 
 [case testUnpackUnionNoCrashOnPartialNoneBinder]
 from typing import Dict, Tuple, List, Any
