@@ -282,36 +282,10 @@ def parse_to_binary_ast(
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
+    # Branches ordered by frequency (based on mypy self-check)
     tag = read_tag(data)
     stmt: Statement
-    if tag == nodes.FUNC_DEF_STMT:
-        return read_func_def(state, data)
-    elif tag == nodes.DECORATOR:
-        expect_tag(data, LIST_GEN)
-        n_decorators = read_int_bare(data)
-        decorators = [read_expression(state, data) for i in range(n_decorators)]
-        line = read_int(data)
-        column = read_int(data)
-        fdef = read_statement(state, data)
-        assert isinstance(fdef, FuncDef)
-        fdef.is_decorated = True
-        var = Var(fdef.name)
-        var.line = fdef.line
-        var.is_ready = False
-        stmt = Decorator(fdef, decorators, var)
-        stmt.line = line
-        stmt.column = column
-        stmt.end_line = fdef.end_line
-        stmt.end_column = fdef.end_column
-        # TODO: Adjust funcdef location to start after decorator?
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.EXPR_STMT:
-        es = ExpressionStmt(read_expression(state, data))
-        set_line_column_range(es, es.expr)
-        expect_end_tag(data)
-        return es
-    elif tag == nodes.ASSIGNMENT_STMT:
+    if tag == nodes.ASSIGNMENT_STMT:
         lvalues = read_expression_list(state, data)
         rvalue = read_expression(state, data)
         has_type = read_bool(data)
@@ -327,14 +301,11 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
             set_line_column_range(rvalue, a)
         expect_end_tag(data)
         return a
-    elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
-        op = read_str(data)
-        lvalue = read_expression(state, data)
-        rvalue = read_expression(state, data)
-        stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
-        read_loc(data, stmt)
+    elif tag == nodes.EXPR_STMT:
+        es = ExpressionStmt(read_expression(state, data))
+        set_line_column_range(es, es.expr)
         expect_end_tag(data)
-        return stmt
+        return es
     elif tag == nodes.IF_STMT:
         expr = read_expression(state, data)
         body = read_block(state, data)
@@ -384,6 +355,85 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
+    elif tag == nodes.FUNC_DEF_STMT:
+        return read_func_def(state, data)
+    elif tag == nodes.IMPORT_FROM:
+        relative = read_int(data)
+        module_id = read_str(data)  # Empty string for "from . import x"
+        n = read_int(data)
+        names = []
+        for _ in range(n):
+            name = read_str(data)
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+            names.append((name, asname))
+
+        stmt = ImportFrom(module_id, relative, names)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.FOR_STMT:
+        index = read_expression(state, data)
+        expr = read_expression(state, data)
+        body = read_block(state, data)
+        else_body = read_optional_block(state, data)
+        is_async = read_bool(data)
+        stmt = ForStmt(index, expr, body, else_body)
+        stmt.is_async = is_async
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.ASSERT_STMT:
+        test = read_expression(state, data)
+        has_msg = read_bool(data)
+        if has_msg:
+            msg = read_expression(state, data)
+        else:
+            msg = None
+        stmt = AssertStmt(test, msg)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.CLASS_DEF:
+        return read_class_def(state, data)
+    elif tag == nodes.DECORATOR:
+        expect_tag(data, LIST_GEN)
+        n_decorators = read_int_bare(data)
+        decorators = [read_expression(state, data) for i in range(n_decorators)]
+        line = read_int(data)
+        column = read_int(data)
+        fdef = read_statement(state, data)
+        assert isinstance(fdef, FuncDef)
+        fdef.is_decorated = True
+        var = Var(fdef.name)
+        var.line = fdef.line
+        var.is_ready = False
+        stmt = Decorator(fdef, decorators, var)
+        stmt.line = line
+        stmt.column = column
+        stmt.end_line = fdef.end_line
+        stmt.end_column = fdef.end_column
+        # TODO: Adjust funcdef location to start after decorator?
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.IMPORT:
+        n = read_int(data)
+        ids = []
+        for _ in range(n):
+            name = read_str(data)
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+            ids.append((name, asname))
+        stmt = Import(ids)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
     elif tag == nodes.RAISE_STMT:
         has_exc = read_bool(data)
         if has_exc:
@@ -399,33 +449,21 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.ASSERT_STMT:
-        test = read_expression(state, data)
-        has_msg = read_bool(data)
-        if has_msg:
-            msg = read_expression(state, data)
-        else:
-            msg = None
-        stmt = AssertStmt(test, msg)
+    elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
+        op = read_str(data)
+        lvalue = read_expression(state, data)
+        rvalue = read_expression(state, data)
+        stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.WHILE_STMT:
-        expr = read_expression(state, data)
-        body = read_block(state, data)
-        else_body = read_optional_block(state, data)
-        stmt = WhileStmt(expr, body, else_body)
+    elif tag == nodes.PASS_STMT:
+        stmt = PassStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.FOR_STMT:
-        index = read_expression(state, data)
-        expr = read_expression(state, data)
-        body = read_block(state, data)
-        else_body = read_optional_block(state, data)
-        is_async = read_bool(data)
-        stmt = ForStmt(index, expr, body, else_body)
-        stmt.is_async = is_async
+    elif tag == nodes.CONTINUE_STMT:
+        stmt = ContinueStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -449,80 +487,34 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.PASS_STMT:
-        stmt = PassStmt()
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
+    elif tag == nodes.TRY_STMT:
+        return read_try_stmt(state, data)
     elif tag == nodes.BREAK_STMT:
         stmt = BreakStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.CONTINUE_STMT:
-        stmt = ContinueStmt()
+    elif tag == nodes.WHILE_STMT:
+        expr = read_expression(state, data)
+        body = read_block(state, data)
+        else_body = read_optional_block(state, data)
+        stmt = WhileStmt(expr, body, else_body)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.IMPORT:
-        n = read_int(data)
-        ids = []
-        for _ in range(n):
-            name = read_str(data)
-            has_asname = read_bool(data)
-            if has_asname:
-                asname = read_str(data)
-            else:
-                asname = None
-            ids.append((name, asname))
-        stmt = Import(ids)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.IMPORT_FROM:
-        relative = read_int(data)
-        module_id = read_str(data)  # Empty string for "from . import x"
-        n = read_int(data)
-        names = []
-        for _ in range(n):
-            name = read_str(data)
-            has_asname = read_bool(data)
-            if has_asname:
-                asname = read_str(data)
-            else:
-                asname = None
-            names.append((name, asname))
-
-        stmt = ImportFrom(module_id, relative, names)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.IMPORT_ALL:
-        module_id = read_str(data)  # Empty string for "from . import *"
-        relative = read_int(data)
-
-        stmt = ImportAll(module_id, relative)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.CLASS_DEF:
-        return read_class_def(state, data)
-    elif tag == nodes.TYPE_ALIAS_STMT:
-        return read_type_alias_stmt(state, data)
-    elif tag == nodes.TRY_STMT:
-        return read_try_stmt(state, data)
     elif tag == nodes.DEL_STMT:
         expr = read_expression(state, data)
         stmt = DelStmt(expr)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.GLOBAL_DECL:
-        n = read_int(data)
-        decl_names = []
-        for _ in range(n):
-            decl_names.append(read_str(data))
-        stmt = GlobalDecl(decl_names)
+    elif tag == nodes.TYPE_ALIAS_STMT:
+        return read_type_alias_stmt(state, data)
+    elif tag == nodes.IMPORT_ALL:
+        module_id = read_str(data)  # Empty string for "from . import *"
+        relative = read_int(data)
+
+        stmt = ImportAll(module_id, relative)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -532,6 +524,15 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         for _ in range(n):
             decl_names.append(read_str(data))
         stmt = NonlocalDecl(decl_names)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.GLOBAL_DECL:
+        n = read_int(data)
+        decl_names = []
+        for _ in range(n):
+            decl_names.append(read_str(data))
+        stmt = GlobalDecl(decl_names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
