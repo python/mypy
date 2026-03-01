@@ -192,9 +192,14 @@ L0:
 from typing import Any, Final
 
 FMT: Final = "{} {}"
+FMT_A: Final = "{!a}"
 
 def f() -> str:
     return FMT.format(400 + 20, "roll" + "up")
+def g() -> str:
+    return FMT_A.format("\u00e9")
+def g2() -> str:
+    return FMT_A.format("\u2603")
 [out]
 def f():
     r0, r1, r2, r3 :: str
@@ -204,6 +209,18 @@ L0:
     r2 = ' '
     r3 = CPyStr_Build(3, r0, r2, r1)
     return r3
+def g():
+    r0, r1 :: str
+L0:
+    r0 = "'\\xe9'"
+    r1 = CPyStr_Build(1, r0)
+    return r1
+def g2():
+    r0, r1 :: str
+L0:
+    r0 = "'\\u2603'"
+    r1 = CPyStr_Build(1, r0)
+    return r1
 
 [case testIntConstantFoldingFinal]
 from typing import Final

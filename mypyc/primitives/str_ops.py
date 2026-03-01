@@ -51,6 +51,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# ascii(obj)
+ascii_op = function_op(
+    name="builtins.ascii",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="PyObject_ASCII",
+    error_kind=ERR_MAGIC,
+)
+
 # translate isinstance(obj, str)
 isinstance_str = function_op(
     name="builtins.isinstance",
