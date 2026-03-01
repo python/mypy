@@ -213,6 +213,30 @@ jobs:
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
+    # To speed-up process until ast_serialize is on PyPI.
+    - name: Checkout pinned ast_serialize
+      if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        repository: mypyc/ast_serialize
+        ref: 038d30db8c3428310a5d69c151feeebf31160a08
+        path: ast_serialize
+
+    - if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+      uses: PyO3/maturin-action@v1
+      with:
+        target: aarch64
+        args: --release --out dist
+        working-directory: ast_serialize
+
+    - if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+      run: |
+        pip install ast_serialize/dist/ast_serialize-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl
+        echo 'no way' > test_ast_serialize.py
+        python3 -c 'import ast_serialize; print(ast_serialize.parse("test_ast_serialize.py")[1])'
+        rm test_ast_serialize.py
+
     - name: Setup tox environment
       run: |
         tox run -e ${{ matrix.toxenv }} --notest
