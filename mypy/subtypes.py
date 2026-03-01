@@ -553,6 +553,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     assert isinstance(erased, Instance)
                     t = erased
                 nominal = True
+                if self.proper_subtype and right.last_known_value is not None:
+                    if left.last_known_value is None:
+                        # E.g. str is not a proper subtype of Literal["x"]?
+                        nominal = False
+                    else:
+                        # E.g. Literal[A]? <: Literal[B]? requires A <: B
+                        nominal &= self._is_subtype(left.last_known_value, right.last_known_value)
                 if right.type.has_type_var_tuple_type:
                     # For variadic instances we simply find the correct type argument mappings,
                     # all the heavy lifting is done by the tuple subtyping.
@@ -633,8 +640,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return True
                     if isinstance(item, Instance):
                         return is_named_instance(item, "builtins.object")
-        if isinstance(right, LiteralType) and left.last_known_value is not None:
-            return self._is_subtype(left.last_known_value, right)
+        if isinstance(right, LiteralType):
+            if self.proper_subtype:
+                # Instance types like Literal["sum"]? is *assignable* to Literal["sum"],
+                # but is not a proper subtype of it. (Literal["sum"]? is a gradual type,
+                # that is a proper subtype of str, and assignable to Literal["sum"].
+                return False
+            if left.last_known_value is not None:
+                return self._is_subtype(left.last_known_value, right)
         if isinstance(right, FunctionLike):
             # Special case: Instance can be a subtype of Callable / Overloaded.
             call = find_member("__call__", left, left, is_operator=True)
@@ -969,6 +982,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_literal_type(self, left: LiteralType) -> bool:
         if isinstance(self.right, LiteralType):
             return left == self.right
+        elif (
+            isinstance(self.right, Instance)
+            and self.right.last_known_value is not None
+            and self.proper_subtype
+        ):
+            return self._is_subtype(left, self.right.last_known_value)
         else:
             return self._is_subtype(left.fallback, self.right)
 
@@ -2142,6 +2161,11 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
+
+    # Use last known value for Instance types, if available.
+    # This ensures that e.g. Literal["max"]? is covered by Literal["max"].
+    if isinstance(item, Instance) and item.last_known_value is not None:
+        item = item.last_known_value
 
     # Since runtime type checks will ignore type arguments, erase the types.
     if not (isinstance(supertype, FunctionLike) and supertype.is_type_obj()):

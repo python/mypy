@@ -4220,7 +4220,7 @@ def check_and(maybe: bool) -> None:
     bar = None
     if maybe and (foo := [1])[(bar := 0)]:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
-        reveal_type(bar)  # N: Revealed type is "builtins.int"
+        reveal_type(bar)  # N: Revealed type is "Literal[0]?"
     else:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int] | None"
         reveal_type(bar)  # N: Revealed type is "builtins.int | None"
@@ -4246,7 +4246,7 @@ def check_or(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "builtins.int | None"
     else:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
-        reveal_type(bar)  # N: Revealed type is "builtins.int"
+        reveal_type(bar)  # N: Revealed type is "Literal[0]?"
 
 def check_or_nested(maybe: bool) -> None:
     foo = None

@@ -1623,7 +1623,7 @@ m: str
 
 match m:
     case a if a := "test":
-        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(a)  # N: Revealed type is "Literal['test']?"
 
 [case testMatchNarrowingPatternGuard]
 m: object
@@ -3131,12 +3131,22 @@ def int_literal() -> None:
         case other:
             other  # E: Statement is unreachable
 
-def str_literal() -> None:
+def str_literal_from_literal() -> None:
     match 'foo':
         case 'a' as s:
             reveal_type(s)  # E: Statement is unreachable
         case str(i):
             reveal_type(i)  # N: Revealed type is "Literal['foo']?"
+        case other:
+            other  # E: Statement is unreachable
+
+
+def str_literal_from_str(arg: str) -> None:
+    match arg:
+        case 'a' as s:
+            reveal_type(s)  # N: Revealed type is "Literal['a']"
+        case str(i):
+            reveal_type(i)  # N: Revealed type is "builtins.str"
         case other:
             other  # E: Statement is unreachable
 
