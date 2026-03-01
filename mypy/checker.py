@@ -719,10 +719,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     # Definitions
     #
 
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
+
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        if not self.recurse_into_functions and not defn.can_infer_self_attr:
+        # If a function/method can infer variable types, it should be processed as part
+        # of the module top level (i.e. module interface).
+        if not self.recurse_into_functions and not defn.can_infer_vars:
             return
-        with self.tscope.function_scope(defn):
+        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -1196,9 +1211,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not self.recurse_into_functions and not defn.can_infer_self_attr:
+        if not self.recurse_into_functions and not defn.can_infer_vars:
             return
-        with self.tscope.function_scope(defn):
+        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self.check_func_item(defn, name=defn.name)
             if not self.can_skip_diagnostics:
                 if defn.info:
@@ -1438,7 +1453,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         or self.options.preserve_asts
                         or not isinstance(defn, FuncDef)
                         or defn.has_self_attr_def
-                        or defn.can_infer_self_attr
+                        or defn.can_infer_vars
                     ):
                         self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -5605,8 +5620,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def visit_decorator_inner(
         self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
     ) -> None:
-        if self.recurse_into_functions or e.func.can_infer_self_attr:
-            with self.tscope.function_scope(e.func):
+        if self.recurse_into_functions or e.func.can_infer_vars:
+            with self.tscope.function_scope(e.func), self.set_recurse_into_functions():
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
 
         # Process decorators from the inside out to determine decorated signature, which
@@ -7712,19 +7727,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                # If we require local partial types, there are a few exceptions where
-                # we fall back to inferring just "None" as the type from a None initializer:
-                #
-                # 1. If all happens within a single function this is acceptable, since only
-                #    the topmost function is a separate target in fine-grained incremental mode.
-                #    We primarily want to avoid "splitting" partial types across targets.
-                #
-                # 2. A None initializer in the class body if the attribute is defined in a base
-                #    class is fine, since the attribute is already defined and it's currently okay
-                #    to vary the type of an attribute covariantly. The None type will still be
-                #    checked for compatibility with base classes elsewhere. Without this exception
-                #    mypy could require an annotation for an attribute that already has been
-                #    declared in a base class, which would be bad.
                 if isinstance(var.type, PartialType) and var.type.type is None and not permissive:
                     var.type = NoneType()
                 else:
@@ -7796,11 +7798,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # for fine-grained incremental mode).
                 disallow_other_scopes = self.options.local_partial_types
 
+                # There are two exceptions:
                 if isinstance(var.type, PartialType) and var.type.type is not None and var.info:
-                    # This is an ugly hack to make partial generic self attributes behave
-                    # as if --local-partial-types is always on (because it used to be like this).
+                    # We always prohibit non-None partial types at class scope
+                    # for historical reasons.
                     disallow_other_scopes = True
-                if isinstance(var.type, PartialType) and var.type.type is None and var.info:
+                if isinstance(var.type, PartialType) and var.type.type is None:
+                    # We always allow None partial types, since this is a common use case.
+                    # It is special-cased in fine-grained incremental mode.
                     disallow_other_scopes = False
 
                 scope_active = (

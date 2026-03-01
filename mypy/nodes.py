@@ -589,7 +589,7 @@ class FuncBase(Node):
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "is_type_check_only",  # Uses "@type_check_only"
-        "can_infer_self_attr",
+        "can_infer_vars",
         "_fullname",
     )
 
@@ -610,7 +610,18 @@ class FuncBase(Node):
         self.is_final = False
         self.is_explicit_override = False
         self.is_type_check_only = False
-        self.can_infer_self_attr = False
+        # Can this function/method infer types of variables defined outside? Currently,
+        # we only set this in cases like:
+        #     x = None
+        #     def foo() -> None:
+        #         global x
+        #         x = 1
+        # and
+        #     class C:
+        #         x = None
+        #         def foo(self) -> None:
+        #             self.x = 1
+        self.can_infer_vars = False
         # Name with module prefix
         self._fullname = ""
 

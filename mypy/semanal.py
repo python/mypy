@@ -4573,6 +4573,17 @@ class SemanticAnalyzer(
                 self.name_not_defined(lval.name, lval)
             self.check_lvalue_validity(lval.node, lval)
 
+        if self.scope.functions and lval.name in self.global_decls[-1]:
+            # Technically, we only need to set this if original r.h.s. would be inferred
+            # as None, but it is tricky to detect reliably during semantic analysis.
+            if (
+                original_def
+                and isinstance(original_def.node, Var)
+                and original_def.node.is_inferred
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_vars = True
+
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
@@ -4665,7 +4676,7 @@ class SemanticAnalyzer(
                 and cur_node.node.is_initialized_in_class
             ):
                 for func in self.scope.functions:
-                    func.can_infer_self_attr = True
+                    func.can_infer_vars = True
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:

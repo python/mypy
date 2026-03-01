@@ -2141,18 +2141,18 @@ reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testGlobalInitializedToNoneSetFromFunctionLocalPartialTypes]
 # flags: --local-partial-types
-a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+a = None
 def f() -> None:
     global a
     a = 42
     reveal_type(a)  # N: Revealed type is "builtins.int"
-reveal_type(a)  # N: Revealed type is "None"
+reveal_type(a)  # N: Revealed type is "builtins.int | None"
 
-b = None  # E: Need type annotation for "b" (hint: "b: <type> | None = ...")
+b = None
 def unchecked():
     global b
     b = 42
-reveal_type(b)  # N: Revealed type is "None"
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testGlobalInitializedToNoneSetFromMethod]
 # flags: --no-local-partial-types
@@ -2172,22 +2172,19 @@ reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testGlobalInitializedToNoneSetFromMethodLocalPartialTypes]
 # flags: --local-partial-types
-a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+a = None
 class C:
     def m(self) -> None:
         global a
         a = 42
-reveal_type(a)  # N: Revealed type is "None"
+reveal_type(a)  # N: Revealed type is "builtins.int | None"
 
-b = None  # E: Need type annotation for "b" (hint: "b: <type> | None = ...")
+b = None
 class CC:
     def unchecked(self):
         global b
         b = 42
-reveal_type(b)  # N: Revealed type is "None"
-
--- More partial type errors
--- ------------------------
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testPartialTypeErrorSpecialCase1]
 # flags: --no-local-partial-types
@@ -2745,25 +2742,23 @@ if bool():
 
 [case testLocalPartialTypesWithGlobalInitializedToNone]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+x = None
 
 def f() -> None:
     global x
     x = 1
 
-# TODO: "Any" could be a better type here to avoid multiple error messages
-reveal_type(x) # N: Revealed type is "None"
+reveal_type(x) # N: Revealed type is "builtins.int | None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+x = None
 
 def f():
     global x
     x = 1
 
-# TODO: "Any" could be a better type here to avoid multiple error messages
-reveal_type(x) # N: Revealed type is "None"
+reveal_type(x) # N: Revealed type is "Any | None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone3]
 # flags: --local-partial-types --no-strict-optional
@@ -2771,10 +2766,10 @@ x = None
 
 def f() -> None:
     global x
-    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    x = 1
 
-x = ''
-reveal_type(x) # N: Revealed type is "builtins.str"
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # N: Revealed type is "builtins.int"
 
 [case testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional]
 # flags: --local-partial-types
@@ -2782,21 +2777,31 @@ x = None
 
 def f() -> None:
     global x
-    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str | None")
+    x = 1
 
-x = ''
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int | None")
 def g() -> None:
-    reveal_type(x) # N: Revealed type is "builtins.str | None"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone4]
 # flags: --local-partial-types --no-strict-optional
 a = None
 
 def f() -> None:
-    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(a)  # N: Revealed type is "None"
 
-# TODO: This should probably be 'builtins.str', since there could be a
-#     call that causes a non-None value to be assigned
+reveal_type(a)  # N: Revealed type is "None"
+a = ''
+reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToNone5]
+# flags: --local-partial-types
+a = None
+
+def f() -> None:
+    reveal_type(a)  # N: Revealed type is "None"
+
 reveal_type(a)  # N: Revealed type is "None"
 a = ''
 reveal_type(a)  # N: Revealed type is "builtins.str"
@@ -2805,7 +2810,7 @@ reveal_type(a)  # N: Revealed type is "builtins.str"
 [case testLocalPartialTypesWithClassAttributeInitializedToNone]
 # flags: --local-partial-types
 class A:
-    x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+    x = None
 
     def f(self) -> None:
         self.x = 1
@@ -2988,7 +2993,7 @@ from typing import List
 def f(x): pass
 
 class A:
-    x = None  # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+    x = None
 
     def f(self, p: List[str]) -> None:
         self.x = f(p)
@@ -2998,21 +3003,18 @@ class A:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+    a = None
 
     def f(self, x) -> None:
-        C.a.y  # E: Item "None" of "Any | None" has no attribute "y"
+        C.a.y  # E: "None" has no attribute "y"
 
 [case testLocalPartialTypesAccessPartialNoneAttribute2]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
+    a = None
 
     def f(self, x) -> None:
-        self.a.y  # E: Item "None" of "Any | None" has no attribute "y"
-
--- Special case for assignment to '_'
--- ----------------------------------
+        self.a.y  # E: "None" has no attribute "y"
 
 [case testUnusedTargetLocal]
 def foo() -> None:
@@ -3596,9 +3598,10 @@ if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
 
-[case testSuggestPep604AnnotationForPartialNone]
+[case testAllowPlainNoneForPartialAtModuleScope]
 # flags: --local-partial-types --python-version 3.10
-x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+x = None
+reveal_type(x)  # N: Revealed type is "None"
 
 [case testTupleContextFromIterable]
 from typing import TypeVar, Iterable, List, Union
