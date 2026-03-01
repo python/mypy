@@ -37,7 +37,7 @@ def compute_vtable(cls: ClassIR) -> None:
 
     all_traits = [t for t in cls.mro if t.is_trait]
 
-    for t in [cls] + cls.traits:
+    for t in [cls] + [t for t in all_traits if t is not cls]:
         for fn in itertools.chain(t.methods.values()):
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name, prefer_method=True):
