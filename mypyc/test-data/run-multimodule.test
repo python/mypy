@@ -199,7 +199,7 @@ assert get_sub() == "other_pkg", repr(get_sub())
 # Package __init__: __package__ should be the package name itself
 assert get_pkg() == "other_pkg", repr(get_pkg())
 
-[case testNativeImportFileAvailableAtInitTime-xfail]
+[case testNativeImportFileAvailableAtInitTime]
 # separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
 from other_pkg import other_sub
 

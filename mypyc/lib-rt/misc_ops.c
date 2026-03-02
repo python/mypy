@@ -1122,7 +1122,9 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
-PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void),
+PyObject *CPyImport_ImportNative(PyObject *module_name,
+                                 PyObject *(*init_only_fn)(void),
+                                 int (*exec_fn)(PyObject *),
                                  PyObject *shared_lib_file, Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
@@ -1150,13 +1152,10 @@ PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(voi
         }
     }
 
-    PyObject *modobj = init_fn();
-    if (modobj == NULL) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
-        return NULL;
-    }
-
+    // Create the module object without executing the module body.
+    // CPyInitOnly_* uses an internal static to cache the module object.
+    // If the module was already created (e.g. in a circular import), it
+    // returns the cached object. We detect this by checking sys.modules.
     PyObject *module_dict = PyImport_GetModuleDict();
     if (module_dict == NULL) {
         Py_XDECREF(parent_module);
@@ -1164,115 +1163,135 @@ PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(voi
         return NULL;
     }
 
-    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+    PyObject *modobj = init_only_fn();
+    if (modobj == NULL) {
         Py_XDECREF(parent_module);
         Py_XDECREF(child_name);
         return NULL;
     }
 
-    if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
-        Py_DECREF(parent_module);
-        Py_DECREF(child_name);
-        return NULL;
+    // Check if the module was already imported (e.g. via CPyInit_* from the
+    // standard import machinery, or by a previous CPyImport_ImportNative call).
+    int already_imported = PyMapping_HasKey(module_dict, module_name);
+
+    if (!already_imported) {
+        if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+            goto fail;
+        }
+
+        if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
+            goto fail;
+        }
     }
 
-    // Set __package__ if not already set. For a package (has __path__),
-    // __package__ is the module name itself. For a non-package submodule
-    // "a.b.c", it is "a.b". For a top-level non-package module, it is "".
-    PyObject *pkg = PyObject_GetAttrString(modobj, "__package__");
-    if (pkg == NULL || pkg == Py_None) {
-        Py_XDECREF(pkg);
-        PyErr_Clear();
-        PyObject *package_name;
-        if (is_package) {
-            package_name = module_name;
-            Py_INCREF(package_name);
-        } else if (dot >= 0) {
-            package_name = PyUnicode_Substring(module_name, 0, dot);
-        } else {
-            package_name = PyUnicode_FromString("");
-        }
-        if (package_name == NULL ||
-                PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
-            Py_XDECREF(package_name);
-            Py_XDECREF(parent_module);
-            Py_XDECREF(child_name);
-            return NULL;
-        }
-        Py_DECREF(package_name);
-    } else {
-        Py_DECREF(pkg);
-    }
-
-    // The fast path bypasses extension import machinery that usually sets __file__.
-    // Keep behavior compatible by ensuring the attribute exists.
-    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
-    if (file == NULL) {
-        if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
-            Py_XDECREF(parent_module);
-            Py_XDECREF(child_name);
-            return NULL;
-        }
-        PyErr_Clear();
-        // Derive __file__ from the shared library's __file__ (root directory)
-        // and the module name with dots converted to path separators.
-        // E.g. for module "a.b.c" and shared lib "/path/to/group__mypyc.so",
-        // we construct "/path/to/a/b/c.so".
-        PyObject *derived_file = NULL;
-        if (shared_lib_file != NULL && shared_lib_file != Py_None &&
-                PyUnicode_Check(shared_lib_file)) {
-            Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
-            // Find last '/' to extract directory
-            Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
-            // Build the module path by replacing dots with '/'
-            PyObject *dot_str = PyUnicode_FromString(".");
-            PyObject *slash_str = PyUnicode_FromString("/");
-            if (dot_str == NULL || slash_str == NULL) {
-                Py_XDECREF(dot_str);
-                Py_XDECREF(slash_str);
-                Py_XDECREF(parent_module);
-                Py_XDECREF(child_name);
-                return NULL;
-            }
-            PyObject *module_path = PyUnicode_Replace(module_name, dot_str, slash_str, -1);
-            Py_DECREF(dot_str);
-            Py_DECREF(slash_str);
-            if (module_path == NULL) {
-                Py_XDECREF(parent_module);
-                Py_XDECREF(child_name);
-                return NULL;
-            }
-            if (sep >= 0) {
-                PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
-                if (dir != NULL) {
-                    derived_file = PyUnicode_FromFormat("%U/%U.so", dir, module_path);
-                    Py_DECREF(dir);
-                }
+    // Set __package__ before executing the module body so it is available
+    // during module initialization. For a package, __package__ is the module
+    // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
+    // top-level non-package module, it is "".
+    {
+        PyObject *pkg = PyObject_GetAttrString(modobj, "__package__");
+        if (pkg == NULL || pkg == Py_None) {
+            Py_XDECREF(pkg);
+            PyErr_Clear();
+            PyObject *package_name;
+            if (is_package) {
+                package_name = module_name;
+                Py_INCREF(package_name);
+            } else if (dot >= 0) {
+                package_name = PyUnicode_Substring(module_name, 0, dot);
             } else {
-                derived_file = PyUnicode_FromFormat("%U.so", module_path);
+                package_name = PyUnicode_FromString("");
             }
-            Py_DECREF(module_path);
+            if (package_name == NULL ||
+                    PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
+                Py_XDECREF(package_name);
+                goto fail;
+            }
+            Py_DECREF(package_name);
+        } else {
+            Py_DECREF(pkg);
         }
-        if (derived_file == NULL && !PyErr_Occurred()) {
-            // Fallback: use module_name as __file__
-            derived_file = module_name;
-            Py_INCREF(derived_file);
+    }
+
+    // Set __file__ before executing the module body so it is available
+    // during module initialization.
+    {
+        PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+        if (file == NULL) {
+            if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                goto fail;
+            }
+            PyErr_Clear();
+            // Derive __file__ from the shared library's __file__ (root directory)
+            // and the module name with dots converted to path separators.
+            // E.g. for module "a.b.c" and shared lib "/path/to/group__mypyc.so",
+            // we construct "/path/to/a/b/c.so".
+            PyObject *derived_file = NULL;
+            if (shared_lib_file != NULL && shared_lib_file != Py_None &&
+                    PyUnicode_Check(shared_lib_file)) {
+                Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
+                Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
+                PyObject *dot_str = PyUnicode_FromString(".");
+                PyObject *slash_str = PyUnicode_FromString("/");
+                if (dot_str == NULL || slash_str == NULL) {
+                    Py_XDECREF(dot_str);
+                    Py_XDECREF(slash_str);
+                    goto fail;
+                }
+                PyObject *module_path = PyUnicode_Replace(module_name, dot_str, slash_str, -1);
+                Py_DECREF(dot_str);
+                Py_DECREF(slash_str);
+                if (module_path == NULL) {
+                    goto fail;
+                }
+                if (sep >= 0) {
+                    PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
+                    if (dir != NULL) {
+                        derived_file = PyUnicode_FromFormat("%U/%U.so", dir, module_path);
+                        Py_DECREF(dir);
+                    }
+                } else {
+                    derived_file = PyUnicode_FromFormat("%U.so", module_path);
+                }
+                Py_DECREF(module_path);
+            }
+            if (derived_file == NULL && !PyErr_Occurred()) {
+                derived_file = module_name;
+                Py_INCREF(derived_file);
+            }
+            if (derived_file == NULL ||
+                    PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
+                Py_XDECREF(derived_file);
+                goto fail;
+            }
+            Py_DECREF(derived_file);
+        } else {
+            Py_DECREF(file);
         }
-        if (derived_file == NULL ||
-                PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
-            Py_XDECREF(derived_file);
-            Py_XDECREF(parent_module);
-            Py_XDECREF(child_name);
-            return NULL;
-        }
-        Py_DECREF(derived_file);
-    } else {
-        Py_DECREF(file);
+    }
+
+    // If the module was already imported, skip executing the module body
+    // (it was already executed). This handles circular imports and modules
+    // first imported via the standard Python import machinery (CPyInit_*).
+    if (already_imported) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        return modobj;
+    }
+
+    // Now execute the module body, with __file__ and __package__ already set.
+    if (exec_fn(modobj) != 0) {
+        goto fail;
     }
 
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
     return modobj;
+
+fail:
+    Py_XDECREF(parent_module);
+    Py_XDECREF(child_name);
+    return NULL;
 }
 
 #endif

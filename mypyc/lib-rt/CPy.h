@@ -953,7 +953,9 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *gl
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
-PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void),
+PyObject *CPyImport_ImportNative(PyObject *module_name,
+                                 PyObject *(*init_only_fn)(void),
+                                 int (*exec_fn)(PyObject *),
                                  PyObject *shared_lib_file, Py_ssize_t is_package);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,

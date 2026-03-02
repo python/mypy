@@ -1096,7 +1096,9 @@ class GroupGenerator:
         exec function for each module and these will be called by the shims
         via Capsules.
         """
-        declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
+        exec_name = f"CPyExec_{exported_name(module_name)}"
+        declaration = f"int {exec_name}(PyObject *module)"
+        emitter.context.declarations[exec_name] = HeaderDeclaration(declaration + ";")
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("intern_strings();")
@@ -1241,9 +1243,34 @@ class GroupGenerator:
             f"if (unlikely({module_static} == NULL))",
             "    goto fail;",
         )
+        # Register in sys.modules early so that circular imports via
+        # CPyImport_ImportNative can detect that this module is already
+        # being initialized and avoid re-executing the module body.
+        emitter.emit_line(f'modname = PyUnicode_FromString("{module_name}");')
+        emitter.emit_line("if (modname == NULL) goto fail;")
+        emitter.emit_line(
+            f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
+        )
+        emitter.emit_line("    goto fail;")
+        emitter.emit_line("Py_CLEAR(modname);")
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
         emitter.emit_line(f"return {module_static};")
-        emitter.emit_lines("fail:", "return NULL;")
+        emitter.emit_lines("fail:")
+        # Clean up on failure: remove from sys.modules and clear the static
+        # so that a subsequent import attempt will retry initialization.
+        emitter.emit_line("{")
+        emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
+        emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
+        emitter.emit_line(f'    modname = PyUnicode_FromString("{module_name}");')
+        emitter.emit_line("    if (modname != NULL) {")
+        emitter.emit_line("        PyObject_DelItem(PyImport_GetModuleDict(), modname);")
+        emitter.emit_line("        PyErr_Clear();")
+        emitter.emit_line("    }")
+        emitter.emit_line("    Py_XDECREF(modname);")
+        emitter.emit_line(f"    Py_CLEAR({module_static});")
+        emitter.emit_line("    PyErr_Restore(exc_type, exc_val, exc_tb);")
+        emitter.emit_line("}")
+        emitter.emit_line("return NULL;")
         emitter.emit_lines("}")
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:

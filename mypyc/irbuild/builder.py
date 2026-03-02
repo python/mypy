@@ -470,7 +470,12 @@ class IRBuilder:
 
         self.activate_block(needs_import)
         if self.is_native_module(module):
-            func = self.add(LoadGlobal(c_pointer_rprimitive, f"CPyInit_{exported_name(module)}"))
+            init_only_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+            )
+            exec_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
+            )
             group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 shared_lib_mod_name = shared_lib_name(group_name)
@@ -486,7 +491,8 @@ class IRBuilder:
                 native_import_op,
                 [
                     self.load_str(module, line),
-                    func,
+                    init_only_func,
+                    exec_func,
                     shared_lib_file,
                     Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
                 ],
