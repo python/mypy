@@ -49,7 +49,7 @@ from mypy.nodes import (
     check_arg_kinds,
     check_arg_names,
 )
-from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
+from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -679,12 +679,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname in ("typing_extensions.TypeForm", "typing.TypeForm"):
-            if TYPE_FORM not in self.options.enable_incomplete_feature:
-                self.fail(
-                    "TypeForm is experimental,"
-                    " must be enabled with --enable-incomplete-feature=TypeForm",
-                    t,
-                )
             if len(t.args) == 0:
                 any_type = self.get_omitted_any(t)
                 return TypeType(any_type, line=t.line, column=t.column, is_type_form=True)
