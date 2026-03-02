@@ -7,9 +7,10 @@
 #include <Python.h>
 #include "CPy.h"
 
-// The _PyUnicode_CheckConsistency definition has been moved to the internal API
+// On 3.13+, _PyUnicode_CheckConsistency and _PyUnicode_ToLowerFull/ToUpperFull
+// were moved from the public API to internal/pycore_unicodeobject.h.
 // https://github.com/python/cpython/pull/106398
-#if defined(Py_DEBUG) && defined(CPY_3_13_FEATURES)
+#if CPY_3_13_FEATURES
 #include "internal/pycore_unicodeobject.h"
 #endif
 
