@@ -566,7 +566,9 @@ def _attributes_from_assignment(
                 and isinstance(rvalue.callee, RefExpr)
                 and rvalue.callee.fullname in attr_attrib_makers
             ):
-                attr = _attribute_from_attrib_maker(ctx, auto_attribs, class_kw_only, lhs, rvalue, stmt)
+                attr = _attribute_from_attrib_maker(
+                    ctx, auto_attribs, class_kw_only, lhs, rvalue, stmt
+                )
                 if attr:
                     yield attr
             elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
