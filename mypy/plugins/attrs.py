@@ -424,13 +424,14 @@ def _get_frozen(ctx: mypy.plugin.ClassDefContext, frozen_default: bool) -> bool:
 
 
 def _analyze_class(
-    ctx: mypy.plugin.ClassDefContext, auto_attribs: bool | None, kw_only: bool
+    ctx: mypy.plugin.ClassDefContext, auto_attribs: bool | None, class_kw_only: bool
 ) -> list[Attribute]:
     """Analyze the class body of an attr maker, its parents, and return the Attributes found.
 
     auto_attribs=True means we'll generate attributes from type annotations also.
     auto_attribs=None means we'll detect which mode to use.
-    kw_only=True means that all attributes created here will be keyword only args in __init__.
+    class_kw_only=True means that all attributes created here will be keyword only args by
+        default in __init__.
     """
     own_attrs: dict[str, Attribute] = {}
     if auto_attribs is None:
@@ -439,7 +440,7 @@ def _analyze_class(
     # Walk the body looking for assignments and decorators.
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
-            for attr in _attributes_from_assignment(ctx, stmt, auto_attribs, kw_only):
+            for attr in _attributes_from_assignment(ctx, stmt, auto_attribs, class_kw_only):
                 # When attrs are defined twice in the same body we want to use the 2nd definition
                 # in the 2nd location. So remove it from the OrderedDict.
                 # Unless it's auto_attribs in which case we want the 2nd definition in the
@@ -537,7 +538,7 @@ def _detect_auto_attribs(ctx: mypy.plugin.ClassDefContext) -> bool:
 
 
 def _attributes_from_assignment(
-    ctx: mypy.plugin.ClassDefContext, stmt: AssignmentStmt, auto_attribs: bool, kw_only: bool
+    ctx: mypy.plugin.ClassDefContext, stmt: AssignmentStmt, auto_attribs: bool, class_kw_only: bool
 ) -> Iterable[Attribute]:
     """Return Attribute objects that are created by this assignment.
 
@@ -565,11 +566,11 @@ def _attributes_from_assignment(
                 and isinstance(rvalue.callee, RefExpr)
                 and rvalue.callee.fullname in attr_attrib_makers
             ):
-                attr = _attribute_from_attrib_maker(ctx, auto_attribs, kw_only, lhs, rvalue, stmt)
+                attr = _attribute_from_attrib_maker(ctx, auto_attribs, class_kw_only, lhs, rvalue, stmt)
                 if attr:
                     yield attr
             elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
-                yield _attribute_from_auto_attrib(ctx, kw_only, lhs, rvalue, stmt)
+                yield _attribute_from_auto_attrib(ctx, class_kw_only, lhs, rvalue, stmt)
 
 
 def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
@@ -604,7 +605,7 @@ def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
 
 def _attribute_from_auto_attrib(
     ctx: mypy.plugin.ClassDefContext,
-    kw_only: bool,
+    class_kw_only: bool,
     lhs: NameExpr,
     rvalue: Expression,
     stmt: AssignmentStmt,
@@ -615,13 +616,13 @@ def _attribute_from_auto_attrib(
     has_rhs = not isinstance(rvalue, TempNode)
     sym = ctx.cls.info.names.get(name)
     init_type = sym.type if sym else None
-    return Attribute(name, None, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
+    return Attribute(name, None, ctx.cls.info, has_rhs, True, class_kw_only, None, stmt, init_type)
 
 
 def _attribute_from_attrib_maker(
     ctx: mypy.plugin.ClassDefContext,
     auto_attribs: bool,
-    kw_only: bool,
+    class_kw_only: bool,
     lhs: NameExpr,
     rvalue: CallExpr,
     stmt: AssignmentStmt,
@@ -642,9 +643,9 @@ def _attribute_from_attrib_maker(
 
     # Read all the arguments from the call.
     init = _get_bool_argument(ctx, rvalue, "init", True)
-    # Note: If the class decorator says kw_only=True the attribute is ignored.
-    # See https://github.com/python-attrs/attrs/issues/481 for explanation.
-    kw_only |= _get_bool_argument(ctx, rvalue, "kw_only", False)
+    # The class decorator kw_only value can be overridden by the attribute value
+    # See https://github.com/python-attrs/attrs/pull/1457
+    kw_only = _get_bool_argument(ctx, rvalue, "kw_only", class_kw_only)
 
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, "default"))
