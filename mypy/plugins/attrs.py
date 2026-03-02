@@ -1022,7 +1022,7 @@ class MethodAdder:
         )
 
 
-def _get_attrs_init_type(typ: Instance) -> CallableType | None:
+def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
     """
     If `typ` refers to an attrs class, get the type of its initializer method.
     """
@@ -1030,9 +1030,18 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
-    if not isinstance(init_method, FuncDef) or not isinstance(init_method.type, CallableType):
+    if init_method is None:
         return None
-    return init_method.type
+
+    # case 1: normal FuncDef
+    if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
+        return init_method.type
+
+    # case 2: overloaded method
+    if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
+        return AnyType(TypeOfAny.special_form)
+
+    return None
 
 
 def _fail_not_attrs_class(ctx: mypy.plugin.FunctionSigContext, t: Type, parent_t: Type) -> None:
@@ -1085,6 +1094,8 @@ def _get_expanded_attr_types(
         init_func = _get_attrs_init_type(typ)
         if init_func is None:
             _fail_not_attrs_class(ctx, display_typ, parent_typ)
+            return None
+        if isinstance(init_func, AnyType):
             return None
         init_func = expand_type_by_instance(init_func, typ)
         # [1:] to skip the self argument of AttrClass.__init__
