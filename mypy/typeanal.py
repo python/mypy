@@ -49,7 +49,7 @@ from mypy.nodes import (
     check_arg_kinds,
     check_arg_names,
 )
-from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
+from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
