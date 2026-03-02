@@ -826,9 +826,13 @@ def _verify_arg_default_value(
             if isinstance(stub_type, mypy.types.TypeVarType):
                 stub_type = stub_type.upper_bound
             # Also handle type[TypeVar] -> type[bound]
-            elif isinstance(stub_type, mypy.types.TypeType):
-                if isinstance(stub_type.item, mypy.types.TypeVarType):
-                    stub_type = mypy.types.TypeType(stub_type.item.upper_bound)
+            else:
+                proper_stub_type = mypy.types.get_proper_type(stub_type)
+                if isinstance(proper_stub_type, mypy.types.TypeType):
+                    if isinstance(proper_stub_type.item, mypy.types.TypeVarType):
+                        stub_type = mypy.types.TypeType.make_normalized(
+                            proper_stub_type.item.upper_bound
+                        )
             if (
                 runtime_type is not None
                 and stub_type is not None
