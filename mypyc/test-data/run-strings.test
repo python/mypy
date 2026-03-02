@@ -1258,6 +1258,51 @@ FMT: Final = "{} {}"
 def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
 
+[case testLowerAndUpper]
+from typing import Any
+
+def test_lower_basic() -> None:
+    assert "".lower() == ""
+    assert "hello".lower() == "hello"
+    assert "HELLO".lower() == "hello"
+    assert "Hello World".lower() == "hello world"
+    assert "123".lower() == "123"
+    assert "ABC123".lower() == "abc123"
+
+def test_upper_basic() -> None:
+    assert "".upper() == ""
+    assert "HELLO".upper() == "HELLO"
+    assert "hello".upper() == "HELLO"
+    assert "Hello World".upper() == "HELLO WORLD"
+    assert "123".upper() == "123"
+    assert "abc123".upper() == "ABC123"
+
+def test_lower_unicode() -> None:
+    assert "\u00C9".lower() == "\u00E9"                # É -> é
+    assert "\u0391\u0392".lower() == "\u03B1\u03B2"    # ΑΒ -> αβ
+    assert "\u4E2D\u6587".lower() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".lower() == "\U0001F600"         # Emoji (no case)
+
+def test_upper_unicode() -> None:
+    assert "\u00E9".upper() == "\u00C9"                # é -> É
+    assert "\u03B1\u03B2".upper() == "\u0391\u0392"    # αβ -> ΑΒ
+    assert "\u4E2D\u6587".upper() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".upper() == "\U0001F600"         # Emoji (no case)
+
+def test_expansion() -> None:
+    # 1-to-N expansion cases
+    assert "\u0130".lower() == "\u0069\u0307"  # İ -> i + combining dot above
+    assert "\uFB03".lower() == "\uFB03"        # ffi ligature stays lowercase
+    assert "\u00DF".upper() == "SS"            # ß -> SS
+    assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
+
+def test_comprehensive() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
+        assert c.upper() == a.upper(), f"upper mismatch at U+{i:04X}"
+
 [case testIsSpace]
 from typing import Any
 

@@ -678,6 +678,61 @@ bool CPyStr_IsAlnum(PyObject *str) {
     return true;
 }
 
+static int CPy_ASCII_Lower(unsigned char c) { return Py_TOLOWER(c); }
+static int CPy_ASCII_Upper(unsigned char c) { return Py_TOUPPER(c); }
+
+static PyObject *CPyStr_ChangeCase(PyObject *self,
+                                    int (*ascii_func)(unsigned char),
+                                    int (*unicode_func)(Py_UCS4, Py_UCS4 *)) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    if (len == 0) {
+        Py_INCREF(self);
+        return self;
+    }
+
+    // ASCII fast path: 1-to-1, no expansion possible
+    if (PyUnicode_IS_ASCII(self)) {
+        PyObject *res = PyUnicode_New(len, 127);
+        if (res == NULL) return NULL;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(self);
+        Py_UCS1 *res_data = PyUnicode_1BYTE_DATA(res);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            res_data[i] = ascii_func(data[i]);
+        }
+        return res;
+    }
+
+    // General Unicode: unicode_func handles 1-to-N expansion.
+    // Worst case: each codepoint expands to 3 (per Unicode standard).
+    // The tmp buffer is short-lived, and PyUnicode_FromKindAndData
+    // compacts the result to the optimal string kind automatically.
+    int kind = PyUnicode_KIND(self);
+    const void *data = PyUnicode_DATA(self);
+    Py_UCS4 *tmp = PyMem_Malloc(sizeof(Py_UCS4) * len * 3);
+    if (tmp == NULL) return PyErr_NoMemory();
+
+    Py_UCS4 mapped[3];
+    Py_ssize_t out_len = 0;
+    for (Py_ssize_t i = 0; i < len; i++) {
+        int n = unicode_func(PyUnicode_READ(kind, data, i), mapped);
+        for (int j = 0; j < n; j++) {
+            tmp[out_len++] = mapped[j];
+        }
+    }
+
+    PyObject *res = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, tmp, out_len);
+    PyMem_Free(tmp);
+    return res;
+}
+
+PyObject *CPyStr_Lower(PyObject *self) {
+    return CPyStr_ChangeCase(self, CPy_ASCII_Lower, _PyUnicode_ToLowerFull);
+}
+
+PyObject *CPyStr_Upper(PyObject *self) {
+    return CPyStr_ChangeCase(self, CPy_ASCII_Upper, _PyUnicode_ToUpperFull);
+}
+
 bool CPyStr_IsDigit(PyObject *str) {
     Py_ssize_t len = PyUnicode_GET_LENGTH(str);
     if (len == 0) return false;
