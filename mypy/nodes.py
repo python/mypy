@@ -5101,7 +5101,7 @@ def check_arg_names(
     seen_names: set[str | None] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail(f'Duplicate parameter "{name}" in {description}', node)
+            fail(f'Duplicate argument "{name}" in {description}', node)
             break
         seen_names.add(name)
 
