@@ -1631,7 +1631,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if not func.arg_types:
             self.fail(
-                'Method must have at least one parameter. Did you forget the "self" parameter?', defn
+                'Method must have at least one parameter. Did you forget the "self" parameter?',
+                defn,
             )
             return False
 
