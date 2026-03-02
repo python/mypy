@@ -46,7 +46,7 @@ from mypy.nodes import (
     TypeVarLikeExpr,
     TypeVarTupleExpr,
     Var,
-    check_arg_kinds,
+    check_param_kinds,
     check_arg_names,
 )
 from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
@@ -1713,7 +1713,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             names.append(None)
         # Note that arglist below is only used for error context.
         check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
-        check_arg_kinds(kinds, [arglist] * len(args), self.fail)
+        check_param_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
 
     def analyze_literal_type(self, t: UnboundType) -> Type:
