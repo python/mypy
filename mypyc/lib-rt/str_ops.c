@@ -7,10 +7,9 @@
 #include <Python.h>
 #include "CPy.h"
 
-// On 3.13+, _PyUnicode_CheckConsistency and _PyUnicode_ToLowerFull/ToUpperFull
-// were moved from the public API to internal/pycore_unicodeobject.h.
+// The _PyUnicode_CheckConsistency definition has been moved to the internal API
 // https://github.com/python/cpython/pull/106398
-#if CPY_3_13_FEATURES
+#if defined(Py_DEBUG) && CPY_3_13_FEATURES
 #include "internal/pycore_unicodeobject.h"
 #endif
 
@@ -684,7 +683,12 @@ static int CPy_ASCII_Upper(unsigned char c) { return Py_TOUPPER(c); }
 
 static PyObject *CPyStr_ChangeCase(PyObject *self,
                                     int (*ascii_func)(unsigned char),
-                                    int (*unicode_func)(Py_UCS4, Py_UCS4 *)) {
+#if CPY_3_13_FEATURES
+                                    PyObject *method_name
+#else
+                                    int (*unicode_func)(Py_UCS4, Py_UCS4 *)
+#endif
+                                    ) {
     Py_ssize_t len = PyUnicode_GET_LENGTH(self);
     if (len == 0) {
         Py_INCREF(self);
@@ -703,6 +707,11 @@ static PyObject *CPyStr_ChangeCase(PyObject *self,
         return res;
     }
 
+#if CPY_3_13_FEATURES
+    // On 3.13+, _PyUnicode_ToLowerFull/ToUpperFull are no longer exported,
+    // so fall back to CPython's method implementation for non-ASCII strings.
+    return PyObject_CallMethodNoArgs(self, method_name);
+#else
     // General Unicode: unicode_func handles 1-to-N expansion.
     // Worst case: each codepoint expands to 3 (per Unicode standard).
     // The tmp buffer is short-lived, and PyUnicode_FromKindAndData
@@ -724,14 +733,23 @@ static PyObject *CPyStr_ChangeCase(PyObject *self,
     PyObject *res = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, tmp, out_len);
     PyMem_Free(tmp);
     return res;
+#endif
 }
 
 PyObject *CPyStr_Lower(PyObject *self) {
+#if CPY_3_13_FEATURES
+    return CPyStr_ChangeCase(self, CPy_ASCII_Lower, mypyc_interned_str.lower);
+#else
     return CPyStr_ChangeCase(self, CPy_ASCII_Lower, _PyUnicode_ToLowerFull);
+#endif
 }
 
 PyObject *CPyStr_Upper(PyObject *self) {
+#if CPY_3_13_FEATURES
+    return CPyStr_ChangeCase(self, CPy_ASCII_Upper, mypyc_interned_str.upper);
+#else
     return CPyStr_ChangeCase(self, CPy_ASCII_Upper, _PyUnicode_ToUpperFull);
+#endif
 }
 
 bool CPyStr_IsDigit(PyObject *str) {
