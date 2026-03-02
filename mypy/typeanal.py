@@ -46,8 +46,8 @@ from mypy.nodes import (
     TypeVarLikeExpr,
     TypeVarTupleExpr,
     Var,
-    check_param_kinds,
     check_arg_names,
+    check_param_kinds,
 )
 from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
