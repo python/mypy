@@ -1349,7 +1349,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if typ.type_is:
                     arg_index = 0
                     # For methods and classmethods, we want the second parameter
-                    if ref_type is not None and defn.has_self_or_cls_argument:
+                    if ref_type is not None and defn.has_self_or_cls_parameter:
                         arg_index = 1
                     if arg_index < len(typ.arg_types) and not is_subtype(
                         typ.type_is, typ.arg_types[arg_index]
@@ -1624,7 +1624,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if ref_type is None:
                 return False
 
-        if not defn.has_self_or_cls_argument or (
+        if not defn.has_self_or_cls_parameter or (
             func.arg_kinds and func.arg_kinds[0] in [nodes.ARG_STAR, nodes.ARG_STAR2]
         ):
             return False

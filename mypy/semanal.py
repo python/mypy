@@ -1121,12 +1121,12 @@ class SemanticAnalyzer(
         return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
-        """Check basic signature validity and tweak annotation of self/cls argument."""
+        """Check basic signature validity and tweak annotation of self/cls parameter."""
         # Only non-static methods are special, as well as __new__.
         functype = func.type
         if func.name == "__new__":
             func.is_static = True
-        if func.has_self_or_cls_argument:
+        if func.has_self_or_cls_parameter:
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if func.arguments and isinstance(functype, CallableType):
@@ -1149,7 +1149,7 @@ class SemanticAnalyzer(
                             # This error is off by default, since it is explicitly allowed
                             # by the PEP 673.
                             self.fail(
-                                'Redundant "Self" annotation for the first method argument',
+                                'Redundant "Self" annotation for the first method parameter',
                                 func,
                                 code=codes.REDUNDANT_SELF_TYPE,
                             )
@@ -1668,10 +1668,10 @@ class SemanticAnalyzer(
                 for arg in defn.arguments:
                     self.add_local(arg.variable, defn)
 
-                # The first argument of a non-static, non-class method is like 'self'
+                # The first parameter of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and defn.has_self_or_cls_argument and defn.arguments:
+                if is_method and defn.has_self_or_cls_parameter and defn.arguments:
                     if not defn.is_class:
                         defn.arguments[0].variable.is_self = True
                     else:
@@ -6117,7 +6117,7 @@ class SemanticAnalyzer(
                 # check for self.bar or cls.bar in method/classmethod
                 func_def = self.function_stack[-1]
                 if (
-                    func_def.has_self_or_cls_argument
+                    func_def.has_self_or_cls_parameter
                     and func_def.info is self.type
                     and isinstance(func_def.type, CallableType)
                     and func_def.arguments

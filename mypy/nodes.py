@@ -604,7 +604,7 @@ class FuncBase(Node):
         self.is_property = False
         self.is_class = False
         # Is this a `@staticmethod` (explicit or implicit)?
-        # Note: use has_self_or_cls_argument to check if there is `self` or `cls` argument
+        # Note: use has_self_or_cls_parameter to check if there is `self` or `cls` parameter
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
@@ -622,8 +622,8 @@ class FuncBase(Node):
         return self._fullname
 
     @property
-    def has_self_or_cls_argument(self) -> bool:
-        """If used as a method, does it have an argument for method binding (`self`, `cls`)?
+    def has_self_or_cls_parameter(self) -> bool:
+        """If used as a method, does it have an parameter for method binding (`self`, `cls`)?
 
         This is true for `__new__` even though `__new__` does not undergo method binding,
         because we still usually assume that `cls` corresponds to the enclosing class.
