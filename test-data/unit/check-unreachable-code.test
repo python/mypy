@@ -1604,6 +1604,89 @@ x = 0  # not unreachable
 f2: Callable[[], NoReturn] = lambda: foo()
 x = 0  # not unreachable
 
+[case testUnendingForLoop]
+# flags: --warn-unreachable
+from typing import Generator, NoReturn, TypeVar, Generic
+
+def generator() -> Generator[int, None, NoReturn]:
+    while True:
+        yield 1
+
+def foo() -> int:
+    for x in generator():
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar() -> int:  # E: Missing return statement
+    for x in generator():
+        break
+
+    y = 0
+
+def baz() -> int:
+    for x in generator():
+        pass
+
+A = TypeVar("A")
+B = TypeVar("B")
+C = TypeVar("C")
+
+class GeneratorSubtype(Generator[A, B, C]): ...
+
+def foo2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:
+    for x in gen:
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:  # E: Missing return statement
+    for x in gen:
+        break
+
+    y = 0
+
+def baz2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:
+    for x in gen:
+        pass
+
+class MyGenerator(Generator[int, None, NoReturn]): ...
+
+def foo3(gen: MyGenerator) -> int:
+    for x in gen:
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar3(gen: MyGenerator) -> int:  # E: Missing return statement
+    for x in gen:
+        break
+
+    y = 0
+
+def baz3(gen: MyGenerator) -> int:
+    for x in gen:
+        pass
+
+class ShuffledGenerator(Generic[A, B, C], Generator[C, B, A]): ...
+
+def foo4(gen: ShuffledGenerator[NoReturn, None, int]) -> int:
+    for x in gen:
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar4(gen: ShuffledGenerator[NoReturn, None, int]) -> int:  # E: Missing return statement
+    for x in gen:
+        break
+
+    y = 0
+
+def baz4(gen: ShuffledGenerator[NoReturn, None, int]) -> int:
+    for x in gen:
+        pass
+[builtins fixtures/tuple.pyi]
+
 [case testAttributeNoReturn]
 # flags: --warn-unreachable
 from typing import Optional, NoReturn, TypeVar
