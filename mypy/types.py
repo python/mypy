@@ -3773,6 +3773,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"(upper_bound={t.upper_bound.accept(self)})"
         if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
+        # TODO: disambiguate type variables with same name using namespace.
+        # We should reuse find_type_overlaps() and scoped_type_var_name().
         return s
 
     def visit_param_spec(self, t: ParamSpecType, /) -> str:
