@@ -524,9 +524,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 items.extend(self.expand_unpack(item))
             else:
                 expanded = item.accept(self)
-                if isinstance(expanded, UnpackType) and isinstance(
-                    expanded.type, TupleType
-                ):
+                if isinstance(expanded, UnpackType) and isinstance(expanded.type, TupleType):
                     # Inline Unpack[tuple[X, Y]] -> X, Y
                     # This also handles Unpack[tuple[()]] -> nothing
                     items.extend(expanded.type.items)
@@ -543,9 +541,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 items.extend(self.expand_unpack(item))
             else:
                 expanded = item.accept(self)
-                if isinstance(expanded, UnpackType) and isinstance(
-                    expanded.type, TupleType
-                ):
+                if isinstance(expanded, UnpackType) and isinstance(expanded.type, TupleType):
                     # Inline Unpack[tuple[X, Y]] -> X, Y
                     # This also handles Unpack[tuple[()]] -> nothing
                     items.extend(expanded.type.items)
