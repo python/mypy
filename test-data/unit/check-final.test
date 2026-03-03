@@ -1173,6 +1173,19 @@ class MyClass:
     a: None
     a: Final[int] = 1  # E: Cannot redefine an existing name as final  # E: Name "a" already defined on line 5
 
+[case testFinalCannotBeRedefinition]
+from typing import Final
+
+# This time travel is suboptimal but good enough for now?
+a = 0  # E: Cannot assign to final name "a"
+b = 0  # E: Cannot assign to final name "b"
+
+a: Final = a  # E: Cannot redefine an existing name as final
+b: Final = 1  # E: Cannot redefine an existing name as final
+
+a = 1  # E: Cannot assign to final name "a"
+b = 1  # E: Cannot assign to final name "b"
+
 [case testFinalOverrideAllowedForPrivate]
 from typing import Final, final
 
