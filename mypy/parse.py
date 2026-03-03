@@ -55,6 +55,9 @@ def parse(
                 error_code = error.get("code")
                 if error_code is None:
                     error_code = codes.SYNTAX
+                else:
+                    # Fallback to [syntax] for backwards compatibility.
+                    error_code = codes.error_codes.get(error_code) or codes.SYNTAX
                 errors.report(
                     error["line"], error["column"], message, blocker=is_blocker, code=error_code
                 )
