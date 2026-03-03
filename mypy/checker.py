@@ -6564,10 +6564,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             if (
                 literal(expr) == LITERAL_TYPE
-                and not is_literal_none(expr)
-                and not is_literal_not_implemented(expr)
-                and not is_false_literal(expr)
-                and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
                 # CallableType type objects are usually already maximally specific
                 and not (
