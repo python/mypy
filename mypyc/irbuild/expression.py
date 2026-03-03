@@ -93,7 +93,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
-from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.constant_fold import constant_fold_expr, folding_candidate, try_constant_fold
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
     raise_error_if_contains_unreachable_names,
@@ -618,11 +618,8 @@ def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
 # Operators
 
 
+@folding_candidate
 def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
-    folded = try_constant_fold(builder, expr)
-    if folded:
-        return folded
-
     return builder.unary_op(builder.accept(expr.expr), expr.op, expr.line)
 
 
@@ -675,6 +672,7 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     return expr
 
 
+@folding_candidate
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
@@ -705,17 +703,6 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     return builder.builder.get_item(
         base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
     )
-
-
-def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
-    """Return the constant value of an expression if possible.
-
-    Return None otherwise.
-    """
-    value = constant_fold_expr(builder, expr)
-    if value is not None:
-        return builder.load_literal_value(value)
-    return None
 
 
 def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value | None:
