@@ -2763,6 +2763,6 @@ T = TypeVar('T')
 
 def func(d: Callable[[Unpack[Ts]], T]) -> T: ...
 
-y = func[1, int] # E: Type application is only supported for generic classes \
+y = func[1, int] # E: Type application is only supported for generic classes and type aliases \
                  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/tuple.pyi]
