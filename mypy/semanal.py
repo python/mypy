@@ -1805,6 +1805,8 @@ class SemanticAnalyzer(
         if (not dec.is_overload or dec.var.is_property) and self.type:
             dec.var.info = self.type
             dec.var.is_initialized_in_class = True
+        if no_type_check:
+            erase_func_annotations(dec.func)
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if could_be_decorated_property and dec.decorators and dec.var.is_property:
@@ -8353,3 +8355,12 @@ def is_init_only(node: Var) -> bool:
         isinstance(type := get_proper_type(node.type), Instance)
         and type.type.fullname == "dataclasses.InitVar"
     )
+
+
+def erase_func_annotations(func: FuncDef) -> None:
+    func.type_args = None
+    for arg in func.arguments:
+        arg.type_annotation = None
+        arg.variable.type = None
+    func.type = None
+    func.unanalyzed_type = None
