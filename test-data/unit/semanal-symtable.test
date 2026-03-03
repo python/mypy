@@ -9,7 +9,7 @@ x = 1
 [out]
 __main__:
   SymbolTable(
-    x : Gdef/Var (__main__.x) : builtins.int)
+    x : Gdef/Var (__main__.x) : int)
 
 [case testFuncDef]
 def f(): pass
@@ -35,7 +35,7 @@ __main__:
     m : Gdef/MypyFile (m))
 m:
   SymbolTable(
-    x : Gdef/Var (m.x) : builtins.int)
+    x : Gdef/Var (m.x) : int)
 
 [case testImportFromModule]
 from m import x
@@ -49,7 +49,7 @@ __main__:
 m:
   SymbolTable(
     x : Gdef/TypeInfo (m.x)
-    y : Gdef/Var (m.y) : builtins.int)
+    y : Gdef/Var (m.y) : int)
 
 [case testImportAs]
 from m import x as xx
@@ -63,7 +63,7 @@ __main__:
 m:
   SymbolTable(
     x : Gdef/TypeInfo (m.x)
-    y : Gdef/Var (m.y) : builtins.int)
+    y : Gdef/Var (m.y) : int)
 
 [case testFailingImports]
 from sys import non_existing1  # type: ignore
@@ -91,6 +91,6 @@ def g() -> None:
 [out]
 __main__:
   SymbolTable(
-    Callable : Gdef/Var (typing.Callable) : builtins.int
+    Callable : Gdef/Var (typing.Callable) : int
     dec : Gdef/FuncDef (__main__.dec) : def (f: def ()) -> def ()
     g : Gdef/Decorator (__main__.g) : def ())
