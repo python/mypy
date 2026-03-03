@@ -4310,3 +4310,36 @@ def bar(y: float) -> float: ...
 
 foo(1, None, bar)  # E: Cannot infer value of type parameter "T2" of "foo"
 [builtins fixtures/tuple.pyi]
+
+[case testGlobalVariableNoneInitMultipleFuncs]
+x = None
+
+def f() -> None:
+    global x
+    reveal_type(x)  # N: Revealed type is "None"
+    x = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def g() -> None:
+    global x
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+    x = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int | None")
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+
+[case testGlobalVariableNoneInitMultipleFuncsRedefine]
+# flags: --allow-redefinition-new --local-partial-types
+
+# Widening this is intentionally prohibited (for now).
+x = None
+
+def f() -> None:
+    global x
+    reveal_type(x)  # N: Revealed type is "None"
+    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "None")
+    reveal_type(x)  # N: Revealed type is "None"
+
+def g() -> None:
+    global x
+    reveal_type(x)  # N: Revealed type is "None"
+    x = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "None")
+    reveal_type(x)  # N: Revealed type is "None"

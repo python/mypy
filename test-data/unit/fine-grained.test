@@ -11557,7 +11557,7 @@ def foo(x: C) -> Optional[int]:
 from n import f
 class C:
     x = None
-    def foo(self, x: int) -> None:
+    def foo(self) -> None:
         self.x = f()
 [file n.py]
 def f() -> int: ...
@@ -11582,7 +11582,7 @@ def dec(fn: F) -> F: ...
 class C:
     x = None
     @dec
-    def foo(self, x: int) -> None:
+    def foo(self) -> None:
         self.x = f()
 [file n.py]
 def f() -> int: ...
@@ -11631,10 +11631,51 @@ def dec(fn: F) -> F: ...
 
 class C:
     x = None
-    def foo(self, x: int) -> None:
+    def foo(self) -> None:
         @dec
         def setup() -> None:
             self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineModuleGlobal]
+from typing import Optional
+import m
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from n import f
+
+x = None
+def foo() -> None:
+    global x
+    x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineModuleGlobalNested]
+from typing import Optional
+import m
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from n import f
+
+x = None
+def foo() -> None:
+    def bar() -> None:
+        global x
+        x = f()
 [file n.py]
 def f() -> int: ...
 [file n.py.2]
