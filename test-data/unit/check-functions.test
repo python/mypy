@@ -1837,7 +1837,7 @@ G = Callable[[Arg(1, 'x')], int] # E: Invalid type: try using Literal[1] instead
 H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
 I = Callable[[VarArg(int)], int] # ok
 J = Callable[[VarArg(), KwArg()], int] # ok
-K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or var args
+K = Callable[[VarArg(), int], int] # E: Required positional params may not appear after default, named or var params
 L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias: expression is not a valid type   E: Unexpected keyword argument "gnome" for "Arg"
@@ -1925,12 +1925,12 @@ def h(f: Callable[[Arg(gnome='x', type=int)], int]): pass # E: Unexpected argume
 from typing import Callable, Any
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg, NamedArg
 
-def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
-def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Var args may not appear after named or var args
-def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
-def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
-def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or var args
-def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs argument must be the last argument
+def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional params may not appear after default, named or var params
+def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Var params may not appear after named or var params
+def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs parameter
+def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional params may not appear after default, named or var params
+def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default params may not appear after named or var params
+def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs parameter must be the last parameter
 [builtins fixtures/dict.pyi]
 
 [case testCallableDuplicateNames]
