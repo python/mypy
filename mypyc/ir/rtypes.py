@@ -536,6 +536,12 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 # Python range object.
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
+# Python weak reference object
+weakref_rprimitive: Final = RPrimitive(
+    "weakref.ReferenceType", is_unboxed=False, is_refcounted=True
+)
+
+
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
     for name in [
@@ -692,6 +698,10 @@ def is_immutable_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
         or is_tuple_rprimitive(rtype)
         or is_frozenset_rprimitive(rtype)
     )
+
+
+def is_weakref_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "weakref.ReferenceType"
 
 
 class TupleNameVisitor(RTypeVisitor[str]):
