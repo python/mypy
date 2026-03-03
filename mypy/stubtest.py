@@ -2049,6 +2049,10 @@ def get_mypy_type_of_runtime_value(
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
+    if type(runtime) != runtime.__class__:
+        # Since `__class__` is redefined for an instance, we can't trust
+        # its `isinstance` checks, it can be dynamic. See #20919
+        return fallback
 
     value: bool | int | str
     if isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):

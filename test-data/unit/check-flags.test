@@ -2765,3 +2765,9 @@ reveal_type(fn)  # N: Revealed type is "def [Ts] (*args: *Ts, **kwargs: **TypedD
 fx: Callable[[int, Unpack[Ts], int], tuple[Unpack[Ts]]]
 reveal_type(fx)  # N: Revealed type is "def [Ts] (int, *args: *tuple[*Ts, int]) -> tuple[*Ts]"
 [builtins fixtures/tuple.pyi]
+
+[case testOnlyOneRedefinitionModeAllowed]
+# flags: --allow-redefinition --allow-redefinition-new --local-partial-types
+x = 1
+[out]
+main:1: error: --allow-redefinition-old and --allow-redefinition-new should not be used together
