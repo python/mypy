@@ -128,6 +128,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
     non_method_protocol_members,
+    solve_as_subtype,
 )
 from mypy.traverser import (
     all_name_and_member_expressions,
@@ -6142,29 +6143,45 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
         typ = get_proper_type(typ)
-        return (
-            (
-                # This is a little ad hoc, ideally we would have a map_instance_to_supertype
-                # that worked for protocols
-                isinstance(typ, Instance)
-                and typ.type.fullname == "builtins.dict"
-                and is_subtype(typ.args[0], self.named_type("builtins.str"))
-            )
-            or isinstance(typ, ParamSpecType)
-            or is_subtype(
-                typ,
-                self.chk.named_generic_type(
-                    "_typeshed.SupportsKeysAndGetItem",
-                    [self.named_type("builtins.str"), AnyType(TypeOfAny.special_form)],
-                ),
-            )
-            or is_subtype(
-                typ,
-                self.chk.named_generic_type(
-                    "_typeshed.SupportsKeysAndGetItem", [UninhabitedType(), UninhabitedType()]
-                ),
-            )
+
+        # factorize over unions
+        if isinstance(typ, UnionType):
+            return all(self.is_valid_keyword_var_arg(item) for item in typ.items)
+
+        if isinstance(typ, AnyType):
+            return True
+
+        if isinstance(typ, ParamSpecType):
+            return typ.flavor == ParamSpecFlavor.KWARGS
+
+        # fast path for builtins.dict
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins.dict":
+            return is_subtype(typ.args[0], self.named_type("builtins.str"))
+
+        # fast fail if not SupportsKeysAndGetItem[Any, Any]
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        if not is_subtype(
+            typ,
+            self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [any_type, any_type]),
+        ):
+            return False
+
+        # Check if 'typ' is a SupportsKeysAndGetItem[T, Any] for some T <: str
+        # Note: is_subtype(typ, SupportsKeysAndGetItem[str, Any])` is too harsh
+        #   since SupportsKeysAndGetItem is invariant in the key type parameter.
+
+        # create a TypeVar and template type
+        T = TypeVarType(
+            "T",
+            "T",
+            id=TypeVarId(-1, namespace="<kwargs>"),
+            values=[],
+            upper_bound=self.named_type("builtins.str"),
+            default=any_type,
         )
+        template = self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [T, any_type])
+
+        return solve_as_subtype(typ, template) is not None
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.
