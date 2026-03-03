@@ -2,15 +2,24 @@ from __future__ import annotations
 
 from typing import Final, TypeGuard
 
-# Supported Python literal types. All tuple / frozenset items must have supported
+# Supported Python literal types. All tuple / frozenset / dict items must have supported
 # literal types as well, but we can't represent the type precisely.
 LiteralValue = (
-    str | bytes | int | bool | float | complex | tuple[object, ...] | frozenset[object] | None
+    str
+    | bytes
+    | int
+    | bool
+    | float
+    | complex
+    | tuple[object, ...]
+    | frozenset[object]
+    | dict[object, object]
+    | None
 )
 
 
 def _is_literal_value(obj: object) -> TypeGuard[LiteralValue]:
-    return isinstance(obj, (str, bytes, int, float, complex, tuple, frozenset, type(None)))
+    return isinstance(obj, (str, bytes, int, float, complex, tuple, frozenset, dict, type(None)))
 
 
 # Some literals are singletons and handled specially (None, False and True)
@@ -29,6 +38,7 @@ class Literals:
         self.complex_literals: dict[complex, int] = {}
         self.tuple_literals: dict[tuple[object, ...], int] = {}
         self.frozenset_literals: dict[frozenset[object], int] = {}
+        self.dict_literals: dict[tuple[tuple[object, object], ...], int] = {}
 
     def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
@@ -69,6 +79,16 @@ class Literals:
                     assert _is_literal_value(item)
                     self.record_literal(item)
                 frozenset_literals[value] = len(frozenset_literals)
+        elif isinstance(value, dict):
+            items = self.make_dict_literal_key(value)  # type: ignore [arg-type]
+            dict_literals = self.dict_literals
+            if items not in dict_literals:
+                for k, v in items:
+                    assert _is_literal_value(k)
+                    assert _is_literal_value(v)
+                    self.record_literal(k)
+                    self.record_literal(v)
+                dict_literals[items] = len(dict_literals)
         else:
             assert False, "invalid literal: %r" % value
 
@@ -103,7 +123,17 @@ class Literals:
         n += len(self.tuple_literals)
         if isinstance(value, frozenset):
             return n + self.frozenset_literals[value]
+        n += len(self.frozenset_literals)
+        if isinstance(value, dict):
+            key = self.make_dict_literal_key(value)  # type: ignore [arg-type]
+            return n + self.dict_literals[key]
         assert False, "invalid literal: %r" % value
+
+    def make_dict_literal_key(
+        self, value: dict[LiteralValue, LiteralValue]
+    ) -> tuple[tuple[LiteralValue, LiteralValue], ...]:
+        """Make a unique key for a literal dict."""
+        return tuple(value.items())
 
     def num_literals(self) -> int:
         # The first three are for None, True and False
@@ -116,6 +146,7 @@ class Literals:
             + len(self.complex_literals)
             + len(self.tuple_literals)
             + len(self.frozenset_literals)
+            + len(self.dict_literals)
         )
 
     # The following methods return the C encodings of literal values
@@ -141,6 +172,36 @@ class Literals:
 
     def encoded_frozenset_values(self) -> list[str]:
         return self._encode_collection_values(self.frozenset_literals)
+
+    def encoded_dict_values(self) -> list[str]:
+        """Encode dict values into a C array.
+
+        The format of the result is like this:
+
+           <number of dicts>
+           <length of the first dict>
+           <literal index of first key>
+           <literal index of first value>
+           ...
+           <literal index of last key>
+           <literal index of last value>
+           <length of the second dict>
+           ...
+        """
+        values = self.dict_literals
+        value_by_index = {index: value for value, index in values.items()}
+        result = []
+        count = len(values)
+        result.append(str(count))
+        for i in range(count):
+            items = value_by_index[i]
+            result.append(str(len(items)))
+            for k, v in items:
+                index_k = self.literal_index(k)  # type: ignore [arg-type]
+                index_v = self.literal_index(v)  # type: ignore [arg-type]
+                result.append(str(index_k))
+                result.append(str(index_v))
+        return result
 
     def _encode_collection_values(
         self, values: dict[tuple[object, ...], int] | dict[frozenset[object], int]
