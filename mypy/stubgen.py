@@ -215,6 +215,7 @@ class Options:
         quiet: bool,
         export_less: bool,
         include_docstrings: bool,
+        include_vendored: bool,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -235,6 +236,7 @@ class Options:
         self.quiet = quiet
         self.export_less = export_less
         self.include_docstrings = include_docstrings
+        self.include_vendored = include_vendored
 
 
 class StubSource:
@@ -1547,10 +1549,15 @@ def get_qualified_name(o: Expression) -> str:
         return ERROR_MARKER
 
 
-def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:
-    return [
-        module for module in modules if module.path is None or not is_blacklisted_path(module.path)
-    ]
+def remove_blacklisted_modules(modules: list[StubSource], quiet: bool = False) -> list[StubSource]:
+    """Remove blacklisted modules and optionally warn about them."""
+    result = []
+    for module in modules:
+        if module.path is None or not is_blacklisted_path(module.path):
+            result.append(module)
+        elif not quiet:
+            print(f"Skipping vendored module: {module.module}")
+    return result
 
 
 def split_pyc_from_py(modules: list[StubSource]) -> tuple[list[StubSource], list[StubSource]]:
@@ -1599,7 +1606,8 @@ def collect_build_targets(
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
-    py_modules = remove_blacklisted_modules(py_modules)
+    if not options.include_vendored:
+        py_modules = remove_blacklisted_modules(py_modules, options.quiet)
     pyc_mod, py_mod = split_pyc_from_py(py_modules)
     return py_mod, pyc_mod, c_modules
 
@@ -1951,6 +1959,11 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="include existing docstrings with the stubs",
     )
+    parser.add_argument(
+        "--include-vendored",
+        action="store_true",
+        help="generate stubs for vendored packages (e.g., packages in 'vendor', '_vendor', etc.)",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")
     parser.add_argument("-q", "--quiet", action="store_true", help="show fewer messages")
     parser.add_argument(
@@ -2037,6 +2050,7 @@ def parse_options(args: list[str]) -> Options:
         quiet=ns.quiet,
         export_less=ns.export_less,
         include_docstrings=ns.include_docstrings,
+        include_vendored=ns.include_vendored,
     )
 
 
