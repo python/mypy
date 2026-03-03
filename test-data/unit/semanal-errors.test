@@ -1009,18 +1009,20 @@ class A(metaclass=f): pass # E: Invalid metaclass "f"
 
 [case testInvalidTypevarArguments]
 from typing import TypeVar
-a = TypeVar()       # E: Too few arguments for TypeVar()
-b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
-c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
-T = TypeVar(b'T')      # E: TypeVar() expects a string literal as first argument
-d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
-e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to "TypeVar()": "x"
-f = TypeVar('f', (int, str), int) # E: Type expected
-g = TypeVar('g', int)             # E: Type variable must have at least two constrained types
-h = TypeVar('h', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
-i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
-j = TypeVar('j', covariant=None)  # E: TypeVar "covariant" may only be a literal bool
-k = TypeVar('k', contravariant=1) # E: TypeVar "contravariant" may only be a literal bool
+a = TypeVar()                     # E: Too few arguments for TypeVar()
+b = TypeVar(x='b')                # E: TypeVar() expects 'name' keyword as first argument
+c = TypeVar(x=100)                # E: TypeVar() expects 'name' keyword as first argument
+d = TypeVar(name=100)             # E: TypeVar() expects a string literal as first argument
+e = TypeVar(100)                  # E: TypeVar() expects a string literal as first argument
+T = TypeVar(b'T')                 # E: TypeVar() expects a string literal as first argument
+f = TypeVar('F')                  # E: String argument 1 "F" to TypeVar(...) does not match variable name "f"
+g = TypeVar('g', int, str, x=1)   # E: Unexpected argument to "TypeVar()": "x"
+h = TypeVar('h', (int, str), int) # E: Type expected
+i = TypeVar('i', int)             # E: Type variable must have at least two constrained types
+j = TypeVar('j', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
+k = TypeVar('k', bound=1)         # E: TypeVar "bound" must be a type
+l = TypeVar('l', covariant=None)  # E: TypeVar "covariant" may only be a literal bool
+m = TypeVar('m', contravariant=1) # E: TypeVar "contravariant" may only be a literal bool
 [out]
 
 [case testMoreInvalidTypevarArguments]
