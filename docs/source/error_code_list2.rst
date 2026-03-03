@@ -108,7 +108,7 @@ Example:
    from typing import Self
 
    class C:
-       # Error: Redundant "Self" annotation for the first method argument
+       # Error: Redundant "Self" annotation for the first method parameter
        def copy(self: Self) -> Self:
            return type(self)()
 
