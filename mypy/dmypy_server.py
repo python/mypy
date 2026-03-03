@@ -643,9 +643,9 @@ class Server:
         worklist = changed.copy()
         while worklist:
             module = worklist.pop()
-            if module[0] not in graph:
-                continue
             sources2 = self.direct_imports(module, graph)
+            if sources2 is None:
+                continue
             # Filter anything already seen before. This prevents
             # infinite looping if there are any self edges. (Self
             # edges are maybe a bug, but...)
@@ -770,10 +770,14 @@ class Server:
 
     def direct_imports(
         self, module: tuple[str, str], graph: mypy.build.Graph
-    ) -> list[BuildSource]:
+    ) -> list[BuildSource] | None:
         """Return the direct imports of module not included in seen."""
-        state = graph[module[0]]
-        return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
+        try:
+            state = graph[module[0]]
+            return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
+        except KeyError:
+            # Dependency not found in graph, it was probably removed while dmypy was running.
+            return None
 
     def find_added_suppressed(
         self, graph: mypy.build.Graph, seen: set[str], search_paths: SearchPaths
