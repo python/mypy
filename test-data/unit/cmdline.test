@@ -403,13 +403,13 @@ reveal_type(a.__pow__(2))
 reveal_type(a.__pow__(a))
 [out]
 int_pow.py:3: note: Revealed type is "Literal[1]"
-int_pow.py:4: note: Revealed type is "builtins.int"
-int_pow.py:5: note: Revealed type is "builtins.int"
+int_pow.py:4: note: Revealed type is "int"
+int_pow.py:5: note: Revealed type is "int"
 int_pow.py:6: note: Revealed type is "Literal[1]"
-int_pow.py:7: note: Revealed type is "builtins.float"
-int_pow.py:8: note: Revealed type is "builtins.float"
+int_pow.py:7: note: Revealed type is "float"
+int_pow.py:8: note: Revealed type is "float"
 int_pow.py:9: note: Revealed type is "Any"
-int_pow.py:10: note: Revealed type is "builtins.int"
+int_pow.py:10: note: Revealed type is "int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
