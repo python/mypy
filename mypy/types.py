@@ -197,6 +197,15 @@ DATACLASS_TRANSFORM_NAMES: Final = (
 # Supported @override decorator names.
 OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
+# Supported property decorators
+PROPERTY_DECORATOR_NAMES: Final = (
+    "builtins.property",
+    "abc.abstractproperty",
+    "functools.cached_property",
+    "enum.property",
+    "types.DynamicClassAttribute",
+)
+
 ELLIPSIS_TYPE_NAMES: Final = ("builtins.ellipsis", "types.EllipsisType")
 
 NOT_IMPLEMENTED_TYPE_NAMES: Final = ("builtins._NotImplementedType", "types.NotImplementedType")
