@@ -102,6 +102,7 @@ class ASTMergeSuite(DataSuite):
         options.export_types = True
         options.show_traceback = True
         options.allow_empty_bodies = True
+        options.reveal_verbose_types = True
         main_path = os.path.join(test_temp_dir, "main")
 
         self.str_conv.options = options
@@ -222,7 +223,8 @@ class ASTMergeSuite(DataSuite):
                     key=lambda n: (
                         n.line,
                         short_type(n),
-                        n.str_with_options(self.str_conv.options) + str(type_map[n]),
+                        n.str_with_options(self.str_conv.options)
+                        + type_map[n].accept(self.type_str_conv),
                     ),
                 ):
                     typ = type_map[expr]

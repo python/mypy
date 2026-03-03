@@ -292,6 +292,7 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeStrVisitor,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -713,6 +714,17 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
+        if self.options.allow_redefinition_new and self.options.allow_redefinition_old:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail(
+                "--allow-redefinition-old and --allow-redefinition-new"
+                " should not be used together",
+                n,
+            )
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -1376,7 +1388,7 @@ class SemanticAnalyzer(
                     elif (deprecated := self.get_deprecated(d)) is not None:
                         deprecation = True
                         if isinstance(typ := item.func.type, CallableType):
-                            typestr = f" {typ} "
+                            typestr = f" {typ.accept(TypeStrVisitor(options=self.options))} "
                         else:
                             typestr = " "
                         item.func.deprecated = (
@@ -1793,6 +1805,8 @@ class SemanticAnalyzer(
         if (not dec.is_overload or dec.var.is_property) and self.type:
             dec.var.info = self.type
             dec.var.is_initialized_in_class = True
+        if no_type_check:
+            erase_func_annotations(dec.func)
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if could_be_decorated_property and dec.decorators and dec.var.is_property:
@@ -8341,3 +8355,12 @@ def is_init_only(node: Var) -> bool:
         isinstance(type := get_proper_type(node.type), Instance)
         and type.type.fullname == "dataclasses.InitVar"
     )
+
+
+def erase_func_annotations(func: FuncDef) -> None:
+    func.type_args = None
+    for arg in func.arguments:
+        arg.type_annotation = None
+        arg.variable.type = None
+    func.type = None
+    func.unanalyzed_type = None

@@ -2970,11 +2970,20 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         if tp.arg_kinds[i] == ARG_STAR2:
             s += "**"
         name = tp.arg_names[i]
+        if not name and not options.reveal_verbose_types:
+            # Avoid ambiguous (and weird) formatting for anonymous args/kwargs.
+            if tp.arg_kinds[i] == ARG_STAR and isinstance(tp.arg_types[i], UnpackType):
+                name = "args"
+            elif tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
+                name = "kwargs"
         if name:
             s += name + ": "
         type_str = format_type_bare(tp.arg_types[i], options)
         if tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
-            type_str = f"Unpack[{type_str}]"
+            if options.reveal_verbose_types:
+                type_str = f"Unpack[{type_str}]"
+            else:
+                type_str = f"**{type_str}"
         s += type_str
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
