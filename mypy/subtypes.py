@@ -1007,7 +1007,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
-                    if subtype_match and previous_match_left_index <= left_index:
+                    strict_overload_subtyping = (
+                        self.options.strict_overload_subtyping if self.options else False
+                    )
+                    if subtype_match and (
+                        (not strict_overload_subtyping)
+                        or (previous_match_left_index <= left_index)
+                    ):
                         previous_match_left_index = left_index
                         found_match = True
                         matched_overloads.add(left_index)
