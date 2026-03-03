@@ -90,7 +90,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -1115,7 +1115,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
+        check_param_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 
