@@ -678,10 +678,10 @@ bool CPyStr_IsAlnum(PyObject *str) {
     return true;
 }
 
-static int CPy_ASCII_Lower(unsigned char c) { return Py_TOLOWER(c); }
-static int CPy_ASCII_Upper(unsigned char c) { return Py_TOUPPER(c); }
+static inline int CPy_ASCII_Lower(unsigned char c) { return Py_TOLOWER(c); }
+static inline int CPy_ASCII_Upper(unsigned char c) { return Py_TOUPPER(c); }
 
-static PyObject *CPyStr_ChangeCase(PyObject *self,
+static inline PyObject *CPyStr_ChangeCase(PyObject *self,
                                     int (*ascii_func)(unsigned char),
 #if CPY_3_13_FEATURES
                                     PyObject *method_name
