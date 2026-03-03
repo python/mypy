@@ -4257,6 +4257,35 @@ def g4(a: Input[bytes], b: Output[str]) -> None:
 
 [builtins fixtures/tuple.pyi]
 
+[case testTypeCallOnProtocol]
+from typing import Any, Protocol, cast
+import types
+
+class P(Protocol):
+    def foo(self) -> None: ...
+
+import mod
+
+a: P = mod
+value = type(a)
+reveal_type(value)  # N: Revealed type is "builtins.type"
+reveal_type(value.foo)  # E: "type" has no attribute "foo" \
+                        # N: Revealed type is "Any"
+
+class Namespace: ...
+n = Namespace()
+n.foo = lambda: None  # E: "Namespace" has no attribute "foo"
+
+b: P = cast(Any, n)
+value = type(b)
+reveal_type(value)  # N: Revealed type is "builtins.type"
+reveal_type(value.foo)  # E: "type" has no attribute "foo" \
+                        # N: Revealed type is "Any"
+[file mod.py]
+def foo() -> None: ...
+
+[builtins fixtures/tuple.pyi]
+
 [case testOverloadProtocolSubtyping]
 from typing import Protocol, Self, overload
 
