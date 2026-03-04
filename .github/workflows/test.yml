@@ -105,13 +105,13 @@ jobs:
           python: '3.14'
           os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+          tox_extra_args: "-x -n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           dev_ast_serialize: true
         - name: Parallel tests with py314-ubuntu, mypyc-compiled
           python: '3.14'
           os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+          tox_extra_args: "-x -n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
           dev_ast_serialize: true
         - name: Parallel tests with py314-windows-64, interpreted
