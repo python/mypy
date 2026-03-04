@@ -1387,7 +1387,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Type check initialization expressions.
                 body_is_trivial = is_trivial_body(defn.body)
                 if not self.can_skip_diagnostics:
-                    self.check_default_args(item, body_is_trivial)
+                    self.check_default_params(item, body_is_trivial)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -1710,22 +1710,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         context=typ.ret_type,
                     )
 
-    def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
-        for arg in item.arguments:
-            if arg.initializer is None:
+    def check_default_params(self, item: FuncItem, body_is_trivial: bool) -> None:
+        for param in item.arguments:
+            if param.initializer is None:
                 continue
-            if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+            if body_is_trivial and isinstance(param.initializer, EllipsisExpr):
                 continue
-            name = arg.variable.name
+            name = param.variable.name
             msg = "Incompatible default for "
-            if name.startswith("__tuple_arg_"):
-                msg += f"tuple argument {name[12:]}"
+            if name.startswith("__tuple_param_"):
+                msg += f"tuple parameter {name[12:]}"
             else:
-                msg += f'argument "{name}"'
+                msg += f'parameter "{name}"'
             if (
                 not self.options.implicit_optional
-                and isinstance(arg.initializer, NameExpr)
-                and arg.initializer.fullname == "builtins.None"
+                and isinstance(param.initializer, NameExpr)
+                and param.initializer.fullname == "builtins.None"
             ):
                 notes = [
                     "PEP 484 prohibits implicit Optional. "
@@ -1736,11 +1736,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             else:
                 notes = None
             self.check_simple_assignment(
-                arg.variable.type,
-                arg.initializer,
-                context=arg.initializer,
+                param.variable.type,
+                param.initializer,
+                context=param.initializer,
                 msg=ErrorMessage(msg, code=codes.ASSIGNMENT),
-                lvalue_name="argument",
+                lvalue_name="parameter",
                 rvalue_name="default",
                 notes=notes,
             )
