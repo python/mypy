@@ -39,6 +39,7 @@ from typing import (
     TypeAlias as _TypeAlias,
     TypedDict,
     cast,
+    final,
 )
 
 from librt.base64 import b64encode
@@ -131,7 +132,7 @@ if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 
 from mypy import errorcodes as codes
-from mypy.config_parser import parse_mypy_comments
+from mypy.config_parser import get_config_module_names, parse_mypy_comments
 from mypy.fixup import fixup_module
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
@@ -481,6 +482,7 @@ def build_inner(
             dump_timing_stats(options.timing_stats, graph)
         if options.line_checking_stats is not None:
             dump_line_checking_stats(options.line_checking_stats, graph)
+        warn_unused_configs(options, flush_errors)
         return BuildResult(manager, graph)
     finally:
         t0 = time.time()
@@ -503,6 +505,19 @@ def build_inner(
             exclude_from_backups(options.cache_dir)
         if os.path.isdir(options.cache_dir):
             record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
+
+
+def warn_unused_configs(
+    options: Options, flush_errors: Callable[[str | None, list[str], bool], None]
+) -> None:
+    if options.warn_unused_configs and options.unused_configs and not options.non_interactive:
+        unused = get_config_module_names(
+            options.config_file,
+            [glob for glob in options.per_module_options.keys() if glob in options.unused_configs],
+        )
+        flush_errors(
+            None, ["{}: note: unused section(s): {}".format(options.config_file, unused)], False
+        )
 
 
 def default_data_dir() -> str:
@@ -799,6 +814,12 @@ class BuildManager:
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
+        # These allow quickly skipping logging and stats collection calls. Note
+        # that some stats impact mypy behavior, so be careful when skipping stats
+        # collection calls.
+        self.stats_enabled = self.options.dump_build_stats
+        self.logging_enabled = self.options.verbosity >= 1
+        self.tracing_enabled = self.options.verbosity >= 2
         # Set of namespaces (module or class) that are being populated during semantic
         # analysis and may have missing definitions.
         self.incomplete_namespaces: set[str] = set()
@@ -913,7 +934,7 @@ class BuildManager:
         self.known_partial_packages: dict[str, bool] = {}
 
     def dump_stats(self) -> None:
-        if self.options.dump_build_stats:
+        if self.stats_enabled:
             print("Stats:")
             for key, value in sorted(self.stats_summary().items()):
                 print(f"{key + ':':24}{value}")
@@ -1463,14 +1484,23 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     return module_deps_metas
 
 
-def _load_ff_file(file: str, manager: BuildManager, log_error: str) -> bytes | None:
-    t0 = time.time()
+def _load_ff_file(
+    file: str, manager: BuildManager, log_error_fmt: str, id: str | None
+) -> bytes | None:
+    if manager.stats_enabled:
+        t0 = time.time()
     try:
         data = manager.metastore.read(file)
     except OSError:
-        manager.log(log_error + file)
+        if manager.logging_enabled:
+            if id:
+                message = log_error_fmt.format(id) + file
+            else:
+                message = log_error_fmt + file
+            manager.log(message)
         return None
-    manager.add_stats(metastore_read_time=time.time() - t0)
+    if manager.stats_enabled:
+        manager.add_stats(metastore_read_time=time.time() - t0)
     return data
 
 
@@ -1638,11 +1668,15 @@ def find_cache_meta(
     """
     # TODO: May need to take more build options into account
     meta_file, data_file, _ = get_cache_names(id, path, manager.options)
-    manager.trace(f"Looking for {id} at {meta_file}")
+    if manager.tracing_enabled:
+        manager.trace(f"Looking for {id} at {meta_file}")
     meta: bytes | dict[str, Any] | None
-    t0 = time.time()
+    if manager.stats_enabled:
+        t0 = time.time()
     if manager.options.fixed_format_cache:
-        meta = _load_ff_file(meta_file, manager, log_error=f"Could not load cache for {id}: ")
+        meta = _load_ff_file(
+            meta_file, manager, log_error_fmt="Could not load cache for {}: ", id=id
+        )
         if meta is None:
             return None
     else:
@@ -1659,7 +1693,8 @@ def find_cache_meta(
                 f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}"
             )
             return None
-    t1 = time.time()
+    if manager.stats_enabled:
+        t1 = time.time()
     if isinstance(meta, bytes):
         # If either low-level buffer format or high-level cache layout changed, we
         # cannot use the cache files, even with --skip-version-check.
@@ -1674,10 +1709,11 @@ def find_cache_meta(
     if m is None:
         manager.log(f"Metadata abandoned for {id}: cannot deserialize data")
         return None
-    t2 = time.time()
-    manager.add_stats(
-        load_meta_time=t2 - t0, load_meta_load_time=t1 - t0, load_meta_from_dict_time=t2 - t1
-    )
+    if manager.stats_enabled:
+        t2 = time.time()
+        manager.add_stats(
+            load_meta_time=t2 - t0, load_meta_load_time=t1 - t0, load_meta_from_dict_time=t2 - t1
+        )
     if skip_validation:
         return m
 
@@ -1754,7 +1790,8 @@ def validate_meta(
         manager.log(f"Metadata abandoned for {id}: errors were previously ignored")
         return None
 
-    t0 = time.time()
+    if manager.stats_enabled:
+        t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
     if not manager.options.skip_cache_mtime_checks:
@@ -1779,7 +1816,8 @@ def validate_meta(
         manager.log(f"Metadata abandoned for {id}: file or directory {path} does not exist")
         return None
 
-    manager.add_stats(validate_stat_time=time.time() - t0)
+    if manager.stats_enabled:
+        manager.add_stats(validate_stat_time=time.time() - t0)
 
     # When we are using a fine-grained cache, we want our initial
     # build() to load all of the cache information and then do a
@@ -1835,25 +1873,31 @@ def validate_meta(
                 manager.log(f"Metadata abandoned for {id}: file {path} has different hash")
                 return None
         else:
-            t0 = time.time()
+            if manager.stats_enabled:
+                t0 = time.time()
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
             meta.mtime = mtime
             meta.path = path
             meta.size = size
             meta.options = options_snapshot(id, manager)
             meta_file, _, _ = get_cache_names(id, path, manager.options)
-            manager.log(
-                "Updating mtime for {}: file {}, meta {}, mtime {}".format(
-                    id, path, meta_file, meta.mtime
+            if manager.logging_enabled:
+                manager.log(
+                    "Updating mtime for {}: file {}, meta {}, mtime {}".format(
+                        id, path, meta_file, meta.mtime
+                    )
                 )
-            )
             write_cache_meta(meta, manager, meta_file)
-            t1 = time.time()
-            manager.add_stats(validate_update_time=time.time() - t1, validate_munging_time=t1 - t0)
+            if manager.stats_enabled:
+                t1 = time.time()
+                manager.add_stats(
+                    validate_update_time=time.time() - t1, validate_munging_time=t1 - t0
+                )
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.log(f"Metadata fresh for {id}: file {path}")
+    if manager.logging_enabled:
+        manager.log(f"Metadata fresh for {id}: file {path}")
     return meta
 
 
@@ -2172,6 +2216,7 @@ class ModuleNotFound(Exception):
         self.reason = reason
 
 
+@final
 class State:
     """The state for a module.
 
@@ -2258,9 +2303,8 @@ class State:
     # Mapping from line number to type ignore codes on this line (for imports only).
     imports_ignored: dict[int, list[str]]
 
-    @classmethod
+    @staticmethod
     def new_state(
-        cls,
         id: str | None,
         path: str | None,
         source: str | None,
@@ -2322,9 +2366,11 @@ class State:
         if path and source is None and manager.fscache.isdir(path):
             source = ""
 
-        t0 = time.time()
+        if manager.stats_enabled:
+            t0 = time.time()
         meta = validate_meta(meta, id, path, ignore_all, manager)
-        manager.add_stats(validate_meta_time=time.time() - t0)
+        if manager.stats_enabled:
+            manager.add_stats(validate_meta_time=time.time() - t0)
 
         if meta:
             # Make copies, since we may modify these and want to
@@ -2350,7 +2396,7 @@ class State:
             error_lines = []
             imports_ignored = {}
 
-        state = cls(
+        state = State(
             manager=manager,
             order=State.order_counter,
             id=id,
@@ -2672,7 +2718,7 @@ class State:
 
         data: bytes | dict[str, Any] | None
         if self.options.fixed_format_cache:
-            data = _load_ff_file(data_file, self.manager, "Could not load tree: ")
+            data = _load_ff_file(data_file, self.manager, "Could not load tree: ", None)
         else:
             data = _load_json_file(data_file, self.manager, "Load tree ", "Could not load tree: ")
         if data is None:
@@ -2900,6 +2946,8 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
+        if self.tree.uses_template_strings:
+            self.add_dependency("string.templatelib")
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
@@ -3349,9 +3397,11 @@ def exist_removed_submodules(dependencies: list[str], manager: BuildManager) -> 
 
 def find_module_simple(id: str, manager: BuildManager) -> str | None:
     """Find a filesystem path for module `id` or `None` if not found."""
-    t0 = time.time()
+    if manager.stats_enabled:
+        t0 = time.time()
     x = manager.find_module_cache.find_module(id, fast_path=True)
-    manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
+    if manager.stats_enabled:
+        manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     if isinstance(x, ModuleNotFoundReason):
         return None
     return x
@@ -3359,9 +3409,11 @@ def find_module_simple(id: str, manager: BuildManager) -> str | None:
 
 def find_module_with_reason(id: str, manager: BuildManager) -> ModuleSearchResult:
     """Find a filesystem path for module `id` or the reason it can't be found."""
-    t0 = time.time()
+    if manager.stats_enabled:
+        t0 = time.time()
     x = manager.find_module_cache.find_module(id, fast_path=False)
-    manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
+    if manager.stats_enabled:
+        manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     return x
 
 
@@ -3475,6 +3527,9 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
 
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
+
+    if not manager.logging_enabled:
+        return
 
     config_file = manager.options.config_file
     if config_file:
@@ -3789,7 +3844,7 @@ def load_graph(
                 manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
-                if not manager.use_fine_grained_cache():
+                if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:
                     manager.import_options[dep] = manager.options.clone_for_module(
                         dep
                     ).dep_import_options()
@@ -3839,8 +3894,8 @@ def load_graph(
                     graph[newst.id] = newst
                     new.append(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
-    # modules that are back in graph. We need to do this after the loop to cover an edge
-    # case where a namespace package ancestor is shared by a typed and an untyped package.
+    # modules that are back in graph. We need to do this after the loop to cover edge cases
+    # like where a namespace package ancestor is shared by a typed and an untyped package.
     for st in graph.values():
         for dep in st.suppressed.copy():
             if dep in graph:
@@ -3938,23 +3993,25 @@ def find_stale_sccs(
             if stale_indirect is not None:
                 fresh = False
 
-        if fresh:
-            fresh_msg = "fresh"
-        elif stale_scc:
-            fresh_msg = "inherently stale"
-            if stale_scc != ascc.mod_ids:
-                fresh_msg += f" ({' '.join(sorted(stale_scc))})"
-            if stale_deps:
-                fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
-        elif stale_deps:
-            fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
-        else:
-            assert stale_indirect is not None
-            fresh_msg = f"stale due to stale indirect dep(s): first {stale_indirect}"
+        if manager.logging_enabled:
+            if fresh:
+                fresh_msg = "fresh"
+            elif stale_scc:
+                fresh_msg = "inherently stale"
+                if stale_scc != ascc.mod_ids:
+                    fresh_msg += f" ({' '.join(sorted(stale_scc))})"
+                if stale_deps:
+                    fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
+            elif stale_deps:
+                fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
+            else:
+                assert stale_indirect is not None
+                fresh_msg = f"stale due to stale indirect dep(s): first {stale_indirect}"
+            scc_str = " ".join(ascc.mod_ids)
 
-        scc_str = " ".join(ascc.mod_ids)
         if fresh:
-            manager.trace(f"Found {fresh_msg} SCC ({scc_str})")
+            if manager.tracing_enabled:
+                manager.trace(f"Found {fresh_msg} SCC ({scc_str})")
             # If there is at most one file with errors we can skip the ordering to save time.
             mods_with_errors = [id for id in ascc.mod_ids if graph[id].error_lines]
             if len(mods_with_errors) <= 1:
@@ -3971,11 +4028,14 @@ def find_stale_sccs(
                     manager.flush_errors(path, formatted, False)
             fresh_sccs.append(ascc)
         else:
-            size = len(ascc.mod_ids)
-            if size == 1:
-                manager.log(f"Scheduling SCC singleton ({scc_str}) as {fresh_msg}")
-            else:
-                manager.log("Scheduling SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
+            if manager.logging_enabled:
+                size = len(ascc.mod_ids)
+                if size == 1:
+                    manager.log(f"Scheduling SCC singleton ({scc_str}) as {fresh_msg}")
+                else:
+                    manager.log(
+                        "Scheduling SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg)
+                    )
             stale_sccs.append(ascc)
     return stale_sccs, fresh_sccs
 

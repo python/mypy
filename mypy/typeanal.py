@@ -47,7 +47,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
     check_arg_kinds,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
@@ -1712,7 +1712,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             kinds.append(ARG_STAR2 if second_unpack_last else ARG_STAR)
             names.append(None)
         # Note that arglist below is only used for error context.
-        check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
+        check_param_names(names, [arglist] * len(args), self.fail, "Callable")
         check_arg_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
 
@@ -2097,7 +2097,6 @@ def fix_instance(
             # Already wrong arg count error, don't emit missing type parameters error as well.
             disallow_any = False
         t.args = ()
-        arg_count = 0
 
     args: list[Type] = [*(t.args[:max_tv_count])]
     any_type: AnyType | None = None
@@ -2550,7 +2549,6 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
                 t,
                 code=codes.TYPE_ARG,
             )
-            t.invalid = True
         return False
     return True
 

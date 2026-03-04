@@ -138,6 +138,7 @@ from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
     Decorator,
+    FuncBase,
     FuncDef,
     ImportFrom,
     MypyFile,
@@ -953,6 +954,20 @@ def find_targets_recursive(
                 deferred, stale_proto = lookup_target(manager, target)
                 if stale_proto:
                     stale_protos.add(stale_proto)
+
+                # If there are function targets that can infer outer variables, they should
+                # be re-processed as part of the module top-level instead (for consistency).
+                regular = []
+                shared = []
+                for d in deferred:
+                    if isinstance(d.node, FuncBase) and d.node.can_infer_vars:
+                        shared.append(d)
+                    else:
+                        regular.append(d)
+                deferred = regular
+                if shared:
+                    deferred.append(FineGrainedDeferredNode(manager.modules[module_id], None))
+
                 result[module_id].update(deferred)
 
     return result, unloaded_files, stale_protos

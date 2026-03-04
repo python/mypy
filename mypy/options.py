@@ -69,6 +69,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "native_parser",
         "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
@@ -76,6 +77,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "strict_bytes",
         "fixed_format_cache",
         "untyped_calls_exclude",
+        "enable_incomplete_feature",
     }
 ) - {"debug_cache"}
 
@@ -370,6 +372,8 @@ class Options:
         self.show_error_end: bool = False
         self.hide_error_codes = False
         self.show_error_code_links = False
+        # This is an internal-only flag to simplify migrating test output.
+        self.reveal_verbose_types = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -377,6 +381,8 @@ class Options:
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
+        # If True, use the native parser (experimental)
+        self.native_parser = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types
@@ -412,6 +418,9 @@ class Options:
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
+        # Treat special methods as being implicitly positional-only.
+        # Set to False when running stubtest.
+        self.pos_only_special_methods = True
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
@@ -426,7 +435,7 @@ class Options:
         self.mypyc_skip_c_generation = False
 
     def use_star_unpack(self) -> bool:
-        return self.python_version >= (3, 11)
+        return self.python_version >= (3, 11) or not self.reveal_verbose_types
 
     def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""

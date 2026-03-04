@@ -142,9 +142,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action="store_true", default=False, help="Increase verbosity")
     parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
-    parser.add_argument("input_dir1", help="Input directory for the cache")
-    parser.add_argument("input_dir2", help="Input directory for the cache")
-    parser.add_argument("output", help="Output file")
+    parser.add_argument("input_dir1", help="Input directory for the original cache")
+    parser.add_argument("input_dir2", help="Input directory for the target cache")
+    parser.add_argument("output", help="Output file with the diff from original cache")
     args = parser.parse_args()
 
     cache1 = make_cache(args.input_dir1, args.sqlite)
@@ -199,7 +199,7 @@ def main() -> None:
 
     # Compute what deps have been added and merge them all into the
     # @root deps file.
-    new_deps = {k: deps1.get(k, set()) - deps2.get(k, set()) for k in deps2}
+    new_deps = {k: deps2.get(k, set()) - deps1.get(k, set()) for k in deps2}
     new_deps = {k: v for k, v in new_deps.items() if v}
     try:
         root_deps = load(cache1, "@root.deps.json")

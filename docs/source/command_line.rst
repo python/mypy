@@ -631,6 +631,18 @@ of the above sections.
                 # Type of "x" is "str" here.
                 ...
 
+    Function arguments are special, changing their type within function body
+    is allowed even if they are annotated, but that annotation is used to infer
+    types of r.h.s. of all subsequent assignments. Such middle-ground semantics
+    provides good balance for majority of common use cases. For example:
+
+    .. code-block:: python
+
+        def process(values: list[float]) -> None:
+            if not values:
+                values = [0, 0, 0]
+            reveal_type(values)  # Revealed type is list[float]
+
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
     The feature is still experimental, and the semantics may still change.

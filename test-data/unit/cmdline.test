@@ -374,7 +374,7 @@ python_version = 3.14
 # cmd: mypy main.py
 [file main.py]
 import sys
-if sys.version_info == (3, 9):  # Update here when bumping the min Python version!
+if sys.version_info < (3, 10):  # Update here when bumping the min Python version!
     reveal_type("good")
 [file mypy.ini]
 \[mypy]
@@ -403,13 +403,13 @@ reveal_type(a.__pow__(2))
 reveal_type(a.__pow__(a))
 [out]
 int_pow.py:3: note: Revealed type is "Literal[1]"
-int_pow.py:4: note: Revealed type is "builtins.int"
-int_pow.py:5: note: Revealed type is "builtins.int"
+int_pow.py:4: note: Revealed type is "int"
+int_pow.py:5: note: Revealed type is "int"
 int_pow.py:6: note: Revealed type is "Literal[1]"
-int_pow.py:7: note: Revealed type is "builtins.float"
-int_pow.py:8: note: Revealed type is "builtins.float"
+int_pow.py:7: note: Revealed type is "float"
+int_pow.py:8: note: Revealed type is "float"
 int_pow.py:9: note: Revealed type is "Any"
-int_pow.py:10: note: Revealed type is "builtins.int"
+int_pow.py:10: note: Revealed type is "int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
@@ -535,7 +535,6 @@ variable has type "bytes")
 [file mypy.ini]
 \[mypy]
 warn_unused_configs = True
-incremental = False
 \[mypy-bar]
 \[mypy-foo]
 \[mypy-baz.*]
@@ -555,7 +554,7 @@ incremental = False
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+mypy.ini: note: unused section(s): [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
 [case testPackageRootEmpty]

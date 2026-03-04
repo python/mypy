@@ -166,6 +166,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -291,6 +292,7 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeStrVisitor,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -712,6 +714,17 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
+        if self.options.allow_redefinition_new and self.options.allow_redefinition_old:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail(
+                "--allow-redefinition-old and --allow-redefinition-new"
+                " should not be used together",
+                n,
+            )
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -1112,7 +1125,9 @@ class SemanticAnalyzer(
         overlap.discard(typ.arg_names[-1])
         if overlap:
             overlapped = ", ".join([f'"{name}"' for name in sorted(filter(None, overlap))])
-            self.fail(f"Overlap between argument names and ** TypedDict items: {overlapped}", defn)
+            self.fail(
+                f"Overlap between parameter names and ** TypedDict items: {overlapped}", defn
+            )
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         # OK, everything looks right now, mark the callable type as using unpack.
@@ -1375,7 +1390,7 @@ class SemanticAnalyzer(
                     elif (deprecated := self.get_deprecated(d)) is not None:
                         deprecation = True
                         if isinstance(typ := item.func.type, CallableType):
-                            typestr = f" {typ} "
+                            typestr = f" {typ.accept(TypeStrVisitor(options=self.options))} "
                         else:
                             typestr = " "
                         item.func.deprecated = (
@@ -1792,6 +1807,8 @@ class SemanticAnalyzer(
         if (not dec.is_overload or dec.var.is_property) and self.type:
             dec.var.info = self.type
             dec.var.is_initialized_in_class = True
+        if no_type_check:
+            erase_func_annotations(dec.func)
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if could_be_decorated_property and dec.decorators and dec.var.is_property:
@@ -4572,6 +4589,17 @@ class SemanticAnalyzer(
                 self.name_not_defined(lval.name, lval)
             self.check_lvalue_validity(lval.node, lval)
 
+        if self.scope.functions and lval.name in self.global_decls[-1]:
+            # Technically, we only need to set this if original r.h.s. would be inferred
+            # as None, but it is tricky to detect reliably during semantic analysis.
+            if (
+                original_def
+                and isinstance(original_def.node, Var)
+                and original_def.node.is_inferred
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_vars = True
+
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
@@ -4657,6 +4685,14 @@ class SemanticAnalyzer(
                     for func in self.scope.functions:
                         if isinstance(func, FuncDef):
                             func.has_self_attr_def = True
+            if (
+                cur_node
+                and isinstance(cur_node.node, Var)
+                and cur_node.node.is_inferred
+                and cur_node.node.is_initialized_in_class
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_vars = True
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -5849,6 +5885,15 @@ class SemanticAnalyzer(
             if key is not None:
                 key.accept(self)
             value.accept(self)
+
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> None:
+        for item in expr.items:
+            if isinstance(item, tuple):
+                item[0].accept(self)
+                if item[3] is not None:
+                    item[3].accept(self)
+            else:
+                item.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
@@ -8331,3 +8376,12 @@ def is_init_only(node: Var) -> bool:
         isinstance(type := get_proper_type(node.type), Instance)
         and type.type.fullname == "dataclasses.InitVar"
     )
+
+
+def erase_func_annotations(func: FuncDef) -> None:
+    func.type_args = None
+    for arg in func.arguments:
+        arg.type_annotation = None
+        arg.variable.type = None
+    func.type = None
+    func.unanalyzed_type = None
