@@ -41,6 +41,7 @@ Methods
 * ``s.isalnum()``
 * ``s.isdigit()``
 * ``s.isspace()``
+* ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
 * ``s.lstrip(chars: str)``
@@ -65,6 +66,7 @@ Methods
 * ``s.splitlines(keepends: bool)``
 * ``s1.startswith(s2: str)``
 * ``s1.startswith(t: tuple[str, ...])``
+* ``s.upper()``
 * ``s.strip()``
 * ``s.strip(chars: str)``
 
