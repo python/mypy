@@ -297,6 +297,32 @@ not support ``sort()``) as a list and sort it in-place:
 
 See :ref:`type-narrowing` for more information.
 
+.. _subclass-attribute-narrowing:
+
+Subclass attribute type narrowing
+---------------------------------
+
+When a subclass assigns a value to a class attribute, mypy can infer a
+more specific type for that attribute based on the assigned value,
+even if the base class declared a broader type.
+
+Example:
+
+.. code-block:: python
+
+    from typing import Iterable
+
+    class A:
+        attr1: Iterable[str]
+        attr2: tuple[str, ...]
+
+    class B(A):
+        attr1 = "a", "b"
+        attr2 = "a", "b", "c"
+
+    reveal_type(B.attr1)  # Revealed type is "tuple[str, str]"
+    reveal_type(B.attr2)  # Revealed type is "tuple[str, str, str]"
+
 .. _variance:
 
 Invariance vs covariance
