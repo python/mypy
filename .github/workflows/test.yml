@@ -232,7 +232,7 @@ jobs:
         args: --release --out dist
         working-directory: ast_serialize
 
-    - if: ${{ dev_ast_serialize }}
+    - if: ${{ matrix.dev_ast_serialize }}
       run: |
         pip install ast_serialize/dist/ast_serialize-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl
         echo 'no way' > test_ast_serialize.py
