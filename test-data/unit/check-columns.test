@@ -1,6 +1,6 @@
 # Test column numbers in messages. --show-column-numbers is enabled implicitly by test runner.
 
-[case testColumnsSyntaxError]
+[case testColumnsSyntaxError_no_native_parse]
 f()
 1 +
 [out]
@@ -146,7 +146,7 @@ if int():
     def f(a: 'A') -> None: pass
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
-[case testColumnInvalidType]
+[case testColumnInvalidType_no_native_parse]
 
 from typing import Iterable
 
@@ -342,7 +342,7 @@ if int():
 main:2:11: error: Syntax error in type annotation
 main:2:11: note: Suggestion: Is there a spurious trailing comma?
 
-[case testColumnSyntaxErrorInTypeAnnotation2]
+[case testColumnSyntaxErrorInTypeAnnotation2_no_native_parse]
 if int():
     # TODO: It would be better to point to the type comment
     xyz = 0  # type: blurbnard blarb

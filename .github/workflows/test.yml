@@ -106,12 +106,14 @@ jobs:
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+          dev_ast_serialize: true
         - name: Parallel tests with py314-ubuntu, mypyc-compiled
           python: '3.14'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
+          dev_ast_serialize: true
         - name: Parallel tests with py314-windows-64, interpreted
           python: '3.14'
           os: windows-latest
@@ -215,22 +217,22 @@ jobs:
 
     # To speed-up process until ast_serialize is on PyPI.
     - name: Checkout pinned ast_serialize
-      if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+      if: ${{ matrix.dev_ast_serialize }}
       uses: actions/checkout@v4
       with:
         persist-credentials: false
         repository: mypyc/ast_serialize
-        ref: 038d30db8c3428310a5d69c151feeebf31160a08
+        ref: da5a16cf268dbec63ed6b2e6b715470576e2d1a6
         path: ast_serialize
 
-    - if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+    - if: ${{ matrix.dev_ast_serialize }}
       uses: PyO3/maturin-action@v1
       with:
         target: aarch64
         args: --release --out dist
         working-directory: ast_serialize
 
-    - if: ${{ matrix.os == 'ubuntu-24.04-arm' && matrix.python != '3.14t' }}
+    - if: ${{ dev_ast_serialize }}
       run: |
         pip install ast_serialize/dist/ast_serialize-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl
         echo 'no way' > test_ast_serialize.py
