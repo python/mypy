@@ -240,7 +240,7 @@ from mypy.types import (
     is_literal_type,
     is_named_instance,
 )
-from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
+from mypy.types_utils import is_overlapping_none, remove_optional, store_parameter_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
 from mypy.util import is_dunder, is_sunder
@@ -1347,42 +1347,42 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     ref_type: Type | None = self.scope.active_self_type()
 
                 if typ.type_is:
-                    arg_index = 0
+                    param_index = 0
                     # For methods and classmethods, we want the second parameter
                     if ref_type is not None and defn.has_self_or_cls_argument:
-                        arg_index = 1
-                    if arg_index < len(typ.arg_types) and not is_subtype(
-                        typ.type_is, typ.arg_types[arg_index]
+                        param_index = 1
+                    if param_index < len(typ.arg_types) and not is_subtype(
+                        typ.type_is, typ.arg_types[param_index]
                     ):
                         self.fail(
                             message_registry.NARROWED_TYPE_NOT_SUBTYPE.format(
                                 format_type(typ.type_is, self.options),
-                                format_type(typ.arg_types[arg_index], self.options),
+                                format_type(typ.arg_types[param_index], self.options),
                             ),
                             item,
                         )
 
-                # Store argument types.
+                # Store parameter types.
                 found_self = False
                 if isinstance(defn, FuncDef) and not defn.is_decorated:
-                    found_self = self.require_correct_self_argument(typ, defn)
+                    found_self = self.require_correct_self_parameter(typ, defn)
                 for i in range(len(typ.arg_types)):
-                    arg_type = typ.arg_types[i]
-                    if isinstance(arg_type, TypeVarType):
+                    param_type = typ.arg_types[i]
+                    if isinstance(param_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
                         if (
-                            arg_type.variance == COVARIANT
+                            param_type.variance == COVARIANT
                             and defn.name not in ("__init__", "__new__", "__post_init__")
                             and not is_private(defn.name)  # private methods are not inherited
                             and (i != 0 or not found_self)
                         ):
-                            ctx: Context = arg_type
+                            ctx: Context = param_type
                             if ctx.line < 0:
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
-                    # Need to store arguments again for the expanded item.
-                    store_argument_type(item, i, typ, self.named_generic_type)
+                    # Need to store parameters again for the expanded item.
+                    store_parameter_type(item, i, typ, self.named_generic_type)
 
                 # Type check initialization expressions.
                 body_is_trivial = is_trivial_body(defn.body)
@@ -1603,7 +1603,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
                     self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
-    def require_correct_self_argument(self, func: Type, defn: FuncDef) -> bool:
+    def require_correct_self_parameter(self, func: Type, defn: FuncDef) -> bool:
         func = get_proper_type(func)
         if not isinstance(func, CallableType):
             return False
@@ -5640,7 +5640,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         if non_trivial_decorator:
             self.check_untyped_after_decorator(sig, e.func)
-        self.require_correct_self_argument(sig, e.func)
+        self.require_correct_self_parameter(sig, e.func)
         sig = set_callable_name(sig, e.func)
         if isinstance(sig, CallableType):
             sig.definition = e

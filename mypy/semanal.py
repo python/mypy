@@ -309,7 +309,7 @@ from mypy.types import (
     remove_dups,
     type_vars_as_args,
 )
-from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
+from mypy.types_utils import is_invalid_recursive_alias, store_parameter_type
 from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
@@ -1674,7 +1674,7 @@ class SemanticAnalyzer(
                 assert isinstance(typ, CallableType)
                 a.bind_function_type_variables(typ, defn)
                 for i in range(len(typ.arg_types)):
-                    store_argument_type(defn, i, typ, self.named_type)
+                    store_parameter_type(defn, i, typ, self.named_type)
             self.function_stack.append(defn)
             with self.enter(defn):
                 for arg in defn.arguments:
