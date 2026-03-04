@@ -271,7 +271,7 @@ if int():
 
 [case testColumnIncompatibleDefault]
 if int():
-    def f(x: int = '') -> None: # E:20: Incompatible default for argument "x" (default has type "str", argument has type "int")
+    def f(x: int = '') -> None: # E:20: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
         pass
 
 [case testColumnMissingProtocolMember]
