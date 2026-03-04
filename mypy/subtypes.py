@@ -7,6 +7,7 @@ from typing import Any, Final, TypeAlias as _TypeAlias, TypeVar, cast
 import mypy.applytype
 import mypy.constraints
 import mypy.typeops
+from mypy import errorcodes as codes
 from mypy.checker_state import checker_state
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
@@ -533,6 +534,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
+            lname = left.type.fullname
+
+            # Disallow datetime.datetime where datetime.date is expected when unsafe-datetime is
+            # enabled. While datetime is a subclass of date at runtime, comparing them raises
+            # TypeError, making this inheritance relationship problematic in practice.
+            if (
+                self.options
+                and codes.UNSAFE_DATETIME in self.options.enabled_error_codes
+                and lname == "datetime.datetime"
+                and rname == "datetime.date"
+            ):
+                return False
+
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             # NamedTuples are a special case, because `NamedTuple` is not listed
