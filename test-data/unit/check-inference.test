@@ -590,7 +590,7 @@ def ff() -> None:
     x = f() # E: Need type annotation for "x"
     reveal_type(x) # N: Revealed type is "Any"
 
-def f() -> T: pass # E: A function returning TypeVar should have at least one same TypeVar parameter
+def f() -> T: pass # E: A function returning TypeVar should use that same TypeVar somewhere in its parameter annotations
 def g(a: T) -> None: pass
 
 g(None) # Ok
@@ -2693,7 +2693,7 @@ def main() -> None:
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should have at least one same TypeVar parameter
+def f() -> T: pass # E: A function returning TypeVar should use that same TypeVar somewhere in its parameter annotations
 
 class C:
     x = f() # E: Need type annotation for "x"
