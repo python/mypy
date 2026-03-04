@@ -20,7 +20,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mypy"
+name = "sqlglot-mypy"
 description = "Optional static typing for Python"
 readme = {text = """
 Mypy -- Optional Static Typing for Python
@@ -71,11 +71,11 @@ faster-cache = ["orjson"]
 native-parser = []
 
 [project.urls]
-Homepage = "https://www.mypy-lang.org/"
+Homepage = "https://github.com/vaggelisd/sqlglot-mypy"
 Documentation = "https://mypy.readthedocs.io/en/stable/index.html"
-Repository = "https://github.com/python/mypy"
-Changelog = "https://github.com/python/mypy/blob/master/CHANGELOG.md"
-Issues = "https://github.com/python/mypy/issues"
+Repository = "https://github.com/vaggelisd/sqlglot-mypy"
+Changelog = "https://github.com/vaggelisd/sqlglot-mypy/blob/master/CHANGELOG.md"
+Issues = "https://github.com/vaggelisd/sqlglot-mypy/issues"
 
 [project.scripts]
 mypy = "mypy.__main__:console_entry"

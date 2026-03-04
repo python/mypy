@@ -1,0 +1,82 @@
+[tool.cibuildwheel]
+
+build-frontend = "pip"
+linux.manylinux-x86_64-image = "manylinux_2_28"
+linux.manylinux-aarch64-image = "manylinux_2_28"
+linux.musllinux-x86_64-image = "musllinux_1_2"
+linux.musllinux-aarch64-image = "musllinux_1_2"
+
+enable = []
+
+# Don't build musllinux arm64 and 32-bit Windows.
+# PyPy and 32-bit Linux are skipped by default.
+# Start building free threading wheels for Python 3.14, i.e. skip 3.13.
+skip = [
+  "cp313t-*",
+  "*-win32",
+  "*-musllinux_aarch64",
+]
+
+build-verbosity = 1
+
+linux.before-all = [
+  "yum install -y llvm-toolset || yum -v install -y llvm-toolset",
+]
+
+# Uncomment the following to run tests against the built wheels:
+# before-test = [
+#   "pip install -r {project}/test-requirements.txt",
+# ]
+#
+# test-command = """ \
+#   ( \
+#      DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))') \
+#      && cp '{project}/pyproject.toml' '{project}/conftest.py' $DIR \
+#
+#      && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])') \
+#      && MYPYC_TEST_DIR=$(python -c 'import mypyc.test; print(mypyc.test.__path__[0])') \
+#
+#      && MYPY_TEST_PREFIX='{project}' pytest $MYPY_TEST_DIR $MYPYC_TEST_DIR -k 'not test_external' \
+#    )
+# """
+#
+# windows.test-command = """ \
+#   bash -c "( \
+#     DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))') \
+#     && cp '{project}/pyproject.toml' '{project}/conftest.py' $DIR \
+#
+#     && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])') \
+#     && MYPY_TEST_PREFIX='{project}' pytest $MYPY_TEST_DIR/testcheck.py \
+#   )"
+# """
+
+[tool.cibuildwheel.config-settings]
+--build-option = "--use-mypyc"
+
+[tool.cibuildwheel.environment]
+MYPY_USE_MYPYC = "1"
+MYPYC_OPT_LEVEL = "3"
+MYPYC_DEBUG_LEVEL = "0"
+
+[tool.cibuildwheel.windows.environment]
+MYPY_USE_MYPYC = "1"
+MYPYC_OPT_LEVEL = "2"
+MYPYC_DEBUG_LEVEL = "0"
+
+[tool.cibuildwheel.linux.environment]
+MYPY_USE_MYPYC = "1"
+MYPYC_OPT_LEVEL = "3"
+MYPYC_DEBUG_LEVEL = "0"
+PATH = "$PATH:/opt/rh/llvm-toolset-17.0/root/usr/bin"
+LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:/opt/rh/llvm-toolset-17.0/root/usr/lib64"
+CC = "clang"
+
+[[tool.cibuildwheel.overrides]]
+select = "*musllinux*"
+before-all = [
+  "apk add --no-cache clang",
+]
+# before-test = [
+#   "pip install -r {project}/test-requirements.txt",
+# ]
+environment = { MYPY_USE_MYPYC = "1", MYPYC_OPT_LEVEL = "3", MYPYC_DEBUG_LEVEL = "0", CC = "clang" }
