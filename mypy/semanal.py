@@ -4933,9 +4933,7 @@ class SemanticAnalyzer(
                 )
                 return None
             else:
-                self.fail(
-                    f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{arg_name}"', context
-                )
+                self.fail(f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{arg_name}"', context)
                 return None
 
         if covariant and contravariant:
