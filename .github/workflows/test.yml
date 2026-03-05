@@ -141,6 +141,7 @@ jobs:
     timeout-minutes: 60
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VIRTUALENV_SYSTEM_SITE_PACKAGES: ${{ matrix.dev_ast_serialize && 1 || 0 }}
       # Rich (pip) -- Disable color for windows + pytest
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
