@@ -3789,11 +3789,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ) and not identity_check:
             return False
 
-        if prefer_literal:
+        if prefer_literal and not (
+            isinstance(left, Instance)
+            and not left.type.is_enum
+            and isinstance(right, Instance)
+            and not right.type.is_enum
+        ):
             # Also flag non-overlapping literals in situations like:
             #    x: Literal['a', 'b']
             #    if x == 'c':
             #        ...
+            # but only in situations where at least one side is an actual literal/enum type.
+            # see testNarrowingEqualityFlipFlop for an example where we want to skip this.
             left = try_getting_literal(left)
             right = try_getting_literal(right)
 
