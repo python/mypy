@@ -763,9 +763,7 @@ class ASTConverter:
             ret.append(last_if_stmt)
         return self._merge_non_adjacent_property_overloads(ret)
 
-    def _merge_non_adjacent_property_overloads(
-        self, stmts: list[Statement]
-    ) -> list[Statement]:
+    def _merge_non_adjacent_property_overloads(self, stmts: list[Statement]) -> list[Statement]:
         """Merge non-adjacent @x.setter and @x.deleter into their property getter.
 
         fix_function_overloads only groups *consecutive* same-named decorators.
