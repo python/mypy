@@ -699,3 +699,29 @@ Example:
         @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [untyped-decorator]
         def add_forty_two(value: int) -> int:
             return value + 42
+
+.. _code-type-comment:
+
+Check that no legacy type comments are used [type-comment]
+----------------------------------------------------------
+
+If enabled with :option:`--enable-error-code type-comment <mypy --enable-error-code>`,
+mypy generates an error if legacy type comments are used. Tools like
+[com2ann](https://github.com/ilevkivskyi/com2ann) can help with translating type comments to
+type annotations.
+
+More information about type comments are available in the
+[typing specification](https://typing.python.org/en/latest/spec/historical.html#type-comments).
+
+Example:
+
+.. code-block:: python
+
+    o = 2  # type: int
+
+    for x, y in points:  # type: float, float
+        ...
+
+    def func(a, b):
+        # type: (str, int) -> bool
+        ...
