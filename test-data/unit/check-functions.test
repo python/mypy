@@ -514,7 +514,7 @@ if int():
 
 [builtins fixtures/tuple.pyi]
 
-[case testDefaultArgumentExpressions]
+[case testDefaultParameterExpressions]
 import typing
 class B: pass
 class A: pass
@@ -524,52 +524,52 @@ def f(x: 'A' = A()) -> None:
     a = x # type: A
 [out]
 
-[case testDefaultArgumentExpressions2]
+[case testDefaultParameterExpressions2]
 import typing
 class B: pass
 class A: pass
 
-def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+def f(x: 'A' = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "A")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
-[case testDefaultArgumentExpressionsGeneric]
+[case testDefaultParameterExpressionsGeneric]
 from typing import TypeVar
 T = TypeVar('T', bound='A')
 
 class B: pass
 class A: pass
 
-def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
+def f(x: T = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "T")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
     a = x # type: A
-[case testDefaultArgumentsWithSubtypes]
+[case testDefaultParametersWithSubtypes]
 import typing
 class A: pass
 class B(A): pass
 
-def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (default has type "A", argument has type "B")
+def f(x: 'B' = A()) -> None: # E: Incompatible default for parameter "x" (default has type "A", parameter has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
 [out]
 
-[case testMultipleDefaultArgumentExpressions]
+[case testMultipleDefaultParameterExpressions]
 import typing
 class A: pass
 class B: pass
 
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
 [out]
 
-[case testMultipleDefaultArgumentExpressions2]
+[case testMultipleDefaultParameterExpressions2]
 import typing
 class A: pass
 class B: pass
 
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for parameter "y" (default has type "A", parameter has type "B")
     pass
 [out]
 
@@ -1523,15 +1523,16 @@ else:
                     # N:     def f(int, /) -> None
 
 [case testConditionalFunctionDefinitionUnreachable]
+# flags: --warn-unreachable
 def bar() -> None:
     if False:
-        foo = 1
+        foo = 1  # E: Statement is unreachable
     else:
         def foo(obj): ...
 
 def baz() -> None:
     if False:
-        foo: int = 1
+        foo: int = 1  # E: Statement is unreachable
     else:
         def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
 [builtins fixtures/tuple.pyi]

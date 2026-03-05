@@ -719,10 +719,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     # Definitions
     #
 
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
+
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        if not self.recurse_into_functions:
+        # If a function/method can infer variable types, it should be processed as part
+        # of the module top level (i.e. module interface).
+        if not self.recurse_into_functions and not defn.can_infer_vars:
             return
-        with self.tscope.function_scope(defn):
+        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -1196,9 +1211,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not self.recurse_into_functions:
+        if not self.recurse_into_functions and not defn.can_infer_vars:
             return
-        with self.tscope.function_scope(defn):
+        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self.check_func_item(defn, name=defn.name)
             if not self.can_skip_diagnostics:
                 if defn.info:
@@ -1387,7 +1402,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Type check initialization expressions.
                 body_is_trivial = is_trivial_body(defn.body)
                 if not self.can_skip_diagnostics:
-                    self.check_default_args(item, body_is_trivial)
+                    self.check_default_params(item, body_is_trivial)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -1438,6 +1453,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         or self.options.preserve_asts
                         or not isinstance(defn, FuncDef)
                         or defn.has_self_attr_def
+                        or defn.can_infer_vars
                     ):
                         self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -1710,22 +1726,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         context=typ.ret_type,
                     )
 
-    def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
-        for arg in item.arguments:
-            if arg.initializer is None:
+    def check_default_params(self, item: FuncItem, body_is_trivial: bool) -> None:
+        for param in item.arguments:
+            if param.initializer is None:
                 continue
-            if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+            if body_is_trivial and isinstance(param.initializer, EllipsisExpr):
                 continue
-            name = arg.variable.name
+            name = param.variable.name
             msg = "Incompatible default for "
-            if name.startswith("__tuple_arg_"):
-                msg += f"tuple argument {name[12:]}"
+            if name.startswith("__tuple_param_"):
+                msg += f"tuple parameter {name[12:]}"
             else:
-                msg += f'argument "{name}"'
+                msg += f'parameter "{name}"'
             if (
                 not self.options.implicit_optional
-                and isinstance(arg.initializer, NameExpr)
-                and arg.initializer.fullname == "builtins.None"
+                and isinstance(param.initializer, NameExpr)
+                and param.initializer.fullname == "builtins.None"
             ):
                 notes = [
                     "PEP 484 prohibits implicit Optional. "
@@ -1736,11 +1752,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             else:
                 notes = None
             self.check_simple_assignment(
-                arg.variable.type,
-                arg.initializer,
-                context=arg.initializer,
+                param.variable.type,
+                param.initializer,
+                context=param.initializer,
                 msg=ErrorMessage(msg, code=codes.ASSIGNMENT),
-                lvalue_name="argument",
+                lvalue_name="parameter",
                 rvalue_name="default",
                 notes=notes,
             )
@@ -5604,8 +5620,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def visit_decorator_inner(
         self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
     ) -> None:
-        if self.recurse_into_functions:
-            with self.tscope.function_scope(e.func):
+        if self.recurse_into_functions or e.func.can_infer_vars:
+            with self.tscope.function_scope(e.func), self.set_recurse_into_functions():
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
 
         # Process decorators from the inside out to determine decorated signature, which
@@ -6829,8 +6845,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # However, for non-value targets, we cannot do this narrowing,
                     # and so we ignore else_map
                     # e.g. if (x: str | None) != (y: str), we cannot narrow x to None
-                    # TODO: this reachability gate is incorrect and should be removed
-                    if not is_unreachable_map(if_map):
+
+                    # It is correct to always narrow here. It improves behaviour on tests and
+                    # detects many inaccurate type annotations on primer.
+                    # However, because mypy does not currently check unreachable code, it feels
+                    # risky to narrow to unreachable without --warn-unreachable.
+                    # See also this specific primer comment, where I force primer to run with
+                    # --warn-unreachable to see what code we would stop checking:
+                    # https://github.com/python/mypy/pull/20660#issuecomment-3865794148
+                    if self.options.warn_unreachable or not is_unreachable_map(if_map):
                         all_if_maps.append(if_map)
 
         # Handle narrowing for operands with custom __eq__ methods specially
@@ -7741,30 +7764,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                # If we require local partial types, there are a few exceptions where
-                # we fall back to inferring just "None" as the type from a None initializer:
-                #
-                # 1. If all happens within a single function this is acceptable, since only
-                #    the topmost function is a separate target in fine-grained incremental mode.
-                #    We primarily want to avoid "splitting" partial types across targets.
-                #
-                # 2. A None initializer in the class body if the attribute is defined in a base
-                #    class is fine, since the attribute is already defined and it's currently okay
-                #    to vary the type of an attribute covariantly. The None type will still be
-                #    checked for compatibility with base classes elsewhere. Without this exception
-                #    mypy could require an annotation for an attribute that already has been
-                #    declared in a base class, which would be bad.
-                allow_none = (
-                    not self.options.local_partial_types
-                    or is_function
-                    or (is_class and self.is_defined_in_base_class(var))
-                )
-                if (
-                    allow_none
-                    and isinstance(var.type, PartialType)
-                    and var.type.type is None
-                    and not permissive
-                ):
+                if isinstance(var.type, PartialType) and var.type.type is None and not permissive:
                     var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
@@ -7835,10 +7835,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # for fine-grained incremental mode).
                 disallow_other_scopes = self.options.local_partial_types
 
+                # There are two exceptions:
                 if isinstance(var.type, PartialType) and var.type.type is not None and var.info:
-                    # This is an ugly hack to make partial generic self attributes behave
-                    # as if --local-partial-types is always on (because it used to be like this).
+                    # We always prohibit non-None partial types at class scope
+                    # for historical reasons.
                     disallow_other_scopes = True
+                if isinstance(var.type, PartialType) and var.type.type is None:
+                    # We always allow None partial types, since this is a common use case.
+                    # It is special-cased in fine-grained incremental mode.
+                    disallow_other_scopes = False
 
                 scope_active = (
                     not disallow_other_scopes or scope.is_local == self.partial_types[-1].is_local

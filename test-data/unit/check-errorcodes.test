@@ -342,7 +342,7 @@ def f() -> int:
 [case testErrorCodeAssignment]
 x: str = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 
-def f(x: str = 0) -> None:  # E: Incompatible default for argument "x" (default has type "int", argument has type "str")  [assignment]
+def f(x: str = 0) -> None:  # E: Incompatible default for parameter "x" (default has type "int", parameter has type "str")  [assignment]
     pass
 
 class A:

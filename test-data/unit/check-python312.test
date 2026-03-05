@@ -1138,13 +1138,13 @@ class C[T]:
         x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return a
 
-[case testPEP695ArgumentDefault]
+[case testPEP695ParameterDefault]
 from typing import cast
 
 def f[T](
     x: T =
         T  # E: Name "T" is not defined \
-           # E: Incompatible default for argument "x" (default has type "TypeVar", argument has type "T")
+           # E: Incompatible default for parameter "x" (default has type "TypeVar", parameter has type "T")
 ) -> T:
     return x
 

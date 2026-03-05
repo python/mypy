@@ -136,7 +136,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+def f(x: int = None) -> None:  # E: Incompatible default for parameter "x" (default has type "None", parameter has type "int") \
                                # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
                                # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   pass
@@ -153,7 +153,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+def f(x=None):  # E: Incompatible default for parameter "x" (default has type "None", parameter has type "int") \
                 # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
                 # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   # type: (int) -> None
@@ -493,11 +493,11 @@ from typing import Optional
 
 def main(x: Optional[str]):
     if x == 0:
-        reveal_type(x)  # N: Revealed type is "builtins.str | None"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | None"
     if x is 0:
-        reveal_type(x)  # N: Revealed type is "builtins.str | None"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | None"
 [builtins fixtures/ops.pyi]

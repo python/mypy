@@ -397,6 +397,24 @@ str_ssize_t_size_op = custom_op(
     error_kind=ERR_NEG_INT,
 )
 
+# str.lower()
+method_op(
+    name="lower",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Lower",
+    error_kind=ERR_MAGIC,
+)
+
+# str.upper()
+method_op(
+    name="upper",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Upper",
+    error_kind=ERR_MAGIC,
+)
+
 method_op(
     name="isspace",
     arg_types=[str_rprimitive],

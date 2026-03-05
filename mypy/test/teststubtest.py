@@ -901,6 +901,56 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_decorated_overload(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import overload
+
+            class _dec1:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str) -> str: ...
+
+            @overload
+            def good1(x: int) -> int: ...
+            @overload
+            @_dec1
+            def good1(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good1(x): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class _dec2:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def good2(x: int) -> str: ...
+            @overload
+            @_dec2
+            def good2(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good2(x, y=...): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class _dec3:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def bad(x: int) -> str: ...
+            @overload
+            @_dec3
+            def bad(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def bad(x): ...",
+            error="bad",
+        )
+
+    @collect_cases
     def test_property(self) -> Iterator[Case]:
         yield Case(
             stub="""

@@ -91,7 +91,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.A"
+        reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 class B: ...
 b: B
@@ -104,7 +104,7 @@ m: int
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -620,7 +620,59 @@ match m:
         reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
 
--- Mapping patterns currently do not narrow --
+[case testMatchMappingPatternNarrowing]
+from typing import Mapping, Sequence
+
+def f1(x: dict[str, str] | list[str] | str) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f1_rest(x: dict[str, str] | list[str] | str) -> None:
+    match x:
+        case {**rest}:
+            reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2(x: Mapping[str, str] | Sequence[str] | str) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
+    match x:
+        case {**rest}:
+            reveal_type(x)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.str]"
+        case [*_]:
+            reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
+        case _:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testMatchMappingPatternNarrowingAny]
+from typing import Any
+
+def f1(x: Any) -> None:
+    match x:
+        case {}:
+            reveal_type(x)  # N: Revealed type is "Any"
+
+def f2(x: Any) -> None:
+    match x:
+        case {"x": "y"}:
+            reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
 
 -- Class Pattern --
 
@@ -2847,8 +2899,26 @@ def f4(e: int | str | bytes) -> int:
             return 0
     reveal_type(e)  # N: Revealed type is "builtins.int | builtins.bytes"
     return 0
-
 [builtins fixtures/primitives.pyi]
+
+[case testMatchGuardAlwaysTrueAlwaysFalse]
+# flags: --warn-unreachable --always-true TRUEFLAG --always-false FALSEFLAG
+TRUEFLAG = False
+FALSEFLAG = True
+
+def true_flag(e: int) -> None:
+    match e:
+        case _ if TRUEFLAG:
+            pass
+        case 0:
+            # No error
+            1 + "asdf"
+
+def false_flag(e: int) -> None:
+    match e:
+        case _ if FALSEFLAG:
+            # No error
+            1 + "asdf"
 
 [case testMatchSequencePatternVariadicTupleNotTooShort]
 from typing import Tuple
@@ -3049,7 +3119,7 @@ def x() -> tuple[Literal["test"]]: ...
 
 match x():
     case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
-        reveal_type(x)  # N: Revealed type is "def () -> tuple[Literal['test']]"
+        reveal_type(x)  # E: Statement is unreachable
     case foo:
         foo
 

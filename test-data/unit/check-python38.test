@@ -114,35 +114,35 @@ def g(x: int): ...
     0  # type: ignore
 )  # type: ignore  # E: Unused "type: ignore" comment
 
-[case testPEP570ArgTypesMissing]
+[case testPEP570ParamTypesMissing]
 # flags: --disallow-untyped-defs
-def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more parameters
+def f(x, /) -> None: ...  # E: Function is missing a type annotation for one or more parameters
 
-[case testPEP570ArgTypesBadDefault]
-def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")
+[case testPEP570ParamTypesBadDefault]
+def f(x: int = "ERROR", /) -> None: ...  # E: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 
-[case testPEP570ArgTypesDefault]
-def f(arg: int = 0, /) -> None:
-    reveal_type(arg)  # N: Revealed type is "builtins.int"
+[case testPEP570ParamTypesDefault]
+def f(x: int = 0, /) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
-[case testPEP570ArgTypesRequired]
-def f(arg: int, /) -> None:
-    reveal_type(arg)  # N: Revealed type is "builtins.int"
+[case testPEP570ParamTypesRequired]
+def f(x: int, /) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Required]
-def f(arg: int, /) -> None: ...
+def f(x: int, /) -> None: ...
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
-f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+f(x=1)  # E: Unexpected keyword argument "x" for "f"
+f(x="ERROR")  # E: Unexpected keyword argument "x" for "f"
 
 [case testPEP570Default]
-def f(arg: int = 0, /) -> None: ...
+def f(x: int = 0, /) -> None: ...
 f()
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
-f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+f(x=1)  # E: Unexpected keyword argument "x" for "f"
+f(x="ERROR")  # E: Unexpected keyword argument "x" for "f"
 
 [case testPEP570Calls]
 # flags: --no-strict-optional
