@@ -1026,14 +1026,14 @@ if y is z:
     accepts_foo_a(z)
 else:
     reveal_type(y)  # E: Statement is unreachable
-    reveal_type(z)  # E: Statement is unreachable
+    reveal_type(z)
 if z is y:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
     reveal_type(y)  # E: Statement is unreachable
-    reveal_type(z)  # E: Statement is unreachable
+    reveal_type(z)
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityNarrowingForUnionMessiness]
