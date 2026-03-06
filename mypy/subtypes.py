@@ -324,10 +324,8 @@ def _is_subtype(
             return all(
                 is_subtype(orig_left, v, subtype_context=subtype_context) for v in right.values
             )
-        # Normally, when 'left' is not itself a union, the only way
-        # 'left' can be a subtype of the union 'right' is if it is a
-        # subtype of one of the items making up the union.
- if isinstance(right, UnionType) and not isinstance(left, UnionType):
+
+    if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
