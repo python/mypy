@@ -192,7 +192,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncForTypeComments]
+[case testAsyncForTypeComments_no_native_parse]
 
 from typing import AsyncIterator, Union
 class C(AsyncIterator[int]):
@@ -342,7 +342,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncWithTypeComments]
+[case testAsyncWithTypeComments_no_native_parse]
 
 class C:
     async def __aenter__(self) -> int: pass

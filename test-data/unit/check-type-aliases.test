@@ -1164,7 +1164,7 @@ reveal_type(xp)  # N: Revealed type is "__main__.G[[builtins.int], builtins.str]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testTypeAliasTypeInvalidGeneric]
+[case testTypeAliasTypeInvalidGeneric_no_native_parse]
 from typing_extensions import TypeAliasType, TypeVarTuple, ParamSpec
 from typing import Callable, Dict, Generic, TypeVar, Tuple, Unpack
 

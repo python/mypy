@@ -1374,7 +1374,7 @@ class Test:
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
-[case testNoClassKeywordsForNamedTuple]
+[case testNoClassKeywordsForNamedTuple_no_native_parse]
 from typing import NamedTuple
 class Test1(NamedTuple, x=1, y=2):  # E: Unexpected keyword argument "x" for "__init_subclass__" of "NamedTuple" \
                                     # E: Unexpected keyword argument "y" for "__init_subclass__" of "NamedTuple"

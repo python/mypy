@@ -1,8 +1,8 @@
-[case testFastParseSyntaxError]
+[case testFastParseSyntaxError_no_native_parse]
 
 1 +  # E: Invalid syntax
 
-[case testFastParseTypeCommentSyntaxError]
+[case testFastParseTypeCommentSyntaxError_no_native_parse]
 
 x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
@@ -12,13 +12,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
-[case testFastParseFunctionAnnotationSyntaxError]
+[case testFastParseFunctionAnnotationSyntaxError_no_native_parse]
 
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
-[case testFastParseFunctionAnnotationSyntaxErrorSpaces]
+[case testFastParseFunctionAnnotationSyntaxErrorSpaces_no_native_parse]
 
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
@@ -156,7 +156,7 @@ def f(a,        # type: A
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar_no_native_parse]
 
 def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
@@ -194,7 +194,7 @@ def f(x, y):  # E: Type signature has too few parameters
 f(1, 2)
 f(1) # E: Missing positional argument "y" in call to "f"
 
-[case testFasterParseTypeErrorCustom]
+[case testFasterParseTypeErrorCustom_no_native_parse]
 
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -275,7 +275,7 @@ def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-[case testFastParserDuplicateNames]
+[case testFastParserDuplicateNames_no_native_parse]
 
 def f(x, y, z):
   pass

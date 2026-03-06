@@ -1,4 +1,4 @@
-[case testTemplateStringBasics]
+[case testTemplateStringBasics_no_native_parse]
 reveal_type(t"foobar")  # N: Revealed type is "string.templatelib.Template"
 t"{'foobar'}"
 t"foo{'bar'}"
@@ -14,32 +14,32 @@ a = t"foobar"
 a = t"{'foobar'}"
 [builtins fixtures/f_string.pyi]
 
-[case testTemplateStringWithoutExplicitImport]
+[case testTemplateStringWithoutExplicitImport_no_native_parse]
 reveal_type(t"implicit import works")  # N: Revealed type is "string.templatelib.Template"
 [builtins fixtures/f_string.pyi]
 
-[case testTemplateStringExpressionsOk]
+[case testTemplateStringExpressionsOk_no_native_parse]
 t".{1 + 1}."
 t".{1 + 1}.{'foo' + 'bar'}"
 [builtins fixtures/f_string.pyi]
 
-[case testTemplateStringExpressionsErrors]
+[case testTemplateStringExpressionsErrors_no_native_parse]
 t"{1 + ''}"   # E: Unsupported operand types for + ("int" and "str")
 t".{1 + ''}"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/f_string.pyi]
 
-[case testTemplateStringParseFormatOptions]
+[case testTemplateStringParseFormatOptions_no_native_parse]
 value = 10.5142
 width = 10
 precision = 4
 t"result: {value:{width}.{precision}}"
 [builtins fixtures/f_string.pyi]
 
-[case testTemplateStringNestedExpressionsTypeChecked]
+[case testTemplateStringNestedExpressionsTypeChecked_no_native_parse]
 t"{2:{3 + ''}}"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/f_string.pyi]
 
-[case testIncrementalTemplateStringImplicitDependency]
+[case testIncrementalTemplateStringImplicitDependency_no_native_parse]
 import m
 reveal_type(m.x)
 [file m.py]

@@ -3749,7 +3749,7 @@ B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfol
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithClassLevelKeywords]
+[case testTypedDictWithClassLevelKeywords_no_native_parse]
 from typing import TypedDict, Generic, TypeVar
 
 T = TypeVar('T')

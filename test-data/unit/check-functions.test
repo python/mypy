@@ -774,7 +774,7 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
-[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment]
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment_no_native_parse]
 class A:
     def f(self):
         # type: () -> None
@@ -795,7 +795,7 @@ class A:
             arg.B  # E: "object" has no attribute "B"
 [file mod.py]
 
-[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment_no_native_parse]
 class A:
     def f(self):
         # type: () -> None
@@ -2140,13 +2140,13 @@ class A:
         pass
 [builtins fixtures/staticmethod.pyi]
 
-[case testEllipsisWithSomethingAfterItFails]
+[case testEllipsisWithSomethingAfterItFails_no_native_parse]
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
 main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
-[case testEllipsisWithSomethingBeforeItFails]
+[case testEllipsisWithSomethingBeforeItFails_no_native_parse]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]

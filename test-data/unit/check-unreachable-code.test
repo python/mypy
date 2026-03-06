@@ -452,7 +452,7 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
-[case testCustomSysPlatform2]
+[case testCustomSysPlatform2_no_native_parse]
 # flags: --platform win32
 import sys
 if sys.platform == 'linux':
@@ -463,7 +463,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
-[case testCustomSysPlatformStartsWith]
+[case testCustomSysPlatformStartsWith_no_native_parse]
 # flags: --platform win32
 import sys
 if sys.platform.startswith('win'):
@@ -887,7 +887,7 @@ def baz(x: int) -> int:
         return x
 [builtins fixtures/exception.pyi]
 
-[case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
+[case testUnreachableFlagIgnoresSemanticAnalysisUnreachable_no_native_parse]
 # flags: --warn-unreachable --python-version 3.9 --platform win32 --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
