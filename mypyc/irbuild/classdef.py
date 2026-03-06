@@ -80,6 +80,7 @@ from mypyc.primitives.misc_ops import (
     import_op,
     not_implemented_op,
     py_calc_meta_op,
+    py_init_subclass_op,
     pytype_from_template_op,
     type_object_op,
 )
@@ -290,7 +291,7 @@ class ExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
-        self.type_obj: Value | None = allocate_class(builder, cdef)
+        self.type_obj: Value = allocate_class(builder, cdef)
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         """Controls whether to skip generating a default for an attribute."""
@@ -315,6 +316,9 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
+        # Call __init_subclass__ after class attributes have been set
+        self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
+
         attrs_with_defaults, default_assignments = find_attr_initializers(
             self.builder, self.cdef, self.skip_attr_default
         )

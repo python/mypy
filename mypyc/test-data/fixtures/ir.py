@@ -42,6 +42,7 @@ class object:
     __class__: type
     def __new__(cls) -> Self: pass
     def __init__(self) -> None: pass
+    def __init_subclass__(cls, **kwargs: object) -> None: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __str__(self) -> str: pass

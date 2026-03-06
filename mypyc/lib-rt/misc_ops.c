@@ -303,9 +303,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
         goto error;
 
-    if (init_subclass((PyTypeObject *)t, NULL))
-        goto error;
-
     Py_XDECREF(dummy_class);
 
     // Unlike the tp_doc slots of most other object, a heap type's tp_doc
@@ -336,6 +333,16 @@ error:
     Py_XDECREF(dummy_class);
     Py_XDECREF(name);
     return NULL;
+}
+
+// Call __init_subclass__ on the appropriate base class of type.
+// This is separated from CPyType_FromTemplate so that class attributes
+// can be set before __init_subclass__ is called.
+bool CPy_InitSubclass(PyObject *type) {
+    if (init_subclass((PyTypeObject *)type, NULL)) {
+        return false;
+    }
+    return true;
 }
 
 static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
