@@ -5,6 +5,14 @@ on:
   push:
     branches: [main, master, 'release*']
     tags: ['*']
+    paths-ignore:
+    - 'docs/**'
+    - 'mypyc/doc/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - .gitignore
+    - CREDITS
+    - LICENSE
   pull_request:
     paths-ignore:
     - 'docs/**'

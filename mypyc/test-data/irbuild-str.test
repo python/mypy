@@ -291,6 +291,7 @@ def f(var: Union[str, NewStr], num: int) -> None:
     s2 = "I am %d years old." % num
     s3 = "Hi! I'm %s. I am %d years old." % (var, num)
     s4 = "Float: %f" % num
+    s5 = "Ascii: %a" % var
 [typing fixtures/typing-full.pyi]
 [out]
 def f(var, num):
@@ -298,7 +299,7 @@ def f(var, num):
     num :: int
     r0, r1, r2, s1, r3, r4, r5, r6, s2, r7, r8, r9, r10, r11, s3, r12 :: str
     r13, r14 :: object
-    r15, s4 :: str
+    r15, s4, r16, r17, r18, s5 :: str
 L0:
     r0 = "Hi! I'm "
     r1 = '.'
@@ -320,6 +321,10 @@ L0:
     r14 = PyNumber_Remainder(r12, r13)
     r15 = cast(str, r14)
     s4 = r15
+    r16 = PyObject_ASCII(var)
+    r17 = 'Ascii: '
+    r18 = CPyStr_Build(2, r17, r16)
+    s5 = r18
     return 1
 
 [case testDecode]
