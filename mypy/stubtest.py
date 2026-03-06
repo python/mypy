@@ -824,6 +824,14 @@ def _verify_arg_default_value(
             stub_type = stub_arg.variable.type or stub_arg.type_annotation
             if isinstance(stub_type, mypy.types.TypeVarType):
                 stub_type = stub_type.upper_bound
+            # Also handle type[TypeVar] -> type[bound]
+            else:
+                proper_stub_type = mypy.types.get_proper_type(stub_type)
+                if isinstance(proper_stub_type, mypy.types.TypeType):
+                    if isinstance(proper_stub_type.item, mypy.types.TypeVarType):
+                        stub_type = mypy.types.TypeType.make_normalized(
+                            proper_stub_type.item.upper_bound
+                        )
             if (
                 runtime_type is not None
                 and stub_type is not None
@@ -2056,6 +2064,7 @@ def get_mypy_type_of_runtime_value(
         )
 
     skip_type_object_type = False
+    type_typevar_context = False
     if type_context:
         # Don't attempt to process the type object when context is generic
         # This is related to issue #3737
@@ -2064,10 +2073,10 @@ def get_mypy_type_of_runtime_value(
         if isinstance(type_context, mypy.types.CallableType):
             if isinstance(type_context.ret_type, mypy.types.TypeVarType):
                 skip_type_object_type = True
-        # Type[x] where x is generic
+        # Type[TypeVar] context, see https://github.com/python/mypy/issues/13316
         if isinstance(type_context, mypy.types.TypeType):
             if isinstance(type_context.item, mypy.types.TypeVarType):
-                skip_type_object_type = True
+                type_typevar_context = True
 
     if isinstance(runtime, type) and not skip_type_object_type:
 
@@ -2082,6 +2091,13 @@ def get_mypy_type_of_runtime_value(
         # The logic here is similar to ExpressionChecker.analyze_ref_expr
         type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
         if isinstance(type_info, nodes.TypeInfo):
+            # For Type[TypeVar] contexts, return Type[Instance] directly
+            if type_typevar_context:
+                any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
+                instance = mypy.types.Instance(
+                    type_info, [any_type] * len(type_info.defn.type_vars)
+                )
+                return mypy.types.TypeType(instance)
             result: mypy.types.Type | None = None
             result = mypy.typeops.type_object_type(type_info, _named_type)
             if mypy.checkexpr.is_type_type_context(type_context):
@@ -2101,7 +2117,24 @@ def get_mypy_type_of_runtime_value(
 
     if isinstance(runtime, tuple):
         # Special case tuples so we construct a valid mypy.types.TupleType
-        optional_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
+        # Propagate type context to elements, see https://github.com/python/mypy/issues/19852
+        element_contexts: list[mypy.types.Type | None] = []
+        if type_context is not None:
+            proper_ctx = mypy.types.get_proper_type(type_context)
+            if isinstance(proper_ctx, mypy.types.TupleType):
+                element_contexts = list(proper_ctx.items)
+            elif isinstance(proper_ctx, mypy.types.Instance):
+                # Handle homogeneous tuple[T, ...]
+                if proper_ctx.type.fullname == "builtins.tuple" and proper_ctx.args:
+                    element_contexts = [proper_ctx.args[0]] * len(runtime)
+        # Pad with None for elements without context
+        while len(element_contexts) < len(runtime):
+            element_contexts.append(None)
+        element_contexts = element_contexts[: len(runtime)]
+        optional_items = [
+            get_mypy_type_of_runtime_value(v, type_context=ctx)
+            for v, ctx in zip(runtime, element_contexts)
+        ]
         items = [(i if i is not None else anytype()) for i in optional_items]
         fallback = mypy.types.Instance(type_info, [anytype()])
         return mypy.types.TupleType(items, fallback)

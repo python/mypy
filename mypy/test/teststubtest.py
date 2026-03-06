@@ -615,6 +615,53 @@ class StubtestUnit(unittest.TestCase):
             error="f12",
         )
 
+        # type[TypeVar] with ABC class default
+        yield Case(
+            stub="""
+            from abc import ABC
+            from typing import TypeVar
+            class Handler(ABC): ...
+            class DefaultHandler(Handler): ...
+            _H = TypeVar("_H", bound=Handler)
+            def get_handler(cls: type[_H] = ...) -> _H: ...
+            """,
+            runtime="""
+            from abc import ABC
+            class Handler(ABC): pass
+            class DefaultHandler(Handler): pass
+            def get_handler(cls=DefaultHandler): return cls()
+            """,
+            error=None,
+        )
+
+        # type[TypeVar] rejects invalid default
+        yield Case(
+            stub="""
+            from abc import ABC
+            from typing import TypeVar
+            class Animal(ABC): ...
+            _A = TypeVar("_A", bound=Animal)
+            def create(cls: type[_A] = ...) -> _A: ...
+            """,
+            runtime="""
+            from abc import ABC
+            class Animal(ABC): pass
+            def create(cls=str): return cls()
+            """,
+            error="create",
+        )
+
+        # tuple[type[list[_T]], ...] with type context propagation
+        yield Case(
+            stub="""
+            from typing import TypeVar
+            _T = TypeVar("_T")
+            def process(types: tuple[type[list[_T]], ...] = ...) -> None: ...
+            """,
+            runtime="def process(types=(list,)): pass",
+            error=None,
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(
