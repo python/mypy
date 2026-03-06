@@ -262,7 +262,12 @@ def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool]:
     ast_bytes, errors, ignores, import_bytes, is_partial_package = ast_serialize.parse(
-        filename, skip_function_bodies, python_version=options.python_version
+        filename,
+        skip_function_bodies,
+        python_version=options.python_version,
+        platform=options.platform,
+        always_true=options.always_true,
+        always_false=options.always_false,
     )
     return (
         ast_bytes,
