@@ -352,11 +352,14 @@ def parse_options(
             raise RuntimeError("Specifying targets via the flags pragma is not supported.")
         if "--show-error-codes" not in flag_list:
             options.hide_error_codes = True
+        if "--pretty" not in flag_list:
+            options.pretty = False
     else:
         flag_list = []
         options = Options()
         options.error_summary = False
         options.hide_error_codes = True
+        options.pretty = False
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] != "--python-version" for flag in flag_list):

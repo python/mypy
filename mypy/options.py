@@ -375,7 +375,7 @@ class Options:
         # This is an internal-only flag to simplify migrating test output.
         self.reveal_verbose_types = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
-        self.pretty = False
+        self.pretty = True
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
