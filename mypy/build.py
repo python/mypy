@@ -1581,6 +1581,10 @@ def exclude_from_backups(target_dir: str) -> None:
 
 def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
     """Create the appropriate metadata store."""
+    if not options.incremental:
+        # When incremental mode is disabled, use a no-op store to avoid
+        # creating a .mypy_cache directory.
+        return FilesystemMetadataStore(os.devnull)
     if options.sqlite_cache:
         # We use this flag in both coordinator and workers to seep up commits,
         # see mypy.metastore.connect_db() for details.
