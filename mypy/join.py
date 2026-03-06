@@ -297,6 +297,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return self.s
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
+        if is_subtype(self.s, t):
+            return t
         if isinstance(self.s, TypeVarType):
             if self.s.id == t.id:
                 if self.s.upper_bound == t.upper_bound:
