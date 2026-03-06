@@ -1,6 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
-
 from __future__ import annotations
+from mypy.types import Instance
+from mypy.types import Instance, get_proper_type
 
 import enum
 import itertools
@@ -6273,7 +6274,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Check that the iterator's item type matches the type yielded by the Generator function
         # containing this `yield from` expression.
         expected_item_type = self.chk.get_generator_yield_type(return_type, False)
-        actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
+
+        
+        iter_type_proper = get_proper_type(iter_type)
+
+        if isinstance(iter_type_proper, Instance) and iter_type_proper.args:
+           actual_item_type = iter_type_proper.args[0]
+        else:
+           actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
 
         self.chk.check_subtype(
             actual_item_type,
