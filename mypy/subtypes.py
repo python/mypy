@@ -311,7 +311,7 @@ def _is_subtype(
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
-        
+
     if isinstance(right, TypeVarType) and right.values:
         if isinstance(left, TypeVarType) and left.id == right.id:
             return True

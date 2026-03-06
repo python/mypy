@@ -295,6 +295,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_erased_type(self, t: ErasedType) -> ProperType:
         return self.s
+
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if is_subtype(self.s, t):
             return t
@@ -309,6 +310,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return get_proper_type(join_types(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
+
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         if self.s == t:
             return t
