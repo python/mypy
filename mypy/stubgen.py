@@ -719,7 +719,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if init in self.method_names:
                     # Can't have both an attribute and a method/property with the same name.
                     continue
-                init_code = self.get_init(init, value, annotation)
+                init_code = self.get_init(init, value, annotation, self_init=True)
                 if init_code:
                     self.add(init_code)
 
@@ -1288,7 +1288,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.record_name(target_name)
 
     def get_init(
-        self, lvalue: str, rvalue: Expression, annotation: Type | None = None
+        self,
+        lvalue: str,
+        rvalue: Expression,
+        annotation: Type | None = None,
+        self_init: bool = False,
     ) -> str | None:
         """Return initializer for a variable.
 
@@ -1320,7 +1324,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             return f"{self._indent}{lvalue} = ...\n"
         else:
             typename = self.get_str_type_of_node(rvalue)
-        initializer = self.get_assign_initializer(rvalue)
+        if self_init:
+            initializer = ""
+        else:
+            initializer = self.get_assign_initializer(rvalue)
         return f"{self._indent}{lvalue}: {typename}{initializer}\n"
 
     def get_assign_initializer(self, rvalue: Expression) -> str:
@@ -1344,6 +1351,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                     return f" = {rvalue.accept(p)}"
             if not (isinstance(rvalue, TempNode) and rvalue.no_rhs):
                 return " = ..."
+        if self.processing_enum:
+            return ""
+        if not (isinstance(rvalue, TempNode) and rvalue.no_rhs):
+            return " = ..."
         # TODO: support other possible cases, where initializer is important
 
         # By default, no initializer is required:
