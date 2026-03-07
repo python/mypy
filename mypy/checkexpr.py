@@ -1,6 +1,11 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from __future__ import annotations
+<<<<<<< HEAD
+=======
+
+from mypy.types import Instance, get_proper_type
+>>>>>>> d76cb3e76 (Fix iterator element type extraction for yield from)
 
 import enum
 import itertools
