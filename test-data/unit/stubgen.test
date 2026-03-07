@@ -225,7 +225,7 @@ class C:
     x = 1
 [out]
 class C:
-    x: int
+    x: int = ...
 
 [case testInitTypeAnnotationPreserved]
 class C:
@@ -267,7 +267,7 @@ class C:
 x: int
 
 class C:
-    x: int
+    x: int = ...
     def __init__(self) -> None: ...
 
 [case testEmptyClass]
@@ -319,7 +319,7 @@ class A:
 _x: int
 
 class A:
-    _y: int
+    _y: int = ...
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -706,7 +706,7 @@ class A:
 __all__ = ['A']
 
 class A:
-    x: int
+    x: int = ...
     def f(self) -> None: ...
 
 [case testSkipMultiplePrivateDefs]
@@ -972,16 +972,16 @@ class A(NamedTuple):
 
 class B(A):
     z1: str
-    z2: int
-    z3: str
+    z2: int = ...
+    z3: str = ...
 
 class RegularClass:
     x: int
-    y: str
+    y: str = ...
     class NestedNamedTuple(NamedTuple):
         x: int
         y: str = ...
-    z: str
+    z: str = ...
 
 
 [case testNestedClassInNamedTuple_semanal-xfail]
@@ -1337,7 +1337,7 @@ class A:
 [out]
 class A:
     class B:
-        x: int
+        x: int = ...
         def f(self) -> None: ...
     def g(self) -> None: ...
 
@@ -1388,7 +1388,7 @@ class A:
 from _typeshed import Incomplete
 
 class A:
-    x: Incomplete
+    x: Incomplete = ...
     def __init__(self, a=None) -> None: ...
     def method(self, a=None) -> None: ...
 
@@ -4342,21 +4342,21 @@ def create_model(cls): ...
 
 class X:
     a: int
-    b: str
+    b: str = ...
 
 @typing_extensions.dataclass_transform(kw_only_default=True)
 class ModelBase: ...
 
 class Y(ModelBase):
     a: int
-    b: str
+    b: str = ...
 
 @typing_extensions.dataclass_transform(kw_only_default=True)
 class DCMeta(type): ...
 
 class Z(metaclass=DCMeta):
     a: int
-    b: str
+    b: str = ...
 
 [case testDataclassTransformDecorator_semanal]
 import typing_extensions
