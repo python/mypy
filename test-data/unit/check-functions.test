@@ -3771,11 +3771,11 @@ def defer() -> int:
 
 
 [case testYieldFromIteratorMismatch]
-from typing import Generator, Iterator
+from typing import Generator, Iterator,Tuple
 
 class A(Iterator[int]):
     def __next__(self) -> int: ...
     def __iter__(self) -> "A": ...
 
-def f() -> Generator[tuple[int, ...], None, None]:
+def f() -> Generator[Tuple[int, ...], None, None]:
     yield from A()  # E: Incompatible types in "yield"
