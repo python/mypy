@@ -278,9 +278,7 @@ multiple variables (or maybe declare the variable with an ``Any`` type).
        ...
        n = 'x'  # error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-.. note::
-
-   Using the :option:`--allow-redefinition <mypy --allow-redefinition>`
+.. note::   Using the :option:`--allow-redefinition <mypy --allow-redefinition>`
    flag can suppress this error in several cases.
 
 Note that you can redefine a variable with a more *precise* or a more
@@ -301,9 +299,15 @@ See :ref:`type-narrowing` for more information.
 
 Invariance vs covariance
 ------------------------
+Most mutable generic collections are invariant. With the older
+``TypeVar`` syntax (for example ``T = TypeVar("T")``), user-defined
+generic classes are invariant by default.
 
-Most mutable generic collections are invariant, and mypy considers all
-user-defined generic classes invariant by default
+With the newer PEP 695 syntax (for example ``class MyCls[T]:``),
+type parameters may be inferred as covariant if they are not used
+in positions that require invariance.
+
+
 (see :ref:`variance-of-generics` for motivation). This could lead to some
 unexpected errors when combined with type inference. For example:
 
