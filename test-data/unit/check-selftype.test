@@ -1728,13 +1728,13 @@ class C:
 from typing import Self, Type
 
 class C:
-    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method argument
+    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method parameter
         d: Defer
         class Defer: ...
         return self
 
     @classmethod
-    def g(cls: Type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
+    def g(cls: Type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method parameter
         d: DeferAgain
         class DeferAgain: ...
         return cls()
@@ -1746,13 +1746,13 @@ class C:
 from typing import Self
 
 class C:
-    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method argument
+    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method parameter
         d: Defer
         class Defer: ...
         return self
 
     @classmethod
-    def g(cls: type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
+    def g(cls: type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method parameter
         d: DeferAgain
         class DeferAgain: ...
         return cls()
