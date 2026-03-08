@@ -107,7 +107,15 @@ from mypy.ipc import (
     send,
 )
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.nodes import (
+    FileRawData,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    SymbolTable,
+)
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
@@ -148,7 +156,7 @@ from mypy.modulefinder import (
 )
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import parse
+from mypy.parse import load_from_raw, parse
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
@@ -400,7 +408,7 @@ def build(
     finally:
         for worker in workers:
             try:
-                send(worker.conn, SccRequestMessage(scc_id=None, import_errors={}))
+                send(worker.conn, SccRequestMessage(scc_id=None, import_errors={}, mod_data={}))
             except (OSError, IPCException):
                 pass
         for worker in workers:
@@ -419,7 +427,7 @@ def build_inner(
     workers: list[WorkerClient],
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
-        # Run gc less frequently, as otherwise we can spent a large fraction of
+        # Run gc less frequently, as otherwise we can spend a large fraction of
         # cpu in gc. This seems the most reasonable place to tune garbage collection.
         gc.set_threshold(200 * 1000, 30, 30)
 
@@ -928,8 +936,6 @@ class BuildManager:
         self.import_options: dict[str, bytes] = {}
         # Cache for transitive dependency check (expensive).
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
-        # Resolved paths for each module in build.
-        self.path_by_id: dict[str, str] = {}
         # Packages for which we know presence or absence of __getattr__().
         self.known_partial_packages: dict[str, bool] = {}
 
@@ -1052,16 +1058,30 @@ class BuildManager:
         return find_module_simple(id, self) is not None
 
     def parse_file(
-        self, id: str, path: str, source: str, ignore_errors: bool, options: Options
+        self,
+        id: str,
+        path: str,
+        source: str,
+        ignore_errors: bool,
+        options: Options,
+        raw_data: FileRawData | None = None,
     ) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
+        imports_only = False
+        if self.workers and self.fscache.exists(path):
+            # Currently, we can use the native parser only for actual files.
+            imports_only = True
         t0 = time.time()
         if ignore_errors:
             self.errors.ignored_files.add(path)
-        tree = parse(source, path, id, self.errors, options=options)
+        if raw_data:
+            # If possible, deserialize from known binary data instead of parsing from scratch.
+            tree = load_from_raw(path, id, raw_data, self.errors, options)
+        else:
+            tree = parse(source, path, id, self.errors, options=options, imports_only=imports_only)
         tree._fullname = id
         self.add_stats(
             files_parsed=1,
@@ -1129,14 +1149,14 @@ class BuildManager:
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
 
-    def submit(self, sccs: list[SCC]) -> None:
+    def submit(self, graph: Graph, sccs: list[SCC]) -> None:
         """Submit a stale SCC for processing in current process or parallel workers."""
         if self.workers:
-            self.submit_to_workers(sccs)
+            self.submit_to_workers(graph, sccs)
         else:
             self.scc_queue.extend([(0, 0, scc) for scc in sccs])
 
-    def submit_to_workers(self, sccs: list[SCC] | None = None) -> None:
+    def submit_to_workers(self, graph: Graph, sccs: list[SCC] | None = None) -> None:
         if sccs is not None:
             for scc in sccs:
                 heappush(self.scc_queue, (-scc.size_hint, self.queue_order, scc))
@@ -1147,11 +1167,24 @@ class BuildManager:
             import_errors = {
                 mod_id: self.errors.recorded[path]
                 for mod_id in scc.mod_ids
-                if (path := self.path_by_id[mod_id]) in self.errors.recorded
+                if (path := graph[mod_id].xpath) in self.errors.recorded
             }
             send(
                 self.workers[idx].conn,
-                SccRequestMessage(scc_id=scc.id, import_errors=import_errors),
+                SccRequestMessage(
+                    scc_id=scc.id,
+                    import_errors=import_errors,
+                    mod_data={
+                        mod_id: (
+                            # Although workers don't really need to know about details
+                            # of dependencies, they will write cache, so we need to pass
+                            # suppressed_deps_opts() as part of module data.
+                            graph[mod_id].suppressed_deps_opts(),
+                            tree.raw_data if (tree := graph[mod_id].tree) else None,
+                        )
+                        for mod_id in scc.mod_ids
+                    },
+                ),
             )
 
     def wait_for_done(
@@ -1166,14 +1199,16 @@ class BuildManager:
         The last item is only used for parallel processing.
         """
         if self.workers:
-            return self.wait_for_done_workers()
+            return self.wait_for_done_workers(graph)
         if not self.scc_queue:
             return [], False, {}
         _, _, next_scc = self.scc_queue.pop(0)
         process_stale_scc(graph, next_scc, self)
         return [next_scc], bool(self.scc_queue), {}
 
-    def wait_for_done_workers(self) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    def wait_for_done_workers(
+        self, graph: Graph
+    ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
         if not self.scc_queue and len(self.free_workers) == len(self.workers):
             return [], False, {}
 
@@ -1188,7 +1223,7 @@ class BuildManager:
             assert data.result is not None
             results.update(data.result)
             done_sccs.append(self.scc_by_id[scc_id])
-        self.submit_to_workers()  # advance after some workers are free.
+        self.submit_to_workers(graph)  # advance after some workers are free.
         return (
             done_sccs,
             bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
@@ -1582,7 +1617,7 @@ def exclude_from_backups(target_dir: str) -> None:
 def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        # We use this flag in both coordinator and workers to seep up commits,
+        # We use this flag in both coordinator and workers to speed up commits,
         # see mypy.metastore.connect_db() for details.
         sync_off = options.num_workers > 0 or parallel_worker
         mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options), sync_off=sync_off)
@@ -2456,12 +2491,10 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             state.parse_file(temporary=temporary)
             state.compute_dependencies()
-            if manager.workers:
-                # We don't need parsed trees in coordinator process, we parse only to
-                # compute dependencies. Keep temporary tree until the caller uses it
-                if not temporary:
-                    state.tree = None
-                    del manager.modules[id]
+            if manager.workers and state.tree:
+                # We don't need imports in coordinator process anymore, we parse only to
+                # compute dependencies.
+                state.tree.imports = []
                 del manager.ast_cache[id]
 
         return state
@@ -2522,6 +2555,9 @@ class State:
         self.add_ancestors()
         self.imports_ignored = imports_ignored
         self.size_hint = size_hint
+        # Pre-computed opaque value of suppressed_deps_opts() used
+        # to minimize amount of data sent to parallel workers.
+        self.known_suppressed_deps_opts: bytes | None = None
 
     def write(self, buf: WriteBuffer) -> None:
         """Serialize State for sending to build worker.
@@ -2745,7 +2781,7 @@ class State:
 
     # Methods for processing modules from source code.
 
-    def parse_file(self, *, temporary: bool = False) -> None:
+    def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
         """Parse file and run first pass of semantic analysis.
 
         Everything done here is local to the file. Don't depend on imported
@@ -2769,7 +2805,6 @@ class State:
 
         with self.wrap_context():
             source = self.source
-            self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
@@ -2810,7 +2845,12 @@ class State:
             if not cached:
                 ignore_errors = self.ignore_all or self.options.ignore_errors
                 self.tree = manager.parse_file(
-                    self.id, self.xpath, source, ignore_errors=ignore_errors, options=self.options
+                    self.id,
+                    self.xpath,
+                    source,
+                    ignore_errors=ignore_errors,
+                    options=self.options,
+                    raw_data=raw_data,
                 )
             else:
                 # Reuse a cached AST
@@ -2875,9 +2915,10 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        analyzer = SemanticAnalyzerPreAnalysis()
-        with self.wrap_context():
-            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        if not options.native_parser:
+            analyzer = SemanticAnalyzerPreAnalysis()
+            with self.wrap_context():
+                analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -3103,6 +3144,8 @@ class State:
     def suppressed_deps_opts(self) -> bytes:
         if not self.suppressed:
             return b""
+        if self.known_suppressed_deps_opts:
+            return self.known_suppressed_deps_opts
         buf = WriteBuffer()
         import_options = self.manager.import_options
         for dep in sorted(self.suppressed):
@@ -3909,7 +3952,6 @@ def load_graph(
             if dep not in graph:
                 st.suppress_dependency(dep)
     manager.plugin.set_modules(manager.modules)
-    manager.path_by_id = {id: graph[id].xpath for id in graph}
     manager.errors.global_watcher = False
     return graph
 
@@ -4045,7 +4087,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     # Broadcast graph to workers before computing SCCs to save a bit of time.
     # TODO: check if we can optimize by sending only part of the graph needed for given SCC.
     # For example only send modules in the SCC and their dependencies.
-    graph_message = GraphMessage(graph=graph, missing_modules=set(manager.missing_modules))
+    graph_message = GraphMessage(graph=graph, missing_modules=manager.missing_modules)
     buf = WriteBuffer()
     graph_message.write(buf)
     graph_data = buf.getvalue()
@@ -4093,7 +4135,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             for scc in stale:
                 for id in scc.mod_ids:
                     graph[id].mark_as_rechecked()
-            manager.submit(stale)
+            manager.submit(graph, stale)
             still_working = True
         # We eagerly walk over fresh SCCs to reach as many stale SCCs as soon
         # as possible. Only when there are no fresh SCCs, we wait on scheduled stale ones.
@@ -4219,7 +4261,9 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+            # Parallel workers perform loading in many smaller "pieces", so we
+            # should repeat the GC hack multiple times to actually benefit from it.
+            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
         ):
             # When deserializing cache we create huge amount of new objects, so even
             # with our generous GC thresholds, GC is still doing a lot of pointless
@@ -4228,8 +4272,8 @@ def process_stale_scc(
             # generation with the freeze()/unfreeze() trick below. This is arguably
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
-            if manager.gc_freeze_cycles > 0:
-                gc.collect()
+            gc.collect(generation=1)
+            gc.collect(generation=0)
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
@@ -4237,7 +4281,7 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
         ):
             manager.gc_freeze_cycles += 1
             gc.freeze()
@@ -4517,9 +4561,16 @@ class SccRequestMessage(IPCMessage):
     If scc_id is None, then it means that the coordinator requested a shutdown.
     """
 
-    def __init__(self, *, scc_id: int | None, import_errors: dict[str, list[ErrorInfo]]) -> None:
+    def __init__(
+        self,
+        *,
+        scc_id: int | None,
+        import_errors: dict[str, list[ErrorInfo]],
+        mod_data: dict[str, tuple[bytes, FileRawData | None]],
+    ) -> None:
         self.scc_id = scc_id
         self.import_errors = import_errors
+        self.mod_data = mod_data
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccRequestMessage:
@@ -4528,6 +4579,13 @@ class SccRequestMessage(IPCMessage):
             scc_id=read_int_opt(buf),
             import_errors={
                 read_str(buf): [ErrorInfo.read(buf) for _ in range(read_int_bare(buf))]
+                for _ in range(read_int_bare(buf))
+            },
+            mod_data={
+                read_str_bare(buf): (
+                    read_bytes(buf),
+                    FileRawData.read(buf) if read_bool(buf) else None,
+                )
                 for _ in range(read_int_bare(buf))
             },
         )
@@ -4541,6 +4599,15 @@ class SccRequestMessage(IPCMessage):
             write_int_bare(buf, len(errors))
             for error in errors:
                 error.write(buf)
+        write_int_bare(buf, len(self.mod_data))
+        for mod, (suppressed_deps_opts, raw_data) in self.mod_data.items():
+            write_str_bare(buf, mod)
+            write_bytes(buf, suppressed_deps_opts)
+            if raw_data is None:
+                write_bool(buf, False)
+            else:
+                write_bool(buf, True)
+                raw_data.write(buf)
 
 
 class SccResponseMessage(IPCMessage):
@@ -4664,7 +4731,7 @@ class SccsDataMessage(IPCMessage):
 class GraphMessage(IPCMessage):
     """A message wrapping the build graph computed by the coordinator."""
 
-    def __init__(self, *, graph: Graph, missing_modules: set[str]) -> None:
+    def __init__(self, *, graph: Graph, missing_modules: dict[str, int]) -> None:
         self.graph = graph
         self.missing_modules = missing_modules
         # Send this data separately as it will be lost during state serialization.
@@ -4675,7 +4742,7 @@ class GraphMessage(IPCMessage):
         assert manager is not None
         assert read_tag(buf) == GRAPH_MESSAGE
         graph = {read_str_bare(buf): State.read(buf, manager) for _ in range(read_int_bare(buf))}
-        missing_modules = {read_str_bare(buf) for _ in range(read_int_bare(buf))}
+        missing_modules = {read_str_bare(buf): read_int(buf) for _ in range(read_int_bare(buf))}
         message = GraphMessage(graph=graph, missing_modules=missing_modules)
         message.from_cache = {read_str_bare(buf) for _ in range(read_int_bare(buf))}
         return message
@@ -4687,8 +4754,9 @@ class GraphMessage(IPCMessage):
             write_str_bare(buf, mod_id)
             state.write(buf)
         write_int_bare(buf, len(self.missing_modules))
-        for module in self.missing_modules:
+        for module, reason in self.missing_modules.items():
             write_str_bare(buf, module)
+            write_int(buf, reason)
         write_int_bare(buf, len(self.from_cache))
         for module in self.from_cache:
             write_str_bare(buf, module)

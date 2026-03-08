@@ -76,6 +76,7 @@ from mypy.nodes import (
     EllipsisExpr,
     Expression,
     ExpressionStmt,
+    FileRawData,
     FloatExpr,
     ForStmt,
     FuncDef,
@@ -193,7 +194,7 @@ class State:
 
 
 def native_parse(
-    filename: str, options: Options, skip_function_bodies: bool = False
+    filename: str, options: Options, skip_function_bodies: bool = False, imports_only: bool = False
 ) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
@@ -206,6 +207,8 @@ def native_parse(
         skip_function_bodies: If True, many function and method bodies are omitted from
             the AST, useful for parsing stubs or extracting signatures without full
             implementation details
+        imports_only: If True create an empty MypyFile with actual serialized defs
+            stored in binary_data.
 
     Returns:
         A tuple containing:
@@ -226,13 +229,18 @@ def native_parse(
     data = ReadBuffer(b)
     n = read_int(data)
     state = State(options)
-    defs = read_statements(state, data, n)
+    if imports_only:
+        defs = []
+    else:
+        defs = read_statements(state, data, n)
 
     imports = deserialize_imports(import_bytes)
 
     node = MypyFile(defs, imports)
     node.path = filename
     node.is_partial_stub_package = is_partial_package
+    if imports_only:
+        node.raw_data = FileRawData(b, import_bytes, errors, dict(ignores), is_partial_package)
     # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores

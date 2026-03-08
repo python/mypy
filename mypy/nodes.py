@@ -30,6 +30,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.cache import (
+    DICT_INT_GEN,
     DICT_STR_GEN,
     DT_SPEC,
     END_TAG,
@@ -41,6 +42,7 @@ from mypy.cache import (
     Tag,
     WriteBuffer,
     read_bool,
+    read_bytes,
     read_int,
     read_int_list,
     read_int_opt,
@@ -52,6 +54,7 @@ from mypy.cache import (
     read_str_opt_list,
     read_tag,
     write_bool,
+    write_bytes,
     write_int,
     write_int_list,
     write_int_opt,
@@ -307,6 +310,56 @@ class SymbolNode(Node):
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
+class FileRawData:
+    """Raw (binary) data representing parsed, but not deserialized file."""
+
+    __slots__ = ("defs", "imports", "raw_errors", "ignored_lines", "is_partial_stub_package")
+
+    defs: bytes
+    imports: bytes
+    raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
+    ignored_lines: dict[int, list[str]]
+    is_partial_stub_package: bool
+
+    def __init__(
+        self,
+        defs: bytes,
+        imports: bytes,
+        raw_errors: list[dict[str, Any]],
+        ignored_lines: dict[int, list[str]],
+        is_partial_stub_package: bool,
+    ) -> None:
+        self.defs = defs
+        self.imports = imports
+        self.raw_errors = raw_errors
+        self.ignored_lines = ignored_lines
+        self.is_partial_stub_package = is_partial_stub_package
+
+    def write(self, data: WriteBuffer) -> None:
+        write_bytes(data, self.defs)
+        write_bytes(data, self.imports)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.raw_errors))
+        for err in self.raw_errors:
+            write_json(data, err)
+        write_tag(data, DICT_INT_GEN)
+        write_int_bare(data, len(self.ignored_lines))
+        for line, codes in self.ignored_lines.items():
+            write_int(data, line)
+            write_str_list(data, codes)
+        write_bool(data, self.is_partial_stub_package)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> FileRawData:
+        defs = read_bytes(data)
+        imports = read_bytes(data)
+        assert read_tag(data) == LIST_GEN
+        raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
+        assert read_tag(data) == DICT_INT_GEN
+        ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
+        return FileRawData(defs, imports, raw_errors, ignored_lines, read_bool(data))
+
+
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -328,6 +381,7 @@ class MypyFile(SymbolNode):
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
+        "raw_data",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -370,6 +424,8 @@ class MypyFile(SymbolNode):
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
     _is_typeshed_file: bool | None
+    # For native parser store actual serialized data here.
+    raw_data: FileRawData | None
 
     def __init__(
         self,
@@ -400,6 +456,7 @@ class MypyFile(SymbolNode):
         self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
+        self.raw_data = None
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
