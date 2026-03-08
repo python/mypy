@@ -13,5 +13,3 @@ pytest-cov>=2.10.0
 setuptools>=75.1.0
 tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.10
 pre_commit>=3.5.0
-# To speed-up process until ast_serialize is on PyPI.
-ast-serialize @ git+https://github.com/mypyc/ast_serialize.git@da5a16cf268dbec63ed6b2e6b715470576e2d1a6

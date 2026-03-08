@@ -106,17 +106,20 @@ jobs:
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+          dev_ast_serialize: true
         - name: Parallel tests with py314-ubuntu, mypyc-compiled
           python: '3.14'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
+          dev_ast_serialize: true
         - name: Parallel tests with py314-windows-64, interpreted
           python: '3.14'
           os: windows-latest
           toxenv: py
           tox_extra_args: "-n 2 --mypy-num-workers=2 mypy/test/testcheck.py -k 'incremental or modules or classes'"
+          dev_ast_serialize: true
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'
@@ -139,6 +142,7 @@ jobs:
     timeout-minutes: 60
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VIRTUALENV_SYSTEM_SITE_PACKAGES: ${{ matrix.dev_ast_serialize && 1 || 0 }}
       # Rich (pip) -- Disable color for windows + pytest
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
@@ -212,6 +216,11 @@ jobs:
       run: |
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
+
+    # To speed-up process until ast_serialize is on PyPI.
+    - name: Install pinned ast-serialize
+      if: ${{ matrix.dev_ast_serialize }}
+      run: pip install ast-serialize @ git+https://github.com/mypyc/ast_serialize.git@da5a16cf268dbec63ed6b2e6b715470576e2d1a6
 
     - name: Setup tox environment
       run: |
