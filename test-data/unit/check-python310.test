@@ -1402,6 +1402,42 @@ def print_test(m: object, typ: type[T]) -> T:
             reveal_type(m)  # N: Revealed type is "builtins.object"
     raise
 
+[case testMatchClassPatternTupleAlias]
+# flags: --strict-equality --warn-unreachable
+from typing import Tuple
+
+tuple_alias = tuple
+Tuple_alias = Tuple
+
+def main(m: object):
+    match m:
+        case tuple():
+            reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+
+    match m:
+        case tuple_alias():
+            reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+
+    match m:
+        # With real typeshed you'll get an error like this instead:
+        # Expected type in class pattern; found "typing._SpecialForm"
+        case Tuple():  # E: Expected type in class pattern; found "builtins.int"
+            reveal_type(m)  # E: Statement is unreachable
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+
+    match m:
+        # This is a false negative, it will raise at runtime
+        case Tuple_alias():
+            reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
+        case _:
+            reveal_type(m)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchNonFinalMatchArgs]
 class A:
     __match_args__ = ("a", "b")
