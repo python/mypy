@@ -8,7 +8,6 @@ from librt.internal import ReadBuffer
 from mypy import errorcodes as codes
 from mypy.cache import read_int
 from mypy.errors import Errors
-from mypy.nativeparse import State, deserialize_imports, read_statements
 from mypy.nodes import FileRawData, MypyFile
 from mypy.options import Options
 
@@ -93,6 +92,8 @@ def load_from_raw(
     This essentially replicates parse() above but expects FileRawData instead of actually
     parsing the source code in the file.
     """
+    from mypy.nativeparse import State, deserialize_imports, read_statements
+
     # This part mimics the logic in native_parse().
     data = ReadBuffer(raw_data.defs)
     n = read_int(data)
