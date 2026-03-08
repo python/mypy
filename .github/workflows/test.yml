@@ -114,12 +114,12 @@ jobs:
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
           dev_ast_serialize: true
-        # Skip Windows tests until we publish ast_serialize wheels on PyPI.
-        # - name: Parallel tests with py314-windows-64, interpreted
-        #   python: '3.14'
-        #   os: windows-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 2 --mypy-num-workers=2 mypy/test/testcheck.py -k 'incremental or modules or classes'"
+        - name: Parallel tests with py314-windows-64, interpreted
+          python: '3.14'
+          os: windows-latest
+          toxenv: py
+          tox_extra_args: "-n 2 --mypy-num-workers=2 mypy/test/testcheck.py -k 'incremental or modules or classes'"
+          dev_ast_serialize: true
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'
@@ -218,28 +218,9 @@ jobs:
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
     # To speed-up process until ast_serialize is on PyPI.
-    - name: Checkout pinned ast_serialize
+    - name: Install pinned ast-serialize
       if: ${{ matrix.dev_ast_serialize }}
-      uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        repository: mypyc/ast_serialize
-        ref: da5a16cf268dbec63ed6b2e6b715470576e2d1a6
-        path: ast_serialize
-
-    - if: ${{ matrix.dev_ast_serialize }}
-      uses: PyO3/maturin-action@v1
-      with:
-        target: aarch64
-        args: --release --out dist
-        working-directory: ast_serialize
-
-    - if: ${{ matrix.dev_ast_serialize }}
-      run: |
-        pip install ast_serialize/dist/ast_serialize-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl
-        echo 'no way' > test_ast_serialize.py
-        python3 -c 'import ast_serialize; print(ast_serialize.parse("test_ast_serialize.py")[1])'
-        rm test_ast_serialize.py
+      run: pip install ast-serialize@git+https://github.com/mypyc/ast_serialize.git@da5a16cf268dbec63ed6b2e6b715470576e2d1a6
 
     - name: Setup tox environment
       run: |
