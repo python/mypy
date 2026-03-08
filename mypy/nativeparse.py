@@ -1582,7 +1582,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         return expr
     elif tag == nodes.BIG_INT_EXPR:
         strval = read_str(data)
-        ie = IntExpr(int(strval))
+        ie = IntExpr(int(strval, base=0))
         read_loc(data, ie)
         expect_end_tag(data)
         return ie
