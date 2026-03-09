@@ -729,7 +729,7 @@ for certain values of type arguments (Python 3.12 syntax):
            return self.item.upper()
 
    def label(ti: Tag[int], ts: Tag[str]) -> None:
-       ti.uppercase_item()  # E: Invalid self argument "Tag[int]" to attribute function
+       ti.uppercase_item()  # E: Invalid self parameter "Tag[int]" to attribute function
                             # "uppercase_item" with type "Callable[[Tag[str]], str]"
        ts.uppercase_item()  # This is OK
 
@@ -750,7 +750,7 @@ argument is itself generic (Python 3.12 syntax):
    page: Storage[list[str]]
    page.first_chunk()  # OK, type is "str"
 
-   Storage(0).first_chunk()  # Error: Invalid self argument "Storage[int]" to attribute function
+   Storage(0).first_chunk()  # Error: Invalid self parameter "Storage[int]" to attribute function
                              # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
 
 Finally, one can use overloads on self-type to express precise types of

@@ -329,7 +329,7 @@ these optimizations.
 - Return early where possible in subtype check (Stanislav Terliakov, PR [19400](https://github.com/python/mypy/pull/19400))
 - Deduplicate some types before joining (Stanislav Terliakov, PR [19409](https://github.com/python/mypy/pull/19409))
 - Speed up type checking by caching argument inference context (Jukka Lehtosalo, PR [19323](https://github.com/python/mypy/pull/19323))
-- Optimize binding method self argument type and deprecation checks (Ivan Levkivskyi, PR [19556](https://github.com/python/mypy/pull/19556))
+- Optimize binding method self parameter type and deprecation checks (Ivan Levkivskyi, PR [19556](https://github.com/python/mypy/pull/19556))
 - Keep trivial instance types/aliases during expansion (Ivan Levkivskyi, PR [19543](https://github.com/python/mypy/pull/19543))
 
 ### Fixed‑Format Cache (Experimental)

@@ -5695,7 +5695,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             current_type = fill_typevars(e.info)
             type_type: ProperType = TypeType(current_type)
 
-            # Use the type of the self argument, in case it was annotated
+            # Use the type of the self parameter, in case it was annotated
             method = self.chk.scope.current_function()
             assert method is not None
             if method.arguments:

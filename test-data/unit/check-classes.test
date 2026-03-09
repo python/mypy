@@ -3339,7 +3339,7 @@ class Test:
         # E: Method must have at least one argument. Did you forget the "self" argument?
 
 t = Test()
-t.crash = 'test'  # E: Attribute function "__setattr__" with type "Callable[[], None]" does not accept self argument \
+t.crash = 'test'  # E: Attribute function "__setattr__" with type "Callable[[], None]" does not accept self parameter \
                   # E: "Test" has no attribute "crash"
 
 class A:
@@ -3574,7 +3574,7 @@ class B:
     a = A
     bad = lambda: 42
 
-B().bad() # E: Attribute function "bad" with type "Callable[[], int]" does not accept self argument
+B().bad() # E: Attribute function "bad" with type "Callable[[], int]" does not accept self parameter
 reveal_type(B.a) # N: Revealed type is "def () -> __main__.A"
 reveal_type(B().a) # N: Revealed type is "def () -> __main__.A"
 reveal_type(B().a()) # N: Revealed type is "__main__.A"
@@ -5286,9 +5286,9 @@ reveal_type(A.g4)  # N: Revealed type is "def () -> def () -> __main__.A"
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # E: Invalid self argument "type[B]" to attribute function "g1" with type "Callable[[type[A]], A]"
-B.g2  # E: Invalid self argument "type[B]" to attribute function "g2" with type "Callable[[type[TA]], TA]"
-B.g3  # E: Invalid self argument "type[B]" to attribute function "g3" with type "Callable[[TTA], TTA]"
+B.g1  # E: Invalid self parameter "type[B]" to attribute function "g1" with type "Callable[[type[A]], A]"
+B.g2  # E: Invalid self parameter "type[B]" to attribute function "g2" with type "Callable[[type[TA]], TA]"
+B.g3  # E: Invalid self parameter "type[B]" to attribute function "g3" with type "Callable[[TTA], TTA]"
 reveal_type(B.g4)  # N: Revealed type is "def () -> def () -> __main__.B"
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
@@ -5301,9 +5301,9 @@ reveal_type(ta.g3)  # N: Revealed type is "def () -> type[__main__.A]"
 reveal_type(ta.g4)  # N: Revealed type is "def () -> type[__main__.A]"
 
 x: M = ta
-x.g1  # E: Invalid self argument "M" to attribute function "g1" with type "Callable[[type[A]], A]"
-x.g2  # E: Invalid self argument "M" to attribute function "g2" with type "Callable[[type[TA]], TA]"
-x.g3  # E: Invalid self argument "M" to attribute function "g3" with type "Callable[[TTA], TTA]"
+x.g1  # E: Invalid self parameter "M" to attribute function "g1" with type "Callable[[type[A]], A]"
+x.g2  # E: Invalid self parameter "M" to attribute function "g2" with type "Callable[[type[TA]], TA]"
+x.g3  # E: Invalid self parameter "M" to attribute function "g3" with type "Callable[[TTA], TTA]"
 reveal_type(x.g4)  # N: Revealed type is "def () -> __main__.M"
 
 def r(ta: Type[TA], tta: TTA) -> None:
@@ -7889,11 +7889,11 @@ reveal_type(A().fn3)  # N: Revealed type is "builtins.int"
 reveal_type(A().fn4)  # N: Revealed type is "builtins.int"
 reveal_type(A().fn5)  # N: Revealed type is "builtins.int"
 
-reveal_type(A().g1)  # E: Attribute function "g1" with type "Callable[[], None]" does not accept self argument \
+reveal_type(A().g1)  # E: Attribute function "g1" with type "Callable[[], None]" does not accept self parameter \
                      # N: Revealed type is "def ()"
-reveal_type(A().g2)  # E: Invalid self argument "A" to attribute function "g2" with type "Callable[[int], None]" \
+reveal_type(A().g2)  # E: Invalid self parameter "A" to attribute function "g2" with type "Callable[[int], None]" \
                      # N: Revealed type is "def ()"
-reveal_type(A().g3)  # E: Invalid self argument "A" to attribute function "g3" with type "Callable[[int], None]" \
+reveal_type(A().g3)  # E: Invalid self parameter "A" to attribute function "g3" with type "Callable[[int], None]" \
                      # N: Revealed type is "def ()"
 [builtins fixtures/tuple.pyi]
 
@@ -7931,7 +7931,7 @@ class A:
         return 0
 
 reveal_type(A().fn1)  # N: Revealed type is "def () -> builtins.int"
-reveal_type(A().fn2)  # E: Invalid self argument "A" to attribute function "fn2" with type "Callable[[int], int]" \
+reveal_type(A().fn2)  # E: Invalid self parameter "A" to attribute function "fn2" with type "Callable[[int], int]" \
                       # N: Revealed type is "def () -> builtins.int"
 reveal_type(A().fn3)  # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
 
@@ -7952,11 +7952,11 @@ class B:
     def fn4(self, new_self: 'B') -> int:
         return 0
 
-reveal_type(B().fn1)  # E: Attribute function "fn1" with type "Callable[[], int]" does not accept self argument \
+reveal_type(B().fn1)  # E: Attribute function "fn1" with type "Callable[[], int]" does not accept self parameter \
                       # N: Revealed type is "def () -> builtins.int"
-reveal_type(B().fn2)  # E: Attribute function "fn2" with type "Callable[[], int]" does not accept self argument \
+reveal_type(B().fn2)  # E: Attribute function "fn2" with type "Callable[[], int]" does not accept self parameter \
                       # N: Revealed type is "def () -> builtins.int"
-reveal_type(B().fn3)  # E: Invalid self argument "B" to attribute function "fn3" with type "Callable[[int], int]" \
+reveal_type(B().fn3)  # E: Invalid self parameter "B" to attribute function "fn3" with type "Callable[[int], int]" \
                       # N: Revealed type is "def () -> builtins.int"
 reveal_type(B().fn4)  # N: Revealed type is "def () -> builtins.int"
 
@@ -7990,11 +7990,11 @@ class D:
     def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
-reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
+reveal_type(D().fn1)  # E: Invalid self parameter "D" to attribute function "fn1" with type "Callable[[int], int]" \
                       # N: Revealed type is "def () -> builtins.int"
-reveal_type(D().fn2)  # E: Invalid self argument "D" to attribute function "fn2" with type "Callable[[int, int], int]" \
+reveal_type(D().fn2)  # E: Invalid self parameter "D" to attribute function "fn2" with type "Callable[[int, int], int]" \
                       # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
-reveal_type(D().fn3)  # E: Invalid self argument "D" to attribute function "fn3" with type "Callable[[int, D, int], int]" \
+reveal_type(D().fn3)  # E: Invalid self parameter "D" to attribute function "fn3" with type "Callable[[int, D, int], int]" \
                       # N: Revealed type is "def (self: __main__.D, _x: builtins.int) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
@@ -9360,7 +9360,7 @@ class C(B):
     prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
 
 reveal_type(C().prop)  # N: Revealed type is "builtins.str"
-C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
+C().prop = "no"  # E: Invalid self parameter "C" to attribute function "prop" with type "Callable[[A, str], None]"
 reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
 C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
 [builtins fixtures/property.pyi]

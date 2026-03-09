@@ -1016,7 +1016,7 @@ class MethodAdder:
     ) -> None:
         """Add a method: def <method_name>(self, <args>) -> <ret_type>): ... to info.
 
-        self_type: The type to use for the self argument or None to use the inferred self type.
+        self_type: The type to use for the self parameter or None to use the inferred self type.
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
@@ -1090,7 +1090,7 @@ def _get_expanded_attr_types(
             _fail_not_attrs_class(ctx, display_typ, parent_typ)
             return None
         init_func = expand_type_by_instance(init_func, typ)
-        # [1:] to skip the self argument of AttrClass.__init__
+        # [1:] to skip the self parameter of AttrClass.__init__
         field_names = cast(list[str], init_func.arg_names[1:])
         field_types = init_func.arg_types[1:]
         return [dict(zip(field_names, field_types))]

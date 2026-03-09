@@ -2034,12 +2034,12 @@ class B(Generic[Unpack[Ts]]):
     def on_pair(self: B[T, S]) -> Tuple[T, S]: ...
 
 b1: B[int]
-reveal_type(b1.on_pair())  # E: Invalid self argument "B[int]" to attribute function "on_pair" with type "Callable[[B[T, S]], tuple[T, S]]" \
+reveal_type(b1.on_pair())  # E: Invalid self parameter "B[int]" to attribute function "on_pair" with type "Callable[[B[T, S]], tuple[T, S]]" \
                            # N: Revealed type is "tuple[Never, Never]"
 b2: B[int, str]
 reveal_type(b2.on_pair())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 b3: B[int, str, int]
-reveal_type(b3.on_pair())  # E: Invalid self argument "B[int, str, int]" to attribute function "on_pair" with type "Callable[[B[T, S]], tuple[T, S]]" \
+reveal_type(b3.on_pair())  # E: Invalid self parameter "B[int, str, int]" to attribute function "on_pair" with type "Callable[[B[T, S]], tuple[T, S]]" \
                            # N: Revealed type is "tuple[Never, Never]"
 
 class C(B[T, S]): ...

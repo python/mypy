@@ -94,7 +94,7 @@ Check that methods do not have redundant Self annotations [redundant-self]
 --------------------------------------------------------------------------
 
 If a method uses the ``Self`` type in the return type or the type of a
-non-self argument, there is no need to annotate the ``self`` argument
+non-self parameter, there is no need to annotate the ``self`` argument
 explicitly. Such annotations are allowed by :pep:`673` but are
 redundant. If you enable this error code, mypy will generate an error if
 there is a redundant ``Self`` type.

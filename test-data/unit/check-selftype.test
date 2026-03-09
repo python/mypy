@@ -689,7 +689,7 @@ class C(Generic[T]):
 i: C[int]
 s: C[str]
 
-i.from_item()  # E: Invalid self argument "C[int]" to attribute function "from_item" with type "Callable[[C[str]], None]"
+i.from_item()  # E: Invalid self parameter "C[int]" to attribute function "from_item" with type "Callable[[C[str]], None]"
 s.from_item()
 
 [case testSelfTypeRestrictedClassMethod]
@@ -703,9 +703,9 @@ class C(Generic[T]):
 class DI(C[int]): ...
 class DS(C[str]): ...
 
-DI().from_item()  # E: Invalid self argument "type[DI]" to class attribute function "from_item" with type "Callable[[type[C[str]]], None]"
+DI().from_item()  # E: Invalid self parameter "type[DI]" to class attribute function "from_item" with type "Callable[[type[C[str]]], None]"
 DS().from_item()
-DI.from_item()  # E: Invalid self argument "type[DI]" to attribute function "from_item" with type "Callable[[type[C[str]]], None]"
+DI.from_item()  # E: Invalid self parameter "type[DI]" to attribute function "from_item" with type "Callable[[type[C[str]]], None]"
 DS.from_item()
 [builtins fixtures/classmethod.pyi]
 
@@ -844,7 +844,7 @@ class Sub(Base[List[int]]): ...
 class BadSub(Base[int]): ...
 
 reveal_type(Sub().get_item())  # N: Revealed type is "builtins.int"
-BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[list[S]]], S]"
+BadSub().get_item()  # E: Invalid self parameter "BadSub" to attribute function "get_item" with type "Callable[[Base[list[S]]], S]"
 [builtins fixtures/list.pyi]
 
 [case testMixinAllowedWithProtocol]
@@ -871,10 +871,10 @@ class Bad(AtomicClose, Copyable):
 f: File
 b: Bad
 f.atomic_close()  # OK
-b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic_close" with type "Callable[[Resource], int]"
+b.atomic_close()  # E: Invalid self parameter "Bad" to attribute function "atomic_close" with type "Callable[[Resource], int]"
 
 reveal_type(f.copy())  # N: Revealed type is "__main__.File"
-b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+b.copy()  # E: Invalid self parameter "Bad" to attribute function "copy" with type "Callable[[T], T]"
 [builtins fixtures/tuple.pyi]
 
 [case testMixinProtocolSuper]
@@ -912,7 +912,7 @@ class Test:
     def meth(self, x: str) -> int: ...
 
 reveal_type(Test().meth)  # N: Revealed type is "def (x: builtins.str) -> builtins.int"
-Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
+Test()._deco  # E: Invalid self parameter "Test" to attribute function "_deco" with type "Callable[[F], F]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeTrickyExample]
@@ -973,9 +973,9 @@ T = TypeVar('T')
 
 class Foo(Generic[T]):
     def f1(self: Foo[str]) -> None:
-        self.f2()  # E: Invalid self argument "Foo[str]" to attribute function "f2" with type "Callable[[Foo[int]], None]"
+        self.f2()  # E: Invalid self parameter "Foo[str]" to attribute function "f2" with type "Callable[[Foo[int]], None]"
     def f2(self: Foo[int]) -> None:
-        self.f1()  # E: Invalid self argument "Foo[int]" to attribute function "f1" with type "Callable[[Foo[str]], None]"
+        self.f1()  # E: Invalid self parameter "Foo[int]" to attribute function "f1" with type "Callable[[Foo[str]], None]"
 
 [case testSelfTypeStructureMetaclassMatch]
 from typing import TypeVar, Type, Generic, cast
@@ -1019,7 +1019,7 @@ class Bad(metaclass=Meta):
     pass
 
 Good.do_x()
-Bad.do_x()  # E: Invalid self argument "type[Bad]" to attribute function "do_x" with type "Callable[[type[T]], T]"
+Bad.do_x()  # E: Invalid self parameter "type[Bad]" to attribute function "do_x" with type "Callable[[type[T]], T]"
 
 [case testSelfTypeProtocolClassmethodMatch]
 from typing import Type, TypeVar, Protocol

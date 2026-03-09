@@ -1459,7 +1459,7 @@ class MessageBuilder:
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
         type = format_type(item, self.options)
         self.fail(
-            f'Attribute function "{name}" with type {type} does not accept self argument', context
+            f'Attribute function "{name}" with type {type} does not accept self parameter', context
         )
 
     def incompatible_self_argument(
@@ -1469,7 +1469,7 @@ class MessageBuilder:
         arg_type = format_type(arg, self.options)
         sig_type = format_type(sig, self.options)
         self.fail(
-            f'Invalid self argument {arg_type} to {kind} "{name}" with type {sig_type}', context
+            f'Invalid self parameter {arg_type} to {kind} "{name}" with type {sig_type}', context
         )
 
     def incompatible_conditional_function_def(

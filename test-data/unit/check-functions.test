@@ -616,8 +616,8 @@ class A:
     f = x # type: ClassVar[Callable[[], None]]
     g = x # type: ClassVar[Callable[[B], None]]
 a: A
-a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
-a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
+a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self parameter
+a.g() # E: Invalid self parameter "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 from typing import Any, Callable, ClassVar
@@ -692,7 +692,7 @@ class A(Generic[t]):
 ab: A[B]
 ac: A[C]
 ab.f()
-ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
+ac.f()   # E: Invalid self parameter "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
 from typing import Any, TypeVar, Generic, Callable, ClassVar
@@ -3686,14 +3686,14 @@ reveal_type(C.x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C.x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C.x7)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 
-reveal_type(C().x1)  # E: Invalid self argument "C" to attribute function "x1" with type "Callable[[A, int], str]" \
+reveal_type(C().x1)  # E: Invalid self parameter "C" to attribute function "x1" with type "Callable[[A, int], str]" \
                      # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C().x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C().x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C().x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C().x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 reveal_type(C().x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
-reveal_type(C().x7)  # E: Invalid self argument "C" to attribute function "x7" with type "Callable[[int], str]" \
+reveal_type(C().x7)  # E: Invalid self parameter "C" to attribute function "x7" with type "Callable[[int], str]" \
                      # N: Revealed type is "def () -> builtins.str"
 [builtins fixtures/classmethod.pyi]
 

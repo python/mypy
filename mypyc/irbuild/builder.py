@@ -1276,7 +1276,7 @@ class IRBuilder:
         """Generate IR for a method.
 
         If the method takes arguments, you should immediately afterwards call
-        add_argument() for each non-self argument (self is created implicitly).
+        add_argument() for each non-self parameter (self is created implicitly).
 
         Args:
             class_ir: Add method to this class
