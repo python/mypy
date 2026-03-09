@@ -480,6 +480,19 @@ class Bar(Foo[int]): ...
 foo: Foo[object] = Bar()
 
 
+[case testPEP695SelfReturnTypeWithUnion]
+# https://github.com/python/mypy/issues/20997
+from typing import Protocol, Self
+
+class ComplexScalar: ...
+
+class FloatScalar[FloatT](Protocol):
+    def pow(self, arg: FloatT) -> Self | ComplexScalar: ...
+
+def upcast(arg: FloatScalar[object]) -> FloatScalar[float]:
+    return arg
+
+
 [case testPEP695InheritInvariant]
 class Invariant[T]:
     x: T
