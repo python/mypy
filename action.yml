@@ -67,6 +67,10 @@ runs:
         if [ "${{ inputs.install_project_dependencies }}" == "yes" ]; then
           VENV=$("$VENV_PYTHON" -c 'import sys;print(sys.prefix)')
           echo ::group::Installing project dependencies...
+          # Download dependencies first so they are stored locally before installation.
+          # Installing from local artifacts improves reproducibility in CI environments
+          # and makes debugging dependency resolution easier compared to using
+          # `pip install .` directly.
           "$VENV_PYTHON" -m pip download --dest="$VENV"/deps .
           "$VENV_PYTHON" -m pip install -U --find-links="$VENV"/deps "$VENV"/deps/*
           echo ::endgroup::
