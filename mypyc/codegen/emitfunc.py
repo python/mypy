@@ -5,25 +5,19 @@ from __future__ import annotations
 from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
-from mypyc.common import (
-    GENERATOR_ATTRIBUTE_PREFIX,
-    HAVE_IMMORTAL,
-    MODULE_PREFIX,
-    NATIVE_PREFIX,
-    REG_PREFIX,
-    STATIC_PREFIX,
-    TYPE_PREFIX,
-    TYPE_VAR_PREFIX,
+from mypyc.codegen.emit import (
+    DEBUG_ERRORS,
+    PREFIX_MAP,
+    Emitter,
+    TracebackAndGotoHandler,
+    c_array_initializer,
 )
+from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
-    NAMESPACE_MODULE,
-    NAMESPACE_STATIC,
     NAMESPACE_TYPE,
-    NAMESPACE_TYPE_VAR,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -82,6 +76,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    RVec,
     is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -221,6 +216,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return self.emitter.tuple_undefined_check_cond(
                 typ, self.reg(value), self.c_error_value, compare
             )
+        elif isinstance(typ, RVec):
+            # Error values for vecs are represented by a negative length.
+            vec_compare = ">=" if compare == "!=" else "<"
+            return f"{self.reg(value)}.len {vec_compare} 0"
         else:
             return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
 
@@ -289,10 +288,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            # We sometimes assign from an integer prepresentation of a pointer
-            # to a real pointer, and C compilers insist on a cast.
-            if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
+            src_type = op.src.type
+            dest_type = op.dest.type
+            if src_type.is_unboxed and not dest_type.is_unboxed:
+                # We sometimes assign from an integer prepresentation of a pointer
+                # to a real pointer, and C compilers insist on a cast.
                 src = f"(void *){src}"
+            elif not src_type.is_unboxed and dest_type.is_unboxed:
+                # We sometimes assign a pointer to an integer type (e.g. to create
+                # tagged pointers), and here we need an explicit cast.
+                src = f"({self.emitter.ctype(dest_type)}){src}"
             self.emit_line(f"{dest} = {src};")
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
@@ -312,11 +317,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
+        reg = self.reg(op)
         if isinstance(op.type, RTuple):
             values = [self.c_undefined_value(item) for item in op.type.types]
             tmp = self.temp_name()
             self.emit_line("{} {} = {{ {} }};".format(self.ctype(op.type), tmp, ", ".join(values)))
-            self.emit_line(f"{self.reg(op)} = {tmp};")
+            self.emit_line(f"{reg} = {tmp};")
+        elif isinstance(op.type, RVec):
+            self.emitter.set_undefined_value(reg, op.type)
         else:
             self.emit_line(f"{self.reg(op)} = {self.c_error_value(op.type)};")
 
@@ -523,16 +531,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
 
-    PREFIX_MAP: Final = {
-        NAMESPACE_STATIC: STATIC_PREFIX,
-        NAMESPACE_TYPE: TYPE_PREFIX,
-        NAMESPACE_MODULE: MODULE_PREFIX,
-        NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
-    }
-
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = "(PyObject *)%s" % name
@@ -540,7 +541,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             value = "(PyTypeObject *)%s" % value
@@ -845,7 +846,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if isinstance(op.src, Register):
             src = self.reg(op.src)
         elif isinstance(op.src, LoadStatic):
-            prefix = self.PREFIX_MAP[op.src.namespace]
+            prefix = PREFIX_MAP[op.src.namespace]
             src = self.emitter.static_name(op.src.identifier, op.src.module_name, prefix)
         else:
             src = op.src

@@ -1,0 +1,346 @@
+-- Test cases for packed/specialized vec item types other than i64, such as
+-- vec[i32] and vec[float]. Since many of the code paths are the same as for
+-- vec[i64], only test a subset of functionality.
+--
+-- vec[i64] test cases are in irbuild-vec-i64.test.
+
+[case testVecMiscCreateEmpty]
+from librt.vecs import vec
+
+from mypy_extensions import i32, i16, u8
+
+def create_float() -> vec[float]:
+    return vec[float]()
+
+def create_i32() -> vec[i32]:
+    return vec[i32]()
+
+def create_i16() -> vec[i16]:
+    return vec[i16]()
+
+def create_u8() -> vec[u8]:
+    return vec[u8]()
+
+def create_bool() -> vec[bool]:
+    return vec[bool]()
+[out]
+def create_float():
+    r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.alloc(0, 0)
+    return r0
+def create_i32():
+    r0 :: vec[i32]
+L0:
+    r0 = VecI32Api.alloc(0, 0)
+    return r0
+def create_i16():
+    r0 :: vec[i16]
+L0:
+    r0 = VecI16Api.alloc(0, 0)
+    return r0
+def create_u8():
+    r0 :: vec[u8]
+L0:
+    r0 = VecU8Api.alloc(0, 0)
+    return r0
+def create_bool():
+    r0 :: vec[bool]
+L0:
+    r0 = VecBoolApi.alloc(0, 0)
+    return r0
+
+[case testVecMiscCreateFromList]
+from librt.vecs import vec
+
+from mypy_extensions import i64, i32
+
+def create_i32() -> vec[i32]:
+    return vec[i32]([1, -5])
+[out]
+def create_i32():
+    r0 :: vec[i32]
+    r1 :: object
+    r2, r3, r4 :: ptr
+L0:
+    r0 = VecI32Api.alloc(2, 2)
+    r1 = r0.buf
+    r2 = get_element_ptr r1 items :: VecI32BufObject
+    set_mem r2, 1 :: i32*
+    r3 = r2 + 4
+    set_mem r3, -5 :: i32*
+    r4 = r3 + 4
+    keep_alive r0
+    return r0
+
+[case testVecMiscLen_64bit]
+from librt.vecs import vec
+
+from mypy_extensions import i64, i32
+
+def len_i32(v: vec[i32]) -> i64:
+    return len(v)
+[out]
+def len_i32(v):
+    v :: vec[i32]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+
+[case testVecMiscAppend]
+from librt.vecs import vec, append
+
+from mypy_extensions import i32
+
+def append_float(v: vec[float]) -> vec[float]:
+    return append(v, 1.5)
+
+def append_i32(v: vec[i32]) -> vec[i32]:
+    return append(v, 123)
+[out]
+def append_float(v):
+    v, r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.append(v, 1.5)
+    return r0
+def append_i32(v):
+    v, r0 :: vec[i32]
+L0:
+    r0 = VecI32Api.append(v, 123)
+    return r0
+
+[case testVecMiscGetItem_64bit]
+from librt.vecs import vec
+
+from mypy_extensions import i64
+
+def get_item_bool(v: vec[bool], i: i64) -> bool:
+    return v[i]
+[out]
+def get_item_bool(v, i):
+    v :: vec[bool]
+    i :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: bool
+L0:
+    r0 = v.len
+    r1 = i < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = i + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = i
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecBoolBufObject
+    r8 = r5 * 1
+    r9 = r7 + r8
+    r10 = load_mem r9 :: builtins.bool*
+    keep_alive v
+    return r10
+
+[case testVecMiscPop]
+from librt.vecs import vec, pop
+
+from mypy_extensions import i64
+
+def pop_float(v: vec[float], i: i64) -> float:
+    v, x = pop(v)
+    return x
+[out]
+def pop_float(v, i):
+    v :: vec[float]
+    i :: i64
+    r0 :: tuple[vec[float], float]
+    r1 :: vec[float]
+    r2 :: float
+    r3 :: vec[float]
+    r4, x :: float
+L0:
+    r0 = VecFloatApi.pop(v, -1)
+    r1 = borrow r0[0]
+    r2 = borrow r0[1]
+    keep_alive steal r0
+    r3 = unborrow r1
+    v = r3
+    r4 = unborrow r2
+    x = r4
+    return x
+
+[case testVecMiscRemove]
+from librt.vecs import vec, remove
+
+def remove_float(v: vec[float]) -> vec[float]:
+    return remove(v, 1.5)
+[out]
+def remove_float(v):
+    v, r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.remove(v, 1.5)
+    return r0
+
+[case testVecMiscSlice]
+from librt.vecs import vec, remove
+
+from mypy_extensions import i64
+
+def remove_float(v: vec[float], x: i64, y: i64) -> vec[float]:
+    return v[x:y]
+[out]
+def remove_float(v, x, y):
+    v :: vec[float]
+    x, y :: i64
+    r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.slice(v, x, y)
+    return r0
+
+[case testVecMiscForLoop]
+from librt.vecs import vec, remove
+
+from mypy_extensions import i64, i16
+
+def for_bool(v: vec[i16]) -> i16:
+    s: i16 = 0
+    for x in v:
+        s += x
+    return s
+[out]
+def for_bool(v):
+    v :: vec[i16]
+    s :: i16
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: ptr
+    r7, x, r8 :: i16
+    r9 :: native_int
+L0:
+    s = 0
+    r0 = 0
+L1:
+    r1 = v.len
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecI16BufObject
+    r5 = r0 * 2
+    r6 = r4 + r5
+    r7 = load_mem r6 :: i16*
+    x = r7
+    keep_alive v
+    r8 = s + x
+    s = r8
+L3:
+    r9 = r0 + 1
+    r0 = r9
+    goto L1
+L4:
+    return s
+
+[case testVecMiscNestedGetItem_64bit]
+from librt.vecs import vec
+
+from mypy_extensions import i64, i32
+
+def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
+    return v[i]
+[out]
+def get_item_nested(v, i):
+    v :: vec[vec[i32]]
+    i :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[i32]
+L0:
+    r0 = v.len
+    r1 = i < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = i + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = i
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[i32]*
+    keep_alive v
+    return r10
+
+[case testVecMiscNestedPop_64bit]
+from librt.vecs import vec, pop
+
+from mypy_extensions import i64, i32
+
+def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
+    v, x = pop(v, i)
+    return x
+[out]
+def get_item_nested(v, i):
+    v :: vec[vec[i32]]
+    i :: i64
+    r0 :: tuple[vec[vec[i32]], VecNestedBufItem{len:native_int, buf:object_nrc}]
+    r1, r2 :: vec[vec[i32]]
+    r3, r4 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r5 :: vec[i32]
+    r6 :: tuple[vec[vec[i32]], vec[i32]]
+    r7 :: vec[vec[i32]]
+    r8 :: vec[i32]
+    r9 :: vec[vec[i32]]
+    r10, x :: vec[i32]
+L0:
+    r0 = VecNestedApi.pop(v, i)
+    r1 = borrow r0[0]
+    r2 = unborrow r1
+    r3 = borrow r0[1]
+    r4 = unborrow r3
+    r5 = VecI32Api.convert_from_nested(r4)
+    r6 = (r2, r5)
+    keep_alive steal r0
+    r7 = borrow r6[0]
+    r8 = borrow r6[1]
+    keep_alive steal r6
+    r9 = unborrow r7
+    v = r9
+    r10 = unborrow r8
+    x = r10
+    return x

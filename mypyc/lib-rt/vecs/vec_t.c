@@ -128,6 +128,8 @@ VecT VecT_Slice(VecT vec, int64_t start, int64_t end) {
     if (end > vec.len)
         end = vec.len;
     int64_t slicelength = end - start;
+    if (slicelength == 0)
+        return (VecT) { .len = 0, .buf = NULL };
     VecT res = vec_alloc(slicelength, vec.buf->item_type);
     if (VEC_IS_ERROR(res))
         return res;

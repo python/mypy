@@ -9,7 +9,7 @@ requires = [
     "mypy_extensions>=1.0.0",
     "pathspec>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
-    "librt>=0.6.2; platform_python_implementation != 'PyPy'",
+    "librt>=0.8.0; platform_python_implementation != 'PyPy'",
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
@@ -53,7 +53,7 @@ dependencies = [
   "mypy_extensions>=1.0.0",
   "pathspec>=1.0.0",
   "tomli>=1.1.0; python_version<'3.11'",
-  "librt>=0.6.2; platform_python_implementation != 'PyPy'",
+  "librt>=0.8.0; platform_python_implementation != 'PyPy'",
 ]
 dynamic = ["version"]
 

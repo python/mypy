@@ -27,7 +27,7 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
-from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
+from mypyc.analysis.capsule_deps import find_class_dependencies, find_implicit_op_dependencies
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,
@@ -56,7 +56,7 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, LIBRT_TIME, LIBRT_VECS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -271,6 +271,12 @@ def compile_scc_to_ir(
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
 
+        # Calculate implicit dependencies from class attribute types
+        for cl in module.classes:
+            deps = find_class_dependencies(cl)
+            if deps is not None:
+                module.dependencies.update(deps)
+
     return modules
 
 
@@ -349,7 +355,7 @@ def compile_ir_to_c(
 
 def get_ir_cache_name(id: str, path: str, options: Options) -> str:
     meta_path, _, _ = get_cache_names(id, path, options)
-    # Mypy uses JSON cache even with --fixed-format-cache (for now).
+    # Mypyc uses JSON cache even with --fixed-format-cache (for now).
     return meta_path.replace(".meta.json", ".ir.json").replace(".meta.ff", ".ir.json")
 
 
@@ -632,6 +638,10 @@ class GroupGenerator:
             ext_declarations.emit_line("#include <base64/librt_base64.h>")
         if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <strings/librt_strings.h>")
+        if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
+            ext_declarations.emit_line("#include <time/librt_time.h>")
+        if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
+            ext_declarations.emit_line("#include <vecs/librt_vecs.h>")
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
@@ -1100,6 +1110,14 @@ class GroupGenerator:
             emitter.emit_line("}")
         if LIBRT_STRINGS in module.dependencies:
             emitter.emit_line("if (import_librt_strings() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_TIME in module.dependencies:
+            emitter.emit_line("if (import_librt_time() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_VECS in module.dependencies:
+            emitter.emit_line("if (import_librt_vecs() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")

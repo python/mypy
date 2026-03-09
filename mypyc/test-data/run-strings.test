@@ -1257,3 +1257,124 @@ FMT: Final = "{} {}"
 
 def test_format() -> None:
     assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+
+[case testLowerAndUpper]
+from typing import Any
+
+def test_lower_basic() -> None:
+    assert "".lower() == ""
+    assert "hello".lower() == "hello"
+    assert "HELLO".lower() == "hello"
+    assert "Hello World".lower() == "hello world"
+    assert "123".lower() == "123"
+    assert "ABC123".lower() == "abc123"
+
+def test_upper_basic() -> None:
+    assert "".upper() == ""
+    assert "HELLO".upper() == "HELLO"
+    assert "hello".upper() == "HELLO"
+    assert "Hello World".upper() == "HELLO WORLD"
+    assert "123".upper() == "123"
+    assert "abc123".upper() == "ABC123"
+
+def test_lower_unicode() -> None:
+    assert "\u00C9".lower() == "\u00E9"                # É -> é
+    assert "\u0391\u0392".lower() == "\u03B1\u03B2"    # ΑΒ -> αβ
+    assert "\u4E2D\u6587".lower() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".lower() == "\U0001F600"         # Emoji (no case)
+
+def test_upper_unicode() -> None:
+    assert "\u00E9".upper() == "\u00C9"                # é -> É
+    assert "\u03B1\u03B2".upper() == "\u0391\u0392"    # αβ -> ΑΒ
+    assert "\u4E2D\u6587".upper() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".upper() == "\U0001F600"         # Emoji (no case)
+
+def test_expansion() -> None:
+    # 1-to-N expansion cases
+    assert "\u0130".lower() == "\u0069\u0307"  # İ -> i + combining dot above
+    assert "\uFB03".lower() == "\uFB03"        # ffi ligature stays lowercase
+    assert "\u00DF".upper() == "SS"            # ß -> SS
+    assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
+
+def test_comprehensive() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
+        assert c.upper() == a.upper(), f"upper mismatch at U+{i:04X}"
+
+[case testIsSpace]
+from typing import Any
+
+def test_isspace() -> None:
+    # Verify correctness across all Unicode codepoints.
+    # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
+    # Any forces generic dispatch so we compare our primitive against stdlib's
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isspace() == a.isspace()
+
+[case testIsAlnum]
+def test_isalnum_basic() -> None:
+    assert "abc".isalnum()
+    assert "ABC".isalnum()
+    assert "abc123".isalnum()
+    assert "123".isalnum()
+    assert not "".isalnum()
+    assert not " ".isalnum()
+    assert not "abc!".isalnum()
+    assert not "hello world".isalnum()
+    assert not "abc-123".isalnum()
+
+def test_isalnum_unicode() -> None:
+    # Single chars: letters and digits from various scripts
+    assert "\u00E9".isalnum()        # é  (UCS-1 Latin letter)
+    assert "\u0660".isalnum()        # ٠  (UCS-2 Arabic-Indic digit)
+    assert "\u4E2D".isalnum()        # 中 (UCS-2 CJK ideograph)
+    assert "\U00010400".isalnum()    # 𐐀 (UCS-4 Deseret capital letter long I)
+    assert not "\u2000".isalnum()    # EN QUAD (whitespace)
+    assert not "\u0021".isalnum()    # !
+    assert not "\u00B6".isalnum()    # ¶  (pilcrow sign, punctuation)
+
+    # Mixed Unicode letters and digits — all alnum
+    assert "\u00E9\u0660".isalnum()         # é٠
+    assert "\u4E2D\u0041\u0660".isalnum()   # 中A٠
+
+    # Unicode letter/digit mixed with punctuation — not alnum
+    assert not "\u00E9!".isalnum()
+    assert not "\u4E2D\u2000".isalnum()     # CJK + whitespace
+
+[case testIsDigit]
+from typing import Any
+
+def test_isdigit() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isdigit() == a.isdigit()
+
+def test_isdigit_strings() -> None:
+    # ASCII digits
+    assert "0123456789".isdigit()
+    assert not "".isdigit()
+    assert not " ".isdigit()
+    assert not "a".isdigit()
+    assert not "abc".isdigit()
+    assert not "!@#".isdigit()
+
+    # Mixed ASCII
+    assert not "123abc".isdigit()
+    assert not "abc123".isdigit()
+    assert not "12 34".isdigit()
+    assert not "123!".isdigit()
+
+    # Unicode digits
+    assert "\u0660\u0661\u0662".isdigit()
+    assert "\u00b2\u00b3".isdigit()
+    assert "123\U0001d7ce\U0001d7cf\U0001d7d0".isdigit()
+
+    # Mixed digits and Unicode non-digits
+    assert not "\u00e9\u00e8".isdigit()
+    assert not "123\u00e9".isdigit()
+    assert not "\U0001d7ce!".isdigit()

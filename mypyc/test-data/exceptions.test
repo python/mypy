@@ -719,3 +719,27 @@ L2:
 L3:
     r5 = <error> :: float
     return r5
+
+[case testVecI64Remove]
+from librt.vecs import vec, remove
+from mypy_extensions import i64
+
+def f(v: vec[i64], i: i64, n: i64) -> None:
+    v = remove(v, n)
+[out]
+def f(v, i, n):
+    v :: vec[i64]
+    i, n :: i64
+    r0 :: vec[i64]
+    r1 :: None
+L0:
+    inc_ref v
+    r0 = VecI64Api.remove(v, n)
+    if is_error(r0) goto L2 (error at f:5) else goto L1
+L1:
+    v = r0
+    dec_ref v
+    return 1
+L2:
+    r1 = <error> :: None
+    return r1

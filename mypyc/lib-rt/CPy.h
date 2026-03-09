@@ -608,8 +608,8 @@ static void CPy_DecRef(PyObject *p) {
 }
 
 CPy_NOINLINE
-static void CPy_XDecRef(PyObject *p) {
-    CPy_XDECREF(p);
+static void CPy_XDecRef(void *p) {
+    CPy_XDECREF((PyObject *)p);
 }
 
 static inline CPyTagged CPyObject_Size(PyObject *obj) {
@@ -780,7 +780,11 @@ Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start)
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
-
+PyObject *CPyStr_Lower(PyObject *str);
+PyObject *CPyStr_Upper(PyObject *str);
+bool CPyStr_IsSpace(PyObject *str);
+bool CPyStr_IsAlnum(PyObject *str);
+bool CPyStr_IsDigit(PyObject *str);
 
 // Bytes operations
 
@@ -916,6 +920,7 @@ PyObject *CPyType_FromTemplate(PyObject *template_,
 PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
+bool CPy_InitSubclass(PyObject *type);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations,
                                PyObject *dataclass_type);

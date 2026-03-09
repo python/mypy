@@ -119,9 +119,11 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
-    def get(self, k: T) -> Optional[T_co]: pass
+    def get(self, key: T, /) -> Optional[T_co]: pass
     @overload
-    def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
+    def get(self, key: T, default: T_co, /) -> T_co: pass  # type: ignore[misc]
+    @overload
+    def get(self, key: T, default: V, /) -> Union[T_co, V]: pass
 
 class ContextManager(Generic[T_co]):
     def __enter__(self) -> T_co: pass

@@ -598,8 +598,8 @@ of the above sections.
 .. option:: --allow-redefinition-new
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This *experimental* flag enables the redefinition of
-    unannotated variables with an arbitrary type. You will also need to enable
+    unrelated type. This flag enables the redefinition of unannotated
+    variables with an arbitrary type. You will also need to enable
     :option:`--local-partial-types <mypy --local-partial-types>`.
     Example:
 
@@ -631,11 +631,30 @@ of the above sections.
                 # Type of "x" is "str" here.
                 ...
 
+    Function arguments are special, changing their type within function body
+    is allowed even if they are annotated, but that annotation is used to infer
+    types of r.h.s. of all subsequent assignments. Such middle-ground semantics
+    provides good balance for majority of common use cases. For example:
+
+    .. code-block:: python
+
+        def process(values: list[float]) -> None:
+            if not values:
+                values = [0, 0, 0]
+            reveal_type(values)  # Revealed type is list[float]
+
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
     The feature is still experimental, and the semantics may still change.
 
 .. option:: --allow-redefinition
+
+    This is an alias to :option:`--allow-redefinition-old <mypy --allow-redefinition-old>`.
+    In mypy v2.0 this will point to
+    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`, and will
+    eventually became the default.
+
+.. option:: --allow-redefinition-old
 
     This is an older variant of
     :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`.
@@ -689,7 +708,7 @@ of the above sections.
         reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
-    enabled by default for mypy in a future release.
+    enabled by default in mypy v2.0 release.
 
 .. option:: --no-implicit-reexport
 

@@ -1456,7 +1456,7 @@ if int():
     b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
-[case testGeneratorNoSpuriousError]
+[case testGeneratorNoSpuriousError_no_native_parse]
 from typing import Iterable, overload
 
 @overload
@@ -1915,7 +1915,7 @@ None == None
 None < None  # E: Unsupported left operand type for < ("None")
 [builtins fixtures/ops.pyi]
 
-[case testDictWithStarExpr]
+[case testDictWithStarExpr_no_native_parse]
 
 b = {'z': 26, *a}  # E: Invalid syntax
 [builtins fixtures/dict.pyi]

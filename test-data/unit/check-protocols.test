@@ -1729,6 +1729,7 @@ if isinstance(x, Iterable):
 [typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
+# flags: --warn-unreachable
 from typing import Protocol, runtime_checkable, TypeVar, Generic
 
 T = TypeVar('T')
@@ -1757,25 +1758,25 @@ c = C()
 if isinstance(c, P1):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable
 if isinstance(c, P):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable
 
 c1i: C1[int]
 if isinstance(c1i, P1):
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 else:
-    reveal_type(c1i) # Unreachable
+    reveal_type(c1i)  # E: Statement is unreachable
 if isinstance(c1i, P):
     reveal_type(c1i) # N: Revealed type is "__main__.<subclass of "__main__.C1[builtins.int]" and "__main__.P">"
 else:
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 
 c1s: C1[str]
-if isinstance(c1s, P1):
-    reveal_type(c1s) # Unreachable
+if isinstance(c1s, P1):  # E: Subclass of "C1[str]" and "P1" cannot exist: would have incompatible method signatures
+    reveal_type(c1s)  # E: Statement is unreachable
 else:
     reveal_type(c1s) # N: Revealed type is "__main__.C1[builtins.str]"
 
@@ -4693,3 +4694,55 @@ class Impl:
         pass
 
 x: Proto = Impl()
+
+[case testIndirectDependencyOnProtocolIncremental]
+import a
+[file a.py]
+from b import P
+
+class CNested:
+    def f(self) -> int: ...
+class C:
+    def f(self) -> CNested: ...
+
+x: P = C()
+
+[file b.py]
+from typing import Protocol
+from c import PNested
+
+class P(Protocol):
+    def f(self) -> PNested: ...
+
+[file c.py]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+
+[file c.py.2]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> int: ...
+
+[file c.py.3]
+from typing import Protocol
+
+class PNested(Protocol):
+    def f(self) -> str: ...
+[out]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested
+[out2]
+[out3]
+tmp/a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+tmp/a.py:8: note: Following member(s) of "C" have conflicts:
+tmp/a.py:8: note:     Expected:
+tmp/a.py:8: note:         def f(self) -> PNested
+tmp/a.py:8: note:     Got:
+tmp/a.py:8: note:         def f(self) -> CNested

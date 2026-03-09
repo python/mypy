@@ -394,6 +394,7 @@ import mypyc.primitives.dict_ops
 import mypyc.primitives.float_ops
 import mypyc.primitives.int_ops
 import mypyc.primitives.librt_strings_ops
+import mypyc.primitives.librt_time_ops
 import mypyc.primitives.list_ops
 import mypyc.primitives.misc_ops
 import mypyc.primitives.str_ops

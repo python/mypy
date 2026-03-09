@@ -17,7 +17,7 @@ x: Annotated[int, THESE, ARE, IGNORED, FOR, NOW]
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testAnnotated3]
+[case testAnnotated3_no_native_parse]
 from typing_extensions import Annotated
 x: Annotated[int, -+~12.3, "som"[e], more(anno+a+ions, that=[are]), (b"ignored",), 4, N.O.W, ...]
 reveal_type(x)  # N: Revealed type is "builtins.int"

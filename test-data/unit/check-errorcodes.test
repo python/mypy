@@ -30,21 +30,21 @@ class A:
 [case testErrorCodeNoteHasNoCode]
 reveal_type(1) # N: Revealed type is "Literal[1]?"
 
-[case testErrorCodeSyntaxError]
+[case testErrorCodeSyntaxError_no_native_parse]
 1 ''
 [out]
 main:1: error: Invalid syntax  [syntax]
 [out version==3.10.0]
 main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
-[case testErrorCodeSyntaxError2]
-def f(): # E: Type signature has too many arguments  [syntax]
+[case testErrorCodeSyntaxError2_no_native_parse]
+def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
 x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
 
-[case testErrorCodeSyntaxError3]
+[case testErrorCodeSyntaxError3_no_native_parse]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
 for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
@@ -208,7 +208,7 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
-[case testErrorCodeBadIgnore]
+[case testErrorCodeBadIgnore_no_native_parse]
 import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
                                   # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
                                   # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -226,7 +226,7 @@ def f(x,  # type: int  # type: ignore[  # E: Invalid "type: ignore" comment  [sy
     # type: (...) -> None
     pass
 
-[case testErrorCodeBadIgnoreNoExtraComment]
+[case testErrorCodeBadIgnoreNoExtraComment_no_native_parse]
 # Omit the E: ... comments, as they affect parsing
 import nostub # type: ignore xyz
 import nostub # type: ignore[xyz
@@ -246,7 +246,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 main:6: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
-def f(x: int) -> None: pass  # N: "f" defined here
+def f(x: int) -> None: pass
 f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
@@ -342,7 +342,7 @@ def f() -> int:
 [case testErrorCodeAssignment]
 x: str = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 
-def f(x: str = 0) -> None:  # E: Incompatible default for argument "x" (default has type "int", argument has type "str")  [assignment]
+def f(x: str = 0) -> None:  # E: Incompatible default for parameter "x" (default has type "int", parameter has type "str")  [assignment]
     pass
 
 class A:
@@ -382,7 +382,7 @@ def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
 def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     pass
 
-def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+def h(x) -> None:  # E: Function is missing a type annotation for one or more parameters  [no-untyped-def]
     pass
 
 def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
@@ -546,11 +546,11 @@ from typing import cast
 x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
 
 [case testErrorCodeInvalidCommentSignature]
-def f(x):  # E: Type signature has too few arguments  [syntax]
+def f(x):  # E: Type signature has too few parameters  [syntax]
     # type: () -> None
     pass
 
-def g(x):  # E: Type signature has too many arguments  [syntax]
+def g(x):  # E: Type signature has too many parameters  [syntax]
     # type: (int, int) -> None
     pass
 
@@ -762,7 +762,7 @@ main:1: error: Name "y" is not defined  [name-defined]
 main:2: error: Name "ignored" is not defined  [name-defined]
 main:2: error: Name "y" is not defined  [name-defined]
 
-[case testErrorCodeTypeIgnoreMisspelled2]
+[case testErrorCodeTypeIgnoreMisspelled2_no_native_parse]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
@@ -1014,7 +1014,7 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDictBuiltin]
+[case testSliceInDictBuiltin_no_native_parse]
 # flags: --show-column-numbers
 b: dict[int, x:y]
 c: dict[x:y]
@@ -1027,7 +1027,7 @@ main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:3:9: error: Invalid type comment or annotation  [valid-type]
 main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDictTyping]
+[case testSliceInDictTyping_no_native_parse]
 # flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
@@ -1067,13 +1067,11 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
-                          # N: Error code "syntax" not covered by "type: ignore" comment
+# type: ignore[whatever]  # E: Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
-                                 # N: Error code "syntax" not covered by "type: ignore" comment
+# type: ignore[whatever, other]  # E: Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]

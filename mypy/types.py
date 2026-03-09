@@ -6,7 +6,6 @@ import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Final,
@@ -97,18 +96,6 @@ JsonDict: _TypeAlias = dict[str, Any]
 # Literal[...].
 LiteralValue: _TypeAlias = int | str | bool | float
 
-
-# If we only import type_visitor in the middle of the file, mypy
-# breaks, and if we do it at the top, it breaks at runtime because of
-# import cycle issues, so we do it at the top while typechecking and
-# then again in the middle at runtime.
-# We should be able to remove this once we are switched to the new
-# semantic analyzer!
-if TYPE_CHECKING:
-    from mypy.type_visitor import (
-        SyntheticTypeVisitor as SyntheticTypeVisitor,
-        TypeVisitor as TypeVisitor,
-    )
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
 TYPE_NAMES: Final = ("builtins.type", "typing.Type")
@@ -377,7 +364,9 @@ class TypeAliasType(Type):
 
         # TODO: this logic duplicates the one in expand_type_by_instance().
         if self.alias.tvar_tuple_index is None:
-            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
+            mapping: dict[TypeVarId, Type] = {
+                v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)
+            }
         else:
             prefix = self.alias.tvar_tuple_index
             suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
@@ -1626,9 +1615,6 @@ class Instance(ProperType):
         self.type = typ
         self.args = tuple(args)
         self.type_ref: str | None = None
-
-        # True if recovered after incorrect number of type arguments error
-        self.invalid = False
 
         # This field keeps track of the underlying Literal[...] value associated with
         # this instance, if one is known.
@@ -3755,12 +3741,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return f"<Deleted '{t.source}'>"
 
     def visit_instance(self, t: Instance, /) -> str:
+        fullname = t.type.fullname
+        if not self.options.reveal_verbose_types and fullname.startswith("builtins."):
+            fullname = t.type.name
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
             s = f"{t.last_known_value.accept(self)}?"
+
         else:
-            s = t.type.fullname or t.type.name or "<???>"
+            s = fullname or t.type.name or "<???>"
 
         if t.args:
             if t.type.fullname == "builtins.tuple":
@@ -3775,11 +3765,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_type_var(self, t: TypeVarType, /) -> str:
-        s = f"{t.name}`{t.id}"
+        if not self.options.reveal_verbose_types:
+            s = t.name
+        else:
+            s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
-        if t.has_default():
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
+        # TODO: disambiguate type variables with same name using namespace.
+        # We should reuse find_type_overlaps() and scoped_type_var_name().
         return s
 
     def visit_param_spec(self, t: ParamSpecType, /) -> str:
@@ -3787,10 +3782,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = ""
         if t.prefix.arg_types:
             s += f"[{self.list_str(t.prefix.arg_types)}, **"
-        s += f"{t.name_with_suffix()}`{t.id}"
+        if not self.options.reveal_verbose_types:
+            s += t.name_with_suffix()
+        else:
+            s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
-        if t.has_default():
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3824,8 +3822,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"[{s}]"
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> str:
-        s = f"{t.name}`{t.id}"
-        if t.has_default():
+        if not self.options.reveal_verbose_types:
+            s = t.name
+        else:
+            s = f"{t.name}`{t.id}"
+        if t.has_default() and self.options.reveal_verbose_types:
             s += f" = {t.default.accept(self)}"
         return s
 
@@ -3850,11 +3851,20 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]
+            if not name and not self.options.reveal_verbose_types:
+                # Avoid ambiguous (and weird) formatting for anonymous args/kwargs.
+                if t.arg_kinds[i] == ARG_STAR and isinstance(t.arg_types[i], UnpackType):
+                    name = "args"
+                elif t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
+                    name = "kwargs"
             if name:
                 s += name + ": "
             type_str = t.arg_types[i].accept(self)
             if t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
-                type_str = f"Unpack[{type_str}]"
+                if not self.options.reveal_verbose_types:
+                    type_str = f"**{type_str}"
+                else:
+                    type_str = f"Unpack[{type_str}]"
             s += type_str
             if t.arg_kinds[i].is_optional():
                 s += " ="
@@ -3881,7 +3891,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             vs = []
             for var in t.variables:
                 if isinstance(var, TypeVarType):
-                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f"{var.name} in {vals}")
@@ -3933,10 +3942,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:
-                prefix = repr(t.fallback.type.fullname) + ", "
+                if not self.options.reveal_verbose_types:
+                    prefix = t.fallback.type.fullname + ", "
+                else:
+                    prefix = repr(t.fallback.type.fullname) + ", "
         return f"TypedDict({prefix}{s})"
 
     def visit_raw_expression_type(self, t: RawExpressionType, /) -> str:
+        # For bytes literals, the value is already escaped, just add quotes and b prefix
+        if t.base_type_name == "builtins.bytes":
+            # The value is already escaped (e.g., "foo" or "hello\\nworld")
+            # Just add quotes and b prefix
+            return f"b'{t.literal_value}'"
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType, /) -> str:
@@ -3979,6 +3996,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return type_str
 
     def visit_unpack_type(self, t: UnpackType, /) -> str:
+        if not self.options.reveal_verbose_types:
+            return f"*{t.type.accept(self)}"
         return f"Unpack[{t.type.accept(self)}]"
 
     def list_str(self, a: Iterable[Type], *, use_or_syntax: bool = False) -> str:
@@ -4296,6 +4315,10 @@ LITERAL_TYPE: Final[Tag] = 114
 UNION_TYPE: Final[Tag] = 115
 TYPE_TYPE: Final[Tag] = 116
 PARAMETERS: Final[Tag] = 117
+LIST_TYPE: Final[Tag] = 118  # Only valid in serialized ASTs
+ELLIPSIS_TYPE: Final[Tag] = 119  # Only valid in serialized ASTs
+RAW_EXPRESSION_TYPE: Final[Tag] = 120  # Only valid in serialized ASTs
+CALL_TYPE: Final[Tag] = 121  # Only valid in serialized ASTs
 
 
 def read_type(data: ReadBuffer, tag: Tag | None = None) -> Type:

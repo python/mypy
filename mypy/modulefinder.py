@@ -471,7 +471,7 @@ class FindModuleCache:
                 if fscache.isdir(path):
                     if fscache.isfile(stub_typed_file):
                         # Stub packages can have a py.typed file, which must include
-                        # 'partial\n' to make the package partial
+                        # 'partial\n' to make the package partial.
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == "partial":
@@ -726,7 +726,7 @@ def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> 
 @functools.lru_cache
 def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
     parent_dir = os.path.dirname(dir)
-    if parent_dir == dir:
+    if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
     else:
         parent_gitignores = find_gitignores(parent_dir)

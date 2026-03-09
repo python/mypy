@@ -4310,40 +4310,53 @@ d.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
 [case testNonePartialType1]
+from typing import Optional
+import m
+
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
 import a
-a.y
 
 x = None
 
 def f() -> None:
     global x
-    x = 1
+    x = a.y
 [file a.py]
 y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
+main:5: error: Incompatible return value type (got "str | None", expected "int | None")
 
 [case testNonePartialType2]
+from typing import Optional
+import m
+
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from typing import TypeVar
 import a
-a.y
 
 x = None
 
-def f():
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+@dec
+def f() -> None:
     global x
-    x = 1
+    x = a.y
 [file a.py]
 y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
+main:5: error: Incompatible return value type (got "str | None", expected "int | None")
 
 [case testNonePartialType3]
 import a
@@ -4355,10 +4368,13 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 
 [case testNonePartialType4]
+from typing import Optional
 import a
+
+def foo() -> Optional[str]:
+    return a.y
 [file a.py]
 y = None
 def f() -> None:
@@ -4371,7 +4387,6 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 ==
 
 [case testSkippedClass1]
@@ -5176,7 +5191,7 @@ def g(y: T) -> T:
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "x"
-c.py:4: note: Called function defined here
+a.py:2: note: Called function defined in "c"
 
 [case testGenericFineCallableInBound]
 import a
@@ -6053,9 +6068,9 @@ a.py:1: error: "int" not callable
 [file a.py.2]
 1()
 [out]
-mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
 ==
-mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
 
 [case testNonExistentFileOnCommandLine2]
 # cmd: mypy a.py
@@ -9124,15 +9139,15 @@ x = ''
 x = 1
 
 [out]
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 ==
-c.py:1: error: Type signature has too few arguments
-a.py:1: error: Type signature has too few arguments
-a.py:5: error: Type signature has too few arguments
-a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few parameters
+a.py:1: error: Type signature has too few parameters
+a.py:5: error: Type signature has too few parameters
+a.py:11: error: Type signature has too few parameters
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
@@ -10522,7 +10537,7 @@ m.py:9: error: Too many arguments for "foo"
 m.py:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"
-partial.py:4: note: "foo" defined here
+m.py:10: note: "foo" defined in "partial"
 
 [case testReplaceFunctionWithDecoratedFunctionIndirect]
 from b import f
@@ -11531,4 +11546,140 @@ def lol() -> None: pass
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
-b.py:1: note: "lol" defined here
+a.py:2: note: "lol" defined in "b"
+
+[case testPartialNoneTypeFineInClass]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from n import f
+class C:
+    x = None
+    def foo(self) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassDecorated]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import TypeVar
+from n import f
+
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+class C:
+    x = None
+    @dec
+    def foo(self) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassOverload]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import overload
+from n import f
+
+class C:
+    x = None
+    @overload
+    def foo(self) -> None: ...
+    @overload
+    def foo(self, x: int) -> None: ...
+    def foo(self, x: int = 0) -> None:
+        self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineInClassNested]
+from typing import Optional
+from m import C
+def foo(x: C) -> Optional[int]:
+    return x.x
+[file m.py]
+from typing import TypeVar
+from n import f
+
+F = TypeVar("F")
+def dec(fn: F) -> F: ...
+
+class C:
+    x = None
+    def foo(self) -> None:
+        @dec
+        def setup() -> None:
+            self.x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineModuleGlobal]
+from typing import Optional
+import m
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from n import f
+
+x = None
+def foo() -> None:
+    global x
+    x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testPartialNoneTypeFineModuleGlobalNested]
+from typing import Optional
+import m
+def foo() -> Optional[int]:
+    return m.x
+[file m.py]
+from n import f
+
+x = None
+def foo() -> None:
+    def bar() -> None:
+        global x
+        x = f()
+[file n.py]
+def f() -> int: ...
+[file n.py.2]
+def f() -> str: ...
+[out]
+==
+main:4: error: Incompatible return value type (got "str | None", expected "int | None")

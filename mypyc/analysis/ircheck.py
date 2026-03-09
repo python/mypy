@@ -63,12 +63,17 @@ from mypyc.ir.rtypes import (
     RPrimitive,
     RType,
     RUnion,
+    RVec,
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_c_py_ssize_t_rprimitive,
+    is_fixed_width_rtype,
     is_float_rprimitive,
     is_object_rprimitive,
+    is_pointer_rprimitive,
     list_rprimitive,
+    pointer_rprimitive,
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
@@ -200,7 +205,7 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
             if src.name in disjoint_types and dest.name in disjoint_types:
                 return src.name == dest.name
             return src.size == dest.size
-        if isinstance(src, RInstance):
+        if isinstance(src, (RInstance, RVec)):
             return is_object_rprimitive(dest)
         if isinstance(src, RUnion):
             # IR doesn't have the ability to narrow unions based on
@@ -209,6 +214,29 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
         return False
 
     return True
+
+
+def is_valid_ptr_displacement_type(rtype: RType) -> bool:
+    """Check if rtype is a valid displacement type for pointer arithmetic."""
+    if not (is_fixed_width_rtype(rtype) or is_c_py_ssize_t_rprimitive(rtype)):
+        return False
+    assert isinstance(rtype, RPrimitive)
+    return rtype.size == pointer_rprimitive.size
+
+
+def is_pointer_arithmetic(op: IntOp) -> bool:
+    """Check if op is add/subtract targeting pointer_rprimitive and integer of the same size."""
+    if op.op not in (IntOp.ADD, IntOp.SUB):
+        return False
+    if not is_pointer_rprimitive(op.type):
+        return False
+    left = op.lhs.type
+    right = op.rhs.type
+    if is_pointer_rprimitive(left):
+        return is_valid_ptr_displacement_type(right)
+    if is_pointer_rprimitive(right):
+        return is_valid_ptr_displacement_type(left)
+    return False
 
 
 class OpChecker(OpVisitor[None]):
@@ -417,6 +445,7 @@ class OpChecker(OpVisitor[None]):
                 op_str in ("+", "-", "*", "/", "%")
                 or (op_str not in ("<<", ">>") and left.size != right.size)
             )
+            and not is_pointer_arithmetic(op)
         ):
             self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
 

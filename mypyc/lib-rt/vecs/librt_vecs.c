@@ -871,6 +871,11 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
     return res;
 }
 
+// Return the base VecType for isinstance checks
+static PyTypeObject *get_vec_type(void) {
+    return &VecType;
+}
+
 static VecCapsule Capsule = {
     &Vec_TAPI,
     &Vec_NestedAPI,
@@ -880,6 +885,7 @@ static VecCapsule Capsule = {
     &Vec_U8API,
     &Vec_FloatAPI,
     &Vec_BoolAPI,
+    get_vec_type,
 };
 
 #endif  // MYPYC_EXPERIMENTAL
