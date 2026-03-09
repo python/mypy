@@ -226,7 +226,7 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible parameters of signature 2
     pass
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
@@ -271,7 +271,7 @@ from typing import overload
 @overload  # E: Single overload definition, multiple required
 def foo(x: int) -> None: ...
 
-def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     pass
 [builtins fixtures/tuple.pyi]
 
@@ -4756,7 +4756,7 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation does not accept all possible parameters of signature 1
 main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
@@ -5426,7 +5426,7 @@ def dec_c(f: Callable[..., Any]) -> C:
 def f_c(arg: int) -> None: ...
 @overload
 def f_c(arg: str) -> None: ...
-@dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+@dec_c  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 def f_c(arg): ...
 [builtins fixtures/dict.pyi]
 

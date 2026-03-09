@@ -3849,7 +3849,7 @@ def f(self, **kwargs: Unpack[TD]) -> None:
 def g(self, *, x: float) -> None: ...
 @overload
 def g(self, *, y: str) -> None: ...
-def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     z  # E: Name "z" is not defined
 
 class A:

@@ -1659,10 +1659,10 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
+    def overloaded_signatures_param_specific(self, index: int, context: Context) -> None:
         self.fail(
             (
-                f"Overloaded function implementation does not accept all possible arguments "
+                f"Overloaded function implementation does not accept all possible parameters "
                 f"of signature {index}"
             ),
             context,

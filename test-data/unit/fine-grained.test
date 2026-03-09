@@ -7172,7 +7172,7 @@ class E:
     pass
 [out]
 ==
-main:8: error: Overloaded function implementation does not accept all possible arguments of signature 2
+main:8: error: Overloaded function implementation does not accept all possible parameters of signature 2
 main:8: error: Overloaded function implementation cannot produce return type of signature 2
 
 [case testOverloadsGenericTypevarUpdated]
