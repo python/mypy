@@ -566,7 +566,7 @@ class Foo:
     @overload
     def f(self, *, b: bool = False) -> None: ...
 
-    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 2
         ...
 
 class Bar:
