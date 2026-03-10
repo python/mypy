@@ -1043,6 +1043,7 @@ class UnboundType(ProperType):
         self,
         name: str,
         args: Sequence[Type] | None = None,
+        *,
         line: int = -1,
         column: int = -1,
         optional: bool = False,

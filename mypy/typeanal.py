@@ -2160,6 +2160,15 @@ def instantiate_type_alias(
         # Note that we keep the kind of Any for consistency.
         return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
 
+    if (
+        no_args
+        and isinstance(node.target, ProperType)
+        and isinstance(node.target, Instance)
+        and node.target.type.fullname == "builtins.tuple"
+        and len(args)
+    ):
+        no_args = False
+
     max_tv_count = len(node.alias_tvars)
     act_len = len(args)
     if (
@@ -2480,13 +2489,14 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
+def validate_instance(t: Instance, fail: MsgCallback, indexed: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
         # This type is not ready to be validated, because of unknown total count.
         # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
+    empty_tuple_index = indexed and not t.args
     if t.type.has_type_var_tuple_type:
         min_tv_count = sum(
             not tv.has_default() and not isinstance(tv, TypeVarTupleType)
