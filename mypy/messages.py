@@ -1942,7 +1942,7 @@ class MessageBuilder:
         )
 
     def type_arguments_not_allowed(self, context: Context) -> None:
-        self.fail("Parameterized generics cannot be used with class or instance checks", context)
+        self.fail("Argumentized generic types cannot be used with class or instance checks", context)
 
     def disallowed_any_type(self, typ: Type, context: Context) -> None:
         typ = get_proper_type(typ)

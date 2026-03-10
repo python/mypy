@@ -1353,7 +1353,7 @@ from typing import Union
 SimpleAlias = Union[int, str]
 
 def foo(x: Union[int, str, tuple]):
-    if isinstance(x, SimpleAlias):  # E: Parameterized generics cannot be used with class or instance checks \
+    if isinstance(x, SimpleAlias):  # E: Argumentized generic types cannot be used with class or instance checks \
                                     # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "type"
         reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.tuple[Any, ...]"
     else:

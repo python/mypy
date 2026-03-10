@@ -1872,9 +1872,9 @@ def directed_meet(cls0: ClassT, cls1: ClassT) -> ClassT | None:
 from typing import Iterable, TypeVar
 x = 1
 isinstance(x, Iterable)
-isinstance(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
-isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
-isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, Iterable[int])  # E: Argumentized generic types cannot be used with class or instance checks
+isinstance(x, (int, Iterable[int]))  # E: Argumentized generic types cannot be used with class or instance checks
+isinstance(x, (int, (str, Iterable[int])))  # E: Argumentized generic types cannot be used with class or instance checks
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1893,10 +1893,10 @@ T = TypeVar('T')
 It = Iterable
 It2 = Iterable[T]
 
-isinstance(x, It[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It[int])  # E: Argumentized generic types cannot be used with class or instance checks
 isinstance(x, It)
-isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
-isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It2[int])  # E: Argumentized generic types cannot be used with class or instance checks
+isinstance(x, It2)  # E: Argumentized generic types cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1905,8 +1905,8 @@ isinstance(x, It2)  # E: Parameterized generics cannot be used with class or ins
 from typing import Iterable, TypeVar
 x = int
 issubclass(x, Iterable)
-issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
-issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, Iterable[int])  # E: Argumentized generic types cannot be used with class or instance checks
+issubclass(x, (int, Iterable[int]))  # E: Argumentized generic types cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
