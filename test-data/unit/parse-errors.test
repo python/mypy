@@ -77,20 +77,20 @@ def f(*, *x: A) -> None: pass
 [out]
 file:1: error: Invalid syntax
 
-[case testInvalidBareAsteriskAndVarArgs4]
+[case testInvalidBareAsteriskAndVarParams4]
 def f(*, **x: A) -> None: pass
 [out]
-file:1: error: Named arguments must follow bare *
+file:1: error: Named parameters must follow bare *
 
 [case testInvalidBareAsterisk1]
 def f(*) -> None: pass
 [out]
-file:1: error: Named arguments must follow bare *
+file:1: error: Named parameters must follow bare *
 
 [case testInvalidBareAsterisk2]
 def f(x, *) -> None: pass
 [out]
-file:1: error: Named arguments must follow bare *
+file:1: error: Named parameters must follow bare *
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
