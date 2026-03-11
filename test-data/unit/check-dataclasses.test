@@ -839,7 +839,8 @@ class A(Generic[T]):
   @classmethod
   def foo(cls) -> None:
       reveal_type(cls)  # N: Revealed type is "type[__main__.A[T`1]]"
-      cls.x  # E: Access to generic instance variables via class is ambiguous
+      cls.x  # E: Cannot access instance-only attribute "x" on class object \
+             # E: Access to generic instance variables via class is ambiguous
 
   @classmethod
   def other(cls, x: T) -> A[T]: ...

@@ -7180,7 +7180,22 @@ b = B(2) # E: Cannot instantiate abstract class "B" with abstract attribute "__i
 B.c # E: "type[B]" has no attribute "c"
 c = C(3)
 c.c
-C.c
+C.c  # E: Cannot access instance-only attribute "c" on class object
+
+[case testAccessInstanceVarOnClass]
+class A:
+    def __init__(self) -> None:
+        self.x = 0
+
+A.x  # E: Cannot access instance-only attribute "x" on class object
+A.x = 1  # We allow this, since it works at runtime, even though it is weird
+
+class B:
+    x = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x: int = 2
+C.x # Again, this works at runtime, so we don't prohibit this
 
 [case testDecoratedConstructors]
 from typing import TypeVar, Callable, Any

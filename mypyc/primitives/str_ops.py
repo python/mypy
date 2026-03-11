@@ -397,6 +397,49 @@ str_ssize_t_size_op = custom_op(
     error_kind=ERR_NEG_INT,
 )
 
+# str.lower()
+method_op(
+    name="lower",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Lower",
+    error_kind=ERR_MAGIC,
+)
+
+# str.upper()
+method_op(
+    name="upper",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Upper",
+    error_kind=ERR_MAGIC,
+)
+
+method_op(
+    name="isspace",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsSpace",
+    error_kind=ERR_NEVER,
+)
+
+method_op(
+    name="isalnum",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAlnum",
+    error_kind=ERR_NEVER,
+)
+
+method_op(
+    name="isdigit",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsDigit",
+    error_kind=ERR_NEVER,
+)
+
+
 # obj.decode()
 method_op(
     name="decode",

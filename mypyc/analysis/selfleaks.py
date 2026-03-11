@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
+from mypyc.analysis.dataflow import (
+    CFG,
+    MAYBE_ANALYSIS,
+    AnalysisResult,
+    GenAndKill as _DataflowGenAndKill,
+    run_analysis,
+)
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -49,7 +55,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RInstance
 
-GenAndKill = tuple[set[None], set[None]]
+GenAndKill = _DataflowGenAndKill[None]
 
 CLEAN: GenAndKill = (set(), set())
 DIRTY: GenAndKill = ({None}, {None})

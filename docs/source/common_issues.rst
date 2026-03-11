@@ -148,6 +148,14 @@ error:
 The second line is now fine, since the ignore comment causes the name
 ``frobnicate`` to get an implicit ``Any`` type.
 
+The type ignore comment must be at the start of the comments on a line.
+This type ignore will not take effect:
+
+.. code-block:: python
+
+    import frobnicate  #example other comment # type: ignore
+    frobnicate.start()
+
 .. note::
 
     You can use the form ``# type: ignore[<code>]`` to only ignore

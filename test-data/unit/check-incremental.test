@@ -2938,7 +2938,7 @@ class Namespace:
 
 [file main.py]
 import ns
-user = ns.Namespace.user
+user = ns.Namespace().user
 
 [out1]
 tmp/main.py:2: error: Expression has type "Any"
@@ -5490,7 +5490,7 @@ class A:
 from a import A
 [file b.py.2]
 from a import A
-reveal_type(A.D.x)
+reveal_type(A.D().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
@@ -7264,7 +7264,7 @@ bar: int = foo
 [out3]
 tmp/bar.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testIncrementalBlockingErrorRepeatAndUndo]
+[case testIncrementalBlockingErrorRepeatAndUndo_no_native_parse]
 import m
 [file m.py]
 import f

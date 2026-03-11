@@ -238,6 +238,9 @@ DEPENDENT_FINAL_IN_CLASS_BODY: Final = ErrorMessage(
 CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
     'Cannot access final instance attribute "{}" on class object'
 )
+CANNOT_ACCESS_INSTANCE_ONLY_ATTR: Final = (
+    'Cannot access instance-only attribute "{}" on class object'
+)
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
 # Disjoint bases
@@ -300,7 +303,7 @@ FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
     "Condition can't be inferred, unable to merge overloads"
 )
 TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
-    "type ignore with error code is not supported for modules; "
+    "Type ignore with error code is not supported for modules; "
     'use `# mypy: disable-error-code="{}"`',
     codes.SYNTAX,
 )

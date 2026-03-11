@@ -1002,7 +1002,7 @@ y: U
 reveal_type(x)  # N: Revealed type is "builtins.int | None"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 
-U[int]  # E: Type application targets a non-generic function or class
+U[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 O[int]  # E: Bad number of arguments for type alias, expected 0, given 1 \
         # E: Type application is only supported for generic classes
 
@@ -1126,7 +1126,7 @@ main:13:1: error: Value of type variable "T" of "SameA" cannot be "str"
 class A: ...
 Bad = A[int] # type: ignore
 
-reveal_type(Bad) # N: Revealed type is "Any"
+reveal_type(Bad) # N: Revealed type is "def () -> __main__.A"
 [out]
 
 [case testSubscriptionOfBuiltinAliases]
@@ -2175,7 +2175,8 @@ class C(Generic[T]):
 
     @classmethod
     def meth(cls) -> None:
-        cls.x  # E: Access to generic instance variables via class is ambiguous
+        cls.x  # E: Cannot access instance-only attribute "x" on class object \
+               # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]

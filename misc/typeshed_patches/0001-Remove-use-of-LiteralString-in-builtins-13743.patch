@@ -1,14 +1,14 @@
-From ed11d7e0204868ef1a43c17ed950372b1d78f497 Mon Sep 17 00:00:00 2001
+From b3021cdc4b4c2cf547c5bc2d1d21a5a00ffea001 Mon Sep 17 00:00:00 2001
 From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
 Date: Mon, 26 Sep 2022 12:55:07 -0700
 Subject: [PATCH] Remove use of LiteralString in builtins (#13743)
 
 ---
- mypy/typeshed/stdlib/builtins.pyi | 100 +-----------------------------
- 1 file changed, 1 insertion(+), 99 deletions(-)
+ mypy/typeshed/stdlib/builtins.pyi | 98 -------------------------------
+ 1 file changed, 98 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 693dd0b77..8acdeadff 100644
+index efc51fe25..8600a372b 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
 @@ -64,7 +64,6 @@ from typing import (  # noqa: Y022,UP035
@@ -163,10 +163,9 @@ index 693dd0b77..8acdeadff 100644
      def __eq__(self, value: object, /) -> bool: ...
      def __ge__(self, value: str, /) -> bool: ...
 -    @overload
--    def __getitem__(self: LiteralString, key: SupportsIndex | slice, /) -> LiteralString: ...
+-    def __getitem__(self: LiteralString, key: SupportsIndex | slice[SupportsIndex | None], /) -> LiteralString: ...
 -    @overload
--    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...  # type: ignore[misc]
-+    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...
+     def __getitem__(self, key: SupportsIndex | slice[SupportsIndex | None], /) -> str: ...  # type: ignore[misc]
      def __gt__(self, value: str, /) -> bool: ...
      def __hash__(self) -> int: ...
 -    @overload

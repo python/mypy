@@ -480,6 +480,24 @@ tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
 main:2: error: Unexpected keyword argument "x" for "A"
 main:2: note: "A" defined in "m"
 
+[case testMissingNamedArgumentFromOtherModule]
+import m
+m.f(1)
+m.f(a=1)
+[file m.py]
+def f(a: int, *, b: str) -> None:
+    pass
+[out]
+main:2: error: Missing named argument "b" for "f"
+main:2: note: "f" defined in "m"
+main:3: error: Missing named argument "b" for "f"
+main:3: note: "f" defined in "m"
+
+[case testMissingNamedArgumentForSameModule]
+def f(a: int, *, b: str) -> None:
+    pass
+f(1)  # E: Missing named argument "b" for "f"
+
 [case testStarArgsAndKwArgsSpecialCase]
 from typing import Dict, Mapping
 

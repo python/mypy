@@ -144,7 +144,7 @@ class TypesSuite(Suite):
                     "X", "X", TypeVarId(1), [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)
                 )
             ),
-            "X`1",
+            "X",
         )
         assert_equal(
             str(
@@ -157,7 +157,7 @@ class TypesSuite(Suite):
                     AnyType(TypeOfAny.from_omitted_generics),
                 )
             ),
-            "X`1",
+            "X",
         )
 
     def test_generic_function_type(self) -> None:

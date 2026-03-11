@@ -104,6 +104,13 @@ def main(
             options,
         )
 
+    if options.allow_redefinition_new and options.allow_redefinition_old:
+        fail(
+            "--allow-redefinition-old and --allow-redefinition-new should not be used together",
+            stderr,
+            options,
+        )
+
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
         fail("error: --install-types not supported in this mode of running mypy", stderr, options)
@@ -1245,6 +1252,8 @@ def define_options(
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
+    # --native-parser enables the native parser (experimental)
+    add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never

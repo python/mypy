@@ -65,7 +65,6 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_instance(self, t: Instance) -> ProperType:
         dup = Instance(t.type, t.args, last_known_value=t.last_known_value)
-        dup.invalid = t.invalid
         return self.copy_common(t, dup)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:

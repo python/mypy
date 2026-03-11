@@ -901,6 +901,56 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_decorated_overload(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import overload
+
+            class _dec1:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str) -> str: ...
+
+            @overload
+            def good1(x: int) -> int: ...
+            @overload
+            @_dec1
+            def good1(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good1(x): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class _dec2:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def good2(x: int) -> str: ...
+            @overload
+            @_dec2
+            def good2(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good2(x, y=...): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class _dec3:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def bad(x: int) -> str: ...
+            @overload
+            @_dec3
+            def bad(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def bad(x): ...",
+            error="bad",
+        )
+
+    @collect_cases
     def test_property(self) -> Iterator[Case]:
         yield Case(
             stub="""
@@ -1169,6 +1219,22 @@ class StubtestUnit(unittest.TestCase):
                 @read_write_attr.setter
                 def read_write_attr(self, val): self._val = val
             """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL: Final = 2
+            """,
+            runtime="X_FINAL = 1",
+            error="X_FINAL",
+        )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL_OK: Final = 1
+            """,
+            runtime="X_FINAL_OK = 1",
             error=None,
         )
 
@@ -1549,6 +1615,49 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_proxy_object(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class LazyObject:
+                def __init__(self, func: object) -> None: ...
+                def __bool__(self) -> bool: ...
+            """,
+            runtime="""
+            class LazyObject:
+                def __init__(self, func):
+                    self.__dict__["_wrapped"] = None
+                    self.__dict__["_setupfunc"] = func
+                def _setup(self):
+                    self.__dict__["_wrapped"] = self._setupfunc()
+                @property
+                def __class__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return type(self._wrapped)
+                def __bool__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return bool(self._wrapped)
+            """,
+            error="test_module.LazyObject.__class__",
+        )
+        yield Case(
+            stub="""
+            def default_value() -> bool: ...
+
+            DEFAULT_VALUE: bool
+            """,
+            runtime="""
+            def default_value():
+                return True
+
+            DEFAULT_VALUE = LazyObject(default_value)
+            bool(DEFAULT_VALUE)  # evaluate the lazy object
+            """,
+            error="test_module.DEFAULT_VALUE",
+        )
+
+    @collect_cases
     def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
         yield Case(
             stub="Z: int",
@@ -1706,6 +1815,16 @@ assert annotations
         yield Case(
             stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
             runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
+        yield Case(
+            stub="class E:\n  def __getitem__(self, item: object) -> object: ...",
+            runtime="class E:\n  def __getitem__(self, item: object, /) -> object: ...",
+            error="E.__getitem__",
+        )
+        yield Case(
+            stub="class F:\n  def __getitem__(self, item: object, /) -> object: ...",
+            runtime="class F:\n  def __getitem__(self, item: object) -> object: ...",
             error=None,
         )
 
@@ -2730,7 +2849,7 @@ class StubtestMiscUnit(unittest.TestCase):
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
             'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
-            "def (number: builtins.int, text: builtins.str)\n"
+            "def (number: int, text: str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -2925,7 +3044,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        assert str(sig) == "def (arg: int | str)"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
