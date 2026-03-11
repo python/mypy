@@ -808,6 +808,7 @@ def test_chr() -> None:
 
 [case testOrd]
 from testutil import assertRaises
+from mypy_extensions import i64, i32, i16, u8
 
 def test_ord() -> None:
     assert ord(' ') == 32
@@ -833,6 +834,117 @@ def test_ord() -> None:
         ord('aa')
     with assertRaises(TypeError):
         ord('')
+
+def test_ord_str_index() -> None:
+    # ASCII
+    s1 = "hello"
+    assert ord(s1[0 + int()]) == 104  # 'h'
+    assert ord(s1[1 + int()]) == 101  # 'e'
+    assert ord(s1[4 + int()]) == 111  # 'o'
+    assert ord(s1[-1 + int()]) == 111  # 'o'
+    assert ord(s1[-5 + int()]) == 104  # 'h'
+
+    # Latin-1 (8 bits)
+    s2 = "café"
+    assert ord(s2[0 + int()]) == 99   # 'c'
+    assert ord(s2[3 + int()]) == 233  # 'é' (U+00E9)
+    assert ord(s2[-1 + int()]) == 233
+
+    # 16-bit unicode
+    s3 = "你好"  # Chinese
+    assert ord(s3[0 + int()]) == 20320  # '你' (U+4F60)
+    assert ord(s3[1 + int()]) == 22909  # '好' (U+597D)
+    assert ord(s3[-1 + int()]) == 22909
+    assert ord(s3[-2 + int()]) == 20320
+
+    # 4-byte unicode
+    s5 = "a😀b"  # Emoji between ASCII chars
+    assert ord(s5[0 + int()]) == 97    # 'a'
+    assert ord(s5[1 + int()]) == 128512  # '😀' (U+1F600)
+    assert ord(s5[2 + int()]) == 98    # 'b'
+    assert ord(s5[-1 + int()]) == 98
+    assert ord(s5[-2 + int()]) == 128512
+    assert ord(s5[-3 + int()]) == 97
+
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[5 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[100 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[-6 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s1[-100 + int()])
+
+    s_empty = ""
+    with assertRaises(IndexError, "index out of range"):
+        ord(s_empty[0 + int()])
+    with assertRaises(IndexError, "index out of range"):
+        ord(s_empty[-1 + int()])
+
+def test_ord_str_index_i64() -> None:
+    s = "hello"
+
+    idx_i64: i64 = 2 + int()
+    assert ord(s[idx_i64]) == 108  # 'l'
+
+    idx_i64_neg: i64 = -1 + int()
+    assert ord(s[idx_i64_neg]) == 111  # 'o'
+
+    idx_overflow: i64 = 10 + int()
+    with assertRaises(IndexError, "index out of range"):
+        ord(s[idx_overflow])
+
+    idx_underflow: i64 = -10 + int()
+    with assertRaises(IndexError, "index out of range"):
+        ord(s[idx_underflow])
+
+def test_ord_str_index_unicode_mix() -> None:
+    # Mix of 1-byte, 2-byte, 3-byte, and 4-byte characters
+    s = "a\u00e9\u4f60😀"  # 'a', 'é', '你', '😀'
+    assert ord(s[0 + int()]) == 97      # 1-byte
+    assert ord(s[1 + int()]) == 233     # 2-byte
+    assert ord(s[2 + int()]) == 20320   # 3-byte
+    assert ord(s[3 + int()]) == 128512  # 4-byte
+
+def test_ord_str_index_to_fixed_width() -> None:
+    # Test i32 coercion (signed 32-bit: -2^31 to 2^31-1)
+    # All valid Unicode code points fit in i32, so test min/max boundaries
+    s_i32_min = chr(0)
+    assert i32(ord(s_i32_min[0 + int()])) == 0
+
+    s_i32_max = chr(0x10FFFF)  # Max Unicode code point
+    assert i32(ord(s_i32_max[0 + int()])) == 0x10FFFF
+
+    # Test i16 coercion (signed 16-bit: -2^15 to 2^15-1, i.e., -32768 to 32767)
+    # ord() returns non-negative, so test 0 to 32767
+    s_i16_min = chr(0)
+    assert i16(ord(s_i16_min[0 + int()])) == 0
+
+    s_i16_max = chr(32767)  # 2^15 - 1
+    assert i16(ord(s_i16_max[0 + int()])) == 32767
+
+    s_i16_overflow = chr(32768)  # 2^15
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        i16(ord(s_i16_overflow[0 + int()]))
+
+    s_i16_overflow2 = chr(32769)  # 2^15 + 1
+    with assertRaises(ValueError, "int too large to convert to i16"):
+        i16(ord(s_i16_overflow2[0 + int()]))
+
+    # Test u8 coercion (unsigned 8-bit: 0 to 2^8-1, i.e., 0 to 255)
+    s_u8_min = chr(0)
+    assert u8(ord(s_u8_min[0 + int()])) == 0
+
+    s_u8_max = chr(255)
+    assert u8(ord(s_u8_max[0 + int()])) == 255
+
+    s_u8_overflow = chr(256)
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
+        u8(ord(s_u8_overflow[0 + int()]))
+
+    s_u8_overflow2 = chr(257)
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
+        u8(ord(s_u8_overflow2[0 + int()]))
 
 [case testDecode]
 from testutil import assertRaises
@@ -892,7 +1004,7 @@ def test_decode_error() -> None:
         pass
 
 def test_decode_bytearray() -> None:
-    b: bytes = bytearray(b'foo\x00bar')
+    b = bytearray(b'foo\x00bar')
     assert b.decode() == 'foo\x00bar'
     assert b.decode('utf-8') == 'foo\x00bar'
     assert b.decode('latin-1') == 'foo\x00bar'
@@ -900,7 +1012,7 @@ def test_decode_bytearray() -> None:
     assert b.decode('utf-8' + str()) == 'foo\x00bar'
     assert b.decode('latin-1' + str()) == 'foo\x00bar'
     assert b.decode('ascii' + str()) == 'foo\x00bar'
-    b2: bytes = bytearray(b'foo\x00bar\xbe')
+    b2 = bytearray(b'foo\x00bar\xbe')
     assert b2.decode('latin-1') == 'foo\x00bar\xbe'
     with assertRaises(UnicodeDecodeError):
         b2.decode('ascii')
@@ -910,7 +1022,7 @@ def test_decode_bytearray() -> None:
         b2.decode('utf-8')
     with assertRaises(UnicodeDecodeError):
         b2.decode('utf-8' + str())
-    b3: bytes = bytearray(b'Z\xc3\xbcrich')
+    b3 = bytearray(b'Z\xc3\xbcrich')
     assert b3.decode("utf-8") == 'Zürich'
 
 def test_invalid_encoding() -> None:
@@ -1137,3 +1249,132 @@ def test_optional_ne() -> None:
     assert ne_s_opt_s_opt('y', 'x')
     assert ne_s_opt_s_opt(None, 'x')
     assert ne_s_opt_s_opt('x', None)
+
+[case testConstantFoldFormatArgs]
+from typing import Final
+
+FMT: Final = "{} {}"
+
+def test_format() -> None:
+    assert FMT.format(400 + 20, "roll" + "up") == "420 rollup"
+
+[case testLowerAndUpper]
+from typing import Any
+
+def test_lower_basic() -> None:
+    assert "".lower() == ""
+    assert "hello".lower() == "hello"
+    assert "HELLO".lower() == "hello"
+    assert "Hello World".lower() == "hello world"
+    assert "123".lower() == "123"
+    assert "ABC123".lower() == "abc123"
+
+def test_upper_basic() -> None:
+    assert "".upper() == ""
+    assert "HELLO".upper() == "HELLO"
+    assert "hello".upper() == "HELLO"
+    assert "Hello World".upper() == "HELLO WORLD"
+    assert "123".upper() == "123"
+    assert "abc123".upper() == "ABC123"
+
+def test_lower_unicode() -> None:
+    assert "\u00C9".lower() == "\u00E9"                # É -> é
+    assert "\u0391\u0392".lower() == "\u03B1\u03B2"    # ΑΒ -> αβ
+    assert "\u4E2D\u6587".lower() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".lower() == "\U0001F600"         # Emoji (no case)
+
+def test_upper_unicode() -> None:
+    assert "\u00E9".upper() == "\u00C9"                # é -> É
+    assert "\u03B1\u03B2".upper() == "\u0391\u0392"    # αβ -> ΑΒ
+    assert "\u4E2D\u6587".upper() == "\u4E2D\u6587"    # CJK (no case)
+    assert "\U0001F600".upper() == "\U0001F600"         # Emoji (no case)
+
+def test_expansion() -> None:
+    # 1-to-N expansion cases
+    assert "\u0130".lower() == "\u0069\u0307"  # İ -> i + combining dot above
+    assert "\uFB03".lower() == "\uFB03"        # ffi ligature stays lowercase
+    assert "\u00DF".upper() == "SS"            # ß -> SS
+    assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
+
+def test_comprehensive() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
+        assert c.upper() == a.upper(), f"upper mismatch at U+{i:04X}"
+
+[case testIsSpace]
+from typing import Any
+
+def test_isspace() -> None:
+    # Verify correctness across all Unicode codepoints.
+    # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
+    # Any forces generic dispatch so we compare our primitive against stdlib's
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isspace() == a.isspace()
+
+[case testIsAlnum]
+def test_isalnum_basic() -> None:
+    assert "abc".isalnum()
+    assert "ABC".isalnum()
+    assert "abc123".isalnum()
+    assert "123".isalnum()
+    assert not "".isalnum()
+    assert not " ".isalnum()
+    assert not "abc!".isalnum()
+    assert not "hello world".isalnum()
+    assert not "abc-123".isalnum()
+
+def test_isalnum_unicode() -> None:
+    # Single chars: letters and digits from various scripts
+    assert "\u00E9".isalnum()        # é  (UCS-1 Latin letter)
+    assert "\u0660".isalnum()        # ٠  (UCS-2 Arabic-Indic digit)
+    assert "\u4E2D".isalnum()        # 中 (UCS-2 CJK ideograph)
+    assert "\U00010400".isalnum()    # 𐐀 (UCS-4 Deseret capital letter long I)
+    assert not "\u2000".isalnum()    # EN QUAD (whitespace)
+    assert not "\u0021".isalnum()    # !
+    assert not "\u00B6".isalnum()    # ¶  (pilcrow sign, punctuation)
+
+    # Mixed Unicode letters and digits — all alnum
+    assert "\u00E9\u0660".isalnum()         # é٠
+    assert "\u4E2D\u0041\u0660".isalnum()   # 中A٠
+
+    # Unicode letter/digit mixed with punctuation — not alnum
+    assert not "\u00E9!".isalnum()
+    assert not "\u4E2D\u2000".isalnum()     # CJK + whitespace
+
+[case testIsDigit]
+from typing import Any
+
+def test_isdigit() -> None:
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert c.isdigit() == a.isdigit()
+
+def test_isdigit_strings() -> None:
+    # ASCII digits
+    assert "0123456789".isdigit()
+    assert not "".isdigit()
+    assert not " ".isdigit()
+    assert not "a".isdigit()
+    assert not "abc".isdigit()
+    assert not "!@#".isdigit()
+
+    # Mixed ASCII
+    assert not "123abc".isdigit()
+    assert not "abc123".isdigit()
+    assert not "12 34".isdigit()
+    assert not "123!".isdigit()
+
+    # Unicode digits
+    assert "\u0660\u0661\u0662".isdigit()
+    assert "\u00b2\u00b3".isdigit()
+    assert "123\U0001d7ce\U0001d7cf\U0001d7d0".isdigit()
+
+    # Mixed digits and Unicode non-digits
+    assert not "\u00e9\u00e8".isdigit()
+    assert not "123\u00e9".isdigit()
+    assert not "\U0001d7ce!".isdigit()

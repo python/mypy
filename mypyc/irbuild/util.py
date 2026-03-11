@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, Literal, TypedDict, cast
+from typing import Any, Final, Literal, TypedDict
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -33,14 +33,14 @@ from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 
 MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
-    ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"]
+    ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"]
 )
 
 DATACLASS_DECORATORS: Final = frozenset(["dataclasses.dataclass", "attr.s", "attr.attrs"])
 
 
 MypycAttr = Literal[
-    "native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"
+    "native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"
 ]
 
 
@@ -49,6 +49,7 @@ class MypycAttrs(TypedDict):
     allow_interpreted_subclasses: NotRequired[bool]
     serializable: NotRequired[bool]
     free_list_len: NotRequired[int]
+    acyclic: NotRequired[bool]
 
 
 def is_final_decorator(d: Expression) -> bool:
@@ -138,7 +139,6 @@ def get_mypyc_attrs(
 
     def set_mypyc_attr(key: str, value: Any, line: int) -> None:
         if key in MYPYC_ATTRS:
-            key = cast(MypycAttr, key)
             attrs[key] = value
             lines[key] = line
         else:

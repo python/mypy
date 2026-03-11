@@ -1,0 +1,17 @@
+[case testTemplateStringImplicitDependencyFineGrained]
+import m
+x: str = m.x
+
+[file m.py]
+x = "foo"
+
+[file m.py.2]
+x = t"foo"
+
+[file typing_extensions.pyi]
+LiteralString = str
+
+[builtins fixtures/f_string.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "Template", variable has type "str")

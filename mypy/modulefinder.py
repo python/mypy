@@ -16,7 +16,7 @@ from enum import Enum, unique
 from typing import Final, TypeAlias as _TypeAlias
 
 from pathspec import PathSpec
-from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
+from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from mypy import pyinfo
 from mypy.errors import CompileError
@@ -471,7 +471,7 @@ class FindModuleCache:
                 if fscache.isdir(path):
                     if fscache.isfile(stub_typed_file):
                         # Stub packages can have a py.typed file, which must include
-                        # 'partial\n' to make the package partial
+                        # 'partial\n' to make the package partial.
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == "partial":
@@ -726,7 +726,7 @@ def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> 
 @functools.lru_cache
 def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
     parent_dir = os.path.dirname(dir)
-    if parent_dir == dir:
+    if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
     else:
         parent_gitignores = find_gitignores(parent_dir)
@@ -736,8 +736,8 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
         with open(gitignore) as f:
             lines = f.readlines()
         try:
-            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
-        except GitWildMatchPatternError:
+            return parent_gitignores + [(dir, PathSpec.from_lines("gitignore", lines))]
+        except GitIgnorePatternError:
             print(f"error: could not parse {gitignore}", file=sys.stderr)
             return parent_gitignores
     return parent_gitignores

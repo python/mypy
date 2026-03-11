@@ -30,7 +30,9 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bool_rprimitive,
+    bytearray_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
@@ -88,6 +90,8 @@ class Mapper:
                 return str_rprimitive
             elif typ.type.fullname == "builtins.bytes":
                 return bytes_rprimitive
+            elif typ.type.fullname == "builtins.bytearray":
+                return bytearray_rprimitive
             elif typ.type.fullname == "builtins.list":
                 return list_rprimitive
             # Dict subclasses are at least somewhat common and we
@@ -120,6 +124,8 @@ class Mapper:
                 return int16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
+            elif typ.type.fullname == "librt.vecs.vec":
+                return RVec(self.type_to_rtype(typ.args[0]))
             elif typ.type.fullname in KNOWN_NATIVE_TYPES:
                 return KNOWN_NATIVE_TYPES[typ.type.fullname]
             else:

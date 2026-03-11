@@ -9,6 +9,11 @@
 #include "../../env.h"
 
 #if HAVE_AVX2
+#if defined(__clang__)
+#pragma clang attribute push (__attribute__((target("avx2"))), apply_to=function)
+#else
+#pragma GCC target("avx2")
+#endif
 #include <immintrin.h>
 
 // Only enable inline assembly on supported compilers and on 64-bit CPUs.
@@ -52,6 +57,9 @@ base64_stream_decode_avx2 BASE64_DEC_PARAMS
 	#include "../generic/dec_head.c"
 	dec_loop_avx2(&s, &slen, &o, &olen);
 	#include "../generic/dec_tail.c"
+#if defined(__clang__)
+	#pragma clang attribute pop
+#endif
 #else
 	return base64_dec_stub(state, src, srclen, out, outlen);
 #endif

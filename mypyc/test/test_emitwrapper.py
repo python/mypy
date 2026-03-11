@@ -11,7 +11,7 @@ from mypyc.namegen import NameGenerator
 
 class TestArgCheck(unittest.TestCase):
     def setUp(self) -> None:
-        self.context = EmitterContext(NameGenerator([["mod"]]))
+        self.context = EmitterContext(NameGenerator([["mod"]]), True)
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)

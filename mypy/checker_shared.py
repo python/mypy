@@ -246,7 +246,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def narrow_type_by_equality(
+    def narrow_type_by_identity_equality(
         self,
         operator: str,
         operands: list[Expression],

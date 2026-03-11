@@ -1138,13 +1138,13 @@ class C[T]:
         x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return a
 
-[case testPEP695ArgumentDefault]
+[case testPEP695ParameterDefault]
 from typing import cast
 
 def f[T](
     x: T =
         T  # E: Name "T" is not defined \
-           # E: Incompatible default for argument "x" (default has type "TypeVar", argument has type "T")
+           # E: Incompatible default for parameter "x" (default has type "TypeVar", parameter has type "T")
 ) -> T:
     return x
 
@@ -1622,7 +1622,7 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
 reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
 
-[case testPEP695WrongNumberOfConstrainedTypes]
+[case testPEP695WrongNumberOfConstrainedTypes_no_native_parse]
 type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
 a: A[int]
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
@@ -1771,7 +1771,7 @@ type Y[T] = {"item": T, **Y[T]}  # E: Overwriting TypedDict field "item" while m
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testPEP695UsingIncorrectExpressionsInTypeVariableBound]
+[case testPEP695UsingIncorrectExpressionsInTypeVariableBound_no_native_parse]
 type X[T: (yield 1)] = Any  # E: Yield expression cannot be used as a type variable bound
 type Y[T: (yield from [])] = Any # E: Yield expression cannot be used as a type variable bound
 type Z[T: (a := 1)] = Any  # E: Named expression cannot be used as a type variable bound
@@ -1802,7 +1802,7 @@ def fooy_nested[T: (1 + (yield from []))](): pass  # E: Yield expression cannot 
 def fooz_nested[T: (1 + (a := 1))](): pass  # E: Named expression cannot be used as a type variable bound
 def fook_nested[T: (1 +(await 1))](): pass  # E: Await expression cannot be used as a type variable bound
 
-[case testPEP695UsingIncorrectExpressionsInTypeAlias]
+[case testPEP695UsingIncorrectExpressionsInTypeAlias_no_native_parse]
 type X = (yield 1)  # E: Yield expression cannot be used within a type alias
 type Y = (yield from []) # E: Yield expression cannot be used within a type alias
 type Z = (a := 1)  # E: Named expression cannot be used within a type alias

@@ -1,0 +1,361 @@
+-- Test cases for vec[t] where t is a boxed, non-vec type (PyObject *).
+-- Also tests for vec[t | None], which uses the same representation.
+
+[case testVecTCreateEmpty]
+from librt.vecs import vec, append
+
+class C: pass
+
+def primitive() -> vec[str]:
+    return vec[str]()
+
+def native_class() -> vec[C]:
+    return vec[C]()
+[out]
+def primitive():
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.alloc(0, 0, r1)
+    return r2
+def native_class():
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[__main__.C]
+L0:
+    r0 = __main__.C :: type
+    r1 = r0
+    r2 = VecTApi.alloc(0, 0, r1)
+    return r2
+
+[case testVecTAppend]
+from librt.vecs import vec, append
+
+def f(v: vec[str]) -> vec[str]:
+    return append(v, 'x')
+[out]
+def f(v):
+    v :: vec[str]
+    r0 :: str
+    r1 :: object
+    r2 :: ptr
+    r3 :: vec[str]
+L0:
+    r0 = 'x'
+    r1 = load_address PyUnicode_Type
+    r2 = r1
+    r3 = VecTApi.append(v, r0, r2)
+    return r3
+
+[case testVecTOptionalCreateEmpty]
+from librt.vecs import vec, append
+from typing import Optional
+
+class C: pass
+
+def primitive() -> vec[Optional[str]]:
+    return vec[Optional[str]]()
+
+def native_class() -> vec[Optional[C]]:
+    return vec[Optional[C]]()
+[out]
+def primitive():
+    r0 :: object
+    r1, r2 :: ptr
+    r3 :: vec[str | None]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = r1 | 1
+    r3 = VecTApi.alloc(0, 0, r2)
+    return r3
+def native_class():
+    r0 :: object
+    r1, r2 :: ptr
+    r3 :: vec[__main__.C | None]
+L0:
+    r0 = __main__.C :: type
+    r1 = r0
+    r2 = r1 | 1
+    r3 = VecTApi.alloc(0, 0, r2)
+    return r3
+
+[case testVecTOptionalAppend]
+from librt.vecs import vec, append
+from typing import Optional
+
+def f(v: vec[Optional[str]]) -> vec[Optional[str]]:
+    v = append(v, 'x')
+    return append(v, None)
+[out]
+def f(v):
+    v :: vec[str | None]
+    r0 :: str
+    r1 :: object
+    r2, r3 :: ptr
+    r4 :: vec[str | None]
+    r5, r6 :: object
+    r7, r8 :: ptr
+    r9 :: vec[str | None]
+L0:
+    r0 = 'x'
+    r1 = load_address PyUnicode_Type
+    r2 = r1
+    r3 = r2 | 1
+    r4 = VecTApi.append(v, r0, r3)
+    v = r4
+    r5 = box(None, 1)
+    r6 = load_address PyUnicode_Type
+    r7 = r6
+    r8 = r7 | 1
+    r9 = VecTApi.append(v, r5, r8)
+    return r9
+
+[case testVecTLen_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+from typing import Optional
+
+def f(v: vec[str]) -> i64:
+    return len(v)
+
+def g(v: vec[Optional[str]]) -> i64:
+    return len(v)
+[out]
+def f(v):
+    v :: vec[str]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+def g(v):
+    v :: vec[str | None]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+
+[case testVecTGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[str], n: i64) -> str:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[str]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: str
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecTBufObject
+    r8 = r5 * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: builtins.str*
+    keep_alive v
+    return r10
+
+[case testVecTOptionalGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+from typing import Optional
+
+def f(v: vec[Optional[str]], n: i64) -> Optional[str]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[str | None]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: union[str, None]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecTBufObject
+    r8 = r5 * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: union*
+    keep_alive v
+    return r10
+
+[case testNewTPopLast]
+from typing import Tuple
+from librt.vecs import vec, pop
+
+def pop_last(v: vec[str]) -> Tuple[vec[str], str]:
+    return pop(v)
+[out]
+def pop_last(v):
+    v :: vec[str]
+    r0 :: tuple[vec[str], str]
+L0:
+    r0 = VecTApi.pop(v, -1)
+    return r0
+
+[case testVecTConstructFromListComprehension]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(n: i64) -> vec[str]:
+    return vec[str](['x' for x in range(i64(5))])
+[out]
+def f(n):
+    n :: i64
+    r0 :: object
+    r1 :: ptr
+    r2, r3 :: vec[str]
+    r4, x :: i64
+    r5 :: bit
+    r6 :: str
+    r7 :: object
+    r8 :: ptr
+    r9 :: vec[str]
+    r10 :: i64
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.alloc(0, 0, r1)
+    r3 = r2
+    r4 = 0
+    x = r4
+L1:
+    r5 = r4 < 5 :: signed
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = 'x'
+    r7 = load_address PyUnicode_Type
+    r8 = r7
+    r9 = VecTApi.append(r3, r6, r8)
+    r3 = r9
+L3:
+    r10 = r4 + 1
+    r4 = r10
+    x = r10
+    goto L1
+L4:
+    return r3
+
+[case testVecTCheckItemType]
+from librt.vecs import vec
+from typing import Tuple, Any, List, TypeVar
+
+def bad1(v: vec[Tuple[str, str]]) -> None: pass
+def bad2(v: vec[int]) -> None: pass
+def bad3(v: vec) -> None: pass
+def bad4(v: vec[Any]) -> None: pass
+T = TypeVar("T")
+def bad5(v: vec[T]) -> None: pass
+
+def ok1(v: vec[str], v2: vec[bytes]) -> None: pass
+def ok2(v: vec[Tuple[str, ...]]) -> None: pass
+def ok3(v: vec[object]) -> None: pass
+def ok4(v: vec[List[Any]]) -> None: pass
+def ok5(v: vec[vec[str]]) -> None: pass
+[out]
+main:4: error: Invalid item type for "vec"
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"
+main:9: error: Invalid item type for "vec"
+
+[case testVecTCheckItemTypeUnion]
+from librt.vecs import vec
+from typing import Tuple, Union, Optional, Any, TypeVar
+from mypy_extensions import i64
+
+def bad1(v: vec[Union[str, bytes]]) -> None: pass
+def bad2(v: vec[Union[str, bytes, None]]) -> None: pass
+def bad3(v: vec[Union[int, None]]) -> None: pass
+def bad4(v: vec[Union[None, int]]) -> None: pass
+def bad5(v: vec[Union[i64, None]]) -> None: pass
+def bad6(v: vec[Union[None, i64]]) -> None: pass
+def bad7(v: vec[Union[bool, None]]) -> None: pass
+def bad9(v: vec[Union[float, None]]) -> None: pass
+def bad10(v: vec[Union[vec[str], None]]) -> None: pass
+def bad11(v: vec[Optional[vec[str]]]) -> None: pass
+def bad12(v: vec[Union[str, Any]]) -> None: pass
+T = TypeVar("T")
+def bad13(v: vec[Union[str, T]]) -> None: pass
+
+def ok1(v: vec[Union[str, None]]) -> None: pass
+def ok2(v: vec[Union[None, str]]) -> None: pass
+[out]
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"
+main:8: error: Invalid item type for "vec"
+main:9: error: Invalid item type for "vec"
+main:10: error: Invalid item type for "vec"
+main:11: error: Invalid item type for "vec"
+main:12: error: Invalid item type for "vec"
+main:13: error: Invalid item type for "vec"
+main:14: error: Invalid item type for "vec"
+main:15: error: Invalid item type for "vec"
+main:17: error: Invalid item type for "vec"
+
+[case testVecTCheckItemTypeDuringConstruction]
+from librt.vecs import vec
+from typing import Optional, Union
+
+def f() -> None:
+    vec[Optional[int]]()
+    vec[Union[str, bytes]]()
+    vec[Optional[vec[str]]]()
+
+[out]
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"

@@ -514,7 +514,7 @@ if int():
 
 [builtins fixtures/tuple.pyi]
 
-[case testDefaultArgumentExpressions]
+[case testDefaultParameterExpressions]
 import typing
 class B: pass
 class A: pass
@@ -524,52 +524,52 @@ def f(x: 'A' = A()) -> None:
     a = x # type: A
 [out]
 
-[case testDefaultArgumentExpressions2]
+[case testDefaultParameterExpressions2]
 import typing
 class B: pass
 class A: pass
 
-def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+def f(x: 'A' = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "A")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
-[case testDefaultArgumentExpressionsGeneric]
+[case testDefaultParameterExpressionsGeneric]
 from typing import TypeVar
 T = TypeVar('T', bound='A')
 
 class B: pass
 class A: pass
 
-def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
+def f(x: T = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "T")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
     a = x # type: A
-[case testDefaultArgumentsWithSubtypes]
+[case testDefaultParametersWithSubtypes]
 import typing
 class A: pass
 class B(A): pass
 
-def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (default has type "A", argument has type "B")
+def f(x: 'B' = A()) -> None: # E: Incompatible default for parameter "x" (default has type "A", parameter has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
 [out]
 
-[case testMultipleDefaultArgumentExpressions]
+[case testMultipleDefaultParameterExpressions]
 import typing
 class A: pass
 class B: pass
 
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for parameter "x" (default has type "B", parameter has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
 [out]
 
-[case testMultipleDefaultArgumentExpressions2]
+[case testMultipleDefaultParameterExpressions2]
 import typing
 class A: pass
 class B: pass
 
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for parameter "y" (default has type "A", parameter has type "B")
     pass
 [out]
 
@@ -774,11 +774,11 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
-[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment]
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment_no_native_parse]
 class A:
     def f(self):
         # type: () -> None
-        def g(x):  # E: Type signature has too few arguments
+        def g(x):  # E: Type signature has too few parameters
             # type: () -> None
             pass
 
@@ -795,14 +795,14 @@ class A:
             arg.B  # E: "object" has no attribute "B"
 [file mod.py]
 
-[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment_no_native_parse]
 class A:
     def f(self):
         # type: () -> None
         class B:
             def g(self):
                 # type: () -> None
-                def h(x):  # E: Type signature has too few arguments
+                def h(x):  # E: Type signature has too few parameters
                     # type: () -> None
                     pass
 
@@ -1523,15 +1523,16 @@ else:
                     # N:     def f(int, /) -> None
 
 [case testConditionalFunctionDefinitionUnreachable]
+# flags: --warn-unreachable
 def bar() -> None:
     if False:
-        foo = 1
+        foo = 1  # E: Statement is unreachable
     else:
         def foo(obj): ...
 
 def baz() -> None:
     if False:
-        foo: int = 1
+        foo: int = 1  # E: Statement is unreachable
     else:
         def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
 [builtins fixtures/tuple.pyi]
@@ -1549,7 +1550,7 @@ if x:
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
-def f(x: int) -> None: pass # N: "f" defined here
+def f(x: int) -> None: pass
 x = None # type: Any
 if x:
     def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
@@ -1937,7 +1938,7 @@ def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs arg
 from typing import Callable
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument "x" in Callable
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate parameter "x" in Callable
 
 [builtins fixtures/dict.pyi]
 
@@ -2139,17 +2140,17 @@ class A:
         pass
 [builtins fixtures/staticmethod.pyi]
 
-[case testEllipsisWithSomethingAfterItFails]
+[case testEllipsisWithSomethingAfterItFails_no_native_parse]
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
-[case testEllipsisWithSomethingBeforeItFails]
+[case testEllipsisWithSomethingBeforeItFails_no_native_parse]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature
+main:1: error: Ellipses cannot accompany other parameter types in function type signature
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic
@@ -2343,11 +2344,10 @@ g(__a__=1)
 
 [builtins fixtures/bool.pyi]
 [out]
-main:1: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
+    def __eq__(self, other) -> bool: return True # We are all equal.
 
 a = A()
 a.__eq__(a)
@@ -2359,7 +2359,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
+    def __eq__(self, other) -> bool: return True # We are all equal.
 
 a = A()
 a.__eq__(a)
@@ -2630,7 +2630,6 @@ x_in = None
 def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)
-[out]
 
 [case testNoComplainInferredNoneStrict]
 from typing import TypeVar, Optional
@@ -2640,7 +2639,6 @@ x_in = None
 def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)
-[out]
 
 [case testNoComplainNoneReturnFromUntyped]
 def foo() -> None:
@@ -3512,6 +3510,56 @@ class Qux(Bar):
         pass
 [builtins fixtures/tuple.pyi]
 
+[case testCallableJoinWithDefaults]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def join(t1: T, t2: T) -> T: ...
+
+def f1() -> None: ...
+def f2(i: int = 0) -> None: ...
+def f3(i: str = "") -> None: ...
+
+reveal_type(join(f1, f2))  # N: Revealed type is "def ()"
+reveal_type(join(f1, f3))  # N: Revealed type is "def ()"
+reveal_type(join(f2, f3))  # N: Revealed type is "builtins.function"  # TODO: this could be better
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithDefaultsMultiple]
+from typing import TypeVar
+T = TypeVar("T")
+def join(t1: T, t2: T, t3: T) -> T: ...
+
+def f_1(common, a=None): ...
+def f_any(*_, **__): ...
+def f_3(common, b=None, x=None): ...
+
+fdict = {
+    "f_1": f_1,
+    "f_any": f_any,
+    "f_3": f_3,
+}
+reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (common: Any, a: Any =) -> Any]"
+
+reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, a: Any =) -> Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithType]
+from __future__ import annotations
+class Exc: ...
+class AttributeErr(Exc):
+    def __init__(self, *args: object) -> None: ...
+class FnfErr(Exc): ...
+
+x = [
+    FnfErr,
+    AttributeErr,
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+[builtins fixtures/type.pyi]
+
 [case testDistinctFormatting]
 from typing import Awaitable, Callable, ParamSpec
 
@@ -3703,3 +3751,20 @@ foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expe
 kwargs: dict[str, object]
 foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
 [builtins fixtures/dict.pyi]
+
+[case testNoImplicitReturnErrorOnDeferral_no_empty]
+# flags: --no-warn-no-return
+def deferred() -> int:
+    c: C
+    x = 1
+    if int():
+        x = c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    return x
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int:
+    return 1

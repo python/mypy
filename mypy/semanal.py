@@ -166,6 +166,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -245,6 +246,7 @@ from mypy.typeanal import (
     TypeVarLikeList,
     analyze_type_alias,
     check_for_explicit_any,
+    check_vec_type_args,
     detect_diverging_alias,
     find_self_type,
     fix_instance,
@@ -290,6 +292,7 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeStrVisitor,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -447,7 +450,7 @@ class SemanticAnalyzer(
     def __init__(
         self,
         modules: dict[str, MypyFile],
-        missing_modules: set[str],
+        missing_modules: dict[str, int],
         incomplete_namespaces: set[str],
         errors: Errors,
         plugin: Plugin,
@@ -493,8 +496,6 @@ class SemanticAnalyzer(
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
         self.all_exports: list[str] = []
-        # Map from module id to list of explicitly exported names (i.e. names in __all__).
-        self.export_map: dict[str, list[str]] = {}
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -713,6 +714,17 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
+        if self.options.allow_redefinition_new and self.options.allow_redefinition_old:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail(
+                "--allow-redefinition-old and --allow-redefinition-new"
+                " should not be used together",
+                n,
+            )
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -722,7 +734,6 @@ class SemanticAnalyzer(
         if file_node.fullname == "typing_extensions":
             self.add_typing_extension_aliases(file_node)
         self.adjust_public_exports()
-        self.export_map[self.cur_mod_id] = self.all_exports
         self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
@@ -1106,7 +1117,7 @@ class SemanticAnalyzer(
             return typ
         p_last_type = get_proper_type(last_type.type)
         if not isinstance(p_last_type, TypedDictType):
-            self.fail("Unpack item in ** argument must be a TypedDict", last_type)
+            self.fail("Unpack item in ** parameter must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         overlap = set(typ.arg_names) & set(p_last_type.items)
@@ -1114,7 +1125,9 @@ class SemanticAnalyzer(
         overlap.discard(typ.arg_names[-1])
         if overlap:
             overlapped = ", ".join([f'"{name}"' for name in sorted(filter(None, overlap))])
-            self.fail(f"Overlap between argument names and ** TypedDict items: {overlapped}", defn)
+            self.fail(
+                f"Overlap between parameter names and ** TypedDict items: {overlapped}", defn
+            )
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         # OK, everything looks right now, mark the callable type as using unpack.
@@ -1377,7 +1390,7 @@ class SemanticAnalyzer(
                     elif (deprecated := self.get_deprecated(d)) is not None:
                         deprecation = True
                         if isinstance(typ := item.func.type, CallableType):
-                            typestr = f" {typ} "
+                            typestr = f" {typ.accept(TypeStrVisitor(options=self.options))} "
                         else:
                             typestr = " "
                         item.func.deprecated = (
@@ -1794,6 +1807,8 @@ class SemanticAnalyzer(
         if (not dec.is_overload or dec.var.is_property) and self.type:
             dec.var.info = self.type
             dec.var.is_initialized_in_class = True
+        if no_type_check:
+            erase_func_annotations(dec.func)
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if could_be_decorated_property and dec.decorators and dec.var.is_property:
@@ -2690,7 +2705,7 @@ class SemanticAnalyzer(
         if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(base):
             self.process_placeholder(
                 None, "tuple base", defn, force_progress=base != info.tuple_type
             )
@@ -2967,8 +2982,13 @@ class SemanticAnalyzer(
                 # precedence, but doesn't seem to be important in most use cases.
                 node = SymbolTableNode(GDEF, self.modules[fullname])
             else:
-                if id == as_id == "__all__" and module_id in self.export_map:
-                    self.all_exports[:] = self.export_map[module_id]
+                if id == as_id == "__all__":
+                    # For modules with __all__ public status of symbols is determined uniquely
+                    # by contents of __all__, so we can recover the latter here, and avoid
+                    # serializing this (redundant) information in MypyFile.
+                    self.all_exports[:] = [
+                        name for name, sym in module.names.items() if sym.module_public
+                    ]
                 node = module.names.get(id)
 
             missing_submodule = False
@@ -3217,6 +3237,12 @@ class SemanticAnalyzer(
                     self.add_imported_symbol(
                         name, node, context=i, module_public=True, module_hidden=False
                     )
+                    # This is a (minimalist) copy of the logic in visit_import_from(), we need
+                    # to clean-up any remaining placeholders by replacing them with Var(Any).
+                    if isinstance(node.node, PlaceholderNode) and self.final_iteration:
+                        self.add_unknown_imported_symbol(
+                            name, i, target_name=None, module_public=True, module_hidden=False
+                        )
 
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
@@ -4011,8 +4037,8 @@ class SemanticAnalyzer(
                 variadic = True
             new_tvar_defs.append(td)
 
-        empty_tuple_index = typ.empty_tuple_index if isinstance(typ, UnboundType) else False
-        return analyzed, new_tvar_defs, depends_on, empty_tuple_index
+        indexed = bool(isinstance(typ, UnboundType) and (typ.args or typ.empty_tuple_index))
+        return analyzed, new_tvar_defs, depends_on, indexed
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -4048,7 +4074,11 @@ class SemanticAnalyzer(
         type_params: TypeVarLikeList | None
         all_type_params_names: list[str] | None
         if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
-            rvalue = s.rvalue.args[1]
+            rvalue = (
+                s.rvalue.args[1]
+                if s.rvalue.arg_kinds[1] == ARG_POS
+                else s.rvalue.args[s.rvalue.arg_names.index("value")]
+            )
             pep_695 = True
             type_params, all_type_params_names = self.analyze_type_alias_type_params(s.rvalue)
         else:
@@ -4107,10 +4137,10 @@ class SemanticAnalyzer(
             res = NoneType()
             alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
-            empty_tuple_index = False
+            indexed = False
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed = self.analyze_alias(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
@@ -4150,12 +4180,11 @@ class SemanticAnalyzer(
         no_args = (
             isinstance(res, ProperType)
             and isinstance(res, Instance)
-            and not res.args
-            and not empty_tuple_index
             and not pep_695
+            and not indexed
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
-            if not validate_instance(res, self.fail, empty_tuple_index):
+            if not validate_instance(res, self.fail, indexed):
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
         # Aliases defined within functions can't be accessed outside
         # the function, since the symbol table will no longer
@@ -4236,7 +4265,9 @@ class SemanticAnalyzer(
             return False
         if not self.check_typevarlike_name(rvalue, name, rvalue):
             return False
-        if rvalue.arg_kinds.count(ARG_POS) != 2:
+        if rvalue.arg_kinds.count(ARG_POS) != (
+            2 - ("value" in rvalue.arg_names) - ("name" in rvalue.arg_names)
+        ):
             return False
 
         return True
@@ -4557,6 +4588,17 @@ class SemanticAnalyzer(
                 self.name_not_defined(lval.name, lval)
             self.check_lvalue_validity(lval.node, lval)
 
+        if self.scope.functions and lval.name in self.global_decls[-1]:
+            # Technically, we only need to set this if original r.h.s. would be inferred
+            # as None, but it is tricky to detect reliably during semantic analysis.
+            if (
+                original_def
+                and isinstance(original_def.node, Var)
+                and original_def.node.is_inferred
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_vars = True
+
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
@@ -4642,6 +4684,14 @@ class SemanticAnalyzer(
                     for func in self.scope.functions:
                         if isinstance(func, FuncDef):
                             func.has_self_attr_def = True
+            if (
+                cur_node
+                and isinstance(cur_node.node, Var)
+                and cur_node.node.is_inferred
+                and cur_node.node.is_initialized_in_class
+            ):
+                for func in self.scope.functions:
+                    func.can_infer_vars = True
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -5638,7 +5688,7 @@ class SemanticAnalyzer(
                 return
 
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed = self.analyze_alias(
                 s.name.name,
                 s.value.expr(),
                 allow_placeholder=True,
@@ -5834,6 +5884,15 @@ class SemanticAnalyzer(
             if key is not None:
                 key.accept(self)
             value.accept(self)
+
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> None:
+        for item in expr.items:
+            if isinstance(item, tuple):
+                item[0].accept(self)
+                if item[3] is not None:
+                    item[3].accept(self)
+            else:
+                item.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
@@ -6164,6 +6223,10 @@ class SemanticAnalyzer(
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
 
+        if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
+            # Apply restrictions specific to vec
+            check_vec_type_args(types, expr, self)
+
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.
 
@@ -6284,21 +6347,33 @@ class SemanticAnalyzer(
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
         if any(expr.generator.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         expr.generator.accept(self)
 
     def visit_set_comprehension(self, expr: SetComprehension) -> None:
         if any(expr.generator.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
         if any(expr.is_async):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            if (
+                not self.is_func_scope()
+                or not self.function_stack
+                or not self.function_stack[-1].is_coroutine
+            ):
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
 
         with self.enter(expr):
@@ -6735,6 +6810,7 @@ class SemanticAnalyzer(
         return sym
 
     def is_visible_import(self, base_id: str, id: str) -> bool:
+        # TODO: can we reuse SCC-level tracking from build.py instead?
         if id in self.import_map[self.cur_mod_id]:
             # Fast path: module is imported locally.
             return True
@@ -8299,3 +8375,12 @@ def is_init_only(node: Var) -> bool:
         isinstance(type := get_proper_type(node.type), Instance)
         and type.type.fullname == "dataclasses.InitVar"
     )
+
+
+def erase_func_annotations(func: FuncDef) -> None:
+    func.type_args = None
+    for arg in func.arguments:
+        arg.type_annotation = None
+        arg.variable.type = None
+    func.type = None
+    func.unanalyzed_type = None

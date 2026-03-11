@@ -226,7 +226,7 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible parameters of signature 2
     pass
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
@@ -271,7 +271,7 @@ from typing import overload
 @overload  # E: Single overload definition, multiple required
 def foo(x: int) -> None: ...
 
-def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     pass
 [builtins fixtures/tuple.pyi]
 
@@ -625,8 +625,8 @@ a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument type "object" \
                 # N: Possible overload variants: \
-                # N:     def __init__(self, a: A) -> A \
-                # N:     def __init__(self, b: B) -> A
+                # N:     def A(a: A) -> A \
+                # N:     def A(b: B) -> A
 
 class A:
   @overload
@@ -4347,7 +4347,7 @@ class Wrapper2:
     @staticmethod
     def foo(x: int) -> int: ...
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
     @staticmethod
     def foo(x): pass
 
@@ -4358,7 +4358,7 @@ class Wrapper3:
     @overload
     @staticmethod
     def foo(x: str) -> str: ...
-    def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: Union[int, str]): pass  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 [builtins fixtures/staticmethod.pyi]
 
 [case testOverloadWithSwappedDecorators2]
@@ -4394,7 +4394,7 @@ class Wrapper3:
     def foo(x: int) -> int: ...
 
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @staticmethod
     def foo(x): pass
@@ -4756,7 +4756,7 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation does not accept all possible parameters of signature 1
 main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
@@ -5426,7 +5426,7 @@ def dec_c(f: Callable[..., Any]) -> C:
 def f_c(arg: int) -> None: ...
 @overload
 def f_c(arg: str) -> None: ...
-@dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+@dec_c  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 def f_c(arg): ...
 [builtins fixtures/dict.pyi]
 

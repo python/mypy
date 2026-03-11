@@ -66,7 +66,7 @@ else:
         "pbkdf2_hmac",
     )
 
-def new(name: str, data: ReadableBuffer = b"", *, usedforsecurity: bool = ...) -> HASH: ...
+def new(name: str, data: ReadableBuffer = b"", *, usedforsecurity: bool = True) -> HASH: ...
 
 algorithms_guaranteed: AbstractSet[str]
 algorithms_available: AbstractSet[str]

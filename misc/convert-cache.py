@@ -50,7 +50,7 @@ def main() -> None:
         input, output = SqliteMetadataStore(input_dir), FilesystemMetadataStore(output_dir)
 
     for s in input.list_all():
-        if s.endswith(".json"):
+        if s.endswith((".json", ".ff")):
             assert output.write(
                 s, input.read(s), input.getmtime(s)
             ), f"Failed to write cache file {s}!"

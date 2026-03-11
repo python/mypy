@@ -11,7 +11,9 @@ from mypyc.options import CompilerOptions
 class TestMisc(unittest.TestCase):
     def test_debug_op(self) -> None:
         block = BasicBlock()
-        builder = LowLevelIRBuilder(errors=None, options=CompilerOptions())
+        builder = LowLevelIRBuilder(
+            errors=None, options=CompilerOptions(strict_traceback_checks=True)
+        )
         builder.activate_block(block)
         builder.debug_print("foo")
 

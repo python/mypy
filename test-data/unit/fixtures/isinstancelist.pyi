@@ -18,6 +18,7 @@ Ellipsis = ellipsis()
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
+def hasattr(x: object, name: str) -> bool: pass
 
 class int:
     def __add__(self, x: int) -> int: pass

@@ -37,6 +37,7 @@ generate fast code.
    float_operations
    str_operations
    bytes_operations
+   bytearray_operations
    list_operations
    dict_operations
    set_operations

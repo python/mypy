@@ -162,7 +162,7 @@ class TypedDictAnalyzer:
             self.add_keys_and_types_from_base(
                 base, field_types, required_keys, readonly_keys, defn
             )
-        (new_field_types, new_statements, new_required_keys, new_readonly_keys) = (
+        new_field_types, new_statements, new_required_keys, new_readonly_keys = (
             self.analyze_typeddict_classdef_fields(defn, oldfields=field_types)
         )
         if new_field_types is None:
@@ -607,7 +607,7 @@ class TypedDictAnalyzer:
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         typeddict_type = TypedDictType(item_types, required_keys, readonly_keys, fallback)
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(typeddict_type):
             self.api.process_placeholder(
                 None, "TypedDict item", info, force_progress=typeddict_type != info.typeddict_type
             )
