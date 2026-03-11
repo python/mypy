@@ -2552,7 +2552,7 @@ MypyFile:1(
 x = [1 2]
 y = 2
 [out]
-1:8: error: Expected ',', found int
+1:8: error: Expected `,`, found int
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x)
@@ -2603,7 +2603,7 @@ MypyFile:1(
 from m
 1
 [out]
-1:7: error: Expected 'import', found newline
+1:7: error: Expected `import`, found newline
 MypyFile:1(
   ImportFrom:1(m, [])
   ExpressionStmt:2(
@@ -2613,7 +2613,7 @@ MypyFile:1(
 from m
 1
 [out]
-1:7: error: Expected 'import', found newline
+1:7: error: Expected `import`, found newline
 MypyFile:1(
   ImportFrom:1(m, [])
   ExpressionStmt:2(
@@ -2626,7 +2626,7 @@ def f():
 
 def g(): ...
 [out]
-3:8: error: Expected ')', found newline
+3:8: error: Expected `)`, found newline
 MypyFile:1(
   FuncDef:1(
     f
@@ -2651,7 +2651,7 @@ def f(
 
 def g(): ...
 [out]
-3:6: error: Expected ')', found newline
+3:6: error: Expected `)`, found newline
 5:1: error: Expected an indented block after function definition
 MypyFile:1(
   FuncDef:1(
@@ -2671,7 +2671,7 @@ class A
 
 def f(): pass
 [out]
-1:8: error: Expected ':', found newline
+1:8: error: Expected `:`, found newline
 3:1: error: Expected an indented block after `class` definition
 MypyFile:1(
   ClassDef:1(

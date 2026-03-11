@@ -111,6 +111,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -168,6 +169,7 @@ class State:
         self.options = options
         self.errors: list[dict[str, Any]] = []
         self.num_funcs = 0
+        self.uses_template_strings = False
 
     def add_error(
         self,
@@ -233,6 +235,7 @@ def native_parse(
     node = MypyFile(defs, imports)
     node.path = filename
     node.is_partial_stub_package = is_partial_package
+    node.uses_template_strings = state.uses_template_strings
     # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores
@@ -243,7 +246,7 @@ def expect_end_tag(data: ReadBuffer) -> None:
 
 
 def expect_tag(data: ReadBuffer, tag: Tag) -> None:
-    assert read_tag(data) == tag
+    assert (actual := read_tag(data)) == tag, actual
 
 
 def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
@@ -263,7 +266,7 @@ def parse_to_binary_ast(
 ) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool]:
     ast_bytes, errors, ignores, import_bytes, is_partial_package = ast_serialize.parse(
         filename,
-        skip_function_bodies,
+        skip_function_bodies=skip_function_bodies,
         python_version=options.python_version,
         platform=options.platform,
         always_true=options.always_true,
@@ -1522,6 +1525,32 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 read_loc(data, s)
                 fitems.append(s)
         expr = build_fstring_join(state, data, fitems)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.TSTRING_EXPR:
+        state.uses_template_strings = True
+        nparts = read_int(data)
+        titems: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
+        for _ in range(nparts):
+            if read_bool(data):
+                e = read_expression(state, data)
+                s = read_str(data)
+                if read_bool(data):
+                    conv = read_str(data)
+                else:
+                    conv = None
+                if read_bool(data):
+                    # Parse format spec as a JoinedStr, this matches the old parser behavior.
+                    format_spec = read_fstring_items(state, data)
+                else:
+                    format_spec = None
+                titems.append((e, s, conv, format_spec))
+            else:
+                s = StrExpr(read_str(data))
+                read_loc(data, s)
+                titems.append(s)
+        expr = TemplateStrExpr(titems)
+        read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:

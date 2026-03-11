@@ -220,7 +220,7 @@ jobs:
     # To speed-up process until ast_serialize is on PyPI.
     - name: Install pinned ast-serialize
       if: ${{ matrix.dev_ast_serialize }}
-      run: pip install ast-serialize@git+https://github.com/mypyc/ast_serialize.git@da5a16cf268dbec63ed6b2e6b715470576e2d1a6
+      run: pip install ast-serialize@git+https://github.com/mypyc/ast_serialize.git@555942927658b45941b834d61c7074267e5f7075
 
     - name: Setup tox environment
       run: |
