@@ -1122,6 +1122,40 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
+// Cached class references for __spec__ / __loader__ construction.
+static PyObject *CPyImport_ModuleSpecClass = NULL;
+static PyObject *CPyImport_ExtFileLoaderClass = NULL;
+static PyObject *CPyImport_SpecKwnames = NULL;  // ("origin", "is_package")
+
+// Initialize cached references for ModuleSpec and ExtensionFileLoader.
+// Returns 0 on success, -1 on error.
+static int CPyImport_InitSpecClasses(void) {
+    if (CPyImport_ModuleSpecClass != NULL) {
+        return 0;
+    }
+    PyObject *machinery = PyImport_ImportModule("importlib.machinery");
+    if (machinery == NULL) {
+        return -1;
+    }
+    CPyImport_ModuleSpecClass = PyObject_GetAttrString(machinery, "ModuleSpec");
+    CPyImport_ExtFileLoaderClass = PyObject_GetAttrString(machinery, "ExtensionFileLoader");
+    Py_DECREF(machinery);
+    if (CPyImport_ModuleSpecClass == NULL || CPyImport_ExtFileLoaderClass == NULL) {
+        Py_CLEAR(CPyImport_ModuleSpecClass);
+        Py_CLEAR(CPyImport_ExtFileLoaderClass);
+        return -1;
+    }
+    CPyImport_SpecKwnames = PyTuple_Pack(2,
+        PyUnicode_InternFromString("origin"),
+        PyUnicode_InternFromString("is_package"));
+    if (CPyImport_SpecKwnames == NULL) {
+        Py_CLEAR(CPyImport_ModuleSpecClass);
+        Py_CLEAR(CPyImport_ExtFileLoaderClass);
+        return -1;
+    }
+    return 0;
+}
+
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
@@ -1299,6 +1333,74 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
             Py_DECREF(path_list);
         } else {
             PyErr_Clear();
+        }
+    }
+
+    // Set __spec__ and __loader__ if not already set. Uses vectorcall to
+    // avoid allocating a kwargs dict.
+    {
+        PyObject *spec = PyObject_GetAttrString(modobj, "__spec__");
+        if (spec == NULL || spec == Py_None) {
+            Py_XDECREF(spec);
+            PyErr_Clear();
+            if (CPyImport_InitSpecClasses() < 0) {
+                goto fail;
+            }
+            PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+            if (file == NULL) {
+                PyErr_Clear();
+                file = Py_None;
+                Py_INCREF(file);
+            }
+            // ExtensionFileLoader(name, path)
+            PyObject *loader = PyObject_CallFunctionObjArgs(
+                CPyImport_ExtFileLoaderClass, module_name, file, NULL);
+            if (loader == NULL) {
+                Py_DECREF(file);
+                goto fail;
+            }
+            // ModuleSpec(name, loader, *, origin=file, is_package=is_package)
+            PyObject *is_pkg_obj = is_package ? Py_True : Py_False;
+            PyObject *spec_args[] = {NULL, module_name, loader, file, is_pkg_obj};
+            spec = PyObject_Vectorcall(
+                CPyImport_ModuleSpecClass,
+                spec_args + 1,
+                2 | PY_VECTORCALL_ARGUMENTS_OFFSET,
+                CPyImport_SpecKwnames);
+            Py_DECREF(file);
+            if (spec == NULL) {
+                Py_DECREF(loader);
+                goto fail;
+            }
+            if (is_package) {
+                // Set submodule_search_locations from __path__
+                PyObject *path = PyObject_GetAttrString(modobj, "__path__");
+                if (path != NULL) {
+                    if (PyObject_SetAttrString(spec, "submodule_search_locations", path) < 0) {
+                        Py_DECREF(path);
+                        Py_DECREF(spec);
+                        Py_DECREF(loader);
+                        goto fail;
+                    }
+                    Py_DECREF(path);
+                } else {
+                    PyErr_Clear();
+                }
+            }
+            if (PyObject_SetAttrString(modobj, "__spec__", spec) < 0) {
+                Py_DECREF(spec);
+                Py_DECREF(loader);
+                goto fail;
+            }
+            if (PyObject_SetAttrString(modobj, "__loader__", loader) < 0) {
+                Py_DECREF(spec);
+                Py_DECREF(loader);
+                goto fail;
+            }
+            Py_DECREF(spec);
+            Py_DECREF(loader);
+        } else {
+            Py_DECREF(spec);
         }
     }
 

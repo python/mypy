@@ -246,6 +246,62 @@ assert native.other_pkg._path == [expected], native.other_pkg._path
 # Non-package submodule should NOT have __path__
 assert not native.get_sub_has_path()
 
+[case testNativeImportSpecAttribute]
+# separate: [(["native.py", "other_top.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from typing import Any
+import other_top
+from other_pkg import other_sub
+import other_pkg
+
+def get_top_spec() -> Any:
+    return other_top.__spec__
+
+def get_sub_spec() -> Any:
+    return other_sub.__spec__
+
+def get_pkg_spec() -> Any:
+    return other_pkg.__spec__
+[file other_top.py]
+from typing import Any
+# __spec__ should be available during module initialization
+_spec: Any = __spec__  # type: ignore[name-defined]
+
+def func() -> int:
+    return 1
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 2
+[file driver.py]
+import importlib.machinery
+import native
+
+top_spec = native.get_top_spec()
+sub_spec = native.get_sub_spec()
+pkg_spec = native.get_pkg_spec()
+
+# __spec__.name should match the module name
+assert top_spec.name == "other_top"
+assert sub_spec.name == "other_pkg.other_sub"
+assert pkg_spec.name == "other_pkg"
+
+# __spec__ should have correct origin (same as __file__)
+assert top_spec.origin == native.other_top.__file__
+assert sub_spec.origin == native.other_sub.__file__
+
+# __spec__.loader should be an ExtensionFileLoader and also be set as __loader__
+assert isinstance(top_spec.loader, importlib.machinery.ExtensionFileLoader)
+assert native.other_top.__loader__ is top_spec.loader
+
+# Package spec should have submodule_search_locations
+assert pkg_spec.submodule_search_locations is not None
+
+# Non-package spec should not have submodule_search_locations
+assert top_spec.submodule_search_locations is None
+
+# __spec__ should be available at init time
+assert native.other_top._spec.name == "other_top"
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
