@@ -5,8 +5,8 @@
 ### Better narrowing
 
 Mypy's implementation of narrowing has been substantially reworked. Mypy will now narrow more
-aggressively, more consistently and more correctly. In particular, you are likely to notice new
-narrowing behaviour in equality expressions (`==`), containment expressions (`in`),
+aggressively, more consistently, and more correctly. In particular, you are likely to notice new
+narrowing behavior in equality expressions (`==`), containment expressions (`in`),
 match statements, and additional expressions providing type guards.
 
 Note that mypy (and other Python type checkers) do not model the potential for various non-local
@@ -28,14 +28,14 @@ Contributed by Shantanu Jain.
 - Narrow types based on collection containment (Shantanu, PR [20602](https://github.com/python/mypy/pull/20602))
 - Refactor and improve narrowing for type(x) == t checks (Shantanu, PR [20634](https://github.com/python/mypy/pull/20634))
 - Narrow for type expr comparisons to type exprs (Shantanu, PR [20639](https://github.com/python/mypy/pull/20639))
-- Narrowing for comparisons against x.__class__ (Shantanu, PR [20642](https://github.com/python/mypy/pull/20642))
+- Narrowing for comparisons against `x.__class__` (Shantanu, PR [20642](https://github.com/python/mypy/pull/20642))
 - Better narrowing with custom equality (Shantanu, PR [20643](https://github.com/python/mypy/pull/20643))
 - Use a single pass for core narrowing logic, add comments (Shantanu, PR [20659](https://github.com/python/mypy/pull/20659))
 - Narrowing for final type objects (Shantanu, PR [20661](https://github.com/python/mypy/pull/20661))
 - Avoid narrowing type[T] (Shantanu, PR [20662](https://github.com/python/mypy/pull/20662))
 - Avoid widening to Any for checks like `type(x) is type(y: Any)` (Shantanu, PR [20663](https://github.com/python/mypy/pull/20663))
 - Preserve some lost narrowing, cleanup (Shantanu, PR [20674](https://github.com/python/mypy/pull/20674))
-- Fix narrowing related code for types with overloaded __new__ (Shantanu, PR [20676](https://github.com/python/mypy/pull/20676))
+- Fix narrowing related code for types with overloaded `__new__` (Shantanu, PR [20676](https://github.com/python/mypy/pull/20676))
 - Fix isinstance with unions of tuples (Shantanu, PR [20677](https://github.com/python/mypy/pull/20677))
 - Fix regression to chained containment (Shantanu, PR [20688](https://github.com/python/mypy/pull/20688))
 - Improve else handling with custom equality (Shantanu, PR [20692](https://github.com/python/mypy/pull/20692))
