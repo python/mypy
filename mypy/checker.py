@@ -1552,6 +1552,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if len(expanded) > 1:
             self.msg.iteration_dependent_errors(iter_errors)
+
     def check_funcdef_item(
         self,
         item: FuncItem,
