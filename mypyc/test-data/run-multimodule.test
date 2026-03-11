@@ -216,6 +216,36 @@ def func() -> int:
 import native
 assert native.f() == 42
 
+[case testNativeImportPathAttribute]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+import other_pkg
+from other_pkg import other_sub
+
+def get_pkg_path() -> str:
+    return other_pkg.__path__[0]
+
+def get_sub_has_path() -> bool:
+    return hasattr(other_sub, '__path__')
+[file other_pkg/__init__.py]
+# __path__ should be available during package initialization
+_path: list[str] = __path__
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 1
+[file driver.py]
+import os
+import native
+
+# Package should have __path__ set to [dirname(__file__)]
+expected = os.path.dirname(native.other_pkg.__file__)
+assert native.get_pkg_path() == expected, (native.get_pkg_path(), expected)
+
+# __path__ should have been accessible at init time
+assert native.other_pkg._path == [expected], native.other_pkg._path
+
+# Non-package submodule should NOT have __path__
+assert not native.get_sub_has_path()
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 

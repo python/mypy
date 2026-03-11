@@ -1270,6 +1270,38 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         }
     }
 
+    // For packages, set __path__ to [dirname(__file__)] if not already set.
+    // This is needed for submodule discovery via the standard import system.
+    if (is_package && !PyObject_HasAttrString(modobj, "__path__")) {
+        PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+        if (file != NULL) {
+            PyObject *os_path = PyImport_ImportModule("os.path");
+            if (os_path == NULL) {
+                Py_DECREF(file);
+                goto fail;
+            }
+            PyObject *dir = PyObject_CallMethod(os_path, "dirname", "O", file);
+            Py_DECREF(os_path);
+            Py_DECREF(file);
+            if (dir == NULL) {
+                goto fail;
+            }
+            PyObject *path_list = PyList_New(1);
+            if (path_list == NULL) {
+                Py_DECREF(dir);
+                goto fail;
+            }
+            PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
+            if (PyObject_SetAttrString(modobj, "__path__", path_list) < 0) {
+                Py_DECREF(path_list);
+                goto fail;
+            }
+            Py_DECREF(path_list);
+        } else {
+            PyErr_Clear();
+        }
+    }
+
     // If the module was already imported, skip executing the module body
     // (it was already executed). This handles circular imports and modules
     // first imported via the standard Python import machinery (CPyInit_*).
