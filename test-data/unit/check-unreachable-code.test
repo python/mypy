@@ -1085,9 +1085,9 @@ class Test3(Generic[T2]):
 class Test4(Generic[T3]):
     def __init__(self, x: T3):
         if x and False:
-            pass
+            pass  # E: Statement is unreachable
         if False and x:  # E: Right operand of "and" is never evaluated
-            pass
+            pass  # E: Statement is unreachable
 
 [builtins fixtures/isinstancelist.pyi]
 
