@@ -1220,7 +1220,13 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     // Check if the module was already imported (e.g. via CPyInit_* from the
     // standard import machinery, or by a previous CPyImport_ImportNative call).
-    int already_imported = PyMapping_HasKey(module_dict, module_name);
+    int already_imported = PyDict_Contains(module_dict, module_name);
+    if (already_imported < 0) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        Py_DECREF(modobj);
+        return NULL;
+    }
 
     if (!already_imported) {
         if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
@@ -1451,6 +1457,15 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     return modobj;
 
 fail:
+    // Clean up on failure: if we added the module to sys.modules, remove it
+    // so that a subsequent import attempt will retry initialization.
+    if (!already_imported) {
+        PyObject *exc_type, *exc_val, *exc_tb;
+        PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+        PyObject_DelItem(module_dict, module_name);
+        PyErr_Clear();
+        PyErr_Restore(exc_type, exc_val, exc_tb);
+    }
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
     return NULL;

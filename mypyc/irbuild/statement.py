@@ -543,7 +543,7 @@ def classify_import_from_native(
     flat_list = []
     for name, as_name in zip(names, as_names):
         submodule_id = f"{module_id}.{name}"
-        if builder.is_native_module(submodule_id):
+        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
             kind = IMPORT_NATIVE_MODULE
         elif submodule_id in builder.graph:
             kind = IMPORT_NON_NATIVE
