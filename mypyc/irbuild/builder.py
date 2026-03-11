@@ -469,7 +469,7 @@ class IRBuilder:
         self.check_if_module_loaded(module, line, needs_import, out)
 
         self.activate_block(needs_import)
-        if self.is_native_module(module):
+        if self.is_native_module(module) and self.is_same_group_module(module):
             init_only_func = self.add(
                 LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
             )
