@@ -1129,6 +1129,12 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
+#ifdef _WIN32
+#define SEP "\\"
+#else
+#define SEP "/"
+#endif
+
 // Cached class references for __spec__ / __loader__ construction.
 static PyObject *CPyImport_ModuleSpecClass = NULL;
 static PyObject *CPyImport_ExtFileLoaderClass = NULL;
@@ -1166,7 +1172,8 @@ static int CPyImport_InitSpecClasses(void) {
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
-                                 PyObject *shared_lib_file, Py_ssize_t is_package) {
+                                 PyObject *shared_lib_file, PyObject *ext_suffix,
+                                 Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
     Py_ssize_t name_len = PyUnicode_GetLength(module_name);
@@ -1263,36 +1270,50 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 goto fail;
             }
             PyErr_Clear();
-            // Derive __file__ from the shared library's __file__ (root directory)
-            // and the module name with dots converted to path separators.
-            // E.g. for module "a.b.c" and shared lib "/path/to/group__mypyc.so",
-            // we construct "/path/to/a/b/c.so".
+            // Derive __file__ from the shared library's __file__ (for its
+            // directory), the module name (dots -> path separators), and the
+            // extension suffix.  E.g. for module "a.b.c", shared lib
+            // "/path/to/group__mypyc.cpython-312-x86_64-linux-gnu.so",
+            // suffix ".cpython-312-x86_64-linux-gnu.so":
+            //   => "/path/to/a/b/c.cpython-312-x86_64-linux-gnu.so"
             PyObject *derived_file = NULL;
             if (shared_lib_file != NULL && shared_lib_file != Py_None &&
                     PyUnicode_Check(shared_lib_file)) {
                 Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
+                // Find the last path separator, checking both '/' and '\\'
+                // for cross-platform support.
                 Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
+                Py_ssize_t bsep = PyUnicode_FindChar(shared_lib_file, '\\', 0, sf_len, -1);
+                if (bsep > sep) {
+                    sep = bsep;
+                }
+                // Use the same separator character found in the path, or
+                // the platform default if no separator was found.
+                Py_UCS4 sep_char = sep >= 0
+                    ? PyUnicode_ReadChar(shared_lib_file, sep)
+                    : SEP[0];
                 PyObject *dot_str = PyUnicode_FromString(".");
-                PyObject *slash_str = PyUnicode_FromString("/");
-                if (dot_str == NULL || slash_str == NULL) {
+                PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
+                if (dot_str == NULL || sep_str == NULL) {
                     Py_XDECREF(dot_str);
-                    Py_XDECREF(slash_str);
+                    Py_XDECREF(sep_str);
                     goto fail;
                 }
-                PyObject *module_path = PyUnicode_Replace(module_name, dot_str, slash_str, -1);
+                PyObject *module_path = PyUnicode_Replace(module_name, dot_str, sep_str, -1);
                 Py_DECREF(dot_str);
-                Py_DECREF(slash_str);
+                Py_DECREF(sep_str);
                 if (module_path == NULL) {
                     goto fail;
                 }
                 if (sep >= 0) {
                     PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
                     if (dir != NULL) {
-                        derived_file = PyUnicode_FromFormat("%U/%U.so", dir, module_path);
+                        derived_file = PyUnicode_FromFormat(
+                            "%U%c%U%U", dir, (int)sep_char, module_path, ext_suffix);
                         Py_DECREF(dir);
                     }
                 } else {
-                    derived_file = PyUnicode_FromFormat("%U.so", module_path);
+                    derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
                 }
                 Py_DECREF(module_path);
             }

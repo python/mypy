@@ -139,12 +139,13 @@ import_op = custom_op(
 
 # Import a native module (plain)
 native_import_op = custom_op(
-    # (module name, init-only function, exec function, shared lib __file__, is_package)
+    # (module name, init-only function, exec function, shared lib __file__, ext suffix, is_package)
     arg_types=[
         str_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,
         object_rprimitive,
+        str_rprimitive,
         c_pyssize_t_rprimitive,
     ],
     return_type=object_rprimitive,
