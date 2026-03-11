@@ -14,7 +14,7 @@ operations to invalidate narrowing assumptions. This means mypy may conclude tha
 is [unreachable](https://mypy.readthedocs.io/en/stable/common_issues.html#unreachable-code) and
 avoid further checking of it. The `--warn-unreachable` flag is useful for highlighting these cases.
 To reset narrowing, you can insert dummy reassignments, for instance `var = var` will reset
-all narrowing of `var.attr` and `var = cast(Any, var)` will reset all narrowing of `var`.
+all narrowing of `var.attr`.
 
 Future work includes better narrowing on initial assignments, more narrowing to `Literal` types,
 and better checking of unreachable code.
