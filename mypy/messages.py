@@ -1767,6 +1767,13 @@ class MessageBuilder:
             f'Cannot instantiate type "type[{format_type_bare(item, self.options)}]"', context
         )
 
+    def redundant_annotation(self, typ: Type, context: Context) -> None:
+        self.fail(
+            f"Annotation {format_type(typ, self.options)} is redundant (inferred type is the same)",
+            context,
+            code=codes.REDUNDANT_ANNOTATION,
+        )
+
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.fail(
             f"Redundant cast to {format_type(typ, self.options)}",
