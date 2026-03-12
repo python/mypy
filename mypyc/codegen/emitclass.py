@@ -379,7 +379,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_methods_table(cl, methods_name, setup_name if generate_full else None, emitter)
     emit_line()
 
-    flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
+    flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE",
+             "CPy_TPFLAGS_MYPYC_COMPILED"]
     if generate_full and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
