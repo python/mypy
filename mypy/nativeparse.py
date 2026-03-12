@@ -264,7 +264,7 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool]:
-    ast_bytes, errors, ignores, import_bytes, is_partial_package = ast_serialize.parse(
+    ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         skip_function_bodies=skip_function_bodies,
         python_version=options.python_version,
@@ -277,7 +277,7 @@ def parse_to_binary_ast(
         cast("list[dict[str, Any]]", errors),
         ignores,
         import_bytes,
-        is_partial_package,
+        ast_data["is_partial_package"],
     )
 
 
