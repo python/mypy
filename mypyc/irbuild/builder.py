@@ -252,6 +252,10 @@ class IRBuilder:
 
         self.can_borrow = False
 
+        # When set, load_globals_dict uses this module instead of self.module_name.
+        # Used by generate_attr_defaults_init for cross-module inherited defaults.
+        self.globals_lookup_module: str | None = None
+
     # High-level control
 
     def set_module(self, module_name: str, module_path: str) -> None:
@@ -1422,7 +1426,8 @@ class IRBuilder:
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
+        module = self.globals_lookup_module or self.module_name
+        return self.add(LoadStatic(dict_rprimitive, "globals", module))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")

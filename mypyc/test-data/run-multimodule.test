@@ -962,3 +962,27 @@ def translate(b: bytes) -> bytes:
 [file driver.py]
 import native
 assert native.translate(b'ABCD') == b'BBCD'
+
+[case testCrossModuleAttrDefaults]
+from other import Parent
+
+class Child(Parent):
+    extra: int = 99
+
+def test() -> None:
+    c = Child()
+    assert c.config == {"key": "value"}
+    assert c.extra == 99
+    p = Parent()
+    assert p.config == {"key": "value"}
+
+[file other.py]
+from typing import Dict
+MY_DEFAULT: Dict[str, str] = {"key": "value"}
+
+class Parent:
+    config: Dict[str, str] = MY_DEFAULT
+
+[file driver.py]
+from native import test
+test()
