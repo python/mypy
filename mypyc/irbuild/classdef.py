@@ -137,6 +137,16 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     else:
         cls_builder = NonExtClassBuilder(builder, cdef)
 
+    # Set up class body context so that intra-class ClassVar references
+    # (e.g. C = A | B where A is defined earlier in the same class) can be
+    # resolved from the class being built instead of module globals.
+    saved_classvars = builder.class_body_classvars
+    saved_obj = builder.class_body_obj
+    saved_is_ext = builder.class_body_is_ext
+    builder.class_body_classvars = {}
+    builder.class_body_obj = cls_builder.class_body_obj()
+    builder.class_body_is_ext = ir.is_ext_class
+
     for stmt in cdef.defs.body:
         if (
             isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef))
@@ -179,12 +189,20 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
             cls_builder.add_attr(lvalue, stmt)
+            # Track this ClassVar so subsequent class body statements can reference it.
+            if is_class_var(lvalue) or stmt.is_final_def:
+                builder.class_body_classvars[lvalue.name] = None
 
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
+
+    # Restore previous class body context (handles nested classes).
+    builder.class_body_classvars = saved_classvars
+    builder.class_body_obj = saved_obj
+    builder.class_body_is_ext = saved_is_ext
 
     # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():
@@ -232,11 +250,22 @@ class ClassBuilder:
     def finalize(self, ir: ClassIR) -> None:
         """Perform any final operations to complete the class IR"""
 
+    def class_body_obj(self) -> Value | None:
+        """Return the object to use for loading class attributes during class body init.
+
+        For extension classes, this is the type object. For non-extension classes,
+        this is the class dict. Returns None if not applicable.
+        """
+        return None
+
 
 class NonExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         self.non_ext = self.create_non_ext_info()
+
+    def class_body_obj(self) -> Value | None:
+        return self.non_ext.dict
 
     def create_non_ext_info(self) -> NonExtClassInfo:
         non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
@@ -292,6 +321,9 @@ class ExtClassBuilder(ClassBuilder):
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
         self.type_obj: Value = allocate_class(builder, cdef)
+
+    def class_body_obj(self) -> Value | None:
+        return self.type_obj
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         """Controls whether to skip generating a default for an attribute."""
