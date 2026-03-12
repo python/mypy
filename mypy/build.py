@@ -2875,9 +2875,10 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        analyzer = SemanticAnalyzerPreAnalysis()
-        with self.wrap_context():
-            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        if not options.native_parser:
+            analyzer = SemanticAnalyzerPreAnalysis()
+            with self.wrap_context():
+                analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
