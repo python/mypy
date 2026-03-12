@@ -5774,3 +5774,45 @@ from native import Concrete
 c = Concrete()
 assert c.value() == 42
 assert c.derived() == 42
+
+[case testPropertyShadowVtableGlue]
+# The setter's shadow glue overwrites the getter's (both keyed by fdef.name),
+# misaligning subsequent vtable entries -> segfault on interpreted subclasses.
+from typing import List
+import mypy_extensions
+
+@mypy_extensions.mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    _x: str
+    _y: List[int]
+    def __init__(self) -> None:
+        self._x = ""
+        self._y = []
+
+    @property
+    def x(self) -> str:
+        return self._x
+
+    @x.setter
+    def x(self, v: str) -> None:
+        self._x = v
+
+    @property
+    def y(self) -> List[int]:
+        return self._y
+
+    @y.setter
+    def y(self, v: List[int]) -> None:
+        self._y = v
+
+    def method(self) -> str:
+        self.x = "a"
+        self.y = [1]
+        return self.x + str(len(self.y))
+
+[file driver.py]
+from native import Base
+
+Sub = type("Sub", (Base,), {})
+s = Sub()
+assert s.method() == "a1"
