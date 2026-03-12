@@ -221,9 +221,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             return builder.py_get_attr(builder.class_body_obj, expr.name, expr.line)
         else:
             return builder.primitive_op(
-                dict_get_item_op,
-                [builder.class_body_obj, builder.load_str(expr.name)],
-                expr.line,
+                dict_get_item_op, [builder.class_body_obj, builder.load_str(expr.name)], expr.line
             )
 
     return builder.load_global(expr)
