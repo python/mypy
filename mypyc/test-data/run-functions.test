@@ -1472,3 +1472,23 @@ assert Foo.A["b"]() == "b"
 def test_generator_with_lambda_default() -> None:
     result = list((lambda i=i: i * 2) for i in range(4))
     assert [f() for f in result] == [0, 2, 4, 6]
+
+[case testLambdaInComprehensionWithParamIterable]
+# Lambda inside comprehension where the iterable is a function parameter.
+# The comprehension scope must be able to read variables from the enclosing
+# function scope (not just the comprehension's own env class).
+from typing import List, Callable
+
+def transform(items: List[int]) -> List[Callable[[], int]]:
+    return [(lambda i=i: i * 2) for i in items]  # type: ignore[misc]
+
+def uses_multiple_params(items: List[str], sep: str) -> List[Callable[[], str]]:
+    return [(lambda s=s: s + sep) for s in items]  # type: ignore[misc]
+
+def test_param_iterable() -> None:
+    funcs = transform([1, 2, 3])
+    assert [f() for f in funcs] == [2, 4, 6]
+
+def test_multiple_params() -> None:
+    funcs = uses_multiple_params(["a", "b"], "!")
+    assert [f() for f in funcs] == ["a!", "b!"]

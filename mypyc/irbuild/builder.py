@@ -1273,7 +1273,11 @@ class IRBuilder:
         so that the closure machinery sees a scope boundary.
         """
         self.builders.append(self.builder)
-        self.symtables.append({})
+        # Copy the parent symtable so variables from the enclosing scope
+        # (e.g. function parameters used as the comprehension iterable)
+        # remain accessible. The comprehension is inlined (same basic blocks
+        # and registers), so the parent's register references are still valid.
+        self.symtables.append(dict(self.symtables[-1]))
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
