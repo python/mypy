@@ -232,6 +232,14 @@ class IRBuilder:
 
         self.visitor = visitor
 
+        # Class body context: tracks ClassVar names defined so far when processing
+        # a class body, so that intra-class references (e.g. C = A | B where A is
+        # a ClassVar defined earlier in the same class) can be resolved correctly.
+        # Without this, mypyc looks up such names in module globals, which fails.
+        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_obj: Value | None = None
+        self.class_body_is_ext: bool = False
+
         # This list operates similarly to a function call stack for nested functions. Whenever a
         # function definition begins to be generated, a FuncInfo instance is added to the stack,
         # and information about that function (e.g. whether it is nested, its environment class to
