@@ -56,7 +56,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     )
     env_class.reuse_freed_instance = True
     env_class.attributes[SELF_NAME] = RInstance(env_class)
-    if builder.fn_info.is_nested:
+    if builder.fn_info.is_nested and builder.fn_infos[-2]._env_class is not None:
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
         env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
@@ -73,11 +73,12 @@ def finalize_env_class(builder: IRBuilder, prefix: str = "") -> None:
 
     # Iterate through the function arguments and replace local definitions (using registers)
     # that were previously added to the environment with references to the function's
-    # environment class.
-    if builder.fn_info.is_nested:
-        add_args_to_env(builder, local=False, base=builder.fn_info.callable_class, prefix=prefix)
-    else:
-        add_args_to_env(builder, local=False, base=builder.fn_info, prefix=prefix)
+    # environment class. Comprehension scopes have no arguments to add.
+    if not builder.fn_info.is_comprehension_scope:
+        if builder.fn_info.is_nested:
+            add_args_to_env(builder, local=False, base=builder.fn_info.callable_class, prefix=prefix)
+        else:
+            add_args_to_env(builder, local=False, base=builder.fn_info, prefix=prefix)
 
 
 def instantiate_env_class(builder: IRBuilder) -> Value:
@@ -86,7 +87,7 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
         Call(builder.fn_info.env_class.ctor, [], builder.fn_info.fitem.line)
     )
 
-    if builder.fn_info.is_nested:
+    if builder.fn_info.is_nested and not builder.fn_info.is_comprehension_scope:
         builder.fn_info.callable_class._curr_env_reg = curr_env_reg
         builder.add(
             SetAttr(
@@ -97,7 +98,22 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
             )
         )
     else:
+        # Top-level functions and comprehension scopes store env reg directly.
         builder.fn_info._curr_env_reg = curr_env_reg
+        # Comprehension scopes link to parent env if it exists.
+        if (
+            builder.fn_info.is_nested
+            and builder.fn_infos[-2]._env_class is not None
+            and builder.fn_infos[-2]._curr_env_reg is not None
+        ):
+            builder.add(
+                SetAttr(
+                    curr_env_reg,
+                    ENV_ATTR_NAME,
+                    builder.fn_infos[-2].curr_env_reg,
+                    builder.fn_info.fitem.line,
+                )
+            )
 
     return curr_env_reg
 
@@ -114,7 +130,7 @@ def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
 
     fn_info = builder.fn_info
     fitem = fn_info.fitem
-    if fn_info.is_nested:
+    if fn_info.is_nested and builder.fn_infos[-2]._env_class is not None:
         load_outer_envs(builder, fn_info.callable_class)
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
@@ -155,7 +171,8 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
 
     # Load the first outer environment. This one is special because it gets saved in the
     # FuncInfo instance's prev_env_reg field.
-    if index > 1:
+    has_outer = index > 1 or (index == 1 and builder.fn_infos[1].contains_nested)
+    if has_outer and builder.fn_infos[index]._env_class is not None:
         # outer_env = builder.fn_infos[index].environment
         outer_env = builder.symtables[index]
         if isinstance(base, GeneratorClass):
@@ -167,6 +184,8 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
 
     # Load the remaining outer environments into registers.
     while index > 1:
+        if builder.fn_infos[index]._env_class is None:
+            break
         # outer_env = builder.fn_infos[index].environment
         outer_env = builder.symtables[index]
         env_reg = load_outer_env(builder, env_reg, outer_env)
@@ -224,7 +243,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
-    elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
+    elif (builder.fn_info.is_nested or builder.fn_info.in_non_ext) and not builder.fn_info.is_comprehension_scope:
         env_for_func = builder.fn_info.callable_class
 
     if builder.fn_info.fitem in builder.free_variables:
