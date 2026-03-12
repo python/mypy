@@ -852,12 +852,7 @@ def gen_glue_property(
 
 
 def gen_glue_property_setter(
-    builder: IRBuilder,
-    sig: FuncSignature,
-    target: FuncIR,
-    cls: ClassIR,
-    base: ClassIR,
-    line: int,
+    builder: IRBuilder, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR, line: int
 ) -> FuncIR:
     """Generate a shadow glue method for a property setter.
 
@@ -883,7 +878,11 @@ def gen_glue_property_setter(
 
     builder.primitive_op(
         py_setattr_op,
-        [self_arg, builder.load_str(prop_name), builder.coerce(value_arg, object_rprimitive, line)],
+        [
+            self_arg,
+            builder.load_str(prop_name),
+            builder.coerce(value_arg, object_rprimitive, line),
+        ],
         line,
     )
     retval = builder.coerce(builder.none(), sig.ret_type, line)
