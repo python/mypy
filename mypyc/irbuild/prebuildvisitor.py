@@ -197,9 +197,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         super().visit_func(func)
         self.funcs.pop()
 
-    def _visit_comprehension_with_scope(
-        self, o: GeneratorExpr | DictionaryComprehension
-    ) -> None:
+    def _visit_comprehension_with_scope(self, o: GeneratorExpr | DictionaryComprehension) -> None:
         """Visit a comprehension that contains lambdas.
 
         Creates a synthetic FuncDef to represent the comprehension's scope,

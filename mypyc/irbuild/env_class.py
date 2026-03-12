@@ -76,7 +76,9 @@ def finalize_env_class(builder: IRBuilder, prefix: str = "") -> None:
     # environment class. Comprehension scopes have no arguments to add.
     if not builder.fn_info.is_comprehension_scope:
         if builder.fn_info.is_nested:
-            add_args_to_env(builder, local=False, base=builder.fn_info.callable_class, prefix=prefix)
+            add_args_to_env(
+                builder, local=False, base=builder.fn_info.callable_class, prefix=prefix
+            )
         else:
             add_args_to_env(builder, local=False, base=builder.fn_info, prefix=prefix)
 
@@ -243,7 +245,9 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
-    elif (builder.fn_info.is_nested or builder.fn_info.in_non_ext) and not builder.fn_info.is_comprehension_scope:
+    elif (
+        builder.fn_info.is_nested or builder.fn_info.in_non_ext
+    ) and not builder.fn_info.is_comprehension_scope:
         env_for_func = builder.fn_info.callable_class
 
     if builder.fn_info.fitem in builder.free_variables:

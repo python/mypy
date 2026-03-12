@@ -1198,9 +1198,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
         return builder.none()
 
     if o in builder.comprehension_to_fitem:
-        return _translate_comprehension_with_scope(
-            builder, o, lambda: _dict_comp_body(builder, o)
-        )
+        return _translate_comprehension_with_scope(builder, o, lambda: _dict_comp_body(builder, o))
     return _dict_comp_body(builder, o)
 
 
@@ -1261,9 +1259,11 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     if o in builder.comprehension_to_fitem:
         return builder.primitive_op(
             iter_op,
-            [_translate_comprehension_with_scope(
-                builder, o, lambda: translate_list_comprehension(builder, o)
-            )],
+            [
+                _translate_comprehension_with_scope(
+                    builder, o, lambda: translate_list_comprehension(builder, o)
+                )
+            ],
             o.line,
         )
     return builder.primitive_op(iter_op, [translate_list_comprehension(builder, o)], o.line)
