@@ -2582,3 +2582,11 @@ def last_known_value() -> None:
     x, y, z = xy  # E: Unpacking a string is disallowed
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
+
+
+[case testDictUnpackNonStringKey]
+def f() -> None:
+    dict(**{10: 20})  # E: Argument after ** must have string keys
+    dict(**{**{1: 1}})  # E: Argument after ** must have string keys
+    dict(**{b'a': 1})  # E: Argument after ** must have string keys
+[builtins fixtures/dict.pyi]
