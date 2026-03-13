@@ -1282,7 +1282,10 @@ class GroupGenerator:
 
     def declare_internal_globals(self, module_name: str, emitter: Emitter) -> None:
         static_name = emitter.static_name("globals", module_name)
-        self.declare_global("PyObject *", static_name)
+        if static_name not in self.context.declarations:
+            self.context.declarations[static_name] = HeaderDeclaration(
+                f"PyObject *{static_name};", needs_export=True
+            )
 
     def module_internal_static_name(self, module_name: str, emitter: Emitter) -> str:
         return emitter.static_name(module_name + "__internal", None, prefix=MODULE_PREFIX)

@@ -713,7 +713,7 @@ def add_non_ext_class_attr(
 
 def find_attr_initializers(
     builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
-) -> tuple[set[str], list[AssignmentStmt]]:
+) -> tuple[set[str], list[tuple[AssignmentStmt, str]]]:
     """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
@@ -728,7 +728,7 @@ def find_attr_initializers(
 
     # Pull out all assignments in classes in the mro so we can initialize them
     # TODO: Support nested statements
-    default_assignments = []
+    default_assignments: list[tuple[AssignmentStmt, str]] = []
     for info in reversed(cdef.info.mro):
         if info not in builder.mapper.type_to_ir:
             continue
@@ -763,13 +763,13 @@ def find_attr_initializers(
                         continue
 
                 attrs_with_defaults.add(name)
-                default_assignments.append(stmt)
+                default_assignments.append((stmt, info.module_name))
 
     return attrs_with_defaults, default_assignments
 
 
 def generate_attr_defaults_init(
-    builder: IRBuilder, cdef: ClassDef, default_assignments: list[AssignmentStmt]
+    builder: IRBuilder, cdef: ClassDef, default_assignments: list[tuple[AssignmentStmt, str]]
 ) -> None:
     """Generate an initialization method for default attr values (from class vars)."""
     if not default_assignments:
@@ -780,14 +780,23 @@ def generate_attr_defaults_init(
 
     with builder.enter_method(cls, "__mypyc_defaults_setup", bool_rprimitive):
         self_var = builder.self()
-        for stmt in default_assignments:
+        for stmt, origin_module in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr), lvalue
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning("Unsupported default attribute value", stmt.rvalue.line)
 
             attr_type = cls.attr_type(lvalue.name)
-            val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            # When the default comes from a parent in a different module,
+            # set the globals lookup module so NameExpr references resolve
+            # against the correct module's globals dict.
+            builder.globals_lookup_module = (
+                origin_module if origin_module != builder.module_name else None
+            )
+            try:
+                val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            finally:
+                builder.globals_lookup_module = None
             init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
             init.mark_as_initializer()
             builder.add(init)
