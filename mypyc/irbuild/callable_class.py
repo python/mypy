@@ -224,11 +224,13 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
     # - A generator function: the callable class is instantiated
     #   from the '__next__' method of the generator class, and hence the
     #   environment of the generator class is used.
-    # - Regular function: we use the environment of the original function.
+    # - Regular function or comprehension scope: we use the environment
+    #   of the original function. Comprehension scopes are inlined (no
+    #   callable class), so they fall into this case despite is_nested.
     curr_env_reg = None
     if builder.fn_info.is_generator:
         curr_env_reg = builder.fn_info.generator_class.curr_env_reg
-    elif builder.fn_info.is_nested:
+    elif builder.fn_info.is_nested and not builder.fn_info.is_comprehension_scope:
         curr_env_reg = builder.fn_info.callable_class.curr_env_reg
     elif builder.fn_info.contains_nested:
         curr_env_reg = builder.fn_info.curr_env_reg

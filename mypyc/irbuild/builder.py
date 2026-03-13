@@ -227,6 +227,7 @@ class IRBuilder:
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
+        self.comprehension_to_fitem = pbv.comprehension_to_fitem
 
         self.singledispatch_impls = singledispatch_impls
 
@@ -1262,6 +1263,37 @@ class IRBuilder:
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
+
+    @contextmanager
+    def enter_scope(self, fn_info: FuncInfo) -> Iterator[None]:
+        """Push a lightweight scope for comprehensions.
+
+        Unlike enter(), this reuses the same LowLevelIRBuilder (same basic
+        blocks and registers) but pushes new symtable and fn_info entries
+        so that the closure machinery sees a scope boundary.
+        """
+        self.builders.append(self.builder)
+        # Copy the parent symtable so variables from the enclosing scope
+        # (e.g. function parameters used as the comprehension iterable)
+        # remain accessible. The comprehension is inlined (same basic blocks
+        # and registers), so the parent's register references are still valid.
+        self.symtables.append(dict(self.symtables[-1]))
+        self.runtime_args.append([])
+        self.fn_info = fn_info
+        self.fn_infos.append(self.fn_info)
+        self.ret_types.append(none_rprimitive)
+        self.nonlocal_control.append(BaseNonlocalControl())
+        try:
+            yield
+        finally:
+            self.builders.pop()
+            self.symtables.pop()
+            self.runtime_args.pop()
+            self.ret_types.pop()
+            self.fn_infos.pop()
+            self.nonlocal_control.pop()
+            self.builder = self.builders[-1]
+            self.fn_info = self.fn_infos[-1]
 
     @contextmanager
     def enter_method(
