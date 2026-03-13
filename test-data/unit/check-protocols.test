@@ -2640,15 +2640,13 @@ b: Bad
 
 func(a)
 func(b)  # E: Argument 1 to "func" has incompatible type "Bad"; expected "One" \
+         # N: Following member(s) of "Bad" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(self, x: str) -> None \
+         # N:     Got: \
+         # N:         def __call__(self, zzz: str) -> None \
          # N: "One.__call__" has type "def __call__(self, x: str) -> None"
-[out]
-main:19: error: Argument 1 to "func" has incompatible type "Bad"; expected "One"
-main:19: note: Following member(s) of "Bad" have conflicts:
-main:19: note:     Expected:
-main:19: note:         def __call__(self, x: str) -> None
-main:19: note:     Got:
-main:19: note:         def __call__(self, zzz: str) -> None
-main:19: note: "One.__call__" has type "def __call__(self, x: str) -> None"
+
 
 [case testJoinProtocolCallback]
 from typing import Protocol, Callable
