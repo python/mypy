@@ -1218,7 +1218,6 @@ def is_protocol_implementation(
         for member in right.type.protocol_members:
             if member in members_not_to_check:
                 continue
-            ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = find_member(member, right, left)
@@ -1234,9 +1233,7 @@ def is_protocol_implementation(
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to
                 # SubtypeVisitor.build_subtype_kind(...) down below.
-                is_compat = is_subtype(
-                    subtype, supertype, ignore_pos_arg_names=ignore_names, options=options
-                )
+                is_compat = is_subtype(subtype, supertype, options=options)
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
