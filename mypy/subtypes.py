@@ -1277,14 +1277,8 @@ def is_protocol_implementation(
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
 
-    if not proper_subtype:
-        # Nominal check currently ignores arg names, but __call__ is special for protocols
-        ignore_names = right.type.protocol_members != ["__call__"]
-    else:
-        ignore_names = False
     subtype_kind = SubtypeVisitor.build_subtype_kind(
-        subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
-        proper_subtype=proper_subtype,
+        subtype_context=SubtypeContext(), proper_subtype=proper_subtype
     )
     type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
