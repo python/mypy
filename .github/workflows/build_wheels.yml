@@ -2,6 +2,14 @@ name: Trigger wheel build
 
 on:
   push:
+    paths:
+      - '**/*.py'
+      - '**/*.pyi'
+      - 'pyproject.toml'
+      - 'setup.py'
+      - 'tox.ini'
+      - '.pre-commit-config.yaml'
+      - '.github/workflows/build_wheels.yml'
     branches: [main, master, 'release*']
     tags: ['*']
 
