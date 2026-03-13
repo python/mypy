@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import os
+import pprint
+import subprocess
+import sys
+import textwrap
 import unittest
 
-from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emit import Emitter, EmitterContext, pformat_deterministic
 from mypyc.common import HAVE_IMMORTAL
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import BasicBlock, Register, Value
@@ -19,6 +24,74 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
+
+
+class TestPformatDeterministic(unittest.TestCase):
+    HASH_SEEDS = (1, 2, 3, 4, 5, 11, 19, 27)
+
+    def run_with_hash_seed(self, script: str, seed: int) -> str:
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = str(seed)
+        proc = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, check=True, text=True, env=env
+        )
+        return proc.stdout.strip()
+
+    def test_frozenset_elements_sorted(self) -> None:
+        fs_small = frozenset({("a", 1)})
+        fs_large = frozenset({("a", 1), ("b", 2)})
+        literal_a = frozenset({fs_large, fs_small})
+        literal_b = frozenset({fs_small, fs_large})
+        out_a = pformat_deterministic(literal_a, 80)
+        out_b = pformat_deterministic(literal_b, 80)
+
+        assert out_a == out_b
+        assert "frozenset({('a', 1)})" in out_a
+        assert "frozenset({('a', 1), ('b', 2)})" in out_a
+
+    def test_nested_supported_literals(self) -> None:
+        nested_frozen = frozenset({("m", 0), ("n", 1)})
+        item_a = ("outer", 1, nested_frozen)
+        item_b = ("outer", 2, frozenset({("x", 3)}))
+        literal_a = frozenset({item_a, item_b})
+        literal_b = frozenset({item_b, item_a})
+        out_a = pformat_deterministic(literal_a, 120)
+        out_b = pformat_deterministic(literal_b, 120)
+
+        assert out_a == out_b
+        assert "frozenset({('m', 0), ('n', 1)})" in out_a
+
+    def test_restores_default_safe_key(self) -> None:
+        sample = {"beta": [2, 1], "alpha": [3, 4]}
+        before = pprint.pformat(sample, width=80, compact=True, sort_dicts=True)
+        pformat_deterministic({"key": "value"}, 80)
+        after = pprint.pformat(sample, width=80, compact=True, sort_dicts=True)
+        assert after == before
+
+    def test_frozenset_output_is_stable_across_hash_seeds(self) -> None:
+        script = textwrap.dedent("""
+            from mypyc.codegen.emit import pformat_deterministic
+
+            fs_small = frozenset({("a", 1)})
+            fs_large = frozenset({("a", 1), ("b", 2)})
+            literal = frozenset({fs_small, fs_large})
+            print(pformat_deterministic(literal, 80))
+            """)
+        outputs = {self.run_with_hash_seed(script, seed) for seed in self.HASH_SEEDS}
+        assert len(outputs) == 1
+
+    def test_nested_output_is_stable_across_hash_seeds(self) -> None:
+        script = textwrap.dedent("""
+            from mypyc.codegen.emit import pformat_deterministic
+
+            nested_frozen = frozenset({("m", 0), ("n", 1)})
+            item_a = ("outer", 1, nested_frozen)
+            item_b = ("outer", 2, frozenset({("x", 3)}))
+            literal = frozenset({item_a, item_b})
+            print(pformat_deterministic(literal, 120))
+            """)
+        outputs = {self.run_with_hash_seed(script, seed) for seed in self.HASH_SEEDS}
+        assert len(outputs) == 1
 
 
 class TestEmitter(unittest.TestCase):
