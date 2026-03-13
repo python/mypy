@@ -1018,7 +1018,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if not is_callable_compatible(
                     impl, sig1, is_compat=is_subtype, is_proper_subtype=False, ignore_return=True
                 ):
-                    self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
+                    self.msg.overloaded_signatures_param_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
                 if not (

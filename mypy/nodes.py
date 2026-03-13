@@ -5299,6 +5299,7 @@ TYPE_ALIAS_STMT: Final[Tag] = 225
 IMPORT_METADATA: Final[Tag] = 226
 IMPORTFROM_METADATA: Final[Tag] = 227
 IMPORTALL_METADATA: Final[Tag] = 228
+TSTRING_EXPR: Final[Tag] = 229
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

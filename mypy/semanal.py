@@ -4037,8 +4037,8 @@ class SemanticAnalyzer(
                 variadic = True
             new_tvar_defs.append(td)
 
-        empty_tuple_index = typ.empty_tuple_index if isinstance(typ, UnboundType) else False
-        return analyzed, new_tvar_defs, depends_on, empty_tuple_index
+        indexed = bool(isinstance(typ, UnboundType) and (typ.args or typ.empty_tuple_index))
+        return analyzed, new_tvar_defs, depends_on, indexed
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -4137,10 +4137,10 @@ class SemanticAnalyzer(
             res = NoneType()
             alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
-            empty_tuple_index = False
+            indexed = False
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed = self.analyze_alias(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
@@ -4180,12 +4180,11 @@ class SemanticAnalyzer(
         no_args = (
             isinstance(res, ProperType)
             and isinstance(res, Instance)
-            and not res.args
-            and not empty_tuple_index
             and not pep_695
+            and not indexed
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
-            if not validate_instance(res, self.fail, empty_tuple_index):
+            if not validate_instance(res, self.fail, indexed):
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
         # Aliases defined within functions can't be accessed outside
         # the function, since the symbol table will no longer
@@ -5689,7 +5688,7 @@ class SemanticAnalyzer(
                 return
 
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed = self.analyze_alias(
                 s.name.name,
                 s.value.expr(),
                 allow_placeholder=True,
