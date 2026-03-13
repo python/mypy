@@ -2237,3 +2237,10 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarReusedName]
+class C:
+    X = 5
+    class Inner[X]:
+        pass
+[builtins fixtures/tuple.pyi]
