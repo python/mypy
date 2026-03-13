@@ -105,6 +105,7 @@ def load_from_raw(
     tree.path = fnam
     tree.ignored_lines = raw_data.ignored_lines
     tree.is_partial_stub_package = raw_data.is_partial_stub_package
+    tree.uses_template_strings = raw_data.uses_template_strings
     tree.is_stub = fnam.endswith(".pyi")
 
     # Report parse errors, this replicates the logic in parse().

@@ -313,13 +313,21 @@ Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 class FileRawData:
     """Raw (binary) data representing parsed, but not deserialized file."""
 
-    __slots__ = ("defs", "imports", "raw_errors", "ignored_lines", "is_partial_stub_package")
+    __slots__ = (
+        "defs",
+        "imports",
+        "raw_errors",
+        "ignored_lines",
+        "is_partial_stub_package",
+        "uses_template_strings",
+    )
 
     defs: bytes
     imports: bytes
     raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
     ignored_lines: dict[int, list[str]]
     is_partial_stub_package: bool
+    uses_template_strings: bool
 
     def __init__(
         self,
@@ -328,12 +336,14 @@ class FileRawData:
         raw_errors: list[dict[str, Any]],
         ignored_lines: dict[int, list[str]],
         is_partial_stub_package: bool,
+        uses_template_strings: bool,
     ) -> None:
         self.defs = defs
         self.imports = imports
         self.raw_errors = raw_errors
         self.ignored_lines = ignored_lines
         self.is_partial_stub_package = is_partial_stub_package
+        self.uses_template_strings = uses_template_strings
 
     def write(self, data: WriteBuffer) -> None:
         write_bytes(data, self.defs)
@@ -348,6 +358,7 @@ class FileRawData:
             write_int(data, line)
             write_str_list(data, codes)
         write_bool(data, self.is_partial_stub_package)
+        write_bool(data, self.uses_template_strings)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> FileRawData:
@@ -357,7 +368,9 @@ class FileRawData:
         raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
-        return FileRawData(defs, imports, raw_errors, ignored_lines, read_bool(data))
+        return FileRawData(
+            defs, imports, raw_errors, ignored_lines, read_bool(data), read_bool(data)
+        )
 
 
 class MypyFile(SymbolNode):

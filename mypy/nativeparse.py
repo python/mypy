@@ -170,7 +170,6 @@ class State:
         self.options = options
         self.errors: list[dict[str, Any]] = []
         self.num_funcs = 0
-        self.uses_template_strings = False
 
     def add_error(
         self,
@@ -225,8 +224,8 @@ def native_parse(
         node.path = filename
         return node, [], []
 
-    b, errors, ignores, import_bytes, is_partial_package = parse_to_binary_ast(
-        filename, options, skip_function_bodies
+    b, errors, ignores, import_bytes, is_partial_package, uses_template_strings = (
+        parse_to_binary_ast(filename, options, skip_function_bodies)
     )
     data = ReadBuffer(b)
     n = read_int(data)
@@ -242,8 +241,10 @@ def native_parse(
     node.path = filename
     node.is_partial_stub_package = is_partial_package
     if imports_only:
-        node.raw_data = FileRawData(b, import_bytes, errors, dict(ignores), is_partial_package)
-    node.uses_template_strings = state.uses_template_strings
+        node.raw_data = FileRawData(
+            b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
+        )
+    node.uses_template_strings = uses_template_strings
     # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores
@@ -271,7 +272,7 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool]:
+) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool, bool]:
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         skip_function_bodies=skip_function_bodies,
@@ -286,6 +287,7 @@ def parse_to_binary_ast(
         ignores,
         import_bytes,
         ast_data["is_partial_package"],
+        ast_data["uses_template_strings"],
     )
 
 
@@ -1536,7 +1538,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.TSTRING_EXPR:
-        state.uses_template_strings = True
         nparts = read_int(data)
         titems: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
         for _ in range(nparts):
