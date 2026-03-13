@@ -97,6 +97,10 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
+    if options.num_workers:
+        # Supporting both parsers would be really tricky, so just support the new one.
+        options.native_parser = True
+
     if options.allow_redefinition_new and not options.local_partial_types:
         fail(
             "error: --local-partial-types must be enabled if using --allow-redefinition-new",

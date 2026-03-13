@@ -262,6 +262,7 @@ LIST_STR: Final[Tag] = 22
 LIST_BYTES: Final[Tag] = 23
 TUPLE_GEN: Final[Tag] = 24
 DICT_STR_GEN: Final[Tag] = 30
+DICT_INT_GEN: Final[Tag] = 31
 
 # Misc classes.
 EXTRA_ATTRS: Final[Tag] = 150
