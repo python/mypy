@@ -134,6 +134,10 @@ def infer_constraints_for_callable(
                 incomplete_star_mapping = True  # type: ignore[unreachable]
                 break
 
+    # some constraints are more likely right than others
+    # so we store them separately and remove unlikely ones later
+    priority_constraints = []
+
     for i, actuals in enumerate(formal_to_actual):
         if isinstance(callee.arg_types[i], UnpackType):
             unpack_type = callee.arg_types[i]
@@ -176,7 +180,7 @@ def infer_constraints_for_callable(
                     )
 
             if isinstance(unpacked_type, TypeVarTupleType):
-                constraints.append(
+                priority_constraints.append(
                     Constraint(
                         unpacked_type,
                         SUPERTYPE_OF,
@@ -271,7 +275,15 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
-    return constraints
+
+    # TODO: consider passing this up the call stack
+    for tv in {c.origin_type_var for c in priority_constraints}:
+        from mypy.solve import solve_constraints
+
+        if solve_constraints([tv], constraints + priority_constraints)[0][0] is None:
+            constraints = [c for c in constraints if c.type_var != tv.id]
+
+    return constraints + priority_constraints
 
 
 def infer_constraints(
@@ -1103,6 +1115,13 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 # (with literal '...').
                 if not template.is_ellipsis_args:
                     unpack_present = find_unpack_in_list(template.arg_types)
+
+                    # TODO: do we need some special-casing when unpack is present in actual
+                    # callable but not in template callable?
+                    res.extend(
+                        infer_callable_arguments_constraints(template, cactual, self.direction)
+                    )
+
                     # When both ParamSpec and TypeVarTuple are present, things become messy
                     # quickly. For now, we only allow ParamSpec to "capture" TypeVarTuple,
                     # but not vice versa.
@@ -1120,12 +1139,6 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                             template_types, actual_types, neg_op(self.direction)
                         )
                         res.extend(unpack_constraints)
-                    else:
-                        # TODO: do we need some special-casing when unpack is present in actual
-                        # callable but not in template callable?
-                        res.extend(
-                            infer_callable_arguments_constraints(template, cactual, self.direction)
-                        )
             else:
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
@@ -1464,6 +1477,7 @@ def repack_callable_args(callable: CallableType, tuple_type: TypeInfo) -> list[T
     list with unpack in the middle, and prefix/suffix on the sides (as they would appear
     in e.g. a TupleType).
     """
+    # TODO: don't repack kw-only args, e.g. with `(a: int, *, b: int)`
     if ARG_STAR not in callable.arg_kinds:
         return callable.arg_types
     star_index = callable.arg_kinds.index(ARG_STAR)
