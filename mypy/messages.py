@@ -3113,7 +3113,7 @@ def get_conflict_protocol_types(
         subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
         if not subtype:
             continue
-        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
+        is_compat = is_subtype(subtype, supertype, options=options)
         if not is_compat:
             conflicts.append((member, subtype, supertype, False))
         superflags = get_member_flags(member, right)

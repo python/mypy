@@ -2642,6 +2642,13 @@ func(a)
 func(b)  # E: Argument 1 to "func" has incompatible type "Bad"; expected "One" \
          # N: "One.__call__" has type "def __call__(self, x: str) -> None"
 [out]
+main:19: error: Argument 1 to "func" has incompatible type "Bad"; expected "One"
+main:19: note: Following member(s) of "Bad" have conflicts:
+main:19: note:     Expected:
+main:19: note:         def __call__(self, x: str) -> None
+main:19: note:     Got:
+main:19: note:         def __call__(self, zzz: str) -> None
+main:19: note: "One.__call__" has type "def __call__(self, x: str) -> None"
 
 [case testJoinProtocolCallback]
 from typing import Protocol, Callable
@@ -3796,7 +3803,7 @@ from typing import Any, Protocol, TypeVar, Type
 
 T = TypeVar("T", contravariant=True)
 class P(Protocol[T]):
-    def foo(self, obj: T) -> int: ...
+    def foo(self, obj: T, /) -> int: ...
 
 class B:
     def foo(self) -> int: ...
@@ -3804,8 +3811,8 @@ class B:
 S = TypeVar("S")
 def test(arg: P[S]) -> S: ...
 b: Type[B]
-reveal_type(test(b))  # N: Revealed type is "__main__.B" \
-                      # E: Argument 1 to "test" has incompatible type "type[B]"; expected "P[B]"
+reveal_type(test(b))  # N: Revealed type is "__main__.B"
+
 
 [case testTypeAliasInProtocolBody]
 from typing import Protocol, List
@@ -4757,7 +4764,12 @@ class P1(Protocol):
 class C1:
     def foo(self, b: int) -> None: pass
 
-x1: P1 = C1()  # E: Incompatible types in assignment (expression has type "C1", variable has type "P1")
+x1: P1 = C1()  # E: Incompatible types in assignment (expression has type "C1", variable has type "P1") \
+               # N: Following member(s) of "C1" have conflicts: \
+               # N:     Expected: \
+               # N:         def foo(self, a: int) -> None \
+               # N:     Got: \
+               # N:         def foo(self, b: int) -> None
 
 class P2(Protocol):
     def foo(self, a: int) -> None: ...
@@ -4765,7 +4777,12 @@ class P2(Protocol):
 class C2:
     def foo(self, *args: int) -> None: pass
 
-x2: P2 = C2()  # E: Incompatible types in assignment (expression has type "C2", variable has type "P2")
+x2: P2 = C2()  # E: Incompatible types in assignment (expression has type "C2", variable has type "P2") \
+               # N: Following member(s) of "C2" have conflicts: \
+               # N:     Expected: \
+               # N:         def foo(self, a: int) -> None \
+               # N:     Got: \
+               # N:         def foo(self, *args: int) -> None
 
 class P3(Protocol):
     def foo(self, a: int, /) -> None: ...
