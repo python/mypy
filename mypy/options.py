@@ -57,6 +57,7 @@ PER_MODULE_OPTIONS: Final = {
     "strict_concatenate",
     "strict_equality",
     "strict_equality_for_none",
+    "strict_overload_subtyping",
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
@@ -242,6 +243,9 @@ class Options:
 
         # Extend the logic of `strict_equality` to comparisons with `None`.
         self.strict_equality_for_none = False
+
+        # Enforce strict ordering for overloads.
+        self.strict_overload_subtyping = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes
         self.strict_bytes = False

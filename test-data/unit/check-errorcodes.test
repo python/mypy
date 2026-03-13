@@ -290,6 +290,7 @@ y = []  # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")  [var-
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
+# flags: --strict-overload-subtyping
 from typing import overload
 
 class A:
