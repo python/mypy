@@ -516,7 +516,7 @@ class A:
 from n import A
 
 class B:
-    x = None  # type: A
+    x = None  # type: A  # type: ignore
 [file n.py]
 class A: pass
 [out]
