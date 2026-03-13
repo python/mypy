@@ -674,6 +674,15 @@ class TypeOpsSuite(Suite):
             variables=tv,
         )
 
+    def test_is_type_obj_with_any_return(self) -> None:
+        # https://github.com/python/mypy/issues/20585
+        c = CallableType([], [], [], self.fx.anyt, self.fx.type_type)
+        assert not c.is_type_obj()
+
+    def test_is_type_obj_with_instance_return(self) -> None:
+        c = CallableType([], [], [], self.fx.a, self.fx.type_type)
+        assert c.is_type_obj()
+
 
 class JoinSuite(Suite):
     def setUp(self) -> None:
