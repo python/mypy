@@ -4758,7 +4758,7 @@ class SemanticAnalyzer(
         n_values = call.arg_kinds[1:].count(ARG_POS)
         values = self.analyze_value_types(call.args[1 : 1 + n_values])
 
-        res = self.process_typevar_parameters(
+        res = self.process_typevar_arguments(
             call.args[1 + n_values :],
             call.arg_names[1 + n_values :],
             call.arg_kinds[1 + n_values :],
@@ -4899,7 +4899,7 @@ class SemanticAnalyzer(
             return None
         return call
 
-    def process_typevar_parameters(
+    def process_typevar_arguments(
         self,
         args: list[Expression],
         names: list[str | None],
@@ -4912,38 +4912,38 @@ class SemanticAnalyzer(
         contravariant = False
         upper_bound: Type = self.object_type()
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
-        for param_value, param_name, param_kind in zip(args, names, kinds):
-            if not param_kind.is_named():
+        for arg_value, arg_name, arg_kind in zip(args, names, kinds):
+            if not arg_kind.is_named():
                 self.fail(message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, context)
                 return None
-            if param_name == "covariant":
-                if isinstance(param_value, NameExpr) and param_value.name in ("True", "False"):
-                    covariant = param_value.name == "True"
+            if arg_name == "covariant":
+                if isinstance(arg_value, NameExpr) and arg_value.name in ("True", "False"):
+                    covariant = arg_value.name == "True"
                 else:
                     self.fail(message_registry.TYPEVAR_VARIANCE_DEF.format("covariant"), context)
                     return None
-            elif param_name == "contravariant":
-                if isinstance(param_value, NameExpr) and param_value.name in ("True", "False"):
-                    contravariant = param_value.name == "True"
+            elif arg_name == "contravariant":
+                if isinstance(arg_value, NameExpr) and arg_value.name in ("True", "False"):
+                    contravariant = arg_value.name == "True"
                 else:
                     self.fail(
                         message_registry.TYPEVAR_VARIANCE_DEF.format("contravariant"), context
                     )
                     return None
-            elif param_name == "bound":
+            elif arg_name == "bound":
                 if has_values:
-                    self.fail("TypeVar cannot have both values and an upper bound", context)
+                    self.fail("TypeVar cannot have both constraints and bound", context)
                     return None
-                tv_arg = self.get_typevarlike_argument("TypeVar", param_name, param_value, context)
+                tv_arg = self.get_typevarlike_argument("TypeVar", arg_name, arg_value, context)
                 if tv_arg is None:
                     return None
                 upper_bound = tv_arg
-            elif param_name == "default":
+            elif arg_name == "default":
                 tv_arg = self.get_typevarlike_argument(
-                    "TypeVar", param_name, param_value, context, allow_unbound_tvars=True
+                    "TypeVar", arg_name, arg_value, context, allow_unbound_tvars=True
                 )
                 default = tv_arg or AnyType(TypeOfAny.from_error)
-            elif param_name == "values":
+            elif arg_name == "values":
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
                 self.fail('TypeVar "values" argument not supported', context)
                 self.fail(
@@ -4951,9 +4951,7 @@ class SemanticAnalyzer(
                 )
                 return None
             else:
-                self.fail(
-                    f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{param_name}"', context
-                )
+                self.fail(f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{arg_name}"', context)
                 return None
 
         if covariant and contravariant:
@@ -5081,7 +5079,7 @@ class SemanticAnalyzer(
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
-        # on the lines of process_typevar_parameters
+        # on the lines of process_typevar_arguments
 
         if not call.analyzed:
             paramspec_var = ParamSpecExpr(
@@ -5196,7 +5194,7 @@ class SemanticAnalyzer(
                 )
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
-                    # soon, even if some value is not ready yet, see process_typevar_parameters()
+                    # soon, even if some value is not ready yet, see process_typevar_arguments()
                     # for an example.
                     analyzed = PlaceholderType(None, [], node.line)
                 if has_type_vars(analyzed):

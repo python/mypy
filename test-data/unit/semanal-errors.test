@@ -1025,7 +1025,7 @@ k = TypeVar('k', contravariant=1) # E: TypeVar "contravariant" may only be a lit
 
 [case testMoreInvalidTypevarArguments]
 from typing import TypeVar
-T = TypeVar('T', int, str, bound=bool) # E: TypeVar cannot have both values and an upper bound
+T = TypeVar('T', int, str, bound=bool) # E: TypeVar cannot have both constraints and bound
 S = TypeVar('S', covariant=True, contravariant=True) \
     # E: TypeVar cannot be both covariant and contravariant
 [builtins fixtures/bool.pyi]
