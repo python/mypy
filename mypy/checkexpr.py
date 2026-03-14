@@ -1904,6 +1904,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return self.analyze_type_type_callee(tuple_fallback(item), context)
         if isinstance(item, TypedDictType):
             return self.typeddict_callable_from_context(item)
+        if isinstance(item, NoneType):
+            # NoneType() is valid at runtime and returns None.
+            return CallableType(
+                [],
+                [],
+                [],
+                NoneType(),
+                self.named_type("builtins.function"),
+            )
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
