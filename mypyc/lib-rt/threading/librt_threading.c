@@ -13,6 +13,9 @@
 #elif defined(__APPLE__)
 #include <os/lock.h>
 #include <stdatomic.h>
+#else
+#include <pthread.h>
+#include <stdatomic.h>
 #endif
 
 //
@@ -30,10 +33,11 @@
 // provided by the kernel). A separate atomic flag tracks the locked state
 // for locked() and release-unlocked-lock detection.
 //
+// On other POSIX systems, this falls back to pthread_mutex with a separate
+// atomic flag for locked() and release-unlocked-lock detection.
+//
 
 #ifdef MYPYC_EXPERIMENTAL
-
-#if defined(__linux__) || defined(__APPLE__)
 
 // ---------- Platform-specific lock state ----------
 
@@ -52,6 +56,14 @@ typedef struct {
     _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
 } LockObject;
 
+#else  // POSIX fallback
+
+typedef struct {
+    PyObject_HEAD
+    pthread_mutex_t mutex;
+    _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
+} LockObject;
+
 #endif
 
 // ---------- Platform-specific init/acquire/release ----------
@@ -63,6 +75,9 @@ Lock_init_internal(LockObject *self)
     atomic_store_explicit(&self->state, 0, memory_order_relaxed);
 #elif defined(__APPLE__)
     self->lock = OS_UNFAIR_LOCK_INIT;
+    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+#else
+    pthread_mutex_init(&self->mutex, NULL);
     atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
 #endif
 }
@@ -121,6 +136,21 @@ Lock_acquire_impl(LockObject *self, int blocking)
     Py_END_ALLOW_THREADS
     atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
     return 1;
+
+#else  // POSIX fallback
+    if (!blocking) {
+        if (pthread_mutex_trylock(&self->mutex) == 0) {
+            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            return 1;
+        }
+        return 0;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    pthread_mutex_lock(&self->mutex);
+    Py_END_ALLOW_THREADS
+    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    return 1;
 #endif
 }
 
@@ -145,6 +175,13 @@ Lock_release_impl(LockObject *self)
     }
     os_unfair_lock_unlock(&self->lock);
     return 0;
+
+#else  // POSIX fallback
+    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
+        return -1;
+    }
+    pthread_mutex_unlock(&self->mutex);
+    return 0;
 #endif
 }
 
@@ -153,7 +190,7 @@ Lock_is_locked(LockObject *self)
 {
 #ifdef __linux__
     return atomic_load_explicit(&self->state, memory_order_relaxed) != 0;
-#elif defined(__APPLE__)
+#else
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
 #endif
 }
@@ -197,6 +234,9 @@ Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
 static void
 Lock_dealloc(LockObject *self)
 {
+#if !defined(__linux__) && !defined(__APPLE__)
+    pthread_mutex_destroy(&self->mutex);
+#endif
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -282,8 +322,6 @@ Lock_type_internal(void) {
     return &LockType;
 }
 
-#endif  // defined(__linux__) || defined(__APPLE__)
-
 #endif  // MYPYC_EXPERIMENTAL
 
 static PyMethodDef librt_threading_module_methods[] = {
@@ -308,7 +346,6 @@ static int
 librt_threading_module_exec(PyObject *m)
 {
 #ifdef MYPYC_EXPERIMENTAL
-#if defined(__linux__) || defined(__APPLE__)
     if (PyType_Ready(&LockType) < 0) {
         return -1;
     }
@@ -326,7 +363,6 @@ librt_threading_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif  // defined(__linux__) || defined(__APPLE__)
 #endif  // MYPYC_EXPERIMENTAL
     return 0;
 }
