@@ -10,20 +10,32 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdatomic.h>
+#elif defined(__APPLE__)
+#include <os/lock.h>
+#include <stdatomic.h>
 #endif
 
 //
 // Lock
 //
-// A fast mutex lock for use from mypyc-compiled code. On Linux, this uses
-// a futex-based implementation that avoids pthread overhead. The lock state
-// is stored as a single atomic int:
+// A fast mutex lock for use from mypyc-compiled code.
+//
+// On Linux, this uses a futex-based implementation. The lock state is stored
+// as a single atomic int:
 //   0 = unlocked
 //   1 = locked (no waiters)
 //   2 = locked (with waiters)
 //
+// On macOS, this uses os_unfair_lock (a lightweight spin-then-wait lock
+// provided by the kernel). A separate atomic flag tracks the locked state
+// for locked() and release-unlocked-lock detection.
+//
 
 #ifdef MYPYC_EXPERIMENTAL
+
+#if defined(__linux__) || defined(__APPLE__)
+
+// ---------- Platform-specific lock state ----------
 
 #ifdef __linux__
 
@@ -32,51 +44,35 @@ typedef struct {
     _Atomic int state;  // 0=unlocked, 1=locked, 2=locked+contended
 } LockObject;
 
-static PyTypeObject LockType;
+#elif defined(__APPLE__)
 
-static PyObject *
-Lock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+typedef struct {
+    PyObject_HEAD
+    os_unfair_lock lock;
+    _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
+} LockObject;
+
+#endif
+
+// ---------- Platform-specific init/acquire/release ----------
+
+static inline void
+Lock_init_internal(LockObject *self)
 {
-    if (type != &LockType) {
-        PyErr_SetString(PyExc_TypeError, "Lock cannot be subclassed");
-        return NULL;
-    }
-
-    LockObject *self = (LockObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        atomic_store_explicit(&self->state, 0, memory_order_relaxed);
-    }
-    return (PyObject *)self;
-}
-
-static int
-Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
-{
-    if (!PyArg_ParseTuple(args, "")) {
-        return -1;
-    }
-
-    if (kwds != NULL && PyDict_Size(kwds) > 0) {
-        PyErr_SetString(PyExc_TypeError,
-                        "Lock() takes no keyword arguments");
-        return -1;
-    }
-
+#ifdef __linux__
     atomic_store_explicit(&self->state, 0, memory_order_relaxed);
-    return 0;
+#elif defined(__APPLE__)
+    self->lock = OS_UNFAIR_LOCK_INIT;
+    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+#endif
 }
 
-static void
-Lock_dealloc(LockObject *self)
-{
-    Py_TYPE(self)->tp_free((PyObject *)self);
-}
-
-// Try to acquire the lock. Returns 1 (true) on success, 0 (false) if non-blocking
-// and the lock is held.
+// Try to acquire the lock. Returns 1 (true) on success, 0 (false) if
+// non-blocking and the lock is held.
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
+#ifdef __linux__
     // Fast path: try to grab the lock (0 -> 1)
     int expected = 0;
     if (atomic_compare_exchange_strong_explicit(&self->state, &expected, 1,
@@ -110,6 +106,98 @@ Lock_acquire_impl(LockObject *self, int blocking)
             return 1;
         }
     }
+
+#elif defined(__APPLE__)
+    if (!blocking) {
+        if (os_unfair_lock_trylock(&self->lock)) {
+            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            return 1;
+        }
+        return 0;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    os_unfair_lock_lock(&self->lock);
+    Py_END_ALLOW_THREADS
+    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    return 1;
+#endif
+}
+
+// Release the lock. Returns 0 on success, -1 if the lock was not held.
+static int
+Lock_release_impl(LockObject *self)
+{
+#ifdef __linux__
+    int old = atomic_exchange_explicit(&self->state, 0, memory_order_release);
+    if (old == 0) {
+        return -1;
+    }
+    if (old == 2) {
+        // There are waiters, wake one
+        syscall(SYS_futex, &self->state, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
+    }
+    return 0;
+
+#elif defined(__APPLE__)
+    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
+        return -1;
+    }
+    os_unfair_lock_unlock(&self->lock);
+    return 0;
+#endif
+}
+
+static inline int
+Lock_is_locked(LockObject *self)
+{
+#ifdef __linux__
+    return atomic_load_explicit(&self->state, memory_order_relaxed) != 0;
+#elif defined(__APPLE__)
+    return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
+#endif
+}
+
+// ---------- Python type methods (shared across platforms) ----------
+
+static PyTypeObject LockType;
+
+static PyObject *
+Lock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    if (type != &LockType) {
+        PyErr_SetString(PyExc_TypeError, "Lock cannot be subclassed");
+        return NULL;
+    }
+
+    LockObject *self = (LockObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        Lock_init_internal(self);
+    }
+    return (PyObject *)self;
+}
+
+static int
+Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
+{
+    if (!PyArg_ParseTuple(args, "")) {
+        return -1;
+    }
+
+    if (kwds != NULL && PyDict_Size(kwds) > 0) {
+        PyErr_SetString(PyExc_TypeError,
+                        "Lock() takes no keyword arguments");
+        return -1;
+    }
+
+    Lock_init_internal(self);
+    return 0;
+}
+
+static void
+Lock_dealloc(LockObject *self)
+{
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *
@@ -133,14 +221,9 @@ Lock_acquire(LockObject *self, PyObject *const *args, Py_ssize_t nargs)
 static PyObject *
 Lock_release(LockObject *self, PyObject *Py_UNUSED(ignored))
 {
-    int old = atomic_exchange_explicit(&self->state, 0, memory_order_release);
-    if (old == 0) {
+    if (Lock_release_impl(self) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "release unlocked lock");
         return NULL;
-    }
-    if (old == 2) {
-        // There are waiters, wake one
-        syscall(SYS_futex, &self->state, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
     }
     Py_RETURN_NONE;
 }
@@ -148,8 +231,7 @@ Lock_release(LockObject *self, PyObject *Py_UNUSED(ignored))
 static PyObject *
 Lock_locked(LockObject *self, PyObject *Py_UNUSED(ignored))
 {
-    int state = atomic_load_explicit(&self->state, memory_order_relaxed);
-    return PyBool_FromLong(state != 0);
+    return PyBool_FromLong(Lock_is_locked(self));
 }
 
 static PyObject *
@@ -200,7 +282,7 @@ Lock_type_internal(void) {
     return &LockType;
 }
 
-#endif  // __linux__
+#endif  // defined(__linux__) || defined(__APPLE__)
 
 #endif  // MYPYC_EXPERIMENTAL
 
@@ -226,7 +308,7 @@ static int
 librt_threading_module_exec(PyObject *m)
 {
 #ifdef MYPYC_EXPERIMENTAL
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     if (PyType_Ready(&LockType) < 0) {
         return -1;
     }
@@ -244,7 +326,7 @@ librt_threading_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif  // __linux__
+#endif  // defined(__linux__) || defined(__APPLE__)
 #endif  // MYPYC_EXPERIMENTAL
     return 0;
 }
