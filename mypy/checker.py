@@ -1323,6 +1323,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
+        iter_errors = IterationDependentErrors()
         for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
@@ -1436,14 +1437,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # We suppress reachability warnings for empty generator functions
                     # (return; yield) which have a "yield" that's unreachable by definition
                     # since it's only there to promote the function into a generator function.
-                    #
-                    # We also suppress reachability warnings when we use TypeVars with value
-                    # restrictions: we only want to report a warning if a certain statement is
-                    # marked as being suppressed in *all* of the expansions, but we currently
-                    # have no good way of doing this.
-                    #
-                    # TODO: Find a way of working around this limitation
-                    if _is_empty_generator_function(item) or len(expanded) >= 2:
+                    if _is_empty_generator_function(item):
                         self.binder.suppress_unreachable_warnings()
                     # When checking a third-party library, we can skip function body,
                     # if during semantic analysis we found that there are no attributes
@@ -1455,7 +1449,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         or defn.has_self_attr_def
                         or defn.can_infer_vars
                     ):
-                        self.accept(item.body)
+                        if len(expanded) > 1:
+                            with IterationErrorWatcher(
+                                self.msg.errors, iter_errors, collect_revealed_types=False
+                            ):
+                                self.accept(item.body)
+                        else:
+                            self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
                 if new_frame is not None:
                     self.binder.pop_frame(True, 0)
@@ -1549,6 +1549,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.return_types.pop()
 
             self.binder = old_binder
+
+        if len(expanded) > 1:
+            self.msg.iteration_dependent_errors(iter_errors)
 
     def check_funcdef_item(
         self,
