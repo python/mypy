@@ -56,6 +56,51 @@ L0:
     r2 = LibRTThreading_Lock_release_internal(lk)
     return 1
 
+[case testLockWith_experimental]
+from librt.threading import Lock
+
+def with_lock(lk: Lock) -> None:
+    with lk:
+        a: list[int] = []
+[out]
+def with_lock(lk):
+    lk :: librt.threading.Lock
+    r0 :: bool
+    r1, a :: list
+    r2, r3, r4 :: tuple[object, object, object]
+    r5 :: None
+    r6 :: bit
+L0:
+    r0 = LibRTThreading_Lock_acquire_internal(lk)
+L1:
+    r1 = PyList_New(0)
+    a = r1
+L2:
+L3:
+    r2 = <error> :: tuple[object, object, object]
+    r3 = r2
+    goto L5
+L4: (handler for L1)
+    r4 = CPy_CatchError()
+    r3 = r4
+L5:
+    r5 = LibRTThreading_Lock_release_internal(lk)
+    if is_error(r3) goto L7 else goto L6
+L6:
+    CPy_Reraise()
+    unreachable
+L7:
+    goto L11
+L8: (handler for L5, L6)
+    if is_error(r3) goto L10 else goto L9
+L9:
+    CPy_RestoreExcInfo(r3)
+L10:
+    r6 = CPy_KeepPropagating()
+    unreachable
+L11:
+    return 1
+
 [case testLockExperimentalDisabled]
 from librt.threading import Lock
 

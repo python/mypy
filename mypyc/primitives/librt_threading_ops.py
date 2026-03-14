@@ -1,7 +1,7 @@
 from mypyc.ir.deps import LIBRT_THREADING
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import bool_rprimitive, lock_rprimitive, none_rprimitive
-from mypyc.primitives.registry import function_op, method_op
+from mypyc.primitives.registry import custom_primitive_op, function_op, method_op
 
 # Lock()
 function_op(
@@ -15,7 +15,7 @@ function_op(
 )
 
 # Lock.acquire() -- blocking acquire, always returns True
-method_op(
+lock_acquire_op = method_op(
     name="acquire",
     arg_types=[lock_rprimitive],
     return_type=bool_rprimitive,
@@ -26,7 +26,7 @@ method_op(
 )
 
 # Lock.release()
-method_op(
+lock_release_op = method_op(
     name="release",
     arg_types=[lock_rprimitive],
     return_type=none_rprimitive,
