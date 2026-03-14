@@ -14,8 +14,10 @@ the following configuration files (in this order):
 
     1. ``mypy.ini``
     2. ``.mypy.ini``
-    3. ``pyproject.toml`` (containing a ``[tool.mypy]`` section)
-    4. ``setup.cfg`` (containing a ``[mypy]`` section)
+    3. ``mypy.toml``
+    4. ``.mypy.toml``
+    5. ``pyproject.toml`` (containing a ``[tool.mypy]`` section)
+    6. ``setup.cfg`` (containing a ``[mypy]`` section)
 
 If no configuration file is found by this method, mypy will then look for
 configuration files in the following locations (in this order):
@@ -49,8 +51,15 @@ The configuration file format is the usual
 section names in square brackets and flag settings of the form
 `NAME = VALUE`. Comments start with ``#`` characters.
 
-- A section named ``[mypy]`` must be present.  This specifies
-  the global flags.
+Mypy also supports TOML configuration in two forms:
+
+* ``pyproject.toml`` with options under ``[tool.mypy]`` and per-module
+  overrides under ``[[tool.mypy.overrides]]``
+* ``mypy.toml`` or ``.mypy.toml`` with options at the top level and
+  per-module overrides under ``[[mypy.overrides]]``
+
+- In INI-based config files, a section named ``[mypy]`` must be present.
+  This specifies the global flags.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
@@ -1274,6 +1283,45 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     warn_return_any = false
 
     [[tool.mypy.overrides]]
+    module = [
+        "somelibrary",
+        "some_other_library"
+    ]
+    ignore_missing_imports = true
+
+Using a mypy.toml file
+**********************
+
+``mypy.toml`` and ``.mypy.toml`` are also supported. They use the same
+TOML value rules as ``pyproject.toml``, but the mypy options live at the
+top level instead of under ``[tool.mypy]``.
+
+Example ``mypy.toml``
+*********************
+
+.. code-block:: toml
+
+    # mypy global options:
+
+    python_version = "3.9"
+    warn_return_any = true
+    warn_unused_configs = true
+    exclude = [
+        '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+        "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+    ]
+
+    # mypy per-module options:
+
+    [[mypy.overrides]]
+    module = "mycode.foo.*"
+    disallow_untyped_defs = true
+
+    [[mypy.overrides]]
+    module = "mycode.bar"
+    warn_return_any = false
+
+    [[mypy.overrides]]
     module = [
         "somelibrary",
         "some_other_library"
