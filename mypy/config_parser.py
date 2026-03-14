@@ -399,10 +399,7 @@ def is_pyproject(filename: str) -> bool:
     return os.path.basename(filename) == "pyproject.toml"
 
 
-def get_mypy_toml_data(
-    config_file: str,
-    toml_data: dict[str, Any],
-) -> dict[str, Any] | None:
+def get_mypy_toml_data(config_file: str, toml_data: dict[str, Any]) -> dict[str, Any] | None:
     if is_pyproject(config_file):
         toml_data = toml_data.get("tool", {})
         if "mypy" not in toml_data:
@@ -464,7 +461,7 @@ def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[s
                 config_file,
                 "{prefix}.overrides sections must be an array. Please make "
                 "sure you are using double brackets like so: {override}",
-            ),
+            )
         )
 
     result = toml_data.copy()
@@ -475,7 +472,7 @@ def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[s
                     config_file,
                     "toml config file contains a {override} section, but no module to "
                     "override was specified.",
-                ),
+                )
             )
 
         if isinstance(override["module"], str):
@@ -488,7 +485,7 @@ def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[s
                     config_file,
                     "toml config file contains a {override} section with a module value "
                     "that is not a string or a list of strings",
-                ),
+                )
             )
 
         for module in modules:
@@ -509,7 +506,7 @@ def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[s
                                 "toml config file contains {override} sections with "
                                 f"conflicting values. Module '{module}' has "
                                 f"two different values for '{new_key}'",
-                            ),
+                            )
                         )
                     result[old_config_name][new_key] = new_value
 
