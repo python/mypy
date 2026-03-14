@@ -3895,6 +3895,20 @@ def foo(arg: Type[Tuple[int]]):
     arg()  # E: Cannot instantiate type "type[tuple[int]]"
 [builtins fixtures/tuple.pyi]
 
+[case testCallTypeNone]
+# type[None] is callable and returns None (NoneType() is valid at runtime)
+def f(n: type[None]) -> None:
+    x = n()
+    reveal_type(x)  # N: Revealed type is "None"
+    n(1)  # E: Too many arguments
+[builtins fixtures/tuple.pyi]
+
+[case testCallTypeNoneDirect]
+# type(None)() and NoneType() are valid at runtime
+x = type(None)()
+reveal_type(x)  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeUsingTypeCOverloadedClass]
 from foo import *
 [file foo.pyi]
