@@ -1,0 +1,32 @@
+# Test cases for librt.threading (compile and run)
+
+[case testLockBasics_librt_experimental]
+from librt.threading import Lock
+
+def test_lock_basic() -> None:
+    lock = Lock()
+    assert not lock.locked()
+    assert lock.acquire()
+    assert lock.locked()
+    lock.release()
+    assert not lock.locked()
+
+def test_lock_context_manager() -> None:
+    lock = Lock()
+    with lock:
+        assert lock.locked()
+    assert not lock.locked()
+
+def test_lock_non_blocking() -> None:
+    lock = Lock()
+    assert lock.acquire()
+    assert not lock.acquire(False)
+    lock.release()
+    assert lock.acquire(False)
+    lock.release()
+
+[file driver.py]
+from native import test_lock_basic, test_lock_context_manager, test_lock_non_blocking
+test_lock_basic()
+test_lock_context_manager()
+test_lock_non_blocking()

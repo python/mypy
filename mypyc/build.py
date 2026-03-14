@@ -127,6 +127,12 @@ LIBRT_MODULES = [
     ),
     ModDesc("librt.time", ["time/librt_time.c"], ["time/librt_time.h"], []),
     ModDesc("librt.random", ["random/librt_random.c"], ["random/librt_random.h"], ["random"]),
+    ModDesc(
+        "librt.threading",
+        ["threading/librt_threading.c"],
+        ["threading/librt_threading.h"],
+        ["threading"],
+    ),
 ]
 
 try:
