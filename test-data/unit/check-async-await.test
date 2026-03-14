@@ -192,7 +192,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncForTypeComments]
+[case testAsyncForTypeComments_no_native_parse]
 
 from typing import AsyncIterator, Union
 class C(AsyncIterator[int]):
@@ -342,7 +342,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncWithTypeComments]
+[case testAsyncWithTypeComments_no_native_parse]
 
 class C:
     async def __aenter__(self) -> int: pass
@@ -1078,5 +1078,16 @@ class Launcher(P):
                                              # N: See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators
         raise BaseException
 
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testInvalidAsyncForInComprehensionNoCrash]
+# a # is at the end to mark these not as section headers
+[[5 async for _ in [5]] for _ in []]#  # E: "async for" outside async function \
+                                       # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[{5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
+                                       # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[{5: 5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
+                                          # E: "list[int]" has no attribute "__aiter__" (not async iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

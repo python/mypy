@@ -31,7 +31,6 @@ from contextlib import nullcontext
 from itertools import groupby
 from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
-import mypy.build
 import mypy.state
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
@@ -54,7 +53,6 @@ from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
-from mypy.util import is_typeshed_file
 
 if TYPE_CHECKING:
     from mypy.build import Graph, State
@@ -416,11 +414,6 @@ def semantic_analyze_target(
         )
         if isinstance(node, Decorator):
             infer_decorator_signature_if_simple(node, analyzer)
-    for dep in analyzer.imports:
-        state.add_dependency(dep)
-        priority = mypy.build.PRI_LOW
-        if priority <= state.priorities.get(dep, priority):
-            state.priorities[dep] = priority
 
     # Clear out some stale data to avoid memory leaks and astmerge
     # validity check confusion
@@ -456,10 +449,11 @@ def check_type_arguments_in_targets(
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
+    assert state.tree
     analyzer = TypeArgumentAnalyzer(
         errors,
         state.options,
-        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.tree.is_typeshed_file(state.options),
         state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():

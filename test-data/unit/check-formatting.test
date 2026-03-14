@@ -60,6 +60,7 @@ a = None # type: Any
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character "W"
 '%b' % 1  # E: Format character "b" is only supported on bytes patterns
+'%(a)' % {'a': 1}  # E: Unsupported format character ""
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14

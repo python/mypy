@@ -1,6 +1,6 @@
 import pickle
 import sys
-from _pickle import _ReducedType
+from _pickle import _BufferCallback, _ReducedType
 from _typeshed import HasFileno, SupportsWrite, Unused
 from abc import ABCMeta
 from builtins import type as Type  # alias to avoid name clash
@@ -19,7 +19,14 @@ HAVE_SEND_HANDLE: Final[bool]
 
 class ForkingPickler(pickle.Pickler):
     dispatch_table: _DispatchTableType
-    def __init__(self, file: SupportsWrite[bytes], protocol: int | None = ...) -> None: ...
+    def __init__(
+        self,
+        file: SupportsWrite[bytes],
+        protocol: int | None = None,
+        fix_imports: bool = True,
+        buffer_callback: _BufferCallback = None,
+        /,
+    ) -> None: ...
     @classmethod
     def register(cls, type: Type, reduce: Callable[[Any], _ReducedType]) -> None: ...
     @classmethod

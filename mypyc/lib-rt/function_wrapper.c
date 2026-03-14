@@ -156,10 +156,7 @@ static PyType_Spec CPyFunction_spec = {
     .name = "Function compiled with mypyc",
     .basicsize = sizeof(CPyFunction),
     .itemsize = 0,
-    .flags =
-#if PY_VERSION_HEX >= 0x030A0000
-             Py_TPFLAGS_IMMUTABLETYPE |
-#endif
+    .flags = Py_TPFLAGS_IMMUTABLETYPE |
 #if PY_VERSION_HEX >= 0x030C0000
              Py_TPFLAGS_MANAGED_DICT |
 #endif

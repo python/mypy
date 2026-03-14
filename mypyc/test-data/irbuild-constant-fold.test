@@ -186,6 +186,25 @@ L0:
     big5 = r4
     return 1
 
+[case testConstantFoldFormatArgs]
+# This only tests that the callee and args are constant folded,
+# it is not intended to test the result.
+from typing import Any, Final
+
+FMT: Final = "{} {}"
+
+def f() -> str:
+    return FMT.format(400 + 20, "roll" + "up")
+[out]
+def f():
+    r0, r1, r2, r3 :: str
+L0:
+    r0 = CPyTagged_Str(840)
+    r1 = 'rollup'
+    r2 = ' '
+    r3 = CPyStr_Build(3, r0, r2, r1)
+    return r3
+
 [case testIntConstantFoldingFinal]
 from typing import Final
 X: Final = 5

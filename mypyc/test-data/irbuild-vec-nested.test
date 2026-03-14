@@ -1,0 +1,311 @@
+-- Test cases for nested vecs
+
+[case testVecNestedCreateEmpty]
+from librt.vecs import vec, append
+from mypy_extensions import i64
+
+def f() -> vec[vec[str]]:
+    return vec[vec[str]]()
+
+def g() -> vec[vec[i64]]:
+    return vec[vec[i64]]()
+[out]
+def f():
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecNestedApi.alloc(0, 0, r1, 1)
+    return r2
+def g():
+    r0 :: vec[vec[i64]]
+L0:
+    r0 = VecNestedApi.alloc(0, 0, 2, 1)
+    return r0
+
+[case testVecNestedAppend]
+from librt.vecs import vec, append
+
+def f(v: vec[vec[str]], vv: vec[str]) -> vec[vec[str]]:
+    return append(v, vv)
+[out]
+def f(v, vv):
+    v :: vec[vec[str]]
+    vv :: vec[str]
+    r0 :: native_int
+    r1 :: object
+    r2, r3 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r4 :: vec[vec[str]]
+L0:
+    r0 = vv.len
+    r1 = vv.buf
+    r2 = set_element undef VecNestedBufItem, len, r0
+    r3 = set_element r2, buf, r1
+    r4 = VecNestedApi.append(v, r3)
+    keep_alive vv
+    return r4
+
+[case testVecNestedVecI64Append]
+from librt.vecs import vec, append
+from mypy_extensions import i64
+
+def f(v: vec[vec[i64]], vv: vec[i64]) -> vec[vec[i64]]:
+    return append(v, vv)
+[out]
+def f(v, vv):
+    v :: vec[vec[i64]]
+    vv :: vec[i64]
+    r0 :: native_int
+    r1 :: object
+    r2, r3 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r4 :: vec[vec[i64]]
+L0:
+    r0 = vv.len
+    r1 = vv.buf
+    r2 = set_element undef VecNestedBufItem, len, r0
+    r3 = set_element r2, buf, r1
+    r4 = VecNestedApi.append(v, r3)
+    keep_alive vv
+    return r4
+
+[case testVecNestedLen_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+from typing import Optional
+
+def f(v: vec[vec[str]]) -> i64:
+    return len(v)
+
+def g(v: vec[vec[i64]]) -> i64:
+    return len(v)
+[out]
+def f(v):
+    v :: vec[vec[str]]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+def g(v):
+    v :: vec[vec[i64]]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+
+[case testVecNestedGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[str]], n: i64) -> vec[str]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[vec[str]]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[str]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[str]*
+    keep_alive v
+    return r10
+
+[case testVecNestedI64GetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[i64]], n: i64) -> vec[i64]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[vec[i64]]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[i64]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[i64]*
+    keep_alive v
+    return r10
+
+[case testVecNestedI64GetItemWithBorrow_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[i64]], n: i64) -> i64:
+    return v[n][n]
+[out]
+def f(v, n):
+    v :: vec[vec[i64]]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[i64]
+    r11 :: native_int
+    r12 :: bit
+    r13 :: i64
+    r14 :: bit
+    r15 :: bool
+    r16 :: i64
+    r17 :: object
+    r18 :: ptr
+    r19 :: i64
+    r20 :: ptr
+    r21 :: i64
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = borrow load_mem r9 :: vec[i64]*
+    r11 = r10.len
+    r12 = n < r11 :: unsigned
+    if r12 goto L9 else goto L6 :: bool
+L6:
+    r13 = n + r11
+    r14 = r13 < r11 :: unsigned
+    if r14 goto L8 else goto L7 :: bool
+L7:
+    r15 = raise IndexError
+    unreachable
+L8:
+    r16 = r13
+    goto L10
+L9:
+    r16 = n
+L10:
+    r17 = r10.buf
+    r18 = get_element_ptr r17 items :: VecI64BufObject
+    r19 = r16 * 8
+    r20 = r18 + r19
+    r21 = load_mem r20 :: i64*
+    keep_alive v, r10
+    return r21
+
+[case testVecDoublyNestedGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[vec[str]]], n: i64) -> vec[vec[str]]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[vec[vec[str]]]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[vec[str]]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[vec[str]]*
+    keep_alive v
+    return r10

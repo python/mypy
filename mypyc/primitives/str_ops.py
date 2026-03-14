@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import STR_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType,
@@ -10,10 +11,12 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
+    short_int_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
 )
@@ -394,6 +397,49 @@ str_ssize_t_size_op = custom_op(
     error_kind=ERR_NEG_INT,
 )
 
+# str.lower()
+method_op(
+    name="lower",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Lower",
+    error_kind=ERR_MAGIC,
+)
+
+# str.upper()
+method_op(
+    name="upper",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Upper",
+    error_kind=ERR_MAGIC,
+)
+
+method_op(
+    name="isspace",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsSpace",
+    error_kind=ERR_NEVER,
+)
+
+method_op(
+    name="isalnum",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAlnum",
+    error_kind=ERR_NEVER,
+)
+
+method_op(
+    name="isdigit",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsDigit",
+    error_kind=ERR_NEVER,
+)
+
+
 # obj.decode()
 method_op(
     name="decode",
@@ -524,4 +570,34 @@ method_op(
     return_type=str_rprimitive,
     c_function_name="CPyStr_Upper",
     error_kind=ERR_MAGIC,
+# Optimized str indexing for ord(s[i])
+
+# str index adjustment - convert negative index to positive
+str_adjust_index_op = custom_primitive_op(
+    name="str_adjust_index",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyStr_AdjustIndex",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+
+# str range check - check if index is in valid range
+str_range_check_op = custom_primitive_op(
+    name="str_range_check",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_RangeCheck",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+
+# str.__getitem__() as int - get character at index as int (ord value) - no bounds checking
+str_get_item_unsafe_as_int_op = custom_primitive_op(
+    name="str_get_item_unsafe_as_int",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=short_int_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafeAsInt",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
 )

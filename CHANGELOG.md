@@ -2,6 +2,71 @@
 
 ## Next Release
 
+### Better narrowing
+
+Mypy's implementation of narrowing has been substantially reworked. Mypy will now narrow more
+aggressively, more consistently, and more correctly. In particular, you are likely to notice new
+narrowing behavior in equality expressions (`==`), containment expressions (`in`),
+match statements, and additional expressions providing type guards.
+
+Note that mypy (and other Python type checkers) do not model the potential for various non-local
+operations to invalidate narrowing assumptions. This means mypy may conclude that some of your code
+is [unreachable](https://mypy.readthedocs.io/en/stable/common_issues.html#unreachable-code) and
+avoid further checking of it. The `--warn-unreachable` flag is useful for highlighting these cases.
+To reset narrowing, you can insert dummy reassignments, for instance `var = var` will reset
+all narrowing of `var.attr`.
+
+Future work includes better narrowing on initial assignments, more narrowing to `Literal` types,
+and better checking of unreachable code.
+
+Contributed by Shantanu Jain.
+
+- Rework narrowing logic for equality and identity (Shantanu, PR [20492](https://github.com/python/mypy/pull/20492))
+- Refactor equality and identity narrowing for clarity (Shantanu, PR [20595](https://github.com/python/mypy/pull/20595))
+- Treat NotImplemented as a singleton type (Shantanu, PR [20601](https://github.com/python/mypy/pull/20601))
+- Improve narrowing logic for Enum int and str subclasses (Shantanu, PR [20609](https://github.com/python/mypy/pull/20609))
+- Narrow types based on collection containment (Shantanu, PR [20602](https://github.com/python/mypy/pull/20602))
+- Refactor and improve narrowing for type(x) == t checks (Shantanu, PR [20634](https://github.com/python/mypy/pull/20634))
+- Narrow for type expr comparisons to type exprs (Shantanu, PR [20639](https://github.com/python/mypy/pull/20639))
+- Narrowing for comparisons against `x.__class__` (Shantanu, PR [20642](https://github.com/python/mypy/pull/20642))
+- Better narrowing with custom equality (Shantanu, PR [20643](https://github.com/python/mypy/pull/20643))
+- Use a single pass for core narrowing logic, add comments (Shantanu, PR [20659](https://github.com/python/mypy/pull/20659))
+- Narrowing for final type objects (Shantanu, PR [20661](https://github.com/python/mypy/pull/20661))
+- Avoid narrowing type[T] (Shantanu, PR [20662](https://github.com/python/mypy/pull/20662))
+- Avoid widening to Any for checks like `type(x) is type(y: Any)` (Shantanu, PR [20663](https://github.com/python/mypy/pull/20663))
+- Preserve some lost narrowing, cleanup (Shantanu, PR [20674](https://github.com/python/mypy/pull/20674))
+- Fix narrowing related code for types with overloaded `__new__` (Shantanu, PR [20676](https://github.com/python/mypy/pull/20676))
+- Fix isinstance with unions of tuples (Shantanu, PR [20677](https://github.com/python/mypy/pull/20677))
+- Fix regression to chained containment (Shantanu, PR [20688](https://github.com/python/mypy/pull/20688))
+- Improve else handling with custom equality (Shantanu, PR [20692](https://github.com/python/mypy/pull/20692))
+- Better model runtime in isinstance and type checks (Shantanu, PR [20675](https://github.com/python/mypy/pull/20675))
+- Use --warn-unreachable and --strict-equality in more tests (Shantanu, PR [20707](https://github.com/python/mypy/pull/20707))
+- Model exact narrowing with type(x) checks (Shantanu, PR [20703](https://github.com/python/mypy/pull/20703))
+- Short term fix for bytes narrowing (Shantanu, PR [20704](https://github.com/python/mypy/pull/20704))
+- Preserve narrowing in unreachable code (Shantanu, PR [20710](https://github.com/python/mypy/pull/20710))
+- Fix bug when narrowing union containing custom eq against custom eq (Shantanu, PR [20754](https://github.com/python/mypy/pull/20754))
+- Fix narrowing for unions (Shantanu, PR [20728](https://github.com/python/mypy/pull/20728))
+- Unsoundly narrow away from None with custom eq (Shantanu, PR [20756](https://github.com/python/mypy/pull/20756))
+- Improve narrowing with numeric types (Shantanu, PR [20727](https://github.com/python/mypy/pull/20727))
+- Fix narrowing with final type objects (Shantanu, PR [20743](https://github.com/python/mypy/pull/20743))
+- Further improve match statement narrowing against unions (Shantanu, PR [20744](https://github.com/python/mypy/pull/20744))
+- Avoid narrowing to NewType (Shantanu, PR [20766](https://github.com/python/mypy/pull/20766))
+- Better match narrowing for irrefutable sequence patterns (Shantanu, PR [20782](https://github.com/python/mypy/pull/20782))
+- Remove prohibit_none_typevar_overlap (Shantanu, PR [20864](https://github.com/python/mypy/pull/20864))
+- Fix match statement narrowing reachability for tuples (Shantanu, PR [20896](https://github.com/python/mypy/pull/20896))
+- Better handling of generics when narrowing (Shantanu, PR [20863](https://github.com/python/mypy/pull/20863))
+- Better match narrowing for type objects (Shantanu, PR [20872](https://github.com/python/mypy/pull/20872))
+- Narrow Callable generic return types (Shantanu, PR [20868](https://github.com/python/mypy/pull/20868))
+- Better match narrowing for unions of type objects (Shantanu, PR [20905](https://github.com/python/mypy/pull/20905))
+- Improve reachability in narrowing logic (Shantanu, PR [20660](https://github.com/python/mypy/pull/20660))
+- Better match narrowing for irrefutable mapping patterns (Shantanu, PR [20906](https://github.com/python/mypy/pull/20906))
+- Fix match statement semantic reachability (Shantanu, PR [20968](https://github.com/python/mypy/pull/20968))
+- Add some additional narrowing test cases (Shantanu, PR [20598](https://github.com/python/mypy/pull/20598))
+- Move tests to check-narrowing , improve them slightly (Shantanu, PR [20637](https://github.com/python/mypy/pull/20637))
+- Add more tests for narrowing logic (Shantanu, PR [20672](https://github.com/python/mypy/pull/20672))
+- More testing related improvements and updates (Shantanu, PR [20709](https://github.com/python/mypy/pull/20709))
+- Add --warn-unreachable to more tests (Shantanu, PR [20977](https://github.com/python/mypy/pull/20977))
+
 ### Drop Support for Python 3.9
 
 Mypy no longer supports running with Python 3.9, which has reached end-of-life.
@@ -10,6 +75,18 @@ that needs to support Python 3.9 with the `--python-version 3.9` argument.
 Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
+
+### Mypyc Accelerated Mypy Wheels for ARM Windows and Free Threading
+
+For best performance, mypy can be compiled to C extension modules using mypyc. This makes
+mypy 3-5x faster than when interpreted with pure Python. We now build and upload mypyc
+accelerated mypy wheels for `win_arm64` and `cp314t-...` to PyPI, making it easy for Windows
+users on ARM and those using the free theading builds for Python 3.14 to realise this speedup
+-- just `pip install` the latest mypy.
+
+Contributed by Marc Mueller
+(PR [mypy_mypyc-wheels#106](https://github.com/mypyc/mypy_mypyc-wheels/pull/106),
+PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110)).
 
 ### Removed flags `--force-uppercase-builtins` and `--force-union-syntax`
 

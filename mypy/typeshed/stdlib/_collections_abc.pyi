@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from types import MappingProxyType
-from typing import (  # noqa: Y022,Y038,UP035,Y057
+from typing import (  # noqa: Y022,Y038,UP035,Y057,RUF100
     AbstractSet as Set,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,

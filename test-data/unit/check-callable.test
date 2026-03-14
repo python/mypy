@@ -500,11 +500,13 @@ if callable():  # E: Missing positional argument "x" in call to "callable"
 
 [builtins fixtures/callable.pyi]
 
-[case testCallableWithNoneArgs]
+[case testCallableWithAnyArgs]
 
-fn = None
-if callable(fn):
-  fn()
+def main(fn: object) -> None:
+    if callable(fn):
+        fn()
+        fn(1, 2, 3)
+        fn(take="that")
 
 [builtins fixtures/callable.pyi]
 

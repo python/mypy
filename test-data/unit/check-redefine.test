@@ -564,18 +564,6 @@ def _(arg: str):
 def _(arg: int) -> int:
     return 'a' # E: Incompatible return value type (got "str", expected "int")
 
-[case testCallingUnderscoreFunctionIsNotAllowed-skip]
-# Skipped because of https://github.com/python/mypy/issues/11774
-def _(arg: str) -> None:
-    pass
-
-def _(arg: int) -> int:
-    return arg
-
-_('a') # E: Calling function named "_" is not allowed
-
-y = _(5) # E: Calling function named "_" is not allowed
-
 [case testFunctionStillTypeCheckedWhenAliasedAsUnderscoreDuringImport]
 from a import f as _
 

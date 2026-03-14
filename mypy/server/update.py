@@ -128,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -137,6 +138,7 @@ from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
     Decorator,
+    FuncBase,
     FuncDef,
     ImportFrom,
     MypyFile,
@@ -591,7 +593,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -727,7 +729,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -951,6 +954,20 @@ def find_targets_recursive(
                 deferred, stale_proto = lookup_target(manager, target)
                 if stale_proto:
                     stale_protos.add(stale_proto)
+
+                # If there are function targets that can infer outer variables, they should
+                # be re-processed as part of the module top-level instead (for consistency).
+                regular = []
+                shared = []
+                for d in deferred:
+                    if isinstance(d.node, FuncBase) and d.node.can_infer_vars:
+                        shared.append(d)
+                    else:
+                        regular.append(d)
+                deferred = regular
+                if shared:
+                    deferred.append(FineGrainedDeferredNode(manager.modules[module_id], None))
+
                 result[module_id].update(deferred)
 
     return result, unloaded_files, stale_protos
@@ -1004,7 +1021,7 @@ def reprocess_nodes(
     for target in targets:
         if target == module_id:
             for info in graph[module_id].early_errors:
-                manager.errors.add_error_info(info)
+                manager.errors.add_error_info(info, file=graph[module_id].xpath)
 
     # Strip semantic analysis information.
     saved_attrs: SavedAttributes = {}

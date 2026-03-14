@@ -11,6 +11,7 @@ from mypyc.ir.rtypes import (
     RType,
     RTypeVisitor,
     RUnion,
+    RVec,
     RVoid,
     is_bit_rprimitive,
     is_bool_rprimitive,
@@ -53,6 +54,10 @@ class SubtypeVisitor(RTypeVisitor[bool]):
 
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
+
+    def visit_rvec(self, left: RVec) -> bool:
+        # TODO: Better implementation
+        return left == self.right
 
     def visit_runion(self, left: RUnion) -> bool:
         return all(is_subtype(item, self.right, relaxed=self.relaxed) for item in left.items)

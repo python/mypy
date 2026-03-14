@@ -109,6 +109,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_tuple_type(self, t: TupleType) -> None:
         t.items = flatten_nested_tuples(t.items)
+        for i, it in enumerate(t.items):
+            if self.check_non_paramspec(it, "tuple", t):
+                t.items[i] = AnyType(TypeOfAny.from_error)
+
         # We could also normalize Tuple[*tuple[X, ...]] -> tuple[X, ...] like in
         # expand_type() but we can't do this here since it is not a translator visitor,
         # and we need to return an Instance instead of TupleType.
@@ -137,6 +141,28 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     assert unpacked.type.fullname == "builtins.tuple"
                     t.args = unpacked.args
 
+    def check_non_paramspec(self, arg: Type, tv_kind: str, context: Context) -> bool:
+        if isinstance(arg, ParamSpecType):
+            self.fail(
+                INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
+                context,
+                code=codes.VALID_TYPE,
+            )
+            self.note(
+                INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name), context, code=codes.VALID_TYPE
+            )
+            return True
+        if isinstance(arg, Parameters):
+            self.fail(
+                f"Cannot use {format_type(arg, self.options)} for {tv_kind},"
+                " only for ParamSpec",
+                context,
+                code=codes.VALID_TYPE,
+            )
+            return True
+
+        return False
+
     def validate_args(
         self, name: str, args: tuple[Type, ...], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> tuple[bool, bool]:
@@ -154,28 +180,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         for arg, tvar in zip(args, type_vars):
             context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
-                if isinstance(arg, ParamSpecType):
+                if self.check_non_paramspec(arg, "regular type variable", context):
                     is_invalid = True
-                    self.fail(
-                        INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
-                        context,
-                        code=codes.VALID_TYPE,
-                    )
-                    self.note(
-                        INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name),
-                        context,
-                        code=codes.VALID_TYPE,
-                    )
                     continue
-                if isinstance(arg, Parameters):
-                    is_invalid = True
-                    self.fail(
-                        f"Cannot use {format_type(arg, self.options)} for regular type variable,"
-                        " only for ParamSpec",
-                        context,
-                        code=codes.VALID_TYPE,
-                    )
-                    continue
+
                 if self.in_type_alias_expr and isinstance(arg, TypeVarType):
                     # Type aliases are allowed to use unconstrained type variables
                     # error will be checked at substitution point.
@@ -226,6 +234,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         context,
                         code=codes.VALID_TYPE,
                     )
+            elif isinstance(tvar, TypeVarTupleType):
+                p_arg = get_proper_type(arg)
+                assert isinstance(p_arg, TupleType)
+                for it in p_arg.items:
+                    if self.check_non_paramspec(it, "TypeVarTuple", context):
+                        is_invalid = True
         if is_invalid:
             is_error = True
         return is_error, is_invalid

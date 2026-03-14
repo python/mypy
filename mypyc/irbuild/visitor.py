@@ -66,6 +66,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -310,6 +311,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_dict_expr(self, expr: DictExpr) -> Value:
         return transform_dict_expr(self.builder, expr)
+
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> Value:
+        self.bail("Template strings are not supported by mypyc", expr.line)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:
         return transform_set_expr(self.builder, expr)

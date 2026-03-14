@@ -527,7 +527,7 @@ class NamedTupleAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(tuple_base):
             self.api.process_placeholder(
                 None, "NamedTuple item", info, force_progress=tuple_base != info.tuple_type
             )

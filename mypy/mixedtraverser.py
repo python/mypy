@@ -58,6 +58,7 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
     def visit_type_var_expr(self, o: TypeVarExpr, /) -> None:
         super().visit_type_var_expr(o)
         o.upper_bound.accept(self)
+        o.default.accept(self)
         for value in o.values:
             value.accept(self)
 

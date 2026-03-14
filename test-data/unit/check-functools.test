@@ -149,7 +149,7 @@ d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
 from typing import Callable
 import functools
 
-def foo(a: int, b: str, c: int = 5) -> int: ...  # N: "foo" defined here
+def foo(a: int, b: str, c: int = 5) -> int: ...
 
 p1 = functools.partial(foo)
 p1(1, "a", 3)  # OK
@@ -303,7 +303,7 @@ import functools
 from typing import Type
 
 class A:
-    def __init__(self, a: int, b: str) -> None: ...  # N: "A" defined here
+    def __init__(self, a: int, b: str) -> None: ...
 
 p = functools.partial(A, 1)
 reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
@@ -439,7 +439,7 @@ from functools import partial
 class D1(TypedDict, total=False):
     a1: int
 
-def fn1(a1: int) -> None: ...  # N: "fn1" defined here
+def fn1(a1: int) -> None: ...
 def main1(**d1: Unpack[D1]) -> None:
     partial(fn1, **d1)()
     partial(fn1, **d1)(**d1)
@@ -447,7 +447,7 @@ def main1(**d1: Unpack[D1]) -> None:
     partial(fn1, **d1)(a1="asdf")  # E: Argument "a1" to "fn1" has incompatible type "str"; expected "int"
     partial(fn1, **d1)(oops=1)  # E: Unexpected keyword argument "oops" for "fn1"
 
-def fn2(**kwargs: Unpack[D1]) -> None: ...  # N: "fn2" defined here
+def fn2(**kwargs: Unpack[D1]) -> None: ...
 def main2(**d1: Unpack[D1]) -> None:
     partial(fn2, **d1)()
     partial(fn2, **d1)(**d1)
@@ -464,7 +464,7 @@ class A2Good(TypedDict, total=False):
 class A2Bad(TypedDict, total=False):
     a2: int
 
-def fn3(a1: int, a2: str) -> None: ...  # N: "fn3" defined here
+def fn3(a1: int, a2: str) -> None: ...
 def main3(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
     partial(fn3, **d2)()
     partial(fn3, **d2)(a1=1, a2="asdf")
@@ -477,7 +477,7 @@ def main3(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
     partial(fn3, **d2)(**a2good)
     partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
 
-def fn4(**kwargs: Unpack[D2]) -> None: ...  # N: "fn4" defined here
+def fn4(**kwargs: Unpack[D2]) -> None: ...
 def main4(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
     partial(fn4, **d2)()
     partial(fn4, **d2)(a1=1, a2="asdf")

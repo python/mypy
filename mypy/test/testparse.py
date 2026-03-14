@@ -92,6 +92,8 @@ class ParseErrorSuite(DataSuite):
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         options = parse_options("\n".join(testcase.input), testcase, 0)
+        if options.python_version < defaults.PYTHON3_VERSION:
+            options.python_version = defaults.PYTHON3_VERSION
         if options.python_version != sys.version_info[:2]:
             skip()
         # Compile temporary file. The test file contains non-ASCII characters.

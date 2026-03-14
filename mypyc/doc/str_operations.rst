@@ -19,7 +19,7 @@ Operators
 ---------
 
 * Concatenation (``s1 + s2``)
-* Indexing (``s[n]``)
+* Indexing (``s[n]``; also ``ord(s[n])``, which avoids the temporary length-1 string)
 * Slicing (``s[n:m]``, ``s[n:]``, ``s[:m]``)
 * Comparisons (``==``, ``!=``)
 * Augmented assignment (``s1 += s2``)
@@ -38,6 +38,10 @@ Methods
 * ``s1.find(s2: str)``
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
+* ``s.isalnum()``
+* ``s.isdigit()``
+* ``s.isspace()``
+* ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
 * ``s.lstrip(chars: str)``
@@ -62,6 +66,7 @@ Methods
 * ``s.splitlines(keepends: bool)``
 * ``s1.startswith(s2: str)``
 * ``s1.startswith(t: tuple[str, ...])``
+* ``s.upper()``
 * ``s.strip()``
 * ``s.strip(chars: str)``
 

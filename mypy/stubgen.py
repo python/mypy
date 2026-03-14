@@ -113,6 +113,7 @@ from mypy.nodes import (
     StarExpr,
     Statement,
     StrExpr,
+    TemplateStrExpr,
     TempNode,
     TupleExpr,
     TypeAliasStmt,
@@ -372,6 +373,9 @@ class AliasPrinter(NodeVisitor[str]):
             assert isinstance(key, StrExpr)
             dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
         return f"{{{', '.join(dict_items)}}}"
+
+    def visit_template_str_expr(self, o: TemplateStrExpr) -> str:
+        return self.stubgen.add_name("_typeshed.Incomplete")
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
@@ -1773,7 +1777,9 @@ def generate_asts_for_modules(
         mod.ast = res.graph[mod.module].tree
         # Use statically inferred __all__ if there is no runtime one.
         if mod.runtime_all is None:
-            mod.runtime_all = res.manager.semantic_analyzer.export_map[mod.module]
+            mod_names = res.manager.semantic_analyzer.modules[mod.module].names
+            if "__all__" in mod_names:
+                mod.runtime_all = [name for name, sym in mod_names.items() if sym.module_public]
 
 
 def generate_stub_for_py_module(
