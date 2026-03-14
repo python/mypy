@@ -5,15 +5,26 @@
 #include "librt_threading.h"
 #include "mypyc_util.h"
 
-#ifdef __linux__
+// Select lock backend:
+//   LOCK_BACKEND_FUTEX   - Linux futex (fastest on Linux)
+//   LOCK_BACKEND_UNFAIR  - macOS os_unfair_lock
+//   LOCK_BACKEND_SRWLOCK - Windows Slim Reader/Writer Lock
+//   LOCK_BACKEND_PTHREAD - POSIX fallback
+#if defined(__linux__) && !defined(LOCK_FORCE_PTHREAD)
+#define LOCK_BACKEND_FUTEX
 #include <linux/futex.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdatomic.h>
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !defined(LOCK_FORCE_PTHREAD)
+#define LOCK_BACKEND_UNFAIR
 #include <os/lock.h>
 #include <stdatomic.h>
+#elif defined(_WIN32)
+#define LOCK_BACKEND_SRWLOCK
+#include <windows.h>
 #else
+#define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
 #include <stdatomic.h>
 #endif
@@ -33,6 +44,9 @@
 // provided by the kernel). A separate atomic flag tracks the locked state
 // for locked() and release-unlocked-lock detection.
 //
+// On Windows, this uses SRWLOCK (Slim Reader/Writer Lock), a lightweight
+// kernel primitive. A separate volatile flag tracks the locked state.
+//
 // On other POSIX systems, this falls back to pthread_mutex with a separate
 // atomic flag for locked() and release-unlocked-lock detection.
 //
@@ -41,19 +55,27 @@
 
 // ---------- Platform-specific lock state ----------
 
-#ifdef __linux__
+#ifdef LOCK_BACKEND_FUTEX
 
 typedef struct {
     PyObject_HEAD
     _Atomic int state;  // 0=unlocked, 1=locked, 2=locked+contended
 } LockObject;
 
-#elif defined(__APPLE__)
+#elif defined(LOCK_BACKEND_UNFAIR)
 
 typedef struct {
     PyObject_HEAD
     os_unfair_lock lock;
     _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
+} LockObject;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
+
+typedef struct {
+    PyObject_HEAD
+    SRWLOCK lock;
+    volatile long locked;  // 0=unlocked, 1=locked (for locked() and error checking)
 } LockObject;
 
 #else  // POSIX fallback
@@ -71,11 +93,14 @@ typedef struct {
 static inline void
 Lock_init_internal(LockObject *self)
 {
-#ifdef __linux__
+#ifdef LOCK_BACKEND_FUTEX
     atomic_store_explicit(&self->state, 0, memory_order_relaxed);
-#elif defined(__APPLE__)
+#elif defined(LOCK_BACKEND_UNFAIR)
     self->lock = OS_UNFAIR_LOCK_INIT;
     atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+#elif defined(LOCK_BACKEND_SRWLOCK)
+    InitializeSRWLock(&self->lock);
+    self->locked = 0;
 #else
     pthread_mutex_init(&self->mutex, NULL);
     atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
@@ -87,7 +112,7 @@ Lock_init_internal(LockObject *self)
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
-#ifdef __linux__
+#ifdef LOCK_BACKEND_FUTEX
     // Fast path: try to grab the lock (0 -> 1)
     int expected = 0;
     if (atomic_compare_exchange_strong_explicit(&self->state, &expected, 1,
@@ -122,7 +147,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
         }
     }
 
-#elif defined(__APPLE__)
+#elif defined(LOCK_BACKEND_UNFAIR)
     if (!blocking) {
         if (os_unfair_lock_trylock(&self->lock)) {
             atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
@@ -135,6 +160,21 @@ Lock_acquire_impl(LockObject *self, int blocking)
     os_unfair_lock_lock(&self->lock);
     Py_END_ALLOW_THREADS
     atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    return 1;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
+    if (!blocking) {
+        if (TryAcquireSRWLockExclusive(&self->lock)) {
+            InterlockedExchange(&self->locked, 1);
+            return 1;
+        }
+        return 0;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    AcquireSRWLockExclusive(&self->lock);
+    Py_END_ALLOW_THREADS
+    InterlockedExchange(&self->locked, 1);
     return 1;
 
 #else  // POSIX fallback
@@ -158,7 +198,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
 static int
 Lock_release_impl(LockObject *self)
 {
-#ifdef __linux__
+#ifdef LOCK_BACKEND_FUTEX
     int old = atomic_exchange_explicit(&self->state, 0, memory_order_release);
     if (old == 0) {
         return -1;
@@ -169,11 +209,18 @@ Lock_release_impl(LockObject *self)
     }
     return 0;
 
-#elif defined(__APPLE__)
+#elif defined(LOCK_BACKEND_UNFAIR)
     if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
         return -1;
     }
     os_unfair_lock_unlock(&self->lock);
+    return 0;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
+    if (!InterlockedExchange(&self->locked, 0)) {
+        return -1;
+    }
+    ReleaseSRWLockExclusive(&self->lock);
     return 0;
 
 #else  // POSIX fallback
@@ -188,8 +235,10 @@ Lock_release_impl(LockObject *self)
 static inline int
 Lock_is_locked(LockObject *self)
 {
-#ifdef __linux__
+#ifdef LOCK_BACKEND_FUTEX
     return atomic_load_explicit(&self->state, memory_order_relaxed) != 0;
+#elif defined(LOCK_BACKEND_SRWLOCK)
+    return InterlockedCompareExchange(&self->locked, 0, 0) != 0;
 #else
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
 #endif
@@ -234,7 +283,7 @@ Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
 static void
 Lock_dealloc(LockObject *self)
 {
-#if !defined(__linux__) && !defined(__APPLE__)
+#ifdef LOCK_BACKEND_PTHREAD
     pthread_mutex_destroy(&self->mutex);
 #endif
     Py_TYPE(self)->tp_free((PyObject *)self);
