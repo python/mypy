@@ -4,7 +4,7 @@
 [case testNonArrayOverridesMypyTOML]
 # cmd: mypy x.py
 [file mypy.toml]
-\[mypy.overrides]
+\[overrides]
 module = "x"
 disallow_untyped_defs = false
 [file x.py]
@@ -13,13 +13,13 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [out]
-mypy.toml: mypy.overrides sections must be an array. Please make sure you are using double brackets like so: [[mypy.overrides]]
+mypy.toml: overrides sections must be an array. Please make sure you are using double brackets like so: [[overrides]]
 == Return code: 0
 
 [case testNoModuleInOverrideMypyTOML]
 # cmd: mypy x.py
 [file mypy.toml]
-\[[mypy.overrides]]
+\[[overrides]]
 disallow_untyped_defs = false
 [file x.py]
 def f(a):
@@ -27,13 +27,13 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [out]
-mypy.toml: toml config file contains a [[mypy.overrides]] section, but no module to override was specified.
+mypy.toml: toml config file contains a [[overrides]] section, but no module to override was specified.
 == Return code: 0
 
 [case testInvalidModuleInOverrideMypyTOML]
 # cmd: mypy x.py
 [file mypy.toml]
-\[[mypy.overrides]]
+\[[overrides]]
 module = 0
 disallow_untyped_defs = false
 [file x.py]
@@ -42,16 +42,16 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [out]
-mypy.toml: toml config file contains a [[mypy.overrides]] section with a module value that is not a string or a list of strings
+mypy.toml: toml config file contains a [[overrides]] section with a module value that is not a string or a list of strings
 == Return code: 0
 
 [case testConflictingModuleInOverridesMypyTOML]
 # cmd: mypy x.py
 [file mypy.toml]
-\[[mypy.overrides]]
+\[[overrides]]
 module = 'x'
 disallow_untyped_defs = false
-\[[mypy.overrides]]
+\[[overrides]]
 module = ['x']
 disallow_untyped_defs = true
 [file x.py]
@@ -60,7 +60,7 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [out]
-mypy.toml: toml config file contains [[mypy.overrides]] sections with conflicting values. Module 'x' has two different values for 'disallow_untyped_defs'
+mypy.toml: toml config file contains [[overrides]] sections with conflicting values. Module 'x' has two different values for 'disallow_untyped_defs'
 == Return code: 0
 
 [case testMultilineLiteralExcludeMypyTOML]

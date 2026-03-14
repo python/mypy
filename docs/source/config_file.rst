@@ -56,7 +56,7 @@ Mypy also supports TOML configuration in two forms:
 * ``pyproject.toml`` with options under ``[tool.mypy]`` and per-module
   overrides under ``[[tool.mypy.overrides]]``
 * ``mypy.toml`` or ``.mypy.toml`` with options at the top level and
-  per-module overrides under ``[[mypy.overrides]]``
+  per-module overrides under ``[[overrides]]``
 
 - In INI-based config files, a section named ``[mypy]`` must be present.
   This specifies the global flags.
@@ -1313,15 +1313,15 @@ Example ``mypy.toml``
 
     # mypy per-module options:
 
-    [[mypy.overrides]]
+    [[overrides]]
     module = "mycode.foo.*"
     disallow_untyped_defs = true
 
-    [[mypy.overrides]]
+    [[overrides]]
     module = "mycode.bar"
     warn_return_any = false
 
-    [[mypy.overrides]]
+    [[overrides]]
     module = [
         "somelibrary",
         "some_other_library"

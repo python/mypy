@@ -414,26 +414,26 @@ def get_mypy_toml_data(config_file: str, toml_data: dict[str, Any]) -> dict[str,
 
 def _toml_module_error(config_file: str, message: str) -> str:
     if is_pyproject(config_file):
-        return message.format(prefix="tool.mypy", override="[[tool.mypy.overrides]]")
-    return message.format(prefix="mypy", override="[[mypy.overrides]]")
+        return message.format(overrides="tool.mypy.overrides", override="[[tool.mypy.overrides]]")
+    return message.format(overrides="overrides", override="[[overrides]]")
 
 
 def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[str, Any]:
     """Convert TOML overrides sections into the flatter ini-style structure.
 
     ``pyproject.toml`` uses ``[[tool.mypy.overrides]]``.
-    ``mypy.toml`` and ``.mypy.toml`` use ``[[mypy.overrides]]``.
+    ``mypy.toml`` and ``.mypy.toml`` use ``[[overrides]]``.
 
     E.g. the following TOML file:
 
-        [[mypy.overrides]]
+        [[overrides]]
         module = [
             "a.b",
             "b.*"
         ]
         disallow_untyped_defs = true
 
-        [[mypy.overrides]]
+        [[overrides]]
         module = 'c'
         disallow_untyped_defs = false
 
@@ -459,8 +459,8 @@ def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[s
         raise ConfigTOMLValueError(
             _toml_module_error(
                 config_file,
-                "{prefix}.overrides sections must be an array. Please make "
-                "sure you are using double brackets like so: {override}",
+                "{overrides} sections must be an array. Please make sure you are "
+                "using double brackets like so: {override}",
             )
         )
 
