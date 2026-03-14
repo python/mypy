@@ -15,14 +15,18 @@ import_librt_threading(void)
 #include <Python.h>
 
 #define LIBRT_THREADING_ABI_VERSION 1
-#define LIBRT_THREADING_API_VERSION 1
-#define LIBRT_THREADING_API_LEN 3
+#define LIBRT_THREADING_API_VERSION 2
+#define LIBRT_THREADING_API_LEN 7
 
 static void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 
 #define LibRTThreading_ABIVersion (*(int (*)(void)) LibRTThreading_API[0])
 #define LibRTThreading_APIVersion (*(int (*)(void)) LibRTThreading_API[1])
 #define LibRTThreading_Lock_type_internal (*(PyTypeObject* (*)(void)) LibRTThreading_API[2])
+#define LibRTThreading_Lock_new_internal (*(PyObject* (*)(void)) LibRTThreading_API[3])
+#define LibRTThreading_Lock_acquire_internal (*(char (*)(PyObject *self)) LibRTThreading_API[4])
+#define LibRTThreading_Lock_release_internal (*(char (*)(PyObject *self)) LibRTThreading_API[5])
+#define LibRTThreading_Lock_locked_internal (*(char (*)(PyObject *self)) LibRTThreading_API[6])
 
 static int
 import_librt_threading(void)

@@ -371,6 +371,41 @@ Lock_type_internal(void) {
     return &LockType;
 }
 
+// Create a new Lock object (for use from compiled code)
+static PyObject *
+Lock_new_internal(void) {
+    LockObject *self = (LockObject *)LockType.tp_alloc(&LockType, 0);
+    if (self != NULL) {
+        Lock_init_internal(self);
+    }
+    return (PyObject *)self;
+}
+
+// Acquire the lock (blocking), for use from compiled code.
+// Returns true on success.
+static char
+Lock_acquire_internal(PyObject *self) {
+    int result = Lock_acquire_impl((LockObject *)self, 1);
+    return (char)result;
+}
+
+// Release the lock, for use from compiled code.
+// Returns 0 (None) on success, sets error and returns 2 (ERR_MAGIC) on failure.
+static char
+Lock_release_internal(PyObject *self) {
+    if (Lock_release_impl((LockObject *)self) < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "release unlocked lock");
+        return 2;
+    }
+    return 0;
+}
+
+// Check if the lock is held, for use from compiled code.
+static char
+Lock_locked_internal(PyObject *self) {
+    return (char)Lock_is_locked((LockObject *)self);
+}
+
 #endif  // MYPYC_EXPERIMENTAL
 
 static PyMethodDef librt_threading_module_methods[] = {
@@ -407,6 +442,10 @@ librt_threading_module_exec(PyObject *m)
         (void *)threading_abi_version,
         (void *)threading_api_version,
         (void *)Lock_type_internal,
+        (void *)Lock_new_internal,
+        (void *)Lock_acquire_internal,
+        (void *)Lock_release_internal,
+        (void *)Lock_locked_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)threading_api, "librt.threading._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

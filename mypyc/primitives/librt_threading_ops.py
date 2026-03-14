@@ -1,0 +1,48 @@
+from mypyc.ir.deps import LIBRT_THREADING
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.rtypes import bool_rprimitive, lock_rprimitive, none_rprimitive
+from mypyc.primitives.registry import function_op, method_op
+
+# Lock()
+function_op(
+    name="librt.threading.Lock",
+    arg_types=[],
+    return_type=lock_rprimitive,
+    c_function_name="LibRTThreading_Lock_new_internal",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_THREADING],
+)
+
+# Lock.acquire() -- blocking acquire, always returns True
+method_op(
+    name="acquire",
+    arg_types=[lock_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTThreading_Lock_acquire_internal",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_THREADING],
+)
+
+# Lock.release()
+method_op(
+    name="release",
+    arg_types=[lock_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="LibRTThreading_Lock_release_internal",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_THREADING],
+)
+
+# Lock.locked()
+method_op(
+    name="locked",
+    arg_types=[lock_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTThreading_Lock_locked_internal",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_THREADING],
+)
