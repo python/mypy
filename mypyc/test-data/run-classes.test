@@ -5774,3 +5774,102 @@ from native import Concrete
 c = Concrete()
 assert c.value() == 42
 assert c.derived() == 42
+
+[case testInterpretedSubclassAttrOverrideWithAllowInterpretedSubclasses]
+# Test that interpreted subclasses can override class attributes and the
+# compiled base class methods see the overridden values via GenericGetAttr.
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    VALUE: int = 10
+    FLAG: bool = False
+
+    def get_value(self) -> int:
+        return self.VALUE
+
+    def check_flag(self) -> bool:
+        return self.FLAG
+
+[file driver.py]
+from native import Base
+
+# Interpreted subclass that overrides class attributes
+class Sub(Base):
+    VALUE = 42
+    FLAG = True
+
+b = Base()
+assert b.get_value() == 10
+assert not b.check_flag()
+
+s = Sub()
+assert s.get_value() == 42, "compiled method doesn't see subclass override"
+assert s.check_flag(), "compiled method doesn't see subclass override"
+
+[case testCompiledSubclassAttrAccessWithAllowInterpretedSubclasses]
+# Test that compiled subclasses of a class with allow_interpreted_subclasses=True
+# can correctly access parent instance attributes via direct struct access
+# (not falling back to PyObject_GenericGetAttr).
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    def __init__(self, x: int, name: str) -> None:
+        self.x = x
+        self.name = name
+
+    def get_x(self) -> int:
+        return self.x
+
+    def get_name(self) -> str:
+        return self.name
+
+    def compute(self) -> int:
+        return self.x * 2
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Child(Base):
+    def __init__(self, x: int, name: str, y: int) -> None:
+        super().__init__(x, name)
+        self.y = y
+
+    def compute(self) -> int:
+        return self.x + self.y
+
+    def get_both(self) -> int:
+        return self.x + self.y
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class GrandChild(Child):
+    def __init__(self, x: int, name: str, y: int, z: int) -> None:
+        super().__init__(x, name, y)
+        self.z = z
+
+    def compute(self) -> int:
+        return self.x + self.y + self.z
+
+def test_compiled_subclass_attr_access() -> None:
+    b = Base(10, "base")
+    assert b.get_x() == 10
+    assert b.get_name() == "base"
+    assert b.compute() == 20
+
+    c = Child(10, "child", 5)
+    assert c.get_x() == 10
+    assert c.get_name() == "child"
+    assert c.compute() == 15
+    assert c.get_both() == 15
+
+    g = GrandChild(10, "grand", 5, 3)
+    assert g.get_x() == 10
+    assert g.get_name() == "grand"
+    assert g.compute() == 18
+
+    ref: Base = Child(7, "ref", 3)
+    assert ref.get_x() == 7
+    assert ref.compute() == 10
+
+[file driver.py]
+from native import test_compiled_subclass_attr_access
+test_compiled_subclass_attr_access()
