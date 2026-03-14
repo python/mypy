@@ -25,8 +25,20 @@ def test_lock_non_blocking() -> None:
     assert lock.acquire(False)
     lock.release()
 
-[file driver.py]
-from native import test_lock_basic, test_lock_context_manager, test_lock_non_blocking
-test_lock_basic()
-test_lock_context_manager()
-test_lock_non_blocking()
+def test_release_unlocked() -> None:
+    lock = Lock()
+    try:
+        lock.release()
+    except RuntimeError:
+        pass
+    else:
+        assert False, "expected RuntimeError"
+    # Also after acquire + release
+    lock.acquire()
+    lock.release()
+    try:
+        lock.release()
+    except RuntimeError:
+        pass
+    else:
+        assert False, "expected RuntimeError"
