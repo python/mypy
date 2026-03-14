@@ -38,6 +38,7 @@ from mypyc.test.testutil import (
     fudge_dir_mtimes,
     show_c,
     use_custom_builtins,
+    has_test_name_tag,
 )
 
 files = [
@@ -210,7 +211,11 @@ class TestRun(MypycDataSuite):
             self.run_case_step(testcase, step)
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
-        bench = testcase.config.getoption("--bench", False) and "Benchmark" in testcase.name
+        benchmark_build = has_test_name_tag(testcase.name, "benchmark")
+        bench = (
+            testcase.config.getoption("--bench", False)
+            and (benchmark_build or "Benchmark" in testcase.name)
+        )
 
         options = Options()
         options.use_builtins_fixtures = True
@@ -262,10 +267,10 @@ class TestRun(MypycDataSuite):
 
         # Use _librt_internal to test mypy-specific parts of librt (they have
         # some special-casing in mypyc), for everything else use _librt suffix.
-        librt_internal = testcase.name.endswith("_librt_internal")
-        librt = testcase.name.endswith("_librt") or "_librt_" in testcase.name
+        librt_internal = has_test_name_tag(testcase.name, "librt_internal")
+        librt = has_test_name_tag(testcase.name, "librt")
         # Enable experimental features (local librt build also includes experimental features)
-        experimental_features = testcase.name.endswith("_experimental")
+        experimental_features = has_test_name_tag(testcase.name, "experimental")
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
@@ -302,7 +307,7 @@ class TestRun(MypycDataSuite):
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 
-        opt_level = int(os.environ.get("MYPYC_OPT_LEVEL", 0))
+        opt_level = 3 if benchmark_build else int(os.environ.get("MYPYC_OPT_LEVEL", 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, "setup.py"))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -322,7 +327,7 @@ class TestRun(MypycDataSuite):
 
         if librt:
             # Use cached pre-built librt instead of rebuilding for each test
-            cached_librt = get_librt_path(experimental_features)
+            cached_librt = get_librt_path(experimental_features, opt_level=str(opt_level))
             shutil.copytree(os.path.join(cached_librt, "librt"), "librt")
 
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
