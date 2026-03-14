@@ -114,9 +114,10 @@ Config file
 
     This flag makes mypy read configuration settings from the given file.
 
-    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``pyproject.toml``, or ``setup.cfg``
-    in the current directory. Settings override mypy's built-in defaults and
-    command line flags can override settings.
+    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``mypy.toml``,
+    ``.mypy.toml``, ``pyproject.toml``, or ``setup.cfg`` in the current
+    directory. Settings override mypy's built-in defaults and command line
+    flags can override settings.
 
     Specifying :option:`--config-file= <--config-file>` (with no filename) will ignore *all*
     config files.

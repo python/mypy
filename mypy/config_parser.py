@@ -245,12 +245,10 @@ def _parse_individual_file(
         if is_toml(config_file):
             with open(config_file, "rb") as f:
                 toml_data = tomllib.load(f)
-            # Filter down to just mypy relevant toml keys
-            toml_data = toml_data.get("tool", {})
-            if "mypy" not in toml_data:
+            toml_data = get_mypy_toml_data(config_file, toml_data)
+            if toml_data is None:
                 return None
-            toml_data = {"mypy": toml_data["mypy"]}
-            parser = destructure_overrides(toml_data)
+            parser = destructure_overrides(toml_data, config_file)
             config_types = toml_config_types
         else:
             parser = configparser.RawConfigParser()
@@ -397,20 +395,45 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith(".toml")
 
 
-def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
-    """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
-    and convert it back to a flatter structure that the existing config_parser can handle.
+def is_pyproject(filename: str) -> bool:
+    return os.path.basename(filename) == "pyproject.toml"
 
-    E.g. the following pyproject.toml file:
 
-        [[tool.mypy.overrides]]
+def get_mypy_toml_data(config_file: str, toml_data: dict[str, Any]) -> dict[str, Any] | None:
+    if is_pyproject(config_file):
+        toml_data = toml_data.get("tool", {})
+        if "mypy" not in toml_data:
+            return None
+        return {"mypy": toml_data["mypy"]}
+
+    if "mypy" in toml_data:
+        return toml_data
+
+    return {"mypy": toml_data}
+
+
+def _toml_module_error(config_file: str, message: str) -> str:
+    if is_pyproject(config_file):
+        return message.format(overrides="tool.mypy.overrides", override="[[tool.mypy.overrides]]")
+    return message.format(overrides="overrides", override="[[overrides]]")
+
+
+def destructure_overrides(toml_data: dict[str, Any], config_file: str) -> dict[str, Any]:
+    """Convert TOML overrides sections into the flatter ini-style structure.
+
+    ``pyproject.toml`` uses ``[[tool.mypy.overrides]]``.
+    ``mypy.toml`` and ``.mypy.toml`` use ``[[overrides]]``.
+
+    E.g. the following TOML file:
+
+        [[overrides]]
         module = [
             "a.b",
             "b.*"
         ]
         disallow_untyped_defs = true
 
-        [[tool.mypy.overrides]]
+        [[overrides]]
         module = 'c'
         disallow_untyped_defs = false
 
@@ -434,16 +457,22 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
 
     if not isinstance(toml_data["mypy"]["overrides"], list):
         raise ConfigTOMLValueError(
-            "tool.mypy.overrides sections must be an array. Please make "
-            "sure you are using double brackets like so: [[tool.mypy.overrides]]"
+            _toml_module_error(
+                config_file,
+                "{overrides} sections must be an array. Please make sure you are "
+                "using double brackets like so: {override}",
+            )
         )
 
     result = toml_data.copy()
     for override in result["mypy"]["overrides"]:
         if "module" not in override:
             raise ConfigTOMLValueError(
-                "toml config file contains a [[tool.mypy.overrides]] "
-                "section, but no module to override was specified."
+                _toml_module_error(
+                    config_file,
+                    "toml config file contains a {override} section, but no module to "
+                    "override was specified.",
+                )
             )
 
         if isinstance(override["module"], str):
@@ -452,9 +481,11 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
             modules = override["module"]
         else:
             raise ConfigTOMLValueError(
-                "toml config file contains a [[tool.mypy.overrides]] "
-                "section with a module value that is not a string or a list of "
-                "strings"
+                _toml_module_error(
+                    config_file,
+                    "toml config file contains a {override} section with a module value "
+                    "that is not a string or a list of strings",
+                )
             )
 
         for module in modules:
@@ -470,9 +501,12 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
                         and result[old_config_name][new_key] != new_value
                     ):
                         raise ConfigTOMLValueError(
-                            "toml config file contains "
-                            "[[tool.mypy.overrides]] sections with conflicting "
-                            f"values. Module '{module}' has two different values for '{new_key}'"
+                            _toml_module_error(
+                                config_file,
+                                "toml config file contains {override} sections with "
+                                f"conflicting values. Module '{module}' has "
+                                f"two different values for '{new_key}'",
+                            )
                         )
                     result[old_config_name][new_key] = new_value
 
