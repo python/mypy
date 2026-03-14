@@ -25,6 +25,42 @@ def test_lock_non_blocking() -> None:
     assert lock.acquire(False)
     lock.release()
 
+def test_contention() -> None:
+    import threading
+    lock = Lock()
+    counter = [0]
+    n_threads = 4
+    n_increments = 10000
+
+    def worker() -> None:
+        for _ in range(n_increments):
+            lock.acquire()
+            counter[0] += 1
+            lock.release()
+
+    threads = [threading.Thread(target=worker) for _ in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert counter[0] == n_threads * n_increments
+
+def test_context_manager_exception() -> None:
+    lock = Lock()
+    try:
+        with lock:
+            assert lock.locked()
+            raise ValueError("test")
+    except ValueError:
+        pass
+    assert not lock.locked()
+
+def test_acquire_blocking_true() -> None:
+    lock = Lock()
+    assert lock.acquire(True)
+    assert lock.locked()
+    lock.release()
+
 def test_release_unlocked() -> None:
     lock = Lock()
     try:
