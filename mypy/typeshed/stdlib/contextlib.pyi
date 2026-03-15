@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
 from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable, type_check_only
-from typing_extensions import ParamSpec, Self, TypeAlias
+from typing_extensions import ParamSpec, Self, TypeAlias, deprecated
 
 __all__ = [
     "contextmanager",
@@ -86,6 +86,12 @@ class _GeneratorContextManager(
         self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> bool | None: ...
 
+@overload
+def contextmanager(func: Callable[_P, Generator[_T_co, None, object]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
+@overload
+@deprecated(
+    "Annotating the return type as `-> Iterator[Foo]` with `@contextmanager` is deprecated. Use `-> Generator[Foo]` instead."
+)
 def contextmanager(func: Callable[_P, Iterator[_T_co]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
 
 if sys.version_info >= (3, 10):
@@ -112,6 +118,13 @@ else:
             self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
         ) -> bool | None: ...
 
+@overload
+def asynccontextmanager(func: Callable[_P, AsyncGenerator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
+@overload
+@deprecated(
+    "Annotating the return type as `-> AsyncIterator[Foo]` with `@asynccontextmanager` is deprecated. "
+    "Use `-> AsyncGenerator[Foo]` instead."
+)
 def asynccontextmanager(func: Callable[_P, AsyncIterator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
 @type_check_only
 class _SupportsClose(Protocol):
@@ -197,7 +210,7 @@ if sys.version_info >= (3, 10):
     class nullcontext(AbstractContextManager[_T, None], AbstractAsyncContextManager[_T, None]):
         enter_result: _T
         @overload
-        def __init__(self: nullcontext[None], enter_result: None = None) -> None: ...
+        def __init__(self: nullcontext[None]) -> None: ...
         @overload
         def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
         def __enter__(self) -> _T: ...
@@ -209,7 +222,7 @@ else:
     class nullcontext(AbstractContextManager[_T, None]):
         enter_result: _T
         @overload
-        def __init__(self: nullcontext[None], enter_result: None = None) -> None: ...
+        def __init__(self: nullcontext[None]) -> None: ...
         @overload
         def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
         def __enter__(self) -> _T: ...
