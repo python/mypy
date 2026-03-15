@@ -134,7 +134,8 @@ def semantic_analysis_for_targets(
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
     except that we process only some targets. This is used in fine-grained
-    incremental mode, when propagating an update."""
+    incremental mode, when propagating an update.
+    """
     patches: Patches = []
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
