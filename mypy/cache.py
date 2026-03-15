@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 6
+CACHE_VERSION: Final = 7
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -99,7 +99,6 @@ class CacheMeta:
         dep_hashes: list[bytes],
         interface_hash: bytes,
         trans_dep_hash: bytes,
-        error_lines: list[ErrorTuple],
         version_id: str,
         ignore_all: bool,
         plugin_data: Any,
@@ -123,7 +122,6 @@ class CacheMeta:
         self.dep_hashes = dep_hashes  # list of interface_hash for dependencies
         self.interface_hash = interface_hash  # hash representing the public interface
         self.trans_dep_hash = trans_dep_hash  # hash of import structure (transitive)
-        self.error_lines = error_lines
         self.version_id = version_id  # mypy version for cache invalidation
         self.ignore_all = ignore_all  # if errors were ignored
         self.plugin_data = plugin_data  # config data from plugins
@@ -146,7 +144,6 @@ class CacheMeta:
             "dep_hashes": [dep.hex() for dep in self.dep_hashes],
             "interface_hash": self.interface_hash.hex(),
             "trans_dep_hash": self.trans_dep_hash.hex(),
-            "error_lines": self.error_lines,
             "version_id": self.version_id,
             "ignore_all": self.ignore_all,
             "plugin_data": self.plugin_data,
@@ -175,7 +172,6 @@ class CacheMeta:
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
                 trans_dep_hash=bytes.fromhex(meta["trans_dep_hash"]),
-                error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
                 plugin_data=meta["plugin_data"],
@@ -203,7 +199,6 @@ class CacheMeta:
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
         write_bytes(data, self.trans_dep_hash)
-        write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
         # Plugin data may be not a dictionary, so we use
@@ -233,7 +228,6 @@ class CacheMeta:
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
                 trans_dep_hash=read_bytes(data),
-                error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),

@@ -127,7 +127,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             a_keys = {k for k in keys if "/a." in k or k.startswith("a.")}
             assert len(a_keys) == 0, f"Unexpected a.* entries in diff: {a_keys}"
             assert len(b_keys) == 2, f"Expected 2 b.* entries in diff, got: {b_keys}"
-            assert len(c_keys) == 3, f"Expected 3 c.* entries in diff, got: {c_keys}"
+            assert len(c_keys) == 4, f"Expected 3 c.* entries in diff, got: {c_keys}"
 
             # The new access to a.x in b.py should create a fine-grained
             # dependency recorded in @root.deps.json.
