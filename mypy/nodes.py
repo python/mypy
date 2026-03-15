@@ -6,6 +6,7 @@ import os
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
@@ -5084,6 +5085,26 @@ class DataclassTransformSpec:
         )
         assert read_tag(data) == END_TAG
         return ret
+
+
+@trait
+class SplittingVisitor:
+    # If True, process function definitions. If False, don't. This is used
+    # for processing module top levels in fine-grained incremental mode.
+    recurse_into_functions: bool
+
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
 
 
 def get_flags(node: Node, names: list[str]) -> list[str]:

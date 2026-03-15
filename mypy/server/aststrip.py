@@ -56,6 +56,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     RefExpr,
+    SplittingVisitor,
     StarExpr,
     SuperExpr,
     TupleExpr,
@@ -79,28 +80,13 @@ def strip_target(node: MypyFile | FuncDef | OverloadedFuncDef) -> None:
         node.accept(visitor)
 
 
-class NodeStripVisitor(TraverserVisitor):
+class NodeStripVisitor(TraverserVisitor, SplittingVisitor):
     def __init__(self) -> None:
         # The current active class.
         self.type: TypeInfo | None = None
         # This is True at class scope, but not in methods.
         self.is_class_body = False
-        # By default, process function definitions. If False, don't -- this is used for
-        # processing module top levels.
         self.recurse_into_functions = True
-
-    @contextmanager
-    def set_recurse_into_functions(self) -> Iterator[None]:
-        """Temporarily set recurse_into_functions to True.
-
-        This is used to process top-level functions/methods as a whole.
-        """
-        old_recurse_into_functions = self.recurse_into_functions
-        self.recurse_into_functions = True
-        try:
-            yield
-        finally:
-            self.recurse_into_functions = old_recurse_into_functions
 
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""

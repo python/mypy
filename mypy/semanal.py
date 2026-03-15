@@ -159,6 +159,7 @@ from mypy.nodes import (
     SetComprehension,
     SetExpr,
     SliceExpr,
+    SplittingVisitor,
     StarExpr,
     Statement,
     StrExpr,
@@ -372,7 +373,7 @@ _IDENTIFIER_RE = re.compile(r"^[^\d\W]\w*\Z", re.UNICODE)
 
 
 class SemanticAnalyzer(
-    NodeVisitor[None], SemanticAnalyzerInterface, SemanticAnalyzerPluginInterface
+    NodeVisitor[None], SemanticAnalyzerInterface, SemanticAnalyzerPluginInterface, SplittingVisitor
 ):
     """Semantically analyze parsed mypy files.
 
@@ -497,8 +498,6 @@ class SemanticAnalyzer(
         self.incomplete_namespaces = incomplete_namespaces
         self.all_exports: list[str] = []
         self.plugin = plugin
-        # If True, process function definitions. If False, don't. This is used
-        # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
 
@@ -592,19 +591,6 @@ class SemanticAnalyzer(
             self.inside_except_star_block = old
             if not entering_loop:
                 self.return_stmt_inside_except_star_block = old_return_stmt_flag
-
-    @contextmanager
-    def set_recurse_into_functions(self) -> Iterator[None]:
-        """Temporarily set recurse_into_functions to True.
-
-        This is used to process top-level functions/methods as a whole.
-        """
-        old_recurse_into_functions = self.recurse_into_functions
-        self.recurse_into_functions = True
-        try:
-            yield
-        finally:
-            self.recurse_into_functions = old_recurse_into_functions
 
     #
     # Preparing module (performed before semantic analysis)

@@ -130,6 +130,7 @@ from mypy.nodes import (
     RefExpr,
     ReturnStmt,
     SetExpr,
+    SplittingVisitor,
     StarExpr,
     Statement,
     StrExpr,
@@ -319,7 +320,7 @@ class LocalTypeMap:
         return False
 
 
-class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
+class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
@@ -454,9 +455,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             or self.path in self.msg.errors.ignored_files
             or (self.options.test_env and self.is_typeshed_stub)
         )
-
-        # If True, process function definitions. If False, don't. This is used
-        # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         # This internal flag is used to track whether we a currently type-checking
         # a final declaration (assignment), so that some errors should be suppressed.
@@ -718,19 +716,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     #
     # Definitions
     #
-
-    @contextmanager
-    def set_recurse_into_functions(self) -> Iterator[None]:
-        """Temporarily set recurse_into_functions to True.
-
-        This is used to process top-level functions/methods as a whole.
-        """
-        old_recurse_into_functions = self.recurse_into_functions
-        self.recurse_into_functions = True
-        try:
-            yield
-        finally:
-            self.recurse_into_functions = old_recurse_into_functions
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # If a function/method can infer variable types, it should be processed as part
