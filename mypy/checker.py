@@ -735,7 +735,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # If a function/method can infer variable types, it should be processed as part
         # of the module top level (i.e. module interface).
-        if not self.recurse_into_functions and not defn.can_infer_vars:
+        if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self._visit_overloaded_func_def(defn)
@@ -1211,7 +1211,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not self.recurse_into_functions and not defn.can_infer_vars:
+        if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self.check_func_item(defn, name=defn.name)
@@ -1452,8 +1452,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         not self.can_skip_diagnostics
                         or self.options.preserve_asts
                         or not isinstance(defn, FuncDef)
-                        or defn.has_self_attr_def
-                        or defn.can_infer_vars
+                        or defn.def_or_infer_vars
                     ):
                         self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -5620,7 +5619,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def visit_decorator_inner(
         self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
     ) -> None:
-        if self.recurse_into_functions or e.func.can_infer_vars:
+        if self.recurse_into_functions or e.func.def_or_infer_vars:
             with self.tscope.function_scope(e.func), self.set_recurse_into_functions():
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
 
