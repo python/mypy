@@ -21,6 +21,25 @@ def f() -> None:
 [file m.py]
 [builtins fixtures/module.pyi]
 
+[case testErrorCodeUndefinedNameSuggestion]
+my_variable = 42
+my_constant = 100
+
+x = my_variabel  # E: Name "my_variabel" is not defined; did you mean "my_variable"?  [name-defined]
+
+def calculate_sum(items: int) -> int:
+    return items
+
+calculate_summ(1)  # E: Name "calculate_summ" is not defined; did you mean "calculate_sum"?  [name-defined]
+
+class MyClass:
+    pass
+
+y = MyClas()  # E: Name "MyClas" is not defined; did you mean "MyClass"?  [name-defined]
+
+unknown_xyz  # E: Name "unknown_xyz" is not defined  [name-defined]
+[builtins fixtures/module.pyi]
+
 [case testErrorCodeUnclassifiedError]
 class A:
     def __init__(self) -> int: \

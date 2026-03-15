@@ -608,7 +608,7 @@ def f(x: _T) -> None: pass
 s: FrozenSet
 [out]
 _program.py:2: error: Name "_T" is not defined
-_program.py:3: error: Name "FrozenSet" is not defined
+_program.py:3: error: Name "FrozenSet" is not defined; did you mean "frozenset"?
 
 [case testVarArgsFunctionSubtyping]
 import typing
