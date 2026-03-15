@@ -467,7 +467,8 @@ def _is_decoratable(stub: nodes.SymbolNode) -> bool:
         )
     if stub.is_named_tuple:
         return all(
-            name.isidentifier() and not keyword.iskeyword(name) for name in stub.names.keys()
+            name.isidentifier() and not keyword.iskeyword(name)
+            for name in stub.metadata["namedtuple"]["fields"]
         )
     return True
 
