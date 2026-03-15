@@ -61,6 +61,7 @@ Final = 0
 Literal = 0
 NewType = 0
 TypedDict = 0
+Unpack = 0
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -764,6 +765,27 @@ class StubtestUnit(unittest.TestCase):
             stub="def k6(a, *, b, **kwargs) -> None: ...",
             runtime="def k6(a, *, b, c, **kwargs): pass",
             error="k6",
+        )
+
+    @collect_cases
+    def test_kwargs_unpack_typeddict(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import TypedDict, Unpack
+
+            class _Args(TypedDict):
+                a: int
+                b: int
+
+            def f1(**kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f1(*, a, b): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f2(**kwargs: Unpack[_Args]) -> None: ...",
+            runtime="def f2(*, a, c): pass",
+            error="f2",
         )
 
     @collect_cases
