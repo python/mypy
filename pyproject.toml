@@ -32,7 +32,7 @@ types.
 """, content-type = "text/x-rst"}
 authors = [{name = "Jukka Lehtosalo", email = "jukka.lehtosalo@iki.fi"}]
 license = "MIT"
-license-files = ["LICENSE", "mypy/typeshed/LICENSE", "mypyc/external/googletest/LICENSE"]
+license-files = ["LICENSE", "mypy/typeshed/LICENSE"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
