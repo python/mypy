@@ -220,7 +220,7 @@ jobs:
     # It is an optional dependency (for now).
     - name: Install ast-serialize
       if: ${{ matrix.ast_serialize }}
-      run: pip install ast-serialize>=0.1.1,<1.0.0
+      run: pip install 'ast-serialize>=0.1.1,<1.0.0'
 
     - name: Setup tox environment
       run: |
