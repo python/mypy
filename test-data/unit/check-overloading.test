@@ -6165,7 +6165,7 @@ reveal_type(f3(A()))  # E: No overload variant of "f3" matches argument type "A"
     # N: Revealed type is "Any"
 reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
 
-[case testOverloadIfSplitFunctionDef]
+[case testOverloadIfSplitFunctionDef_no_native_parse]
 # flags: --always-true True --always-false False
 from typing import overload
 
