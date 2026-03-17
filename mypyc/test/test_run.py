@@ -14,6 +14,8 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+import pytest
+
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -162,13 +164,15 @@ class TestRun(MypycDataSuite):
     strict_dunder_typing = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        # setup.py wants to be run from the root directory of the package, which we accommodate
-        # by chdiring into tmp/
-        with (
-            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
-            chdir_manager("tmp"),
-        ):
-            self.run_case_inner(testcase)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.delenv("CFLAGS", raising=False)
+            # setup.py wants to be run from the root directory of the package, which we accommodate
+            # by chdiring into tmp/
+            with (
+                use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+                chdir_manager("tmp"),
+            ):
+                self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
         if not os.path.isdir(WORKDIR):  # (one test puts something in build...)
