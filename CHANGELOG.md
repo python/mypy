@@ -2,7 +2,7 @@
 
 ## Next Release
 
-### Better narrowing
+### Better Narrowing
 
 Mypy's implementation of narrowing has been substantially reworked. Mypy will now narrow more
 aggressively, more consistently, and more correctly. In particular, you are likely to notice new
@@ -88,7 +88,7 @@ Contributed by Marc Mueller
 (PR [mypy_mypyc-wheels#106](https://github.com/mypyc/mypy_mypyc-wheels/pull/106),
 PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110)).
 
-### Removed flags `--force-uppercase-builtins` and `--force-union-syntax`
+### Removed Flags `--force-uppercase-builtins` and `--force-union-syntax`
 
 The `--force-uppercase-builtins` flag was deprecated and has been a no-op since mypy 1.17.0.
 Since mypy has dropped support for Python 3.9, the `--force-union-syntax` flag is no longer
@@ -96,6 +96,29 @@ necessary.
 
 Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
 and (PR [20405](https://github.com/python/mypy/pull/20405)).
+
+### Experimental New Parser
+
+- Add work-in-progress implementation of a new Python parser (Jukka Lehtosalo, PR [20856](https://github.com/python/mypy/pull/20856))
+- Skip semantic analysis pass 1 for native parser (Ivan Levkivskyi, PR [21015](https://github.com/python/mypy/pull/21015))
+- Add t-strings support to native parser (Ivan Levkivskyi, PR [21007](https://github.com/python/mypy/pull/21007))
+- Handle hex bigint literals in native parser (Ivan Levkivskyi, PR [20988](https://github.com/python/mypy/pull/20988))
+- Pass all relevant options to native parser (Ivan Levkivskyi, PR [20984](https://github.com/python/mypy/pull/20984))
+- Support `@no_type_check` with native parser (Ivan Levkivskyi, PR [20959](https://github.com/python/mypy/pull/20959))
+- Fix error code handling in native parser (Ivan Levkivskyi, PR [20952](https://github.com/python/mypy/pull/20952))
+- Add `ast-serialize` as an optional dependency (Ivan Levkivskyi, PR [21028](https://github.com/python/mypy/pull/21028))
+
+### Parallel Type Checking Prototype
+
+- Initial implementation of parallel type checking (Ivan Levkivskyi, PR [20280](https://github.com/python/mypy/pull/20280))
+- Support parallel type checking on Windows (Emma Smith, PR [20777](https://github.com/python/mypy/pull/20777))
+- Send serialized ASTs to parallel workers (Ivan Levkivskyi, PR [20991](https://github.com/python/mypy/pull/20991))
+- Send early errors to workers (Ivan Levkivskyi, PR [20822](https://github.com/python/mypy/pull/20822))
+- Use proper fixed format for parallel type checking IPC (Ivan Levkivskyi, PR [20565](https://github.com/python/mypy/pull/20565))
+- Make IPC framing more efficient (Ivan Levkivskyi, PR [20793](https://github.com/python/mypy/pull/20793))
+- Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
+- Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
+- Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
 
 ### Fixes to Crashes
 
@@ -203,26 +226,28 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Update `type_inference_and_annotations.rst` (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
 - Document unreachability handling of `return NotImplemented` (wyattscarpenter, PR [20561](https://github.com/python/mypy/pull/20561))
 
+### Performance Improvements
+
+- Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
+- Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
+- Optimize: skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
+- Make `State` final and avoid construction via `cls()` (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
+- Speed up suppressed deps options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
+- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
+- Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
+- Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
+- Optimize `load_graph` to avoid O(n**2) "not ready" tracking (Jukka Lehtosalo, PR [20786](https://github.com/python/mypy/pull/20786))
+- Micro-optimize transitive dependency hash calculation (Jukka Lehtosalo, PR [20798](https://github.com/python/mypy/pull/20798))
+- Speed up options snapshot calculation (Jukka Lehtosalo, PR [20797](https://github.com/python/mypy/pull/20797))
+- Micro-optimize read buffering, metastore `abspath`, path joining (Shantanu, PR [20810](https://github.com/python/mypy/pull/20810))
+- Optimize `LiteralType.__eq__` and `__hash__` (Shantanu, PR [20423](https://github.com/python/mypy/pull/20423))
+- Optimize overloaded signatures check (asce, PR [20378](https://github.com/python/mypy/pull/20378))
+- Avoid unnecessary work when checking deferred functions (Ivan Levkivskyi, PR [20860](https://github.com/python/mypy/pull/20860))
+
 ### Other Notable Fixes and Improvements
 
-- Initial implementation of parallel type checking (Ivan Levkivskyi, PR [20280](https://github.com/python/mypy/pull/20280))
-- Support parallel type checking on Windows (Emma Smith, PR [20777](https://github.com/python/mypy/pull/20777))
-- Send serialized ASTs to parallel workers (Ivan Levkivskyi, PR [20991](https://github.com/python/mypy/pull/20991))
-- Send early errors to workers (Ivan Levkivskyi, PR [20822](https://github.com/python/mypy/pull/20822))
-- Use proper fixed format for parallel type checking IPC (Ivan Levkivskyi, PR [20565](https://github.com/python/mypy/pull/20565))
-- Make IPC framing more efficient (Ivan Levkivskyi, PR [20793](https://github.com/python/mypy/pull/20793))
-- Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
-- Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
-- Add `ast-serialize` as an optional dependency (Ivan Levkivskyi, PR [21028](https://github.com/python/mypy/pull/21028))
 - Add support for Python 3.14 t-strings (PEP 750) (Neil Schemenauer, PR [20850](https://github.com/python/mypy/pull/20850))
 - Add implicit module dependency if using t-string (Jukka Lehtosalo, PR [20900](https://github.com/python/mypy/pull/20900))
-- Add work-in-progress implementation of a new Python parser (Jukka Lehtosalo, PR [20856](https://github.com/python/mypy/pull/20856))
-- Skip semantic analysis pass 1 for native parser (Ivan Levkivskyi, PR [21015](https://github.com/python/mypy/pull/21015))
-- Add t-strings support to native parser (Ivan Levkivskyi, PR [21007](https://github.com/python/mypy/pull/21007))
-- Handle hex bigint literals in native parser (Ivan Levkivskyi, PR [20988](https://github.com/python/mypy/pull/20988))
-- Pass all relevant options to native parser (Ivan Levkivskyi, PR [20984](https://github.com/python/mypy/pull/20984))
-- Support `@no_type_check` with native parser (Ivan Levkivskyi, PR [20959](https://github.com/python/mypy/pull/20959))
-- Fix error code handling in native parser (Ivan Levkivskyi, PR [20952](https://github.com/python/mypy/pull/20952))
 - Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
 - Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
 - Fix loop convergence with redefinitions (Ivan Levkivskyi, PR [20865](https://github.com/python/mypy/pull/20865))
@@ -245,8 +270,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Invalidate cache when `--enable-incomplete-feature` changes (kaushal trivedi, PR [20849](https://github.com/python/mypy/pull/20849))
 - Add back support for `warn_unused_configs` (Ivan Levkivskyi, PR [20801](https://github.com/python/mypy/pull/20801))
 - Recover from corrupted fixed-format cache meta file (Jukka Lehtosalo, PR [20780](https://github.com/python/mypy/pull/20780))
-- Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
-- Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
 - Avoid `setattr`/`getattr` with fixed format cache (Ivan Levkivskyi, PR [20826](https://github.com/python/mypy/pull/20826))
 - Update JSON export tool to support binary meta cache files (Jukka Lehtosalo, PR [20096](https://github.com/python/mypy/pull/20096))
 - Distinguish not found versus skipped modules (Ivan Levkivskyi, PR [20812](https://github.com/python/mypy/pull/20812))
@@ -257,19 +280,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Show error locations in other modules on warm runs (Ivan Levkivskyi, PR [20635](https://github.com/python/mypy/pull/20635))
 - Don't read errors from cache on silent import (Sjoerd Job Postmus, PR [20509](https://github.com/python/mypy/pull/20509))
 - Better handling for uncaught top-level exceptions (Ivan Levkivskyi, PR [20749](https://github.com/python/mypy/pull/20749))
-- Optimize: skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
-- Make `State` final and avoid construction via `cls()` (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
-- Speed up suppressed deps options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
-- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
-- Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
-- Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
-- Optimize `load_graph` to avoid O(n**2) "not ready" tracking (Jukka Lehtosalo, PR [20786](https://github.com/python/mypy/pull/20786))
-- Micro-optimize transitive dependency hash calculation (Jukka Lehtosalo, PR [20798](https://github.com/python/mypy/pull/20798))
-- Speed up options snapshot calculation (Jukka Lehtosalo, PR [20797](https://github.com/python/mypy/pull/20797))
-- Micro-optimize read buffering, metastore `abspath`, path joining (Shantanu, PR [20810](https://github.com/python/mypy/pull/20810))
-- Optimize `LiteralType.__eq__` and `__hash__` (Shantanu, PR [20423](https://github.com/python/mypy/pull/20423))
-- Optimize overloaded signatures check (asce, PR [20378](https://github.com/python/mypy/pull/20378))
-- Avoid unnecessary work when checking deferred functions (Ivan Levkivskyi, PR [20860](https://github.com/python/mypy/pull/20860))
 - Use "parameter" instead of "argument" in overload error (Kai (Kazuya Ito), PR [20994](https://github.com/python/mypy/pull/20994))
 - Use "parameter" instead of "argument" in unpacking error (Kai (Kazuya Ito), PR [20683](https://github.com/python/mypy/pull/20683))
 - Use "type arguments" instead of "type parameters" for bare generics (Kai (Kazuya Ito), PR [20494](https://github.com/python/mypy/pull/20494))
@@ -338,7 +348,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix daemon dependencies in `diff-cache.py` tool (Jukka Lehtosalo, PR [20837](https://github.com/python/mypy/pull/20837))
 - Support fixed-format cache in `diff-cache.py` tool (Jukka Lehtosalo, PR [20827](https://github.com/python/mypy/pull/20827))
 - Update `convert-cache.py` tool to work with fixed-format caches (Ivan Levkivskyi, PR [20761](https://github.com/python/mypy/pull/20761))
-- Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
 
 ## Mypy 1.19
 
