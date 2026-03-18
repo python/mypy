@@ -109,8 +109,8 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 ### Experimental New Parser
 
 - Add work-in-progress implementation of a new Python parser (Jukka Lehtosalo, PR [20856](https://github.com/python/mypy/pull/20856))
-- Skip semantic analysis pass 1 for native parser (Ivan Levkivskyi, PR [21015](https://github.com/python/mypy/pull/21015))
-- Add t-strings support to native parser (Ivan Levkivskyi, PR [21007](https://github.com/python/mypy/pull/21007))
+- Skip redundant analysis pass when using the native parser (Ivan Levkivskyi, PR [21015](https://github.com/python/mypy/pull/21015))
+- Add t-string support to native parser (Ivan Levkivskyi, PR [21007](https://github.com/python/mypy/pull/21007))
 - Handle hex bigint literals in native parser (Ivan Levkivskyi, PR [20988](https://github.com/python/mypy/pull/20988))
 - Pass all relevant options to native parser (Ivan Levkivskyi, PR [20984](https://github.com/python/mypy/pull/20984))
 - Support `@no_type_check` with native parser (Ivan Levkivskyi, PR [20959](https://github.com/python/mypy/pull/20959))
@@ -142,6 +142,8 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix crash involving Unpack-ed `TypeVarTuple` (Shantanu, PR [20323](https://github.com/python/mypy/pull/20323))
 - Fix crashes caused by type variable defaults in-place modifications (Stanislav Terliakov, PR [20139](https://github.com/python/mypy/pull/20139))
 - Fix crash when calling `len()` with no arguments (Jukka Lehtosalo, PR [20774](https://github.com/python/mypy/pull/20774))
+- Fix crash when checking `async for` inside nested comprehensions (A5rocks, PR [20540](https://github.com/python/mypy/pull/20540))
+- Fix `ParamSpec` related crash (Stanislav Terliakov, PR [20119](https://github.com/python/mypy/pull/20119))
 
 ### Mypyc Improvements
 
@@ -150,7 +152,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Add support for `str.lower()` and `str.upper()` (Vaggelis Danias, PR [20948](https://github.com/python/mypy/pull/20948))
 - Add `str.isdigit()` primitive (Vaggelis Danias, PR [20893](https://github.com/python/mypy/pull/20893))
 - Add `str.isalnum()` primitive (Vaggelis Danias, PR [20852](https://github.com/python/mypy/pull/20852))
-- Add `str.isspace` primitive (Vaggelis Danias, PR [20842](https://github.com/python/mypy/pull/20842))
+- Add `str.isspace()` primitive (Vaggelis Danias, PR [20842](https://github.com/python/mypy/pull/20842))
 - Reduce memory usage when compiling large files (Vaggelis Danias, PR [20897](https://github.com/python/mypy/pull/20897))
 - Generate error if using Python 3.14 t-string (Jukka Lehtosalo, PR [20899](https://github.com/python/mypy/pull/20899))
 - Support explicit acyclic native classes that avoid gc (Jukka Lehtosalo, PR [20795](https://github.com/python/mypy/pull/20795))
@@ -162,10 +164,8 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Add additional vec irbuild tests and fix keep alive issue (Jukka Lehtosalo, PR [20732](https://github.com/python/mypy/pull/20732))
 - Add irbuild support for vec types (Jukka Lehtosalo, PR [20724](https://github.com/python/mypy/pull/20724))
 - Add experimental `librt.time` module with `time()` (Jukka Lehtosalo, PR [20723](https://github.com/python/mypy/pull/20723))
-- Add `GetElement` op and other minor IR tweaks (Jukka Lehtosalo, PR [20721](https://github.com/python/mypy/pull/20721))
 - Support `isinstance` with `librt.vecs.vec` objects (Jukka Lehtosalo, PR [20699](https://github.com/python/mypy/pull/20699))
 - Add basic mypy type checking for vec types (Jukka Lehtosalo, PR [20669](https://github.com/python/mypy/pull/20669))
-- Allow types to have capsule/source file dependencies (Jukka Lehtosalo, PR [20667](https://github.com/python/mypy/pull/20667))
 - Add experimental C extension `librt.vecs` (part 2/2) (Jukka Lehtosalo, PR [20656](https://github.com/python/mypy/pull/20656))
 - Add experimental C extension `librt.vecs` (part 1/2) (Jukka Lehtosalo, PR [20653](https://github.com/python/mypy/pull/20653))
 - Fix undefined attribute in nested coroutines (Piotr Sawicki, PR [20654](https://github.com/python/mypy/pull/20654))
@@ -175,12 +175,11 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Add primitives for `librt.strings.StringWriter` (Jukka Lehtosalo, PR [20624](https://github.com/python/mypy/pull/20624))
 - Add minimal `librt.strings.StringWriter` class (experimental) (Jukka Lehtosalo, PR [20588](https://github.com/python/mypy/pull/20588))
 - Add new primitive for `int.to_bytes` (BobTheBuidler, PR [19674](https://github.com/python/mypy/pull/19674))
-- Support constant folding in `convert_format_expr_to_str` (BobTheBuidler, PR [19970](https://github.com/python/mypy/pull/19970))
+- Support constant folding in f-string to `str` conversion (BobTheBuidler, PR [19970](https://github.com/python/mypy/pull/19970))
 - Implement `bytes.endswith` (esarp, PR [20447](https://github.com/python/mypy/pull/20447))
 - Fix coercion from short tagged int to fixed-width int (Jukka Lehtosalo, PR [20587](https://github.com/python/mypy/pull/20587))
 - Fix generation of function wrappers for decorated functions (Piotr Sawicki, PR [20584](https://github.com/python/mypy/pull/20584))
 - Generate function wrappers for each callable class instance (Piotr Sawicki, PR [20575](https://github.com/python/mypy/pull/20575))
-- Remove experimental flag from bytes get item ops (Jukka Lehtosalo, PR [20580](https://github.com/python/mypy/pull/20580))
 - Speed up `ord(str[n])` by inlining (Jukka Lehtosalo, PR [20578](https://github.com/python/mypy/pull/20578))
 - Add inline primitives for `bytes.__getitem__` (Jukka Lehtosalo, PR [20552](https://github.com/python/mypy/pull/20552))
 - Add primitive type for `bytearray` (Jukka Lehtosalo, PR [20551](https://github.com/python/mypy/pull/20551))
@@ -213,6 +212,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix unaligned memory access in librt internal helper function (Gregor Riepl, PR [20474](https://github.com/python/mypy/pull/20474))
 - Fix librt compilation on platforms with OpenMP (Ivan Levkivskyi, PR [20583](https://github.com/python/mypy/pull/20583))
 - Fix cross-compiling librt by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
+- Fix build issue (James Hilliard, PR [20510](https://github.com/python/mypy/pull/20510))
 
 ### Stubgen Improvements
 
@@ -231,17 +231,17 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 ### Documentation Updates
 
 - Document semantics of function argument redefinition (Ivan Levkivskyi, PR [20910](https://github.com/python/mypy/pull/20910))
-- Update `common_issues.rst`: document how the type ignore must come first (wyattscarpenter, PR [20886](https://github.com/python/mypy/pull/20886))
-- Update `type_inference_and_annotations.rst` (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
+- Update common issues: document how the type ignore must come first (wyattscarpenter, PR [20886](https://github.com/python/mypy/pull/20886))
+- Update 'type inference and annotations` (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
 - Document unreachability handling of `return NotImplemented` (wyattscarpenter, PR [20561](https://github.com/python/mypy/pull/20561))
 
 ### Performance Improvements
 
 - Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
 - Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
-- Optimize: skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
+- Skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
 - Speed up large incremental builds by optimizing internal state construction (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
-- Speed up suppressed deps options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
+- Speed up suppressed dependencies options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
 - Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
 - Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
 - Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
@@ -252,6 +252,8 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Speed up type comparisons and hashing for literal types (Shantanu, PR [20423](https://github.com/python/mypy/pull/20423))
 - Optimize overloaded signatures check (asce, PR [20378](https://github.com/python/mypy/pull/20378))
 - Avoid unnecessary work when checking deferred functions (Ivan Levkivskyi, PR [20860](https://github.com/python/mypy/pull/20860))
+- Improve `--allow-redefinition-new` performance for code with loops (Ivan Levkivskyi, PR [20862](https://github.com/python/mypy/pull/20862))
+- Avoid `setattr`/`getattr` with fixed format cache (Ivan Levkivskyi, PR [20826](https://github.com/python/mypy/pull/20826))
 
 ### Incremental Checking Improvements
 
@@ -278,7 +280,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Show an error when old and new redefinition are enabled in a file (Ivan Levkivskyi, PR [20920](https://github.com/python/mypy/pull/20920))
 - Fix type inference for nested union types (Ivan Levkivskyi, PR [20912](https://github.com/python/mypy/pull/20912))
 - Fix type inference regression for multiple variables in loops (Ivan Levkivskyi, PR [20892](https://github.com/python/mypy/pull/20892))
-- Improve performance for code with loops (~10% faster) (Ivan Levkivskyi, PR [20862](https://github.com/python/mypy/pull/20862))
 - Improve type inference for empty collections in conditional contexts (Ivan Levkivskyi, PR [20851](https://github.com/python/mypy/pull/20851))
 
 ### Changes to Messages
@@ -307,7 +308,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix incorrect type inference for container literals inside loops (Ivan Levkivskyi, PR [20875](https://github.com/python/mypy/pull/20875))
 - Fix edge case in type comparison for type variables with narrowed bounds (Ivan Levkivskyi, PR [20874](https://github.com/python/mypy/pull/20874))
 - Prohibit access via class for instance-only attributes (Ivan Levkivskyi, PR [20855](https://github.com/python/mypy/pull/20855))
-- Avoid `setattr`/`getattr` with fixed format cache (Ivan Levkivskyi, PR [20826](https://github.com/python/mypy/pull/20826))
 - Update JSON export tool to support binary meta cache files (Jukka Lehtosalo, PR [20096](https://github.com/python/mypy/pull/20096))
 - Better handling for uncaught top-level exceptions (Ivan Levkivskyi, PR [20749](https://github.com/python/mypy/pull/20749))
 - Attrs field level `kw_only=False` overrides `kw_only=True` at class level (getzze, PR [20949](https://github.com/python/mypy/pull/20949))
@@ -323,17 +323,14 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Make `X[()]` count as a type application (A5rocks, PR [20568](https://github.com/python/mypy/pull/20568))
 - Accept `value` as keyword argument in `TypeAliasType` (Ali Hamdan, PR [20556](https://github.com/python/mypy/pull/20556))
 - Avoid treating `pass` and `...` as no-op for reachability (Shantanu, PR [20488](https://github.com/python/mypy/pull/20488))
-- Fix crash when checking `async for` inside nested comprehensions (A5rocks, PR [20540](https://github.com/python/mypy/pull/20540))
 - Fix specialization leak in generic `TypedDict.update()` (Aaron Wieczorek, PR [20517](https://github.com/python/mypy/pull/20517))
 - Fix false positive redundant expression warnings with `isinstance()` on `Any | Protocol` unions (Randolf Scholz, PR [20450](https://github.com/python/mypy/pull/20450))
-- Ensure `new_cmd` is always defined (James Hilliard, PR [20510](https://github.com/python/mypy/pull/20510))
 - Fix type checking of class-scope imports accessed via `self` or `cls` (bzoracler, PR [20480](https://github.com/python/mypy/pull/20480))
 - Prevent synthetic intersections from leaking to module public interfaces (bzoracler, PR [20459](https://github.com/python/mypy/pull/20459))
 - Fix package build failure when the compiler types are not defined (Steven Pitman, PR [20429](https://github.com/python/mypy/pull/20429))
 - Fix `--strict-equality` for iteratively visited code (Christoph Tyralla, PR [19635](https://github.com/python/mypy/pull/19635))
 - Allow literals as kwargs dict keys (Shantanu, PR [20416](https://github.com/python/mypy/pull/20416))
 - Error for invalid varargs and varkwargs to `Any` call (Shantanu, PR [20324](https://github.com/python/mypy/pull/20324))
-- Support `expand_type` with `ParamSpec.{args,kwargs}` (Stanislav Terliakov, PR [20119](https://github.com/python/mypy/pull/20119))
 - Fix type inference for binary operators with tuple subclasses (Randolf Scholz, PR [19046](https://github.com/python/mypy/pull/19046))
 - Improve type inference for ternary expressions with literals and collections (Randolf Scholz, PR [19563](https://github.com/python/mypy/pull/19563))
 - Do not treat match value patterns as `isinstance` checks (Stanislav Terliakov, PR [20146](https://github.com/python/mypy/pull/20146))
