@@ -97,6 +97,15 @@ necessary.
 Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
 and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
+### Improved Compatibility for Local Partial Types
+
+- Support `None` partial types with local partial types (Ivan Levkivskyi, PR [20938](https://github.com/python/mypy/pull/20938))
+
+### Python 3.14 T-String Support (PEP 750)
+
+- Add support for Python 3.14 t-strings (PEP 750) (Neil Schemenauer, PR [20850](https://github.com/python/mypy/pull/20850))
+- Add implicit module dependency if using t-string (Jukka Lehtosalo, PR [20900](https://github.com/python/mypy/pull/20900))
+
 ### Experimental New Parser
 
 - Add work-in-progress implementation of a new Python parser (Jukka Lehtosalo, PR [20856](https://github.com/python/mypy/pull/20856))
@@ -246,8 +255,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 ### Other Notable Fixes and Improvements
 
-- Add support for Python 3.14 t-strings (PEP 750) (Neil Schemenauer, PR [20850](https://github.com/python/mypy/pull/20850))
-- Add implicit module dependency if using t-string (Jukka Lehtosalo, PR [20900](https://github.com/python/mypy/pull/20900))
 - Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
 - Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
 - Fix loop convergence with redefinitions (Ivan Levkivskyi, PR [20865](https://github.com/python/mypy/pull/20865))
@@ -258,7 +265,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Simpler/cleaner `reveal_type()` (Ivan Levkivskyi, PR [20929](https://github.com/python/mypy/pull/20929))
 - Warn when `@disjoint_base` is used on protocols or TypedDicts (Brian Schubert, PR [21029](https://github.com/python/mypy/pull/21029))
 - Model tuple type aliases better (Shantanu, PR [20967](https://github.com/python/mypy/pull/20967))
-- Support `None` partial types with local partial types (Ivan Levkivskyi, PR [20938](https://github.com/python/mypy/pull/20938))
 - Unify handling of self attributes in daemon (Ivan Levkivskyi, PR [21025](https://github.com/python/mypy/pull/21025))
 - Fix binder special-casing to apply to nested unions (Ivan Levkivskyi, PR [20912](https://github.com/python/mypy/pull/20912))
 - Fix changed on pop with multiple variables in binder (Ivan Levkivskyi, PR [20892](https://github.com/python/mypy/pull/20892))
