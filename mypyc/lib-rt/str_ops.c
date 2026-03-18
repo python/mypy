@@ -109,13 +109,16 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
             void *data = PyUnicode_DATA(str);
             Py_UCS4 ch = PyUnicode_READ(kind, data, n);
+            if (ch < 256) {
+                // Latin-1 single-char strings are cached by CPython, so
+                // PyUnicode_FromOrdinal returns the cached object (with a
+                // new reference) instead of allocating a new string each time.
+                return PyUnicode_FromOrdinal(ch);
+            }
             PyObject *unicode = PyUnicode_New(1, ch);
             if (unicode == NULL)
                 return NULL;
-
-            if (PyUnicode_KIND(unicode) == PyUnicode_1BYTE_KIND) {
-                PyUnicode_1BYTE_DATA(unicode)[0] = (Py_UCS1)ch;
-            } else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+            if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
                 PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
             } else {
                 assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
