@@ -136,6 +136,37 @@ PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110))
 - Fix crash when checking `async for` inside nested comprehensions (A5rocks, PR [20540](https://github.com/python/mypy/pull/20540))
 - Fix `ParamSpec` related crash (Stanislav Terliakov, PR [20119](https://github.com/python/mypy/pull/20119))
 
+### librt: Mypyc Standard Library
+
+Mypyc now has a dedicated standard library, `librt`, to provide basic features that are optimized
+for compiled code. They are faster than corresponding Python stdlib functionality. There is no
+plan to replace the Python stdlib -- we'll only include features that help with common performance
+bottlenecks in compiled code.
+
+Currently, we only provide `librt.base64` that has optimized SIMD (Single Instruction, Multiple
+Data) base64 encoding and decoding functions. In future mypyc releases we will add support for
+optimized data structures, string/bytes utilities, and more.
+
+Use `python3 -m pip install librt` to make `librt` available to compiled modules. Compiled
+modules only need `librt` if they explicitly import `librt`. If you install mypy, you will also get
+a compatible version of `librt` as a dependency. We will keep `librt` backward compatible, so
+you should always be able to update to a newer version.
+
+Related changes:
+
+- Add minimal, experimental `librt.base64` module (Jukka Lehtosalo, PR [20226](https://github.com/python/mypy/pull/20226))
+- Use faster base64 encode implementation in `librt.base64` (Jukka Lehtosalo, PR [20237](https://github.com/python/mypy/pull/20237))
+- Add efficient `librt.base64.b64decode` (Jukka Lehtosalo, PR [20263](https://github.com/python/mypy/pull/20263))
+- Enable SIMD for `librt.base64` on x86-64 (Jukka Lehtosalo, PR [20244](https://github.com/python/mypy/pull/20244))
+- Add primitive for `librt.base64.b64decode` (Jukka Lehtosalo, PR [20272](https://github.com/python/mypy/pull/20272))
+- Add `urlsafe_b64encode` and `urlsafe_b64decode` to `librt.base64` (Jukka Lehtosalo, PR [20274](https://github.com/python/mypy/pull/20274))
+- Make `librt.base64` non-experimental (Ivan Levkivskyi, PR [20783](https://github.com/python/mypy/pull/20783))
+- Support pyodide for Python 3.12 (Michael R. Crusoe, PR [20342](https://github.com/python/mypy/pull/20342))
+- Support pyodide via the NEON intrinsics (Michael R. Crusoe, PR [20316](https://github.com/python/mypy/pull/20316))
+- Fix `librt` compilation on platforms with OpenMP (Ivan Levkivskyi, PR [20583](https://github.com/python/mypy/pull/20583))
+- Fix cross-compiling `librt` by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
+- Use existing SIMD CPU dispatch by customizing build flags (Michael R. Crusoe, PR [20253](https://github.com/python/mypy/pull/20253))
+
 ### Mypyc Improvements
 
 - Fix vtable construction for deep trait inheritance (Vaggelis Danias, PR [20917](https://github.com/python/mypy/pull/20917))
@@ -171,20 +202,13 @@ PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110))
 - Add primitive for `bytes.startswith` (esarp, PR [20387](https://github.com/python/mypy/pull/20387))
 - Fix calling async methods through vectorcall (Piotr Sawicki, PR [20393](https://github.com/python/mypy/pull/20393))
 - Extend loop optimization to use constant folding for determining sequence lengths (BobTheBuidler, PR [19930](https://github.com/python/mypy/pull/19930))
-- lib-rt base64: support pyodide for Python 3.12 (Michael R. Crusoe, PR [20342](https://github.com/python/mypy/pull/20342))
-- librt base64: support pyodide via the NEON intrinsics (Michael R. Crusoe, PR [20316](https://github.com/python/mypy/pull/20316))
 - Wrap async functions with function-like type (Piotr Sawicki, PR [20260](https://github.com/python/mypy/pull/20260))
 - Add a primitive for bytes `translate` method (Jukka Lehtosalo, PR [20305](https://github.com/python/mypy/pull/20305))
 - Add primitives for bytes and str multiply (Jukka Lehtosalo, PR [20303](https://github.com/python/mypy/pull/20303))
 - Match int arguments to primitives with native int parameters (Jukka Lehtosalo, PR [20299](https://github.com/python/mypy/pull/20299))
 - Allow disabling extra flags with `MYPYC_NO_EXTRA_FLAGS` environment variable (James Hilliard, PR [20507](https://github.com/python/mypy/pull/20507))
 - Fix unsupported imports for type annotations (Lukas Geiger, PR [20390](https://github.com/python/mypy/pull/20390))
-- Make `librt.base64` non-experimental (Ivan Levkivskyi, PR [20783](https://github.com/python/mypy/pull/20783))
-- Add `urlsafe_b64encode` and `urlsafe_b64decode` to `librt.base64` (Jukka Lehtosalo, PR [20274](https://github.com/python/mypy/pull/20274))
-- Add primitive for `librt.base64.b64decode` (Jukka Lehtosalo, PR [20272](https://github.com/python/mypy/pull/20272))
 - Fix unaligned memory access in librt internal helper function (Gregor Riepl, PR [20474](https://github.com/python/mypy/pull/20474))
-- Fix librt compilation on platforms with OpenMP (Ivan Levkivskyi, PR [20583](https://github.com/python/mypy/pull/20583))
-- Fix cross-compiling librt by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Fix build issue (James Hilliard, PR [20510](https://github.com/python/mypy/pull/20510))
 
 ### Removed Flags `--force-uppercase-builtins` and `--force-union-syntax`
