@@ -5776,8 +5776,6 @@ assert c.value() == 42
 assert c.derived() == 42
 
 [case testPropertyShadowVtableGlue]
-# The setter's shadow glue overwrites the getter's (both keyed by fdef.name),
-# misaligning subsequent vtable entries -> segfault on interpreted subclasses.
 from typing import List
 import mypy_extensions
 
