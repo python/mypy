@@ -88,15 +88,6 @@ Contributed by Marc Mueller
 (PR [mypy_mypyc-wheels#106](https://github.com/mypyc/mypy_mypyc-wheels/pull/106),
 PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110)).
 
-### Removed Flags `--force-uppercase-builtins` and `--force-union-syntax`
-
-The `--force-uppercase-builtins` flag was deprecated and has been a no-op since mypy 1.17.0.
-Since mypy has dropped support for Python 3.9, the `--force-union-syntax` flag is no longer
-necessary.
-
-Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
-and (PR [20405](https://github.com/python/mypy/pull/20405)).
-
 ### Improved Compatibility for Local Partial Types
 
 - Support `None` partial types with local partial types (Ivan Levkivskyi, PR [20938](https://github.com/python/mypy/pull/20938))
@@ -214,6 +205,15 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix cross-compiling librt by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Fix build issue (James Hilliard, PR [20510](https://github.com/python/mypy/pull/20510))
 
+### Removed Flags `--force-uppercase-builtins` and `--force-union-syntax`
+
+The `--force-uppercase-builtins` flag was deprecated and has been a no-op since mypy 1.17.0.
+Since mypy has dropped support for Python 3.9, the `--force-union-syntax` flag is no longer
+necessary.
+
+Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
+and (PR [20405](https://github.com/python/mypy/pull/20405)).
+
 ### Stubgen Improvements
 
 - Fix mis-parsing of double colon ("::") (Jeremy Nimmer, PR [20285](https://github.com/python/mypy/pull/20285))
@@ -237,6 +237,23 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 ### Performance Improvements
 
+Mypy now uses a binary cache format (fixed-format cache) by default to speed up incremental
+checking. You can still use `--no-fixed-format-cache` to use the legacy JSON cache format,
+but we will remove the JSON cache format in a future release. Mypy includes a tool to convert
+individual fixed-format cache files (.ff) to the JSON format to make it possible to inspect
+cache contents:
+
+```python
+python -m mypy.exportjson <path> ...
+```
+
+If the SQLite cache is enabled, you will first need to convert the SQLite cache into individual
+files using the
+[`misc/convert-cache.py`](https://github.com/python/mypy/blob/master/misc/convert-cache.py) tool
+available in the mypy GitHub repository, or disable the SQLite cache using `--no-sqlite-cache`.
+
+List of all performance improvements (for mypyc improvements there is a separate section above):
+
 - Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
 - Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
 - Skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
@@ -257,7 +274,8 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 ### Incremental Checking Improvements
 
-- Unify handling of self attributes in daemon (Ivan Levkivskyi, PR [21025](https://github.com/python/mypy/pull/21025))
+This release includes multiple fixes to incremental type checking:
+
 - Invalidate cache when `--enable-incomplete-feature` changes (kaushal trivedi, PR [20849](https://github.com/python/mypy/pull/20849))
 - Add back support for `warn_unused_configs` (Ivan Levkivskyi, PR [20801](https://github.com/python/mypy/pull/20801))
 - Recover from corrupted fixed-format cache meta file (Jukka Lehtosalo, PR [20780](https://github.com/python/mypy/pull/20780))
@@ -271,6 +289,20 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - More robust fix for re-export of `__all__` (Ivan Levkivskyi, PR [20487](https://github.com/python/mypy/pull/20487))
 
 ### Improvements to Allowing Redefinitions
+
+Mypy now allows significant more flexible variable redefinitions when using `--allow-redefinition-new`.
+In particular, function parameters can now be redefined with a different type:
+
+```python
+# mypy: allow-redefinition-new, local-partial-types
+
+def process(items: list[str]) -> None:
+    # Reassign parameter to a completely different type.
+    # Without --allow-redefinition-new, this is a type error because
+    # list[list[str]] is not compatible with list[str].
+    items = [item.split() for item in items]
+    ...
+```
 
 - Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
 - Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
@@ -294,7 +326,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Correct "Duplicate argument" error messages (Kai (Kazuya Ito), PR [20957](https://github.com/python/mypy/pull/20957))
 - Use standard formatting for note on unexpected keyword (Ivan Levkivskyi, PR [20808](https://github.com/python/mypy/pull/20808))
 - Fix edge cases in pretty formatting (Ivan Levkivskyi, PR [20809](https://github.com/python/mypy/pull/20809))
-- Add function definition notes for `missing_named_argument` errors (Kevin Kannammalil, PR [20794](https://github.com/python/mypy/pull/20794))
+- Add function definition notes for missing named argument errors (Kevin Kannammalil, PR [20794](https://github.com/python/mypy/pull/20794))
 - Make overloaded constructors consistent in error messages (Ivan Levkivskyi, PR [20483](https://github.com/python/mypy/pull/20483))
 - Improve error message for invalid Python package (Shantanu, PR [20482](https://github.com/python/mypy/pull/20482))
 - Emit end line/column in JSON format for span tracking (Adam Turner, PR [20734](https://github.com/python/mypy/pull/20734))
@@ -302,6 +334,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 ### Other Notable Fixes and Improvements
 
+- Unify handling of self attributes in daemon (Ivan Levkivskyi, PR [21025](https://github.com/python/mypy/pull/21025))
 - Improve support for `hasattr()` (Ivan Levkivskyi, PR [20914](https://github.com/python/mypy/pull/20914))
 - Warn when `@disjoint_base` is used on protocols or TypedDicts (Brian Schubert, PR [21029](https://github.com/python/mypy/pull/21029))
 - Model tuple type aliases better (Shantanu, PR [20967](https://github.com/python/mypy/pull/20967))
