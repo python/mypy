@@ -335,10 +335,10 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Improve interaction between `--local-partial-types` and hashability (Shantanu, PR [20719](https://github.com/python/mypy/pull/20719))
 - Stop looking for `.gitignore` at top level of working tree (Colin Watson, PR [20775](https://github.com/python/mypy/pull/20775))
 - Try fixing Cygwin build (Ivan Levkivskyi, PR [20830](https://github.com/python/mypy/pull/20830))
-- Fix daemon dependencies in `diff-cache.py` tool (Jukka Lehtosalo, PR 20837)
-- Support fixed-format cache in `diff-cache.py` tool (Jukka Lehtosalo, PR 20827)
-- Update `convert-cache.py` tool to work with fixed-format caches (Ivan Levkivskyi, PR 20761)
-- Save work on emitting ignored diagnostics (Shantanu, PR 20621)
+- Fix daemon dependencies in `diff-cache.py` tool (Jukka Lehtosalo, PR [20837](https://github.com/python/mypy/pull/20837))
+- Support fixed-format cache in `diff-cache.py` tool (Jukka Lehtosalo, PR [20827](https://github.com/python/mypy/pull/20827))
+- Update `convert-cache.py` tool to work with fixed-format caches (Ivan Levkivskyi, PR [20761](https://github.com/python/mypy/pull/20761))
+- Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
 
 ## Mypy 1.19
 
