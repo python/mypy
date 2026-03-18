@@ -232,8 +232,6 @@ def convert_format_expr_to_bytes(
                 var_bytes = builder.call_c(int_to_ascii_op, [builder.accept(x)], line)
             else:
                 return None
-        else:
-            return None
         converted.append(var_bytes)
     return converted
 
