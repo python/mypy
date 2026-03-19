@@ -36,9 +36,9 @@ from mypyc.test.testutil import (
     MypycDataSuite,
     assert_test_output,
     fudge_dir_mtimes,
+    has_test_name_tag,
     show_c,
     use_custom_builtins,
-    has_test_name_tag,
 )
 
 files = [
@@ -212,9 +212,8 @@ class TestRun(MypycDataSuite):
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
         benchmark_build = has_test_name_tag(testcase.name, "benchmark")
-        bench = (
-            testcase.config.getoption("--bench", False)
-            and (benchmark_build or "Benchmark" in testcase.name)
+        bench = testcase.config.getoption("--bench", False) and (
+            benchmark_build or "Benchmark" in testcase.name
         )
 
         options = Options()
