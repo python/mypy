@@ -481,17 +481,14 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     names = [name for name, _ in node.names]
     as_names = [as_name or name for name, as_name in node.names]
 
-    if builder.is_native_module(id) and builder.is_same_group_module(id):
-        import_from_native(builder, id, names, as_names, node.line)
-    else:
-        import_from_non_native(builder, id, names, as_names, node.line)
+    parent_is_native = builder.is_native_module(id) and builder.is_same_group_module(id)
+    transform_import_from_buckets(builder, id, names, as_names, node.line, parent_is_native)
 
 
-IMPORT_NATIVE_MODULE: Final = 0
-IMPORT_NATIVE_ATTR: Final = 1
-IMPORT_NON_NATIVE: Final = 2
-IMPORT_NATIVE_SUBMODULE: Final = 3  # native submodule of a non-native (or cross-group) parent
-IMPORT_REGULAR: Final = 4  # all other imports from a non-native (or cross-group) parent
+# Import kind constants for classify_import_from.
+IMPORT_NATIVE_SUBMODULE: Final = 0  # native same-group submodule (import directly)
+IMPORT_NATIVE_ATTR: Final = 1  # attribute of a native module (getattr)
+IMPORT_NON_NATIVE: Final = 2  # non-native or cross-group (use Python import system)
 
 
 class ImportFromBucket:
@@ -501,19 +498,40 @@ class ImportFromBucket:
         self.as_names = as_names
 
 
-def import_from_native(
-    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str], line: int
+def classify_import_from(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    parent_is_native: bool,
+) -> list[ImportFromBucket]:
+    """Classify each imported name and group consecutive same-kind names into buckets."""
+    flat_list = []
+    for name, as_name in zip(names, as_names):
+        submodule_id = f"{module_id}.{name}"
+        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
+            kind = IMPORT_NATIVE_SUBMODULE
+        elif parent_is_native and submodule_id not in builder.graph:
+            kind = IMPORT_NATIVE_ATTR
+        else:
+            kind = IMPORT_NON_NATIVE
+        flat_list.append((kind, name, as_name))
+    return group_consecutive(flat_list)
+
+
+def transform_import_from_buckets(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    line: int,
+    parent_is_native: bool,
 ) -> None:
-    # Imported names can each be one of three:
-    #   attribute of native module
-    #   native submodule
-    #   non-native submodule of a native module
-    #
-    # For each we have a separate implementation for good efficiency. We put related things
-    # together.
-    buckets = classify_import_from_native(builder, module_id, names, as_names)
+    """Handle 'from module_id import names' by dispatching each bucket to the right strategy."""
+    buckets = classify_import_from(builder, module_id, names, as_names, parent_is_native)
+    module = None
     for bucket in buckets:
-        if bucket.kind == IMPORT_NATIVE_MODULE:
+        if bucket.kind == IMPORT_NATIVE_SUBMODULE:
             group: list[tuple[str, str | None, int]] = [
                 (f"{module_id}.{name}", as_name, line)
                 for name, as_name in zip(bucket.names, bucket.as_names)
@@ -534,72 +552,16 @@ def import_from_native(
                 )
         else:
             assert bucket.kind == IMPORT_NON_NATIVE
-            # Import a non-native submodule of a native package (e.g., the submodule
-            # is a regular Python module). Use the Python import system.
-            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
-            if bucket.as_names == bucket.names:
-                as_names_literal = names_literal
-            else:
-                as_names_literal = builder.add(
-                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
-                )
-            builder.call_c(
-                import_from_many_op,
-                [
-                    builder.load_str(module_id),
-                    names_literal,
-                    as_names_literal,
-                    builder.load_globals_dict(),
-                ],
-                line,
-            )
-
-
-def classify_import_from_native(
-    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
-) -> list[ImportFromBucket]:
-    flat_list = []
-    for name, as_name in zip(names, as_names):
-        submodule_id = f"{module_id}.{name}"
-        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
-            kind = IMPORT_NATIVE_MODULE
-        elif submodule_id in builder.graph:
-            kind = IMPORT_NON_NATIVE
-        else:
-            kind = IMPORT_NATIVE_ATTR
-        flat_list.append((kind, name, as_name))
-    return group_consecutive(flat_list)
-
-
-def import_from_non_native(
-    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str], line: int
-) -> None:
-    # Imported names can each be one of two kinds:
-    #   native submodule of a non-native (or cross-group) parent
-    #   anything else (attribute, non-native submodule, ...)
-    buckets = classify_import_from_non_native(builder, module_id, names, as_names)
-    module = None
-    for bucket in buckets:
-        if bucket.kind == IMPORT_NATIVE_SUBMODULE:
-            # 'from p import mod' where p.mod is a native module — equivalent to
-            # 'import p.mod as as_name' for each name. Reuse the native import logic.
-            group: list[tuple[str, str | None, int]] = [
-                (f"{module_id}.{name}", as_name, line)
-                for name, as_name in zip(bucket.names, bucket.as_names)
-            ]
-            transform_imports_without_grouping(builder, group)
-        else:
-            assert bucket.kind == IMPORT_REGULAR
-            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
-            if bucket.as_names == bucket.names:
-                as_names_literal = names_literal
-            else:
-                as_names_literal = builder.add(
-                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
-                )
             # Note that we miscompile import from inside of functions here,
             # since that case *shouldn't* load everything into the globals dict.
             # This probably doesn't matter much and the code runs basically right.
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
             module = builder.call_c(
                 import_from_many_op,
                 [
@@ -612,20 +574,6 @@ def import_from_non_native(
             )
     if module is not None:
         builder.add(InitStatic(module, module_id, namespace=NAMESPACE_MODULE))
-
-
-def classify_import_from_non_native(
-    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
-) -> list[ImportFromBucket]:
-    flat_list = []
-    for name, as_name in zip(names, as_names):
-        submodule_id = f"{module_id}.{name}"
-        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
-            kind = IMPORT_NATIVE_SUBMODULE
-        else:
-            kind = IMPORT_REGULAR
-        flat_list.append((kind, name, as_name))
-    return group_consecutive(flat_list)
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
