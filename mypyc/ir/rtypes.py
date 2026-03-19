@@ -552,8 +552,11 @@ KNOWN_NATIVE_TYPES: Final = {
         "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
     ),
     "librt.threading.Lock": RPrimitive(
-        "librt.threading.Lock", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_THREADING,)
-    ),
+        "librt.threading.Lock",
+        is_unboxed=False,
+        is_refcounted=True,
+        dependencies=(LIBRT_THREADING,),
+    )
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]

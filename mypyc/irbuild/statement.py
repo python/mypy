@@ -1185,11 +1185,7 @@ def transform_with(
 
 
 def transform_with_lock(
-    builder: IRBuilder,
-    mgr_v: Value,
-    target: Lvalue | None,
-    body: GenFunc,
-    line: int,
+    builder: IRBuilder, mgr_v: Value, target: Lvalue | None, body: GenFunc, line: int
 ) -> None:
     """Optimized 'with' for librt.threading.Lock.
 
