@@ -989,6 +989,12 @@ class GroupGenerator:
                 self.emit_module_def_slots(emitter, module_prefix, module_name)
             self.emit_module_def_struct(emitter, module_name, module_prefix)
             self.emit_module_init_func(emitter, module_name, module_prefix)
+        elif self.use_shared_lib:
+            # Multi-phase init with shared lib: shims handle PyInit_*, but we
+            # still need CPyInitOnly_* for same-group native imports, and the
+            # PyModuleDef struct it depends on.
+            self.emit_module_def_struct(emitter, module_name, module_prefix)
+            self.emit_init_only_func(emitter, module_name, module_prefix)
 
     def emit_module_def_slots(
         self, emitter: Emitter, module_prefix: str, module_name: str
@@ -1183,6 +1189,34 @@ class GroupGenerator:
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
+    def emit_init_only_func(
+        self, emitter: Emitter, module_name: str, module_prefix: str
+    ) -> None:
+        """Emit CPyInitOnly_* which creates the module object without executing the body.
+
+        This allows the caller to set up attributes like __file__ and __package__
+        before the module body runs. Used for same-group native imports.
+        """
+        init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
+        init_only_decl = f"PyObject *{init_only_name}(void)"
+        emitter.context.declarations[init_only_name] = HeaderDeclaration(
+            init_only_decl + ";"
+        )
+        module_static = self.module_internal_static_name(module_name, emitter)
+        emitter.emit_lines(init_only_decl, "{")
+        emitter.emit_lines(
+            f"if ({module_static}) {{",
+            f"Py_INCREF({module_static});",
+            f"return {module_static};",
+            "}",
+        )
+        emitter.emit_lines(
+            f"{module_static} = PyModule_Create(&{module_prefix}module);",
+            f"return {module_static};",
+        )
+        emitter.emit_lines("}")
+        emitter.emit_line("")
+
     def emit_module_init_func(
         self, emitter: Emitter, module_name: str, module_prefix: str
     ) -> None:
@@ -1202,29 +1236,8 @@ class GroupGenerator:
 
         exec_func = f"CPyExec_{exported_name(module_name)}"
 
-        # Emit CPyInitOnly_* which creates the module object without executing
-        # the module body. This allows the caller to set up attributes like
-        # __file__ and __package__ before the module body runs.
         if self.use_shared_lib:
-            init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
-            init_only_decl = f"PyObject *{init_only_name}(void)"
-            emitter.context.declarations[init_only_name] = HeaderDeclaration(
-                init_only_decl + ";"
-            )
-            module_static = self.module_internal_static_name(module_name, emitter)
-            emitter.emit_lines(init_only_decl, "{")
-            emitter.emit_lines(
-                f"if ({module_static}) {{",
-                f"Py_INCREF({module_static});",
-                f"return {module_static};",
-                "}",
-            )
-            emitter.emit_lines(
-                f"{module_static} = PyModule_Create(&{module_prefix}module);",
-                f"return {module_static};",
-            )
-            emitter.emit_lines("}")
-            emitter.emit_line("")
+            self.emit_init_only_func(emitter, module_name, module_prefix)
 
         # Emit CPyInit_* / PyInit_* which creates the module and executes the body.
         emitter.emit_lines(declaration, "{")
