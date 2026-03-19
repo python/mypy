@@ -1317,7 +1317,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 // the platform default if no separator was found.
                 Py_UCS4 sep_char = sep >= 0
                     ? PyUnicode_ReadChar(shared_lib_file, sep)
-                    : SEP[0];
+                    : (Py_UCS4)SEP[0];
                 PyObject *dot_str = PyUnicode_FromString(".");
                 PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
                 if (dot_str == NULL || sep_str == NULL) {
