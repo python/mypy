@@ -3,9 +3,11 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <Python.h>
 
+#include "mypyc_util.h"
 #include "strings/librt_strings.h"
 
 static inline CPyTagged
