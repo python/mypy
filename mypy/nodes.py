@@ -6,6 +6,7 @@ import os
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
@@ -30,6 +31,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.cache import (
+    DICT_INT_GEN,
     DICT_STR_GEN,
     DT_SPEC,
     END_TAG,
@@ -41,6 +43,7 @@ from mypy.cache import (
     Tag,
     WriteBuffer,
     read_bool,
+    read_bytes,
     read_int,
     read_int_list,
     read_int_opt,
@@ -52,6 +55,7 @@ from mypy.cache import (
     read_str_opt_list,
     read_tag,
     write_bool,
+    write_bytes,
     write_int,
     write_int_list,
     write_int_opt,
@@ -307,6 +311,69 @@ class SymbolNode(Node):
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
+class FileRawData:
+    """Raw (binary) data representing parsed, but not deserialized file."""
+
+    __slots__ = (
+        "defs",
+        "imports",
+        "raw_errors",
+        "ignored_lines",
+        "is_partial_stub_package",
+        "uses_template_strings",
+    )
+
+    defs: bytes
+    imports: bytes
+    raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
+    ignored_lines: dict[int, list[str]]
+    is_partial_stub_package: bool
+    uses_template_strings: bool
+
+    def __init__(
+        self,
+        defs: bytes,
+        imports: bytes,
+        raw_errors: list[dict[str, Any]],
+        ignored_lines: dict[int, list[str]],
+        is_partial_stub_package: bool,
+        uses_template_strings: bool,
+    ) -> None:
+        self.defs = defs
+        self.imports = imports
+        self.raw_errors = raw_errors
+        self.ignored_lines = ignored_lines
+        self.is_partial_stub_package = is_partial_stub_package
+        self.uses_template_strings = uses_template_strings
+
+    def write(self, data: WriteBuffer) -> None:
+        write_bytes(data, self.defs)
+        write_bytes(data, self.imports)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.raw_errors))
+        for err in self.raw_errors:
+            write_json(data, err)
+        write_tag(data, DICT_INT_GEN)
+        write_int_bare(data, len(self.ignored_lines))
+        for line, codes in self.ignored_lines.items():
+            write_int(data, line)
+            write_str_list(data, codes)
+        write_bool(data, self.is_partial_stub_package)
+        write_bool(data, self.uses_template_strings)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> FileRawData:
+        defs = read_bytes(data)
+        imports = read_bytes(data)
+        assert read_tag(data) == LIST_GEN
+        raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
+        assert read_tag(data) == DICT_INT_GEN
+        ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
+        return FileRawData(
+            defs, imports, raw_errors, ignored_lines, read_bool(data), read_bool(data)
+        )
+
+
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -328,6 +395,7 @@ class MypyFile(SymbolNode):
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
+        "raw_data",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -370,6 +438,8 @@ class MypyFile(SymbolNode):
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
     _is_typeshed_file: bool | None
+    # For native parser store actual serialized data here.
+    raw_data: FileRawData | None
 
     def __init__(
         self,
@@ -400,6 +470,7 @@ class MypyFile(SymbolNode):
         self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
+        self.raw_data = None
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -589,7 +660,7 @@ class FuncBase(Node):
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "is_type_check_only",  # Uses "@type_check_only"
-        "can_infer_vars",
+        "def_or_infer_vars",
         "_fullname",
     )
 
@@ -610,8 +681,8 @@ class FuncBase(Node):
         self.is_final = False
         self.is_explicit_override = False
         self.is_type_check_only = False
-        # Can this function/method infer types of variables defined outside? Currently,
-        # we only set this in cases like:
+        # Can this function/method define variables or infer variables defined outside?
+        # In particular, we set this in cases like:
         #     x = None
         #     def foo() -> None:
         #         global x
@@ -621,7 +692,7 @@ class FuncBase(Node):
         #         x = None
         #         def foo(self) -> None:
         #             self.x = 1
-        self.can_infer_vars = False
+        self.def_or_infer_vars = False
         # Name with module prefix
         self._fullname = ""
 
@@ -965,7 +1036,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
-        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -1004,8 +1074,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
-        # Keep track of functions where self attributes are defined.
-        self.has_self_attr_def = False
         # This is needed because for positional-only arguments the name is set to None,
         # but we sometimes still want to show it in error messages.
         if arguments:
@@ -5019,6 +5087,26 @@ class DataclassTransformSpec:
         return ret
 
 
+@trait
+class SplittingVisitor:
+    # If True, process function definitions. If False, don't. This is used
+    # for processing module top levels in fine-grained incremental mode.
+    recurse_into_functions: bool
+
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
+
+
 def get_flags(node: Node, names: list[str]) -> list[str]:
     return [name for name in names if getattr(node, name)]
 
@@ -5242,6 +5330,7 @@ TYPE_ALIAS_STMT: Final[Tag] = 225
 IMPORT_METADATA: Final[Tag] = 226
 IMPORTFROM_METADATA: Final[Tag] = 227
 IMPORTALL_METADATA: Final[Tag] = 228
+TSTRING_EXPR: Final[Tag] = 229
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

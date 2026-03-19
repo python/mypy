@@ -4746,3 +4746,13 @@ tmp/a.py:8: note:     Expected:
 tmp/a.py:8: note:         def f(self) -> PNested
 tmp/a.py:8: note:     Got:
 tmp/a.py:8: note:         def f(self) -> CNested
+
+[case testProtocolCannotBeDisjointBase]
+from typing import Protocol
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with protocol class
+class A(Protocol):
+    pass
+
+[builtins fixtures/tuple.pyi]

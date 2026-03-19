@@ -317,7 +317,6 @@ from typing_extensions import Final
         "<hash>"
     ],
     "interface_hash": "<hash>",
-    "error_lines": [],
     "version_id": ...,
     "ignore_all": false,
     "plugin_data": null

@@ -228,11 +228,12 @@ make cold mypy runs several times faster.
 
 Furthermore: as of `mypy 1.13 <https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html>`_,
 mypy allows use of the orjson library for handling the cache instead of the stdlib json, for
-improved performance. You can ensure the presence of orjson using the faster-cache extra:
+improved performance. You can ensure the presence of orjson using the ``faster-cache`` extra:
 
     python3 -m pip install -U mypy[faster-cache]
 
-Mypy may depend on orjson by default in the future.
+Mypy may depend on orjson by default in the future. To use faster, native parser, use the
+``native-parse`` extra. Native parser will be default in near future.
 
 Types of empty collections
 --------------------------

@@ -264,6 +264,40 @@ def test_getitem() -> None:
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
 
+def test_getitem_unicode() -> None:
+    # ASCII - cached by CPython's Latin-1 table
+    ascii_s = "Hello"
+    assert getitem(ascii_s, 0) == "H"
+    assert getitem(ascii_s, 4) == "o"
+
+    # Latin-1 (>127, <256) - also cached
+    latin1_s = "\xe9\xfc\xf1"  # éüñ
+    assert getitem(latin1_s, 0) == "\xe9"
+    assert getitem(latin1_s, 1) == "\xfc"
+    assert getitem(latin1_s, 2) == "\xf1"
+
+    # BMP (>255) - not cached, allocated fresh
+    bmp_s = "\u4e2d\u6587"  # 中文
+    assert getitem(bmp_s, 0) == "\u4e2d"
+    assert getitem(bmp_s, 1) == "\u6587"
+
+    # Supplementary plane (>65535)
+    emoji_s = "\U0001f600\U0001f601"  # 😀😁
+    assert getitem(emoji_s, 0) == "\U0001f600"
+    assert getitem(emoji_s, 1) == "\U0001f601"
+
+    # Mixed string with all kinds
+    mixed = "A\xe9\u4e2d\U0001f600"
+    assert getitem(mixed, 0) == "A"
+    assert getitem(mixed, 1) == "\xe9"
+    assert getitem(mixed, 2) == "\u4e2d"
+    assert getitem(mixed, 3) == "\U0001f600"
+
+    # Identity check: ASCII/Latin-1 chars should return cached objects
+    a1 = getitem("abc", 0)
+    a2 = getitem("axyz", 0)
+    assert a1 is a2  # both 'a', should be same cached object
+
 def test_find() -> None:
     s = "abcab"
     assert find(s, "Hello") == -1

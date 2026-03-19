@@ -564,6 +564,24 @@ PyObject *CPyTagged_Str(CPyTagged n) {
     }
 }
 
+static PyObject *CPyTagged_ShortToAsciiBytes(Py_ssize_t n) {
+    PyObject *obj = PyBytes_FromStringAndSize(NULL, MAX_INT_CHARS);
+    if (!obj) return NULL;
+    int len = fmt_ssize_t(PyBytes_AsString(obj), n);
+    Py_SET_SIZE(obj, len);
+    return obj;
+}
+
+PyObject *CPyTagged_AsciiBytes(CPyTagged n) {
+    if (CPyTagged_CheckShort(n)) {
+        return CPyTagged_ShortToAsciiBytes(CPyTagged_ShortAsSsize_t(n));
+    }
+    PyObject *str = PyObject_Str(CPyTagged_AsObject(n));
+    PyObject *bytes = PyUnicode_AsASCIIString(str);
+    CPy_DECREF(str);
+    return bytes;
+}
+
 void CPyDebug_Print(const char *msg) {
     printf("%s\n", msg);
     fflush(stdout);

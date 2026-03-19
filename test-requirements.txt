@@ -4,6 +4,8 @@
 #
 #    pip-compile --allow-unsafe --output-file=test-requirements.txt --strip-extras test-requirements.in
 #
+ast-serialize==0.1.1
+    # via -r test-requirements.in
 attrs==25.4.0
     # via -r test-requirements.in
 cfgv==3.4.0

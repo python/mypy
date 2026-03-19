@@ -115,7 +115,7 @@ def load(cache: MetadataStore, s: str) -> Any:
             return data
         normalize_meta(meta)
         return serialize_meta_ff(meta, version_prefix)
-    if s.endswith(".data.ff"):
+    if s.endswith((".data.ff", ".err.ff")):
         return data
     obj = json_loads(data)
     if s.endswith(".meta.json"):

@@ -572,7 +572,6 @@ def convert_binary_cache_meta_to_json(data: bytes, data_file: str) -> Json:
         "dep_lines": meta.dep_lines,
         "dep_hashes": [dep.hex() for dep in meta.dep_hashes],
         "interface_hash": meta.interface_hash.hex(),
-        "error_lines": meta.error_lines,
         "version_id": meta.version_id,
         "ignore_all": meta.ignore_all,
         "plugin_data": meta.plugin_data,

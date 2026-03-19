@@ -2515,6 +2515,17 @@ class ForwardDeclared: pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictCannotBeDisjointBase]
+from typing import TypedDict
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
+class A(TypedDict):
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict
 

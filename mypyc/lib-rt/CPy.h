@@ -154,6 +154,7 @@ PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int sign
 PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 
 PyObject *CPyTagged_Str(CPyTagged n);
+PyObject *CPyTagged_AsciiBytes(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);

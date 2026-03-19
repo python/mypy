@@ -27,22 +27,24 @@ from librt.base64 import b64decode
 
 from mypy import util
 from mypy.build import (
+    SCC,
     AckMessage,
     BuildManager,
+    Graph,
     GraphMessage,
     SccRequestMessage,
     SccResponseMessage,
     SccsDataMessage,
     SourcesDataMessage,
-    load_graph,
     load_plugins,
     process_stale_scc,
 )
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
-from mypy.errors import CompileError, Errors, report_internal_error
+from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
 from mypy.ipc import IPCException, IPCServer, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
+from mypy.nodes import FileRawData
 from mypy.options import Options
 from mypy.util import read_py_file
 from mypy.version import __version__
@@ -123,42 +125,24 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     if manager is None:
         return
 
-    # Mirror the GC freeze hack in the coordinator.
-    if platform.python_implementation() == "CPython":
-        gc.disable()
-    try:
-        graph = load_graph(sources, manager)
-    except CompileError:
-        # CompileError during loading will be reported by the coordinator.
-        return
-    if platform.python_implementation() == "CPython":
-        gc.freeze()
-        gc.unfreeze()
-        gc.enable()
+    # Notify coordinator we are done with setup.
+    send(server, AckMessage())
+    graph_data = GraphMessage.read(receive(server), manager)
+    # Update some manager data in-place as it has been passed to semantic analyzer.
+    manager.missing_modules |= graph_data.missing_modules
+    graph = graph_data.graph
     for id in graph:
         manager.import_map[id] = graph[id].dependencies_set
-    # Ignore errors during local graph loading to check that receiving
-    # early errors from coordinator works correctly.
-    manager.errors.reset()
+    # Link modules dicts, so that plugins will get access to ASTs as we parse them.
+    manager.plugin.set_modules(manager.modules)
 
-    # Notify worker we are done loading graph.
+    # Notify coordinator we are ready to receive computed graph SCC structure.
     send(server, AckMessage())
-
-    # Compare worker graph and coordinator, with parallel parser we will only use the latter.
-    graph_data = GraphMessage.read(receive(server), manager)
-    assert set(manager.missing_modules) == graph_data.missing_modules
-    coordinator_graph = graph_data.graph
-    assert coordinator_graph.keys() == graph.keys()
-    for id in graph:
-        assert graph[id].dependencies_set == coordinator_graph[id].dependencies_set
-        assert graph[id].suppressed_set == coordinator_graph[id].suppressed_set
-    send(server, AckMessage())
-
     sccs = SccsDataMessage.read(receive(server)).sccs
     manager.scc_by_id = {scc.id: scc for scc in sccs}
     manager.top_order = [scc.id for scc in sccs]
 
-    # Notify coordinator we are ready to process SCCs.
+    # Notify coordinator we are ready to start processing SCCs.
     send(server, AckMessage())
     while True:
         scc_message = SccRequestMessage.read(receive(server))
@@ -169,20 +153,17 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         scc = manager.scc_by_id[scc_id]
         t0 = time.time()
         try:
-            for id in scc.mod_ids:
-                state = graph[id]
-                # Extra if below is needed only because we are using local graph.
-                # TODO: clone options when switching to coordinator graph.
-                if state.tree is None:
-                    # Parse early to get errors related data, such as ignored
-                    # and skipped lines before replaying the errors.
-                    state.parse_file()
-                else:
-                    state.setup_errors()
-                if id in scc_message.import_errors:
-                    manager.errors.set_file(state.xpath, id, state.options)
-                    for err_info in scc_message.import_errors[id]:
-                        manager.errors.add_error_info(err_info)
+            if platform.python_implementation() == "CPython":
+                # Since we are splitting the GC freeze hack into multiple smaller freezes,
+                # we should collect young generations to not accumulate accidental garbage.
+                gc.collect(generation=1)
+                gc.collect(generation=0)
+                gc.disable()
+            load_states(scc, graph, manager, scc_message.import_errors, scc_message.mod_data)
+            if platform.python_implementation() == "CPython":
+                gc.freeze()
+                gc.unfreeze()
+                gc.enable()
             result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.metastore.commit()
@@ -191,6 +172,34 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         else:
             send(server, SccResponseMessage(scc_id=scc_id, result=result))
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
+
+
+def load_states(
+    scc: SCC,
+    graph: Graph,
+    manager: BuildManager,
+    import_errors: dict[str, list[ErrorInfo]],
+    mod_data: dict[str, tuple[bytes, FileRawData | None]],
+) -> None:
+    """Re-create full state of an SCC as it would have been in coordinator."""
+    for id in scc.mod_ids:
+        state = graph[id]
+        # Re-clone options since we don't send them, it is usually faster than deserializing.
+        state.options = state.options.clone_for_module(state.id)
+        suppressed_deps_opts, raw_data = mod_data[id]
+        state.parse_file(raw_data=raw_data)
+        # Set data that is needed to be written to cache meta.
+        state.known_suppressed_deps_opts = suppressed_deps_opts
+        assert state.tree is not None
+        import_lines = {imp.line for imp in state.tree.imports}
+        state.imports_ignored = {
+            line: codes for line, codes in state.tree.ignored_lines.items() if line in import_lines
+        }
+        # Replay original errors encountered during graph loading in coordinator.
+        if id in import_errors:
+            manager.errors.set_file(state.xpath, id, state.options)
+            for err_info in import_errors[id]:
+                manager.errors.add_error_info(err_info)
 
 
 def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:

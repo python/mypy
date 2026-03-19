@@ -21,6 +21,7 @@ Operators
 * Concatenation (``s1 + s2``)
 * Indexing (``s[n]``; also ``ord(s[n])``, which avoids the temporary length-1 string)
 * Slicing (``s[n:m]``, ``s[n:]``, ``s[:m]``)
+* Repetition (``s * n``, ``n * s``)
 * Comparisons (``==``, ``!=``)
 * Augmented assignment (``s1 += s2``)
 * Containment (``s1 in s2``)
