@@ -1147,6 +1147,8 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
+#endif
+
 #ifdef _WIN32
 #define SEP "\\"
 #else
@@ -1488,8 +1490,6 @@ fail:
     Py_XDECREF(child_name);
     return NULL;
 }
-
-#endif
 
 #if CPY_3_14_FEATURES
 
