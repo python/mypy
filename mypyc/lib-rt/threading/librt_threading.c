@@ -6,17 +6,10 @@
 #include "mypyc_util.h"
 
 // Select lock backend:
-//   LOCK_BACKEND_FUTEX   - Linux futex (fastest on Linux)
 //   LOCK_BACKEND_UNFAIR  - macOS os_unfair_lock
 //   LOCK_BACKEND_SRWLOCK - Windows Slim Reader/Writer Lock
-//   LOCK_BACKEND_PTHREAD - POSIX fallback
-#if defined(__linux__) && !defined(LOCK_FORCE_PTHREAD)
-#define LOCK_BACKEND_FUTEX
-#include <linux/futex.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-#include <stdatomic.h>
-#elif defined(__APPLE__) && !defined(LOCK_FORCE_PTHREAD)
+//   LOCK_BACKEND_PTHREAD - POSIX (Linux and other Unix-like systems)
+#if defined(__APPLE__)
 #define LOCK_BACKEND_UNFAIR
 #include <os/lock.h>
 #include <stdatomic.h>
@@ -34,12 +27,6 @@
 //
 // A fast mutex lock for use from mypyc-compiled code.
 //
-// On Linux, this uses a futex-based implementation. The lock state is stored
-// as a single atomic int:
-//   0 = unlocked
-//   1 = locked (no waiters)
-//   2 = locked (with waiters)
-//
 // On macOS, this uses os_unfair_lock (a lightweight spin-then-wait lock
 // provided by the kernel). A separate atomic flag tracks the locked state
 // for locked() and release-unlocked-lock detection.
@@ -47,22 +34,15 @@
 // On Windows, this uses SRWLOCK (Slim Reader/Writer Lock), a lightweight
 // kernel primitive. A separate volatile flag tracks the locked state.
 //
-// On other POSIX systems, this falls back to pthread_mutex with a separate
-// atomic flag for locked() and release-unlocked-lock detection.
+// On other systems (Linux and other POSIX), this uses pthread_mutex with
+// a separate atomic flag for locked() and release-unlocked-lock detection.
 //
 
 #ifdef MYPYC_EXPERIMENTAL
 
 // ---------- Platform-specific lock state ----------
 
-#ifdef LOCK_BACKEND_FUTEX
-
-typedef struct {
-    PyObject_HEAD
-    _Atomic int state;  // 0=unlocked, 1=locked, 2=locked+contended
-} LockObject;
-
-#elif defined(LOCK_BACKEND_UNFAIR)
+#ifdef LOCK_BACKEND_UNFAIR
 
 typedef struct {
     PyObject_HEAD
@@ -93,9 +73,7 @@ typedef struct {
 static inline void
 Lock_init_internal(LockObject *self)
 {
-#ifdef LOCK_BACKEND_FUTEX
-    atomic_store_explicit(&self->state, 0, memory_order_relaxed);
-#elif defined(LOCK_BACKEND_UNFAIR)
+#ifdef LOCK_BACKEND_UNFAIR
     self->lock = OS_UNFAIR_LOCK_INIT;
     atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
 #elif defined(LOCK_BACKEND_SRWLOCK)
@@ -112,42 +90,7 @@ Lock_init_internal(LockObject *self)
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
-#ifdef LOCK_BACKEND_FUTEX
-    // Fast path: try to grab the lock (0 -> 1)
-    int expected = 0;
-    if (atomic_compare_exchange_strong_explicit(&self->state, &expected, 1,
-                                                 memory_order_acquire,
-                                                 memory_order_relaxed)) {
-        return 1;
-    }
-
-    if (!blocking) {
-        return 0;
-    }
-
-    // Slow path: contended lock
-    for (;;) {
-        // If state was 1, set it to 2 (contended) so release knows to wake
-        if (expected == 1) {
-            expected = atomic_exchange_explicit(&self->state, 2, memory_order_acquire);
-            if (expected == 0) {
-                // We got the lock (it was released between the CAS and exchange)
-                return 1;
-            }
-        }
-        // Wait on the futex (only sleep if state is still 2)
-        Py_BEGIN_ALLOW_THREADS
-        syscall(SYS_futex, &self->state, FUTEX_WAIT_PRIVATE, 2, NULL, NULL, 0);
-        Py_END_ALLOW_THREADS
-
-        // Try to acquire again, setting state to 2 since we know there are waiters
-        expected = atomic_exchange_explicit(&self->state, 2, memory_order_acquire);
-        if (expected == 0) {
-            return 1;
-        }
-    }
-
-#elif defined(LOCK_BACKEND_UNFAIR)
+#ifdef LOCK_BACKEND_UNFAIR
     if (!blocking) {
         if (os_unfair_lock_trylock(&self->lock)) {
             atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
@@ -198,18 +141,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
 static int
 Lock_release_impl(LockObject *self)
 {
-#ifdef LOCK_BACKEND_FUTEX
-    int old = atomic_exchange_explicit(&self->state, 0, memory_order_release);
-    if (old == 0) {
-        return -1;
-    }
-    if (old == 2) {
-        // There are waiters, wake one
-        syscall(SYS_futex, &self->state, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
-    }
-    return 0;
-
-#elif defined(LOCK_BACKEND_UNFAIR)
+#ifdef LOCK_BACKEND_UNFAIR
     if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
         return -1;
     }
@@ -235,9 +167,7 @@ Lock_release_impl(LockObject *self)
 static inline int
 Lock_is_locked(LockObject *self)
 {
-#ifdef LOCK_BACKEND_FUTEX
-    return atomic_load_explicit(&self->state, memory_order_relaxed) != 0;
-#elif defined(LOCK_BACKEND_SRWLOCK)
+#ifdef LOCK_BACKEND_SRWLOCK
     return InterlockedCompareExchange(&self->locked, 0, 0) != 0;
 #else
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
