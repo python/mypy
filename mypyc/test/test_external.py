@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from distutils import ccompiler, sysconfig
+from typing import Any
 
 from mypyc.build import get_cflags, include_dir
 
@@ -26,7 +27,7 @@ class TestExternal(unittest.TestCase):
             and os.path.isfile(os.path.join(lib_rt_dir, name))
             and name not in EXCLUDED_LIB_RT_COMPILE_FILES
         )
-        compiler = ccompiler.new_compiler()
+        compiler: Any = ccompiler.new_compiler()
         sysconfig.customize_compiler(compiler)
 
         include_dirs = [lib_rt_dir]
