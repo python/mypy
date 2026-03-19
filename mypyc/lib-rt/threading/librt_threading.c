@@ -79,6 +79,13 @@ Lock_acquire_impl(LockObject *self, int blocking)
         return 0;
     }
 
+    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
+    // overhead in the common uncontended case.
+    if (TryAcquireSRWLockExclusive(&self->lock)) {
+        InterlockedExchange(&self->locked, 1);
+        return 1;
+    }
+
     Py_BEGIN_ALLOW_THREADS
     AcquireSRWLockExclusive(&self->lock);
     Py_END_ALLOW_THREADS
@@ -92,6 +99,13 @@ Lock_acquire_impl(LockObject *self, int blocking)
             return 1;
         }
         return 0;
+    }
+
+    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
+    // overhead in the common uncontended case.
+    if (pthread_mutex_trylock(&self->mutex) == 0) {
+        atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+        return 1;
     }
 
     Py_BEGIN_ALLOW_THREADS
