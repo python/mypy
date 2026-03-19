@@ -903,8 +903,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return instantiate_type_alias(
                     info.special_alias,
-                    # TODO: should we allow NamedTuples generic in ParamSpec?
-                    self.anal_array(args, allow_unpack=True),
+                    self.anal_array(
+                        args,
+                        allow_unpack=True,
+                        allow_param_spec=True,
+                        allow_param_spec_literals=True,
+                    ),
                     self.fail,
                     False,
                     ctx,
@@ -921,8 +925,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return instantiate_type_alias(
                     info.special_alias,
-                    # TODO: should we allow TypedDicts generic in ParamSpec?
-                    self.anal_array(args, allow_unpack=True),
+                    self.anal_array(
+                        args,
+                        allow_unpack=True,
+                        allow_param_spec=True,
+                        allow_param_spec_literals=True,
+                    ),
                     self.fail,
                     False,
                     ctx,
