@@ -140,12 +140,9 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # Set up class body context so that intra-class ClassVar references
     # (e.g. C = A | B where A is defined earlier in the same class) can be
     # resolved from the class being built instead of module globals.
-    saved_classvars = builder.class_body_classvars
-    saved_obj = builder.class_body_obj
-    saved_is_ext = builder.class_body_is_ext
     builder.class_body_classvars = {}
     builder.class_body_obj = cls_builder.class_body_obj()
-    builder.class_body_is_ext = ir.is_ext_class
+    builder.class_body_ir = ir
 
     for stmt in cdef.defs.body:
         if (
@@ -199,10 +196,10 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         else:
             builder.error("Unsupported statement in class body", stmt.line)
 
-    # Restore previous class body context (handles nested classes).
-    builder.class_body_classvars = saved_classvars
-    builder.class_body_obj = saved_obj
-    builder.class_body_is_ext = saved_is_ext
+    # Clear class body context (nested classes are rejected above, so no need to save/restore).
+    builder.class_body_classvars = {}
+    builder.class_body_obj = None
+    builder.class_body_ir = None
 
     # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():

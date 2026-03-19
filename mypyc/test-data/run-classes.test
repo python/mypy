@@ -5862,18 +5862,18 @@ assert ExtSub.E == {7, 8}
 from typing import ClassVar, Dict, Set
 from mypy_extensions import mypyc_attr
 
-@mypyc_attr(allow_interpreted_subclasses=True)
+@mypyc_attr(native_class=False)
 class NonExt:
     A: ClassVar[Set[str]] = {"a", "b"}
     B: ClassVar[Set[str]] = {"c"}
     C: ClassVar[Set[str]] = A | B
 
-@mypyc_attr(allow_interpreted_subclasses=True)
+@mypyc_attr(native_class=False)
 class NonExtDict:
     BASE: ClassVar[Dict[str, int]] = {"x": 1}
     EXTENDED: ClassVar[Dict[str, int]] = {**BASE, "y": 2}
 
-@mypyc_attr(allow_interpreted_subclasses=True)
+@mypyc_attr(native_class=False)
 class NonExtChained:
     X: ClassVar[Set[int]] = {10}
     Y: ClassVar[Set[int]] = X | {20}
