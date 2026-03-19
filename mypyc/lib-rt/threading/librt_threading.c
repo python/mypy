@@ -6,14 +6,9 @@
 #include "mypyc_util.h"
 
 // Select lock backend:
-//   LOCK_BACKEND_UNFAIR  - macOS os_unfair_lock
 //   LOCK_BACKEND_SRWLOCK - Windows Slim Reader/Writer Lock
-//   LOCK_BACKEND_PTHREAD - POSIX (Linux and other Unix-like systems)
-#if defined(__APPLE__)
-#define LOCK_BACKEND_UNFAIR
-#include <os/lock.h>
-#include <stdatomic.h>
-#elif defined(_WIN32)
+//   LOCK_BACKEND_PTHREAD - POSIX (macOS, Linux, and other Unix-like systems)
+#if defined(_WIN32)
 #define LOCK_BACKEND_SRWLOCK
 #include <windows.h>
 #else
@@ -27,14 +22,10 @@
 //
 // A fast mutex lock for use from mypyc-compiled code.
 //
-// On macOS, this uses os_unfair_lock (a lightweight spin-then-wait lock
-// provided by the kernel). A separate atomic flag tracks the locked state
-// for locked() and release-unlocked-lock detection.
-//
 // On Windows, this uses SRWLOCK (Slim Reader/Writer Lock), a lightweight
 // kernel primitive. A separate volatile flag tracks the locked state.
 //
-// On other systems (Linux and other POSIX), this uses pthread_mutex with
+// On POSIX systems (macOS, Linux, etc.), this uses pthread_mutex with
 // a separate atomic flag for locked() and release-unlocked-lock detection.
 //
 
@@ -42,15 +33,7 @@
 
 // ---------- Platform-specific lock state ----------
 
-#ifdef LOCK_BACKEND_UNFAIR
-
-typedef struct {
-    PyObject_HEAD
-    os_unfair_lock lock;
-    _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
-} LockObject;
-
-#elif defined(LOCK_BACKEND_SRWLOCK)
+#ifdef LOCK_BACKEND_SRWLOCK
 
 typedef struct {
     PyObject_HEAD
@@ -73,10 +56,7 @@ typedef struct {
 static inline void
 Lock_init_internal(LockObject *self)
 {
-#ifdef LOCK_BACKEND_UNFAIR
-    self->lock = OS_UNFAIR_LOCK_INIT;
-    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
-#elif defined(LOCK_BACKEND_SRWLOCK)
+#ifdef LOCK_BACKEND_SRWLOCK
     InitializeSRWLock(&self->lock);
     self->locked = 0;
 #else
@@ -90,22 +70,7 @@ Lock_init_internal(LockObject *self)
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
-#ifdef LOCK_BACKEND_UNFAIR
-    if (!blocking) {
-        if (os_unfair_lock_trylock(&self->lock)) {
-            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
-            return 1;
-        }
-        return 0;
-    }
-
-    Py_BEGIN_ALLOW_THREADS
-    os_unfair_lock_lock(&self->lock);
-    Py_END_ALLOW_THREADS
-    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
-    return 1;
-
-#elif defined(LOCK_BACKEND_SRWLOCK)
+#ifdef LOCK_BACKEND_SRWLOCK
     if (!blocking) {
         if (TryAcquireSRWLockExclusive(&self->lock)) {
             InterlockedExchange(&self->locked, 1);
@@ -141,14 +106,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
 static int
 Lock_release_impl(LockObject *self)
 {
-#ifdef LOCK_BACKEND_UNFAIR
-    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
-        return -1;
-    }
-    os_unfair_lock_unlock(&self->lock);
-    return 0;
-
-#elif defined(LOCK_BACKEND_SRWLOCK)
+#ifdef LOCK_BACKEND_SRWLOCK
     if (!InterlockedExchange(&self->locked, 0)) {
         return -1;
     }
