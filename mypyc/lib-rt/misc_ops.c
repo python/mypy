@@ -1331,15 +1331,29 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 if (module_path == NULL) {
                     goto fail;
                 }
+                // For packages, __file__ should point to __init__<ext>,
+                // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".
                 if (sep >= 0) {
                     PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
                     if (dir != NULL) {
-                        derived_file = PyUnicode_FromFormat(
-                            "%U%c%U%U", dir, (int)sep_char, module_path, ext_suffix);
+                        if (is_package) {
+                            derived_file = PyUnicode_FromFormat(
+                                "%U%c%U%c__init__%U", dir, (int)sep_char,
+                                module_path, (int)sep_char, ext_suffix);
+                        } else {
+                            derived_file = PyUnicode_FromFormat(
+                                "%U%c%U%U", dir, (int)sep_char,
+                                module_path, ext_suffix);
+                        }
                         Py_DECREF(dir);
                     }
                 } else {
-                    derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
+                    if (is_package) {
+                        derived_file = PyUnicode_FromFormat(
+                            "%U%c__init__%U", module_path, (int)SEP[0], ext_suffix);
+                    } else {
+                        derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
+                    }
                 }
                 Py_DECREF(module_path);
             }
