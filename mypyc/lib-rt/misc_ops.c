@@ -1189,6 +1189,195 @@ static int CPyImport_InitSpecClasses(void) {
     return 0;
 }
 
+// Derive and set __file__ on modobj from the shared library path, module name,
+// and extension suffix. Returns 0 on success, -1 on error.
+static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
+                                    PyObject *shared_lib_file, PyObject *ext_suffix,
+                                    Py_ssize_t is_package) {
+    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    if (file != NULL) {
+        // __file__ already set, nothing to do.
+        Py_DECREF(file);
+        return 0;
+    }
+    if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
+        return -1;
+    }
+    PyErr_Clear();
+    // Derive __file__ from the shared library's __file__ (for its
+    // directory), the module name (dots -> path separators), and the
+    // extension suffix.  E.g. for module "a.b.c", shared lib
+    // "/path/to/group__mypyc.cpython-312-x86_64-linux-gnu.so",
+    // suffix ".cpython-312-x86_64-linux-gnu.so":
+    //   => "/path/to/a/b/c.cpython-312-x86_64-linux-gnu.so"
+    PyObject *derived_file = NULL;
+    if (shared_lib_file != NULL && shared_lib_file != Py_None &&
+            PyUnicode_Check(shared_lib_file)) {
+        Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
+        // Find the last path separator, checking both '/' and '\\'
+        // for cross-platform support.
+        Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
+        Py_ssize_t bsep = PyUnicode_FindChar(shared_lib_file, '\\', 0, sf_len, -1);
+        if (bsep > sep) {
+            sep = bsep;
+        }
+        // Use the same separator character found in the path, or
+        // the platform default if no separator was found.
+        Py_UCS4 sep_char = sep >= 0
+            ? PyUnicode_ReadChar(shared_lib_file, sep)
+            : (Py_UCS4)SEP[0];
+        PyObject *dot_str = PyUnicode_FromString(".");
+        PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
+        if (dot_str == NULL || sep_str == NULL) {
+            Py_XDECREF(dot_str);
+            Py_XDECREF(sep_str);
+            return -1;
+        }
+        PyObject *module_path = PyUnicode_Replace(module_name, dot_str, sep_str, -1);
+        Py_DECREF(dot_str);
+        Py_DECREF(sep_str);
+        if (module_path == NULL) {
+            return -1;
+        }
+        // For packages, __file__ should point to __init__<ext>,
+        // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".
+        if (sep >= 0) {
+            PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
+            if (dir != NULL) {
+                if (is_package) {
+                    derived_file = PyUnicode_FromFormat(
+                        "%U%c%U%c__init__%U", dir, (int)sep_char,
+                        module_path, (int)sep_char, ext_suffix);
+                } else {
+                    derived_file = PyUnicode_FromFormat(
+                        "%U%c%U%U", dir, (int)sep_char,
+                        module_path, ext_suffix);
+                }
+                Py_DECREF(dir);
+            }
+        } else {
+            if (is_package) {
+                derived_file = PyUnicode_FromFormat(
+                    "%U%c__init__%U", module_path, (int)SEP[0], ext_suffix);
+            } else {
+                derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
+            }
+        }
+        Py_DECREF(module_path);
+    }
+    if (derived_file == NULL && !PyErr_Occurred()) {
+        derived_file = module_name;
+        Py_INCREF(derived_file);
+    }
+    if (derived_file == NULL ||
+            PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
+        Py_XDECREF(derived_file);
+        return -1;
+    }
+    Py_DECREF(derived_file);
+    return 0;
+}
+
+// Set __path__ to [dirname(__file__)] on a package module if not already set.
+// Returns 0 on success, -1 on error.
+static int CPyImport_SetModulePath(PyObject *modobj) {
+    if (PyObject_HasAttrString(modobj, "__path__")) {
+        return 0;
+    }
+    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    if (file == NULL) {
+        PyErr_Clear();
+        return 0;
+    }
+    PyObject *os_path = PyImport_ImportModule("os.path");
+    if (os_path == NULL) {
+        Py_DECREF(file);
+        return -1;
+    }
+    PyObject *dir = PyObject_CallMethod(os_path, "dirname", "O", file);
+    Py_DECREF(os_path);
+    Py_DECREF(file);
+    if (dir == NULL) {
+        return -1;
+    }
+    PyObject *path_list = PyList_New(1);
+    if (path_list == NULL) {
+        Py_DECREF(dir);
+        return -1;
+    }
+    PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
+    int rc = PyObject_SetAttrString(modobj, "__path__", path_list);
+    Py_DECREF(path_list);
+    return rc;
+}
+
+// Set __spec__ and __loader__ on modobj if not already set.
+// Returns 0 on success, -1 on error.
+static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
+                                    Py_ssize_t is_package) {
+    PyObject *spec = PyObject_GetAttrString(modobj, "__spec__");
+    if (spec != NULL && spec != Py_None) {
+        // __spec__ already set.
+        Py_DECREF(spec);
+        return 0;
+    }
+    Py_XDECREF(spec);
+    PyErr_Clear();
+    if (CPyImport_InitSpecClasses() < 0) {
+        return -1;
+    }
+    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    if (file == NULL) {
+        PyErr_Clear();
+        file = Py_None;
+        Py_INCREF(file);
+    }
+    // ExtensionFileLoader(name, path)
+    PyObject *loader = PyObject_CallFunctionObjArgs(
+        CPyImport_ExtFileLoaderClass, module_name, file, NULL);
+    if (loader == NULL) {
+        Py_DECREF(file);
+        return -1;
+    }
+    // ModuleSpec(name, loader, *, origin=file, is_package=is_package)
+    PyObject *is_pkg_obj = is_package ? Py_True : Py_False;
+    PyObject *spec_args[] = {NULL, module_name, loader, file, is_pkg_obj};
+    spec = PyObject_Vectorcall(
+        CPyImport_ModuleSpecClass,
+        spec_args + 1,
+        2 | PY_VECTORCALL_ARGUMENTS_OFFSET,
+        CPyImport_SpecKwnames);
+    Py_DECREF(file);
+    if (spec == NULL) {
+        Py_DECREF(loader);
+        return -1;
+    }
+    if (is_package) {
+        // Set submodule_search_locations from __path__
+        PyObject *path = PyObject_GetAttrString(modobj, "__path__");
+        if (path != NULL) {
+            if (PyObject_SetAttrString(spec, "submodule_search_locations", path) < 0) {
+                Py_DECREF(path);
+                Py_DECREF(spec);
+                Py_DECREF(loader);
+                return -1;
+            }
+            Py_DECREF(path);
+        } else {
+            PyErr_Clear();
+        }
+    }
+    if (PyObject_SetAttrString(modobj, "__spec__", spec) < 0 ||
+            PyObject_SetAttrString(modobj, "__loader__", loader) < 0) {
+        Py_DECREF(spec);
+        Py_DECREF(loader);
+        return -1;
+    }
+    Py_DECREF(spec);
+    Py_DECREF(loader);
+    return 0;
+}
+
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
@@ -1287,189 +1476,15 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         }
     }
 
-    // Set __file__ before executing the module body so it is available
-    // during module initialization.
-    {
-        PyObject *file = PyObject_GetAttrString(modobj, "__file__");
-        if (file == NULL) {
-            if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
-                goto fail;
-            }
-            PyErr_Clear();
-            // Derive __file__ from the shared library's __file__ (for its
-            // directory), the module name (dots -> path separators), and the
-            // extension suffix.  E.g. for module "a.b.c", shared lib
-            // "/path/to/group__mypyc.cpython-312-x86_64-linux-gnu.so",
-            // suffix ".cpython-312-x86_64-linux-gnu.so":
-            //   => "/path/to/a/b/c.cpython-312-x86_64-linux-gnu.so"
-            PyObject *derived_file = NULL;
-            if (shared_lib_file != NULL && shared_lib_file != Py_None &&
-                    PyUnicode_Check(shared_lib_file)) {
-                Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
-                // Find the last path separator, checking both '/' and '\\'
-                // for cross-platform support.
-                Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
-                Py_ssize_t bsep = PyUnicode_FindChar(shared_lib_file, '\\', 0, sf_len, -1);
-                if (bsep > sep) {
-                    sep = bsep;
-                }
-                // Use the same separator character found in the path, or
-                // the platform default if no separator was found.
-                Py_UCS4 sep_char = sep >= 0
-                    ? PyUnicode_ReadChar(shared_lib_file, sep)
-                    : (Py_UCS4)SEP[0];
-                PyObject *dot_str = PyUnicode_FromString(".");
-                PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
-                if (dot_str == NULL || sep_str == NULL) {
-                    Py_XDECREF(dot_str);
-                    Py_XDECREF(sep_str);
-                    goto fail;
-                }
-                PyObject *module_path = PyUnicode_Replace(module_name, dot_str, sep_str, -1);
-                Py_DECREF(dot_str);
-                Py_DECREF(sep_str);
-                if (module_path == NULL) {
-                    goto fail;
-                }
-                // For packages, __file__ should point to __init__<ext>,
-                // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".
-                if (sep >= 0) {
-                    PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
-                    if (dir != NULL) {
-                        if (is_package) {
-                            derived_file = PyUnicode_FromFormat(
-                                "%U%c%U%c__init__%U", dir, (int)sep_char,
-                                module_path, (int)sep_char, ext_suffix);
-                        } else {
-                            derived_file = PyUnicode_FromFormat(
-                                "%U%c%U%U", dir, (int)sep_char,
-                                module_path, ext_suffix);
-                        }
-                        Py_DECREF(dir);
-                    }
-                } else {
-                    if (is_package) {
-                        derived_file = PyUnicode_FromFormat(
-                            "%U%c__init__%U", module_path, (int)SEP[0], ext_suffix);
-                    } else {
-                        derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
-                    }
-                }
-                Py_DECREF(module_path);
-            }
-            if (derived_file == NULL && !PyErr_Occurred()) {
-                derived_file = module_name;
-                Py_INCREF(derived_file);
-            }
-            if (derived_file == NULL ||
-                    PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
-                Py_XDECREF(derived_file);
-                goto fail;
-            }
-            Py_DECREF(derived_file);
-        } else {
-            Py_DECREF(file);
-        }
+    if (CPyImport_SetModuleFile(modobj, module_name, shared_lib_file, ext_suffix,
+                                 is_package) < 0) {
+        goto fail;
     }
-
-    // For packages, set __path__ to [dirname(__file__)] if not already set.
-    // This is needed for submodule discovery via the standard import system.
-    if (is_package && !PyObject_HasAttrString(modobj, "__path__")) {
-        PyObject *file = PyObject_GetAttrString(modobj, "__file__");
-        if (file != NULL) {
-            PyObject *os_path = PyImport_ImportModule("os.path");
-            if (os_path == NULL) {
-                Py_DECREF(file);
-                goto fail;
-            }
-            PyObject *dir = PyObject_CallMethod(os_path, "dirname", "O", file);
-            Py_DECREF(os_path);
-            Py_DECREF(file);
-            if (dir == NULL) {
-                goto fail;
-            }
-            PyObject *path_list = PyList_New(1);
-            if (path_list == NULL) {
-                Py_DECREF(dir);
-                goto fail;
-            }
-            PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
-            if (PyObject_SetAttrString(modobj, "__path__", path_list) < 0) {
-                Py_DECREF(path_list);
-                goto fail;
-            }
-            Py_DECREF(path_list);
-        } else {
-            PyErr_Clear();
-        }
+    if (is_package && CPyImport_SetModulePath(modobj) < 0) {
+        goto fail;
     }
-
-    // Set __spec__ and __loader__ if not already set. Uses vectorcall to
-    // avoid allocating a kwargs dict.
-    {
-        PyObject *spec = PyObject_GetAttrString(modobj, "__spec__");
-        if (spec == NULL || spec == Py_None) {
-            Py_XDECREF(spec);
-            PyErr_Clear();
-            if (CPyImport_InitSpecClasses() < 0) {
-                goto fail;
-            }
-            PyObject *file = PyObject_GetAttrString(modobj, "__file__");
-            if (file == NULL) {
-                PyErr_Clear();
-                file = Py_None;
-                Py_INCREF(file);
-            }
-            // ExtensionFileLoader(name, path)
-            PyObject *loader = PyObject_CallFunctionObjArgs(
-                CPyImport_ExtFileLoaderClass, module_name, file, NULL);
-            if (loader == NULL) {
-                Py_DECREF(file);
-                goto fail;
-            }
-            // ModuleSpec(name, loader, *, origin=file, is_package=is_package)
-            PyObject *is_pkg_obj = is_package ? Py_True : Py_False;
-            PyObject *spec_args[] = {NULL, module_name, loader, file, is_pkg_obj};
-            spec = PyObject_Vectorcall(
-                CPyImport_ModuleSpecClass,
-                spec_args + 1,
-                2 | PY_VECTORCALL_ARGUMENTS_OFFSET,
-                CPyImport_SpecKwnames);
-            Py_DECREF(file);
-            if (spec == NULL) {
-                Py_DECREF(loader);
-                goto fail;
-            }
-            if (is_package) {
-                // Set submodule_search_locations from __path__
-                PyObject *path = PyObject_GetAttrString(modobj, "__path__");
-                if (path != NULL) {
-                    if (PyObject_SetAttrString(spec, "submodule_search_locations", path) < 0) {
-                        Py_DECREF(path);
-                        Py_DECREF(spec);
-                        Py_DECREF(loader);
-                        goto fail;
-                    }
-                    Py_DECREF(path);
-                } else {
-                    PyErr_Clear();
-                }
-            }
-            if (PyObject_SetAttrString(modobj, "__spec__", spec) < 0) {
-                Py_DECREF(spec);
-                Py_DECREF(loader);
-                goto fail;
-            }
-            if (PyObject_SetAttrString(modobj, "__loader__", loader) < 0) {
-                Py_DECREF(spec);
-                Py_DECREF(loader);
-                goto fail;
-            }
-            Py_DECREF(spec);
-            Py_DECREF(loader);
-        } else {
-            Py_DECREF(spec);
-        }
+    if (CPyImport_SetModuleSpec(modobj, module_name, is_package) < 0) {
+        goto fail;
     }
 
     // If the module was already imported, skip executing the module body
