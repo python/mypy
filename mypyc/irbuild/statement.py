@@ -366,6 +366,25 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             transform_non_native_import_group(builder, subgroup)
 
 
+def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucket]:
+    """Group consecutive items by kind (first element) into ImportFromBuckets.
+
+    Each item is a (kind, name, as_name) tuple.
+    """
+    result: list[ImportFromBucket] = []
+    i = 0
+    while i < len(items):
+        kind = items[i][0]
+        i0 = i
+        i += 1
+        while i < len(items) and items[i][0] == kind:
+            i += 1
+        result.append(
+            ImportFromBucket(kind, [t[1] for t in items[i0:i]], [t[2] for t in items[i0:i]])
+        )
+    return result
+
+
 def split_import_group_to_python_and_native(
     builder: IRBuilder, group: list[Import]
 ) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
@@ -539,7 +558,6 @@ def import_from_native(
 def classify_import_from_native(
     builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
 ) -> list[ImportFromBucket]:
-    # First build a flat list of each import
     flat_list = []
     for name, as_name in zip(names, as_names):
         submodule_id = f"{module_id}.{name}"
@@ -550,21 +568,7 @@ def classify_import_from_native(
         else:
             kind = IMPORT_NATIVE_ATTR
         flat_list.append((kind, name, as_name))
-
-    # Put consecutive similar imports into buckets based on kinds
-    result = []
-    i = 0
-    while i < len(flat_list):
-        kind = flat_list[i][0]
-        i0 = i
-        i += 1
-        while i < len(flat_list) and flat_list[i][0] == kind:
-            i += 1
-        result.append(
-            ImportFromBucket(kind, [t[1] for t in flat_list[i0:i]], [t[2] for t in flat_list[i0:i]])
-        )
-
-    return result
+    return group_consecutive(flat_list)
 
 
 def import_from_non_native(
@@ -613,7 +617,6 @@ def import_from_non_native(
 def classify_import_from_non_native(
     builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
 ) -> list[ImportFromBucket]:
-    # First build a flat list of each import
     flat_list = []
     for name, as_name in zip(names, as_names):
         submodule_id = f"{module_id}.{name}"
@@ -622,21 +625,7 @@ def classify_import_from_non_native(
         else:
             kind = IMPORT_REGULAR
         flat_list.append((kind, name, as_name))
-
-    # Put consecutive similar imports into buckets based on kinds
-    result = []
-    i = 0
-    while i < len(flat_list):
-        kind = flat_list[i][0]
-        i0 = i
-        i += 1
-        while i < len(flat_list) and flat_list[i][0] == kind:
-            i += 1
-        result.append(
-            ImportFromBucket(kind, [t[1] for t in flat_list[i0:i]], [t[2] for t in flat_list[i0:i]])
-        )
-
-    return result
+    return group_consecutive(flat_list)
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
