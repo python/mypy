@@ -3198,4 +3198,3 @@ L5:
     r84 = r83 >= 0 :: signed
     r85 = __main__.NonExt :: type
     return 1
-
