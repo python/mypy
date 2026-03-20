@@ -2902,7 +2902,7 @@ class InvalidKwarg:
 class InvalidLiteral:
     pass
 
-[case testClassVarSelfReferenceExt_toplevel]
+[case testClassVarSelfReferenceExt_withgil_toplevel]
 from typing import ClassVar, Set
 
 class Ext:
@@ -3009,7 +3009,7 @@ L2:
     r47 = CPy_InitSubclass(r12)
     return 1
 
-[case testClassVarSelfReferenceNonExt_toplevel]
+[case testClassVarSelfReferenceNonExt_withgil_toplevel]
 from typing import ClassVar, Set
 from mypy_extensions import mypyc_attr
 
