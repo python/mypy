@@ -5925,8 +5925,7 @@ assert s.check_flag(), "compiled method doesn't see subclass override"
 
 [case testCompiledSubclassAttrAccessWithAllowInterpretedSubclasses]
 # Test that compiled subclasses of a class with allow_interpreted_subclasses=True
-# can correctly access parent instance attributes via direct struct access
-# (not falling back to PyObject_GenericGetAttr).
+# can still correctly access parent instance attributes.
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(allow_interpreted_subclasses=True)
