@@ -116,16 +116,38 @@ chacha8_next(chacha8_rng *rng)
     return rng->buf[rng->used++];
 }
 
+static void
+chacha8_reset(chacha8_rng *rng)
+{
+    rng->counter = 0;
+    rng->used = 16;  // force immediate refill on first call
+    rng->n = 16;
+    rng->blocks_left = CHACHA8_RESEED_INTERVAL;
+}
+
 static int
 chacha8_init(chacha8_rng *rng)
 {
     if (fill_os_entropy(rng->seed, sizeof(rng->seed)) < 0)
         return -1;
-    rng->counter = 0;
-    rng->used = 16;  // force immediate refill on first call
-    rng->n = 16;
-    rng->blocks_left = CHACHA8_RESEED_INTERVAL;
+    chacha8_reset(rng);
     return 0;
+}
+
+// Seed from an integer by hashing it through ChaCha8 to fill the 256-bit key.
+static void
+chacha8_seed_int(chacha8_rng *rng, long long seed_val)
+{
+    // Use the integer to construct a simple initial key, then run one
+    // ChaCha8 block to diffuse it across all 256 bits.
+    memset(rng->seed, 0, sizeof(rng->seed));
+    rng->seed[0] = (uint32_t)(seed_val & 0xFFFFFFFF);
+    rng->seed[1] = (uint32_t)((uint64_t)seed_val >> 32);
+
+    uint32_t out[16];
+    chacha8_block(rng->seed, 0, out);
+    memcpy(rng->seed, out, sizeof(rng->seed));
+    chacha8_reset(rng);
 }
 
 //
@@ -325,6 +347,26 @@ module_randrange(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
     return randint_impl(rng, a, b);
 }
 
+static PyObject*
+module_seed(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (nargs != 1) {
+        PyErr_Format(PyExc_TypeError,
+                     "seed() takes exactly 1 argument (%zd given)", nargs);
+        return NULL;
+    }
+    long long seed_val = PyLong_AsLongLong(args[0]);
+    if (seed_val == -1 && PyErr_Occurred())
+        return NULL;
+
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        return NULL;
+
+    chacha8_seed_int(rng, seed_val);
+    Py_RETURN_NONE;
+}
+
 //
 // Random Python type
 //
@@ -345,19 +387,16 @@ Random_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     RandomObject *self = (RandomObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        if (chacha8_init(&self->rng) < 0) {
-            Py_DECREF(self);
-            return NULL;
-        }
-    }
+    // Seeding is done in tp_init
     return (PyObject *)self;
 }
 
 static int
 Random_init(RandomObject *self, PyObject *args, PyObject *kwds)
 {
-    if (!PyArg_ParseTuple(args, "")) {
+    PyObject *seed_obj = NULL;
+
+    if (!PyArg_ParseTuple(args, "|O", &seed_obj)) {
         return -1;
     }
 
@@ -365,6 +404,16 @@ Random_init(RandomObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_TypeError,
                         "Random() takes no keyword arguments");
         return -1;
+    }
+
+    if (seed_obj == NULL || seed_obj == Py_None) {
+        if (chacha8_init(&self->rng) < 0)
+            return -1;
+    } else {
+        long long seed_val = PyLong_AsLongLong(seed_obj);
+        if (seed_val == -1 && PyErr_Occurred())
+            return -1;
+        chacha8_seed_int(&self->rng, seed_val);
     }
 
     return 0;
@@ -411,6 +460,20 @@ Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
     return PyFloat_FromDouble(result);
 }
 
+static PyObject*
+Random_seed(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs != 1) {
+        PyErr_Format(PyExc_TypeError,
+                     "seed() takes exactly 1 argument (%zd given)", nargs);
+        return NULL;
+    }
+    long long seed_val = PyLong_AsLongLong(args[0]);
+    if (seed_val == -1 && PyErr_Occurred())
+        return NULL;
+    chacha8_seed_int(&self->rng, seed_val);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef Random_methods[] = {
     {"randint", (PyCFunction) Random_randint, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [a, b], including both end points.")
@@ -420,6 +483,9 @@ static PyMethodDef Random_methods[] = {
     },
     {"random", (PyCFunction) Random_random, METH_NOARGS,
      PyDoc_STR("Return random float in [0.0, 1.0).")
+    },
+    {"seed", (PyCFunction) Random_seed, METH_FASTCALL,
+     PyDoc_STR("Seed the random number generator with an integer.")
     },
     {NULL}  /* Sentinel */
 };
@@ -447,6 +513,9 @@ static PyMethodDef librt_random_module_methods[] = {
     },
     {"randrange", (PyCFunction) module_randrange, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [start, stop) using thread-local RNG.")
+    },
+    {"seed", (PyCFunction) module_seed, METH_FASTCALL,
+     PyDoc_STR("Seed the thread-local RNG with an integer.")
     },
     {NULL, NULL, 0, NULL}
 };

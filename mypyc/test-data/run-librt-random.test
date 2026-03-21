@@ -90,8 +90,43 @@ def test_randrange_produces_different_values() -> None:
         values.add(r.randrange(1000000))
     assert len(values) > 1
 
+def test_constructor_seed() -> None:
+    r1 = Random(42)
+    r2 = Random(42)
+    vals1 = [r1.randint(0, 1000000) for _ in range(20)]
+    vals2 = [r2.randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_constructor_seed_different() -> None:
+    r1 = Random(42)
+    r2 = Random(43)
+    vals1 = [r1.randint(0, 1000000) for _ in range(20)]
+    vals2 = [r2.randint(0, 1000000) for _ in range(20)]
+    assert vals1 != vals2
+
+def test_constructor_none_seed() -> None:
+    r = Random(None)
+    val = r.random()
+    assert 0.0 <= val < 1.0
+
+def test_seed_method() -> None:
+    r = Random(0)
+    r.seed(42)
+    vals1 = [r.randint(0, 1000000) for _ in range(20)]
+    r.seed(42)
+    vals2 = [r.randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_seed_method_resets_state() -> None:
+    r = Random(42)
+    expected = [r.randint(0, 1000000) for _ in range(20)]
+    # Consume some values, then reseed
+    r.seed(42)
+    actual = [r.randint(0, 1000000) for _ in range(20)]
+    assert expected == actual
+
 [case testRandomModuleLevel_librt]
-from librt.random import random, randint, randrange
+from librt.random import random, randint, randrange, seed
 
 def test_module_random_basic() -> None:
     for i in range(100):
@@ -137,6 +172,20 @@ def test_module_randrange_produces_different_values() -> None:
     for i in range(100):
         values.add(randrange(1000000))
     assert len(values) > 1
+
+def test_module_seed_reproducible() -> None:
+    seed(42)
+    vals1 = [randint(0, 1000000) for _ in range(20)]
+    seed(42)
+    vals2 = [randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_module_seed_different() -> None:
+    seed(42)
+    vals1 = [randint(0, 1000000) for _ in range(20)]
+    seed(43)
+    vals2 = [randint(0, 1000000) for _ in range(20)]
+    assert vals1 != vals2
 
 [case testRandomErrors_librt]
 from librt.random import Random, randint, randrange
