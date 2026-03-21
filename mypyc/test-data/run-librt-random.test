@@ -125,8 +125,28 @@ def test_seed_method_resets_state() -> None:
     actual = [r.randint(0, 1000000) for _ in range(20)]
     assert expected == actual
 
+def test_randbits62_basic() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randbits62()
+        assert 0 <= val < (1 << 62)
+
+def test_randbits62_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.randbits62())
+    assert len(values) > 1
+
+def test_randbits62_reproducible() -> None:
+    r1 = Random(42)
+    r2 = Random(42)
+    vals1 = [r1.randbits62() for _ in range(20)]
+    vals2 = [r2.randbits62() for _ in range(20)]
+    assert vals1 == vals2
+
 [case testRandomModuleLevel_librt]
-from librt.random import random, randint, randrange, seed
+from librt.random import random, randint, randrange, randbits62, seed
 
 def test_module_random_basic() -> None:
     for i in range(100):
@@ -171,6 +191,17 @@ def test_module_randrange_produces_different_values() -> None:
     values = set()
     for i in range(100):
         values.add(randrange(1000000))
+    assert len(values) > 1
+
+def test_module_randbits62_basic() -> None:
+    for i in range(100):
+        val = randbits62()
+        assert 0 <= val < (1 << 62)
+
+def test_module_randbits62_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(randbits62())
     assert len(values) > 1
 
 def test_module_seed_reproducible() -> None:
