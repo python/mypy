@@ -706,6 +706,22 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     return start + (int64_t)(r % range);
 }
 
+static int32_t
+module_randbits31_internal(void) {
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    return randbits31_impl(rng);
+}
+
+static int64_t
+module_randbits62_internal(void) {
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    return randbits62_impl(rng);
+}
+
 #ifdef MYPYC_EXPERIMENTAL
 
 static int
@@ -750,6 +766,8 @@ librt_random_module_exec(PyObject *m)
         (void *)module_randint_internal,
         (void *)module_randrange1_internal,
         (void *)module_randrange2_internal,
+        (void *)module_randbits31_internal,
+        (void *)module_randbits62_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

@@ -145,3 +145,29 @@ def module_randrange2(start, stop):
 L0:
     r0 = LibRTRandom_module_randrange2_internal(start, stop)
     return r0
+
+[case testLibrtRandomModuleRandbits31_experimental_64bit]
+from librt.random import randbits31
+from mypy_extensions import i32
+
+def module_randbits31() -> i32:
+    return randbits31()
+[out]
+def module_randbits31():
+    r0 :: i32
+L0:
+    r0 = LibRTRandom_module_randbits31_internal()
+    return r0
+
+[case testLibrtRandomModuleRandbits62_experimental_64bit]
+from librt.random import randbits62
+from mypy_extensions import i64
+
+def module_randbits62() -> i64:
+    return randbits62()
+[out]
+def module_randbits62():
+    r0 :: i64
+L0:
+    r0 = LibRTRandom_module_randbits62_internal()
+    return r0
