@@ -59,6 +59,7 @@ from mypyc.common import (
 from mypyc.errors import Errors
 from mypyc.ir.deps import (
     LIBRT_BASE64,
+    LIBRT_RANDOM,
     LIBRT_STRINGS,
     LIBRT_TIME,
     LIBRT_VECS,
@@ -1222,6 +1223,10 @@ class GroupGenerator:
             emitter.emit_line("}")
         if LIBRT_VECS in module.dependencies:
             emitter.emit_line("if (import_librt_vecs() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_RANDOM in module.dependencies:
+            emitter.emit_line("if (import_librt_random() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")

@@ -1,4 +1,4 @@
-[case testRandomBasic_librt]
+[case testRandomBasic_librt_experimental]
 from librt.random import Random
 
 def test_random_construct() -> None:
@@ -145,7 +145,7 @@ def test_randbits62_reproducible() -> None:
     vals2 = [r2.randbits62() for _ in range(20)]
     assert vals1 == vals2
 
-[case testRandomModuleLevel_librt]
+[case testRandomModuleLevel_librt_experimental]
 from librt.random import random, randint, randrange, randbits62, seed
 
 def test_module_random_basic() -> None:
@@ -218,7 +218,7 @@ def test_module_seed_different() -> None:
     vals2 = [randint(0, 1000000) for _ in range(20)]
     assert vals1 != vals2
 
-[case testRandomErrors_librt]
+[case testRandomErrors_librt_experimental]
 from librt.random import Random, randint, randrange
 from testutil import assertRaises
 

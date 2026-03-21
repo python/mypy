@@ -11,6 +11,7 @@
 
 #include "mypyc_util.h"
 #include "CPy.h"
+#include "librt_random.h"
 
 //
 // ChaCha8 PRNG with forward secrecy
@@ -438,6 +439,34 @@ Random_init(RandomObject *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
+// Internal constructors for capsule API (bypass tp_new/tp_init)
+
+static PyObject *
+Random_internal(void) {
+    RandomObject *self = (RandomObject *)RandomType.tp_alloc(&RandomType, 0);
+    if (self == NULL)
+        return NULL;
+    if (chacha8_init(&self->rng) < 0) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return (PyObject *)self;
+}
+
+static PyObject *
+Random_from_seed_internal(int64_t seed_val) {
+    RandomObject *self = (RandomObject *)RandomType.tp_alloc(&RandomType, 0);
+    if (self == NULL)
+        return NULL;
+    chacha8_seed_int(&self->rng, seed_val);
+    return (PyObject *)self;
+}
+
+static PyTypeObject *
+Random_type_internal(void) {
+    return &RandomType;
+}
+
 static PyObject*
 Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
     if (nargs != 2) {
@@ -550,6 +579,20 @@ static PyMethodDef librt_random_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#ifdef MYPYC_EXPERIMENTAL
+
+static int
+random_abi_version(void) {
+    return LIBRT_RANDOM_ABI_VERSION;
+}
+
+static int
+random_api_version(void) {
+    return LIBRT_RANDOM_API_VERSION;
+}
+
+#endif
+
 static int
 librt_random_module_exec(PyObject *m)
 {
@@ -562,6 +605,20 @@ librt_random_module_exec(PyObject *m)
     if (PyModule_AddObjectRef(m, "Random", (PyObject *) &RandomType) < 0) {
         return -1;
     }
+#ifdef MYPYC_EXPERIMENTAL
+    // Export mypyc internal C API via capsule
+    static void *librt_random_api[LIBRT_RANDOM_API_LEN] = {
+        (void *)random_abi_version,
+        (void *)random_api_version,
+        (void *)Random_internal,
+        (void *)Random_from_seed_internal,
+        (void *)Random_type_internal,
+    };
+    PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
+    if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
+        return -1;
+    }
+#endif
     return 0;
 }
 
