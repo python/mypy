@@ -234,6 +234,16 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
     return PyFloat_FromDouble(result);
 }
 
+// Generate random integer in [a, b] using the given RNG.
+static inline PyObject*
+randint_impl(chacha8_rng *rng, long long a, long long b)
+{
+    unsigned long long range = (unsigned long long)(b - a) + 1;
+    uint32_t r = chacha8_next(rng);
+    long long result = a + (long long)(r % range);
+    return PyLong_FromLongLong(result);
+}
+
 static PyObject*
 module_randint(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 {
@@ -261,10 +271,58 @@ module_randint(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
     if (rng == NULL)
         return NULL;
 
-    unsigned long long range = (unsigned long long)(b - a) + 1;
-    uint32_t r = chacha8_next(rng);
-    long long result = a + (long long)(r % range);
-    return PyLong_FromLongLong(result);
+    return randint_impl(rng, a, b);
+}
+
+// Parse 1 or 2 int args for randrange([start,] stop).
+// Sets *a to start (default 0), *b to stop-1.
+// Returns 0 on success, -1 on error (with exception set).
+static int
+parse_randrange_args(PyObject *const *args, Py_ssize_t nargs,
+                     long long *a, long long *b)
+{
+    if (nargs == 1) {
+        *a = 0;
+        long long stop = PyLong_AsLongLong(args[0]);
+        if (stop == -1 && PyErr_Occurred())
+            return -1;
+        if (stop <= 0) {
+            PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+            return -1;
+        }
+        *b = stop - 1;
+    } else if (nargs == 2) {
+        *a = PyLong_AsLongLong(args[0]);
+        if (*a == -1 && PyErr_Occurred())
+            return -1;
+        long long stop = PyLong_AsLongLong(args[1]);
+        if (stop == -1 && PyErr_Occurred())
+            return -1;
+        if (*a >= stop) {
+            PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+            return -1;
+        }
+        *b = stop - 1;
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "randrange() takes 1 or 2 arguments (%zd given)", nargs);
+        return -1;
+    }
+    return 0;
+}
+
+static PyObject*
+module_randrange(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
+{
+    long long a, b;
+    if (parse_randrange_args(args, nargs, &a, &b) < 0)
+        return NULL;
+
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        return NULL;
+
+    return randint_impl(rng, a, b);
 }
 
 //
@@ -334,10 +392,15 @@ Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
         return NULL;
     }
 
-    unsigned long long range = (unsigned long long)(b - a) + 1;
-    uint32_t r = chacha8_next(&self->rng);
-    long long result = a + (long long)(r % range);
-    return PyLong_FromLongLong(result);
+    return randint_impl(&self->rng, a, b);
+}
+
+static PyObject*
+Random_randrange(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
+    long long a, b;
+    if (parse_randrange_args(args, nargs, &a, &b) < 0)
+        return NULL;
+    return randint_impl(&self->rng, a, b);
 }
 
 static PyObject*
@@ -351,6 +414,9 @@ Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
 static PyMethodDef Random_methods[] = {
     {"randint", (PyCFunction) Random_randint, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [a, b], including both end points.")
+    },
+    {"randrange", (PyCFunction) Random_randrange, METH_FASTCALL,
+     PyDoc_STR("Return random integer in range [start, stop).")
     },
     {"random", (PyCFunction) Random_random, METH_NOARGS,
      PyDoc_STR("Return random float in [0.0, 1.0).")
@@ -378,6 +444,9 @@ static PyMethodDef librt_random_module_methods[] = {
     },
     {"randint", (PyCFunction) module_randint, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [a, b] using thread-local RNG.")
+    },
+    {"randrange", (PyCFunction) module_randrange, METH_FASTCALL,
+     PyDoc_STR("Return random integer in range [start, stop) using thread-local RNG.")
     },
     {NULL, NULL, 0, NULL}
 };
