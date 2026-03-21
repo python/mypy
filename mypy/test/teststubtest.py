@@ -1345,6 +1345,22 @@ class StubtestUnit(unittest.TestCase):
             runtime="X_FINAL_OK = 1",
             error=None,
         )
+        # type[T] class variable with non-type metaclass
+        yield Case(
+            stub="""
+            from abc import ABCMeta
+            class W(metaclass=ABCMeta): ...
+            class V:
+                foo: type[W]
+            """,
+            runtime="""
+            from abc import ABCMeta
+            class W(metaclass=ABCMeta): pass
+            class V:
+                foo = W
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
