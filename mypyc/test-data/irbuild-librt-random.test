@@ -24,6 +24,42 @@ L0:
     r0 = LibRTRandom_Random_from_seed_internal(n)
     return r0
 
+[case testLibrtRandomRandrange_experimental_64bit]
+from librt.random import Random
+from mypy_extensions import i64
+
+def randrange1(r: Random, stop: i64) -> i64:
+    return r.randrange(stop)
+def randrange2(r: Random, start: i64, stop: i64) -> i64:
+    return r.randrange(start, stop)
+[out]
+def randrange1(r, stop):
+    r :: librt.random.Random
+    stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randrange1_internal(r, stop)
+    return r0
+def randrange2(r, start, stop):
+    r :: librt.random.Random
+    start, stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randrange2_internal(r, start, stop)
+    return r0
+
+[case testLibrtRandomRandint_experimental_64bit]
+from librt.random import Random
+from mypy_extensions import i64
+
+def randint(r: Random, a: i64, b: i64) -> i64:
+    return r.randint(a, b)
+[out]
+def randint(r, a, b):
+    r :: librt.random.Random
+    a, b, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randint_internal(r, a, b)
+    return r0
+
 [case testLibrtRandomRandbits31_experimental_64bit]
 from librt.random import Random
 from mypy_extensions import i32

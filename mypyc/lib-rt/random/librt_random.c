@@ -493,6 +493,38 @@ Random_randbits31_internal(PyObject *self) {
     return randbits31_impl(&((RandomObject *)self)->rng);
 }
 
+static int64_t
+Random_randrange1_internal(PyObject *self, int64_t stop) {
+    if (unlikely(stop <= 0)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+        return CPY_LL_INT_ERROR;
+    }
+    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
+    return (int64_t)(r % (uint64_t)stop);
+}
+
+static int64_t
+Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
+    if (unlikely(start >= stop)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+        return CPY_LL_INT_ERROR;
+    }
+    uint64_t range = (uint64_t)(stop - start);
+    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
+    return start + (int64_t)(r % range);
+}
+
+static int64_t
+Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
+    if (unlikely(a > b)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randint()");
+        return CPY_LL_INT_ERROR;
+    }
+    uint64_t range = (uint64_t)(b - a) + 1;
+    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
+    return a + (int64_t)(r % range);
+}
+
 static double
 Random_random_internal(PyObject *self) {
     uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
@@ -659,6 +691,9 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_randbits62_internal,
         (void *)Random_random_internal,
         (void *)Random_randbits31_internal,
+        (void *)Random_randint_internal,
+        (void *)Random_randrange1_internal,
+        (void *)Random_randrange2_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
