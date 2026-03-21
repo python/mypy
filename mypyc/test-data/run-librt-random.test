@@ -1,0 +1,59 @@
+[case testRandomBasic_librt]
+from librt.random import Random
+
+def test_random_construct() -> None:
+    r = Random()
+    assert isinstance(r, Random)
+
+def test_randint_basic() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(0, 10)
+        assert 0 <= val <= 10
+
+def test_randint_single_value() -> None:
+    r = Random()
+    for i in range(10):
+        assert r.randint(5, 5) == 5
+
+def test_randint_negative_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(-10, -1)
+        assert -10 <= val <= -1
+
+def test_randint_mixed_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(-5, 5)
+        assert -5 <= val <= 5
+
+def test_randint_large_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(0, 1000000)
+        assert 0 <= val <= 1000000
+
+def test_randint_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.randint(0, 1000000))
+    # With range 0-1000000 and 100 samples, we should get at least 2 distinct values
+    assert len(values) > 1
+
+[case testRandomErrors_librt]
+from librt.random import Random
+from testutil import assertRaises
+
+def test_randint_empty_range() -> None:
+    r = Random()
+    with assertRaises(ValueError, "empty range"):
+        r.randint(10, 5)
+
+def test_randint_wrong_arg_count() -> None:
+    r = Random()
+    with assertRaises(TypeError):
+        r.randint(1)  # type: ignore[call-arg]
+    with assertRaises(TypeError):
+        r.randint(1, 2, 3)  # type: ignore[call-arg]

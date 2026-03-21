@@ -81,6 +81,7 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-librt-time.test",
+    "run-librt-random.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",

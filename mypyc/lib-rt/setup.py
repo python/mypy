@@ -151,5 +151,11 @@ else:
             Extension(
                 "librt.time", ["time/librt_time.c"], include_dirs=["."], extra_compile_args=cflags
             ),
+            Extension(
+                "librt.random",
+                ["random/librt_random.c"],
+                include_dirs=["."],
+                extra_compile_args=cflags,
+            ),
         ]
     )
