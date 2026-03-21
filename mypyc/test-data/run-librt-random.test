@@ -42,6 +42,24 @@ def test_randint_produces_different_values() -> None:
     # With range 0-1000000 and 100 samples, we should get at least 2 distinct values
     assert len(values) > 1
 
+def test_random_basic() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.random()
+        assert 0.0 <= val < 1.0
+
+def test_random_returns_float() -> None:
+    r = Random()
+    val = r.random()
+    assert isinstance(val, float)
+
+def test_random_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.random())
+    assert len(values) > 1
+
 [case testRandomErrors_librt]
 from librt.random import Random
 from testutil import assertRaises

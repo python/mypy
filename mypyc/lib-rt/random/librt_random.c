@@ -80,9 +80,20 @@ Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
     return PyLong_FromLongLong(result);
 }
 
+static PyObject*
+Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
+    unsigned int r = next_random(self);
+    // Scale to [0.0, 1.0)
+    double result = r / 4294967296.0;  // 2^32
+    return PyFloat_FromDouble(result);
+}
+
 static PyMethodDef Random_methods[] = {
     {"randint", (PyCFunction) Random_randint, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [a, b], including both end points.")
+    },
+    {"random", (PyCFunction) Random_random, METH_NOARGS,
+     PyDoc_STR("Return random float in [0.0, 1.0).")
     },
     {NULL}  /* Sentinel */
 };
