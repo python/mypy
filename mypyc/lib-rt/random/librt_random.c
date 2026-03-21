@@ -467,6 +467,11 @@ Random_type_internal(void) {
     return &RandomType;
 }
 
+static int64_t
+Random_randbits62_internal(PyObject *self) {
+    return randbits62_impl(&((RandomObject *)self)->rng);
+}
+
 static PyObject*
 Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
     if (nargs != 2) {
@@ -613,6 +618,7 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_internal,
         (void *)Random_from_seed_internal,
         (void *)Random_type_internal,
+        (void *)Random_randbits62_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
