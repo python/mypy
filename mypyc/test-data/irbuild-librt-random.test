@@ -24,6 +24,20 @@ L0:
     r0 = LibRTRandom_Random_from_seed_internal(n)
     return r0
 
+[case testLibrtRandomRandbits31_experimental_64bit]
+from librt.random import Random
+from mypy_extensions import i32
+
+def randbits31(r: Random) -> i32:
+    return r.randbits31()
+[out]
+def randbits31(r):
+    r :: librt.random.Random
+    r0 :: i32
+L0:
+    r0 = LibRTRandom_Random_randbits31_internal(r)
+    return r0
+
 [case testLibrtRandomRandbits62_experimental_64bit]
 from librt.random import Random
 from mypy_extensions import i64

@@ -258,6 +258,13 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
     return PyFloat_FromDouble(result);
 }
 
+// Return a random non-negative 31-bit integer [0, 2^31).
+static inline int32_t
+randbits31_impl(chacha8_rng *rng)
+{
+    return (int32_t)(chacha8_next(rng) >> 1);
+}
+
 // Return a random non-negative 62-bit integer (fits in a tagged integer).
 static inline int64_t
 randbits62_impl(chacha8_rng *rng)
@@ -265,6 +272,15 @@ randbits62_impl(chacha8_rng *rng)
     uint32_t lo = chacha8_next(rng);
     uint32_t hi = chacha8_next(rng);
     return (int64_t)(((uint64_t)hi << 30) | (lo >> 2));
+}
+
+static PyObject*
+module_randbits31(PyObject *module, PyObject *Py_UNUSED(ignored))
+{
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        return NULL;
+    return PyLong_FromLong(randbits31_impl(rng));
 }
 
 static PyObject*
@@ -472,6 +488,11 @@ Random_randbits62_internal(PyObject *self) {
     return randbits62_impl(&((RandomObject *)self)->rng);
 }
 
+static int32_t
+Random_randbits31_internal(PyObject *self) {
+    return randbits31_impl(&((RandomObject *)self)->rng);
+}
+
 static double
 Random_random_internal(PyObject *self) {
     uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
@@ -520,6 +541,11 @@ Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
 }
 
 static PyObject*
+Random_randbits31(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
+    return PyLong_FromLong(randbits31_impl(&self->rng));
+}
+
+static PyObject*
 Random_randbits62(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
     return PyLong_FromLongLong(randbits62_impl(&self->rng));
 }
@@ -547,6 +573,9 @@ static PyMethodDef Random_methods[] = {
     },
     {"random", (PyCFunction) Random_random, METH_NOARGS,
      PyDoc_STR("Return random float in [0.0, 1.0).")
+    },
+    {"randbits31", (PyCFunction) Random_randbits31, METH_NOARGS,
+     PyDoc_STR("Return random non-negative 31-bit integer.")
     },
     {"randbits62", (PyCFunction) Random_randbits62, METH_NOARGS,
      PyDoc_STR("Return random non-negative 62-bit integer.")
@@ -580,6 +609,9 @@ static PyMethodDef librt_random_module_methods[] = {
     },
     {"randrange", (PyCFunction) module_randrange, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [start, stop) using thread-local RNG.")
+    },
+    {"randbits31", (PyCFunction) module_randbits31, METH_NOARGS,
+     PyDoc_STR("Return random non-negative 31-bit integer using thread-local RNG.")
     },
     {"randbits62", (PyCFunction) module_randbits62, METH_NOARGS,
      PyDoc_STR("Return random non-negative 62-bit integer using thread-local RNG.")
@@ -626,6 +658,7 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_type_internal,
         (void *)Random_randbits62_internal,
         (void *)Random_random_internal,
+        (void *)Random_randbits31_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
