@@ -632,6 +632,9 @@ def get_cflags(
             # Disables C Preprocessor (cpp) warnings
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
+            "-Wno-array-bounds",
+            "-Wno-stringop-overread",
+            "-Wno-stringop-overflow",
         ]
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
