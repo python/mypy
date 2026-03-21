@@ -153,7 +153,14 @@ else:
             ),
             Extension(
                 "librt.random",
-                ["random/librt_random.c"],
+                [
+                    "random/librt_random.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                    "getargsfast.c",
+                ],
                 include_dirs=["."],
                 extra_compile_args=cflags,
             ),

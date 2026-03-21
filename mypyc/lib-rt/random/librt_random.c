@@ -10,6 +10,7 @@
 #endif
 
 #include "mypyc_util.h"
+#include "CPy.h"
 
 //
 // ChaCha8 PRNG with forward secrecy
@@ -136,7 +137,7 @@ chacha8_init(chacha8_rng *rng)
 
 // Seed from an integer by hashing it through ChaCha8 to fill the 256-bit key.
 static void
-chacha8_seed_int(chacha8_rng *rng, long long seed_val)
+chacha8_seed_int(chacha8_rng *rng, int64_t seed_val)
 {
     // Use the integer to construct a simple initial key, then run one
     // ChaCha8 block to diffuse it across all 256 bits.
@@ -258,11 +259,11 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
 
 // Generate random integer in [a, b] using the given RNG.
 static inline PyObject*
-randint_impl(chacha8_rng *rng, long long a, long long b)
+randint_impl(chacha8_rng *rng, int64_t a, int64_t b)
 {
-    unsigned long long range = (unsigned long long)(b - a) + 1;
+    uint64_t range = (uint64_t)(b - a) + 1;
     uint32_t r = chacha8_next(rng);
-    long long result = a + (long long)(r % range);
+    int64_t result = a + (int64_t)(r % range);
     return PyLong_FromLongLong(result);
 }
 
@@ -275,12 +276,12 @@ module_randint(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         return NULL;
     }
 
-    long long a = PyLong_AsLongLong(args[0]);
-    if (a == -1 && PyErr_Occurred())
+    int64_t a = CPyLong_AsInt64(args[0]);
+    if (unlikely(a == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
 
-    long long b = PyLong_AsLongLong(args[1]);
-    if (b == -1 && PyErr_Occurred())
+    int64_t b = CPyLong_AsInt64(args[1]);
+    if (unlikely(b == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
 
     if (a > b) {
@@ -301,12 +302,12 @@ module_randint(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 // Returns 0 on success, -1 on error (with exception set).
 static int
 parse_randrange_args(PyObject *const *args, Py_ssize_t nargs,
-                     long long *a, long long *b)
+                     int64_t *a, int64_t *b)
 {
     if (nargs == 1) {
         *a = 0;
-        long long stop = PyLong_AsLongLong(args[0]);
-        if (stop == -1 && PyErr_Occurred())
+        int64_t stop = CPyLong_AsInt64(args[0]);
+        if (unlikely(stop == CPY_LL_INT_ERROR && PyErr_Occurred()))
             return -1;
         if (stop <= 0) {
             PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
@@ -314,11 +315,11 @@ parse_randrange_args(PyObject *const *args, Py_ssize_t nargs,
         }
         *b = stop - 1;
     } else if (nargs == 2) {
-        *a = PyLong_AsLongLong(args[0]);
-        if (*a == -1 && PyErr_Occurred())
+        *a = CPyLong_AsInt64(args[0]);
+        if (unlikely(*a == CPY_LL_INT_ERROR && PyErr_Occurred()))
             return -1;
-        long long stop = PyLong_AsLongLong(args[1]);
-        if (stop == -1 && PyErr_Occurred())
+        int64_t stop = CPyLong_AsInt64(args[1]);
+        if (unlikely(stop == CPY_LL_INT_ERROR && PyErr_Occurred()))
             return -1;
         if (*a >= stop) {
             PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
@@ -336,7 +337,7 @@ parse_randrange_args(PyObject *const *args, Py_ssize_t nargs,
 static PyObject*
 module_randrange(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 {
-    long long a, b;
+    int64_t a, b;
     if (parse_randrange_args(args, nargs, &a, &b) < 0)
         return NULL;
 
@@ -355,8 +356,8 @@ module_seed(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
                      "seed() takes exactly 1 argument (%zd given)", nargs);
         return NULL;
     }
-    long long seed_val = PyLong_AsLongLong(args[0]);
-    if (seed_val == -1 && PyErr_Occurred())
+    int64_t seed_val = CPyLong_AsInt64(args[0]);
+    if (unlikely(seed_val == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
 
     chacha8_rng *rng = get_thread_rng();
@@ -410,8 +411,8 @@ Random_init(RandomObject *self, PyObject *args, PyObject *kwds)
         if (chacha8_init(&self->rng) < 0)
             return -1;
     } else {
-        long long seed_val = PyLong_AsLongLong(seed_obj);
-        if (seed_val == -1 && PyErr_Occurred())
+        int64_t seed_val = CPyLong_AsInt64(seed_obj);
+        if (unlikely(seed_val == CPY_LL_INT_ERROR && PyErr_Occurred()))
             return -1;
         chacha8_seed_int(&self->rng, seed_val);
     }
@@ -427,12 +428,12 @@ Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
         return NULL;
     }
 
-    long long a = PyLong_AsLongLong(args[0]);
-    if (a == -1 && PyErr_Occurred())
+    int64_t a = CPyLong_AsInt64(args[0]);
+    if (unlikely(a == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
 
-    long long b = PyLong_AsLongLong(args[1]);
-    if (b == -1 && PyErr_Occurred())
+    int64_t b = CPyLong_AsInt64(args[1]);
+    if (unlikely(b == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
 
     if (a > b) {
@@ -446,7 +447,7 @@ Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
 
 static PyObject*
 Random_randrange(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
-    long long a, b;
+    int64_t a, b;
     if (parse_randrange_args(args, nargs, &a, &b) < 0)
         return NULL;
     return randint_impl(&self->rng, a, b);
@@ -467,8 +468,8 @@ Random_seed(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
                      "seed() takes exactly 1 argument (%zd given)", nargs);
         return NULL;
     }
-    long long seed_val = PyLong_AsLongLong(args[0]);
-    if (seed_val == -1 && PyErr_Occurred())
+    int64_t seed_val = CPyLong_AsInt64(args[0]);
+    if (unlikely(seed_val == CPY_LL_INT_ERROR && PyErr_Occurred()))
         return NULL;
     chacha8_seed_int(&self->rng, seed_val);
     Py_RETURN_NONE;
