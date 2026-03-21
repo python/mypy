@@ -60,8 +60,40 @@ def test_random_produces_different_values() -> None:
         values.add(r.random())
     assert len(values) > 1
 
+[case testRandomModuleLevel_librt]
+from librt.random import random, randint
+
+def test_module_random_basic() -> None:
+    for i in range(100):
+        val = random()
+        assert 0.0 <= val < 1.0
+
+def test_module_random_returns_float() -> None:
+    assert isinstance(random(), float)
+
+def test_module_random_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(random())
+    assert len(values) > 1
+
+def test_module_randint_basic() -> None:
+    for i in range(100):
+        val = randint(0, 10)
+        assert 0 <= val <= 10
+
+def test_module_randint_single_value() -> None:
+    for i in range(10):
+        assert randint(5, 5) == 5
+
+def test_module_randint_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(randint(0, 1000000))
+    assert len(values) > 1
+
 [case testRandomErrors_librt]
-from librt.random import Random
+from librt.random import Random, randint
 from testutil import assertRaises
 
 def test_randint_empty_range() -> None:
@@ -75,3 +107,7 @@ def test_randint_wrong_arg_count() -> None:
         r.randint(1)  # type: ignore[call-arg]
     with assertRaises(TypeError):
         r.randint(1, 2, 3)  # type: ignore[call-arg]
+
+def test_module_randint_empty_range() -> None:
+    with assertRaises(ValueError, "empty range"):
+        randint(10, 5)

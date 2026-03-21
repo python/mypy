@@ -3,6 +3,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 #include "mypyc_util.h"
 
 //
@@ -123,6 +129,145 @@ chacha8_init(chacha8_rng *rng)
 }
 
 //
+// Thread-local global RNG for module-level random()/randint()
+//
+// thread_local pointer for fast access (direct %fs/%gs-relative load),
+// platform TLS key with destructor for cleanup on thread exit.
+//
+
+#ifdef _WIN32
+static __declspec(thread) chacha8_rng *tls_rng = NULL;
+#else
+static __thread chacha8_rng *tls_rng = NULL;
+#endif
+
+#ifdef _WIN32
+static DWORD tls_key = FLS_OUT_OF_INDEXES;
+
+static void NTAPI
+tls_rng_destructor(void *ptr)
+{
+    if (ptr != NULL) {
+        memset(ptr, 0, sizeof(chacha8_rng));
+        PyMem_RawFree(ptr);
+    }
+}
+#else
+static pthread_key_t tls_key;
+
+static void
+tls_rng_destructor(void *ptr)
+{
+    if (ptr != NULL) {
+        memset(ptr, 0, sizeof(chacha8_rng));
+        PyMem_RawFree(ptr);
+    }
+}
+#endif
+
+static int tls_key_created = 0;
+
+static int
+ensure_tls_key(void)
+{
+    if (likely(tls_key_created))
+        return 0;
+#ifdef _WIN32
+    tls_key = FlsAlloc(tls_rng_destructor);
+    if (tls_key == FLS_OUT_OF_INDEXES) {
+        PyErr_SetString(PyExc_OSError, "FlsAlloc failed");
+        return -1;
+    }
+#else
+    if (pthread_key_create(&tls_key, tls_rng_destructor) != 0) {
+        PyErr_SetString(PyExc_OSError, "pthread_key_create failed");
+        return -1;
+    }
+#endif
+    tls_key_created = 1;
+    return 0;
+}
+
+// Get the thread-local RNG, initializing on first use.
+// Returns NULL with Python exception set on failure.
+static chacha8_rng *
+get_thread_rng(void)
+{
+    chacha8_rng *rng = tls_rng;
+    if (likely(rng != NULL))
+        return rng;
+
+    // First use on this thread — allocate and seed
+    rng = PyMem_RawMalloc(sizeof(chacha8_rng));
+    if (rng == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (chacha8_init(rng) < 0) {
+        PyMem_RawFree(rng);
+        return NULL;
+    }
+
+    // Register with platform TLS for destructor
+#ifdef _WIN32
+    FlsSetValue(tls_key, rng);
+#else
+    pthread_setspecific(tls_key, rng);
+#endif
+
+    tls_rng = rng;
+    return rng;
+}
+
+//
+// Module-level random() and randint()
+//
+
+static PyObject*
+module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
+{
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        return NULL;
+    uint32_t r = chacha8_next(rng);
+    double result = r / 4294967296.0;  // 2^32
+    return PyFloat_FromDouble(result);
+}
+
+static PyObject*
+module_randint(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (nargs != 2) {
+        PyErr_Format(PyExc_TypeError,
+                     "randint() takes exactly 2 arguments (%zd given)", nargs);
+        return NULL;
+    }
+
+    long long a = PyLong_AsLongLong(args[0]);
+    if (a == -1 && PyErr_Occurred())
+        return NULL;
+
+    long long b = PyLong_AsLongLong(args[1]);
+    if (b == -1 && PyErr_Occurred())
+        return NULL;
+
+    if (a > b) {
+        PyErr_SetString(PyExc_ValueError,
+                        "empty range for randint()");
+        return NULL;
+    }
+
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        return NULL;
+
+    unsigned long long range = (unsigned long long)(b - a) + 1;
+    uint32_t r = chacha8_next(rng);
+    long long result = a + (long long)(r % range);
+    return PyLong_FromLongLong(result);
+}
+
+//
 // Random Python type
 //
 
@@ -228,12 +373,21 @@ static PyTypeObject RandomType = {
 // Module definition
 
 static PyMethodDef librt_random_module_methods[] = {
+    {"random", (PyCFunction) module_random, METH_NOARGS,
+     PyDoc_STR("Return random float in [0.0, 1.0) using thread-local RNG.")
+    },
+    {"randint", (PyCFunction) module_randint, METH_FASTCALL,
+     PyDoc_STR("Return random integer in range [a, b] using thread-local RNG.")
+    },
     {NULL, NULL, 0, NULL}
 };
 
 static int
 librt_random_module_exec(PyObject *m)
 {
+    if (ensure_tls_key() < 0) {
+        return -1;
+    }
     if (PyType_Ready(&RandomType) < 0) {
         return -1;
     }
