@@ -118,6 +118,19 @@ chacha8_next(chacha8_rng *rng)
     return rng->buf[rng->used++];
 }
 
+// Return a uniformly distributed random value in [0, range).
+// Uses 32 bits for small ranges, 64 bits for large ranges to avoid modulo bias.
+static inline uint64_t
+chacha8_next_ranged(chacha8_rng *rng, uint64_t range)
+{
+    if (likely(range <= UINT32_MAX)) {
+        uint32_t r = chacha8_next(rng);
+        return r % range;
+    }
+    uint64_t r = ((uint64_t)chacha8_next(rng) << 32) | chacha8_next(rng);
+    return r % range;
+}
+
 static void
 chacha8_reset(chacha8_rng *rng)
 {
@@ -297,8 +310,7 @@ static inline PyObject*
 randint_impl(chacha8_rng *rng, int64_t a, int64_t b)
 {
     uint64_t range = (uint64_t)(b - a) + 1;
-    uint32_t r = chacha8_next(rng);
-    int64_t result = a + (int64_t)(r % range);
+    int64_t result = a + (int64_t)chacha8_next_ranged(rng, range);
     return PyLong_FromLongLong(result);
 }
 
@@ -499,8 +511,7 @@ Random_randrange1_internal(PyObject *self, int64_t stop) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
     }
-    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
-    return (int64_t)(r % (uint64_t)stop);
+    return (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, (uint64_t)stop);
 }
 
 static int64_t
@@ -510,8 +521,7 @@ Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
         return CPY_LL_INT_ERROR;
     }
     uint64_t range = (uint64_t)(stop - start);
-    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
-    return start + (int64_t)(r % range);
+    return start + (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, range);
 }
 
 static int64_t
@@ -521,8 +531,7 @@ Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
         return CPY_LL_INT_ERROR;
     }
     uint64_t range = (uint64_t)(b - a) + 1;
-    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
-    return a + (int64_t)(r % range);
+    return a + (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, range);
 }
 
 static double
@@ -660,7 +669,7 @@ static double
 module_random_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
+        CPyError_OutOfMemory();
     uint32_t r = chacha8_next(rng);
     return r / 4294967296.0;
 }
@@ -673,10 +682,9 @@ module_randint_internal(int64_t a, int64_t b) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
+        CPyError_OutOfMemory();
     uint64_t range = (uint64_t)(b - a) + 1;
-    uint32_t r = chacha8_next(rng);
-    return a + (int64_t)(r % range);
+    return a + (int64_t)chacha8_next_ranged(rng, range);
 }
 
 static int64_t
@@ -687,9 +695,8 @@ module_randrange1_internal(int64_t stop) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
-    uint32_t r = chacha8_next(rng);
-    return (int64_t)(r % (uint64_t)stop);
+        CPyError_OutOfMemory();
+    return (int64_t)chacha8_next_ranged(rng, (uint64_t)stop);
 }
 
 static int64_t
@@ -700,17 +707,16 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
+        CPyError_OutOfMemory();
     uint64_t range = (uint64_t)(stop - start);
-    uint32_t r = chacha8_next(rng);
-    return start + (int64_t)(r % range);
+    return start + (int64_t)chacha8_next_ranged(rng, range);
 }
 
 static int32_t
 module_randbits31_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
+        CPyError_OutOfMemory();
     return randbits31_impl(rng);
 }
 
@@ -718,7 +724,7 @@ static int64_t
 module_randbits62_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        abort();
+        CPyError_OutOfMemory();
     return randbits62_impl(rng);
 }
 
