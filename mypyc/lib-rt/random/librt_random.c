@@ -68,7 +68,7 @@ chacha8_block(const uint32_t seed[8], uint32_t counter, uint32_t out[16])
         QUARTERROUND(out[3], out[4], out[ 9], out[14]);
     }
 
-    // Add original state back (non-invertible)
+    // Add original state back (standard ChaCha finalization)
     for (int i = 0; i < 16; i++)
         out[i] += s[i];
 }
@@ -118,17 +118,50 @@ chacha8_next(chacha8_rng *rng)
     return rng->buf[rng->used++];
 }
 
-// Return a uniformly distributed random value in [0, range).
-// Uses 32 bits for small ranges, 64 bits for large ranges to avoid modulo bias.
+// Return 64 bits of randomness (two consecutive 32-bit words, single bounds check).
+static inline uint64_t
+chacha8_next64(chacha8_rng *rng)
+{
+    // Need 2 words available; if fewer than 2, refill first.
+    if (unlikely(rng->used + 1 >= rng->n))
+        // Use two separate calls to handle block boundary correctly.
+        return ((uint64_t)chacha8_next(rng) << 32) | chacha8_next(rng);
+    uint32_t hi = rng->buf[rng->used++];
+    uint32_t lo = rng->buf[rng->used++];
+    return ((uint64_t)hi << 32) | lo;
+}
+
+// Return a uniformly distributed random value in [0, range) using
+// Lemire's nearly divisionless method for perfect uniformity.
+// Uses 32-bit multiply for small ranges, 64-bit for large ranges.
 static inline uint64_t
 chacha8_next_ranged(chacha8_rng *rng, uint64_t range)
 {
     if (likely(range <= UINT32_MAX)) {
-        uint32_t r = chacha8_next(rng);
-        return r % range;
+        // 32-bit Lemire: multiply r * range to get 64-bit product,
+        // upper 32 bits are the result in [0, range).
+        uint64_t m = (uint64_t)chacha8_next(rng) * range;
+        uint32_t lo = (uint32_t)m;
+        if (unlikely(lo < range)) {
+            uint32_t thresh = (uint32_t)(-(uint32_t)range) % (uint32_t)range;
+            while (lo < thresh) {
+                m = (uint64_t)chacha8_next(rng) * range;
+                lo = (uint32_t)m;
+            }
+        }
+        return m >> 32;
     }
-    uint64_t r = ((uint64_t)chacha8_next(rng) << 32) | chacha8_next(rng);
-    return r % range;
+    // 64-bit Lemire: use __uint128_t for the 128-bit product.
+    __uint128_t m = (__uint128_t)chacha8_next64(rng) * range;
+    uint64_t lo = (uint64_t)m;
+    if (unlikely(lo < range)) {
+        uint64_t thresh = (-range) % range;
+        while (lo < thresh) {
+            m = (__uint128_t)chacha8_next64(rng) * range;
+            lo = (uint64_t)m;
+        }
+    }
+    return (uint64_t)(m >> 64);
 }
 
 static void
@@ -256,6 +289,14 @@ get_thread_rng(void)
     return rng;
 }
 
+// Return a random double in [0.0, 1.0) with 53 bits of mantissa precision.
+static inline double
+random_double_impl(chacha8_rng *rng)
+{
+    uint64_t r = chacha8_next64(rng);
+    return (double)(r >> 11) * (1.0 / 9007199254740992.0);  // 1/2^53
+}
+
 //
 // Module-level random() and randint()
 //
@@ -266,9 +307,7 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
         return NULL;
-    uint32_t r = chacha8_next(rng);
-    double result = r / 4294967296.0;  // 2^32
-    return PyFloat_FromDouble(result);
+    return PyFloat_FromDouble(random_double_impl(rng));
 }
 
 // Return a random non-negative 31-bit integer [0, 2^31).
@@ -536,8 +575,7 @@ Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
 
 static double
 Random_random_internal(PyObject *self) {
-    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
-    return r / 4294967296.0;
+    return random_double_impl(&((RandomObject *)self)->rng);
 }
 
 static PyObject*
@@ -575,10 +613,7 @@ Random_randrange(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
 
 static PyObject*
 Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
-    uint32_t r = chacha8_next(&self->rng);
-    // Scale to [0.0, 1.0)
-    double result = r / 4294967296.0;  // 2^32
-    return PyFloat_FromDouble(result);
+    return PyFloat_FromDouble(random_double_impl(&self->rng));
 }
 
 static PyObject*
@@ -670,8 +705,7 @@ module_random_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
         CPyError_OutOfMemory();
-    uint32_t r = chacha8_next(rng);
-    return r / 4294967296.0;
+    return random_double_impl(rng);
 }
 
 static int64_t
