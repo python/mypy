@@ -654,6 +654,58 @@ static PyMethodDef librt_random_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+// Module-level internal functions for mypyc primitives (use thread-local RNG)
+
+static double
+module_random_internal(void) {
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    uint32_t r = chacha8_next(rng);
+    return r / 4294967296.0;
+}
+
+static int64_t
+module_randint_internal(int64_t a, int64_t b) {
+    if (unlikely(a > b)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randint()");
+        return CPY_LL_INT_ERROR;
+    }
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    uint64_t range = (uint64_t)(b - a) + 1;
+    uint32_t r = chacha8_next(rng);
+    return a + (int64_t)(r % range);
+}
+
+static int64_t
+module_randrange1_internal(int64_t stop) {
+    if (unlikely(stop <= 0)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+        return CPY_LL_INT_ERROR;
+    }
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    uint32_t r = chacha8_next(rng);
+    return (int64_t)(r % (uint64_t)stop);
+}
+
+static int64_t
+module_randrange2_internal(int64_t start, int64_t stop) {
+    if (unlikely(start >= stop)) {
+        PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
+        return CPY_LL_INT_ERROR;
+    }
+    chacha8_rng *rng = get_thread_rng();
+    if (rng == NULL)
+        abort();
+    uint64_t range = (uint64_t)(stop - start);
+    uint32_t r = chacha8_next(rng);
+    return start + (int64_t)(r % range);
+}
+
 #ifdef MYPYC_EXPERIMENTAL
 
 static int
@@ -694,6 +746,10 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_randint_internal,
         (void *)Random_randrange1_internal,
         (void *)Random_randrange2_internal,
+        (void *)module_random_internal,
+        (void *)module_randint_internal,
+        (void *)module_randrange1_internal,
+        (void *)module_randrange2_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
