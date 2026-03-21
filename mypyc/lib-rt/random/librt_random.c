@@ -472,6 +472,12 @@ Random_randbits62_internal(PyObject *self) {
     return randbits62_impl(&((RandomObject *)self)->rng);
 }
 
+static double
+Random_random_internal(PyObject *self) {
+    uint32_t r = chacha8_next(&((RandomObject *)self)->rng);
+    return r / 4294967296.0;
+}
+
 static PyObject*
 Random_randint(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
     if (nargs != 2) {
@@ -619,6 +625,7 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_from_seed_internal,
         (void *)Random_type_internal,
         (void *)Random_randbits62_internal,
+        (void *)Random_random_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

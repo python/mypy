@@ -37,3 +37,16 @@ def randbits(r):
 L0:
     r0 = LibRTRandom_Random_randbits62_internal(r)
     return r0
+
+[case testLibrtRandomRandom_experimental_64bit]
+from librt.random import Random
+
+def rand(r: Random) -> float:
+    return r.random()
+[out]
+def rand(r):
+    r :: librt.random.Random
+    r0 :: float
+L0:
+    r0 = LibRTRandom_Random_random_internal(r)
+    return r0
