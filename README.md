@@ -203,3 +203,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-4001: mypy fails to consider the case where *args or **kwds contai -->
+
+
+<!-- fix-issue-2797: Return type incompatible with supertype error should specify -->
