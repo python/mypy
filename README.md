@@ -233,3 +233,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-14452: Missing list of incomplete features -->
+
+
+<!-- fix-issue-10076: Remove the * for inferred types from reveal_type output -->
