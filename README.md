@@ -194,3 +194,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-6172: "Unsupported converter" for completely unanotated function -->
+
+
+<!-- fix-issue-4445: "if type(x) == T" not being used for type narrowing -->
