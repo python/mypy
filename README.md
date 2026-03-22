@@ -239,3 +239,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-7251: Better message when name not available due to --no-implicit- -->
+
+
+<!-- fix-issue-3948: Give an error if there is a variable annotation within a fun -->
