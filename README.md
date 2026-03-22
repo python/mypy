@@ -212,3 +212,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-4954: 'in' operator rejected with union right operand -->
+
+
+<!-- fix-issue-16508: stubtest nit: arguments vs. parameters -->
