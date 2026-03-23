@@ -197,3 +197,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-4445: "if type(x) == T" not being used for type narrowing -->
+
+
+<!-- fix-issue-1032: Placement of # type: ignore on multi-line expression is iffy -->
