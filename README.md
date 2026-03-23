@@ -191,3 +191,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-8603: Bad error message: mypy reports 'Name is not defined' when u -->
+
+
+<!-- fix-issue-6172: "Unsupported converter" for completely unanotated function -->
