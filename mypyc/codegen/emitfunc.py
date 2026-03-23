@@ -507,6 +507,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     op.attr,
                 )
             )
+            self.emitter.emit_dec_ref(src, op.src.type)
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
