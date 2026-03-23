@@ -145,16 +145,6 @@ def vec_create_initialized(
     init = builder.coerce(init, item_type, line)
     vec = vec_create(builder, vtype, length, line)
 
-    # Guard against computing &buf->items when buf is NULL (length == 0).
-    # vec_create returns buf=NULL for empty vecs, and accessing members
-    # through a NULL pointer is undefined behavior that GCC -O3 can exploit.
-    fill_body = BasicBlock()
-    fill_end = BasicBlock()
-    zero = Integer(0, c_pyssize_t_rprimitive)
-    comp = builder.add(ComparisonOp(length, zero, ComparisonOp.SGT, line=line))
-    builder.add(Branch(comp, fill_body, fill_end, Branch.BOOL))
-    builder.activate_block(fill_body)
-
     items_start = vec_items(builder, vec)
     step = step_size(item_type)
     items_end = builder.int_add(items_start, builder.int_mul(length, step))
@@ -165,9 +155,6 @@ def vec_create_initialized(
     builder.set_mem(for_loop.index, item_type, init)
     for_loop.finish()
 
-    builder.goto(fill_end)
-    builder.activate_block(fill_end)
-
     builder.keep_alive([vec], line)
     return vec
 
@@ -176,13 +163,12 @@ def vec_create_from_values(
     builder: LowLevelIRBuilder, vtype: RVec, values: list[Value], line: int
 ) -> Value:
     vec = vec_create(builder, vtype, len(values), line)
-    if values:
-        ptr = vec_items(builder, vec)
-        item_type = vtype.item_type
-        step = step_size(item_type)
-        for value in values:
-            builder.set_mem(ptr, item_type, value)
-            ptr = builder.int_add(ptr, step)
+    ptr = vec_items(builder, vec)
+    item_type = vtype.item_type
+    step = step_size(item_type)
+    for value in values:
+        builder.set_mem(ptr, item_type, value)
+        ptr = builder.int_add(ptr, step)
     builder.keep_alive([vec], line)
     return vec
 
@@ -238,9 +224,8 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
     """Return pointer to first item in vec's buf.
 
-    The caller must ensure buf is not NULL (i.e., vec is non-empty).
-    Empty vecs have buf=NULL, and computing &NULL->items is undefined
-    behavior that GCC -O3 can exploit to miscompile surrounding code.
+    Safe to call even when buf is NULL (empty vec), since GetElementPtr
+    uses offsetof-based arithmetic instead of &((T*)p)->field.
     """
     vtype = cast(RVec, vecobj.type)
     buf = builder.get_element(vecobj, "buf")
@@ -507,14 +492,6 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
 
     true, end = BasicBlock(), BasicBlock()
 
-    # Guard against computing &buf->items when buf is NULL (empty vec).
-    search_body = BasicBlock()
-    search_done = BasicBlock()
-    zero = Integer(0, c_pyssize_t_rprimitive)
-    len_check = builder.add(ComparisonOp(len_val, zero, ComparisonOp.SGT, line=line))
-    builder.add(Branch(len_check, search_body, search_done, Branch.BOOL))
-    builder.activate_block(search_body)
-
     items_start = vec_items(builder, vec)
     items_end = builder.int_add(items_start, builder.int_mul(len_val, step))
 
@@ -529,7 +506,6 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop.finish()
 
     builder.keep_alive([vec], line)
-    builder.goto_and_activate(search_done)
 
     res = Register(bool_rprimitive)
     builder.assign(res, Integer(0, bool_rprimitive))
