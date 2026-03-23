@@ -227,3 +227,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-8356: mypy crashes with overloads of functools.singledispatch -->
+
+
+<!-- fix-issue-2055: Better error message when __eq__ has unexpected signature -->
