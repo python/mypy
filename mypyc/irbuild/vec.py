@@ -498,10 +498,19 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
 
     step = step_size(item_type)
     len_val = vec_len_native(builder, vec)
-    items_start = vec_items(builder, vec)
-    items_end = builder.int_add(items_start, builder.int_mul(len_val, step))
 
     true, end = BasicBlock(), BasicBlock()
+
+    # Guard against computing &buf->items when buf is NULL (empty vec).
+    search_body = BasicBlock()
+    search_done = BasicBlock()
+    zero = Integer(0, c_pyssize_t_rprimitive)
+    len_check = builder.add(ComparisonOp(len_val, zero, ComparisonOp.SGT, line=line))
+    builder.add(Branch(len_check, search_body, search_done, Branch.BOOL))
+    builder.activate_block(search_body)
+
+    items_start = vec_items(builder, vec)
+    items_end = builder.int_add(items_start, builder.int_mul(len_val, step))
 
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
@@ -514,6 +523,7 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop.finish()
 
     builder.keep_alive([vec], line)
+    builder.goto_and_activate(search_done)
 
     res = Register(bool_rprimitive)
     builder.assign(res, Integer(0, bool_rprimitive))
