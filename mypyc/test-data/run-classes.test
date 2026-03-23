@@ -2160,8 +2160,40 @@ class H:
 
 [file other.py]
 # Run in both interpreted and compiled mode
+import gc
 
-from native import A, B, C, D, E, F, G
+from native import A, B, C, D, E, F, Foo, G
+
+def test_leaks() -> None:
+    a = A()
+
+    gc.collect()
+    before = gc.get_objects()
+    for _ in range(100):
+        a.foo = Foo()
+    gc.collect()
+    after = gc.get_objects()
+
+    diff = len(after) - len(before)
+    # Small difference is expected, if the property setter call was leaking objects
+    # we would get a difference similar to the number of iterations above.
+    assert diff <= 2, diff
+
+def set_foo(foo: Foo) -> None:
+    a = A()
+    a.foo = foo
+
+def test_use_after_passing_to_prop_setter() -> None:
+    foo = Foo()
+
+    foo.attr = "before"
+    assert foo.attr == "before", foo.attr
+
+    set_foo(foo)
+    assert foo.attr == "before", foo.attr
+
+    foo.attr = "after"
+    assert foo.attr == "after", foo.attr
 
 a = A()
 assert a.x == 0
@@ -2194,6 +2226,9 @@ assert f.x == 50
 g = G(4)
 g.x = 20
 assert g.x == 20
+
+test_leaks()
+test_use_after_passing_to_prop_setter()
 
 [file driver.py]
 # Run the tests in both interpreted and compiled mode
