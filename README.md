@@ -221,3 +221,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-4173: Better message for invalid types like (int, str) -->
+
+
+<!-- fix-issue-8629: Document how to import types from stubs -->
