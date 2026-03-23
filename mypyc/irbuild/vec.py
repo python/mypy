@@ -489,11 +489,10 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
 
     step = step_size(item_type)
     len_val = vec_len_native(builder, vec)
-
-    true, end = BasicBlock(), BasicBlock()
-
     items_start = vec_items(builder, vec)
     items_end = builder.int_add(items_start, builder.int_mul(len_val, step))
+
+    true, end = BasicBlock(), BasicBlock()
 
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
