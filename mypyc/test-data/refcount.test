@@ -1562,33 +1562,37 @@ def f(n):
     r0, r1 :: object
     r2, r3 :: ptr
     r4 :: vec[str | None]
-    r5 :: object
-    r6 :: ptr
-    r7 :: i64
-    r8, r9 :: ptr
-    r10 :: bit
-    r11 :: ptr
+    r5 :: bit
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9, r10 :: ptr
+    r11 :: bit
+    r12 :: ptr
 L0:
     r0 = box(None, 1)
     r1 = load_address PyUnicode_Type
     r2 = r1
     r3 = r2 | 1
     r4 = VecTApi.alloc(n, n, r3)
-    r5 = r4.buf
-    r6 = get_element_ptr r5 items :: VecTBufObject
-    r7 = n * 8
-    r8 = r6 + r7
-    r9 = r6
+    r5 = n > 0 :: signed
+    if r5 goto L1 else goto L4 :: bool
 L1:
-    r10 = r9 < r8 :: unsigned
-    if r10 goto L2 else goto L3 :: bool
+    r6 = r4.buf
+    r7 = get_element_ptr r6 items :: VecTBufObject
+    r8 = n * 8
+    r9 = r7 + r8
+    r10 = r7
 L2:
-    inc_ref r0
-    set_mem r9, r0 :: union*
-    r11 = r9 + 8
-    r9 = r11
-    goto L1
+    r11 = r10 < r9 :: unsigned
+    if r11 goto L3 else goto L4 :: bool
 L3:
+    inc_ref r0
+    set_mem r10, r0 :: union*
+    r12 = r10 + 8
+    r10 = r12
+    goto L2
+L4:
     return r4
 
 [case testVecTForLoop_64bit]

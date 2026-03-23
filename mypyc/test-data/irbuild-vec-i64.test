@@ -252,28 +252,33 @@ def f(n: i64) -> vec[i64]:
 def f(n):
     n :: i64
     r0 :: vec[i64]
-    r1 :: object
-    r2 :: ptr
-    r3 :: i64
-    r4, r5 :: ptr
-    r6 :: bit
-    r7 :: ptr
+    r1 :: bit
+    r2 :: object
+    r3 :: ptr
+    r4 :: i64
+    r5, r6 :: ptr
+    r7 :: bit
+    r8 :: ptr
 L0:
     r0 = VecI64Api.alloc(n, n)
-    r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecI64BufObject
-    r3 = n * 8
-    r4 = r2 + r3
-    r5 = r2
+    r1 = n > 0 :: signed
+    if r1 goto L1 else goto L5 :: bool
 L1:
-    r6 = r5 < r4 :: unsigned
-    if r6 goto L2 else goto L3 :: bool
+    r2 = r0.buf
+    r3 = get_element_ptr r2 items :: VecI64BufObject
+    r4 = n * 8
+    r5 = r3 + r4
+    r6 = r3
 L2:
-    set_mem r5, 3 :: i64*
-    r7 = r5 + 8
-    r5 = r7
-    goto L1
+    r7 = r6 < r5 :: unsigned
+    if r7 goto L3 else goto L4 :: bool
 L3:
+    set_mem r6, 3 :: i64*
+    r8 = r6 + 8
+    r6 = r8
+    goto L2
+L4:
+L5:
     keep_alive r0
     return r0
 
@@ -287,28 +292,33 @@ def f(n: i64, x: i64) -> vec[i64]:
 def f(n, x):
     n, x :: i64
     r0 :: vec[i64]
-    r1 :: object
-    r2 :: ptr
-    r3 :: native_int
-    r4, r5 :: ptr
-    r6 :: bit
-    r7 :: ptr
+    r1 :: bit
+    r2 :: object
+    r3 :: ptr
+    r4 :: native_int
+    r5, r6 :: ptr
+    r7 :: bit
+    r8 :: ptr
 L0:
     r0 = VecI64Api.alloc(3, 3)
-    r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecI64BufObject
-    r3 = 3 * 8
-    r4 = r2 + r3
-    r5 = r2
+    r1 = 3 > 0 :: signed
+    if r1 goto L1 else goto L5 :: bool
 L1:
-    r6 = r5 < r4 :: unsigned
-    if r6 goto L2 else goto L3 :: bool
+    r2 = r0.buf
+    r3 = get_element_ptr r2 items :: VecI64BufObject
+    r4 = 3 * 8
+    r5 = r3 + r4
+    r6 = r3
 L2:
-    set_mem r5, x :: i64*
-    r7 = r5 + 8
-    r5 = r7
-    goto L1
+    r7 = r6 < r5 :: unsigned
+    if r7 goto L3 else goto L4 :: bool
 L3:
+    set_mem r6, x :: i64*
+    r8 = r6 + 8
+    r6 = r8
+    goto L2
+L4:
+L5:
     keep_alive r0
     return r0
 
@@ -544,41 +554,46 @@ def contains(v, n):
     v :: vec[i64]
     n :: i64
     r0 :: native_int
-    r1 :: object
-    r2 :: ptr
-    r3 :: native_int
-    r4, r5 :: ptr
-    r6 :: bit
-    r7 :: i64
-    r8 :: bit
-    r9 :: ptr
-    r10 :: bool
+    r1 :: bit
+    r2 :: object
+    r3 :: ptr
+    r4 :: native_int
+    r5, r6 :: ptr
+    r7 :: bit
+    r8 :: i64
+    r9 :: bit
+    r10 :: ptr
+    r11 :: bool
 L0:
     r0 = v.len
-    r1 = v.buf
-    r2 = get_element_ptr r1 items :: VecI64BufObject
-    r3 = r0 * 8
-    r4 = r2 + r3
-    r5 = r2
+    r1 = r0 > 0 :: signed
+    if r1 goto L1 else goto L6 :: bool
 L1:
-    r6 = r5 < r4 :: unsigned
-    if r6 goto L2 else goto L4 :: bool
+    r2 = v.buf
+    r3 = get_element_ptr r2 items :: VecI64BufObject
+    r4 = r0 * 8
+    r5 = r3 + r4
+    r6 = r3
 L2:
-    r7 = load_mem r5 :: i64*
-    r8 = r7 == n
-    if r8 goto L5 else goto L3 :: bool
+    r7 = r6 < r5 :: unsigned
+    if r7 goto L3 else goto L5 :: bool
 L3:
-    r9 = r5 + 8
-    r5 = r9
-    goto L1
+    r8 = load_mem r6 :: i64*
+    r9 = r8 == n
+    if r9 goto L7 else goto L4 :: bool
 L4:
-    keep_alive v
-    r10 = 0
-    goto L6
+    r10 = r6 + 8
+    r6 = r10
+    goto L2
 L5:
-    r10 = 1
+    keep_alive v
 L6:
-    return r10
+    r11 = 0
+    goto L8
+L7:
+    r11 = 1
+L8:
+    return r11
 
 [case testVecI64GetItemWithInt_64bit]
 from librt.vecs import vec
