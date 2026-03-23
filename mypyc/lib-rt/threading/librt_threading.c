@@ -159,9 +159,6 @@ Lock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     LockObject *self = (LockObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        Lock_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
