@@ -236,6 +236,12 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
 
 
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
+    """Return pointer to first item in vec's buf.
+
+    The caller must ensure buf is not NULL (i.e., vec is non-empty).
+    Empty vecs have buf=NULL, and computing &NULL->items is undefined
+    behavior that GCC -O3 can exploit to miscompile surrounding code.
+    """
     vtype = cast(RVec, vecobj.type)
     buf = builder.get_element(vecobj, "buf")
     return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
