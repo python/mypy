@@ -218,3 +218,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-10250: Exclude multiple directories on mypy commandline: improve do -->
+
+
+<!-- fix-issue-4173: Better message for invalid types like (int, str) -->
