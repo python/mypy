@@ -12,6 +12,7 @@ import_librt_strings(void)
 
 #else  // MYPYC_EXPERIMENTAL
 
+#include <stdbool.h>
 #include <Python.h>
 #include "librt_strings_common.h"
 

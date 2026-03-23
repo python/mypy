@@ -258,6 +258,7 @@ class TypeCheckSuite(DataSuite):
                     assert_module_equivalence(
                         "stale" + suffix, expected_stale, res.manager.stale_modules
                     )
+            res.manager.metastore.close()
 
         if testcase.output_files:
             check_test_output_files(testcase, incremental_step, strip_prefix="tmp/")

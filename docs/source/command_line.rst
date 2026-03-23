@@ -1019,9 +1019,10 @@ beyond what incremental mode can offer, try running mypy in
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
     or ``--cache-dir=nul`` (Windows).
 
-.. option:: --sqlite-cache
+.. option:: --no-sqlite-cache
 
-    Use an `SQLite`_ database to store the cache.
+    Avoid using `SQLite`_ database to store the cache, instead write cache data
+    out to individual files.
 
 .. option:: --cache-fine-grained
 

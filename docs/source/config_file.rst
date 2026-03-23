@@ -979,7 +979,7 @@ These options may only be set in the global section (``[mypy]``).
 .. confval:: sqlite_cache
 
     :type: boolean
-    :default: False
+    :default: True
 
     Use an `SQLite`_ database to store the cache.
 

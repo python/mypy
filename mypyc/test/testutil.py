@@ -123,6 +123,7 @@ def build_ir_for_single_file2(
     # Construct input as a single single.
     # Parse and type check the input program.
     result = build.build(sources=[source], options=options, alt_lib_path=test_temp_dir)
+    result.manager.metastore.close()
     if result.errors:
         raise CompileError(result.errors)
 
@@ -285,6 +286,15 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
-    if re.search("_experimental(_|$)", name):
+    if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
+
+
+def has_test_name_tag(name: str, tag: str) -> bool:
+    """Check if a test case name contains a tag token like ``_experimental``.
+
+    A tag matches if it appears as a full underscore-delimited token:
+    ``foo_tag_bar`` or ``foo_tag``.
+    """
+    return re.search(rf"(?:^|_){re.escape(tag)}(?:_|$)", name) is not None

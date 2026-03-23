@@ -456,9 +456,6 @@ def build_inner(
     # Validate error codes after plugins are loaded.
     options.process_error_codes(error_callback=build_error)
 
-    # Add catch-all .gitignore to cache dir if we created it
-    cache_dir_existed = os.path.isdir(options.cache_dir)
-
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
@@ -510,7 +507,7 @@ def build_inner(
         if reports is not None:
             # Finish the HTML or XML reports even if CompileError was raised.
             reports.finish()
-        if not cache_dir_existed and os.path.isdir(options.cache_dir):
+        if os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
             exclude_from_backups(options.cache_dir)
         if os.path.isdir(options.cache_dir):

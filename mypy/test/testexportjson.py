@@ -31,6 +31,7 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.allow_empty_bodies = True
             options.fixed_format_cache = True
+            options.sqlite_cache = False
             fnam = os.path.join(self.base_path, "main.py")
             with open(fnam, "w") as f:
                 f.write(src)

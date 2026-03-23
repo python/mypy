@@ -248,6 +248,14 @@ class IRBuilder:
 
         self.visitor = visitor
 
+        # Class body context: tracks ClassVar names defined so far when processing
+        # a class body, so that intra-class references (e.g. C = A | B where A is
+        # a ClassVar defined earlier in the same class) can be resolved correctly.
+        # Without this, mypyc looks up such names in module globals, which fails.
+        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_obj: Value | None = None
+        self.class_body_ir: ClassIR | None = None
+
         # This list operates similarly to a function call stack for nested functions. Whenever a
         # function definition begins to be generated, a FuncInfo instance is added to the stack,
         # and information about that function (e.g. whether it is nested, its environment class to
@@ -267,6 +275,10 @@ class IRBuilder:
         self.imports: dict[str, None] = {}
 
         self.can_borrow = False
+
+        # When set, load_globals_dict uses this module instead of self.module_name.
+        # Used by generate_attr_defaults_init for cross-module inherited defaults.
+        self.globals_lookup_module: str | None = None
 
     # High-level control
 
@@ -1515,7 +1527,8 @@ class IRBuilder:
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
+        module = self.globals_lookup_module or self.module_name
+        return self.add(LoadStatic(dict_rprimitive, "globals", module))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")

@@ -137,6 +137,13 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     else:
         cls_builder = NonExtClassBuilder(builder, cdef)
 
+    # Set up class body context so that intra-class ClassVar references
+    # (e.g. C = A | B where A is defined earlier in the same class) can be
+    # resolved from the class being built instead of module globals.
+    builder.class_body_classvars = {}
+    builder.class_body_obj = cls_builder.class_body_obj()
+    builder.class_body_ir = ir
+
     for stmt in cdef.defs.body:
         if (
             isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef))
@@ -179,12 +186,20 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
             cls_builder.add_attr(lvalue, stmt)
+            # Track this ClassVar so subsequent class body statements can reference it.
+            if is_class_var(lvalue) or stmt.is_final_def:
+                builder.class_body_classvars[lvalue.name] = None
 
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
+
+    # Clear class body context (nested classes are rejected above, so no need to save/restore).
+    builder.class_body_classvars = {}
+    builder.class_body_obj = None
+    builder.class_body_ir = None
 
     # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():
@@ -232,11 +247,22 @@ class ClassBuilder:
     def finalize(self, ir: ClassIR) -> None:
         """Perform any final operations to complete the class IR"""
 
+    def class_body_obj(self) -> Value | None:
+        """Return the object to use for loading class attributes during class body init.
+
+        For extension classes, this is the type object. For non-extension classes,
+        this is the class dict. Returns None if not applicable.
+        """
+        return None
+
 
 class NonExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         self.non_ext = self.create_non_ext_info()
+
+    def class_body_obj(self) -> Value | None:
+        return self.non_ext.dict
 
     def create_non_ext_info(self) -> NonExtClassInfo:
         non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
@@ -292,6 +318,9 @@ class ExtClassBuilder(ClassBuilder):
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
         self.type_obj: Value = allocate_class(builder, cdef)
+
+    def class_body_obj(self) -> Value | None:
+        return self.type_obj
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         """Controls whether to skip generating a default for an attribute."""
@@ -713,7 +742,7 @@ def add_non_ext_class_attr(
 
 def find_attr_initializers(
     builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
-) -> tuple[set[str], list[AssignmentStmt]]:
+) -> tuple[set[str], list[tuple[AssignmentStmt, str]]]:
     """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
@@ -728,7 +757,7 @@ def find_attr_initializers(
 
     # Pull out all assignments in classes in the mro so we can initialize them
     # TODO: Support nested statements
-    default_assignments = []
+    default_assignments: list[tuple[AssignmentStmt, str]] = []
     for info in reversed(cdef.info.mro):
         if info not in builder.mapper.type_to_ir:
             continue
@@ -763,13 +792,13 @@ def find_attr_initializers(
                         continue
 
                 attrs_with_defaults.add(name)
-                default_assignments.append(stmt)
+                default_assignments.append((stmt, info.module_name))
 
     return attrs_with_defaults, default_assignments
 
 
 def generate_attr_defaults_init(
-    builder: IRBuilder, cdef: ClassDef, default_assignments: list[AssignmentStmt]
+    builder: IRBuilder, cdef: ClassDef, default_assignments: list[tuple[AssignmentStmt, str]]
 ) -> None:
     """Generate an initialization method for default attr values (from class vars)."""
     if not default_assignments:
@@ -780,14 +809,23 @@ def generate_attr_defaults_init(
 
     with builder.enter_method(cls, "__mypyc_defaults_setup", bool_rprimitive):
         self_var = builder.self()
-        for stmt in default_assignments:
+        for stmt, origin_module in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr), lvalue
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning("Unsupported default attribute value", stmt.rvalue.line)
 
             attr_type = cls.attr_type(lvalue.name)
-            val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            # When the default comes from a parent in a different module,
+            # set the globals lookup module so NameExpr references resolve
+            # against the correct module's globals dict.
+            builder.globals_lookup_module = (
+                origin_module if origin_module != builder.module_name else None
+            )
+            try:
+                val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            finally:
+                builder.globals_lookup_module = None
             init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
             init.mark_as_initializer()
             builder.add(init)
