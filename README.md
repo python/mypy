@@ -236,3 +236,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-10076: Remove the * for inferred types from reveal_type output -->
+
+
+<!-- fix-issue-7251: Better message when name not available due to --no-implicit- -->
