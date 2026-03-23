@@ -189,14 +189,29 @@ Lock_dealloc(LockObject *self)
 }
 
 static PyObject *
-Lock_acquire(LockObject *self, PyObject *const *args, Py_ssize_t nargs)
+Lock_acquire(LockObject *self, PyObject *const *args, Py_ssize_t nargs,
+             PyObject *kwnames)
 {
     int blocking = 1;
-    if (nargs > 1) {
+
+    Py_ssize_t nkw = kwnames ? PyTuple_GET_SIZE(kwnames) : 0;
+    if (nargs + nkw > 1) {
         PyErr_SetString(PyExc_TypeError, "acquire() takes at most 1 argument");
         return NULL;
     }
+
     if (nargs == 1) {
+        blocking = PyObject_IsTrue(args[0]);
+        if (blocking < 0)
+            return NULL;
+    } else if (nkw == 1) {
+        PyObject *key = PyTuple_GET_ITEM(kwnames, 0);
+        if (PyUnicode_CompareWithASCIIString(key, "blocking") != 0) {
+            PyErr_Format(PyExc_TypeError,
+                         "acquire() got an unexpected keyword argument '%U'",
+                         key);
+            return NULL;
+        }
         blocking = PyObject_IsTrue(args[0]);
         if (blocking < 0)
             return NULL;
@@ -238,7 +253,7 @@ Lock_exit(LockObject *self, PyObject *const *args, Py_ssize_t nargs)
 }
 
 static PyMethodDef Lock_methods[] = {
-    {"acquire", (PyCFunction)Lock_acquire, METH_FASTCALL,
+    {"acquire", (PyCFunction)(void(*)(void))Lock_acquire, METH_FASTCALL | METH_KEYWORDS,
      PyDoc_STR("Acquire the lock, blocking or non-blocking.\n"
                "Returns True if the lock was acquired, False otherwise.")},
     {"release", (PyCFunction)Lock_release, METH_NOARGS,
