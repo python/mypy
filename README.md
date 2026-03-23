@@ -209,3 +209,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-6544: Verbose diagnostics can be improved -->
+
+
+<!-- fix-issue-4954: 'in' operator rejected with union right operand -->
