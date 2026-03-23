@@ -215,3 +215,6 @@ To contribute to the mypyc project, check out the issue tracker at <https://gith
 
 
 <!-- fix-issue-16508: stubtest nit: arguments vs. parameters -->
+
+
+<!-- fix-issue-10250: Exclude multiple directories on mypy commandline: improve do -->
