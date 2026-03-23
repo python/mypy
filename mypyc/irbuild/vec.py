@@ -145,6 +145,16 @@ def vec_create_initialized(
     init = builder.coerce(init, item_type, line)
     vec = vec_create(builder, vtype, length, line)
 
+    # Guard against computing &buf->items when buf is NULL (length == 0).
+    # vec_create returns buf=NULL for empty vecs, and accessing members
+    # through a NULL pointer is undefined behavior that GCC -O3 can exploit.
+    fill_body = BasicBlock()
+    fill_end = BasicBlock()
+    zero = Integer(0, c_pyssize_t_rprimitive)
+    comp = builder.add(ComparisonOp(length, zero, ComparisonOp.SGT, line=line))
+    builder.add(Branch(comp, fill_body, fill_end, Branch.BOOL))
+    builder.activate_block(fill_body)
+
     items_start = vec_items(builder, vec)
     step = step_size(item_type)
     items_end = builder.int_add(items_start, builder.int_mul(length, step))
@@ -154,6 +164,9 @@ def vec_create_initialized(
     )
     builder.set_mem(for_loop.index, item_type, init)
     for_loop.finish()
+
+    builder.goto(fill_end)
+    builder.activate_block(fill_end)
 
     builder.keep_alive([vec], line)
     return vec
