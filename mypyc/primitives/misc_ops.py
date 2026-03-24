@@ -176,6 +176,14 @@ import_from_many_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Get attributes from an already-imported native module and store them in globals.
+get_native_attrs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetNativeAttrs",
+    error_kind=ERR_MAGIC,
+)
+
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
     arg_types=[],

@@ -881,6 +881,35 @@ PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *
     return mod;
 }
 
+// Import attributes from an already-imported native module and store them
+// in the globals dict.  Returns the module on success, NULL on error.
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names,
+                                   PyObject *as_names, PyObject *globals) {
+    PyObject *mod = PyImport_GetModule(mod_id);
+    if (mod == NULL) {
+        if (!PyErr_Occurred()) {
+            PyErr_Format(PyExc_ImportError, "module '%U' is not in sys.modules", mod_id);
+        }
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
+        PyObject *name = PyTuple_GET_ITEM(names, i);
+        PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
+        PyObject *obj = PyObject_GetAttr(mod, name);
+        if (obj == NULL) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+        int ret = CPyDict_SetItem(globals, as_name, obj);
+        Py_DECREF(obj);
+        if (ret < 0) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+    }
+    return mod;
+}
+
 // From CPython
 static PyObject *
 CPy_BinopTypeError(PyObject *left, PyObject *right, const char *op) {

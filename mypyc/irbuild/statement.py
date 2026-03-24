@@ -118,6 +118,7 @@ from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
+    get_native_attrs_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -541,17 +542,23 @@ def transform_import_from_buckets(
             transform_imports_without_grouping(builder, group)
         elif bucket.kind == IMPORT_NATIVE_ATTR:
             builder.gen_import(module_id, line)
-            module_obj = builder.load_module(module_id)
-            globals_dict = builder.load_globals_dict()
-            for name, as_name in zip(bucket.names, bucket.as_names):
-                attr = builder.py_get_attr(module_obj, name, line)
-                builder.gen_method_call(
-                    globals_dict,
-                    "__setitem__",
-                    [builder.load_str(as_name), attr],
-                    result_type=None,
-                    line=line,
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
                 )
+            module = builder.call_c(
+                get_native_attrs_op,
+                [
+                    builder.load_str(module_id),
+                    names_literal,
+                    as_names_literal,
+                    builder.load_globals_dict(),
+                ],
+                line,
+            )
         else:
             assert bucket.kind == IMPORT_NON_NATIVE
             # Note that we miscompile import from inside of functions here,
