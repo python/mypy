@@ -484,7 +484,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if op.is_propset:
+        if cl.get_method(op.attr):
             # Again, use vtable access for properties...
             assert not op.is_init and op.error_kind == ERR_FALSE, "%s %d %d %s" % (
                 op.attr,

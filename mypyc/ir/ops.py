@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
+from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
@@ -926,8 +927,14 @@ class SetAttr(RegisterOp):
         self.is_init = False
 
         cl = self.class_type.class_ir
+        is_propset = False
+        for ir in cl.mro:
+            propset = ir.method_decls.get(PROPSET_PREFIX + attr)
+            if propset is not None:
+                is_propset = not propset.implicit
+                break
         # If True, this op represents calling a property setter.
-        self.is_propset = cl.get_method(self.attr) is not None
+        self.is_propset = is_propset
 
     def mark_as_initializer(self) -> None:
         self.is_init = True
