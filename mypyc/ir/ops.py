@@ -909,10 +909,7 @@ class GetAttr(RegisterOp):
 
 @final
 class SetAttr(RegisterOp):
-    """obj.attr = src (for a native object)
-
-    Steals the reference to src.
-    """
+    """obj.attr = src (for a native object)"""
 
     error_kind = ERR_FALSE
 
@@ -928,6 +925,10 @@ class SetAttr(RegisterOp):
         # and we don't use a setter
         self.is_init = False
 
+        cl = self.class_type.class_ir
+        # If True, this op represents calling a property setter.
+        self.is_propset = cl.get_method(self.attr) is not None
+
     def mark_as_initializer(self) -> None:
         self.is_init = True
         self.error_kind = ERR_NEVER
@@ -940,6 +941,10 @@ class SetAttr(RegisterOp):
         self.obj, self.src = new
 
     def stolen(self) -> list[Value]:
+        # The property setter method increfs the passed value so don't treat it as a steal
+        # to avoid leaking.
+        if self.is_propset:
+            return []
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:

@@ -507,11 +507,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     op.attr,
                 )
             )
-            # The property setter method increfs the passed value (src) so we need to decref it here
-            # to avoid leaking.
-            src_rtype = op.src.type
-            if src_rtype.is_refcounted:
-                self.emitter.emit_dec_ref(src, src_rtype)
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
