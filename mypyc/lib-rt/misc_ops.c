@@ -1470,10 +1470,6 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
             goto fail;
         }
-
-        if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
-            goto fail;
-        }
     }
 
     // Set __package__ before executing the module body so it is available
@@ -1530,6 +1526,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
+    // Match CPython import semantics: publish parent.child only after the
+    // child module finished executing successfully.
+    if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
+        goto fail;
+    }
+
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
     return modobj;
@@ -1546,6 +1548,7 @@ fail:
     }
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
+    Py_DECREF(modobj);
     return NULL;
 }
 

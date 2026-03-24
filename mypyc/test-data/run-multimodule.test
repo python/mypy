@@ -344,6 +344,31 @@ assert top_spec.submodule_search_locations is None
 # __spec__ should be available at init time
 assert native.other_top._spec.name == "other_top"
 
+[case testNativeSubmoduleFailureDoesNotBindParentEarly]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+[file other_pkg/__init__.py]
+x = 1
+[file other_pkg/other_sub.py]
+import other_pkg
+
+if hasattr(other_pkg, "other_sub"):
+    raise RuntimeError("parent attr visible too early")
+raise RuntimeError("boom from other_sub")
+[file driver.py]
+import sys
+import other_pkg
+
+try:
+    import native
+except RuntimeError as e:
+    assert str(e) == "boom from other_sub"
+else:
+    assert False, "import native should fail"
+
+assert not hasattr(other_pkg, "other_sub")
+assert "other_pkg.other_sub" not in sys.modules
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
