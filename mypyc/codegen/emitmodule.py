@@ -1058,8 +1058,12 @@ class GroupGenerator:
             f'"{module_name}",',
             "NULL, /* docstring */",
             "0,       /* size of per-interpreter state of the module */",
-            f"{module_prefix}module_methods,",
         )
+        if self.multi_phase_init:
+            # Methods are added later via PyModule_AddFunctions in CPyExec_*.
+            emitter.emit_line("NULL, /* m_methods */")
+        else:
+            emitter.emit_line(f"{module_prefix}module_methods,")
         if self.multi_phase_init and not self.use_shared_lib:
             slots_name = f"{module_prefix}_slots"
             emitter.emit_line(f"{slots_name}, /* m_slots */")
