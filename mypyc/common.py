@@ -101,7 +101,7 @@ IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 # The file extension suffix for C extension modules on the current platform
 # (e.g. ".cpython-312-x86_64-linux-gnu.so" or ".pyd").
 _EXT_SUFFIXES: Final = importlib.machinery.EXTENSION_SUFFIXES
-EXT_SUFFIX: Final[str] = _EXT_SUFFIXES[0] if _EXT_SUFFIXES else ".so"
+EXT_SUFFIX: Final = _EXT_SUFFIXES[0] if _EXT_SUFFIXES else ".so"
 
 
 JsonDict = dict[str, Any]

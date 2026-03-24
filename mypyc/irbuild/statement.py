@@ -344,8 +344,9 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
     #   import mod4        <| group #3
     #   import mod5         |
     #
-    # Every time we encounter the first import of a group, build IR to call a
-    # helper function that will perform all of the group's imports in one go.
+    # Every time we encounter the first import of a group, build IR to import
+    # all modules in the group. Native same-group imports are handled individually,
+    # while non-native imports use a table-driven helper for compactness.
 
     if not node.is_top_level:
         # (*) Unless the import is within a function. In that case, prioritize
@@ -388,6 +389,7 @@ def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucke
 def split_import_group_to_python_and_native(
     builder: IRBuilder, group: list[Import]
 ) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
+    """Split imports into consecutive runs of native same-group and non-native imports."""
     flat_list = []
     for imp in group:
         for mod_id, as_name in imp.ids:

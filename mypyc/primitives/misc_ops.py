@@ -129,7 +129,7 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module (plain)
+# Import a module using the Python import system.
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
@@ -137,7 +137,7 @@ import_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Import a native module (plain)
+# Import a native same-group module directly via C-level init/exec functions.
 native_import_op = custom_op(
     # (module name, init-only function, exec function, shared lib __file__, ext suffix, is_package)
     arg_types=[

@@ -484,6 +484,7 @@ class IRBuilder:
 
         self.activate_block(needs_import)
         if self.is_native_module(module) and self.is_same_group_module(module):
+            # Use custom import machinery for native-to-native imports in the same group
             init_only_func = self.add(
                 LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
             )
@@ -515,6 +516,7 @@ class IRBuilder:
                 line,
             )
         else:
+            # Import using generic Python C API
             value = self.call_c(import_op, [self.load_str(module, line)], line)
         self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)

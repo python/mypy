@@ -1411,8 +1411,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     // Create the module object without executing the module body.
     // CPyInitOnly_* uses an internal static to cache the module object.
-    // If the module was already created (e.g. in a circular import), it
-    // returns the cached object. We detect this by checking sys.modules.
+    // We then check sys.modules to determine whether the module body
+    // has already been executed (or is being executed in a circular import).
     PyObject *module_dict = PyImport_GetModuleDict();
     if (module_dict == NULL) {
         Py_XDECREF(parent_module);
