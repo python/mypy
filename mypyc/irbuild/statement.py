@@ -367,25 +367,6 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             transform_non_native_import_group(builder, subgroup)
 
 
-def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucket]:
-    """Group consecutive items by kind (first element) into ImportFromBuckets.
-
-    Each item is a (kind, name, as_name) tuple.
-    """
-    result: list[ImportFromBucket] = []
-    i = 0
-    while i < len(items):
-        kind = items[i][0]
-        i0 = i
-        i += 1
-        while i < len(items) and items[i][0] == kind:
-            i += 1
-        result.append(
-            ImportFromBucket(kind, [t[1] for t in items[i0:i]], [t[2] for t in items[i0:i]])
-        )
-    return result
-
-
 def split_import_group_to_python_and_native(
     builder: IRBuilder, group: list[Import]
 ) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
@@ -498,6 +479,25 @@ class ImportFromBucket:
         self.kind = kind
         self.names = names
         self.as_names = as_names
+
+
+def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucket]:
+    """Group consecutive items by kind (first element) into ImportFromBuckets.
+
+    Each item is a (kind, name, as_name) tuple.
+    """
+    result: list[ImportFromBucket] = []
+    i = 0
+    while i < len(items):
+        kind = items[i][0]
+        i0 = i
+        i += 1
+        while i < len(items) and items[i][0] == kind:
+            i += 1
+        result.append(
+            ImportFromBucket(kind, [t[1] for t in items[i0:i]], [t[2] for t in items[i0:i]])
+        )
+    return result
 
 
 def classify_import_from(
