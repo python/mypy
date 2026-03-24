@@ -1994,7 +1994,7 @@ L0:
     inc_ref r2
     return r2
 
-[case testPropertySetterCallWithNonRefcountedObject]
+[case testPropertySetterCallWithNonRefcountedObject_64bit]
 from mypy_extensions import i64
 
 class A:
