@@ -418,12 +418,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 fallback_result = self.emitter.temp_name()
                 self.declarations.emit_line(f"PyObject *{fallback_attr};")
                 self.declarations.emit_line(f"PyObject *{fallback_result};")
-                self.emit_line(
-                    f"if (!(Py_TYPE({obj})->tp_flags & CPy_TPFLAGS_MYPYC_COMPILED)) {{"
-                )
-                self.emit_line(
-                    f'{fallback_attr} = PyUnicode_FromString("{op.attr}");'
-                )
+                self.emit_line(f"if (!(Py_TYPE({obj})->tp_flags & CPy_TPFLAGS_MYPYC_COMPILED)) {{")
+                self.emit_line(f'{fallback_attr} = PyUnicode_FromString("{op.attr}");')
                 self.emit_line(
                     f"{fallback_result} = PyObject_GenericGetAttr((PyObject *){obj}, {fallback_attr});"
                 )
