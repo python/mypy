@@ -275,6 +275,7 @@ L1:
     r5 = r4 < 5 :: signed
     if r5 goto L2 else goto L4 :: bool
 L2:
+    x = r4
     r6 = 'x'
     r7 = load_address PyUnicode_Type
     r8 = r7
@@ -283,7 +284,6 @@ L2:
 L3:
     r10 = r4 + 1
     r4 = r10
-    x = r10
     goto L1
 L4:
     return r3
