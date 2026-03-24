@@ -31,6 +31,7 @@ import filelock
 
 from mypyc.build import LIBRT_MODULES, get_cflags, include_dir
 from mypyc.common import RUNTIME_C_FILES
+from mypyc.test.config import PREFIX
 
 
 def _librt_build_hash(experimental: bool, opt_level: str) -> str:
@@ -153,8 +154,7 @@ def get_librt_path(experimental: bool = True, opt_level: str = "0") -> str:
         Path to directory containing built librt modules.
     """
     # Use build/librt-cache/ under the repo root (gitignored)
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    cache_root = os.path.join(repo_root, "build", "librt-cache")
+    cache_root = os.path.join(PREFIX, "build", "librt-cache")
     build_hash = _librt_build_hash(experimental, opt_level)
     build_dir = os.path.join(cache_root, f"librt-{build_hash}")
     lock_file = os.path.join(cache_root, f"librt-{build_hash}.lock")
