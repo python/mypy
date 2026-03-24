@@ -603,6 +603,10 @@ def get_cflags(
             "-Wno-unknown-warning-option",
             "-Wno-unused-but-set-variable",
             "-Wno-ignored-optimization-argument",
+            # GCC at -O3 false-positives on struct hack (items[1]) in vec buffers
+            "-Wno-array-bounds",
+            "-Wno-stringop-overread",
+            "-Wno-stringop-overflow",
             # Disables C Preprocessor (cpp) warnings
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",

@@ -222,6 +222,11 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
 
 
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
+    """Return pointer to first item in vec's buf.
+
+    Safe to call even when buf is NULL (empty vec), since GetElementPtr
+    uses offsetof-based arithmetic instead of &((T*)p)->field.
+    """
     vtype = cast(RVec, vecobj.type)
     buf = builder.get_element(vecobj, "buf")
     return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
