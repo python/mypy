@@ -467,7 +467,9 @@ def construct_groups(
         for files, name in separate:
             normalized_files = {os.path.normpath(f) for f in files}
             group_sources = [
-                src for src in sources if os.path.normpath(src.path) in normalized_files
+                src
+                for src in sources
+                if src.path is not None and os.path.normpath(src.path) in normalized_files
             ]
             groups.append((group_sources, name))
             used_sources.update(group_sources)
