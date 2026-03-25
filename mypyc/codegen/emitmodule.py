@@ -1195,9 +1195,7 @@ class GroupGenerator:
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
-    def emit_init_only_func(
-        self, emitter: Emitter, module_name: str, module_prefix: str
-    ) -> None:
+    def emit_init_only_func(self, emitter: Emitter, module_name: str, module_prefix: str) -> None:
         """Emit CPyInitOnly_* which creates the module object without executing the body.
 
         This allows the caller to set up attributes like __file__ and __package__
@@ -1205,9 +1203,7 @@ class GroupGenerator:
         """
         init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
         init_only_decl = f"PyObject *{init_only_name}(void)"
-        emitter.context.declarations[init_only_name] = HeaderDeclaration(
-            init_only_decl + ";"
-        )
+        emitter.context.declarations[init_only_name] = HeaderDeclaration(init_only_decl + ";")
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(init_only_decl, "{")
         emitter.emit_lines(

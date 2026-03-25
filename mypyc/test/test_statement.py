@@ -118,16 +118,8 @@ class TestStatementHelpers(unittest.TestCase):
         )
 
         assert [(bucket.kind, bucket.names, bucket.as_names) for bucket in buckets] == [
-            (
-                IMPORT_NATIVE_SUBMODULE,
-                ["native_a", "native_b"],
-                ["native_a", "native_b_alias"],
-            ),
-            (
-                IMPORT_NON_NATIVE,
-                ["foreign_a", "foreign_b"],
-                ["foreign_a", "foreign_b_alias"],
-            ),
+            (IMPORT_NATIVE_SUBMODULE, ["native_a", "native_b"], ["native_a", "native_b_alias"]),
+            (IMPORT_NON_NATIVE, ["foreign_a", "foreign_b"], ["foreign_a", "foreign_b_alias"]),
         ]
 
     def test_classify_import_from_treats_missing_name_under_native_parent_as_attr(self) -> None:
@@ -150,11 +142,7 @@ class TestStatementHelpers(unittest.TestCase):
         builder = make_builder()
 
         buckets = classify_import_from(
-            builder,
-            "pkg",
-            ["attr_name"],
-            ["attr_alias"],
-            parent_is_native=False,
+            builder, "pkg", ["attr_name"], ["attr_alias"], parent_is_native=False
         )
 
         assert [(bucket.kind, bucket.names, bucket.as_names) for bucket in buckets] == [
