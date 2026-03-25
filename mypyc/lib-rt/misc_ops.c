@@ -1226,16 +1226,16 @@ static int CPyImport_InitSpecClasses(void) {
 static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
                                     PyObject *shared_lib_file, PyObject *ext_suffix,
                                     Py_ssize_t is_package) {
-    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    PyObject *file = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    if (rc < 0) {
+        return -1;
+    }
     if (file != NULL) {
         // __file__ already set, nothing to do.
         Py_DECREF(file);
         return 0;
     }
-    if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
-        return -1;
-    }
-    PyErr_Clear();
     // Derive __file__ from the shared library's __file__ (for its
     // directory), the module name (dots -> path separators), and the
     // extension suffix.  E.g. for module "a.b.c", shared lib
@@ -1311,13 +1311,19 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
 // Set __path__ to [dirname(__file__)] on a package module if not already set.
 // Returns 0 on success, -1 on error.
 static int CPyImport_SetModulePath(PyObject *modobj) {
-    if (PyObject_HasAttrString(modobj, "__path__")) {
+    PyObject *existing_path = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__path__", &existing_path);
+    if (rc < 0) {
+        return -1;
+    }
+    if (existing_path != NULL) {
+        Py_DECREF(existing_path);
         return 0;
     }
-    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
-    if (file == NULL) {
-        PyErr_Clear();
-        return 0;
+    PyObject *file = NULL;
+    rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    if (rc <= 0) {
+        return rc;
     }
     PyObject *os_path = PyImport_ImportModule("os.path");
     if (os_path == NULL) {
@@ -1335,29 +1341,34 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
         CPyError_OutOfMemory();
     }
     PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
-    int rc = PyObject_SetAttrString(modobj, "__path__", path_list);
+    int ret = PyObject_SetAttrString(modobj, "__path__", path_list);
     Py_DECREF(path_list);
-    return rc;
+    return ret;
 }
 
 // Set __spec__ and __loader__ on modobj if not already set.
 // Returns 0 on success, -1 on error.
 static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
                                     Py_ssize_t is_package) {
-    PyObject *spec = PyObject_GetAttrString(modobj, "__spec__");
+    PyObject *spec = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__spec__", &spec);
+    if (rc < 0) {
+        return -1;
+    }
     if (spec != NULL && spec != Py_None) {
         // __spec__ already set.
         Py_DECREF(spec);
         return 0;
     }
     Py_XDECREF(spec);
-    PyErr_Clear();
     if (CPyImport_InitSpecClasses() < 0) {
         return -1;
     }
-    PyObject *file = PyObject_GetAttrString(modobj, "__file__");
+    PyObject *file = NULL;
+    if (PyObject_GetOptionalAttrString(modobj, "__file__", &file) < 0) {
+        return -1;
+    }
     if (file == NULL) {
-        PyErr_Clear();
         file = Py_None;
         Py_INCREF(file);
     }
@@ -1383,7 +1394,12 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
     }
     if (is_package) {
         // Set submodule_search_locations from __path__
-        PyObject *path = PyObject_GetAttrString(modobj, "__path__");
+        PyObject *path = NULL;
+        if (PyObject_GetOptionalAttrString(modobj, "__path__", &path) < 0) {
+            Py_DECREF(spec);
+            Py_DECREF(loader);
+            return -1;
+        }
         if (path != NULL) {
             if (PyObject_SetAttrString(spec, "submodule_search_locations", path) < 0) {
                 Py_DECREF(path);
@@ -1392,8 +1408,6 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
                 return -1;
             }
             Py_DECREF(path);
-        } else {
-            PyErr_Clear();
         }
     }
     if (PyObject_SetAttrString(modobj, "__spec__", spec) < 0 ||
@@ -1496,10 +1510,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
     // top-level non-package module, it is "".
     {
-        PyObject *pkg = PyObject_GetAttrString(modobj, "__package__");
+        PyObject *pkg = NULL;
+        if (PyObject_GetOptionalAttrString(modobj, "__package__", &pkg) < 0) {
+            goto fail;
+        }
         if (pkg == NULL || pkg == Py_None) {
             Py_XDECREF(pkg);
-            PyErr_Clear();
             PyObject *package_name;
             if (is_package) {
                 package_name = module_name;
