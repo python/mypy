@@ -549,7 +549,7 @@ def transform_import_from_buckets(
                 as_names_literal = builder.add(
                     LoadLiteral(tuple(bucket.as_names), object_rprimitive)
                 )
-            module = builder.call_c(
+            builder.call_c(
                 get_native_attrs_op,
                 [
                     builder.load_str(module_id),
