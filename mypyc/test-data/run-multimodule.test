@@ -235,8 +235,12 @@ _file: str = __file__
 def func() -> int:
     return 42
 [file driver.py]
+import importlib.machinery
 import native
 assert native.f() == 42
+# Verify that __file__ captured at init time has a valid extension suffix
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_sub._file.endswith(s) for s in ext_suffixes), native.other_sub._file
 
 [case testNativeImportPathAttribute]
 # separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
