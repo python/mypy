@@ -369,6 +369,49 @@ else:
 assert not hasattr(other_pkg, "other_sub")
 assert "other_pkg.other_sub" not in sys.modules
 
+[case testNativeImportUsesExistingNativeSysModulesObject]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.value
+[file other_top.py]
+value = 42
+[file driver.py]
+import native
+import other_top
+
+assert native.other_top is other_top
+assert native.f() == 42
+
+[case testNativeImportRejectsForeignSysModulesObject]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.value
+[file other_top.py]
+value = 42
+[file driver.py]
+import sys
+import types
+
+import other_top
+
+fake = types.ModuleType("other_top")
+fake.value = -1
+sys.modules["other_top"] = fake
+
+try:
+    import native
+except ImportError as e:
+    assert "other_top" in str(e)
+    assert "replaced after initialization" in str(e)
+else:
+    assert False, "import native should fail"
+
+assert sys.modules["other_top"] is fake
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 

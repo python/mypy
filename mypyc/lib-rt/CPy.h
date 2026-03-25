@@ -964,6 +964,7 @@ PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names, PyObject *
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
+                                 CPyModule **module_static,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
 

@@ -62,6 +62,7 @@ from mypyc.common import (
     BITMAP_BITS,
     EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
+    MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
     shared_lib_name,
@@ -83,6 +84,7 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
+    LoadAddress,
     LoadGlobal,
     LoadStatic,
     MethodCall,
@@ -115,6 +117,7 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
 )
@@ -491,6 +494,12 @@ class IRBuilder:
             exec_func = self.add(
                 LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
             )
+            module_static = self.add(
+                LoadAddress(
+                    object_pointer_rprimitive,
+                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                )
+            )
             group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 shared_lib_mod_name = shared_lib_name(group_name)
@@ -509,6 +518,7 @@ class IRBuilder:
                     self.load_str(module, line),
                     init_only_func,
                     exec_func,
+                    module_static,
                     shared_lib_file,
                     ext_suffix,
                     Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),

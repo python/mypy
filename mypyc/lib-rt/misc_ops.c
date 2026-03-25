@@ -1410,10 +1410,12 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
+                                 CPyModule **module_static,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
+    PyObject *exc_type, *exc_val, *exc_tb;
     Py_ssize_t name_len = PyUnicode_GetLength(module_name);
     if (name_len < 0) {
         return NULL;
@@ -1449,6 +1451,29 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         return NULL;
     }
 
+    PyObject *existing = PyDict_GetItemWithError(module_dict, module_name);
+    if (existing != NULL) {
+        if (*module_static != NULL) {
+            if (existing == (PyObject *)*module_static) {
+                Py_INCREF(existing);
+                Py_XDECREF(parent_module);
+                Py_XDECREF(child_name);
+                return existing;
+            }
+            PyErr_Format(PyExc_ImportError,
+                         "native module '%U' in sys.modules was replaced after initialization",
+                         module_name);
+            Py_XDECREF(parent_module);
+            Py_XDECREF(child_name);
+            return NULL;
+        }
+    }
+    if (PyErr_Occurred()) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        return NULL;
+    }
+
     PyObject *modobj = init_only_fn();
     if (modobj == NULL) {
         Py_XDECREF(parent_module);
@@ -1456,20 +1481,15 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         return NULL;
     }
 
-    // Check if the module was already imported (e.g. via CPyInit_* from the
-    // standard import machinery, or by a previous CPyImport_ImportNative call).
-    int already_imported = PyDict_Contains(module_dict, module_name);
-    if (already_imported < 0) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
-        Py_DECREF(modobj);
-        return NULL;
+    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+        goto fail;
     }
 
-    if (!already_imported) {
-        if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
-            goto fail;
-        }
+    if (*module_static != (CPyModule *)modobj) {
+        PyErr_Format(PyExc_ImportError,
+                     "native module '%U' was initialized inconsistently",
+                     module_name);
+        goto fail;
     }
 
     // Set __package__ before executing the module body so it is available
@@ -1512,15 +1532,6 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
-    // If the module was already imported, skip executing the module body
-    // (it was already executed). This handles circular imports and modules
-    // first imported via the standard Python import machinery (CPyInit_*).
-    if (already_imported) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
-        return modobj;
-    }
-
     // Now execute the module body, with __file__ and __package__ already set.
     if (exec_fn(modobj) != 0) {
         goto fail;
@@ -1537,15 +1548,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     return modobj;
 
 fail:
-    // Clean up on failure: if we added the module to sys.modules, remove it
-    // so that a subsequent import attempt will retry initialization.
-    if (!already_imported) {
-        PyObject *exc_type, *exc_val, *exc_tb;
-        PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
-        PyObject_DelItem(module_dict, module_name);
-        PyErr_Clear();
-        PyErr_Restore(exc_type, exc_val, exc_tb);
-    }
+    // Clean up on failure so that a subsequent import attempt will retry
+    // initialization.
+    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+    PyObject_DelItem(module_dict, module_name);
+    PyErr_Clear();
+    PyErr_Restore(exc_type, exc_val, exc_tb);
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
     Py_DECREF(modobj);
