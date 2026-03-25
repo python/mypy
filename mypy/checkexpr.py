@@ -558,6 +558,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     and isinstance(node.node, TypeAlias)
                     and not node.node.no_args
                     and not (
+                        isinstance(target := get_proper_type(node.node.target), TupleType)
+                        and tuple_fallback(target).type.fullname != "builtins.tuple"
+                    )
+                    and not (
                         isinstance(union_target := get_proper_type(node.node.target), UnionType)
                         and (
                             union_target.uses_pep604_syntax

@@ -1900,6 +1900,21 @@ isinstance(x, It2)  # E: Parameterized generics cannot be used with class or ins
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testIsinstanceTypeAliasToNamedTuple]
+# flags: --warn-unreachable
+from typing import Any, NamedTuple
+from typing_extensions import TypeAlias
+
+class Foo(NamedTuple):
+    pass
+
+Alias: TypeAlias = Foo
+
+def is_foo(x: Any) -> bool:
+    return isinstance(x, Alias)
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testIssubclassTypeArgs]
 # flags: --warn-unreachable
 from typing import Iterable, TypeVar
