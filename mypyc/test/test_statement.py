@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
+from mypy.build import Graph
 from mypy.nodes import Import, MypyFile
 from mypy.options import Options
 from mypyc.errors import Errors
-from mypyc.irbuild.builder import IRBuilder, IRVisitor
+from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.statement import (
@@ -17,11 +19,8 @@ from mypyc.irbuild.statement import (
     import_globals_id_and_name,
     split_import_group_to_python_and_native,
 )
+from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.options import CompilerOptions
-
-
-class DummyVisitor(IRVisitor):
-    pass
 
 
 def make_builder(
@@ -44,11 +43,11 @@ def make_builder(
     builder = IRBuilder(
         module_name,
         {},
-        {name: object() for name in (graph or set())},
+        cast(Graph, {name: object() for name in (graph or set())}),
         errors,
         Mapper(group_map),
         pbv,
-        DummyVisitor(),
+        IRBuilderVisitor(),
         CompilerOptions(),
         {},
     )
