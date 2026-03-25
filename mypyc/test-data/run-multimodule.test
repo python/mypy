@@ -113,6 +113,28 @@ root_dir = os.path.dirname(native.__file__)
 assert os.path.dirname(native.other_sub.__file__) == os.path.join(root_dir, "other_pkg"), \
     native.other_sub.__file__
 
+[case testImportFromBucketingEndToEnd]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub as sub_alias, other_attr as attr_alias, py_sub as py_alias
+[file other_pkg/__init__.py]
+other_attr = 41
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 10
+[file other_pkg/py_sub.py]
+def func() -> int:
+    return 20
+[file driver.py]
+import importlib
+import native
+other_sub = importlib.import_module("other_pkg.other_sub")
+py_sub = importlib.import_module("other_pkg.py_sub")
+assert native.sub_alias is other_sub
+assert native.attr_alias == 41
+assert native.py_alias is py_sub
+assert native.sub_alias.func() == 10
+assert native.py_alias.func() == 20
+
 [case testNativeTopLevelModuleFileDir]
 # separate: [(["native.py", "other_top.py"], "testgroup")]
 import other_top
