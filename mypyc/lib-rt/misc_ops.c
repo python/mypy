@@ -1207,13 +1207,16 @@ static int CPyImport_InitSpecClasses(void) {
         Py_CLEAR(CPyImport_ExtFileLoaderClass);
         return -1;
     }
-    CPyImport_SpecKwnames = PyTuple_Pack(2,
-        PyUnicode_InternFromString("origin"),
-        PyUnicode_InternFromString("is_package"));
+    PyObject *origin_str = PyUnicode_InternFromString("origin");
+    PyObject *is_package_str = PyUnicode_InternFromString("is_package");
+    if (origin_str == NULL || is_package_str == NULL) {
+        CPyError_OutOfMemory();
+    }
+    CPyImport_SpecKwnames = PyTuple_Pack(2, origin_str, is_package_str);
+    Py_DECREF(origin_str);
+    Py_DECREF(is_package_str);
     if (CPyImport_SpecKwnames == NULL) {
-        Py_CLEAR(CPyImport_ModuleSpecClass);
-        Py_CLEAR(CPyImport_ExtFileLoaderClass);
-        return -1;
+        CPyError_OutOfMemory();
     }
     return 0;
 }
@@ -1258,9 +1261,7 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         PyObject *dot_str = PyUnicode_FromString(".");
         PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
         if (dot_str == NULL || sep_str == NULL) {
-            Py_XDECREF(dot_str);
-            Py_XDECREF(sep_str);
-            return -1;
+            CPyError_OutOfMemory();
         }
         PyObject *module_path = PyUnicode_Replace(module_name, dot_str, sep_str, -1);
         Py_DECREF(dot_str);
@@ -1331,8 +1332,7 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
     }
     PyObject *path_list = PyList_New(1);
     if (path_list == NULL) {
-        Py_DECREF(dir);
-        return -1;
+        CPyError_OutOfMemory();
     }
     PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
     int rc = PyObject_SetAttrString(modobj, "__path__", path_list);
@@ -1425,12 +1425,11 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         // Import the parent package first to preserve import ordering semantics.
         PyObject *parent_name = PyUnicode_Substring(module_name, 0, dot);
         if (parent_name == NULL) {
-            return NULL;
+            CPyError_OutOfMemory();
         }
         child_name = PyUnicode_Substring(module_name, dot + 1, name_len);
         if (child_name == NULL) {
-            Py_DECREF(parent_name);
-            return NULL;
+            CPyError_OutOfMemory();
         }
         parent_module = PyImport_Import(parent_name);
         Py_DECREF(parent_name);
@@ -1509,10 +1508,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 package_name = PyUnicode_Substring(module_name, 0, dot);
             } else {
                 package_name = PyUnicode_FromString("");
+                if (package_name == NULL) {
+                    CPyError_OutOfMemory();
+                }
             }
-            if (package_name == NULL ||
-                    PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
-                Py_XDECREF(package_name);
+            if (PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
+                Py_DECREF(package_name);
                 goto fail;
             }
             Py_DECREF(package_name);
