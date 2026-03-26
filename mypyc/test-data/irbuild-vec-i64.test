@@ -337,13 +337,13 @@ L1:
     r3 = r2 < 5 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
+    x = r2
     r4 = x + 1
     r5 = VecI64Api.append(r1, r4)
     r1 = r5
 L3:
     r6 = r2 + 1
     r2 = r6
-    x = r6
     goto L1
 L4:
     return r1
@@ -464,9 +464,9 @@ def f():
     r2 :: short_int
     r3, ___tmp_6 :: i64
     r4 :: bit
-    r5 :: vec[i64]
-    r6 :: short_int
-    r7 :: i64
+    r5 :: i64
+    r6 :: vec[i64]
+    r7 :: short_int
 L0:
     r0 = VecI64Api.alloc(0, 0)
     r1 = r0
@@ -477,13 +477,13 @@ L1:
     r4 = int_lt r2, 14
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = VecI64Api.append(r1, ___tmp_6)
-    r1 = r5
+    r5 = r2 >> 1
+    ___tmp_6 = r5
+    r6 = VecI64Api.append(r1, ___tmp_6)
+    r1 = r6
 L3:
-    r6 = r2 + 2
-    r2 = r6
-    r7 = r6 >> 1
-    ___tmp_6 = r7
+    r7 = r2 + 2
+    r2 = r7
     goto L1
 L4:
     return r1

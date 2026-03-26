@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Callable, Sequence
+from typing import Final
 
 import mypy.nodes
 from mypy.nodes import (
@@ -117,6 +118,7 @@ from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
+    get_native_attrs_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -343,45 +345,94 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
     #   import mod4        <| group #3
     #   import mod5         |
     #
-    # Every time we encounter the first import of a group, build IR to call a
-    # helper function that will perform all of the group's imports in one go.
+    # Every time we encounter the first import of a group, build IR to import
+    # all modules in the group. Native same-group imports are handled individually,
+    # while non-native imports use a table-driven helper for compactness.
+
     if not node.is_top_level:
         # (*) Unless the import is within a function. In that case, prioritize
         # speed over codesize when generating IR.
-        globals = builder.load_globals_dict()
-        for mod_id, as_name in node.ids:
-            builder.gen_import(mod_id, node.line)
-            globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
-            builder.gen_method_call(
-                globals,
-                "__setitem__",
-                [builder.load_str(globals_name), builder.get_module(globals_id, node.line)],
-                result_type=None,
-                line=node.line,
-            )
+        group = [(mod_id, as_id, node.line) for mod_id, as_id in node.ids]
+        transform_imports_without_grouping(builder, group)
         return
 
     if node not in builder.module_import_groups:
         return
 
+    group_nodes = builder.module_import_groups[node]
+    subgroups = split_import_group_to_python_and_native(builder, group_nodes)
+    for subgroup, is_native in subgroups:
+        if is_native:
+            transform_imports_without_grouping(builder, subgroup)
+        else:
+            transform_non_native_import_group(builder, subgroup)
+
+
+def split_import_group_to_python_and_native(
+    builder: IRBuilder, group: list[Import]
+) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
+    """Split imports into consecutive runs of native same-group and non-native imports."""
+    flat_list = []
+    for imp in group:
+        for mod_id, as_name in imp.ids:
+            flat_list.append(
+                (
+                    mod_id,
+                    as_name,
+                    imp.line,
+                    builder.is_native_module(mod_id) and builder.is_same_group_module(mod_id),
+                )
+            )
+    result = []
+    i = 0
+    while i < len(flat_list):
+        i0 = i
+        is_native = flat_list[i][3]
+        i += 1
+        while i < len(flat_list) and flat_list[i][3] == is_native:
+            i += 1
+        result.append(([t[:3] for t in flat_list[i0:i]], is_native))
+    return result
+
+
+def transform_imports_without_grouping(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    globals = builder.load_globals_dict()
+    for mod_id, as_name, line in group:
+        builder.gen_import(mod_id, line)
+        globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
+        builder.gen_method_call(
+            globals,
+            "__setitem__",
+            [builder.load_str(globals_name), builder.get_module(globals_id, line)],
+            result_type=None,
+            line=line,
+        )
+
+
+def transform_non_native_import_group(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    """Transform a group of import statements that target non-native modules."""
     modules = []
     static_ptrs = []
     # To show the right line number on failure, we have to add the traceback
     # entry within the helper function (which is admittedly ugly). To drive
     # this, we need the line number corresponding to each module.
     mod_lines = []
-    for import_node in builder.module_import_groups[node]:
-        for mod_id, as_name in import_node.ids:
-            builder.imports[mod_id] = None
-            modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
-            mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
-            static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
-            mod_lines.append(Integer(import_node.line, c_pyssize_t_rprimitive))
+    first_line = group[0][2] if group else NO_TRACEBACK_LINE_NO
+    for mod_id, as_name, line in group:
+        builder.imports[mod_id] = None
+        modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
+        mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
+        static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
+        mod_lines.append(Integer(line, c_pyssize_t_rprimitive))
 
     static_array_ptr = builder.builder.setup_rarray(
-        object_pointer_rprimitive, static_ptrs, node.line
+        object_pointer_rprimitive, static_ptrs, first_line
     )
-    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, node.line)
+    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, first_line)
     builder.call_c(
         import_many_op,
         [
@@ -413,21 +464,125 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
 
     names = [name for name, _ in node.names]
     as_names = [as_name or name for name, as_name in node.names]
-    names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
-    if as_names == names:
-        # Reuse names tuple to reduce verbosity.
-        as_names_literal = names_literal
-    else:
-        as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
-    # Note that we miscompile import from inside of functions here,
-    # since that case *shouldn't* load everything into the globals dict.
-    # This probably doesn't matter much and the code runs basically right.
-    module = builder.call_c(
-        import_from_many_op,
-        [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
-        node.line,
-    )
-    builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
+
+    parent_is_native = builder.is_native_module(id) and builder.is_same_group_module(id)
+    transform_import_from_buckets(builder, id, names, as_names, node.line, parent_is_native)
+
+
+# Import kind constants for classify_import_from.
+IMPORT_NATIVE_SUBMODULE: Final = 0  # native same-group submodule (import directly)
+IMPORT_NATIVE_ATTR: Final = 1  # attribute of a native module (getattr)
+IMPORT_NON_NATIVE: Final = 2  # non-native or cross-group (use Python import system)
+
+
+class ImportFromBucket:
+    def __init__(self, kind: int, names: list[str], as_names: list[str]) -> None:
+        self.kind = kind
+        self.names = names
+        self.as_names = as_names
+
+
+def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucket]:
+    """Group consecutive items by kind (first element) into ImportFromBuckets.
+
+    Each item is a (kind, name, as_name) tuple.
+    """
+    result: list[ImportFromBucket] = []
+    i = 0
+    while i < len(items):
+        kind = items[i][0]
+        i0 = i
+        i += 1
+        while i < len(items) and items[i][0] == kind:
+            i += 1
+        result.append(
+            ImportFromBucket(kind, [t[1] for t in items[i0:i]], [t[2] for t in items[i0:i]])
+        )
+    return result
+
+
+def classify_import_from(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    parent_is_native: bool,
+) -> list[ImportFromBucket]:
+    """Classify each imported name and group consecutive same-kind names into buckets."""
+    flat_list = []
+    for name, as_name in zip(names, as_names):
+        submodule_id = f"{module_id}.{name}"
+        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
+            kind = IMPORT_NATIVE_SUBMODULE
+        elif parent_is_native and submodule_id not in builder.graph:
+            kind = IMPORT_NATIVE_ATTR
+        else:
+            kind = IMPORT_NON_NATIVE
+        flat_list.append((kind, name, as_name))
+    return group_consecutive(flat_list)
+
+
+def transform_import_from_buckets(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    line: int,
+    parent_is_native: bool,
+) -> None:
+    """Handle 'from module_id import names' by dispatching each bucket to the right strategy."""
+    buckets = classify_import_from(builder, module_id, names, as_names, parent_is_native)
+    module = None
+    for bucket in buckets:
+        if bucket.kind == IMPORT_NATIVE_SUBMODULE:
+            group: list[tuple[str, str | None, int]] = [
+                (f"{module_id}.{name}", as_name, line)
+                for name, as_name in zip(bucket.names, bucket.as_names)
+            ]
+            transform_imports_without_grouping(builder, group)
+        elif bucket.kind == IMPORT_NATIVE_ATTR:
+            builder.gen_import(module_id, line)
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
+            builder.call_c(
+                get_native_attrs_op,
+                [
+                    builder.load_str(module_id),
+                    names_literal,
+                    as_names_literal,
+                    builder.load_globals_dict(),
+                ],
+                line,
+            )
+        else:
+            assert bucket.kind == IMPORT_NON_NATIVE
+            # Note that we miscompile import from inside of functions here,
+            # since that case *shouldn't* load everything into the globals dict.
+            # This probably doesn't matter much and the code runs basically right.
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
+            module = builder.call_c(
+                import_from_many_op,
+                [
+                    builder.load_str(module_id),
+                    names_literal,
+                    as_names_literal,
+                    builder.load_globals_dict(),
+                ],
+                line,
+            )
+    if module is not None:
+        builder.add(InitStatic(module, module_id, namespace=NAMESPACE_MODULE))
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:

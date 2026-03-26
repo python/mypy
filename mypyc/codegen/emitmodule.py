@@ -991,6 +991,12 @@ class GroupGenerator:
                 self.emit_module_def_slots(emitter, module_prefix, module_name)
             self.emit_module_def_struct(emitter, module_name, module_prefix)
             self.emit_module_init_func(emitter, module_name, module_prefix)
+        elif self.use_shared_lib:
+            # Multi-phase init with shared lib: shims handle PyInit_*, but we
+            # still need CPyInitOnly_* for same-group native imports, and the
+            # PyModuleDef struct it depends on.
+            self.emit_module_def_struct(emitter, module_name, module_prefix)
+            self.emit_init_only_func(emitter, module_name, module_prefix)
 
     def emit_module_def_slots(
         self, emitter: Emitter, module_prefix: str, module_name: str
@@ -1052,8 +1058,12 @@ class GroupGenerator:
             f'"{module_name}",',
             "NULL, /* docstring */",
             "0,       /* size of per-interpreter state of the module */",
-            f"{module_prefix}module_methods,",
         )
+        if self.multi_phase_init:
+            # Methods are added later via PyModule_AddFunctions in CPyExec_*.
+            emitter.emit_line("NULL, /* m_methods */")
+        else:
+            emitter.emit_line(f"{module_prefix}module_methods,")
         if self.multi_phase_init and not self.use_shared_lib:
             slots_name = f"{module_prefix}_slots"
             emitter.emit_line(f"{slots_name}, /* m_slots */")
@@ -1098,7 +1108,9 @@ class GroupGenerator:
         exec function for each module and these will be called by the shims
         via Capsules.
         """
-        declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
+        exec_name = f"CPyExec_{exported_name(module_name)}"
+        declaration = f"int {exec_name}(PyObject *module)"
+        emitter.context.declarations[exec_name] = HeaderDeclaration(declaration + ";")
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("intern_strings();")
@@ -1183,16 +1195,42 @@ class GroupGenerator:
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
+    def emit_init_only_func(self, emitter: Emitter, module_name: str, module_prefix: str) -> None:
+        """Emit CPyInitOnly_* which creates the module object without executing the body.
+
+        This allows the caller to set up attributes like __file__ and __package__
+        before the module body runs. Used for same-group native imports.
+        """
+        init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
+        init_only_decl = f"PyObject *{init_only_name}(void)"
+        emitter.context.declarations[init_only_name] = HeaderDeclaration(init_only_decl + ";")
+        module_static = self.module_internal_static_name(module_name, emitter)
+        emitter.emit_lines(init_only_decl, "{")
+        emitter.emit_lines(
+            f"if ({module_static}) {{",
+            f"Py_INCREF({module_static});",
+            f"return {module_static};",
+            "}",
+        )
+        emitter.emit_lines(
+            f"{module_static} = PyModule_Create(&{module_prefix}module);",
+            f"return {module_static};",
+        )
+        emitter.emit_lines("}")
+        emitter.emit_line("")
+
     def emit_module_init_func(
         self, emitter: Emitter, module_name: str, module_prefix: str
     ) -> None:
         if not self.use_shared_lib:
             declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
         else:
-            declaration = f"PyObject *CPyInit_{exported_name(module_name)}(void)"
-        emitter.emit_lines(declaration, "{")
+            n = f"CPyInit_{exported_name(module_name)}"
+            declaration = f"PyObject *{n}(void)"
+            emitter.context.declarations[n] = HeaderDeclaration(declaration + ";")
 
         if self.multi_phase_init:
+            emitter.emit_lines(declaration, "{")
             def_name = f"{module_prefix}module"
             emitter.emit_line(f"return PyModuleDef_Init(&{def_name});")
             emitter.emit_line("}")
@@ -1200,13 +1238,14 @@ class GroupGenerator:
 
         exec_func = f"CPyExec_{exported_name(module_name)}"
 
-        # Store the module reference in a static and return it when necessary.
-        # This is separate from the *global* reference to the module that will
-        # be populated when it is imported by a compiled module. We want that
-        # reference to only be populated when the module has been successfully
-        # imported, whereas this we want to have to stop a circular import.
+        if self.use_shared_lib:
+            self.emit_init_only_func(emitter, module_name, module_prefix)
+
+        # Emit CPyInit_* / PyInit_* which creates the module and executes the body.
+        emitter.emit_lines(declaration, "{")
         module_static = self.module_internal_static_name(module_name, emitter)
 
+        emitter.emit_line("PyObject* modname = NULL;")
         emitter.emit_lines(
             f"if ({module_static}) {{",
             f"Py_INCREF({module_static});",
@@ -1219,9 +1258,35 @@ class GroupGenerator:
             f"if (unlikely({module_static} == NULL))",
             "    goto fail;",
         )
+        # Register in sys.modules early so that circular imports via
+        # CPyImport_ImportNative can detect that this module is already
+        # being initialized and avoid re-executing the module body.
+        emitter.emit_line(f'modname = PyUnicode_FromString("{module_name}");')
+        emitter.emit_line("if (modname == NULL) CPyError_OutOfMemory();")
+        emitter.emit_line(
+            f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
+        )
+        emitter.emit_line("    goto fail;")
+        emitter.emit_line("Py_CLEAR(modname);")
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
         emitter.emit_line(f"return {module_static};")
-        emitter.emit_lines("fail:", "return NULL;")
+        emitter.emit_lines("fail:")
+        # Clean up on failure: remove from sys.modules and clear the static
+        # so that a subsequent import attempt will retry initialization.
+        emitter.emit_line("{")
+        emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
+        emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
+        emitter.emit_line("    if (modname == NULL) {")
+        emitter.emit_line(f'        modname = PyUnicode_FromString("{module_name}");')
+        emitter.emit_line("        if (modname == NULL) CPyError_OutOfMemory();")
+        emitter.emit_line("    }")
+        emitter.emit_line("    PyObject_DelItem(PyImport_GetModuleDict(), modname);")
+        emitter.emit_line("    PyErr_Clear();")
+        emitter.emit_line("    Py_DECREF(modname);")
+        emitter.emit_line(f"    Py_CLEAR({module_static});")
+        emitter.emit_line("    PyErr_Restore(exc_type, exc_val, exc_tb);")
+        emitter.emit_line("}")
+        emitter.emit_line("return NULL;")
         emitter.emit_lines("}")
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:

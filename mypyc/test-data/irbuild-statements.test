@@ -19,12 +19,12 @@ L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
+    i = r0
     r2 = CPyTagged_Add(x, i)
     x = r2
 L3:
     r3 = r0 + 2
     r0 = r3
-    i = r3
     goto L1
 L4:
     return 1
@@ -45,10 +45,10 @@ L1:
     r1 = int_lt r0, a
     if r1 goto L2 else goto L4 :: bool
 L2:
+    i = r0
 L3:
     r2 = CPyTagged_Add(r0, 2)
     r0 = r2
-    i = r2
     goto L1
 L4:
     return 1
@@ -70,10 +70,10 @@ L1:
     r1 = int_gt r0, 0
     if r1 goto L2 else goto L4 :: bool
 L2:
+    i = r0
 L3:
     r2 = r0 + -2
     r0 = r2
-    i = r2
     goto L1
 L4:
     return 1
@@ -113,11 +113,11 @@ L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
+    n = r0
     goto L4
 L3:
     r2 = r0 + 2
     r0 = r2
-    n = r2
     goto L1
 L4:
     return 1
@@ -183,10 +183,10 @@ L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
+    n = r0
 L3:
     r2 = r0 + 2
     r0 = r2
-    n = r2
     goto L1
 L4:
     return 1
@@ -1016,13 +1016,13 @@ L4:
     r8 = list_get_item_unsafe b, r1
     r9 = unbox(int, r8)
     y = r9
+    z = r2
     x = 0
 L5:
     r10 = r1 + 1
     r1 = r10
     r11 = r2 + 2
     r2 = r11
-    z = r11
     goto L1
 L6:
     r12 = CPy_NoErrOccurred()

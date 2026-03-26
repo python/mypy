@@ -38,6 +38,8 @@ include test-requirements.in
 include test-requirements.txt
 include mypy_self_check.ini
 prune misc
+include misc/diff-cache.py
+include misc/apply-cache-diff.py
 graft test-data
 graft mypy/test
 include conftest.py

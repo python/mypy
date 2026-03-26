@@ -1141,6 +1141,13 @@ class ForRange(ForGenerator):
         )
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
+    def begin_body(self) -> None:
+        # Update the user-visible loop variable at the start of the body,
+        # after the condition check passes. This ensures the variable isn't
+        # "overshot" when the loop exits (matching CPython semantics).
+        builder = self.builder
+        builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
+
     def gen_step(self) -> None:
         builder = self.builder
         line = self.line
@@ -1163,7 +1170,6 @@ class ForRange(ForGenerator):
                 builder.read(self.index_reg, line), Integer(self.step), "+", line
             )
         builder.assign(self.index_reg, new_val, line)
-        builder.assign(self.index_target, new_val, line)
 
 
 class ForInfiniteCounter(ForGenerator):
