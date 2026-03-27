@@ -37,7 +37,8 @@ from mypy.build import (
     SccsDataMessage,
     SourcesDataMessage,
     load_plugins,
-    process_stale_scc,
+    process_stale_scc_implementation,
+    process_stale_scc_interface,
 )
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -153,24 +154,33 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         scc = manager.scc_by_id[scc_id]
         t0 = time.time()
         try:
-            if platform.python_implementation() == "CPython":
-                # Since we are splitting the GC freeze hack into multiple smaller freezes,
-                # we should collect young generations to not accumulate accidental garbage.
-                gc.collect(generation=1)
-                gc.collect(generation=0)
-                gc.disable()
             load_states(scc, graph, manager, scc_message.import_errors, scc_message.mod_data)
-            if platform.python_implementation() == "CPython":
-                gc.freeze()
-                gc.unfreeze()
-                gc.enable()
-            result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
+            result = process_stale_scc_interface(
+                graph, scc, manager, from_cache=graph_data.from_cache
+            )
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.metastore.commit()
         except CompileError as blocker:
-            send(server, SccResponseMessage(scc_id=scc_id, blocker=blocker))
+            send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, blocker=blocker))
         else:
-            send(server, SccResponseMessage(scc_id=scc_id, result=result))
+            mod_results = {}
+            stale = []
+            meta_files = []
+            for id, mod_result, meta_file in result:
+                stale.append(id)
+                mod_results[id] = mod_result
+                meta_files.append(meta_file)
+            send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
+            AckMessage.read(receive(server))
+            try:
+                result = process_stale_scc_implementation(graph, stale, manager, meta_files)
+                manager.metastore.commit()
+            except CompileError as blocker:
+                send(
+                    server, SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
+                )
+            else:
+                send(server, SccResponseMessage(scc_id=scc_id, is_interface=False, result=result))
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
@@ -182,6 +192,12 @@ def load_states(
     mod_data: dict[str, tuple[bytes, FileRawData | None]],
 ) -> None:
     """Re-create full state of an SCC as it would have been in coordinator."""
+    if platform.python_implementation() == "CPython":
+        # Since we are splitting the GC freeze hack into multiple smaller freezes,
+        # we should collect young generations to not accumulate accidental garbage.
+        gc.collect(generation=1)
+        gc.collect(generation=0)
+        gc.disable()
     for id in scc.mod_ids:
         state = graph[id]
         # Re-clone options since we don't send them, it is usually faster than deserializing.
@@ -200,6 +216,10 @@ def load_states(
             manager.errors.set_file(state.xpath, id, state.options)
             for err_info in import_errors[id]:
                 manager.errors.add_error_info(err_info)
+    if platform.python_implementation() == "CPython":
+        gc.freeze()
+        gc.unfreeze()
+        gc.enable()
 
 
 def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:

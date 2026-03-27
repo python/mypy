@@ -472,12 +472,12 @@ class MypyFile(SymbolNode):
         self._is_typeshed_file = None
         self.raw_data = None
 
-    def local_definitions(self) -> Iterator[Definition]:
+    def local_definitions(self, *, impl_only: bool = False) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
 
         This doesn't include imported definitions.
         """
-        return local_definitions(self.names, self.fullname)
+        return local_definitions(self.names, self.fullname, impl_only=impl_only)
 
     @property
     def name(self) -> str:
@@ -5227,7 +5227,7 @@ def get_func_def(typ: mypy.types.CallableType) -> SymbolNode | None:
 
 
 def local_definitions(
-    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None
+    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None, impl_only: bool = False
 ) -> Iterator[Definition]:
     """Iterate over local definitions (not imported) in a symbol table.
 
@@ -5242,9 +5242,17 @@ def local_definitions(
         fullname = name_prefix + "." + shortname
         node = symnode.node
         if node and node.fullname == fullname:
-            yield fullname, symnode, info
+            yield_node = True
+            if impl_only:
+                if not isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)):
+                    yield_node = False
+                else:
+                    impl = node.func if isinstance(node, Decorator) else node
+                    yield_node = not impl.def_or_infer_vars and not symnode.plugin_generated
+            if yield_node:
+                yield fullname, symnode, info
             if isinstance(node, TypeInfo):
-                yield from local_definitions(node.names, fullname, node)
+                yield from local_definitions(node.names, fullname, node, impl_only)
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.

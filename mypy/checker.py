@@ -512,7 +512,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.inferred_attribute_types = None
         self.scope = CheckerScope(self.tree)
 
-    def check_first_pass(self) -> None:
+    def check_first_pass(self, recurse_into_functions: bool = True) -> None:
         """Type check the entire file, but defer functions with unresolved references.
 
         Unresolved references are forward references to variables
@@ -522,7 +522,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         Deferred functions will be processed by check_second_pass().
         """
-        self.recurse_into_functions = True
+        self.recurse_into_functions = recurse_into_functions
         with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options

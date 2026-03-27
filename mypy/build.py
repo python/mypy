@@ -86,7 +86,7 @@ from mypy.cache import (
     write_str_list,
     write_str_opt,
 )
-from mypy.checker import TypeChecker
+from mypy.checker import DeferredNode, TypeChecker
 from mypy.defaults import (
     WORKER_CONNECTION_TIMEOUT,
     WORKER_DONE_TIMEOUT,
@@ -110,12 +110,15 @@ from mypy.ipc import (
 )
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
+    Decorator,
     FileRawData,
+    FuncDef,
     Import,
     ImportAll,
     ImportBase,
     ImportFrom,
     MypyFile,
+    OverloadedFuncDef,
     SymbolTable,
 )
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
@@ -1189,9 +1192,7 @@ class BuildManager:
                 ),
             )
 
-    def wait_for_done(
-        self, graph: Graph
-    ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
         """Wait for a stale SCC processing to finish.
 
         Return a tuple three items:
@@ -1210,7 +1211,7 @@ class BuildManager:
 
     def wait_for_done_workers(
         self, graph: Graph
-    ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    ) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:  # touch 22
         if not self.scc_queue and len(self.free_workers) == len(self.workers):
             return [], False, {}
 
@@ -1218,13 +1219,16 @@ class BuildManager:
         results = {}
         for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
             data = SccResponseMessage.read(receive(self.workers[idx].conn))
-            self.free_workers.add(idx)
+            if not data.is_interface:
+                self.free_workers.add(idx)
             scc_id = data.scc_id
             if data.blocker is not None:
                 raise data.blocker
             assert data.result is not None
             results.update(data.result)
-            done_sccs.append(self.scc_by_id[scc_id])
+            if data.is_interface:
+                send(self.workers[idx].conn, AckMessage())
+                done_sccs.append(self.scc_by_id[scc_id])
         self.submit_to_workers(graph)  # advance after some workers are free.
         return (
             done_sccs,
@@ -3030,12 +3034,12 @@ class State:
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
-    def type_check_first_pass(self) -> None:
+    def type_check_first_pass(self, recurse_into_functions: bool = True) -> None:
         if self.options.semantic_analysis_only:
             return
         t0 = time_ref()
         with self.wrap_context():
-            self.type_checker().check_first_pass()
+            self.type_checker().check_first_pass(recurse_into_functions=recurse_into_functions)
         self.time_spent_us += time_spent_us(t0)
 
     def type_checker(self) -> TypeChecker:
@@ -3059,12 +3063,12 @@ class State:
         assert len(self.type_checker()._type_maps) == 1
         return self.type_checker()._type_maps[0]
 
-    def type_check_second_pass(self) -> bool:
+    def type_check_second_pass(self, todo: Sequence[DeferredNode] | None = None) -> bool:
         if self.options.semantic_analysis_only:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            result = self.type_checker().check_second_pass()
+            result = self.type_checker().check_second_pass(todo=todo)
         self.time_spent_us += time_spent_us(t0)
         return result
 
@@ -4187,12 +4191,16 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # type-checking this is already done and results should be empty here.
             if not manager.workers:
                 assert not results
-            for id, (interface_hash, errors) in results.items():
-                new_hash = bytes.fromhex(interface_hash)
-                if new_hash != graph[id].interface_hash:
-                    graph[id].mark_interface_stale()
-                    graph[id].interface_hash = new_hash
-                manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
+            for id, result in results.items():
+                if result.interface_hash is not None:
+                    new_hash = bytes.fromhex(result.interface_hash)
+                    if new_hash != graph[id].interface_hash:
+                        graph[id].mark_interface_stale()
+                        graph[id].interface_hash = new_hash
+                else:
+                    manager.flush_errors(
+                        manager.errors.simplify_path(graph[id].xpath), result.error_lines, False
+                    )
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
@@ -4266,12 +4274,7 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
-def process_stale_scc(
-    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str] | None = None
-) -> dict[str, tuple[str, list[str]]]:
-    """Process the modules in one SCC from source code."""
-    # First verify if all transitive dependencies are loaded in the current process.
-    t0 = time.time()
+def maybe_load_deps(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
     missing_sccs = set()
     sccs_to_find = ascc.deps.copy()
     while sccs_to_find:
@@ -4326,6 +4329,12 @@ def process_stale_scc(
             gc.unfreeze()
             gc.enable()
 
+
+def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code."""
+    # First verify if all transitive dependencies are loaded in the current process.
+    t0 = time.time()
+    maybe_load_deps(graph, ascc, manager)
     t1 = time.time()
     # Process the SCC in stable order.
     scc = order_ascc_ex(graph, ascc)
@@ -4334,9 +4343,7 @@ def process_stale_scc(
     stale = scc
     for id in stale:
         # Re-generate import errors in case this module was loaded from the cache.
-        # Deserialized states all have meta=None, so the caller should specify
-        # explicitly which of them are from cache.
-        if graph[id].meta or from_cache and id in from_cache:
+        if graph[id].meta:
             graph[id].verify_dependencies(suppressed_only=True)
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
@@ -4376,7 +4383,6 @@ def process_stale_scc(
     # Flush errors, and write cache in two phases: first data files, then meta files.
     meta_tuples = {}
     errors_by_id = {}
-    formatted_by_id = {}
     for id in stale:
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(graph[id].xpath)
@@ -4385,7 +4391,6 @@ def process_stale_scc(
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
-            formatted_by_id[id] = formatted
         meta_tuples[id] = graph[id].write_cache()
     for id in stale:
         meta_tuple = meta_tuples[id]
@@ -4403,9 +4408,115 @@ def process_stale_scc(
         type_check_time=t4 - t3,
         flush_and_cache_time=time.time() - t4,
     )
+
+
+def process_stale_scc_interface(
+    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str]
+) -> list[tuple[str, ModuleResult, str]]:
+    """Process the modules' interfaces in one SCC from source code."""
+    # First verify if all transitive dependencies are loaded in the current process.
+    t0 = time.time()
+    maybe_load_deps(graph, ascc, manager)
+    t1 = time.time()
+    # Process the SCC in stable order.
+    scc = order_ascc_ex(graph, ascc)
+
+    t2 = time.time()
+    stale = scc
+    for id in stale:
+        # Re-generate import errors in case this module was loaded from the cache.
+        # Deserialized states all have meta=None, so the caller should specify
+        # explicitly which of them are from cache.
+        if id in from_cache:
+            graph[id].verify_dependencies(suppressed_only=True)
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    t3 = time.time()
+    # Track what modules aren't yet done, so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
+    for id in stale:
+        graph[id].type_check_first_pass(recurse_into_functions=False)
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+    while unfinished_modules:
+        for id in stale:
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+
+    t4 = time.time()
+    scc_result = []
+    meta_tuples = {}
+    for id in stale:
+        meta_tuple = graph[id].write_cache()
+        meta_tuples[id] = meta_tuple
+    for id in stale:
+        meta_tuple = meta_tuples[id]
+        if meta_tuple is None:
+            continue
+        meta, meta_file = meta_tuple
+        meta.dep_hashes = [graph[dep].interface_hash for dep in graph[id].dependencies]
+        write_cache_meta(meta, manager, meta_file)
+        scc_result.append((id, ModuleResult(graph[id].interface_hash.hex(), []), meta_file))
+    manager.done_sccs.add(ascc.id)
+    manager.add_stats(
+        load_missing_time=t1 - t0,
+        order_scc_time=t2 - t1,
+        semanal_time=t3 - t2,
+        type_check_time_interface=t4 - t3,
+        flush_and_cache_time=time.time() - t4,
+    )
+    return scc_result
+
+
+def process_stale_scc_implementation(
+    graph: Graph, stale: list[str], manager: BuildManager, meta_files: list[str]
+) -> dict[str, ModuleResult]:
+    t0 = time.time()
+    unfinished_modules = set(stale)
+    for id in stale:
+        checker = graph[id].type_checker()
+        checker.pass_num = 0
+        checker.deferred_nodes.clear()
+        tree = graph[id].tree
+        assert tree is not None
+        todo = []
+        for _, node, info in tree.local_definitions(impl_only=True):
+            assert isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator))
+            todo.append(DeferredNode(node.node, info))
+        graph[id].type_check_second_pass(todo=todo)
+        if not checker.deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].detect_possibly_undefined_vars()
+            graph[id].finish_passes()
+    while unfinished_modules:
+        for id in stale:
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].detect_possibly_undefined_vars()
+                graph[id].finish_passes()
+
+    for id in stale:
+        graph[id].generate_unused_ignore_notes()
+        graph[id].generate_ignore_without_code_notes()
+
     scc_result = {}
-    for id in scc:
-        scc_result[id] = graph[id].interface_hash.hex(), formatted_by_id.get(id, [])
+    for id, meta_file in zip(stale, meta_files):
+        if graph[id].xpath not in manager.errors.ignored_files:
+            errors = manager.errors.file_messages(graph[id].xpath)
+            formatted = manager.errors.format_messages(
+                graph[id].xpath, errors, formatter=manager.error_formatter
+            )
+            write_errors_file(meta_file, errors, manager)
+            scc_result[id] = ModuleResult(None, formatted)
+        else:
+            write_errors_file(meta_file, [], manager)
+
+    manager.add_stats(type_check_time_implementation=time.time() - t0)
     return scc_result
 
 
@@ -4648,6 +4759,20 @@ class SccRequestMessage(IPCMessage):
                 raw_data.write(buf)
 
 
+class ModuleResult:
+    def __init__(self, interface_hash: str | None, error_lines: list[str]) -> None:
+        self.interface_hash = interface_hash
+        self.error_lines = error_lines
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> ModuleResult:
+        return ModuleResult(read_str_opt(buf), read_str_list(buf))
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_str_opt(buf, self.interface_hash)
+        write_str_list(buf, self.error_lines)
+
+
 class SccResponseMessage(IPCMessage):
     """
     A message representing a result of type checking an SCC.
@@ -4660,7 +4785,8 @@ class SccResponseMessage(IPCMessage):
         self,
         *,
         scc_id: int,
-        result: dict[str, tuple[str, list[str]]] | None = None,
+        is_interface: bool,
+        result: dict[str, ModuleResult] | None = None,
         blocker: CompileError | None = None,
     ) -> None:
         if result is not None:
@@ -4668,6 +4794,7 @@ class SccResponseMessage(IPCMessage):
         if blocker is not None:
             assert result is None
         self.scc_id = scc_id
+        self.is_interface = is_interface
         self.result = result
         self.blocker = blocker
 
@@ -4675,25 +4802,28 @@ class SccResponseMessage(IPCMessage):
     def read(cls, buf: ReadBuffer) -> SccResponseMessage:
         assert read_tag(buf) == SCC_RESPONSE_MESSAGE
         scc_id = read_int(buf)
+        is_interface = read_bool(buf)
         tag = read_tag(buf)
         if tag == LITERAL_NONE:
             return SccResponseMessage(
                 scc_id=scc_id,
+                is_interface=is_interface,
                 blocker=CompileError(read_str_list(buf), read_bool(buf), read_str_opt(buf)),
             )
         else:
             assert tag == DICT_STR_GEN
             return SccResponseMessage(
                 scc_id=scc_id,
+                is_interface=is_interface,
                 result={
-                    read_str_bare(buf): (read_str(buf), read_str_list(buf))
-                    for _ in range(read_int_bare(buf))
+                    read_str_bare(buf): ModuleResult.read(buf) for _ in range(read_int_bare(buf))
                 },
             )
 
     def write(self, buf: WriteBuffer) -> None:
         write_tag(buf, SCC_RESPONSE_MESSAGE)
         write_int(buf, self.scc_id)
+        write_bool(buf, self.is_interface)
         if self.result is None:
             assert self.blocker is not None
             write_tag(buf, LITERAL_NONE)
@@ -4705,9 +4835,7 @@ class SccResponseMessage(IPCMessage):
             write_int_bare(buf, len(self.result))
             for mod_id in sorted(self.result):
                 write_str_bare(buf, mod_id)
-                hex_hash, errs = self.result[mod_id]
-                write_str(buf, hex_hash)
-                write_str_list(buf, errs)
+                self.result[mod_id].write(buf)
 
 
 class SourcesDataMessage(IPCMessage):
