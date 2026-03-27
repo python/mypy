@@ -90,14 +90,45 @@ PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110))
 
 ### Improved Compatibility for Local Partial Types
 
-- Support `None` partial types with local partial types (Ivan Levkivskyi, PR [20938](https://github.com/python/mypy/pull/20938))
+Compatibility between mypy's default behavior and the `--local-partial-types` flag
+is now improved. This improves compatibility between mypy daemon and non-daemon runs,
+since the mypy daemon requires local partial types to be set.
+
+Also, we are planning to turn local partial types on by default in mypy 2.0 (to be
+released soon), and this makes the change much less disruptive. However, explicitly
+disabling local partial types will continue to be supported.
+
+In particular, code like this now behaves consistently independent of
+whether local partial types are enabled or not:
+
+```python
+x = None
+
+def f() -> None:
+    global x
+    x = 1
+
+# The inferred type of 'x' is always 'int | None'.
+```
+
+This feature was contributed by Ivan Levkivskyi (PR [20938](https://github.com/python/mypy/pull/20938)).
 
 ### Python 3.14 T-String Support (PEP 750)
 
-- Add support for Python 3.14 t-strings (PEP 750) (Neil Schemenauer, PR [20850](https://github.com/python/mypy/pull/20850))
+Mypy now supports t-strings that were introduced in Python 3.14.
+
+- Add support for Python 3.14 t-strings (PEP 750) (Neil Schemenauer and Brian Schubert, PR [20850](https://github.com/python/mypy/pull/20850))
 - Add implicit module dependency if using t-string (Jukka Lehtosalo, PR [20900](https://github.com/python/mypy/pull/20900))
 
 ### Experimental New Parser
+
+If you install mypy using `pip install mypy[native-parse]` and run mypy with
+`--native-parser`, you can experiment with a new Python parser. It is based on
+the Ruff parser, and it's more efficient than the default parser, and it enables access
+to all Python syntax independent of which Python version you use to run mypy.
+The new parser is still not feature-complete and has known issues.
+
+Related changes:
 
 - Add work-in-progress implementation of a new Python parser (Jukka Lehtosalo, PR [20856](https://github.com/python/mypy/pull/20856))
 - Skip redundant analysis pass when using the native parser (Ivan Levkivskyi, PR [21015](https://github.com/python/mypy/pull/21015))
@@ -108,17 +139,84 @@ PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110))
 - Fix error code handling in native parser (Ivan Levkivskyi, PR [20952](https://github.com/python/mypy/pull/20952))
 - Add `ast-serialize` as an optional dependency (Ivan Levkivskyi, PR [21028](https://github.com/python/mypy/pull/21028))
 
-### Parallel Type Checking Prototype
+### Performance Improvements
 
-- Initial implementation of parallel type checking (Ivan Levkivskyi, PR [20280](https://github.com/python/mypy/pull/20280))
-- Support parallel type checking on Windows (Emma Smith, PR [20777](https://github.com/python/mypy/pull/20777))
-- Send serialized ASTs to parallel workers (Ivan Levkivskyi, PR [20991](https://github.com/python/mypy/pull/20991))
-- Send early errors to workers (Ivan Levkivskyi, PR [20822](https://github.com/python/mypy/pull/20822))
-- Use proper fixed format for parallel type checking IPC (Ivan Levkivskyi, PR [20565](https://github.com/python/mypy/pull/20565))
-- Make IPC framing more efficient (Ivan Levkivskyi, PR [20793](https://github.com/python/mypy/pull/20793))
-- Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
-- Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
-- Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
+Mypy now uses a binary cache format (fixed-format cache) by default to speed up incremental
+checking. You can still use `--no-fixed-format-cache` to use the legacy JSON cache format,
+but we will remove the JSON cache format in a future release. Mypy includes a tool to convert
+individual fixed-format cache files (.ff) to the JSON format to make it possible to inspect
+cache contents:
+
+```python
+python -m mypy.exportjson <path> ...
+```
+
+If the SQLite cache is enabled, you will first need to convert the SQLite cache into individual
+files using the
+[`misc/convert-cache.py`](https://github.com/python/mypy/blob/master/misc/convert-cache.py) tool
+available in the mypy GitHub repository, or disable the SQLite cache using `--no-sqlite-cache`.
+
+List of all performance improvements (for mypyc improvements there is a separate section above):
+
+- Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
+- Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
+- Skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
+- Speed up large incremental builds by optimizing internal state construction (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
+- Speed up suppressed dependencies options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
+- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
+- Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
+- Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
+- Fix quadratic performance in dependency graph loading for incremental builds (Jukka Lehtosalo, PR [20786](https://github.com/python/mypy/pull/20786))
+- Micro-optimize transitive dependency hash calculation (Jukka Lehtosalo, PR [20798](https://github.com/python/mypy/pull/20798))
+- Speed up options snapshot calculation (Jukka Lehtosalo, PR [20797](https://github.com/python/mypy/pull/20797))
+- Micro-optimize read buffering, metastore `abspath`, path joining (Shantanu, PR [20810](https://github.com/python/mypy/pull/20810))
+- Speed up type comparisons and hashing for literal types (Shantanu, PR [20423](https://github.com/python/mypy/pull/20423))
+- Optimize overloaded signatures check (asce, PR [20378](https://github.com/python/mypy/pull/20378))
+- Avoid unnecessary work when checking deferred functions (Ivan Levkivskyi, PR [20860](https://github.com/python/mypy/pull/20860))
+- Improve `--allow-redefinition-new` performance for code with loops (Ivan Levkivskyi, PR [20862](https://github.com/python/mypy/pull/20862))
+- Avoid `setattr`/`getattr` with fixed format cache (Ivan Levkivskyi, PR [20826](https://github.com/python/mypy/pull/20826))
+
+### Improvements to Allowing Redefinitions
+
+Mypy now allows significant more flexible variable redefinitions when using `--allow-redefinition-new`.
+In particular, function parameters can now be redefined with a different type:
+
+```python
+# mypy: allow-redefinition-new, local-partial-types
+
+def process(items: list[str]) -> None:
+    # Reassign parameter to a completely different type.
+    # Without --allow-redefinition-new, this is a type error because
+    # list[list[str]] is not compatible with list[str].
+    items = [item.split() for item in items]
+    ...
+```
+
+- Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
+- Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
+- Fix loop convergence with redefinitions (Ivan Levkivskyi, PR [20865](https://github.com/python/mypy/pull/20865))
+- Make sure new redefinition semantics only apply to inferred variables (Ivan Levkivskyi, PR [20909](https://github.com/python/mypy/pull/20909))
+- Fix union edge case in function argument redefinition (Ivan Levkivskyi, PR [20908](https://github.com/python/mypy/pull/20908))
+- Show an error when old and new redefinition are enabled in a file (Ivan Levkivskyi, PR [20920](https://github.com/python/mypy/pull/20920))
+- Fix type inference for nested union types (Ivan Levkivskyi, PR [20912](https://github.com/python/mypy/pull/20912))
+- Fix type inference regression for multiple variables in loops (Ivan Levkivskyi, PR [20892](https://github.com/python/mypy/pull/20892))
+- Improve type inference for empty collections in conditional contexts (Ivan Levkivskyi, PR [20851](https://github.com/python/mypy/pull/20851))
+
+### Incremental Checking Improvements
+
+This release includes multiple fixes to incremental type checking:
+
+- Invalidate cache when `--enable-incomplete-feature` changes (kaushal trivedi, PR [20849](https://github.com/python/mypy/pull/20849))
+- Add back support for `warn_unused_configs` (Ivan Levkivskyi, PR [20801](https://github.com/python/mypy/pull/20801))
+- Recover from corrupted fixed-format cache meta file (Jukka Lehtosalo, PR [20780](https://github.com/python/mypy/pull/20780))
+- Distinguish not found versus skipped modules (Ivan Levkivskyi, PR [20812](https://github.com/python/mypy/pull/20812))
+- Fix undetected submodule deletion on warm run (Ivan Levkivskyi, PR [20784](https://github.com/python/mypy/pull/20784))
+- Fix staleness on changed follow-imports options (Ivan Levkivskyi, PR [20773](https://github.com/python/mypy/pull/20773))
+- Verify indirect dependencies reachable on incremental run (Ivan Levkivskyi, PR [20735](https://github.com/python/mypy/pull/20735))
+- Fix indirect dependencies for protocols (Ivan Levkivskyi, PR [20752](https://github.com/python/mypy/pull/20752))
+- Show error locations in other modules on warm runs (Ivan Levkivskyi, PR [20635](https://github.com/python/mypy/pull/20635))
+- Don't read errors from cache on silent import (Sjoerd Job Postmus, PR [20509](https://github.com/python/mypy/pull/20509))
+- More robust fix for re-export of `__all__` (Ivan Levkivskyi, PR [20487](https://github.com/python/mypy/pull/20487))
 
 ### Fixes to Crashes
 
@@ -241,85 +339,6 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Update 'type inference and annotations` (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
 - Document unreachability handling of `return NotImplemented` (wyattscarpenter, PR [20561](https://github.com/python/mypy/pull/20561))
 
-### Performance Improvements
-
-Mypy now uses a binary cache format (fixed-format cache) by default to speed up incremental
-checking. You can still use `--no-fixed-format-cache` to use the legacy JSON cache format,
-but we will remove the JSON cache format in a future release. Mypy includes a tool to convert
-individual fixed-format cache files (.ff) to the JSON format to make it possible to inspect
-cache contents:
-
-```python
-python -m mypy.exportjson <path> ...
-```
-
-If the SQLite cache is enabled, you will first need to convert the SQLite cache into individual
-files using the
-[`misc/convert-cache.py`](https://github.com/python/mypy/blob/master/misc/convert-cache.py) tool
-available in the mypy GitHub repository, or disable the SQLite cache using `--no-sqlite-cache`.
-
-List of all performance improvements (for mypyc improvements there is a separate section above):
-
-- Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
-- Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
-- Skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
-- Speed up large incremental builds by optimizing internal state construction (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
-- Speed up suppressed dependencies options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
-- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
-- Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
-- Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
-- Fix quadratic performance in dependency graph loading for incremental builds (Jukka Lehtosalo, PR [20786](https://github.com/python/mypy/pull/20786))
-- Micro-optimize transitive dependency hash calculation (Jukka Lehtosalo, PR [20798](https://github.com/python/mypy/pull/20798))
-- Speed up options snapshot calculation (Jukka Lehtosalo, PR [20797](https://github.com/python/mypy/pull/20797))
-- Micro-optimize read buffering, metastore `abspath`, path joining (Shantanu, PR [20810](https://github.com/python/mypy/pull/20810))
-- Speed up type comparisons and hashing for literal types (Shantanu, PR [20423](https://github.com/python/mypy/pull/20423))
-- Optimize overloaded signatures check (asce, PR [20378](https://github.com/python/mypy/pull/20378))
-- Avoid unnecessary work when checking deferred functions (Ivan Levkivskyi, PR [20860](https://github.com/python/mypy/pull/20860))
-- Improve `--allow-redefinition-new` performance for code with loops (Ivan Levkivskyi, PR [20862](https://github.com/python/mypy/pull/20862))
-- Avoid `setattr`/`getattr` with fixed format cache (Ivan Levkivskyi, PR [20826](https://github.com/python/mypy/pull/20826))
-
-### Incremental Checking Improvements
-
-This release includes multiple fixes to incremental type checking:
-
-- Invalidate cache when `--enable-incomplete-feature` changes (kaushal trivedi, PR [20849](https://github.com/python/mypy/pull/20849))
-- Add back support for `warn_unused_configs` (Ivan Levkivskyi, PR [20801](https://github.com/python/mypy/pull/20801))
-- Recover from corrupted fixed-format cache meta file (Jukka Lehtosalo, PR [20780](https://github.com/python/mypy/pull/20780))
-- Distinguish not found versus skipped modules (Ivan Levkivskyi, PR [20812](https://github.com/python/mypy/pull/20812))
-- Fix undetected submodule deletion on warm run (Ivan Levkivskyi, PR [20784](https://github.com/python/mypy/pull/20784))
-- Fix staleness on changed follow-imports options (Ivan Levkivskyi, PR [20773](https://github.com/python/mypy/pull/20773))
-- Verify indirect dependencies reachable on incremental run (Ivan Levkivskyi, PR [20735](https://github.com/python/mypy/pull/20735))
-- Fix indirect dependencies for protocols (Ivan Levkivskyi, PR [20752](https://github.com/python/mypy/pull/20752))
-- Show error locations in other modules on warm runs (Ivan Levkivskyi, PR [20635](https://github.com/python/mypy/pull/20635))
-- Don't read errors from cache on silent import (Sjoerd Job Postmus, PR [20509](https://github.com/python/mypy/pull/20509))
-- More robust fix for re-export of `__all__` (Ivan Levkivskyi, PR [20487](https://github.com/python/mypy/pull/20487))
-
-### Improvements to Allowing Redefinitions
-
-Mypy now allows significant more flexible variable redefinitions when using `--allow-redefinition-new`.
-In particular, function parameters can now be redefined with a different type:
-
-```python
-# mypy: allow-redefinition-new, local-partial-types
-
-def process(items: list[str]) -> None:
-    # Reassign parameter to a completely different type.
-    # Without --allow-redefinition-new, this is a type error because
-    # list[list[str]] is not compatible with list[str].
-    items = [item.split() for item in items]
-    ...
-```
-
-- Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
-- Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
-- Fix loop convergence with redefinitions (Ivan Levkivskyi, PR [20865](https://github.com/python/mypy/pull/20865))
-- Make sure new redefinition semantics only apply to inferred variables (Ivan Levkivskyi, PR [20909](https://github.com/python/mypy/pull/20909))
-- Fix union edge case in function argument redefinition (Ivan Levkivskyi, PR [20908](https://github.com/python/mypy/pull/20908))
-- Show an error when old and new redefinition are enabled in a file (Ivan Levkivskyi, PR [20920](https://github.com/python/mypy/pull/20920))
-- Fix type inference for nested union types (Ivan Levkivskyi, PR [20912](https://github.com/python/mypy/pull/20912))
-- Fix type inference regression for multiple variables in loops (Ivan Levkivskyi, PR [20892](https://github.com/python/mypy/pull/20892))
-- Improve type inference for empty collections in conditional contexts (Ivan Levkivskyi, PR [20851](https://github.com/python/mypy/pull/20851))
-
 ### Changes to Messages
 
 - Simpler/cleaner `reveal_type()` (Ivan Levkivskyi, PR [20929](https://github.com/python/mypy/pull/20929))
@@ -398,6 +417,9 @@ def process(items: list[str]) -> None:
 - Fix daemon dependencies in `diff-cache.py` tool (Jukka Lehtosalo, PR [20837](https://github.com/python/mypy/pull/20837))
 - Support fixed-format cache in `diff-cache.py` tool (Jukka Lehtosalo, PR [20827](https://github.com/python/mypy/pull/20827))
 - Update `convert-cache.py` tool to work with fixed-format caches (Ivan Levkivskyi, PR [20761](https://github.com/python/mypy/pull/20761))
+- Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
+- Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
+- Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
 
 ## Mypy 1.19
 
