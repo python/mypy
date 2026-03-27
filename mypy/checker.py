@@ -718,11 +718,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     #
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        # If a function/method can infer variable types, it should be processed as part
-        # of the module top level (i.e. module interface).
-        if not self.recurse_into_functions and not defn.def_or_infer_vars:
-            return
-        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
+        with self.tscope.function_scope(defn):
             self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
