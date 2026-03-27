@@ -258,7 +258,9 @@ class NewTypeAnalyzer:
             previous_sym = info.names["__init__"].node
             assert isinstance(previous_sym, FuncDef)
             updated = old_type != previous_sym.arguments[1].variable.type
-        info.names["__init__"] = SymbolTableNode(MDEF, init_func)
+        sym = SymbolTableNode(MDEF, init_func)
+        sym.plugin_generated = True
+        info.names["__init__"] = sym
 
         if has_placeholder(old_type):
             self.api.process_placeholder(None, "NewType base", info, force_progress=updated)

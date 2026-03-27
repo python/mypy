@@ -6104,11 +6104,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         short_name = format_type_bare(typ, self.options)
         cdef, info = self.make_fake_typeinfo(cur_module.fullname, gen_name, short_name, [typ])
 
-        # Build up a fake FuncDef so we can populate the symbol table.
+        # Build up a fake FuncDef, so we can populate the symbol table.
         func_def = FuncDef("__call__", [], Block([]), callable_type)
         func_def._fullname = cdef.fullname + ".__call__"
         func_def.info = info
-        info.names["__call__"] = SymbolTableNode(MDEF, func_def)
+        sym = SymbolTableNode(MDEF, func_def)
+        sym.plugin_generated = True
+        info.names["__call__"] = sym
 
         cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 
