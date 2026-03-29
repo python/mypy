@@ -6431,7 +6431,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if not isinstance(maybe_type_expr, MaybeTypeExpression):
             return None
 
-        # Check whether has already been parsed as a type expression
+        # Check whether it has already been parsed as a type expression
         # by SemanticAnalyzer.try_parse_as_type_expression(),
         # perhaps containing a string annotation
         if (

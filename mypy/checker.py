@@ -353,8 +353,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     tscope: Scope
     scope: CheckerScope
-    # Innermost enclosing type
-    type: TypeInfo | None
     # Stack of function return types
     return_types: list[Type]
     # Flags; true for dynamically typed functions
@@ -432,7 +430,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
         self.globals = tree.names
-        self.type = None
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -2667,11 +2664,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         if not can_have_shared_disjoint_base(typ.bases):
             self.fail(message_registry.INCOMPATIBLE_DISJOINT_BASES.format(typ.name), defn)
-        with (
-            self.tscope.class_scope(defn.info),
-            self.enter_partial_types(is_class=True),
-            self.enter_class(defn.info),
-        ):
+        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
@@ -2739,15 +2732,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
         infer_class_variances(defn.info)
-
-    @contextmanager
-    def enter_class(self, type: TypeInfo) -> Iterator[None]:
-        original_type = self.type
-        self.type = type
-        try:
-            yield
-        finally:
-            self.type = original_type
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -8353,7 +8337,7 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
 
     @property
     def type(self) -> TypeInfo | None:
-        return self._chk.type
+        return self._chk.scope.current_class()
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
