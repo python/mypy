@@ -293,8 +293,10 @@ class TypeCheckSuite(DataSuite):
         ignore_errors = True
         missing = {}
         for id, path in modules.items():
-            meta, _ = build.find_cache_meta(id, path, manager)
-            if not build.validate_meta(meta, id, path, ignore_errors, manager):
+            meta_pair = build.find_cache_meta(id, path, manager)
+            if meta_pair is None:
+                missing[id] = path
+            elif not build.validate_meta(meta_pair[0], id, path, ignore_errors, manager):
                 missing[id] = path
         return set(missing.values())
 
