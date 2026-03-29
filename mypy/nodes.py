@@ -1036,6 +1036,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "is_invalid_redefinition",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -1080,6 +1081,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             self.original_first_arg: str | None = arguments[0].variable.name
         else:
             self.original_first_arg = None
+        self.is_invalid_redefinition = False
 
     @property
     def name(self) -> str:

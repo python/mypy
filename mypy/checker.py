@@ -1202,6 +1202,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.dynamic_funcs.append(defn.is_dynamic())
             self.check_default_params(defn, body_is_trivial)
             self.dynamic_funcs.pop()
+        if defn.original_def:
+            # Override previous definition.
+            new_type = self.function_type(defn)
+            self.check_func_def_override(defn, new_type)
         if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
@@ -1216,10 +1220,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         found_method_base_classes = self.check_method_override(defn)
                         self.check_explicit_override_decorator(defn, found_method_base_classes)
                     self.check_inplace_operator_method(defn)
-            if defn.original_def:
-                # Override previous definition.
-                new_type = self.function_type(defn)
-                self.check_func_def_override(defn, new_type)
 
     def check_func_item(
         self,
@@ -1268,12 +1268,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # decorated function.
             orig_type = defn.original_def.type
             if orig_type is None:
-                # If other branch is unreachable, we don't type check it and so we might
+                # If other branch is unreachable, we don't type check it, and so we might
                 # not have a type for the original definition
                 return
             if isinstance(orig_type, PartialType):
                 if orig_type.type is None:
-                    # Ah this is a partial type. Give it the type of the function.
+                    # Ah, this is a partial type. Give it the type of the function.
                     orig_def = defn.original_def
                     if isinstance(orig_def, Decorator):
                         var = orig_def.var
@@ -1285,8 +1285,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         del partial_types[var]
                 else:
                     # Trying to redefine something like partial empty list as function.
+                    defn.is_invalid_redefinition = True
                     self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
-            else:
+            elif not defn.is_invalid_redefinition:
                 name_expr = NameExpr(defn.name)
                 name_expr.node = defn.original_def
                 self.binder.assign_type(name_expr, new_type, orig_type)
