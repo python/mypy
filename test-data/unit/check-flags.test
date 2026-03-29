@@ -1604,7 +1604,8 @@ class Annotated:
 
 [builtins fixtures/plugin_attrs.pyi]
 
-[case testDisallowIncompleteDefsAttrsPartialAnnotations]
+-- TODO: this was implemented using a hack that does not work well in parallel mode
+[case testDisallowIncompleteDefsAttrsPartialAnnotations_no_parallel]
 # flags: --disallow-incomplete-defs
 import attrs
 

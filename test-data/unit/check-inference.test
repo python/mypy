@@ -1727,14 +1727,16 @@ b = {} # E: Need type annotation for "b" (hint: "b: dict[<type>, <type>] = ...")
 b[{}] = 1
 [builtins fixtures/dict.pyi]
 
-[case testInferDictInitializedToEmptyAndUpdatedFromMethod]
+-- Parallel mode does not support --no-local-partial-types
+[case testInferDictInitializedToEmptyAndUpdatedFromMethod_no_parallel]
 # flags: --no-local-partial-types
 map = {}
 def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
-[case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
+-- Parallel mode does not support --no-local-partial-types
+[case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated_no_parallel]
 # flags: --no-local-partial-types
 map = {}
 def add():

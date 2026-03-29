@@ -2685,7 +2685,8 @@ def fn_while(arg: T) -> None:
     return None
 [builtins fixtures/primitives.pyi]
 
-[case testRefinePartialTypeWithinLoop]
+-- Parallel mode does not support --no-local-partial-types
+[case testRefinePartialTypeWithinLoop_no_parallel]
 # flags: --no-local-partial-types --strict-equality --warn-unreachable
 
 x = None

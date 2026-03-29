@@ -1163,7 +1163,8 @@ class A:
 [out1]
 main:2: error: "A" has no attribute "bar"
 
-[case testIncrementalChangedError]
+-- Order of files unstable in parallel mode
+[case testIncrementalChangedError_no_parallel]
 import m
 [file m.py]
 import n
@@ -1973,7 +1974,8 @@ main:2: error: Name "nonexisting" is not defined
 [out2]
 main:2: error: Name "nonexisting" is not defined
 
-[case testIncrementalInnerClassAttrInMethodReveal]
+-- Order of files unstable in parallel mode
+[case testIncrementalInnerClassAttrInMethodReveal_no_parallel]
 import crash
 reveal_type(crash.C().a)
 reveal_type(crash.D().a)
@@ -5407,7 +5409,8 @@ tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.B">"
 [out2]
 tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.C">"
 
-[case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable]
+-- Order of files unstable in parallel mode
+[case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable_no_parallel]
 import c
 [file a.py]
 class A:
@@ -5441,7 +5444,8 @@ tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 tmp/b.py:2: error: Cannot determine type of "y"
 tmp/c.py:2: note: Revealed type is "Any"
 
-[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
+-- Order of files unstable in parallel mode
+[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection_no_parallel]
 import c
 [file a.py]
 class A:
