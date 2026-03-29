@@ -767,6 +767,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 settable = defn.items[0].var.is_settable_property
                 # Do not visit the second time the items we checked above.
                 if (settable and i > 1) or (not settable and i > 0):
+                    # Type check initialization expressions.
+                    def_item = defn.items[0].func
+                    body_is_trivial = is_trivial_body(def_item.body)
+                    if not self.can_skip_diagnostics:
+                        self.dynamic_funcs.append(def_item.is_dynamic())
+                        self.check_default_params(def_item, body_is_trivial)
+                        self.dynamic_funcs.pop()
                     self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             else:
                 # Perform full check for real overloads to infer type of all decorated
@@ -1192,6 +1199,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
+        # Type check initialization expressions.
+        body_is_trivial = is_trivial_body(defn.body)
+        if not self.can_skip_diagnostics:
+            self.dynamic_funcs.append(defn.is_dynamic())
+            self.check_default_params(defn, body_is_trivial)
+            self.dynamic_funcs.pop()
         if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
@@ -1362,11 +1375,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # Need to store arguments again for the expanded item.
                     store_argument_type(item, i, typ, self.named_generic_type)
 
-                # Type check initialization expressions.
-                body_is_trivial = is_trivial_body(defn.body)
-                if not self.can_skip_diagnostics:
-                    self.check_default_params(item, body_is_trivial)
-
             # Type check body in a new scope.
             with self.binder.top_frame_context():
                 # Copy some type narrowings from an outer function when it seems safe enough
@@ -1423,6 +1431,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.binder.pop_frame(True, 0)
 
             if not unreachable:
+                body_is_trivial = is_trivial_body(defn.body)
                 if defn.is_generator or is_named_instance(
                     self.return_types[-1], "typing.AwaitableGenerator"
                 ):
@@ -5600,6 +5609,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
                 typ = defn.type.copy_modified(ret_type=ret_type)
                 defn.type = typ
+
+        # Type check initialization expressions.
+        body_is_trivial = is_trivial_body(defn.body)
+        if not self.can_skip_diagnostics:
+            self.dynamic_funcs.append(defn.is_dynamic())
+            self.check_default_params(defn, body_is_trivial)
+            self.dynamic_funcs.pop()
 
         if self.recurse_into_functions or e.func.def_or_infer_vars:
             with self.tscope.function_scope(e.func), self.set_recurse_into_functions():

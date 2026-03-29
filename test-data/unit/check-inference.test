@@ -2412,15 +2412,12 @@ class R:
 [case testMultipassAndMultipleFiles]
 import m
 def f() -> None:
-    x()
+    x()  # E: "int" not callable
 x = 0
 [file m.py]
 def g() -> None:
-    y()
+    y()  # E: "int" not callable
 y = 0
-[out]
-tmp/m.py:2: error: "int" not callable
-main:3: error: "int" not callable
 
 [case testForwardReferenceToDecoratedClassMethod]
 from typing import TypeVar, Callable
