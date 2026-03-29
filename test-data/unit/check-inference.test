@@ -2782,7 +2782,8 @@ x = ''  # E: Incompatible types in assignment (expression has type "str", variab
 def g() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int | None"
 
-[case testLocalPartialTypesWithGlobalInitializedToNone4]
+-- TODO: combine 4 tests below back into 2 when possible.
+[case testLocalPartialTypesWithGlobalInitializedToNone4_no_parallel]
 # flags: --local-partial-types --no-strict-optional
 a = None
 
@@ -2794,12 +2795,36 @@ a = ''
 reveal_type(a)  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 
-[case testLocalPartialTypesWithGlobalInitializedToNone5]
+[case testLocalPartialTypesWithGlobalInitializedToNone5_no_parallel]
 # flags: --local-partial-types
 a = None
 
 def f() -> None:
     reveal_type(a)  # N: Revealed type is "None"
+
+reveal_type(a)  # N: Revealed type is "None"
+a = ''
+reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToNone4_parallel_only]
+# flags: --local-partial-types --no-strict-optional
+a = None
+
+def f() -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+
+reveal_type(a)  # N: Revealed type is "None"
+a = ''
+reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToNone5_parallel_only]
+# flags: --local-partial-types
+a = None
+
+def f() -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str | None"
 
 reveal_type(a)  # N: Revealed type is "None"
 a = ''
