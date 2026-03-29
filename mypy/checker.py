@@ -1333,7 +1333,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.return_types.append(typ.ret_type)
 
                 with self.scope.push_function(defn):
-                    # We temporary push the definition to get the self type as
+                    # We temporarily push the definition to get the self type as
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
 
@@ -1605,7 +1605,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return bool(func.arg_types)
 
         with self.scope.push_function(defn):
-            # We temporary push the definition to get the self type as
+            # We temporarily push the definition to get the self type as
             # visible from *inside* of this function/method.
             ref_type: Type | None = self.scope.active_self_type()
             if ref_type is None:

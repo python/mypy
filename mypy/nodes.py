@@ -5249,6 +5249,8 @@ def local_definitions(
                 else:
                     impl = node.func if isinstance(node, Decorator) else node
                     yield_node = not impl.def_or_infer_vars and not symnode.plugin_generated
+            if isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)) and "@" in fullname:
+                yield_node = False
             if yield_node:
                 yield fullname, symnode, info
             if isinstance(node, TypeInfo):
