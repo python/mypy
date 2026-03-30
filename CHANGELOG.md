@@ -9,7 +9,7 @@ will likely be the next feature release. This will often require at least minor 
 option is implicitly enabled by mypy daemon, so this makes the behavior of daemon and non-daemon
 modes consistent.
 
-Note that this release improves the compatibility of `--local-partial-types` signficantly to
+Note that this release improves the compatibility of `--local-partial-types` significantly to
 make the switch easier (see below for more).
 
 This can also be configured in a mypy configuration file (use `False` to disable):
@@ -190,7 +190,7 @@ The SQLite cache (`--sqlite-cache`) is now enabled by default. It improves mypy
 performance significantly in certain environments where slow file system operations
 used to be a bottleneck.
 
-List of all performance improvements (for mypyc improvements there is a separate section above):
+List of all performance improvements (for mypyc improvements there is a separate section below):
 
 - Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
 - Enable `--sqlite-cache` by default (Shantanu, PR [21041](https://github.com/python/mypy/pull/21041))
@@ -213,7 +213,7 @@ List of all performance improvements (for mypyc improvements there is a separate
 
 ### Improvements to Allowing Redefinitions
 
-Mypy now allows significant more flexible variable redefinitions when using `--allow-redefinition-new`.
+Mypy now allows significantly more flexible variable redefinitions when using `--allow-redefinition-new`.
 In particular, function parameters can now be redefined with a different type:
 
 ```python
@@ -276,7 +276,7 @@ This release includes multiple fixes to incremental type checking:
 - Fix crash when checking `async for` inside nested comprehensions (A5rocks, PR [20540](https://github.com/python/mypy/pull/20540))
 - Fix `ParamSpec` related crash (Stanislav Terliakov, PR [20119](https://github.com/python/mypy/pull/20119))
 
-### mypyc: Faster Imports on macOS
+### Mypyc: Faster Imports on macOS
 
 Imports in native (compiled) modules that target other native modules that are compiled
 together are now significantly faster on macOS, especially on the first run after a compiled
@@ -316,7 +316,7 @@ Related changes:
 - Fix cross-compiling `librt` by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Use existing SIMD CPU dispatch by customizing build flags (Michael R. Crusoe, PR [20253](https://github.com/python/mypy/pull/20253))
 
-### mypyc: Acyclic Classes
+### Mypyc: Acyclic Classes
 
 Mypyc now supports defining acyclic native classes that don't participate in the tracing
 garbage collection:
@@ -418,7 +418,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 - Document semantics of function argument redefinition (Ivan Levkivskyi, PR [20910](https://github.com/python/mypy/pull/20910))
 - Update common issues: document how the type ignore must come first (wyattscarpenter, PR [20886](https://github.com/python/mypy/pull/20886))
-- Update 'type inference and annotations` (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
+- Update "type inference and annotations" (Kai (Kazuya Ito), PR [20619](https://github.com/python/mypy/pull/20619))
 - Document unreachability handling of `return NotImplemented` (wyattscarpenter, PR [20561](https://github.com/python/mypy/pull/20561))
 
 ### Changes to Messages
