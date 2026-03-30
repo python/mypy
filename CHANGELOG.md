@@ -2,7 +2,37 @@
 
 ## Next Release
 
-### Better Narrowing
+### Planned Changes to Defaults in Mypy 2.0
+
+As a reminder, we are planning to enable `--local-partial-types` by default in mypy 2.0, which
+will likely be the next feature release. This will often require at least minor code changes. This
+option is implicitly enabled by mypy daemon, so this makes the behavior of daemon and non-daemon
+modes consistent.
+
+Note that this release improves the compatibility of `--local-partial-types` signficantly to
+make the switch easier (see below for more).
+
+This can also be configured in a mypy configuration file (use `False` to disable):
+
+```
+local_partial_types = True
+```
+
+For more information, refer to the
+[documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-local-partial-types).
+
+We will also enable `--strict-bytes` by default in mypy 2.0. This usually requires at most
+minor code changes to adopt. For more information, refer to the
+[documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict-bytes).
+
+Finally, `--allow-redefinition-new` will be renamed to `--allow-redefinition`. If you want
+to continue using the older `--allow-redefinition` semantics, you can switch to
+`--allow-redefinition-old`, which is now supported as an alias to `--allow-redefinition`.
+To use `--allow-redefinition-old` in the upcoming mypy 2.0, you will also have to use
+`--no-local-partial-types`. For more information, refer to the
+[documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-allow-redefinition-new).
+
+### Better Type Narrowing
 
 Mypy's implementation of narrowing has been substantially reworked. Mypy will now narrow more
 aggressively, more consistently, and more correctly. In particular, you are likely to notice new
@@ -69,7 +99,7 @@ Contributed by Shantanu Jain.
 
 ### Drop Support for Python 3.9
 
-Mypy no longer supports running with Python 3.9, which has reached end-of-life.
+Mypy no longer supports running with Python 3.9, which has reached end of life.
 When running mypy with Python 3.10+, it is still possible to type check code
 that needs to support Python 3.9 with the `--python-version 3.9` argument.
 Support for this will be dropped in the first half of 2026!
@@ -91,12 +121,12 @@ PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110))
 ### Improved Compatibility for Local Partial Types
 
 Compatibility between mypy's default behavior and the `--local-partial-types` flag
-is now improved. This improves compatibility between mypy daemon and non-daemon runs,
-since the mypy daemon requires local partial types to be set.
+is now improved. This improves compatibility between mypy daemon and non-daemon modes,
+since the mypy daemon requires local partial types to be enabled.
 
 Also, we are planning to turn local partial types on by default in mypy 2.0 (to be
 released soon), and this makes the change much less disruptive. However, explicitly
-disabling local partial types will continue to be supported.
+disabling local partial types will continue to be supported indefinitely.
 
 In particular, code like this now behaves consistently independent of
 whether local partial types are enabled or not:
@@ -104,7 +134,7 @@ whether local partial types are enabled or not:
 ```python
 x = None
 
-def f() -> None:
+def foo() -> None:
     global x
     x = 1
 
@@ -124,8 +154,8 @@ Mypy now supports t-strings that were introduced in Python 3.14.
 
 If you install mypy using `pip install mypy[native-parse]` and run mypy with
 `--native-parser`, you can experiment with a new Python parser. It is based on
-the Ruff parser, and it's more efficient than the default parser, and it enables access
-to all Python syntax independent of which Python version you use to run mypy.
+the Ruff parser, and it's more efficient than the default parser. It will also enable
+access to all Python syntax independent of which Python version you use to run mypy.
 The new parser is still not feature-complete and has known issues.
 
 Related changes:
@@ -151,21 +181,26 @@ cache contents:
 python -m mypy.exportjson <path> ...
 ```
 
-If the SQLite cache is enabled, you will first need to convert the SQLite cache into individual
-files using the
-[`misc/convert-cache.py`](https://github.com/python/mypy/blob/master/misc/convert-cache.py) tool
-available in the mypy GitHub repository, or disable the SQLite cache using `--no-sqlite-cache`.
+If the SQLite cache is enabled, you will first need to convert the SQLite cache into
+individual files using the [`misc/convert-cache.py`](https://github.com/python/mypy/blob/master/misc/convert-cache.py)
+tool available in the mypy GitHub repository. You can also disable the SQLite
+cache using `--no-sqlite-cache`.
+
+The SQLite cache (`--sqlite-cache`) is now enabled by default. It improves mypy
+performance significantly in certain environments where slow file system operations
+used to be a bottleneck.
 
 List of all performance improvements (for mypyc improvements there is a separate section above):
 
 - Flip fixed-format cache to on by default (Ivan Levkivskyi, PR [20758](https://github.com/python/mypy/pull/20758))
+- Enable `--sqlite-cache` by default (Shantanu, PR [21041](https://github.com/python/mypy/pull/21041))
 - Save work on emitting ignored diagnostics (Shantanu, PR [20621](https://github.com/python/mypy/pull/20621))
 - Skip logging and stats collection calls if they are no-ops (Jukka Lehtosalo, PR [20839](https://github.com/python/mypy/pull/20839))
 - Speed up large incremental builds by optimizing internal state construction (Jukka Lehtosalo, PR [20838](https://github.com/python/mypy/pull/20838))
 - Speed up suppressed dependencies options processing (Jukka Lehtosalo, PR [20806](https://github.com/python/mypy/pull/20806))
-- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
 - Avoid path operations that need syscalls (Jukka Lehtosalo, PR [20802](https://github.com/python/mypy/pull/20802))
 - Use faster algorithm for topological sort (Jukka Lehtosalo, PR [20790](https://github.com/python/mypy/pull/20790))
+- Replace old topological sort (Jukka Lehtosalo, PR [20805](https://github.com/python/mypy/pull/20805))
 - Fix quadratic performance in dependency graph loading for incremental builds (Jukka Lehtosalo, PR [20786](https://github.com/python/mypy/pull/20786))
 - Micro-optimize transitive dependency hash calculation (Jukka Lehtosalo, PR [20798](https://github.com/python/mypy/pull/20798))
 - Speed up options snapshot calculation (Jukka Lehtosalo, PR [20797](https://github.com/python/mypy/pull/20797))
@@ -192,6 +227,13 @@ def process(items: list[str]) -> None:
     ...
 ```
 
+In mypy 2.0, we will update `--allow-redefinition` to mean `--allow-redefinition-new`.
+This release adds `--allow-redefinition-old` as an alias of `--allow-redefinition`, which
+can be used to continue using the old redefinition behavior in mypy 2.0 and later.
+
+List of changes:
+
+- Add `--allow-redefinition-old` as an alias of `--allow-redefinition` (Ivan Levkivskyi, PR [20764](https://github.com/python/mypy/pull/20764))
 - Allow redefinitions for function arguments (Ivan Levkivskyi, PR [20853](https://github.com/python/mypy/pull/20853))
 - Fix regression on redefinition in deferred loop (Ivan Levkivskyi, PR [20879](https://github.com/python/mypy/pull/20879))
 - Fix loop convergence with redefinitions (Ivan Levkivskyi, PR [20865](https://github.com/python/mypy/pull/20865))
@@ -238,17 +280,17 @@ This release includes multiple fixes to incremental type checking:
 
 Mypyc now has a dedicated standard library, `librt`, to provide basic features that are optimized
 for compiled code. They are faster than corresponding Python stdlib functionality. There is no
-plan to replace the Python stdlib -- we'll only include features that help with common performance
-bottlenecks in compiled code.
+plan to replace the Python stdlib, though. We'll only include a carefully selected set of features
+that help with common performance bottlenecks in compiled code.
 
-Currently, we only provide `librt.base64` that has optimized SIMD (Single Instruction, Multiple
-Data) base64 encoding and decoding functions. In future mypyc releases we will add support for
-optimized data structures, string/bytes utilities, and more.
+Currently, we provide `librt.base64` that has optimized SIMD (Single Instruction, Multiple
+Data) base64 encoding and decoding functions. In future mypyc releases we are planning to
+add efficient data structures, string/bytes utilities, and more.
 
 Use `python3 -m pip install librt` to make `librt` available to compiled modules. Compiled
-modules only need `librt` if they explicitly import `librt`. If you install mypy, you will also get
-a compatible version of `librt` as a dependency. We will keep `librt` backward compatible, so
-you should always be able to update to a newer version.
+modules don't require `librt` unless they explicitly import `librt`. If you install mypy, you
+will also get a compatible version of `librt` as a dependency. We will keep `librt` backward
+compatible, so you should always be able to update to a newer version of the library.
 
 Related changes:
 
@@ -267,6 +309,17 @@ Related changes:
 
 ### Mypyc Improvements
 
+- Speed up native-to-native imports within the same group (Jukka Lehtosalo, PR [21101](https://github.com/python/mypy/pull/21101))
+- Fix range loop variable off-by-one after loop exit (Vaggelis Danias, PR [21098](https://github.com/python/mypy/pull/21098))
+- Fix memory leak on property setter call (Piotr Sawicki, PR [21095](https://github.com/python/mypy/pull/21095))
+- Fix `ClassVar` self-references in class bodies (Vaggelis Danias, PR [21011](https://github.com/python/mypy/pull/21011))
+- Fix cross-module class attribute defaults causing KeyError (Vaggelis Danias, PR [21012](https://github.com/python/mypy/pull/21012))
+- Fix shadow vtable misalignment for `@property` getters/setters (Vaggelis Danias, PR [21010](https://github.com/python/mypy/pull/21010))
+- Fix lambda inside comprehension (Vaggelis Danias, PR [21009](https://github.com/python/mypy/pull/21009))
+- Use cached ASCII characters in `CPyStr_GetItem` (Vaggelis Danias, PR [21035](https://github.com/python/mypy/pull/21035))
+- Speed up int to bytes conversion (Piotr Sawicki, PR [21036](https://github.com/python/mypy/pull/21036))
+- Add missing primitive documentation (Jukka Lehtosalo, PR [21037](https://github.com/python/mypy/pull/21037))
+- Fix undefined behavior in generated C (Jukka Lehtosalo, PR [21094](https://github.com/python/mypy/pull/21094))
 - Fix vtable construction for deep trait inheritance (Vaggelis Danias, PR [20917](https://github.com/python/mypy/pull/20917))
 - Fix `__init_subclass__` running before `ClassVar` instantiations (Vaggelis Danias, PR [20916](https://github.com/python/mypy/pull/20916))
 - Add support for `str.lower()` and `str.upper()` (Vaggelis Danias, PR [20948](https://github.com/python/mypy/pull/20948))
@@ -331,6 +384,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Fix duplicate errors with invalid line numbers (Joren Hammudoglu, PR [20417](https://github.com/python/mypy/pull/20417))
 - Ignore `__conditional_annotations__` (Joren Hammudoglu, PR [20392](https://github.com/python/mypy/pull/20392))
 - Transparent `@type_check_only` types (Joren Hammudoglu, PR [20352](https://github.com/python/mypy/pull/20352))
+- Check runtime availability of private types not marked `@type_check_only` (Brian Schubert, PR [19574](https://github.com/python/mypy/pull/19574))
 
 ### Documentation Updates
 
