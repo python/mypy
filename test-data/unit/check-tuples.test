@@ -1838,3 +1838,59 @@ from typing_extensions import Concatenate
 def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for tuple, only for ParamSpec
     reveal_type(t)  # N: Revealed type is "tuple[Any]"
 [builtins fixtures/tuple.pyi]
+
+[case testTupleComparisonNonComparableElements]
+from typing import Tuple
+a: Tuple[object, ...]
+b: Tuple[object, ...]
+c = a < b  # E: Unsupported operand types for < ("tuple[object, ...]" and "tuple[object, ...]")
+d = a > b  # E: Unsupported operand types for > ("tuple[object, ...]" and "tuple[object, ...]")
+e = a <= b  # E: Unsupported operand types for <= ("tuple[object, ...]" and "tuple[object, ...]")
+f = a >= b  # E: Unsupported operand types for >= ("tuple[object, ...]" and "tuple[object, ...]")
+[builtins fixtures/ops.pyi]
+
+[case testTupleComparisonComparableElements]
+from typing import Tuple
+a: Tuple[int, ...]
+b: Tuple[int, ...]
+c = a < b
+d = a > b
+e = a <= b
+f = a >= b
+[builtins fixtures/ops.pyi]
+
+[case testTupleComparisonOnlyGT]
+from typing import Tuple, Any
+
+class OnlyGT:
+    def __gt__(self, other: 'OnlyGT') -> bool: ...
+
+a: Tuple[OnlyGT, ...]
+b: Tuple[object, ...]
+c = a < b  # E: Unsupported operand types for < ("tuple[OnlyGT, ...]" and "tuple[object, ...]")
+[builtins fixtures/ops.pyi]
+
+[case testTupleComparisonOnlyGTValid]
+from typing import Tuple, Any
+
+class OnlyGT:
+    def __gt__(self, other: 'OnlyGT') -> bool: ...
+
+a: Tuple[OnlyGT, ...]
+b: Tuple[OnlyGT, ...]
+c = a > b
+[builtins fixtures/ops.pyi]
+
+[case testTupleComparisonCovariantReverse]
+# Regression test for https://github.com/python/mypy/issues/21042
+from typing import Tuple, Any
+
+class OnlyGT:
+    def __gt__(self, other: Any) -> bool: ...
+
+a: Tuple[OnlyGT, ...]
+b: Tuple[object, ...]
+# Tuple-level reverse op (tuple[object, ...].__gt__) passes due to covariance,
+# but element types don't support <
+c = a < b  # E: Unsupported operand types for < ("tuple[OnlyGT, ...]" and "tuple[object, ...]")
+[builtins fixtures/ops.pyi]
