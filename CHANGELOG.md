@@ -316,6 +316,27 @@ Related changes:
 - Fix cross-compiling `librt` by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Use existing SIMD CPU dispatch by customizing build flags (Michael R. Crusoe, PR [20253](https://github.com/python/mypy/pull/20253))
 
+### mypyc: Acyclic Classes
+
+Mypyc now supports defining acyclic native classes that don't participate in the tracing
+garbage collection:
+
+```python
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(acyclic=True)
+class Item:
+    def __init__(self, key: str, value: str) -> None:
+        self.key = key
+        self.value = value
+```
+
+Allocating and freeing instances of acyclic classes is faster than regular native class
+instances, and they use less memory, but if they participate in reference cycles, there
+may be memory leaks.
+
+This was contributed by Jukka Lehtosalo (PR [20795](https://github.com/python/mypy/pull/20795)).
+
 ### Additional Mypyc Fixes and Improvements
 
 - Fix range loop variable off-by-one after loop exit (Vaggelis Danias, PR [21098](https://github.com/python/mypy/pull/21098))
@@ -336,7 +357,6 @@ Related changes:
 - Add `str.isspace()` primitive (Vaggelis Danias, PR [20842](https://github.com/python/mypy/pull/20842))
 - Reduce memory usage when compiling large files (Vaggelis Danias, PR [20897](https://github.com/python/mypy/pull/20897))
 - Generate error if using Python 3.14 t-string (Jukka Lehtosalo, PR [20899](https://github.com/python/mypy/pull/20899))
-- Support explicit acyclic native classes that avoid gc (Jukka Lehtosalo, PR [20795](https://github.com/python/mypy/pull/20795))
 - Fix undefined attribute in nested coroutines (Piotr Sawicki, PR [20654](https://github.com/python/mypy/pull/20654))
 - Do not emit tracebacks with negative line numbers (Piotr Sawicki, PR [20641](https://github.com/python/mypy/pull/20641))
 - Fix crash on multiple nested decorated functions with same name (Piotr Sawicki, PR [20666](https://github.com/python/mypy/pull/20666))
