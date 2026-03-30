@@ -3415,8 +3415,6 @@ def find_module_and_diagnose(
             if not (ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id, result)
             elif result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-                # Even when ignoring missing imports, track approved stub packages
-                # so that --install-types can still install them.
                 dist = stub_distribution_name(id)
                 if dist:
                     manager.missing_stub_packages.add(dist)
