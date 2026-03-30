@@ -303,10 +303,12 @@ See :ref:`type-narrowing` for more information.
 Invariance vs covariance
 ------------------------
 
-Most mutable generic collections are invariant, and mypy considers all
-user-defined generic classes invariant by default
-(see :ref:`variance-of-generics` for motivation). This could lead to some
-unexpected errors when combined with type inference. For example:
+Most mutable generic collections are invariant. When using the legacy
+``TypeVar`` syntax, mypy considers all user-defined generic classes invariant
+by default (see :ref:`variance-of-generics` for motivation). When using the
+:pep:`695` syntax (``class MyClass[T]: ...``), variance is inferred from
+usage rather than defaulting to invariant. This could lead to some unexpected
+errors when combined with type inference. For example:
 
 .. code-block:: python
 
