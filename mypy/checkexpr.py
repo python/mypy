@@ -3713,9 +3713,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if not w.has_new_errors() and operator in ("<", ">", "<=", ">="):
                     right_type = self.accept(right)
                     if not self.chk.can_skip_diagnostics:
-                        self._check_tuple_element_comparison(
-                            operator, left_type, right_type, e
-                        )
+                        self._check_tuple_element_comparison(operator, left_type, right_type, e)
 
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
@@ -3888,11 +3886,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def _check_tuple_element_comparison(
-        self,
-        operator: str,
-        left_type: Type,
-        right_type: Type,
-        context: Context,
+        self, operator: str, left_type: Type, right_type: Type, context: Context
     ) -> None:
         """Check that tuple element types support an ordering comparison.
 
