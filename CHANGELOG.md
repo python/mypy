@@ -276,6 +276,15 @@ This release includes multiple fixes to incremental type checking:
 - Fix crash when checking `async for` inside nested comprehensions (A5rocks, PR [20540](https://github.com/python/mypy/pull/20540))
 - Fix `ParamSpec` related crash (Stanislav Terliakov, PR [20119](https://github.com/python/mypy/pull/20119))
 
+### mypyc: Faster Imports on macOS
+
+Imports in native (compiled) modules that target other native modules that are compiled
+together are now significantly faster on macOS, especially on the first run after a compiled
+package has been installed. This also speeds up the first mypy run after installation/update
+on macOS.
+
+This was contributed by Jukka Lehtosalo (PR [21101](https://github.com/python/mypy/pull/21101)).
+
 ### librt: Mypyc Standard Library
 
 Mypyc now has a dedicated standard library, `librt`, to provide basic features that are optimized
@@ -307,9 +316,8 @@ Related changes:
 - Fix cross-compiling `librt` by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Use existing SIMD CPU dispatch by customizing build flags (Michael R. Crusoe, PR [20253](https://github.com/python/mypy/pull/20253))
 
-### Mypyc Improvements
+### Additional Mypyc Fixes and Improvements
 
-- Speed up native-to-native imports within the same group (Jukka Lehtosalo, PR [21101](https://github.com/python/mypy/pull/21101))
 - Fix range loop variable off-by-one after loop exit (Vaggelis Danias, PR [21098](https://github.com/python/mypy/pull/21098))
 - Fix memory leak on property setter call (Piotr Sawicki, PR [21095](https://github.com/python/mypy/pull/21095))
 - Fix `ClassVar` self-references in class bodies (Vaggelis Danias, PR [21011](https://github.com/python/mypy/pull/21011))
