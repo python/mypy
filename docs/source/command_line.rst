@@ -645,7 +645,6 @@ of the above sections.
 
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
-    The feature is still experimental, and the semantics may still change.
 
 .. option:: --allow-redefinition
 
