@@ -182,6 +182,7 @@ Related changes:
 - Support `@no_type_check` with native parser (Ivan Levkivskyi, PR [20959](https://github.com/python/mypy/pull/20959))
 - Fix error code handling in native parser (Ivan Levkivskyi, PR [20952](https://github.com/python/mypy/pull/20952))
 - Add `ast-serialize` as an optional dependency (Ivan Levkivskyi, PR [21028](https://github.com/python/mypy/pull/21028))
+- Use `native-parser` instead of `native-parse` for optional dependency (Jukka Lehtosalo, PR [21115](https://github.com/python/mypy/pull/21115))
 
 ### Performance Improvements
 
@@ -254,6 +255,7 @@ List of changes:
 - Make sure new redefinition semantics only apply to inferred variables (Ivan Levkivskyi, PR [20909](https://github.com/python/mypy/pull/20909))
 - Fix union edge case in function argument redefinition (Ivan Levkivskyi, PR [20908](https://github.com/python/mypy/pull/20908))
 - Show an error when old and new redefinition are enabled in a file (Ivan Levkivskyi, PR [20920](https://github.com/python/mypy/pull/20920))
+- `--allow-redefinition-new` is no longer experimental (Jukka Lehtosalo, PR [21110](https://github.com/python/mypy/pull/21110))
 - Fix type inference for nested union types (Ivan Levkivskyi, PR [20912](https://github.com/python/mypy/pull/20912))
 - Fix type inference regression for multiple variables in loops (Ivan Levkivskyi, PR [20892](https://github.com/python/mypy/pull/20892))
 - Improve type inference for empty collections in conditional contexts (Ivan Levkivskyi, PR [20851](https://github.com/python/mypy/pull/20851))
@@ -329,6 +331,7 @@ Related changes:
 - Fix `librt` compilation on platforms with OpenMP (Ivan Levkivskyi, PR [20583](https://github.com/python/mypy/pull/20583))
 - Fix cross-compiling `librt` by enabling x86_64 optimizations with pragmas (James Le Cuirot, PR [20815](https://github.com/python/mypy/pull/20815))
 - Use existing SIMD CPU dispatch by customizing build flags (Michael R. Crusoe, PR [20253](https://github.com/python/mypy/pull/20253))
+- Document `librt` and `librt.base64` (Jukka Lehtosalo, PR [21114](https://github.com/python/mypy/pull/21114))
 
 ### Mypyc: Acyclic Classes
 
@@ -516,6 +519,7 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
 - Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
 - Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
+- Include `misc/{diff-cache,apply-cache-diff}.py` in sdist (Michael R. Crusoe, PR [21096](https://github.com/python/mypy/pull/21096))
 
 ### Typeshed updates
 
