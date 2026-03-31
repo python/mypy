@@ -12,9 +12,17 @@ certain Python standard library features.
 the Python standard library, but to fill in specific gaps or
 limitations.
 
-Librt submodules
-----------------
+Librt contents
+--------------
 
-The top-level ``librt`` includes these submodules:
+Follow submodule links in the table to a detailed description of each submodule.
 
- * :doc:`librt.base64 <librt_base64>`
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+   :width: 100%
+
+   * - Module
+     - Description
+   * - :doc:`librt.base64 <librt_base64>`
+     - Fast Base64 encoding and decoding
