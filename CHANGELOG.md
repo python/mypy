@@ -156,7 +156,7 @@ Mypy now supports t-strings that were introduced in Python 3.14.
 
 ### Experimental New Parser
 
-If you install mypy using `pip install mypy[native-parse]` and run mypy with
+If you install mypy using `pip install mypy[native-parser]` and run mypy with
 `--native-parser`, you can experiment with a new Python parser. It is based on
 the Ruff parser, and it's more efficient than the default parser. It will also enable
 access to all Python syntax independent of which Python version you use to run mypy.
