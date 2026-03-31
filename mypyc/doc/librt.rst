@@ -27,6 +27,19 @@ Follow submodule links in the table to a detailed description of each submodule.
    * - :doc:`librt.base64 <librt_base64>`
      - Fast Base64 encoding and decoding
 
+Installing librt
+----------------
+
+When you install mypy, it will also install a compatible version of librt as a
+dependency. If you distribute compiled wheels or install compiled modules in
+environments without mypy installed, install librt explicitly or depend on it
+with a version constraint (but it's only needed if your code explicitly imports
+``librt``), e.g. ``python -m pip install librt>=X.Y``.
+
+If you don't have a recent enough librt installed, importing librt will fail.
+Compiled code often needs a version of librt that is not much older than the
+mypyc being used.
+
 Backward compatibility
 ----------------------
 
