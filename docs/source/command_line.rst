@@ -598,7 +598,7 @@ of the above sections.
 .. option:: --allow-redefinition-new
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This flag enables the redefinition of unannotated
+    unrelated type. This flag enables the redefinition of *unannotated*
     variables with an arbitrary type. You will also need to enable
     :option:`--local-partial-types <mypy --local-partial-types>`.
     Example:
