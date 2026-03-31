@@ -521,6 +521,58 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=f8f0794d0fe249c06dc9f31a004d85be6cca6ced+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+- A5rocks
+- Aaron Wieczorek
+- Adam Turner
+- Ali Hamdan
+- asce
+- BobTheBuidler
+- Brent Westbrook
+- Brian Schubert
+- bzoracler
+- Chris Burroughs
+- Christoph Tyralla
+- Colin Watson
+- Donghoon Nam
+- E. M. Bray
+- Emma Smith
+- Ethan Sarp
+- George Ogden
+- getzze
+- grayjk
+- Gregor Riepl
+- Ivan Levkivskyi
+- James Hilliard
+- James Le Cuirot
+- Jeremy Nimmer
+- Joren Hammudoglu
+- Kai (Kazuya Ito)
+- kaushal trivedi
+- Kevin Kannammalil
+- Lukas Geiger
+- Łukasz Langa
+- Marc Mueller
+- Michael R. Crusoe
+- michaelm-openai
+- Neil Schemenauer
+- Piotr Sawicki
+- Randolf Scholz
+- Roberto Fernández Iglesias
+- Saul Shanabrook
+- Shantanu Jain
+- Sjoerd Job Postmus
+- sobolevn
+- Stanislav Terliakov
+- Steven Pitman
+- Vaggelis Danias
+- Vikash Kumar
+- wyattscarpenter
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
 ## Mypy 1.19
 
 We’ve just uploaded mypy 1.19.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
