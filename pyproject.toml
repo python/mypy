@@ -64,7 +64,7 @@ python2 = []
 reports = ["lxml"]
 install-types = ["pip"]
 faster-cache = ["orjson"]
-native-parse = ["ast-serialize>=0.1.1,<1.0.0"]
+native-parser = ["ast-serialize>=0.1.1,<1.0.0"]
 
 [project.urls]
 Homepage = "https://www.mypy-lang.org/"
