@@ -551,7 +551,7 @@ potentially problematic or redundant in some way.
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
-        inside any functions using :ref:`type-variable-value-restriction`.
+        inside any functions using :ref:`value-constrained type variables <value-constrained-type-variables>`.
 
         This limitation will be removed in future releases of mypy.
 

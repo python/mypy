@@ -303,8 +303,8 @@ Here is the same example using the legacy syntax (Python 3.11 and earlier):
 .. note::
 
    If you just need to constrain a type variable to certain types or
-   subtypes, you can use a :ref:`value restriction
-   <type-variable-value-restriction>`.
+   subtypes, you can use a :ref:`value-constrained type variable
+   <value-constrained-type-variables>`.
 
 The default values of a function's arguments don't affect its signature -- only
 the absence or presence of a default value does. So in order to reduce
