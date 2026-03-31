@@ -2,7 +2,7 @@
 
 ## Next Release
 
-### Planned Changes to Defaults in Mypy 2.0
+### Planned Changes to Defaults and Flags in Mypy 2.0
 
 As a reminder, we are planning to enable `--local-partial-types` by default in mypy 2.0, which
 will likely be the next feature release. This will often require at least minor code changes. This
@@ -26,10 +26,11 @@ minor code changes to adopt. For more information, refer to the
 [documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict-bytes).
 
 Finally, `--allow-redefinition-new` will be renamed to `--allow-redefinition`. If you want
-to continue using the older `--allow-redefinition` semantics, you can switch to
-`--allow-redefinition-old`, which is now supported as an alias to `--allow-redefinition`.
-To use `--allow-redefinition-old` in the upcoming mypy 2.0, you will also have to use
-`--no-local-partial-types`. For more information, refer to the
+to continue using the older `--allow-redefinition` semantics which are less flexible (e.g.
+limited support for conditional redefinitions), you can switch to `--allow-redefinition-old`,
+which is currently supported as an alias to the legacy `--allow-redefinition` behavior.
+To use `--allow-redefinition` in the upcoming mypy 2.0, you can't use `--no-local-partial-types`.
+For more information, refer to the
 [documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-allow-redefinition-new).
 
 ### Better Type Narrowing
@@ -124,10 +125,6 @@ Compatibility between mypy's default behavior and the `--local-partial-types` fl
 is now improved. This improves compatibility between mypy daemon and non-daemon modes,
 since the mypy daemon requires local partial types to be enabled.
 
-Also, we are planning to turn local partial types on by default in mypy 2.0 (to be
-released soon), and this makes the change much less disruptive. However, explicitly
-disabling local partial types will continue to be supported indefinitely.
-
 In particular, code like this now behaves consistently independent of
 whether local partial types are enabled or not:
 
@@ -140,6 +137,13 @@ def foo() -> None:
 
 # The inferred type of 'x' is always 'int | None'.
 ```
+
+Also, we are planning to turn local partial types on by default in mypy 2.0 (to be
+released soon), and this makes the change much less disruptive. Explicitly disabling local
+partial types will continue to be supported, but the support will likely be
+deprecated and removed eventually, as the legacy behavior is hard to support together with
+some important changes we are working on, in addition to being incompatible with the mypy
+daemon.
 
 This feature was contributed by Ivan Levkivskyi (PR [20938](https://github.com/python/mypy/pull/20938)).
 
