@@ -51,6 +51,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     AnyType,
+    CallableType,
     Instance,
     ProperType,
     TupleType,
@@ -1008,6 +1009,19 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     right = builder.accept(right_expr, can_borrow=True)
                     return builder.binary_op(left, right, first_op, e.line)
 
+        # Type object comparisons: use identity (pointer) comparison instead of
+        # PyObject_RichCompare, since type objects are singletons.
+        # type(x) is TypeType, but a class reference A is CallableType (constructor).
+        if first_op in ("==", "!="):
+            right_expr = e.operands[1]
+            left_mypy_type = get_proper_type(builder.types.get(left_expr))
+            right_mypy_type = get_proper_type(builder.types.get(right_expr))
+            if _is_type_object(left_mypy_type) and _is_type_object(right_mypy_type):
+                is_op = "is" if first_op == "==" else "is not"
+                left = builder.accept(left_expr)
+                right = builder.accept(right_expr)
+                return builder.translate_is_op(left, right, is_op, e.line)
+
         # IntEnum comparisons: unbox both sides to int for fast native comparison
         # instead of going through slow PyObject_RichCompare.
         # For ==/!= between two IntEnums, mypyc already uses fast identity comparison
@@ -1186,6 +1200,19 @@ def transform_basic_comparison(
     if negate:
         target = builder.unary_op(target, "not", line)
     return target
+
+
+def _is_type_object(typ: ProperType | None) -> bool:
+    """Check if a type represents a type/class object (as opposed to an instance).
+
+    Matches TypeType (from type(x)) and CallableType that is a class constructor
+    (from referencing a class name directly like A in 'type(x) == A').
+    """
+    if isinstance(typ, TypeType):
+        return True
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        return True
+    return False
 
 
 def _is_intenum_type(typ: ProperType | None) -> bool:

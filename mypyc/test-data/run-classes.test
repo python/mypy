@@ -2876,6 +2876,38 @@ assert not test_enum_vs_int(Color.RED, 2)
 assert test_int_vs_enum(2, Color.RED)
 assert not test_int_vs_enum(1, Color.RED)
 
+[case testTypePointerComparison]
+class Base:
+    pass
+
+class A(Base):
+    pass
+
+class B(Base):
+    pass
+
+def check_type_eq(x: Base, cls: type) -> bool:
+    return type(x) == cls
+
+def check_type_ne(x: Base, cls: type) -> bool:
+    return type(x) != cls
+[file driver.py]
+from native import A, B, Base, check_type_eq, check_type_ne
+
+a = A()
+b = B()
+base = Base()
+
+assert check_type_eq(a, A)
+assert not check_type_eq(a, B)
+assert not check_type_eq(a, Base)
+assert check_type_eq(b, B)
+assert check_type_eq(base, Base)
+
+assert check_type_ne(a, B)
+assert check_type_ne(a, Base)
+assert not check_type_ne(a, A)
+
 [case testBufferRoundTrip_librt_internal]
 from __future__ import annotations
 
