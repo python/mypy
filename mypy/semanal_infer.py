@@ -23,11 +23,12 @@ def infer_decorator_signature_if_simple(
     """Try to infer the type of the decorated function.
 
     This lets us resolve additional references to decorated functions
-    during type checking. Otherwise the type might not be available
+    during type checking. Otherwise, the type might not be available
     when we need it, since module top levels can't be deferred.
 
     This basically uses a simple special-purpose type inference
-    engine just for decorators.
+    engine just for decorators. Logic here should be kept in sync with
+    visit_decorator() in mypy/checker.py.
     """
     if dec.var.is_property:
         # Decorators are expected to have a callable type (it's a little odd).

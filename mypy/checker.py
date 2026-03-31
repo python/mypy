@@ -715,6 +715,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     #
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        # We always process overload as part of the top-level to infer various
+        # externally visible properties like its type, similar to visit_decorator().
+        # Only the body of the implementation is checked as a function-level target.
+        # TODO: clean-up deferral logic and the daemon to avoid unnecessary work.
         with self.tscope.function_scope(defn):
             self._visit_overloaded_func_def(defn)
 
@@ -765,12 +769,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # Do not visit the second time the items we checked above.
                 if (settable and i > 1) or (not settable and i > 0):
                     # Type check initialization expressions.
-                    def_item = defn.items[0].func
-                    body_is_trivial = is_trivial_body(def_item.body)
+                    # TODO: initializers can infer types if they contain a walrus,
+                    # it may be not safe to optimize them away completely.
                     if not self.can_skip_diagnostics:
-                        self.dynamic_funcs.append(def_item.is_dynamic())
-                        self.check_default_params(def_item, body_is_trivial)
-                        self.dynamic_funcs.pop()
+                        self.check_default_params(fdef.func)
                     self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             else:
                 # Perform full check for real overloads to infer type of all decorated
@@ -1196,14 +1198,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        # Type check initialization expressions.
-        body_is_trivial = is_trivial_body(defn.body)
+        # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
-            self.dynamic_funcs.append(defn.is_dynamic())
-            self.check_default_params(defn, body_is_trivial)
-            self.dynamic_funcs.pop()
+            self.check_default_params(defn)
         if defn.original_def:
-            # Override previous definition.
+            # Override previous definition (may affect externally visible types).
             new_type = self.function_type(defn)
             self.check_func_def_override(defn, new_type)
         if not self.recurse_into_functions and not defn.def_or_infer_vars:
@@ -1695,7 +1694,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         context=typ.ret_type,
                     )
 
-    def check_default_params(self, item: FuncItem, body_is_trivial: bool) -> None:
+    def check_default_params(self, item: FuncItem, body_is_trivial: bool | None = None) -> None:
+        if body_is_trivial is None:
+            body_is_trivial = is_trivial_body(item.body)
+        # Although initializers are checked as part of the top-level, we do not
+        # show errors in them if they appear in an unannotated function.
+        self.dynamic_funcs.append(item.is_dynamic())
         for param in item.arguments:
             if param.initializer is None:
                 continue
@@ -1729,6 +1733,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 rvalue_name="default",
                 notes=notes,
             )
+        self.dynamic_funcs.pop()
 
     def is_forward_op_method(self, method_name: str) -> bool:
         return method_name in operators.reverse_op_methods
@@ -5580,8 +5585,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         defn = e.func
         if defn.is_awaitable_coroutine:
             assert isinstance(defn.type, CallableType)
-            # Update the return type to AwaitableGenerator.
-            # (This doesn't exist in typing.py, only in typing.pyi.)
+            # Update the return type to AwaitableGenerator (unless we already did).
+            # Note, this doesn't exist in typing.py, only in typing.pyi.
             if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
                 t = defn.type.ret_type
                 c = defn.is_coroutine
@@ -5595,12 +5600,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 typ = defn.type.copy_modified(ret_type=ret_type)
                 defn.type = typ
 
-        # Type check initialization expressions.
-        body_is_trivial = is_trivial_body(defn.body)
+        # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
-            self.dynamic_funcs.append(defn.is_dynamic())
-            self.check_default_params(defn, body_is_trivial)
-            self.dynamic_funcs.pop()
+            self.check_default_params(defn)
 
         if self.recurse_into_functions or e.func.def_or_infer_vars:
             with self.tscope.function_scope(e.func), self.set_recurse_into_functions():

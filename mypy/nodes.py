@@ -1081,6 +1081,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             self.original_first_arg: str | None = arguments[0].variable.name
         else:
             self.original_first_arg = None
+        # Whether this function is an invalid redefinition of variable with the same name?
+        # We record this status to avoid multiple (similar but different) errors in case
+        # of partial types etc.
         self.is_invalid_redefinition = False
 
     @property
@@ -5233,7 +5236,8 @@ def local_definitions(
 ) -> Iterator[Definition]:
     """Iterate over local definitions (not imported) in a symbol table.
 
-    Recursively iterate over class members and nested classes.
+    Recursively iterate over class members and nested classes. If impl_only is True, do
+    not yield the classes themselves, only methods.
     """
     # TODO: What should the name be? Or maybe remove it?
     for name, symnode in names.items():
@@ -5250,6 +5254,8 @@ def local_definitions(
                     yield_node = False
                 else:
                     impl = node.func if isinstance(node, Decorator) else node
+                    # We never type-check generated methods. The generated classes however
+                    # need to be visited, so we don't skip them below.
                     yield_node = not impl.def_or_infer_vars and not symnode.plugin_generated
             if isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)) and "@" in fullname:
                 yield_node = False
