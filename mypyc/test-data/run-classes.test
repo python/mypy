@@ -2819,6 +2819,63 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testIntEnumComparison]
+from enum import IntEnum
+
+class Color(IntEnum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+def test_eq(a: Color, b: Color) -> bool:
+    return a == b
+
+def test_ne(a: Color, b: Color) -> bool:
+    return a != b
+
+def test_lt(a: Color, b: Color) -> bool:
+    return a < b
+
+def test_le(a: Color, b: Color) -> bool:
+    return a <= b
+
+def test_gt(a: Color, b: Color) -> bool:
+    return a > b
+
+def test_ge(a: Color, b: Color) -> bool:
+    return a >= b
+
+def test_enum_vs_int(a: Color, x: int) -> bool:
+    return a == x
+
+def test_int_vs_enum(x: int, a: Color) -> bool:
+    return x != a
+[file driver.py]
+from native import Color, test_eq, test_ne, test_lt, test_le, test_gt, test_ge, test_enum_vs_int, test_int_vs_enum
+
+# eq/ne
+assert test_eq(Color.RED, Color.RED)
+assert not test_eq(Color.RED, Color.GREEN)
+assert test_ne(Color.RED, Color.GREEN)
+assert not test_ne(Color.RED, Color.RED)
+
+# ordering
+assert test_lt(Color.RED, Color.GREEN)
+assert not test_lt(Color.GREEN, Color.RED)
+assert not test_lt(Color.RED, Color.RED)
+assert test_le(Color.RED, Color.GREEN)
+assert test_le(Color.RED, Color.RED)
+assert test_gt(Color.GREEN, Color.RED)
+assert not test_gt(Color.RED, Color.RED)
+assert test_ge(Color.GREEN, Color.RED)
+assert test_ge(Color.RED, Color.RED)
+
+# enum vs int
+assert test_enum_vs_int(Color.RED, 1)
+assert not test_enum_vs_int(Color.RED, 2)
+assert test_int_vs_enum(2, Color.RED)
+assert not test_int_vs_enum(1, Color.RED)
+
 [case testBufferRoundTrip_librt_internal]
 from __future__ import annotations
 

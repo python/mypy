@@ -1008,6 +1008,23 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     right = builder.accept(right_expr, can_borrow=True)
                     return builder.binary_op(left, right, first_op, e.line)
 
+        # IntEnum comparisons: unbox both sides to int for fast native comparison
+        # instead of going through slow PyObject_RichCompare.
+        # For ==/!= between two IntEnums, mypyc already uses fast identity comparison
+        # (since enum members are singletons), so we only apply this for:
+        # - Ordering ops (<, <=, >, >=) on any IntEnum comparison
+        # - ==/!= when one side is plain int (where identity comparison doesn't work)
+        if first_op in int_borrow_friendly_op:
+            right_expr = e.operands[1]
+            left_mypy_type = get_proper_type(builder.types.get(left_expr))
+            right_mypy_type = get_proper_type(builder.types.get(right_expr))
+            if _should_use_int_comparison(left_mypy_type, right_mypy_type, first_op):
+                left = builder.accept(left_expr)
+                right = builder.accept(right_expr)
+                left_int = builder.coerce(left, int_rprimitive, e.line)
+                right_int = builder.coerce(right, int_rprimitive, e.line)
+                return builder.binary_op(left_int, right_int, first_op, e.line)
+
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
@@ -1169,6 +1186,46 @@ def transform_basic_comparison(
     if negate:
         target = builder.unary_op(target, "not", line)
     return target
+
+
+def _is_intenum_type(typ: ProperType | None) -> bool:
+    """Check if a mypy type is an IntEnum subclass."""
+    if not isinstance(typ, Instance):
+        return False
+    return any(base.fullname == "enum.IntEnum" for base in typ.type.mro)
+
+
+def _is_int_type(typ: ProperType | None) -> bool:
+    if not isinstance(typ, Instance):
+        return False
+    return typ.type.fullname == "builtins.int"
+
+
+def _should_use_int_comparison(
+    left_type: ProperType | None, right_type: ProperType | None, op: str
+) -> bool:
+    """Check if a comparison should use fast int unboxing for IntEnum operands.
+
+    For ordering ops (<, <=, >, >=): always use int comparison when both sides
+    are IntEnum or IntEnum vs int.
+    For ==/!=: only when one side is plain int, since IntEnum-vs-IntEnum equality
+    already uses fast identity comparison (enum members are singletons).
+    """
+    left_is_intenum = _is_intenum_type(left_type)
+    right_is_intenum = _is_intenum_type(right_type)
+    left_is_int = _is_int_type(left_type)
+    right_is_int = _is_int_type(right_type)
+
+    if op in ("==", "!="):
+        # Only optimize IntEnum vs int (not IntEnum vs IntEnum)
+        return (left_is_intenum and right_is_int) or (right_is_intenum and left_is_int)
+
+    # Ordering ops: optimize any IntEnum involvement
+    if left_is_intenum and (right_is_intenum or right_is_int):
+        return True
+    if right_is_intenum and left_is_int:
+        return True
+    return False
 
 
 def translate_printf_style_formatting(
