@@ -77,7 +77,12 @@ ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | N
 
 
 class CacheMeta:
-    """Class representing cache metadata for a module."""
+    """Class representing cache metadata for a module.
+
+    This class represents the data known after checking module interface only, i.e.
+    this doesn't have: error messages and indirect dependencies, these are stored
+    in CacheMetaEx.
+    """
 
     def __init__(
         self,
@@ -237,6 +242,8 @@ class CacheMeta:
 
 
 class CacheMetaEx:
+    """Class representing "implementation-specific" part of cache metadata for a module."""
+
     def __init__(
         self,
         dependencies: list[str],

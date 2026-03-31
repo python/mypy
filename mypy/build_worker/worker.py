@@ -8,6 +8,8 @@ The protocol of communication with the coordinator is as following:
 * Load graph using the sources, and send ack to coordinator.
 * Receive SCC structure from coordinator, and ack it.
 * Receive an SCC id from coordinator, process it, and send back the results.
+* Each SCC is processed in two phases: interface then implementation, with an ack in
+  between. (It is not 100% clear why the ack is needed, but deadlocks happen without it)
 * When prompted by coordinator (with a scc_id=None message), cleanup and shutdown.
 """
 
@@ -171,9 +173,11 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
             send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
+            # Only proceed with the implementations if there are no blockers so far.
             AckMessage.read(receive(server))
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
+                # Both phases write cache, so we should commit here as well.
                 manager.metastore.commit()
             except CompileError as blocker:
                 send(

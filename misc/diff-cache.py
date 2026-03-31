@@ -69,7 +69,7 @@ def normalize_meta(meta: CacheMeta) -> None:
 
     Zero out mtimes and sort dependencies deterministically.
     """
-    # TODO: handle dep_hashes here and in the JSON path.
+    # TODO: handle dep_hashes here and in relevant parts below.
     meta.mtime = 0
     meta.data_mtime = 0
     meta.dependencies, meta.suppressed, meta.dep_prios, meta.dep_lines = sort_deps(
@@ -120,8 +120,7 @@ def load(cache: MetadataStore, s: str) -> Any:
         buf = ReadBuffer(data)
         meta = CacheMetaEx.read(buf)
         if meta is None:
-            # Can't deserialize (e.g. different mypy version). Fall back to
-            # raw bytes -- we lose mtime normalization but the diff stays correct.
+            # Can't deserialize. Fall back to raw bytes as above
             return data
         meta.dependencies.sort()
         meta.suppressed.sort()
