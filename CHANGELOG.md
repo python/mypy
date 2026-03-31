@@ -2,6 +2,16 @@
 
 ## Next Release
 
+## Mypy 1.20
+
+We’ve just uploaded mypy 1.20.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
 ### Planned Changes to Defaults and Flags in Mypy 2.0
 
 As a reminder, we are planning to enable `--local-partial-types` by default in mypy 2.0, which
@@ -506,6 +516,10 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 - Write errors to a separate cache file (Ivan Levkivskyi, PR [21022](https://github.com/python/mypy/pull/21022))
 - Write ignored lines to cache meta (Ivan Levkivskyi, PR [20747](https://github.com/python/mypy/pull/20747))
 - Serialize raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
+
+### Typeshed updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=f8f0794d0fe249c06dc9f31a004d85be6cca6ced+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
 ## Mypy 1.19
 
