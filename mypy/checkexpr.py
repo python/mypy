@@ -3800,8 +3800,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
-                if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
-                    left_type, right_type, identity_check=True
+                if (
+                    not self.chk.can_skip_diagnostics
+                    and self.dangerous_comparison(left_type, right_type, identity_check=True)
+                    # Allow dangerous identity comparisons with objects explicitly typed as Any
+                    and not (
+                        isinstance(left, NameExpr)
+                        and isinstance(left.node, Var)
+                        and isinstance(left.node.type, AnyType)
+                    )
+                    and not (
+                        isinstance(right, NameExpr)
+                        and isinstance(right.node, Var)
+                        and isinstance(right.node.type, AnyType)
+                    )
                 ):
                     # Show the most specific literal types possible
                     left_type = try_getting_literal(left_type)
