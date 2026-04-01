@@ -820,3 +820,56 @@ L1:
     r2 = r1.len
 L2:
     return 1
+
+[case testVecI64CreateWithCap]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def cap_only() -> vec[i64]:
+    return vec[i64](cap=5)
+
+def cap_zero() -> vec[i64]:
+    return vec[i64](cap=0)
+
+def cap_variable(n: i64) -> vec[i64]:
+    return vec[i64](cap=n)
+[out]
+def cap_only():
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.alloc(0, 5)
+    return r0
+def cap_zero():
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.alloc(0, 0)
+    return r0
+def cap_variable(n):
+    n :: i64
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.alloc(0, n)
+    return r0
+
+[case testVecI64CreateFromListWithCap]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def list_with_cap() -> vec[i64]:
+    return vec[i64]([1, 2], cap=5)
+[out]
+def list_with_cap():
+    r0 :: vec[i64]
+    r1 :: object
+    r2, r3, r4 :: ptr
+L0:
+    r0 = VecI64Api.alloc(2, 5)
+    r1 = r0.buf
+    r2 = get_element_ptr r1 items :: VecI64BufObject
+    set_mem r2, 1 :: i64*
+    r3 = r2 + 8
+    set_mem r3, 2 :: i64*
+    r4 = r3 + 8
+    keep_alive r0
+    return r0
+

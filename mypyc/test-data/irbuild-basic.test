@@ -3815,3 +3815,12 @@ def get_length():
 L0:
     r0 = 'https://w3id.org/cwl/salad#'
     return 54
+
+[case testXXX]
+X = tuple[str, ...]
+
+def f() -> tuple[str, ...]:
+    return X(str(x) for x in range(5))
+
+def f2() -> tuple[str, ...]:
+    return tuple(str(x) for x in range(5))

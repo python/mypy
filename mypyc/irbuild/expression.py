@@ -364,10 +364,22 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         ):
             item_type = builder.type_to_rtype(analyzed.types[0])
             vec_type = RVec(item_type)
-            if len(expr.args) == 0:
-                return vec_create(builder.builder, vec_type, 0, expr.line)
-            elif len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-                return translate_vec_create_from_iterable(builder, vec_type, expr.args[0])
+            cap = _get_vec_cap(builder, expr)
+            if len(expr.args) == 0 or (
+                len(expr.args) == 1 and expr.arg_kinds == [ARG_NAMED]
+            ):
+                # vec[T]() or vec[T](cap=N)
+                return vec_create(builder.builder, vec_type, 0, expr.line, cap=cap)
+            elif (
+                len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]
+                or len(expr.args) == 2
+                and expr.arg_kinds == [ARG_POS, ARG_NAMED]
+            ):
+                # vec[T](items) or vec[T](items, cap=N)
+                return translate_vec_create_from_iterable(
+                    builder, vec_type, expr.args[0], cap=cap
+                )
         callee = analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
@@ -561,8 +573,16 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
 
+def _get_vec_cap(builder: IRBuilder, expr: CallExpr) -> Value | None:
+    """Extract the 'cap' keyword argument value from a vec() call, or None."""
+    for i, (kind, name) in enumerate(zip(expr.arg_kinds, expr.arg_names)):
+        if kind == ARG_NAMED and name == "cap":
+            return builder.accept(expr.args[i])
+    return None
+
+
 def translate_vec_create_from_iterable(
-    builder: IRBuilder, vec_type: RVec, arg: Expression
+    builder: IRBuilder, vec_type: RVec, arg: Expression, *, cap: Value | None = None
 ) -> Value:
     line = arg.line
     item_type = vec_type.item_type
@@ -581,28 +601,33 @@ def translate_vec_create_from_iterable(
         if is_int64_rprimitive(other_type) or is_int_rprimitive(other_type):
             length = builder.accept(other)
             init = builder.accept(lst.items[0])
-            return vec_create_initialized(builder.builder, vec_type, length, init, line)
+            return vec_create_initialized(builder.builder, vec_type, length, init, line, cap=cap)
         assert False, other_type
     if isinstance(arg, ListExpr):
         items = []
         for item in arg.items:
             value = builder.accept(item)
             items.append(builder.coerce(value, item_type, line))
-        return vec_create_from_values(builder.builder, vec_type, items, line)
+        return vec_create_from_values(builder.builder, vec_type, items, line, cap=cap)
     if isinstance(arg, ListComprehension):
-        return translate_vec_comprehension(builder, vec_type, arg.generator)
-    return vec_from_iterable(builder, vec_type, arg, line)
+        return translate_vec_comprehension(builder, vec_type, arg.generator, cap=cap)
+    return vec_from_iterable(builder, vec_type, arg, line, cap=cap)
 
 
 def vec_from_iterable(
-    builder: IRBuilder, vec_type: RVec, iterable: Expression, line: int
+    builder: IRBuilder,
+    vec_type: RVec,
+    iterable: Expression,
+    line: int,
+    *,
+    cap: Value | None = None,
 ) -> Value:
     """Construct a vec from an arbitrary iterable."""
     # Translate it as a vec comprehension vec[t]([<name> for <name> in
     # iterable]). This way we can use various special casing supported
     # by for loops and comprehensions.
     vec = Register(vec_type)
-    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line), line)
+    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line, cap=cap), line)
     name = f"___tmp_{line}"
     var = Var(name)
     reg = builder.add_local(var, vec_type.item_type)
