@@ -312,6 +312,34 @@ def test_contains() -> None:
     vv = vec[i64]()
     assert 3 not in vv
 
+def test_contains_boundary_values() -> None:
+    v = vec[i64]([0, 2**63 - 1, -2**63])
+    assert 0 in v
+    assert 2**63 - 1 in v
+    assert -2**63 in v
+    assert 1 not in v
+    assert -1 not in v
+
+def test_contains_wrong_type() -> None:
+    # Wrong type should return False, not raise
+    v: Any = vec[i64]([1, 2, 3])
+    assert 'x' not in v
+    assert 1.5 not in v
+    assert None not in v
+    assert [] not in v
+    # Overflow should also return False
+    assert 2**63 not in v
+    assert -2**63 - 1 not in v
+
+def test_contains_bool() -> None:
+    # bool is a subclass of int, so True/False should work
+    v: Any = vec[i64]([0, 1, 5])
+    assert True in v
+    assert False in v
+    v2: Any = vec[i64]([2, 3])
+    assert True not in v2
+    assert False not in v2
+
 def test_remove() -> None:
     a = [4, 7, 9]
     for i in a:

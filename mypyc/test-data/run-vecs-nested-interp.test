@@ -410,3 +410,48 @@ def test_iterator_length_hint() -> None:
     next(it)
     next(it)
     assert length_hint(it) == 0
+
+def test_contains() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v3 = vec[str](['c'])
+    v = vec[vec[str]]([v1, v2, v3])
+    assert v1 in v
+    assert v2 in v
+    assert v3 in v
+    assert vec[str]([]) not in v
+    assert vec[str](['d']) not in v
+
+def test_contains_empty() -> None:
+    v = vec[vec[str]]()
+    assert vec[str]([]) not in v
+    assert vec[str](['x']) not in v
+
+def test_contains_equality() -> None:
+    # Test that equality is used, not just identity
+    v = vec[vec[str]]([vec[str](['x', 'y'])])
+    assert vec[str](['x', 'y']) in v
+    assert vec[str](['x']) not in v
+    assert vec[str](['y']) not in v
+
+def test_contains_nested_i64() -> None:
+    v = vec[vec[i64]]([vec[i64]([1, 2]), vec[i64]([3])])
+    assert vec[i64]([1, 2]) in v
+    assert vec[i64]([3]) in v
+    assert vec[i64]([1]) not in v
+    assert vec[i64]([]) not in v
+
+def test_contains_wrong_type() -> None:
+    v: Any = vec[vec[str]]([vec[str](['x'])])
+    assert 'x' not in v
+    assert 123 not in v
+    assert None not in v
+    assert [] not in v
+
+def test_contains_deeply_nested() -> None:
+    inner = vec[vec[str]]([vec[str](['a'])])
+    v = vec[vec[vec[str]]]([inner])
+    assert inner in v
+    assert vec[vec[str]]([vec[str](['a'])]) in v
+    assert vec[vec[str]]([vec[str](['b'])]) not in v
+    assert vec[vec[str]]() not in v
