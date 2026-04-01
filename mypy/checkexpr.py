@@ -3807,12 +3807,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     and not (
                         isinstance(left, NameExpr)
                         and isinstance(left.node, Var)
-                        and isinstance(left.node.type, AnyType)
+                        and isinstance(get_proper_type(left.node.type), AnyType)
                     )
                     and not (
                         isinstance(right, NameExpr)
                         and isinstance(right.node, Var)
-                        and isinstance(right.node.type, AnyType)
+                        and isinstance(get_proper_type(right.node.type), AnyType)
                     )
                 ):
                     # Show the most specific literal types possible
