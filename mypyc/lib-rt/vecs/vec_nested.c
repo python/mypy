@@ -467,6 +467,8 @@ static PyObject *VecNestedIter_next(VecNestedIterObject *self) {
     VecNested v = self->vec_obj->vec;
     if (self->index < v.len) {
         PyObject *item = box_vec_item_by_index(v, self->index);
+        if (item == NULL)
+            return NULL;
         self->index++;
         return item;
     }

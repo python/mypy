@@ -383,6 +383,8 @@ static PyObject *vec_iter_next(NAME(IterObject) *self) {
     VEC v = self->vec_obj->vec;
     if (self->index < v.len) {
         PyObject *item = BOX_ITEM(v.buf->items[self->index]);
+        if (item == NULL)
+            return NULL;
         self->index++;
         return item;
     }
