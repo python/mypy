@@ -419,6 +419,41 @@ def test_contains() -> None:
     assert None in v2
     assert '4' not in v2
 
+def test_contains_identity() -> None:
+    # Test that identity check works (short-circuits before __eq__)
+    o = ClassWithRaisingEq()
+    v = vec[object]([o])
+    assert o in v  # Should use identity, not __eq__
+
+def test_contains_equality() -> None:
+    # Test that equality is used when identity doesn't match
+    s = 'hello world!'
+    v = vec[str]([s])
+    # Create a new string object with same value (different identity)
+    s2 = 'hello' + str() + ' world!'
+    assert s2 in v
+
+def test_contains_exception_from_eq() -> None:
+    o1 = ClassWithRaisingEq()
+    o2 = ClassWithRaisingEq()
+    v = vec[object]([o1])
+    with assertRaises(RuntimeError):
+        o2 in v
+
+def test_contains_wrong_type() -> None:
+    # Wrong type should return False, not raise
+    v: Any = vec[str](['x'])
+    assert 123 not in v
+    assert b'x' not in v
+    assert None not in v
+    assert [] not in v
+
+def test_contains_subclass() -> None:
+    v = vec[str]([StringSubclass('abc')])
+    assert 'abc' in v
+    assert StringSubclass('abc') in v
+    assert 'xyz' not in v
+
 def test_remove() -> None:
     a = ['4x', '7x', '9x']
     for i in a:
