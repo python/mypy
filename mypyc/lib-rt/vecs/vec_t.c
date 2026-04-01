@@ -467,6 +467,7 @@ static PyObject *VecTIter_next(VecTIterObject *self) {
         Py_INCREF(item);
         return item;
     }
+    Py_CLEAR(self->vec_obj);
     return NULL;  // StopIteration
 }
 

@@ -472,6 +472,7 @@ static PyObject *VecNestedIter_next(VecNestedIterObject *self) {
         self->index++;
         return item;
     }
+    Py_CLEAR(self->vec_obj);
     return NULL;  // StopIteration
 }
 

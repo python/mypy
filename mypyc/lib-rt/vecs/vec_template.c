@@ -375,11 +375,13 @@ static PyObject *vec_iter(PyObject *self) {
 }
 
 static void vec_iter_dealloc(NAME(IterObject) *self) {
-    Py_DECREF(self->vec_obj);
+    Py_XDECREF(self->vec_obj);
     PyObject_Del(self);
 }
 
 static PyObject *vec_iter_next(NAME(IterObject) *self) {
+    if (self->vec_obj == NULL)
+        return NULL;
     VEC v = self->vec_obj->vec;
     if (self->index < v.len) {
         PyObject *item = BOX_ITEM(v.buf->items[self->index]);
@@ -388,10 +390,13 @@ static PyObject *vec_iter_next(NAME(IterObject) *self) {
         self->index++;
         return item;
     }
+    Py_CLEAR(self->vec_obj);
     return NULL;  // StopIteration
 }
 
 static PyObject *vec_iter_len(NAME(IterObject) *self, PyObject *Py_UNUSED(ignored)) {
+    if (self->vec_obj == NULL)
+        return PyLong_FromSsize_t(0);
     Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
     if (remaining < 0)
         remaining = 0;
