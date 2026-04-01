@@ -178,6 +178,24 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+static int vec_contains(PyObject *self, PyObject *value) {
+    VecNested v = ((VecNestedObject *)self)->vec;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        PyObject *item = box_vec_item_by_index(v, i);
+        if (item == NULL)
+            return -1;
+        if (item == value) {
+            Py_DECREF(item);
+            return 1;
+        }
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0)
+            return cmp;  // 1 if equal, -1 on error
+    }
+    return 0;
+}
+
 static PyObject *compare_vec_eq(VecNested x, VecNested y, int op) {
     int cmp = 1;
     PyObject *res;
@@ -414,6 +432,7 @@ static PyMappingMethods VecNestedMapping = {
 static PySequenceMethods VecNestedSequence = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
+    .sq_contains = vec_contains,
 };
 
 static PyMethodDef vec_methods[] = {

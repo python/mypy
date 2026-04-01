@@ -210,6 +210,22 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+static int vec_contains(PyObject *self, PyObject *value) {
+    VecT v = ((VecTObject *)self)->vec;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        PyObject *item = v.buf->items[i];
+        if (item == value) {
+            return 1;
+        }
+        Py_INCREF(item);
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0)
+            return cmp;  // 1 if equal, -1 on error
+    }
+    return 0;
+}
+
 static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
@@ -410,6 +426,7 @@ static PyMappingMethods VecTMapping = {
 static PySequenceMethods VecTSequence = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
+    .sq_contains = vec_contains,
 };
 
 static PyMethodDef vec_methods[] = {

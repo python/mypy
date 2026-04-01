@@ -235,6 +235,21 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+static int vec_contains(PyObject *self, PyObject *value) {
+    ITEM_C_TYPE x = UNBOX_ITEM(value);
+    if (IS_UNBOX_ERROR(x)) {
+        if (PyErr_Occurred())
+            PyErr_Clear();
+        return 0;
+    }
+    VEC v = ((VEC_OBJECT *)self)->vec;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        if (v.buf->items[i] == x)
+            return 1;
+    }
+    return 0;
+}
+
 static Py_ssize_t vec_length(PyObject *o) {
     return ((VEC_OBJECT *)o)->vec.len;
 }
@@ -348,6 +363,7 @@ static PyMappingMethods vec_mapping_methods = {
 static PySequenceMethods vec_sequence_methods = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
+    .sq_contains = vec_contains,
 };
 
 static PyMethodDef vec_methods[] = {
