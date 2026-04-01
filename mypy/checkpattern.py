@@ -722,6 +722,8 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         if isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
             typ = fill_typevars_with_any(p_typ.type_object())
+            if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
+                typ = typ.partial_fallback
             return [TypeRange(typ, is_upper_bound=False)]
         if (
             isinstance(o.class_ref.node, Var)

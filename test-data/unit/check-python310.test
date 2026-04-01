@@ -961,6 +961,22 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
+[case testMatchClassPatternCaptureGenericNamedTupleAlreadyKnown]
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+
+class A(NamedTuple, Generic[T]):
+    a: T
+
+m: A[int]
+
+match m:
+    case A(a=i):
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
 [case testMatchClassPatternCaptureFilledGenericTypeAlias]
 from typing import Generic, TypeVar
 

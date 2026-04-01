@@ -1676,6 +1676,20 @@ e: M[bool]  # E: Value of type variable "T" of "M" cannot be "bool"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testMatchClassPatternCapturePEP695GenericNamedTupleAlreadyKnown]
+from typing import NamedTuple
+
+class N[T](NamedTuple):
+    x: T
+
+n: N[int]
+
+match n:
+    case N(x=value):
+        reveal_type(value)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testPEP695GenericTypedDict]
 from typing import TypedDict
 
