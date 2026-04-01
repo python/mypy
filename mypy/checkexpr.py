@@ -3807,11 +3807,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     and not (
                         isinstance(left, NameExpr)
                         and isinstance(left.node, Var)
+                        and not left.node.is_inferred
                         and isinstance(get_proper_type(left.node.type), AnyType)
                     )
                     and not (
                         isinstance(right, NameExpr)
                         and isinstance(right.node, Var)
+                        and not right.node.is_inferred
                         and isinstance(get_proper_type(right.node.type), AnyType)
                     )
                 ):

@@ -2383,7 +2383,7 @@ if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", 
 [case testStrictEqualityWithAnySentinel]
 # flags: --strict-equality
 from __future__ import annotations
-from typing import Any
+from typing import Any, cast
 
 class A: ...
 class B: ...
@@ -2411,6 +2411,17 @@ def f3(a: A = sentinel_strict, b: B = sentinel_strict):  # E: Incompatible defau
 def f4(a: A | None = sentinel_strict, b: B | None = sentinel_strict):  # E: Incompatible default for parameter "a" (default has type "object", parameter has type "A | None") \
                                                                        # E: Incompatible default for parameter "b" (default has type "object", parameter has type "B | None")
     if a is sentinel_strict and b is sentinel_strict:  # E: Non-overlapping identity check (left operand type: "B | None", right operand type: "A | None")
+        raise
+
+
+sentinel_inferred = cast(Any, object())
+
+def f5(a: A = sentinel_inferred, b: B = sentinel_inferred):
+    if a is sentinel_inferred and b is sentinel_inferred:  # E: Non-overlapping identity check (left operand type: "B", right operand type: "A")
+        raise
+
+def f6(a: A | None = sentinel_inferred, b: B | None = sentinel_inferred):
+    if a is sentinel_inferred and b is sentinel_inferred:  # E: Non-overlapping identity check (left operand type: "B | None", right operand type: "A | None")
         raise
 [builtins fixtures/bool.pyi]
 
