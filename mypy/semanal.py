@@ -4936,7 +4936,7 @@ class SemanticAnalyzer(
                     return None
             elif param_name == "bound":
                 if has_values:
-                    self.fail("TypeVar cannot have both values and an upper bound", context)
+                    self.fail("TypeVar cannot have both constraints and a bound", context)
                     return None
                 tv_arg = self.get_typevarlike_argument("TypeVar", param_name, param_value, context)
                 if tv_arg is None:
