@@ -358,7 +358,7 @@ static PyMethodDef vec_methods[] = {
 
 typedef struct {
     PyObject_HEAD
-    VEC_OBJECT *vec_obj;  // Reference to vec object (keeps buffer alive)
+    VEC vec;              // Unboxed vec (keeps buffer alive via buf reference)
     Py_ssize_t index;     // Current iteration index
 } NAME(IterObject);
 
@@ -368,36 +368,35 @@ static PyObject *vec_iter(PyObject *self) {
     NAME(IterObject) *it = PyObject_New(NAME(IterObject), &NAME(IterType));
     if (it == NULL)
         return NULL;
-    Py_INCREF(self);
-    it->vec_obj = (VEC_OBJECT *)self;
+    it->vec = ((VEC_OBJECT *)self)->vec;
+    Py_XINCREF(it->vec.buf);
     it->index = 0;
     return (PyObject *)it;
 }
 
 static void vec_iter_dealloc(NAME(IterObject) *self) {
-    Py_XDECREF(self->vec_obj);
+    Py_XDECREF(self->vec.buf);
     PyObject_Del(self);
 }
 
 static PyObject *vec_iter_next(NAME(IterObject) *self) {
-    if (self->vec_obj == NULL)
+    if (self->vec.buf == NULL)
         return NULL;
-    VEC v = self->vec_obj->vec;
-    if (self->index < v.len) {
-        PyObject *item = BOX_ITEM(v.buf->items[self->index]);
+    if (self->index < self->vec.len) {
+        PyObject *item = BOX_ITEM(self->vec.buf->items[self->index]);
         if (item == NULL)
             return NULL;
         self->index++;
         return item;
     }
-    Py_CLEAR(self->vec_obj);
+    Py_CLEAR(self->vec.buf);
     return NULL;  // StopIteration
 }
 
 static PyObject *vec_iter_len(NAME(IterObject) *self, PyObject *Py_UNUSED(ignored)) {
-    if (self->vec_obj == NULL)
+    if (self->vec.buf == NULL)
         return PyLong_FromSsize_t(0);
-    Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
+    Py_ssize_t remaining = self->vec.len - self->index;
     if (remaining < 0)
         remaining = 0;
     return PyLong_FromSsize_t(remaining);

@@ -420,7 +420,7 @@ static PyMethodDef vec_methods[] = {
 
 typedef struct {
     PyObject_HEAD
-    VecTObject *vec_obj;  // Reference to vec object (keeps buffer alive)
+    VecT vec;             // Unboxed vec (keeps buffer alive via buf reference)
     Py_ssize_t index;     // Current iteration index
 } VecTIterObject;
 
@@ -430,8 +430,8 @@ static PyObject *VecT_iter(PyObject *self) {
     VecTIterObject *it = PyObject_GC_New(VecTIterObject, &VecTIterType);
     if (it == NULL)
         return NULL;
-    Py_INCREF(self);
-    it->vec_obj = (VecTObject *)self;
+    it->vec = ((VecTObject *)self)->vec;
+    Py_INCREF(it->vec.buf);
     it->index = 0;
     PyObject_GC_Track(it);
     return (PyObject *)it;
@@ -440,41 +440,40 @@ static PyObject *VecT_iter(PyObject *self) {
 static int
 VecTIter_traverse(VecTIterObject *self, visitproc visit, void *arg)
 {
-    Py_VISIT(self->vec_obj);
+    Py_VISIT(self->vec.buf);
     return 0;
 }
 
 static int
 VecTIter_clear(VecTIterObject *self)
 {
-    Py_CLEAR(self->vec_obj);
+    Py_CLEAR(self->vec.buf);
     return 0;
 }
 
 static void VecTIter_dealloc(VecTIterObject *self) {
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->vec_obj);
+    Py_XDECREF(self->vec.buf);
     PyObject_GC_Del(self);
 }
 
 static PyObject *VecTIter_next(VecTIterObject *self) {
-    if (self->vec_obj == NULL)
+    if (self->vec.buf == NULL)
         return NULL;
-    VecT v = self->vec_obj->vec;
-    if (self->index < v.len) {
-        PyObject *item = v.buf->items[self->index];
+    if (self->index < self->vec.len) {
+        PyObject *item = self->vec.buf->items[self->index];
         self->index++;
         Py_INCREF(item);
         return item;
     }
-    Py_CLEAR(self->vec_obj);
+    Py_CLEAR(self->vec.buf);
     return NULL;  // StopIteration
 }
 
 static PyObject *VecTIter_len(VecTIterObject *self, PyObject *Py_UNUSED(ignored)) {
-    if (self->vec_obj == NULL)
+    if (self->vec.buf == NULL)
         return PyLong_FromSsize_t(0);
-    Py_ssize_t remaining = self->vec_obj->vec.len - self->index;
+    Py_ssize_t remaining = self->vec.len - self->index;
     if (remaining < 0)
         remaining = 0;
     return PyLong_FromSsize_t(remaining);
