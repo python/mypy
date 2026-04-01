@@ -533,6 +533,18 @@ def test_pop_index() -> None:
     assert item == '15'
     assert v == vec[str]()
 
+def test_append_with_alias() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    alias = v
+    v = append(v, 'b')
+    v = append(v, 'c')
+    v = append(v, 'd')
+    assert alias[0] == 'a'
+    assert len(alias) == 1
+    assert v[0] == 'a'
+    assert len(v) == 4
+
 [file helpers.py]
 # Test helper classes
 

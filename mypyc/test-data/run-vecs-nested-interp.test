@@ -455,3 +455,15 @@ def test_contains_deeply_nested() -> None:
     assert vec[vec[str]]([vec[str](['a'])]) in v
     assert vec[vec[str]]([vec[str](['b'])]) not in v
     assert vec[vec[str]]() not in v
+
+def test_append_with_alias() -> None:
+    v = vec[vec[i64]]()
+    v = append(v, vec[i64]([1, 2, 3]))
+    alias = v
+    v = append(v, vec[i64]([4, 5]))
+    v = append(v, vec[i64]([6]))
+    v = append(v, vec[i64]([7]))
+    assert alias[0] == vec[i64]([1, 2, 3])
+    assert len(alias) == 1
+    assert v[0] == vec[i64]([1, 2, 3])
+    assert len(v) == 4

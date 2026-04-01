@@ -265,8 +265,15 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
         memcpy(new.buf->items, vec.buf->items, sizeof(VecNestedBufItem) * vec.len);
         // TODO: How to safely represent deleted items?
         memset(new.buf->items + vec.len, 0, sizeof(VecNestedBufItem) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i].buf);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
