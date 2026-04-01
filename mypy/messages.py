@@ -957,7 +957,7 @@ class MessageBuilder:
         # Try to determine the name of the extra argument.
         for key in arg_type.items:
             if key not in callee.arg_names:
-                msg = f'Extra argument "{key}" from **args' + for_function(callee)
+                msg = f'Extra argument "{key}" from **TypedDict' + for_function(callee)
                 break
         else:
             self.too_many_arguments(callee, context)

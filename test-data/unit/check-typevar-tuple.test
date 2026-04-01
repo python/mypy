@@ -2251,7 +2251,7 @@ def test(
     **kwargs: Unpack[Keywords],
 ) -> T:
     if bool():
-        func(*args, **kwargs)  # E: Extra argument "a" from **args
+        func(*args, **kwargs)  # E: Extra argument "a" from **TypedDict
     return func(*args)
 def test2(
     x: int,
