@@ -564,10 +564,16 @@ PyTypeObject VecNestedType = {
     // TODO: free
 };
 
-PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
-    VecNested v = vec_alloc(0, item_type, depth);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable, int64_t cap) {
+    VecNested v = vec_alloc(cap > 0 ? cap : 0, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++) {
+            v.buf->items[i].len = -1;
+            v.buf->items[i].buf = NULL;
+        }
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);

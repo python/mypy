@@ -545,6 +545,94 @@ def test_append_with_alias() -> None:
     assert v[0] == 'a'
     assert len(v) == 4
 
+def test_cap_empty() -> None:
+    v = vec[str](cap=3)
+    assert len(v) == 0
+    assert v == vec[str]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[str](['a', 'b'], cap=3)
+    assert len(v) == 2
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+    assert v == vec[str](['a', 'b'])
+
+def test_cap_zero() -> None:
+    v = vec[str](cap=0)
+    assert len(v) == 0
+    v = vec[str](['x'], cap=0)
+    assert v == vec[str](['x'])
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[str](cap=-1)
+    with assertRaises(ValueError):
+        vec[str](['x'], cap=-1)
+
+def test_cap_buffer_reuse_empty() -> None:
+    # cap=3, append 3 items -> all fit, buffer reused (no reallocation)
+    v = vec[str](cap=3)
+    old = v
+    v = append(v, 'a')
+    v = append(v, 'b')
+    v = append(v, 'c')
+    assert len(v) == 3
+    # Mutate via v; old shares the buffer so old's append overwrites v[0]
+    old = append(old, 'Q')
+    assert v[0] == 'Q'
+
+def test_cap_buffer_reuse_with_initializer() -> None:
+    # 2 items with cap=3 -> one more append fits without reallocation
+    v = vec[str](['a', 'b'], cap=3)
+    old = v
+    v = append(v, 'c')
+    assert len(v) == 3
+    # Shared buffer: mutation through v visible through old
+    v[0] = 'z'
+    assert old[0] == 'z'
+
+def test_cap_buffer_reuse_at_capacity() -> None:
+    # cap=2, fill with 2 items -> at capacity, next append must reallocate
+    v = vec[str](['a', 'b'], cap=2)
+    old = v
+    v = append(v, 'c')
+    # v now has a new buffer; appending to old should NOT affect v
+    old = append(old, 'Q')
+    assert v[0] == 'a'  # v's buffer was not touched by old's append
+
+def test_cap_exceeded() -> None:
+    # cap=2, fill to capacity, then one more append triggers reallocation
+    v = vec[str](cap=2)
+    v = append(v, 'a')
+    v = append(v, 'b')
+    old = v
+    # Now at capacity; next append allocates new buffer
+    v = append(v, 'c')
+    # Append to old should NOT affect v since they have separate buffers now
+    old = append(old, 'Q')
+    assert v[0] == 'a'
+
+def test_cap_optional() -> None:
+    v = vec[Optional[str]](cap=3)
+    assert len(v) == 0
+    v = append(v, 'x')
+    v = append(v, None)
+    assert len(v) == 2
+    assert v[0] == 'x'
+    assert v[1] is None
+
+    v = vec[Optional[str]](['x', None], cap=3)
+    assert len(v) == 2
+    assert v[0] == 'x'
+    assert v[1] is None
+
+def test_cap_initializer_longer_than_cap() -> None:
+    # Initializer has more items than cap -> cap is just a minimum, all items kept
+    v = vec[str](['a', 'b', 'c'], cap=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+    assert v[2] == 'c'
 [file helpers.py]
 # Test helper classes
 

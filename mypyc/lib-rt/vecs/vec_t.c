@@ -557,10 +557,14 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
-    VecT v = vec_alloc(0, item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    VecT v = vec_alloc(cap > 0 ? cap : 0, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++)
+            v.buf->items[i] = NULL;
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);
