@@ -87,11 +87,11 @@ b: int
 import b
 
 class A: ...
-m: A
 
-match m:
-    case b.b:
-        reveal_type(m)  # E: Statement is unreachable
+def f(m: A) -> None:
+    match m:
+        case b.b:
+            reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 class B: ...
 b: B
@@ -100,11 +100,10 @@ b: B
 # flags: --strict-equality --warn-unreachable
 import b
 
-m: int
-
-match m:
-    case b.b:
-        reveal_type(m)  # E: Statement is unreachable
+def f(m: int) -> None:
+    match m:
+        case b.b:
+            reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -3151,13 +3150,14 @@ def nested_in_dict(d: dict[str, Any]) -> int:
 # flags: --warn-unreachable
 from typing import Literal
 
-def x() -> tuple[Literal["test"]]: ...
+def f() -> None:
+    def x() -> tuple[Literal["test"]]: ...
 
-match x():
-    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
-        reveal_type(x)  # E: Statement is unreachable
-    case foo:
-        foo
+    match x():
+        case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
+            reveal_type(x)  # E: Statement is unreachable
+        case foo:
+            foo
 
 [builtins fixtures/dict.pyi]
 

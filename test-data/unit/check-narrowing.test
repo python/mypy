@@ -2802,13 +2802,13 @@ while x is not None and b():
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop1]
 # flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
-x = 1
-while True:
-    if x == str():
-        break
-    x = str()
-    if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
-        break  # E: Statement is unreachable
+def f(x: int) -> None:
+    while True:
+        if x == str():
+            break
+        x = str()
+        if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
+            break  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop2]
@@ -2818,11 +2818,11 @@ class A: ...
 class B: ...
 class C: ...
 
-x = A()
-while True:
-    if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
-        break  # E: Statement is unreachable
-    x = B()
+def f(x: A) -> None:
+    while True:
+        if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
+            break  # E: Statement is unreachable
+        x = B()
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop3]
