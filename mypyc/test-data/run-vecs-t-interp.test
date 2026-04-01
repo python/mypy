@@ -600,6 +600,16 @@ def test_cap_buffer_reuse_at_capacity() -> None:
     old = append(old, 'Q')
     assert v[0] == 'a'  # v's buffer was not touched by old's append
 
+def test_cap_read_old_after_realloc() -> None:
+    # After reallocation, old alias must still have valid items (not NULL)
+    v = vec[str](['a', 'b', 'c'], cap=3)
+    old = v
+    v = append(v, 'd')
+    v[0] = 'z'
+    assert old[0] == 'a'  # old buffer retains original items
+    assert old[1] == 'b'
+    assert old[2] == 'c'
+
 def test_cap_exceeded() -> None:
     # cap=2, fill to capacity, then one more append triggers reallocation
     v = vec[str](cap=2)
