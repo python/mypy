@@ -7127,9 +7127,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return parent_expr
         return expr
 
-    def _collect_walrus_type_map(
-        self, expr: Expression, type_map: dict[Expression, Type]
-    ) -> None:
+    def _collect_walrus_type_map(self, expr: Expression, type_map: dict[Expression, Type]) -> None:
         """Collect type narrowings from walrus assignments nested anywhere in expr.
 
         Unlike _propagate_walrus_assignments, this recurses into arbitrary
