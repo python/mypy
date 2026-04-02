@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
-from contextlib importh ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager
 from typing import (
     Final,
     Generic,
