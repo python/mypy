@@ -5393,6 +5393,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if isinstance(ttype, AnyType):
                 all_types.append(ttype)
                 continue
+            if isinstance(ttype, UninhabitedType):
+                continue
 
             if isinstance(ttype, FunctionLike):
                 item = ttype.items[0]
