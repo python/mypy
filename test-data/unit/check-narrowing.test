@@ -3264,6 +3264,20 @@ def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
         reveal_type(key)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowChainedComparisonMeet]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+
+def f1(a: str | None, b: str | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowTypeObject]
 # flags: --strict-equality --warn-unreachable
 from typing import Any

@@ -6674,8 +6674,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # If we have found non-trivial restrictions from the regular comparisons,
         # then return soon. Otherwise try to infer restrictions involving `len(x)`.
         # TODO: support regular and len() narrowing in the same chain.
-        if any(m != ({}, {}) for m in partial_type_maps):
-            return reduce_conditional_maps(partial_type_maps)
+        if any(len(m[0]) or len(m[1]) for m in partial_type_maps):
+            return reduce_conditional_maps(partial_type_maps, use_meet=True)
         else:
             # Use meet for `and` maps to get correct results for chained checks
             # like `if 1 < len(x) < 4: ...`
