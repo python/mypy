@@ -4264,6 +4264,28 @@ def check_or_nested(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int]"
 
+[case testInferWalrusAssignmentNestedInAndExpr]
+# Walrus narrowing should propagate when the assignment is nested inside
+# an arbitrary expression on the right side of an "and" condition.
+# Regression test for https://github.com/python/mypy/issues/19430
+class Node:
+    def __init__(self, value: bool) -> None:
+        self.value = value
+
+def check_walrus_in_unary(cond: bool) -> None:
+    woo = None
+    if cond and not (woo := Node(True)).value:
+        reveal_type(woo)  # N: Revealed type is "__main__.Node"
+    else:
+        reveal_type(woo)  # N: Revealed type is "__main__.Node | None"
+
+def check_walrus_in_nested_call(cond: bool) -> None:
+    woo = None
+    if cond and (woo := Node(True)).value:
+        reveal_type(woo)  # N: Revealed type is "__main__.Node"
+    else:
+        reveal_type(woo)  # N: Revealed type is "__main__.Node | None"
+
 [case testInferOptionalAgainstAny]
 from typing import Any, Optional, TypeVar
 
