@@ -666,10 +666,11 @@ class PatternChecker(PatternVisitor[PatternType]):
         # Check keyword patterns
         #
         narrowed_type_for_members = narrowed_type
-        if isinstance(narrowed_type_for_members, TupleType) and (
-            narrowed_type_for_members.partial_fallback.type.is_named_tuple
+        proper_narrowed_type_for_members = get_proper_type(narrowed_type_for_members)
+        if isinstance(proper_narrowed_type_for_members, TupleType) and (
+            proper_narrowed_type_for_members.partial_fallback.type.is_named_tuple
         ):
-            narrowed_type_for_members = narrowed_type_for_members.partial_fallback
+            narrowed_type_for_members = proper_narrowed_type_for_members.partial_fallback
 
         can_match = True
         for keyword, pattern in keyword_pairs:
