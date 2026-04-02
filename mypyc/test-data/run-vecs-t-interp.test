@@ -324,6 +324,52 @@ def test_iteration() -> None:
         a.append(x)
     assert a == ['11', None, '45', '64']
 
+def test_iterator_protocol() -> None:
+    # Test iter() and next() functions explicitly
+    v = vec[str](['a', 'b', 'c'])
+    it = iter(v)
+    assert next(it) == 'a'
+    assert next(it) == 'b'
+    assert next(it) == 'c'
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test multiple iterators on same vec
+    v = vec[str](['x', 'y'])
+    it1 = iter(v)
+    it2 = iter(v)
+    assert next(it1) == 'x'
+    assert next(it2) == 'x'
+    assert next(it1) == 'y'
+    assert next(it2) == 'y'
+
+    # Test empty vec iterator
+    it = iter(vec[str]())
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test iteration with optional type
+    v = vec[Optional[str]](['a', None, 'b'])
+    it = iter(v)
+    assert next(it) == 'a'
+    assert next(it) is None
+    assert next(it) == 'b'
+
+def test_iterator_length_hint() -> None:
+    v = vec[str](['a', 'b', 'c', 'd', 'e'])
+    it = iter(v)
+    op: Any = getattr(sys, "modules")["operator"]
+    length_hint = op.length_hint
+    assert length_hint(it) == 5
+    next(it)
+    assert length_hint(it) == 4
+    next(it)
+    next(it)
+    assert length_hint(it) == 2
+    next(it)
+    next(it)
+    assert length_hint(it) == 0
+
 def test_slicing() -> None:
     v = vec[str](str(i) for i in range(5))
     assert v[1:4] == vec[str](['1', '2', '3'])
@@ -372,6 +418,41 @@ def test_contains() -> None:
     assert '3' in v2
     assert None in v2
     assert '4' not in v2
+
+def test_contains_identity() -> None:
+    # Test that identity check works (short-circuits before __eq__)
+    o = ClassWithRaisingEq()
+    v = vec[object]([o])
+    assert o in v  # Should use identity, not __eq__
+
+def test_contains_equality() -> None:
+    # Test that equality is used when identity doesn't match
+    s = 'hello world!'
+    v = vec[str]([s])
+    # Create a new string object with same value (different identity)
+    s2 = 'hello' + str() + ' world!'
+    assert s2 in v
+
+def test_contains_exception_from_eq() -> None:
+    o1 = ClassWithRaisingEq()
+    o2 = ClassWithRaisingEq()
+    v = vec[object]([o1])
+    with assertRaises(RuntimeError):
+        o2 in v
+
+def test_contains_wrong_type() -> None:
+    # Wrong type should return False, not raise
+    v: Any = vec[str](['x'])
+    assert 123 not in v
+    assert b'x' not in v
+    assert None not in v
+    assert [] not in v
+
+def test_contains_subclass() -> None:
+    v = vec[str]([StringSubclass('abc')])
+    assert 'abc' in v
+    assert StringSubclass('abc') in v
+    assert 'xyz' not in v
 
 def test_remove() -> None:
     a = ['4x', '7x', '9x']

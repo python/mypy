@@ -58,7 +58,15 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import (
+    BITMAP_BITS,
+    EXT_SUFFIX,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    MODULE_PREFIX,
+    SELF_NAME,
+    TEMP_ATTR_NAME,
+    shared_lib_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -76,6 +84,8 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
+    LoadAddress,
+    LoadGlobal,
     LoadStatic,
     MethodCall,
     Op,
@@ -96,6 +106,7 @@ from mypyc.ir.rtypes import (
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -106,6 +117,7 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
 )
@@ -130,11 +142,17 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.irbuild.vec import vec_set_item
+from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
+from mypyc.primitives.misc_ops import (
+    check_unpack_count_op,
+    get_module_dict_op,
+    import_op,
+    native_import_op,
+)
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
@@ -461,15 +479,56 @@ class IRBuilder:
         # doesn't cause contention.
         self.builder.set_immortal_if_free_threaded(val, line)
 
-    def gen_import(self, id: str, line: int) -> None:
-        self.imports[id] = None
+    def gen_import(self, module: str, line: int) -> None:
+        self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(id, line, needs_import, out)
+        self.check_if_module_loaded(module, line, needs_import, out)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_str(id, line)], line)
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        if self.is_native_module(module) and self.is_same_group_module(module):
+            # Use custom import machinery for native-to-native imports in the same group
+            init_only_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+            )
+            exec_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
+            )
+            module_static = self.add(
+                LoadAddress(
+                    object_pointer_rprimitive,
+                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                )
+            )
+            group_name = self.mapper.group_map.get(self.module_name)
+            if group_name is not None:
+                shared_lib_mod_name = shared_lib_name(group_name)
+                mod_dict = self.call_c(get_module_dict_op, [], line)
+                shared_lib_obj = self.primitive_op(
+                    dict_get_item_op, [mod_dict, self.load_str(shared_lib_mod_name, line)], line
+                )
+                shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
+            else:
+                shared_lib_file = self.none_object(line)
+            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            is_pkg = self.is_package_module(module)
+            value = self.call_c(
+                native_import_op,
+                [
+                    self.load_str(module, line),
+                    init_only_func,
+                    exec_func,
+                    module_static,
+                    shared_lib_file,
+                    ext_suffix,
+                    Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
+                ],
+                line,
+            )
+        else:
+            # Import using generic Python C API
+            value = self.call_c(import_op, [self.load_str(module, line)], line)
+        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
@@ -1098,6 +1157,20 @@ class IRBuilder:
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
         return self.mapper.is_native_module(module)
+
+    def is_same_group_module(self, module: str) -> bool:
+        """Is the given module in the same compilation group as the current module?
+
+        Modules in the same group share a compiled C extension and can reference
+        each other's C-level symbols directly. Modules in separate groups (separate
+        compilation mode) must use the Python import system instead.
+        """
+        return self.mapper.group_map.get(module) == self.mapper.group_map.get(self.module_name)
+
+    def is_package_module(self, module: str) -> bool:
+        """Is the given module a package (i.e., an __init__.py file)?"""
+        st = self.graph.get(module)
+        return st is not None and st.tree is not None and st.tree.is_package_init_file()
 
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         return self.mapper.is_native_ref_expr(expr)

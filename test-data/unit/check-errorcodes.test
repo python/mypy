@@ -21,6 +21,77 @@ def f() -> None:
 [file m.py]
 [builtins fixtures/module.pyi]
 
+[case testErrorCodeUndefinedNameSuggestion]
+my_variable = 42
+my_constant = 100
+
+x = my_variabel  # E: Name "my_variabel" is not defined; did you mean "my_variable"?  [name-defined]
+
+def calculate_sum(items: int) -> int:
+    return items
+
+calculate_summ(1)  # E: Name "calculate_summ" is not defined; did you mean "calculate_sum"?  [name-defined]
+
+class MyClass:
+    pass
+
+y = MyClas()  # E: Name "MyClas" is not defined; did you mean "MyClass"?  [name-defined]
+
+unknown_xyz  # E: Name "unknown_xyz" is not defined  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionLocal]
+def foo() -> None:
+    local_value = 10
+    x = local_valeu  # E: Name "local_valeu" is not defined; did you mean "local_value"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionOuterScope]
+top_level_var = 42
+
+def foo() -> None:
+    x = top_level_vr  # E: Name "top_level_vr" is not defined; did you mean "top_level_var"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionClassBody]
+class Foo:
+    class_attr = 10
+    x = class_atr  # E: Name "class_atr" is not defined; did you mean "class_attr"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionFromImport]
+from m import some_function
+
+some_functon(1)  # E: Name "some_functon" is not defined; did you mean "some_function"?  [name-defined]
+
+[file m.py]
+def some_function(x: int) -> int:
+    return x
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionBuiltin]
+x = lenn  # E: Name "lenn" is not defined; did you mean "len"?  [name-defined]
+[builtins fixtures/len.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionClassMethod]
+class Foo:
+    class_attr = 10
+    def method(self) -> None:
+        x = class_atr  # E: Name "class_atr" is not defined  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionMultiple]
+total_count = 1
+total_counts = 2
+x = total_countt  # E: Name "total_countt" is not defined; did you mean "total_count" or "total_counts"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionIgnored]
+my_variable = 42
+x = my_variabel  # type: ignore[name-defined]
+y = my_variabel  # type: ignore
+[builtins fixtures/module.pyi]
+
 [case testErrorCodeUnclassifiedError]
 class A:
     def __init__(self) -> int: \

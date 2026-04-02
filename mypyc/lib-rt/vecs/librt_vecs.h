@@ -493,6 +493,16 @@ extern PyTypeObject VecBoolType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
+// Iterator type objects for vec iteration
+extern PyTypeObject VecI64IterType;
+extern PyTypeObject VecI32IterType;
+extern PyTypeObject VecI16IterType;
+extern PyTypeObject VecU8IterType;
+extern PyTypeObject VecFloatIterType;
+extern PyTypeObject VecBoolIterType;
+extern PyTypeObject VecTIterType;
+extern PyTypeObject VecNestedIterType;
+
 // Type objects corresponding to the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *LibRTVecs_I64TypeObj;
 extern PyTypeObject *LibRTVecs_I32TypeObj;
