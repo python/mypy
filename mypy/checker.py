@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
-from contextlib import ExitStack, contextmanager
+from contextlib importh ExitStack, contextmanager
 from typing import (
     Final,
     Generic,
@@ -6497,6 +6497,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(node, OpExpr) and node.op == "and":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            # Collect type narrowings from any walrus assignments nested in the
+            # right operand. In the true branch of (A and B), all walrus assignments
+            # in B are guaranteed to have executed, so we can narrow their targets.
+            self._collect_walrus_type_map(node.right, right_if_vars)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
@@ -7122,6 +7126,40 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 type_map[parent_expr] = assigned_type
             return parent_expr
         return expr
+
+    def _collect_walrus_type_map(
+        self, expr: Expression, type_map: dict[Expression, Type]
+    ) -> None:
+        """Collect type narrowings from walrus assignments nested anywhere in expr.
+
+        Unlike _propagate_walrus_assignments, this recurses into arbitrary
+        expression types (OpExpr, CallExpr, UnaryExpr, etc.) to find any
+        AssignmentExpr nodes and register the assigned type for narrowing.
+        This is used when processing the true-branch of an `and` expression,
+        where any walrus in the right operand is guaranteed to have executed.
+        """
+        if isinstance(expr, AssignmentExpr):
+            assigned_type = self.lookup_type_or_none(expr.value)
+            target = collapse_walrus(expr)
+            if assigned_type is not None:
+                type_map[target] = assigned_type
+            self._collect_walrus_type_map(expr.value, type_map)
+        elif isinstance(expr, OpExpr):
+            self._collect_walrus_type_map(expr.left, type_map)
+            self._collect_walrus_type_map(expr.right, type_map)
+        elif isinstance(expr, UnaryExpr):
+            self._collect_walrus_type_map(expr.expr, type_map)
+        elif isinstance(expr, CallExpr):
+            for arg in expr.args:
+                self._collect_walrus_type_map(arg, type_map)
+        elif isinstance(expr, MemberExpr):
+            self._collect_walrus_type_map(expr.expr, type_map)
+        elif isinstance(expr, IndexExpr):
+            self._collect_walrus_type_map(expr.base, type_map)
+            self._collect_walrus_type_map(expr.index, type_map)
+        elif isinstance(expr, (TupleExpr, ListExpr)):
+            for item in expr.items:
+                self._collect_walrus_type_map(item, type_map)
 
     def is_len_of_tuple(self, expr: Expression) -> bool:
         """Is this expression a `len(x)` call where x is a tuple or union of tuples?"""
