@@ -488,3 +488,27 @@ def test_tuple() -> None:
     assert b == t[1]
     with assertRaises(RuntimeError):
         ftuple(True)
+
+def test_cap_empty() -> None:
+    v = vec[i64](cap=3)
+    assert len(v) == 0
+    assert v == vec[i64]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[i64]([1, 2], cap=3)
+    assert len(v) == 2
+    assert v[0] == 1
+    assert v[1] == 2
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[i64](cap=n)
+    assert len(v) == 0
+    v = append(v, 5)
+    assert v[0] == 5
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[i64]([1, 2], cap=3)
+    old = v
+    v = append(v, 3)
+    v[0] = 99
+    assert old[0] == 99  # shared buffer
