@@ -1390,12 +1390,9 @@ def report_internal_error(
                 file=stderr,
             )
     else:
-        tb = traceback.extract_stack()[:-2]
-        tb2 = traceback.extract_tb(sys.exc_info()[2])
-        print("Traceback (most recent call last):")
-        for s in traceback.format_list(tb + tb2):
-            print(s.rstrip("\n"))
-        print(f"{type(err).__name__}: {err}", file=stdout)
+        tberr = traceback.TracebackException.from_exception(err)
+        tberr.stack[:0] = traceback.extract_stack()[:-2]
+        print("".join(tberr.format()), file=stdout)
         print(f"{prefix}note: use --pdb to drop into pdb", file=stderr)
 
     # Exit.  The caller has nothing more to say.
