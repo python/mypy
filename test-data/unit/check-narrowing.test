@@ -3267,6 +3267,7 @@ def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
 [case testNarrowChainedComparisonMeet]
 # flags: --strict-equality --warn-unreachable
 from __future__ import annotations
+from typing import Any
 
 def f1(a: str | None, b: str | None) -> None:
     if None is not a == b:
@@ -3276,6 +3277,24 @@ def f1(a: str | None, b: str | None) -> None:
     if (None is not a) and (a == b):
         reveal_type(a)  # N: Revealed type is "builtins.str"
         reveal_type(b)  # N: Revealed type is "builtins.str"
+
+def f2(a: Any | None, b: str | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+def f3(a: str | None, b: Any | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any | builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowTypeObject]
