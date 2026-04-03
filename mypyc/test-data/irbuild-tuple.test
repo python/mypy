@@ -898,6 +898,126 @@ L4:
     a = r1
     return 1
 
+[case testTupleBuiltFromLengthCheckable]
+from typing import Tuple
+
+def f(val: bool) -> bool:
+    return not val
+
+def test() -> None:
+    # this tuple is created from a very complex genexp but we can still compute the length and preallocate the tuple
+    a = tuple(
+        x
+        for x
+        in zip(
+            map(str, range(5)),
+            enumerate(sorted(reversed(tuple("abcdefg"))))
+        )
+    )
+[out]
+def f(val):
+    val, r0 :: bool
+L0:
+    r0 = val ^ 1
+    return r0
+def test():
+    r0 :: list
+    r1, r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: range
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: str
+    r15 :: tuple
+    r16 :: object
+    r17 :: str
+    r18 :: object
+    r19 :: object[1]
+    r20 :: object_ptr
+    r21 :: object
+    r22 :: list
+    r23 :: object
+    r24 :: str
+    r25 :: object
+    r26 :: object[1]
+    r27 :: object_ptr
+    r28, r29 :: object
+    r30 :: str
+    r31 :: object
+    r32 :: object[2]
+    r33 :: object_ptr
+    r34, r35, r36 :: object
+    r37, x :: tuple[str, tuple[int, str]]
+    r38 :: object
+    r39 :: i32
+    r40, r41 :: bit
+    r42, a :: tuple
+L0:
+    r0 = PyList_New(0)
+    r1 = load_address PyUnicode_Type
+    r2 = load_address PyRange_Type
+    r3 = object 5
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = cast(range, r6)
+    r8 = builtins :: module
+    r9 = 'map'
+    r10 = CPyObject_GetAttr(r8, r9)
+    r11 = [r1, r7]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r10, r12, 2, 0)
+    keep_alive r1, r7
+    r14 = 'abcdefg'
+    r15 = PySequence_Tuple(r14)
+    r16 = builtins :: module
+    r17 = 'reversed'
+    r18 = CPyObject_GetAttr(r16, r17)
+    r19 = [r15]
+    r20 = load_address r19
+    r21 = PyObject_Vectorcall(r18, r20, 1, 0)
+    keep_alive r15
+    r22 = CPySequence_Sort(r21)
+    r23 = builtins :: module
+    r24 = 'enumerate'
+    r25 = CPyObject_GetAttr(r23, r24)
+    r26 = [r22]
+    r27 = load_address r26
+    r28 = PyObject_Vectorcall(r25, r27, 1, 0)
+    keep_alive r22
+    r29 = builtins :: module
+    r30 = 'zip'
+    r31 = CPyObject_GetAttr(r29, r30)
+    r32 = [r13, r28]
+    r33 = load_address r32
+    r34 = PyObject_Vectorcall(r31, r33, 2, 0)
+    keep_alive r13, r28
+    r35 = PyObject_GetIter(r34)
+L1:
+    r36 = PyIter_Next(r35)
+    if is_error(r36) goto L4 else goto L2
+L2:
+    r37 = unbox(tuple[str, tuple[int, str]], r36)
+    x = r37
+    r38 = box(tuple[str, tuple[int, str]], x)
+    r39 = PyList_Append(r0, r38)
+    r40 = r39 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r41 = CPy_NoErrOccurred()
+L5:
+    r42 = PyList_AsTuple(r0)
+    a = r42
+    return 1
+
 [case testTupleBuiltFromStars]
 from typing import Final
 

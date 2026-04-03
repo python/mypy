@@ -10,6 +10,7 @@ import tempfile
 import textwrap
 import unittest
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from typing import Any
 
 from pytest import raises
@@ -58,6 +59,7 @@ ClassVar: _SpecialForm = ...
 
 Final = 0
 Literal = 0
+NewType = 0
 TypedDict = 0
 
 class TypeVar:
@@ -254,7 +256,7 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
-            options=["--generate-allowlist"],
+            options=["--generate-allowlist", "--strict-type-check-only"],
         )
 
         actual_errors = set(output.splitlines())
@@ -900,6 +902,59 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_decorated_overload(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import overload, type_check_only
+
+            @type_check_only
+            class _dec1:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str) -> str: ...
+
+            @overload
+            def good1(x: int) -> int: ...
+            @overload
+            @_dec1
+            def good1(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good1(x): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _dec2:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def good2(x: int) -> str: ...
+            @overload
+            @_dec2
+            def good2(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def good2(x, y=...): ...",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _dec3:
+                def __init__(self, func: object) -> None: ...
+                def __call__(self, x: str, y: int) -> str: ...
+
+            @overload
+            def bad(x: int) -> str: ...
+            @overload
+            @_dec3
+            def bad(unrelated: int, whatever: str) -> str: ...
+            """,
+            runtime="def bad(x): ...",
+            error="bad",
+        )
+
+    @collect_cases
     def test_property(self) -> Iterator[Case]:
         yield Case(
             stub="""
@@ -1170,6 +1225,22 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL: Final = 2
+            """,
+            runtime="X_FINAL = 1",
+            error="X_FINAL",
+        )
+        yield Case(
+            stub="""
+            from typing import Final
+            X_FINAL_OK: Final = 1
+            """,
+            runtime="X_FINAL_OK = 1",
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
@@ -1178,7 +1249,7 @@ class StubtestUnit(unittest.TestCase):
             import collections.abc
             import re
             import typing
-            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union
+            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union, type_check_only
             """,
             runtime="""
             import collections.abc
@@ -1249,6 +1320,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             _T = TypeVar("_T")
+            @type_check_only
             class _Spam(Generic[_T]):
                 def foo(self) -> None: ...
             IntFood = _Spam[int]
@@ -1548,6 +1620,49 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_proxy_object(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class LazyObject:
+                def __init__(self, func: object) -> None: ...
+                def __bool__(self) -> bool: ...
+            """,
+            runtime="""
+            class LazyObject:
+                def __init__(self, func):
+                    self.__dict__["_wrapped"] = None
+                    self.__dict__["_setupfunc"] = func
+                def _setup(self):
+                    self.__dict__["_wrapped"] = self._setupfunc()
+                @property
+                def __class__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return type(self._wrapped)
+                def __bool__(self):
+                    if self._wrapped is None:
+                        self._setup()
+                    return bool(self._wrapped)
+            """,
+            error="test_module.LazyObject.__class__",
+        )
+        yield Case(
+            stub="""
+            def default_value() -> bool: ...
+
+            DEFAULT_VALUE: bool
+            """,
+            runtime="""
+            def default_value():
+                return True
+
+            DEFAULT_VALUE = LazyObject(default_value)
+            bool(DEFAULT_VALUE)  # evaluate the lazy object
+            """,
+            error="test_module.DEFAULT_VALUE",
+        )
+
+    @collect_cases
     def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
         yield Case(
             stub="Z: int",
@@ -1583,6 +1698,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="x = 5", runtime="", error="x")
         yield Case(stub="def f(): ...", runtime="", error="f")
         yield Case(stub="class X: ...", runtime="", error="X")
+        yield Case(stub="class _X: ...", runtime="", error="_X")
         yield Case(
             stub="""
             from typing import overload
@@ -1639,6 +1755,8 @@ class StubtestUnit(unittest.TestCase):
             runtime="class FakeDelattrClass: ...",
             error="FakeDelattrClass.__delattr__",
         )
+        yield Case(stub="from typing import NewType", runtime="", error=None)
+        yield Case(stub="_Int = NewType('_Int', int)", runtime="", error=None)
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -1705,6 +1823,16 @@ assert annotations
         yield Case(
             stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
             runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
+        yield Case(
+            stub="class E:\n  def __getitem__(self, item: object) -> object: ...",
+            runtime="class E:\n  def __getitem__(self, item: object, /) -> object: ...",
+            error="E.__getitem__",
+        )
+        yield Case(
+            stub="class F:\n  def __getitem__(self, item: object, /) -> object: ...",
+            runtime="class F:\n  def __getitem__(self, item: object) -> object: ...",
             error=None,
         )
 
@@ -2255,8 +2383,9 @@ assert annotations
         )
         yield Case(
             stub="""
-            from typing import TypedDict
+            from typing import TypedDict, type_check_only
 
+            @type_check_only
             class _Options(TypedDict):
                 a: str
                 b: int
@@ -2676,6 +2805,70 @@ assert annotations
             runtime="def func2() -> None: ...",
             error="func2",
         )
+        # The same is true for private types
+        yield Case(
+            stub="""
+            @type_check_only
+            class _P1: ...
+            """,
+            runtime="",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _P2: ...
+            """,
+            runtime="class _P2: ...",
+            error="_P2",
+        )
+        # Private TypedDicts which do not exist at runtime must be decorated with
+        # '@type_check_only', unless they contain keys that are not valid identifiers.
+        yield Case(
+            stub="""
+            class _TD1(TypedDict): ...
+            """,
+            runtime="",
+            error="_TD1",
+        )
+        yield Case(
+            stub="""
+            _TD2 = TypedDict("_TD2", {"foo": int})
+            """,
+            runtime="",
+            error="_TD2",
+        )
+        yield Case(
+            stub="""
+            _TD3 = TypedDict("_TD3", {"foo-bar": int})
+            """,
+            runtime="",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            _TD4 = TypedDict("_TD4", {"class": int})
+            """,
+            runtime="",
+            error=None,
+        )
+        # Private NamedTuples which do not exist at runtime must be decorated with
+        # '@type_check_only'.
+        yield Case(
+            stub="""
+            class _NT1(NamedTuple): ...
+            """,
+            runtime="",
+            error="_NT1",
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _NT2(NamedTuple): ...
+            """,
+            runtime="",
+            error=None,
+        )
         # A type that exists at runtime is allowed to alias a type marked
         # as '@type_check_only' in the stubs.
         yield Case(
@@ -2692,8 +2885,9 @@ assert annotations
     def test_type_default_protocol(self) -> Iterator[Case]:
         yield Case(
             stub="""
-            from typing import Protocol
+            from typing import Protocol, type_check_only
 
+            @type_check_only
             class _FormatterClass(Protocol):
                 def __call__(self, *, prog: str) -> HelpFormatter: ...
 
@@ -2729,7 +2923,7 @@ class StubtestMiscUnit(unittest.TestCase):
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
             'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
-            "def (number: builtins.int, text: builtins.str)\n"
+            "def (number: int, text: str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -2747,6 +2941,33 @@ class StubtestMiscUnit(unittest.TestCase):
             )
         )
         assert output == expected
+
+    def test_reexport_reports_import_location(self) -> None:
+        with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
+            Path("builtins.pyi").write_text(stubtest_builtins_stub)
+            Path("typing.pyi").write_text(stubtest_typing_stub)
+            Path("enum.pyi").write_text(stubtest_enum_stub)
+
+            os.makedirs("test_module", exist_ok=True)
+            Path("test_module/__init__.pyi").write_text("from .mod import f")
+            Path("test_module/__init__.py").write_text("from .mod import f")
+            Path("test_module/mod.pyi").write_text("def f(self) -> None: ...")
+            Path("test_module/mod.py").write_text("def f(self, x): pass")
+
+            output = io.StringIO()
+            outerr = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
+                test_stubs(parse_options([TEST_MODULE_NAME]), use_builtins_fixtures=True)
+
+            filtered_output = remove_color_code(
+                output.getvalue()
+                .replace(os.path.realpath(tmp_dir) + os.sep, "")
+                .replace(tmp_dir + os.sep, "")
+            )
+
+        assert filtered_output.count('stub does not have parameter "x"') == 1
+        assert "__init__.pyi" not in filtered_output
+        assert "mod.py:1" in filtered_output
 
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
@@ -2797,24 +3018,16 @@ class StubtestMiscUnit(unittest.TestCase):
                 f.write("unused.*\n")
 
             output = run_stubtest(
-                stub=textwrap.dedent(
-                    """
+                stub=textwrap.dedent("""
                     def good() -> None: ...
                     def bad(number: int) -> None: ...
                     def also_bad(number: int) -> None: ...
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
-                runtime=textwrap.dedent(
-                    """
+                    """.lstrip("\n")),
+                runtime=textwrap.dedent("""
                     def good(): pass
                     def bad(asdf): pass
                     def also_bad(asdf): pass
-                    """.lstrip(
-                        "\n"
-                    )
-                ),
+                    """.lstrip("\n")),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (
@@ -2905,7 +3118,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        assert str(sig) == "def (arg: int | str)"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"

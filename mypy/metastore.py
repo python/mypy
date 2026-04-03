@@ -17,6 +17,8 @@ from abc import abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
+from mypy.util import os_path_join
+
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
     # on semi-broken pythons that are missing it.
@@ -66,6 +68,10 @@ class MetadataStore:
     @abstractmethod
     def list_all(self) -> Iterable[str]: ...
 
+    @abstractmethod
+    def close(self) -> None:
+        """Release any resources held by the backing store."""
+
 
 def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode("ascii")
@@ -85,24 +91,24 @@ class FilesystemMetadataStore(MetadataStore):
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        return int(os.path.getmtime(os.path.join(self.cache_dir_prefix, name)))
+        return int(os.path.getmtime(os_path_join(self.cache_dir_prefix, name)))
 
     def read(self, name: str) -> bytes:
-        assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
+        assert not os.path.isabs(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name), "rb") as f:
+        with open(os_path_join(self.cache_dir_prefix, name), "rb", buffering=0) as f:
             return f.read()
 
     def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
-        assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
+        assert not os.path.isabs(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
             return False
 
-        path = os.path.join(self.cache_dir_prefix, name)
+        path = os_path_join(self.cache_dir_prefix, name)
         tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -120,7 +126,7 @@ class FilesystemMetadataStore(MetadataStore):
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        os.remove(os.path.join(self.cache_dir_prefix, name))
+        os.remove(os_path_join(self.cache_dir_prefix, name))
 
     def commit(self) -> None:
         pass
@@ -132,7 +138,10 @@ class FilesystemMetadataStore(MetadataStore):
         for dir, _, files in os.walk(self.cache_dir_prefix):
             dir = os.path.relpath(dir, self.cache_dir_prefix)
             for file in files:
-                yield os.path.normpath(os.path.join(dir, file))
+                yield os.path.normpath(os_path_join(dir, file))
+
+    def close(self) -> None:
+        pass
 
 
 SCHEMA = """
@@ -168,7 +177,7 @@ class SqliteMetadataStore(MetadataStore):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.db = connect_db(os.path.join(cache_dir_prefix, "cache.db"), sync_off=sync_off)
+        self.db = connect_db(os_path_join(cache_dir_prefix, "cache.db"), sync_off=sync_off)
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
@@ -222,3 +231,12 @@ class SqliteMetadataStore(MetadataStore):
         if self.db:
             for row in self.db.execute("SELECT path FROM files2"):
                 yield row[0]
+
+    def close(self) -> None:
+        if self.db:
+            db = self.db
+            self.db = None
+            db.close()
+
+    def __del__(self) -> None:
+        self.close()

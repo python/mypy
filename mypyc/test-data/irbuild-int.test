@@ -211,6 +211,35 @@ L0:
     x = r0
     return x
 
+[case testIntToBytes]
+def f(x: int) -> bytes:
+    return x.to_bytes(2, "big")
+def g(x: int) -> bytes:
+    return x.to_bytes(4, "little", signed=True)
+def h(x: int, byteorder: str) -> bytes:
+    return x.to_bytes(8, byteorder)
+
+[out]
+def f(x):
+    x :: int
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToBigEndianBytes(x, 2, 0)
+    return r0
+def g(x):
+    x :: int
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToLittleEndianBytes(x, 4, 1)
+    return r0
+def h(x, byteorder):
+    x :: int
+    byteorder :: str
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToBytes(x, 8, byteorder, 0)
+    return r0
+
 [case testIntBitLength]
 def f(x: int) -> int:
     return x.bit_length()

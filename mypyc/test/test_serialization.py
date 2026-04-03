@@ -55,10 +55,6 @@ def assert_blobs_same(x: Any, y: Any, trail: tuple[Any, ...]) -> None:
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):
             assert_blobs_same(xk, yk, trail + ("keys",))
             assert_blobs_same(xv, yv, trail + (xk,))
-    elif isinstance(x, dict):
-        assert x.keys() == y.keys(), f"Keys mismatch at {trail}"
-        for k in x.keys():
-            assert_blobs_same(x[k], y[k], trail + (k,))
     elif isinstance(x, Iterable) and not isinstance(x, (str, set)):
         # Special case iterables to generate better assert error messages.
         # We can't use this for sets since the ordering is unpredictable,

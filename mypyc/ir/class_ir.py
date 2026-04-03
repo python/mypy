@@ -220,6 +220,11 @@ class ClassIR:
         # per-type free "list" of up to length 1.
         self.reuse_freed_instance = False
 
+        # If True, the class does not participate in cyclic garbage collection.
+        # This can improve performance but is only safe if instances can never
+        # be part of reference cycles. Derived from @mypyc_attr(acyclic=True).
+        self.is_acyclic = False
+
         # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
         self.is_enum = False
 
@@ -426,6 +431,7 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
         }
@@ -484,6 +490,7 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]
 

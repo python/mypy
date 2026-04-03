@@ -41,10 +41,5 @@ PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
     }
 
     // Fallback to Python method call for non-exact types or non-standard tables
-    _Py_IDENTIFIER(translate);
-    PyObject *name = _PyUnicode_FromId(&PyId_translate);
-    if (name == NULL) {
-        return NULL;
-    }
-    return PyObject_CallMethodOneArg(bytes, name, table);
+    return PyObject_CallMethodOneArg(bytes, mypyc_interned_str.translate, table);
 }

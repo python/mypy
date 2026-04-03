@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.machinery
 import sys
 import sysconfig
 from typing import Any, Final
@@ -24,6 +25,7 @@ LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
+CPYFUNCTION_NAME = "__cpyfunction__"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
@@ -95,6 +97,11 @@ HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 # Are we running on a free-threaded build (GIL disabled)? This implies that
 # we are on Python 3.13 or later.
 IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+# The file extension suffix for C extension modules on the current platform
+# (e.g. ".cpython-312-x86_64-linux-gnu.so" or ".pyd").
+_EXT_SUFFIXES: Final = importlib.machinery.EXTENSION_SUFFIXES
+EXT_SUFFIX: Final = _EXT_SUFFIXES[0] if _EXT_SUFFIXES else ".so"
 
 
 JsonDict = dict[str, Any]

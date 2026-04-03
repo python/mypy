@@ -541,7 +541,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(item, UnpackType):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
-                    assert unpacked.type.fullname == "builtins.tuple"
+                    # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.
+                    if unpacked.type.fullname != "builtins.tuple":
+                        return t.partial_fallback.accept(self)
                     if t.partial_fallback.type.fullname != "builtins.tuple":
                         # If it is a subtype (like named tuple) we need to preserve it,
                         # this essentially mimics the logic in tuple_fallback().

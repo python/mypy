@@ -86,7 +86,6 @@ class A(Dataclass):
 
 [out]
 main:7: error: Unexpected keyword argument "x" for "B"
-builtins.pyi:14: note: "B" defined here
 main:7: error: Unexpected keyword argument "y" for "B"
 ==
 

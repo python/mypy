@@ -1,11 +1,12 @@
 import _typeshed
+import builtins
 import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
 from types import GenericAlias
-from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, final, overload, type_check_only
+from typing import Any, ClassVar, Final, Generic, Literal, SupportsIndex, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 _T = TypeVar("_T")
@@ -133,7 +134,7 @@ class _Pointer(_PointerLike, _CData, Generic[_CT], metaclass=_PyCPointerType):
     @overload
     def __getitem__(self, key: int, /) -> Any: ...
     @overload
-    def __getitem__(self, key: slice, /) -> list[Any]: ...
+    def __getitem__(self, key: slice[SupportsIndex | None], /) -> list[Any]: ...
     def __setitem__(self, key: int, value: Any, /) -> None: ...
 
 if sys.version_info < (3, 14):
@@ -195,24 +196,45 @@ class CFuncPtr(_PointerLike, _CData, metaclass=_PyCFuncPtrType):
 _GetT = TypeVar("_GetT")
 _SetT = TypeVar("_SetT")
 
-# This class is not exposed. It calls itself _ctypes.CField.
-@final
-@type_check_only
-class _CField(Generic[_CT, _GetT, _SetT]):
-    offset: int
-    size: int
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
+    @final
+    class CField(Generic[_CT, _GetT, _SetT]):
+        offset: int
+        size: int
+        name: str
+        type: builtins.type[_CT]
+        byte_offset: int
+        byte_size: int
+        is_bitfield: bool
+        bit_offset: int
+        bit_size: int
+        is_anonymous: bool
         @overload
-        def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+        def __get__(self, instance: None, owner: builtins.type[Any] | None = None, /) -> Self: ...
         @overload
-        def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
-    else:
-        @overload
-        def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
-        @overload
-        def __get__(self, instance: Any, owner: type[Any] | None, /) -> _GetT: ...
+        def __get__(self, instance: Any, owner: builtins.type[Any] | None = None, /) -> _GetT: ...
+        def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
-    def __set__(self, instance: Any, value: _SetT, /) -> None: ...
+    _CField = CField
+
+else:
+    @final
+    @type_check_only
+    class _CField(Generic[_CT, _GetT, _SetT]):
+        offset: int
+        size: int
+        if sys.version_info >= (3, 10):
+            @overload
+            def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+            @overload
+            def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
+        else:
+            @overload
+            def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
+            @overload
+            def __get__(self, instance: Any, owner: type[Any] | None, /) -> _GetT: ...
+
+        def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
 # This class is not exposed. It calls itself _ctypes.UnionType.
 @type_check_only
@@ -316,11 +338,11 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     @overload
     def __getitem__(self, key: int, /) -> Any: ...
     @overload
-    def __getitem__(self, key: slice, /) -> list[Any]: ...
+    def __getitem__(self, key: slice[SupportsIndex | None], /) -> list[Any]: ...
     @overload
     def __setitem__(self, key: int, value: Any, /) -> None: ...
     @overload
-    def __setitem__(self, key: slice, value: Iterable[Any], /) -> None: ...
+    def __setitem__(self, key: slice[SupportsIndex | None], value: Iterable[Any], /) -> None: ...
     def __iter__(self) -> Iterator[Any]: ...
     # Can't inherit from Sized because the metaclass conflict between
     # Sized and _CData prevents using _CDataMeta.

@@ -68,7 +68,7 @@ MypyFile:1(
     TypeParam(
       *Ts
       Default(
-        Unpack[tuple?[str?, int?]]))
+        *tuple?[str?, int?]))
     Block:1(
       PassStmt:1()))
   ClassDef:2(
@@ -76,5 +76,5 @@ MypyFile:1(
     TypeParam(
       *Ts
       Default(
-        Unpack[tuple?[str?, int?]]))
+        *tuple?[str?, int?]))
     PassStmt:2()))

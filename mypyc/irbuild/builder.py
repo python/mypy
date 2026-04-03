@@ -58,7 +58,15 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import (
+    BITMAP_BITS,
+    EXT_SUFFIX,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    MODULE_PREFIX,
+    SELF_NAME,
+    TEMP_ATTR_NAME,
+    shared_lib_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -66,14 +74,18 @@ from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, 
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_TYPE_VAR,
+    NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    Call,
     ComparisonOp,
     GetAttr,
     InitStatic,
     Integer,
     IntOp,
+    LoadAddress,
+    LoadGlobal,
     LoadStatic,
     MethodCall,
     Op,
@@ -90,8 +102,11 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bitmap_rprimitive,
+    bool_rprimitive,
     bytes_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -102,6 +117,7 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
 )
@@ -125,11 +141,18 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.vec import vec_set_item
+from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
+from mypyc.primitives.misc_ops import (
+    check_unpack_count_op,
+    get_module_dict_op,
+    import_op,
+    native_import_op,
+)
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
@@ -222,10 +245,19 @@ class IRBuilder:
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
+        self.comprehension_to_fitem = pbv.comprehension_to_fitem
 
         self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
+
+        # Class body context: tracks ClassVar names defined so far when processing
+        # a class body, so that intra-class references (e.g. C = A | B where A is
+        # a ClassVar defined earlier in the same class) can be resolved correctly.
+        # Without this, mypyc looks up such names in module globals, which fails.
+        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_obj: Value | None = None
+        self.class_body_ir: ClassIR | None = None
 
         # This list operates similarly to a function call stack for nested functions. Whenever a
         # function definition begins to be generated, a FuncInfo instance is added to the stack,
@@ -246,6 +278,10 @@ class IRBuilder:
         self.imports: dict[str, None] = {}
 
         self.can_borrow = False
+
+        # When set, load_globals_dict uses this module instead of self.module_name.
+        # Used by generate_attr_defaults_init for cross-module inherited defaults.
+        self.globals_lookup_module: str | None = None
 
     # High-level control
 
@@ -286,7 +322,7 @@ class IRBuilder:
                     res = Register(self.node_type(node))
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
-                    self.flush_keep_alives()
+                    self.flush_keep_alives(node.line)
                 return res
             else:
                 try:
@@ -295,8 +331,8 @@ class IRBuilder:
                     pass
                 return None
 
-    def flush_keep_alives(self) -> None:
-        self.builder.flush_keep_alives()
+    def flush_keep_alives(self, line: int) -> None:
+        self.builder.flush_keep_alives(line)
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -318,23 +354,23 @@ class IRBuilder:
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
-    def load_str(self, value: str) -> Value:
-        return self.builder.load_str(value)
+    def load_str(self, value: str, line: int = -1) -> Value:
+        return self.builder.load_str(value, line)
 
-    def load_bytes_from_str_literal(self, value: str) -> Value:
+    def load_bytes_from_str_literal(self, value: str, line: int = -1) -> Value:
         """Load bytes object from a string literal.
 
         The literal characters of BytesExpr (the characters inside b'')
         are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
         Thus we perform a special conversion here.
         """
-        return self.builder.load_bytes(bytes_from_str(value))
+        return self.builder.load_bytes(bytes_from_str(value), line)
 
-    def load_int(self, value: int) -> Value:
-        return self.builder.load_int(value)
+    def load_int(self, value: int, line: int = -1) -> Value:
+        return self.builder.load_int(value, line)
 
-    def load_float(self, value: float) -> Value:
-        return self.builder.load_float(value)
+    def load_float(self, value: float, line: int = -1) -> Value:
+        return self.builder.load_float(value, line)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -345,17 +381,17 @@ class IRBuilder:
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
         return self.builder.coerce(src, target_type, line, force, can_borrow=self.can_borrow)
 
-    def none_object(self) -> Value:
-        return self.builder.none_object()
+    def none_object(self, line: int = -1) -> Value:
+        return self.builder.none_object(line)
 
-    def none(self) -> Value:
-        return self.builder.none()
+    def none(self, line: int = -1) -> Value:
+        return self.builder.none(line)
 
-    def true(self) -> Value:
-        return self.builder.true()
+    def true(self, line: int = -1) -> Value:
+        return self.builder.true(line)
 
-    def false(self) -> Value:
-        return self.builder.false()
+    def false(self, line: int = -1) -> Value:
+        return self.builder.false(line)
 
     def new_list_op(self, values: list[Value], line: int) -> Value:
         return self.builder.new_list_op(values, line)
@@ -417,8 +453,8 @@ class IRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
 
-    def builtin_len(self, val: Value, line: int) -> Value:
-        return self.builder.builtin_len(val, line)
+    def builtin_len(self, val: Value, line: int, use_pyssize_t: bool = False) -> Value:
+        return self.builder.builtin_len(val, line, use_pyssize_t)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
@@ -436,22 +472,63 @@ class IRBuilder:
         self, non_ext: NonExtClassInfo, key: str, val: Value, line: int
     ) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        key_unicode = self.load_str(key)
+        key_unicode = self.load_str(key, line)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
         # It's important that accessing class dictionary items from multiple threads
         # doesn't cause contention.
         self.builder.set_immortal_if_free_threaded(val, line)
 
-    def gen_import(self, id: str, line: int) -> None:
-        self.imports[id] = None
+    def gen_import(self, module: str, line: int) -> None:
+        self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(id, line, needs_import, out)
+        self.check_if_module_loaded(module, line, needs_import, out)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_str(id)], line)
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        if self.is_native_module(module) and self.is_same_group_module(module):
+            # Use custom import machinery for native-to-native imports in the same group
+            init_only_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+            )
+            exec_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
+            )
+            module_static = self.add(
+                LoadAddress(
+                    object_pointer_rprimitive,
+                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                )
+            )
+            group_name = self.mapper.group_map.get(self.module_name)
+            if group_name is not None:
+                shared_lib_mod_name = shared_lib_name(group_name)
+                mod_dict = self.call_c(get_module_dict_op, [], line)
+                shared_lib_obj = self.primitive_op(
+                    dict_get_item_op, [mod_dict, self.load_str(shared_lib_mod_name, line)], line
+                )
+                shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
+            else:
+                shared_lib_file = self.none_object(line)
+            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            is_pkg = self.is_package_module(module)
+            value = self.call_c(
+                native_import_op,
+                [
+                    self.load_str(module, line),
+                    init_only_func,
+                    exec_func,
+                    module_static,
+                    shared_lib_file,
+                    ext_suffix,
+                    Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
+                ],
+                line,
+            )
+        else:
+            # Import using generic Python C API
+            value = self.call_c(import_op, [self.load_str(module, line)], line)
+        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
@@ -465,14 +542,14 @@ class IRBuilder:
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
         first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(), "is not", line)
+        comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
         self.add_bool_branch(comparison, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = self.call_c(get_module_dict_op, [], line)
         # Get module object from modules dict.
-        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module)], line)
+        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module, line)], line)
 
     def get_module_attr(self, module: str, attr: str, line: int) -> Value:
         """Look up an attribute of a module without storing it in the local namespace.
@@ -489,9 +566,9 @@ class IRBuilder:
     def assign_if_null(self, target: Register, get_val: Callable[[], Value], line: int) -> None:
         """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
-        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
+        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR, line))
         self.activate_block(error_block)
-        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
+        self.add(Assign(target, self.coerce(get_val(), target.type, line), line))
         self.goto(body_block)
         self.activate_block(body_block)
 
@@ -506,7 +583,7 @@ class IRBuilder:
             IntOp.AND,
             line,
         )
-        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ))
+        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ, line))
         self.add(Branch(b, error_block, body_block, Branch.BOOL))
         self.activate_block(error_block)
         self.add(Assign(target, self.coerce(get_val(), target.type, line)))
@@ -522,8 +599,9 @@ class IRBuilder:
     def add_implicit_return(self) -> None:
         block = self.builder.blocks[-1]
         if not block.terminated:
-            retval = self.coerce(self.builder.none(), self.ret_types[-1], -1)
-            self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
+            line = self.fn_info.fitem.line
+            retval = self.coerce(self.builder.none(), self.ret_types[-1], line)
+            self.nonlocal_control[-1].gen_return(self, retval, line)
 
     def add_implicit_unreachable(self) -> None:
         block = self.builder.blocks[-1]
@@ -603,13 +681,15 @@ class IRBuilder:
             )
         )
 
-    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+    def load_literal_value(
+        self, val: int | str | bytes | float | complex | bool, line: int = -1
+    ) -> Value:
         """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
-                return self.true()
+                return self.true(line)
             else:
-                return self.false()
+                return self.false(line)
         elif isinstance(val, int):
             return self.builder.load_int(val)
         elif isinstance(val, float):
@@ -651,7 +731,7 @@ class IRBuilder:
                     # refers to the newly defined variable in that environment class. Add the
                     # target to the table containing class environment variables, as well as the
                     # current environment.
-                    if self.fn_info.is_generator:
+                    if self.fn_info.is_generator or self.fn_info.is_coroutine:
                         return self.add_var_to_env_class(
                             symbol,
                             reg_type,
@@ -667,7 +747,7 @@ class IRBuilder:
                     return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
-                name = self.load_str(lvalue.name)
+                name = self.load_str(lvalue.name, line)
                 return AssignmentTargetIndex(globals_dict, name)
             else:
                 assert False, lvalue.kind
@@ -743,15 +823,15 @@ class IRBuilder:
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
+            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line), line))
         elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-            self.add(Assign(target.register, rvalue_reg))
+            self.add(Assign(target.register, rvalue_reg, line))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
                 setattr = target.obj_type.class_ir.get_method("__setattr__")
                 if setattr:
-                    key = self.load_str(target.attr)
+                    key = self.load_str(target.attr, line)
                     boxed_reg = self.builder.box(rvalue_reg)
                     call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
                     self.add(call)
@@ -759,14 +839,17 @@ class IRBuilder:
                     rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
                     self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                key = self.load_str(target.attr)
+                key = self.load_str(target.attr, line)
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
-            target_reg2 = self.gen_method_call(
-                target.base, "__setitem__", [target.index, rvalue_reg], None, line
-            )
-            assert target_reg2 is not None, target.base.type
+            if isinstance(target.base.type, RVec):
+                vec_set_item(self.builder, target.base, target.index, rvalue_reg, line)
+            else:
+                target_reg2 = self.gen_method_call(
+                    target.base, "__setitem__", [target.index, rvalue_reg], None, line
+                )
+                assert target_reg2 is not None, target.base.type
         elif isinstance(target, AssignmentTargetTuple):
             if isinstance(rvalue_reg.type, RTuple) and target.star_idx is None:
                 rtypes = rvalue_reg.type.types
@@ -929,8 +1012,8 @@ class IRBuilder:
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
         target = self.make_spill_target(value.type)
-        # Shouldn't be able to fail, so -1 for line
-        self.assign(target, value, -1)
+        # Shouldn't be able to fail
+        self.assign(target, value, NO_TRACEBACK_LINE_NO)
         return target
 
     def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
@@ -961,7 +1044,7 @@ class IRBuilder:
 
         # Allocate a temporary register for the assignable value.
         reg = Register(value.type)
-        self.assign(reg, value, -1)
+        self.assign(reg, value, NO_TRACEBACK_LINE_NO)
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
@@ -1075,6 +1158,20 @@ class IRBuilder:
         """Is the given module one compiled by mypyc?"""
         return self.mapper.is_native_module(module)
 
+    def is_same_group_module(self, module: str) -> bool:
+        """Is the given module in the same compilation group as the current module?
+
+        Modules in the same group share a compiled C extension and can reference
+        each other's C-level symbols directly. Modules in separate groups (separate
+        compilation mode) must use the Python import system instead.
+        """
+        return self.mapper.group_map.get(module) == self.mapper.group_map.get(self.module_name)
+
+    def is_package_module(self, module: str) -> bool:
+        """Is the given module a package (i.e., an __init__.py file)?"""
+        st = self.graph.get(module)
+        return st is not None and st.tree is not None and st.tree.is_package_init_file()
+
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         return self.mapper.is_native_ref_expr(expr)
 
@@ -1130,7 +1227,7 @@ class IRBuilder:
             line: line number where loading occurs
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_literal_value(final_var.final_value)
+            return self.load_literal_value(final_var.final_value, line)
         elif native and module_prefix(self.graph, fullname):
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
@@ -1251,6 +1348,37 @@ class IRBuilder:
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
+
+    @contextmanager
+    def enter_scope(self, fn_info: FuncInfo) -> Iterator[None]:
+        """Push a lightweight scope for comprehensions.
+
+        Unlike enter(), this reuses the same LowLevelIRBuilder (same basic
+        blocks and registers) but pushes new symtable and fn_info entries
+        so that the closure machinery sees a scope boundary.
+        """
+        self.builders.append(self.builder)
+        # Copy the parent symtable so variables from the enclosing scope
+        # (e.g. function parameters used as the comprehension iterable)
+        # remain accessible. The comprehension is inlined (same basic blocks
+        # and registers), so the parent's register references are still valid.
+        self.symtables.append(dict(self.symtables[-1]))
+        self.runtime_args.append([])
+        self.fn_info = fn_info
+        self.fn_infos.append(self.fn_info)
+        self.ret_types.append(none_rprimitive)
+        self.nonlocal_control.append(BaseNonlocalControl())
+        try:
+            yield
+        finally:
+            self.builders.pop()
+            self.symtables.pop()
+            self.runtime_args.pop()
+            self.ret_types.pop()
+            self.fn_infos.pop()
+            self.nonlocal_control.pop()
+            self.builder = self.builders[-1]
+            self.fn_info = self.fn_infos[-1]
 
     @contextmanager
     def enter_method(
@@ -1407,11 +1535,12 @@ class IRBuilder:
 
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_str(name)
+        reg = self.load_str(name, line)
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
+        module = self.globals_lookup_module or self.module_name
+        return self.add(LoadStatic(dict_rprimitive, "globals", module))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")
@@ -1461,6 +1590,20 @@ class IRBuilder:
         type_info = self.fn_info.fitem.info
         return self.mapper.type_to_ir.get(type_info)
 
+    def add_coroutine_setup_call(self, class_name: str, obj: Value) -> Value:
+        return self.add(
+            Call(
+                FuncDecl(
+                    class_name + "_coroutine_setup",
+                    None,
+                    self.module_name,
+                    FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
+                ),
+                [obj],
+                obj.line,
+            )
+        )
+
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
     """Generate blocks for arguments that have default values.
@@ -1506,7 +1649,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
 
 
 def remangle_redefinition_name(name: str) -> str:
-    """Remangle names produced by mypy when allow-redefinition is used and a name
+    """Remangle names produced by mypy when allow-redefinition-old is used and a name
     is used with multiple types within a single block.
 
     We only need to do this for locals, because the name is used as the name of the register;
@@ -1555,13 +1698,13 @@ def create_type_params(
             # To match runtime semantics, pass infer_variance=True
             tv = builder.py_call(
                 tvt,
-                [builder.load_str(type_param.name), builder.true()],
+                [builder.load_str(type_param.name, line), builder.true(line)],
                 line,
                 arg_kinds=[ARG_POS, ARG_NAMED],
                 arg_names=[None, "infer_variance"],
             )
         else:
-            tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+            tv = builder.py_call(tvt, [builder.load_str(type_param.name, line)], line)
         builder.init_type_var(tv, type_param.name, line)
         tvs.append(tv)
     return tvs

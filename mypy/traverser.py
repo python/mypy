@@ -68,6 +68,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -108,6 +109,10 @@ class TraverserVisitor(NodeVisitor[None]):
     should override visit methods to perform actions during
     traversal. Calling the superclass method allows reusing the
     traversal implementation.
+
+    TODO: split this into more limited visitor (e.g. statements-only etc).
+    This will improve performance since in many cases we don't need to recurse
+    all the way down in various visitors that subclass this.
     """
 
     def __init__(self) -> None:
@@ -324,6 +329,15 @@ class TraverserVisitor(NodeVisitor[None]):
             if k is not None:
                 k.accept(self)
             v.accept(self)
+
+    def visit_template_str_expr(self, o: TemplateStrExpr, /) -> None:
+        for item in o.items:
+            if isinstance(item, tuple):
+                item[0].accept(self)
+                if item[3] is not None:
+                    item[3].accept(self)
+            else:
+                item.accept(self)
 
     def visit_set_expr(self, o: SetExpr, /) -> None:
         for item in o.items:
@@ -780,6 +794,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_dict_expr(o)
+
+    def visit_template_str_expr(self, o: TemplateStrExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_template_str_expr(o)
 
     def visit_tuple_expr(self, o: TupleExpr, /) -> None:
         if not self.visit(o):

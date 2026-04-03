@@ -194,6 +194,22 @@ MypyFile:1(
         IntExpr(2)
         IntExpr(3)))))
 
+[case testNestedListAssignment]
+a1, [b1, c1] = a2, [b2, c2]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    TupleExpr:1(
+      NameExpr(a1)
+      TupleExpr:1(
+        NameExpr(b1)
+        NameExpr(c1)))
+    TupleExpr:1(
+      NameExpr(a2)
+      ListExpr:1(
+        NameExpr(b2)
+        NameExpr(c2)))))
+
 [case testSimpleFunction]
 def main():
   1
@@ -2444,12 +2460,23 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
+[case testBytesLiteralType]
+x: Literal[b'foo\xfe\x00']
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    Literal?[b'foo\xfe\x00']))
+
 [case testMetaclass]
 class Foo(metaclass=Bar): pass
 [out]
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2459,6 +2486,9 @@ class Foo(metaclass=foo.Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=MemberExpr:1(
+      NameExpr(foo)
+      Bar))
     Metaclass(MemberExpr:1(
       NameExpr(foo)
       Bar))
@@ -2470,6 +2500,7 @@ class Foo(foo.bar[x], metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     BaseTypeExpr(
       IndexExpr:1(
@@ -2485,6 +2516,7 @@ class Foo(_root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(_root=NameExpr(None))
     PassStmt:1()))
 
 [case testClassKeywordArgsBeforeMeta]
@@ -2493,6 +2525,7 @@ class Foo(_root=None, metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(_root=NameExpr(None), metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2502,6 +2535,7 @@ class Foo(metaclass=Bar, _root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar), _root=NameExpr(None))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2656,6 +2690,145 @@ MypyFile:1(
             def () -> x?
             Block:5(
               PassStmt:5())))))))
+
+[case testConditionalOverload1]
+@overload
+def foo(x: int): ...
+if sys.version_info[0] > 2:
+    @overload
+    def foo(x: str): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:3(
+    If(
+      ComparisonExpr:3(
+        >
+        IndexExpr:3(
+          MemberExpr:3(
+            NameExpr(sys)
+            version_info)
+          IntExpr(0))
+        IntExpr(2)))
+    Then()
+    Else())
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:2(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:2(
+          ExpressionStmt:2(
+            Ellipsis))))
+    Decorator:4(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:5(
+        foo
+        Args(
+          Var(x))
+        def (x: str?) -> Any
+        Block:5(
+          ExpressionStmt:5(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))
+
+[case testConditionalOverload2]
+@overload
+def foo(x: int): ...
+if sys.platform == "foo":
+    @overload
+    def foo(x: str): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:3(
+    If(
+      ComparisonExpr:3(
+        ==
+        MemberExpr:3(
+          NameExpr(sys)
+          platform)
+        StrExpr(foo)))
+    Then())
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:2(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:2(
+          ExpressionStmt:2(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))
+
+[case testConditionalOverload3]
+if sys.version_info[0] > 2:
+    @overload
+    def foo(x: str): ...
+@overload
+def foo(x: int): ...
+def foo(x): pass
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      ComparisonExpr:1(
+        >
+        IndexExpr:1(
+          MemberExpr:1(
+            NameExpr(sys)
+            version_info)
+          IntExpr(0))
+        IntExpr(2)))
+    Then()
+    Else())
+  OverloadedFuncDef:2(
+    Decorator:2(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:3(
+        foo
+        Args(
+          Var(x))
+        def (x: str?) -> Any
+        Block:3(
+          ExpressionStmt:3(
+            Ellipsis))))
+    Decorator:4(
+      Var(foo)
+      NameExpr(overload)
+      FuncDef:5(
+        foo
+        Args(
+          Var(x))
+        def (x: int?) -> Any
+        Block:5(
+          ExpressionStmt:5(
+            Ellipsis))))
+    FuncDef:6(
+      foo
+      Args(
+        Var(x))
+      Block:6(
+        PassStmt:6()))))
 
 [case testCommentFunctionAnnotation]
 def f(): # type: () -> A

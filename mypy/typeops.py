@@ -33,6 +33,8 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -627,9 +629,23 @@ def make_simplified_union(
                 else:
                     extra_attrs_set.add(instance.extra_attrs)
 
-        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+        # Code below is awkward, because we don't want the extra checks to affect
+        # performance in the common case.
+        erase_extra = False
+        if extra_attrs_set is not None:
             fallback = try_getting_instance_fallback(result)
-            if fallback:
+            if fallback is None:
+                return result
+            if len(extra_attrs_set) > 1:  # This case is too tricky to handle.
+                erase_extra = True
+            else:
+                # Check that all relevant items have the extra attributes.
+                for item in items:
+                    instance = try_getting_instance_fallback(item)
+                    if instance and instance.type == fallback.type and not instance.extra_attrs:
+                        erase_extra = True
+                        break
+            if erase_extra:
                 fallback.extra_attrs = None
 
     return result
@@ -985,27 +1001,39 @@ def is_literal_type_like(t: Type | None) -> bool:
         return False
 
 
-def is_singleton_type(typ: Type) -> bool:
-    """Returns 'true' if this type is a "singleton type" -- if there exists
-    exactly only one runtime value associated with this type.
-
-    That is, given two values 'a' and 'b' that have the same type 't',
-    'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
-    always true.
-
-    Currently, this returns True when given NoneTypes, enum LiteralTypes,
-    enum types with a single value and ... (Ellipses).
-
-    Note that other kinds of LiteralTypes cannot count as singleton types. For
-    example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
-    that 'a is b' will always be true -- some implementations of Python will end up
-    constructing two distinct instances of 100001.
+def is_singleton_identity_type(typ: ProperType) -> bool:
     """
-    typ = get_proper_type(typ)
-    return typ.is_singleton_type()
+    Returns True if every value of this type is identical to every other value of this type,
+    as judged by the `is` operator.
+
+    Note that this is not true of certain LiteralType, such as Literal[100001] or Literal["string"]
+    """
+    if isinstance(typ, NoneType):
+        return True
+    if isinstance(typ, Instance):
+        return (
+            (typ.type.is_enum and len(typ.type.enum_members) == 1)
+            or (typ.type.fullname in ELLIPSIS_TYPE_NAMES)
+            or (typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES)
+        )
+    if isinstance(typ, LiteralType):
+        return typ.is_enum_literal() or isinstance(typ.value, bool)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance) and typ.item.type.is_final:
+        return True
+    if isinstance(typ, FunctionLike) and typ.is_type_obj() and typ.type_object().is_final:
+        return True
+    return False
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
+def is_singleton_equality_type(typ: ProperType) -> bool:
+    """
+    Returns True if every value of this type compares equal to every other value of this type,
+    as judged by the `==` operator.
+    """
+    return isinstance(typ, LiteralType) or is_singleton_identity_type(typ)
+
+
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1034,7 +1062,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
         ]
         return UnionType.make_union(items)
 
-    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+    if isinstance(typ, Instance) and (
+        target_fullname is None or typ.type.fullname == target_fullname
+    ):
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
@@ -1204,16 +1234,16 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
         return typ
     elif isinstance(typ, LiteralType):
         return typ.fallback
-    elif isinstance(typ, NoneType):
+    elif isinstance(typ, (NoneType, AnyType)):
         return None  # Fast path for None, which is common
     elif isinstance(typ, FunctionLike):
         return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
     elif isinstance(typ, TupleType):
         return typ.partial_fallback
     elif isinstance(typ, TypedDictType):
         return typ.fallback
-    elif isinstance(typ, TypeVarType):
-        return try_getting_instance_fallback(typ.upper_bound)
     return None
 
 

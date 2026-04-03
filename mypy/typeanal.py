@@ -47,7 +47,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
     check_arg_kinds,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
@@ -65,6 +65,7 @@ from mypy.types import (
     CONCATENATE_TYPE_NAMES,
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
+    MYPYC_NATIVE_INT_NAMES,
     NEVER_NAMES,
     TUPLE_NAMES,
     TYPE_ALIAS_NAMES,
@@ -474,7 +475,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     allow_unpack=True,  # Fixed length unpacks can be used for non-variadic aliases.
                 )
                 if node.has_param_spec_type and len(node.alias_tvars) == 1:
-                    an_args = self.pack_paramspec_args(an_args)
+                    an_args = self.pack_paramspec_args(an_args, t.empty_tuple_index)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = instantiate_type_alias(
@@ -521,13 +522,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
 
-    def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
+    def pack_paramspec_args(self, an_args: Sequence[Type], empty_tuple_index: bool) -> list[Type]:
         # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
         # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
         # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
-        if count == 0:
+        if count == 0 and empty_tuple_index:
+            return [Parameters([], [], [])]
+        elif count == 0:
             return []
+
         if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
             # Single Any is interpreted as ..., rather that a single argument with Any type.
             # I didn't find this in the PEP, but it sounds reasonable.
@@ -872,7 +876,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         instance.end_line = ctx.end_line
         instance.end_column = ctx.end_column
         if len(info.type_vars) == 1 and info.has_param_spec_type:
-            instance.args = tuple(self.pack_paramspec_args(instance.args))
+            instance.args = tuple(self.pack_paramspec_args(instance.args, empty_tuple_index))
+
+        if info.fullname == "librt.vecs.vec" and not check_vec_type_args(
+            instance.args, ctx, self.api
+        ):
+            return AnyType(TypeOfAny.from_error)
 
         # Check type argument count.
         instance.args = tuple(flatten_nested_tuples(instance.args))
@@ -985,7 +994,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             isinstance(sym.node, Var)
             and sym.node.info
             and sym.node.info.is_enum
-            and not sym.node.name.startswith("__")
+            and sym.node.name in sym.node.info.enum_members
         ):
             value = sym.node.name
             base_enum_short_name = sym.node.info.name
@@ -1703,7 +1712,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             kinds.append(ARG_STAR2 if second_unpack_last else ARG_STAR)
             names.append(None)
         # Note that arglist below is only used for error context.
-        check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
+        check_param_names(names, [arglist] * len(args), self.fail, "Callable")
         check_arg_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
 
@@ -2088,7 +2097,6 @@ def fix_instance(
             # Already wrong arg count error, don't emit missing type parameters error as well.
             disallow_any = False
         t.args = ()
-        arg_count = 0
 
     args: list[Type] = [*(t.args[:max_tv_count])]
     any_type: AnyType | None = None
@@ -2151,6 +2159,15 @@ def instantiate_type_alias(
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
         return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
+
+    if (
+        no_args
+        and isinstance(node.target, ProperType)
+        and isinstance(node.target, Instance)
+        and node.target.type.fullname == "builtins.tuple"
+        and len(args)
+    ):
+        no_args = False
 
     max_tv_count = len(node.alias_tvars)
     act_len = len(args)
@@ -2472,13 +2489,14 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
+def validate_instance(t: Instance, fail: MsgCallback, indexed: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
         # This type is not ready to be validated, because of unknown total count.
         # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
+    empty_tuple_index = indexed and not t.args
     if t.type.has_type_var_tuple_type:
         min_tv_count = sum(
             not tv.has_default() and not isinstance(tv, TypeVarTupleType)
@@ -2533,13 +2551,14 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         arg_count = len(t.args)
         min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
         max_tv_count = len(t.type.type_vars)
-        if arg_count and (arg_count < min_tv_count or arg_count > max_tv_count):
+        if (arg_count or empty_tuple_index) and (
+            arg_count < min_tv_count or arg_count > max_tv_count
+        ):
             fail(
                 wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),
                 t,
                 code=codes.TYPE_ARG,
             )
-            t.invalid = True
         return False
     return True
 
@@ -2731,3 +2750,54 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # TypeAliasTypes are analyzed separately already, just return it
         return t
+
+
+def check_vec_type_args(
+    args: tuple[Type, ...] | list[Type], ctx: Context, api: SemanticAnalyzerCoreInterface
+) -> bool:
+    """Report an error if type args for 'vec' are invalid.
+
+    Return False on error.
+    """
+    ok = True
+    if len(args) != 1:
+        ok = False
+    else:
+        arg = get_proper_type(args[0])
+        if isinstance(arg, Instance):
+            if arg.type.fullname == "builtins.int":
+                # A fixed-width integer such as 'i64' must be used instead of plain 'int'
+                ok = False
+        elif isinstance(arg, UnionType):
+            non_optional = None
+            items = [get_proper_type(item) for item in arg.items]
+            if len(items) != 2:
+                ok = False
+            elif isinstance(items[0], NoneType):
+                if not check_vec_type_args([items[1]], ctx, api):
+                    # Error has already been reported so it's fine to return
+                    return False
+                non_optional = items[1]
+            elif isinstance(items[1], NoneType):
+                if not check_vec_type_args([items[0]], ctx, api):
+                    # Error has already been reported so it's fine to return
+                    return False
+                non_optional = items[0]
+            else:
+                ok = False
+            if isinstance(non_optional, Instance) and (
+                non_optional.type.fullname in MYPYC_NATIVE_INT_NAMES
+                or non_optional.type.fullname
+                in ("builtins.int", "builtins.float", "builtins.bool", "librt.vecs.vec")
+            ):
+                ok = False
+        elif isinstance(arg, TypeVarType):
+            # Generic vec types aren't supported in type checked Python code, but
+            # they can be provided in libraries implemented in C (e.g. append).
+            if not api.is_stub_file:
+                ok = False
+        else:
+            ok = False
+    if not ok:
+        api.fail('Invalid item type for "vec"', ctx)
+    return ok

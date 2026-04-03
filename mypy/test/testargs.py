@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Any, cast
 
 from mypy.main import infer_python_executable, process_options
 from mypy.options import Options
@@ -63,7 +64,7 @@ class ArgSuite(Suite):
 
         # first test inferring executable from version
         options = Options()
-        options.python_executable = None
+        options.python_executable = cast(Any, None)
         options.python_version = sys.version_info[:2]
         infer_python_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]

@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 from collections.abc import Iterator
 import math
+import sys
 from typing import (
     Any, Iterator, TypeVar, Generator, Optional, List, Tuple, Sequence,
     Union, Callable, Awaitable, Generic
@@ -101,3 +102,11 @@ def make_python_function(f: F) -> F:
     def g(*args: Any, **kwargs: Any) -> Any:
         return f(*args, **kwargs)
     return g  # type: ignore
+
+
+def is_gil_disabled() -> bool:
+    return hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+
+def is_64_bit_platform() -> bool:
+    return getattr(sys, "maxsize") > 2**32

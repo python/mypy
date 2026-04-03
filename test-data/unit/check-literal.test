@@ -224,7 +224,7 @@ accepts_bytes(c_alias)
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings]
+[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings_no_native_parse]
 from typing import Literal, TypeVar, Generic
 
 a_unicode_wrapper: u"Literal[u'foo']"
@@ -577,7 +577,7 @@ reveal_type(d)      # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralDisallowFloatsAndComplex]
+[case testLiteralDisallowFloatsAndComplex_no_native_parse]
 
 from typing import Literal
 a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
@@ -601,7 +601,7 @@ d2: d2t              # E: Variable "__main__.d2t" is not valid as a type \
 [builtins fixtures/complex_tuple.pyi]
 [out]
 
-[case testLiteralDisallowComplexExpressions]
+[case testLiteralDisallowComplexExpressions_no_native_parse]
 from typing import Literal
 def dummy() -> int: return 3
 a: Literal[3 + 4]               # E: Invalid type: Literal[...] cannot contain arbitrary expressions
@@ -1013,7 +1013,6 @@ reveal_type(none1)  # N: Revealed type is "None"
 reveal_type(none2)  # N: Revealed type is "None"
 reveal_type(none3)  # N: Revealed type is "None"
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredOnlyForActualLiterals]
 from typing import Literal
@@ -1054,7 +1053,6 @@ combined = g
 combined = h
 
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredTypeMustMatchExpected]
 from typing import Literal
@@ -1068,7 +1066,6 @@ e: Literal["foo", "bar"] = "baz"    # E: Incompatible types in assignment (expre
 f: Literal[True, 4] = False         # E: Incompatible types in assignment (expression has type "Literal[False]", variable has type "Literal[True, 4]")
 
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredInCall]
 from typing import Literal
@@ -1114,7 +1111,6 @@ f_none_lit(None)
 f_none(None)
 f_none_lit(n1)
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testLiteralInferredInReturnContext]
 from typing import Literal
@@ -2464,7 +2460,7 @@ expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type
 -- Tests for Literals and enums
 --
 
-[case testLiteralWithEnumsBasic]
+[case testLiteralWithEnumsBasic_no_native_parse]
 from typing import Literal
 from enum import Enum
 
@@ -3107,3 +3103,47 @@ def check(obj: A[Literal[1]]) -> None:
     reveal_type(g('', obj))  # E: Cannot infer value of type parameter "T" of "g" \
                              # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testEnumLiteralIsNotIntLiteral]
+# See https://discuss.python.org/t/amend-pep-586-to-make-enum-values-subtypes-of-literal/59456/4
+from enum import IntEnum
+from typing import Literal
+
+class X(IntEnum):
+    a = 1
+
+    def __add__(self, value: int, /) -> int:
+        return self.value + value + 42
+
+    def __eq__(self, other: object):
+        return False
+
+    def __bool__(self) -> bool:
+        return False
+
+def f(x: Literal[1]):
+    # 44 at runtime if you were to allow passing X.a
+    reveal_type(x + 1)  # N: Revealed type is "builtins.int"
+
+def g(x: Literal[1, 2]):
+    # false if you were to allow passing X.a
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[2]"
+
+def h(x: Literal[0, 1]):
+    # false if you were to allow passing X.a
+    if x:
+        reveal_type(x)  # N: Revealed type is "Literal[1]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[0]"
+
+f(X.a)  # E: Argument 1 to "f" has incompatible type "Literal[X.a]"; expected "Literal[1]"
+g(X.a)  # E: Argument 1 to "g" has incompatible type "Literal[X.a]"; expected "Literal[1, 2]"
+h(X.a)  # E: Argument 1 to "h" has incompatible type "Literal[X.a]"; expected "Literal[0, 1]"
+
+f(X.a.value)
+g(X.a.value)
+h(X.a.value)
+[builtins fixtures/primitives.pyi]

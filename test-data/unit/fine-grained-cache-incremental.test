@@ -234,8 +234,8 @@ x = 10
 [file p/c.py]
 class C: pass
 
-[delete ../.mypy_cache/3.9/b.meta.json.2]
-[delete ../.mypy_cache/3.9/p/c.meta.json.2]
+[delete ../.mypy_cache/3.9/b.meta.ff.2]
+[delete ../.mypy_cache/3.9/p/c.meta.ff.2]
 
 [out]
 ==

@@ -148,6 +148,14 @@ error:
 The second line is now fine, since the ignore comment causes the name
 ``frobnicate`` to get an implicit ``Any`` type.
 
+The type ignore comment must be at the start of the comments on a line.
+This type ignore will not take effect:
+
+.. code-block:: python
+
+    import frobnicate  #example other comment # type: ignore
+    frobnicate.start()
+
 .. note::
 
     You can use the form ``# type: ignore[<code>]`` to only ignore
@@ -220,11 +228,12 @@ make cold mypy runs several times faster.
 
 Furthermore: as of `mypy 1.13 <https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html>`_,
 mypy allows use of the orjson library for handling the cache instead of the stdlib json, for
-improved performance. You can ensure the presence of orjson using the faster-cache extra:
+improved performance. You can ensure the presence of orjson using the ``faster-cache`` extra:
 
     python3 -m pip install -U mypy[faster-cache]
 
-Mypy may depend on orjson by default in the future.
+Mypy may depend on orjson by default in the future. To use faster, native parser, use the
+``native-parse`` extra. Native parser will be default in near future.
 
 Types of empty collections
 --------------------------
@@ -294,9 +303,13 @@ See :ref:`type-narrowing` for more information.
 Invariance vs covariance
 ------------------------
 
-Most mutable generic collections are invariant, and mypy considers all
-user-defined generic classes invariant by default
-(see :ref:`variance-of-generics` for motivation). This could lead to some
+Most mutable generic collections are invariant. When using the legacy
+``TypeVar`` syntax, mypy considers all user-defined generic classes invariant
+by default (see :ref:`variance-of-generics` for motivation). When using the
+:pep:`695` syntax (``class MyClass[T]: ...``), variance is inferred from
+usage rather than defaulting to invariant.
+
+The fact that mutable sequences are usually invariant can lead to some
 unexpected errors when combined with type inference. For example:
 
 .. code-block:: python

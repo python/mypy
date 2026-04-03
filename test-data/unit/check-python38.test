@@ -114,40 +114,40 @@ def g(x: int): ...
     0  # type: ignore
 )  # type: ignore  # E: Unused "type: ignore" comment
 
-[case testPEP570ArgTypesMissing]
+[case testPEP570ParamTypesMissing]
 # flags: --disallow-untyped-defs
-def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+def f(x, /) -> None: ...  # E: Function is missing a type annotation for one or more parameters
 
-[case testPEP570ArgTypesBadDefault]
-def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")
+[case testPEP570ParamTypesBadDefault]
+def f(x: int = "ERROR", /) -> None: ...  # E: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 
-[case testPEP570ArgTypesDefault]
-def f(arg: int = 0, /) -> None:
-    reveal_type(arg)  # N: Revealed type is "builtins.int"
+[case testPEP570ParamTypesDefault]
+def f(x: int = 0, /) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
-[case testPEP570ArgTypesRequired]
-def f(arg: int, /) -> None:
-    reveal_type(arg)  # N: Revealed type is "builtins.int"
+[case testPEP570ParamTypesRequired]
+def f(x: int, /) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Required]
-def f(arg: int, /) -> None: ...  # N: "f" defined here
+def f(x: int, /) -> None: ...
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
-f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+f(x=1)  # E: Unexpected keyword argument "x" for "f"
+f(x="ERROR")  # E: Unexpected keyword argument "x" for "f"
 
 [case testPEP570Default]
-def f(arg: int = 0, /) -> None: ...  # N: "f" defined here
+def f(x: int = 0, /) -> None: ...
 f()
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
-f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+f(x=1)  # E: Unexpected keyword argument "x" for "f"
+f(x="ERROR")  # E: Unexpected keyword argument "x" for "f"
 
 [case testPEP570Calls]
 # flags: --no-strict-optional
 from typing import Any, Dict
-def f(p, /, p_or_kw, *, kw) -> None: ...  # N: "f" defined here
+def f(p, /, p_or_kw, *, kw) -> None: ...
 d = None # type: Dict[Any, Any]
 f(0, 0, 0)  # E: Too many positional arguments for "f"
 f(0, 0, kw=0)
@@ -194,17 +194,17 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
 [case testPEP570Unannotated]
-def f(arg, /): ...  # N: "f" defined here
+def f(arg, /): ...
 g = lambda arg, /: arg
-def h(arg=0, /): ...  # N: "h" defined here
+def h(arg=0, /): ...
 i = lambda arg=0, /: arg
 
 f(1)
-g(1)
+reveal_type(g(1))  # N: Revealed type is "Any"
 h()
 h(1)
-i()
-i(1)
+reveal_type(i())  # N: Revealed type is "Any"
+reveal_type(i(1))  # N: Revealed type is "Any"
 f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
 g(arg=0)  # E: Unexpected keyword argument "arg"
 h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
@@ -566,7 +566,7 @@ class Foo:
     @overload
     def f(self, *, b: bool = False) -> None: ...
 
-    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 2
         ...
 
 class Bar:
@@ -738,6 +738,15 @@ if typeguard(x=(n := cast(object, "hi"))):
 [out]
 main:8: note: Revealed type is "builtins.int"
 
+[case testWalrusAssignmentAcrossCallArguments]
+def f(notifications: str, initial_reference: str) -> int:
+    return 42
+
+f(
+    initial_reference=(request_reference := "abc"),
+    notifications=reveal_type(request_reference),  # N: Revealed type is "builtins.str"
+)
+
 [case testNoCrashOnAssignmentExprClass]
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
@@ -801,3 +810,24 @@ y: List[int]
 if (y := []):
     reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
+
+[case testAssignToOptionalTupleWalrus]
+from typing import Optional
+
+def condition() -> bool: return False
+
+i: Optional[int] = 0 if condition() else None
+x: Optional[tuple[int, int]] = (i, (i := 1))  # E: Incompatible types in assignment (expression has type "tuple[int | None, int]", variable has type "tuple[int, int] | None")
+[builtins fixtures/tuple.pyi]
+
+[case testReturnTupleOptionalWalrus]
+from typing import Optional
+
+def condition() -> bool: return False
+
+def fn() -> tuple[int, int]:
+    i: Optional[int] = 0 if condition() else None
+    return (i, (i := i + 1))  # E: Incompatible return value type (got "tuple[int | None, int]", expected "tuple[int, int]") \
+                              # E: Unsupported operand types for + ("None" and "int") \
+                              # N: Left operand is of type "int | None"
+[builtins fixtures/dict.pyi]

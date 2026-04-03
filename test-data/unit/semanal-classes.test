@@ -413,6 +413,9 @@ MypyFile:1(
   Import:1(abc)
   ClassDef:2(
     A
+    Keywords(metaclass=MemberExpr:2(
+      NameExpr(abc)
+      ABCMeta [abc.ABCMeta]))
     Metaclass(MemberExpr:2(
       NameExpr(abc)
       ABCMeta [abc.ABCMeta]))

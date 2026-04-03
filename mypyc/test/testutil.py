@@ -114,12 +114,16 @@ def build_ir_for_single_file2(
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
+    options.strict_bytes = True
+    options.disable_bytearray_promotion = True
+    options.disable_memoryview_promotion = True
     options.per_module_options["__main__"] = {"mypyc": True}
 
     source = build.BuildSource("main", "__main__", program_text)
     # Construct input as a single single.
     # Parse and type check the input program.
     result = build.build(sources=[source], options=options, alt_lib_path=test_temp_dir)
+    result.manager.metastore.close()
     if result.errors:
         raise CompileError(result.errors)
 
@@ -272,7 +276,9 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 9))
+    options = CompilerOptions(
+        strip_asserts="StripAssert" in name, capi_version=(3, 9), strict_traceback_checks=True
+    )
     # A suffix like _python3_9 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
@@ -280,6 +286,15 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
-    if re.search("_experimental(_|$)", name):
+    if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
+
+
+def has_test_name_tag(name: str, tag: str) -> bool:
+    """Check if a test case name contains a tag token like ``_experimental``.
+
+    A tag matches if it appears as a full underscore-delimited token:
+    ``foo_tag_bar`` or ``foo_tag``.
+    """
+    return re.search(rf"(?:^|_){re.escape(tag)}(?:_|$)", name) is not None

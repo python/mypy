@@ -219,7 +219,7 @@ def func_a1(
 class ClassA2(Generic[T1, T2, T3]): ...
 
 def func_a2(
-    a: ClassA2,  # E: Missing type parameters for generic type "ClassA2"
+    a: ClassA2,  # E: Missing type arguments for generic type "ClassA2"
     b: ClassA2[float],
     c: ClassA2[float, float],
     d: ClassA2[float, float, float],
@@ -250,7 +250,7 @@ class ClassA3(Generic[T1, T2]):
     def __init__(self, var: Union[int, None] = None) -> None: ...
 
 def func_a3(
-    a: ClassA3,  # E: Missing type parameters for generic type "ClassA3"
+    a: ClassA3,  # E: Missing type arguments for generic type "ClassA3"
     b: ClassA3[float],
     c: ClassA3[float, float],
     d: ClassA3[float, float, float],  # E: "ClassA3" expects between 1 and 2 type arguments, but 3 given
@@ -316,7 +316,7 @@ def func_b1(
 class ClassB2(Generic[P1, P2]): ...
 
 def func_b2(
-    a: ClassB2,  # E: Missing type parameters for generic type "ClassB2"
+    a: ClassB2,  # E: Missing type arguments for generic type "ClassB2"
     b: ClassB2[[float]],
     c: ClassB2[[float], [float]],
     d: ClassB2[[float], [float], [float]],  # E: "ClassB2" expects between 1 and 2 type arguments, but 3 given
@@ -401,7 +401,7 @@ def func_c3(
 class ClassC4(Generic[T1, Unpack[Ts1], T3]): ...
 
 def func_c4(
-    a: ClassC4,  # E: Missing type parameters for generic type "ClassC4"
+    a: ClassC4,  # E: Missing type arguments for generic type "ClassC4"
     b: ClassC4[int],
     c: ClassC4[int, float],
 ) -> None:
@@ -571,7 +571,7 @@ def func_a1(
 TA2 = Tuple[T1, T2, T3]
 
 def func_a2(
-    a: TA2,  # E: Missing type parameters for generic type "TA2"
+    a: TA2,  # E: Missing type arguments for generic type "TA2"
     b: TA2[float],
     c: TA2[float, float],
     d: TA2[float, float, float],
@@ -586,7 +586,7 @@ def func_a2(
 TA3 = Union[Dict[T1, T2], List[T3]]
 
 def func_a3(
-    a: TA3,  # E: Missing type parameters for generic type "TA3"
+    a: TA3,  # E: Missing type arguments for generic type "TA3"
     b: TA3[float],
     c: TA3[float, float],
     d: TA3[float, float, float],
@@ -601,7 +601,7 @@ def func_a3(
 TA4 = Tuple[T1, T4, T2]
 
 def func_a4(
-    a: TA4,  # E: Missing type parameters for generic type "TA4"
+    a: TA4,  # E: Missing type arguments for generic type "TA4"
     b: TA4[float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given 1
     c: TA4[float, float],
     d: TA4[float, float, float],
@@ -640,7 +640,7 @@ class ClassB2(Generic[P1, P2]): ...
 TB2 = ClassB2[P1, P2]
 
 def func_b2(
-    a: TB2,  # E: Missing type parameters for generic type "TB2"
+    a: TB2,  # E: Missing type arguments for generic type "TB2"
     b: TB2[[float]],
     c: TB2[[float], [float]],
     d: TB2[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 1 and 2, given 3
@@ -698,7 +698,7 @@ def func_c3(
 TC4 = Tuple[T1, Unpack[Ts1], T3]
 
 def func_c4(
-    a: TC4,  # E: Missing type parameters for generic type "TC4"
+    a: TC4,  # E: Missing type arguments for generic type "TC4"
     b: TC4[int],
     c: TC4[int, float],
 ) -> None:
@@ -717,7 +717,7 @@ T2 = TypeVar("T2", default=T1)
 TD1 = Dict[T1, T2]
 
 def func_d1(
-    a: TD1,  # E: Missing type parameters for generic type "TD1"
+    a: TD1,  # E: Missing type arguments for generic type "TD1"
     b: TD1[int],
     c: TD1[int, float],
 ) -> None:

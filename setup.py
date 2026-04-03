@@ -90,6 +90,9 @@ if USE_MYPYC:
             # We don't populate __file__ properly at the top level or something?
             # Also I think there would be problems with how we generate version.py.
             "version.py",
+            # Empty __init__.py files, no benefit from compilation
+            os.path.join("plugins", "__init__.py"),
+            os.path.join("server", "__init__.py"),
             # Skip these to reduce the size of the build
             "stubtest.py",
             "stubgenc.py",

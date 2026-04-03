@@ -365,6 +365,10 @@ def gen_func_ir(
                 func_decl.kind,
                 is_prop_getter=func_decl.is_prop_getter,
                 is_prop_setter=func_decl.is_prop_setter,
+                is_generator=func_decl.is_generator,
+                is_coroutine=func_decl.is_coroutine,
+                implicit=func_decl.implicit,
+                internal=func_decl.internal,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
@@ -536,7 +540,11 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # children.
     if class_ir.allow_interpreted_subclasses:
         f = gen_glue(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
-        class_ir.glue_methods[(class_ir, name)] = f
+        # Use func_ir.decl.name (unique) rather than fdef.name, because for properties
+        # the getter and setter share the same fdef.name but have distinct decl names
+        # (e.g. "prop" vs "__mypyc_setter__prop"). Using fdef.name would cause the
+        # setter's glue to overwrite the getter's glue in the shadow vtable.
+        class_ir.glue_methods[(class_ir, func_ir.decl.name)] = f
         builder.functions.append(f)
 
     if fdef.name == "__getattr__":
@@ -649,8 +657,9 @@ def gen_glue(
     """
     if fdef.is_property:
         return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
-    else:
-        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
+    if do_py_ops and target.name.startswith(PROPSET_PREFIX):
+        return gen_glue_property_setter(builder, base_sig, target, cls, base, fdef.line)
+    return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -842,15 +851,67 @@ def gen_glue_property(
     )
 
 
+def gen_glue_property_setter(
+    builder: IRBuilder, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR, line: int
+) -> FuncIR:
+    """Generate a shadow glue method for a property setter.
+
+    For interpreted subclasses, property setters can't be called via the
+    internal __mypyc_setter__<name> method. Instead, use Python's setattr
+    to set the property via the standard descriptor protocol.
+    """
+    builder.enter()
+    builder.ret_types[-1] = sig.ret_type
+
+    rt_args = list(sig.args)
+    rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+
+    arg_info = get_args(builder, rt_args, line)
+    args = arg_info.args
+
+    self_arg = args[0]
+    value_arg = args[1]
+
+    # Extract the property name from "__mypyc_setter__<name>"
+    assert target.name.startswith(PROPSET_PREFIX)
+    prop_name = target.name[len(PROPSET_PREFIX) :]
+
+    builder.primitive_op(
+        py_setattr_op,
+        [
+            self_arg,
+            builder.load_str(prop_name),
+            builder.coerce(value_arg, object_rprimitive, line),
+        ],
+        line,
+    )
+    retval = builder.coerce(builder.none(), sig.ret_type, line)
+    builder.add(Return(retval))
+
+    arg_regs, _, blocks, return_type, _ = builder.leave()
+    return FuncIR(
+        FuncDecl(
+            target.name + "__" + base.name + "_glue",
+            cls.name,
+            builder.module_name,
+            FuncSignature(rt_args, return_type),
+        ),
+        arg_regs,
+        blocks,
+    )
+
+
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     """Given a FuncDef, return the target for the instance of its callable class.
 
     If the function was not already defined somewhere, then define it
     and add it to the current environment.
     """
-    if fdef.original_def:
+    if orig := fdef.original_def:
+        if isinstance(orig, Decorator):
+            orig = orig.func
         # Get the target associated with the previously defined FuncDef.
-        return builder.lookup(fdef.original_def)
+        return builder.lookup(orig)
 
     if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
@@ -1036,7 +1097,7 @@ def generate_dispatch_glue_native_function(
 
 def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
     """Create an __init__ that sets registry and dispatch_cache to empty dicts"""
-    line = -1
+    line = builder.fn_info.fitem.line
     class_ir = builder.fn_info.callable_class.ir
     with builder.enter_method(class_ir, "__init__", bool_rprimitive):
         empty_dict = builder.call_c(dict_new_op, [], line)
@@ -1050,7 +1111,7 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
 
 
 def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    line = -1
+    line = fn_info.fitem.line
     with builder.enter_method(fn_info.callable_class.ir, "register", object_rprimitive):
         cls_arg = builder.add_argument("cls", object_rprimitive)
         func_arg = builder.add_argument("func", object_rprimitive, ArgKind.ARG_OPT)
@@ -1133,9 +1194,10 @@ def gen_property_getter_ir(
     name = func_decl.name
     builder.enter(name)
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    line = func_decl._line or -1
     if not is_trait:
-        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
-        builder.add(Return(value))
+        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, line)
+        builder.add(Return(value, line))
     else:
         builder.add(Unreachable())
     args, _, blocks, ret_type, fn_info = builder.leave()
@@ -1155,8 +1217,9 @@ def gen_property_setter_ir(
     value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
     assert name.startswith(PROPSET_PREFIX)
     attr_name = name[len(PROPSET_PREFIX) :]
+    line = func_decl._line or -1
     if not is_trait:
-        builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
-    builder.add(Return(builder.none()))
+        builder.add(SetAttr(self_reg, attr_name, value_reg, line))
+    builder.add(Return(builder.none(), line))
     args, _, blocks, ret_type, fn_info = builder.leave()
-    return FuncIR(func_decl, args, blocks)
+    return FuncIR(func_decl, args, blocks, line)

@@ -192,6 +192,9 @@ class _NodeEvaluator(ExpressionVisitor[object]):
     def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> object:
         return UNKNOWN
 
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr) -> object:
+        return UNKNOWN
+
     def visit_temp_node(self, o: mypy.nodes.TempNode) -> object:
         return UNKNOWN
 
