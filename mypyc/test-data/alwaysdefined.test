@@ -729,3 +729,13 @@ class NestedFunc:
 -- TODO: Support nested functions.
 NestedFunc: []
 f___init___NestedFunc_obj: []
+
+[case testAlwaysDefinedWithVecSetItem]
+from librt.vecs import vec
+
+class C:
+    def __init__(self, v: vec[C]) -> None:
+        self.v = v
+        self.v[0] = self
+[out]
+C: [v]

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import Unused
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine
 from contextvars import Context
 from typing import Any, TypeVar, final
 from typing_extensions import Self
@@ -22,7 +22,10 @@ if sys.version_info >= (3, 11):
         def __exit__(self, exc_type: Unused, exc_val: Unused, exc_tb: Unused) -> None: ...
         def close(self) -> None: ...
         def get_loop(self) -> AbstractEventLoop: ...
-        def run(self, coro: Coroutine[Any, Any, _T], *, context: Context | None = None) -> _T: ...
+        if sys.version_info >= (3, 14):
+            def run(self, coro: Awaitable[_T], *, context: Context | None = None) -> _T: ...
+        else:
+            def run(self, coro: Coroutine[Any, Any, _T], *, context: Context | None = None) -> _T: ...
 
 if sys.version_info >= (3, 12):
     def run(

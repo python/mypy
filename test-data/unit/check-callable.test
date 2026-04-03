@@ -47,7 +47,7 @@ x = 5  # type: Union[int, Callable[[], str], Callable[[], int]]
 
 if callable(x):
     y = x() + 2 # E: Unsupported operand types for + ("str" and "int") \
-                # N: Left operand is of type "Union[str, int]"
+                # N: Left operand is of type "str | int"
 else:
     z = x + 6
 
@@ -62,7 +62,7 @@ if callable(x):
     y = x() + 'test'
 else:
     z = x + 6  # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
+               # N: Left operand is of type "int | str"
 
 [builtins fixtures/callable.pyi]
 
@@ -156,7 +156,7 @@ if callable(x) and x() == 'test':
     x()
 else:
     x + 5  # E: Unsupported left operand type for + ("Callable[[], str]") \
-           # N: Left operand is of type "Union[int, Callable[[], str]]"
+           # N: Left operand is of type "int | Callable[[], str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -280,9 +280,9 @@ T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(t())  # N: Revealed type is "builtins.int | builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(t)  # N: Revealed type is "builtins.int | builtins.str"
 
 [builtins fixtures/callable.pyi]
 
@@ -500,11 +500,13 @@ if callable():  # E: Missing positional argument "x" in call to "callable"
 
 [builtins fixtures/callable.pyi]
 
-[case testCallableWithNoneArgs]
+[case testCallableWithAnyArgs]
 
-fn = None
-if callable(fn):
-  fn()
+def main(fn: object) -> None:
+    if callable(fn):
+        fn()
+        fn(1, 2, 3)
+        fn(take="that")
 
 [builtins fixtures/callable.pyi]
 
@@ -654,13 +656,13 @@ class Call(Protocol):
 
 def f1() -> None: ...
 a1: Call = f1  # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f2(x: str) -> None: ...
 a2: Call = f2  # E: Incompatible types in assignment (expression has type "Callable[[str], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f3(y: int) -> None: ...
 a3: Call = f3  # E: Incompatible types in assignment (expression has type "Callable[[int], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f4(x: int) -> None: ...
 a4: Call = f4
 

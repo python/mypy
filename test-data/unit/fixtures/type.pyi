@@ -10,6 +10,7 @@ S = TypeVar("S")
 class object:
     def __init__(self) -> None: pass
     def __str__(self) -> 'str': pass
+    def __eq__(self, value: object, /) -> bool: ...
 
 class list(Generic[T]): pass
 

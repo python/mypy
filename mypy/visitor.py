@@ -80,6 +80,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr, /) -> T:
+        pass
+
+    @abstractmethod
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr, /) -> T:
         pass
 
@@ -105,6 +109,10 @@ class ExpressionVisitor(Generic[T]):
 
     @abstractmethod
     def visit_dict_expr(self, o: mypy.nodes.DictExpr, /) -> T:
+        pass
+
+    @abstractmethod
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr, /) -> T:
         pass
 
     @abstractmethod
@@ -511,6 +519,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_cast_expr(self, o: mypy.nodes.CastExpr, /) -> T:
         raise NotImplementedError()
 
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr, /) -> T:
+        raise NotImplementedError()
+
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr, /) -> T:
         raise NotImplementedError()
 
@@ -530,6 +541,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         raise NotImplementedError()
 
     def visit_dict_expr(self, o: mypy.nodes.DictExpr, /) -> T:
+        raise NotImplementedError()
+
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr, /) -> T:
         raise NotImplementedError()
 
     def visit_tuple_expr(self, o: mypy.nodes.TupleExpr, /) -> T:

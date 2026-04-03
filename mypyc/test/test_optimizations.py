@@ -44,7 +44,7 @@ class OptimizationSuite(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    insert_uninit_checks(fn)
+                    insert_uninit_checks(fn, True)
                     self.do_optimizations(fn)
                     actual.extend(format_func(fn))
 
@@ -58,11 +58,11 @@ class TestCopyPropagation(OptimizationSuite):
     files = ["opt-copy-propagation.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_copy_propagation(fn, CompilerOptions())
+        do_copy_propagation(fn, CompilerOptions(strict_traceback_checks=True))
 
 
 class TestFlagElimination(OptimizationSuite):
     files = ["opt-flag-elimination.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_flag_elimination(fn, CompilerOptions())
+        do_flag_elimination(fn, CompilerOptions(strict_traceback_checks=True))

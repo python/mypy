@@ -7,11 +7,63 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from distutils import ccompiler, sysconfig
+from typing import Any
 
-base_dir = os.path.join(os.path.dirname(__file__), "..", "..")
+from mypyc.build import get_cflags, include_dir
+
+from .config import PREFIX
+
+EXCLUDED_LIB_RT_COMPILE_FILES = ["static_data.c"]
 
 
 class TestExternal(unittest.TestCase):
+    def test_lib_rt_c_files_compile_individually(self) -> None:
+        """Compile each top-level lib-rt C file as its own translation unit."""
+        lib_rt_dir = include_dir()
+        source_names = sorted(
+            name
+            for name in os.listdir(lib_rt_dir)
+            if name.endswith(".c")
+            and os.path.isfile(os.path.join(lib_rt_dir, name))
+            and name not in EXCLUDED_LIB_RT_COMPILE_FILES
+        )
+        compiler: Any = ccompiler.new_compiler()
+        sysconfig.customize_compiler(compiler)
+
+        include_dirs = [lib_rt_dir]
+        for plat_specific in (False, True):
+            path = sysconfig.get_python_inc(plat_specific=plat_specific)
+            if path and path not in include_dirs:
+                include_dirs.append(path)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for experimental_features in (False, True):
+                cflags = get_cflags(
+                    compiler_type=compiler.compiler_type,
+                    opt_level="0",
+                    experimental_features=experimental_features,
+                )
+                output_dir = os.path.join(
+                    tmpdir, "experimental" if experimental_features else "default"
+                )
+
+                for source_name in source_names:
+                    source_path = os.path.join(lib_rt_dir, source_name)
+                    with self.subTest(source=source_name, experimental=experimental_features):
+                        try:
+                            compiler.compile(
+                                [source_path],
+                                output_dir=output_dir,
+                                include_dirs=include_dirs,
+                                extra_postargs=cflags,
+                            )
+                        except Exception as err:
+                            raise AssertionError(
+                                f"failed to compile {source_name} "
+                                f"(experimental={experimental_features})"
+                            ) from err
+
     # TODO: Get this to work on Windows.
     # (Or don't. It is probably not a good use of time.)
     @unittest.skipIf(sys.platform.startswith("win"), "rt tests don't work on windows")
@@ -37,7 +89,7 @@ class TestExternal(unittest.TestCase):
                     "--run-capi-tests",
                 ],
                 env=env,
-                cwd=os.path.join(base_dir, "mypyc", "lib-rt"),
+                cwd=os.path.join(PREFIX, "mypyc", "lib-rt"),
             )
             # Run C unit tests.
             env = os.environ.copy()

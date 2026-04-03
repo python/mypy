@@ -45,6 +45,10 @@ files = [
     "irbuild-i32.test",
     "irbuild-i16.test",
     "irbuild-u8.test",
+    "irbuild-vec-i64.test",
+    "irbuild-vec-misc.test",
+    "irbuild-vec-t.test",
+    "irbuild-vec-nested.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -54,10 +58,14 @@ files = [
     "irbuild-glue-methods.test",
     "irbuild-math.test",
     "irbuild-weakref.test",
+    "irbuild-librt-strings.test",
+    "irbuild-base64.test",
+    "irbuild-time.test",
+    "irbuild-match.test",
 ]
 
-if sys.version_info >= (3, 10):
-    files.append("irbuild-match.test")
+if sys.version_info >= (3, 14):
+    files.append("irbuild-python314.test")
 
 
 class TestGenOps(MypycDataSuite):

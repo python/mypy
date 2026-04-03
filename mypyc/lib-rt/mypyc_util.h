@@ -48,6 +48,19 @@
 
 #endif // Py_GIL_DISABLED
 
+// Helper macro for stringification in _Pragma
+#define CPY_STRINGIFY(x) #x
+
+#if defined(__clang__)
+    #define CPY_UNROLL_LOOP_IMPL(x) _Pragma(CPY_STRINGIFY(x))
+    #define CPY_UNROLL_LOOP(n) CPY_UNROLL_LOOP_IMPL(unroll n)
+#elif defined(__GNUC__) && __GNUC__ >= 8
+    #define CPY_UNROLL_LOOP_IMPL(x) _Pragma(CPY_STRINGIFY(x))
+    #define CPY_UNROLL_LOOP(n) CPY_UNROLL_LOOP_IMPL(GCC unroll n)
+#else
+    #define CPY_UNROLL_LOOP(n)
+#endif
+
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
 // I'm honestly kind of surprised that this isn't done by default.
@@ -128,6 +141,10 @@ typedef PyObject CPyModule;
 
 // Error value for floats
 #define CPY_FLOAT_ERROR -113.0
+
+// Value for 'None' primitive type
+#define CPY_NONE_ERROR 2
+#define CPY_NONE 1
 
 typedef void (*CPyVTableItem)(void);
 

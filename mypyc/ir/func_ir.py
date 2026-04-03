@@ -149,8 +149,11 @@ class FuncDecl:
         module_name: str,
         sig: FuncSignature,
         kind: int = FUNC_NORMAL,
+        *,
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
+        is_generator: bool = False,
+        is_coroutine: bool = False,
         implicit: bool = False,
         internal: bool = False,
     ) -> None:
@@ -161,6 +164,8 @@ class FuncDecl:
         self.kind = kind
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
+        self.is_generator = is_generator
+        self.is_coroutine = is_coroutine
         if class_name is None:
             self.bound_sig: FuncSignature | None = None
         else:
@@ -219,6 +224,8 @@ class FuncDecl:
             "kind": self.kind,
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
+            "is_generator": self.is_generator,
+            "is_coroutine": self.is_coroutine,
             "implicit": self.implicit,
             "internal": self.internal,
         }
@@ -240,10 +247,12 @@ class FuncDecl:
             data["module_name"],
             FuncSignature.deserialize(data["sig"], ctx),
             data["kind"],
-            data["is_prop_setter"],
-            data["is_prop_getter"],
-            data["implicit"],
-            data["internal"],
+            is_prop_setter=data["is_prop_setter"],
+            is_prop_getter=data["is_prop_getter"],
+            is_generator=data["is_generator"],
+            is_coroutine=data["is_coroutine"],
+            implicit=data["implicit"],
+            internal=data["internal"],
         )
 
 

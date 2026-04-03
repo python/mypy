@@ -25,14 +25,14 @@ def f1() -> None:
         x = 0
     else:
         x = ''
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f2() -> None:
     if int():
         x = 0
     else:
         x = None
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 
 [case testNewRedefineMergeConditionalLocal2]
 # flags: --allow-redefinition-new --local-partial-types
@@ -42,14 +42,14 @@ def nested_ifs() -> None:
             x = 0
         else:
             x = ''
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     else:
         if int():
             x = None
         else:
             x = b""
-        reveal_type(x) # N: Revealed type is "Union[None, builtins.bytes]"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None, builtins.bytes]"
+        reveal_type(x) # N: Revealed type is "None | builtins.bytes"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str | None | builtins.bytes"
 
 [case testNewRedefineUninitializedCodePath1]
 # flags: --allow-redefinition-new --local-partial-types
@@ -67,9 +67,9 @@ from typing import Union
 def f1() -> None:
     if int():
         x: Union[int, str] = 0
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
         x = ""
-    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineUninitializedCodePath3]
 # flags: --allow-redefinition-new --local-partial-types
@@ -80,7 +80,7 @@ def f1() -> None:
         x = 0
     elif int():
         x = ""
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineUninitializedCodePath4]
 # flags: --allow-redefinition-new --local-partial-types
@@ -89,7 +89,7 @@ from typing import Union
 def f1() -> None:
     if int():
         x: Union[int, str] = 0
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineUninitializedCodePath5]
 # flags: --allow-redefinition-new --local-partial-types
@@ -101,7 +101,7 @@ def f1() -> None:
         x = ""
         reveal_type(x) # N: Revealed type is "builtins.str"
         x = None
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 
 [case testNewRedefineUninitializedCodePath6]
 # flags: --allow-redefinition-new --local-partial-types
@@ -112,7 +112,40 @@ x: Union[str, None]
 def f1() -> None:
     if x is not None:
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(x) # N: Revealed type is "builtins.str | None"
+
+[case testNewRedefineHasAttr]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Union
+
+def test(lst: list[object]) -> None:
+    for cls in lst:
+        if not hasattr(cls, "module"):
+            break
+        reveal_type(cls.module)  # N: Revealed type is "Any"
+
+    other = object()
+    if not hasattr(other, "foo"):
+        return
+    reveal_type(other.foo)  # N: Revealed type is "Any"
+
+    x = object()
+    if bool():
+        assert hasattr(x, "bar")
+        x.bar  # OK
+    x.bar  # E: "object" has no attribute "bar"
+
+class C:
+    x: int
+
+u: Union[C, object]
+if hasattr(u, "x"):
+    # Ideally we should have Any | int here and below, but this is tricky
+    reveal_type(u.x)  # N: Revealed type is "Any"
+
+y = hasattr(u, "x") and u.x
+reveal_type(y)  # N: Revealed type is "Literal[False] | Any"
+[builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineGlobalVariableSimple]
 # flags: --allow-redefinition-new --local-partial-types
@@ -122,18 +155,18 @@ if int():
 else:
     x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f1() -> None:
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f2() -> None:
     global x
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     x = 0
     reveal_type(x) # N: Revealed type is "builtins.int"
 
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineGlobalVariableNoneInit]
 # flags: --allow-redefinition-new --local-partial-types
@@ -152,7 +185,7 @@ reveal_type(x) # N: Revealed type is "None"
 from typing import Optional
 
 def f1(x: Optional[str] = None) -> None:
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(x) # N: Revealed type is "builtins.str | None"
     if x is None:
         x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
@@ -176,9 +209,9 @@ class C:
     else:
         x = ""
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
-reveal_type(C.x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(C.x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineNestedFunctionBasics]
 # flags: --allow-redefinition-new --local-partial-types
@@ -189,7 +222,7 @@ def f1() -> None:
         x = ""
 
     def nested() -> None:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f2() -> None:
     if int():
@@ -199,11 +232,11 @@ def f2() -> None:
 
     def nested() -> None:
         nonlocal x
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
         x = 0
         reveal_type(x) # N: Revealed type is "builtins.int"
 
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineLambdaBasics]
 # flags: --allow-redefinition-new --local-partial-types
@@ -211,12 +244,12 @@ def f1() -> None:
     x = 0
     if int():
         x = None
-    f = lambda: reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type(f) # N: Revealed type is "def () -> Union[builtins.int, None]"
+    f = lambda: reveal_type(x) # N: Revealed type is "builtins.int | None"
+    reveal_type(f) # N: Revealed type is "def () -> builtins.int | None"
     if x is None:
         x = ""
-    f = lambda: reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
-    reveal_type(f) # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+    f = lambda: reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(f) # N: Revealed type is "def () -> builtins.int | builtins.str"
 
 [case testNewRedefineAssignmentExpression]
 # flags: --allow-redefinition-new --local-partial-types
@@ -225,7 +258,7 @@ def f1() -> None:
         reveal_type(x) # N: Revealed type is "builtins.int"
     elif x := str():
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f2() -> None:
     if x := int():
@@ -234,12 +267,12 @@ def f2() -> None:
         reveal_type(x) # N: Revealed type is "builtins.str"
     else:
         pass
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f3() -> None:
     if (x := int()) or (x := str()):
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineOperatorAssignment]
 # flags: --allow-redefinition-new --local-partial-types
@@ -251,7 +284,7 @@ c = C()
 if int():
     c += C()
     reveal_type(c) # N: Revealed type is "__main__.D"
-reveal_type(c) # N: Revealed type is "Union[__main__.C, __main__.D]"
+reveal_type(c) # N: Revealed type is "__main__.C | __main__.D"
 
 [case testNewRedefineImportFrom-xfail]
 # flags: --allow-redefinition-new --local-partial-types
@@ -294,7 +327,7 @@ def f1() -> None:
     x = None
     if int():
         x = ""
-    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+    reveal_type(x) # N: Revealed type is "None | builtins.str"
 
 def f2() -> None:
     if int():
@@ -303,14 +336,14 @@ def f2() -> None:
         x = ""
     else:
         x = 1
-    reveal_type(x) # N: Revealed type is "Union[None, builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "None | builtins.str | builtins.int"
 
 def f3() -> None:
     if int():
         x = None
     else:
         x = ""
-    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+    reveal_type(x) # N: Revealed type is "None | builtins.str"
 
 def f4() -> None:
     x = None
@@ -319,7 +352,7 @@ def f4() -> None:
 y = None
 if int():
     y = 1
-reveal_type(y) # N: Revealed type is "Union[None, builtins.int]"
+reveal_type(y) # N: Revealed type is "None | builtins.int"
 
 if int():
     z = None
@@ -327,7 +360,7 @@ elif int():
     z = 1
 else:
     z = ""
-reveal_type(z) # N: Revealed type is "Union[None, builtins.int, builtins.str]"
+reveal_type(z) # N: Revealed type is "None | builtins.int | builtins.str"
 
 [case testNewRedefinePartialTypeForInstanceVariable]
 # flags: --allow-redefinition-new --local-partial-types
@@ -337,9 +370,9 @@ class C1:
         if int():
             self.x = 1
             reveal_type(self.x) # N: Revealed type is "builtins.int"
-        reveal_type(self.x) # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(self.x) # N: Revealed type is "builtins.int | None"
 
-reveal_type(C1().x) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(C1().x) # N: Revealed type is "builtins.int | None"
 
 class C2:
     def __init__(self) -> None:
@@ -356,10 +389,10 @@ class C3:
         if int():
             self.x = 1
         else:
-            self.x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "Optional[int]")
-        reveal_type(self.x) # N: Revealed type is "Union[builtins.int, None]"
+            self.x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int | None")
+        reveal_type(self.x) # N: Revealed type is "builtins.int | None"
 
-reveal_type(C3().x) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(C3().x) # N: Revealed type is "builtins.int | None"
 
 class C4:
     def __init__(self) -> None:
@@ -369,6 +402,16 @@ class C4:
         reveal_type(self.x) # N: Revealed type is "builtins.list[builtins.str]"
 
 reveal_type(C4().x) # N: Revealed type is "builtins.list[builtins.str]"
+
+class C5:
+    def __init__(self) -> None:
+        if int():
+            self.x = None
+            return
+        self.x = [""]
+        reveal_type(self.x) # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(C5().x) # N: Revealed type is "builtins.list[builtins.str] | None"
 [builtins fixtures/list.pyi]
 
 [case testNewRedefinePartialGenericTypes]
@@ -410,7 +453,7 @@ def f5() -> None:
         b = [""]
         a = b
         reveal_type(a) # N: Revealed type is "builtins.list[builtins.str]"
-    reveal_type(a) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
 
 def f6() -> None:
     a = []
@@ -455,9 +498,9 @@ def f2(x: Optional[str]) -> None:
 
 def f3() -> None:
     a: list[Optional[str]] = [""]
-    reveal_type(a) # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.str | None]"
     a = [""]
-    reveal_type(a) # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.str | None]"
 
 class C:
     x: Optional[str]
@@ -479,7 +522,7 @@ def f1() -> None:
     else:
         x = a()
         reveal_type(x) # N: Revealed type is "Any"
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, Any]"
+    reveal_type(x) # N: Revealed type is "builtins.str | Any"
     x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
 
@@ -489,7 +532,7 @@ def f2() -> None:
     else:
         x = ""
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.str]"
+    reveal_type(x) # N: Revealed type is "Any | builtins.str"
     x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
 
@@ -515,7 +558,7 @@ def f5() -> None:
     elif int():
         x = ""
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "Any | builtins.int | builtins.str"
 
 def f6() -> None:
     x = a()
@@ -523,7 +566,7 @@ def f6() -> None:
         x = 1
     else:
         x = ""
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f7() -> None:
     x: int
@@ -552,8 +595,8 @@ def f2() -> None:
 def f3(x) -> None:
     if int():
         x = 0
-        reveal_type(x) # N: Revealed type is "Any"
-    reveal_type(x) # N: Revealed type is "Any"
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "Any | builtins.int"
 
 [case tetNewRedefineDel]
 # flags: --allow-redefinition-new --local-partial-types
@@ -612,7 +655,7 @@ def f() -> None:
         reveal_type(x) # N: Revealed type is "None"
         x = b""
         reveal_type(x) # N: Revealed type is "builtins.bytes"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.bytes]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.bytes"
     x = [1]
     reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
 
@@ -623,15 +666,15 @@ def f1() -> None:
     while int():
         if int():
             x = ""
-    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+    reveal_type(x) # N: Revealed type is "None | builtins.str"
 
 def f2() -> None:
     x = None
     while int():
-        reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+        reveal_type(x) # N: Revealed type is "None | builtins.str"
         if int():
             x = ""
-    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+    reveal_type(x) # N: Revealed type is "None | builtins.str"
 
 [case testNewRedefineWhileLoopPartialType]
 # flags: --allow-redefinition-new --local-partial-types
@@ -703,19 +746,19 @@ def b() -> None:
             break
         reveal_type(x) # N: Revealed type is "builtins.str"
         x = None
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 
 def c() -> None:
     x = 0
     while int():
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | None"
         if int():
             x = ""
             continue
         else:
             x = None
         reveal_type(x) # N: Revealed type is "None"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str | None"
 
 [case testNewRedefineUnderscore]
 # flags: --allow-redefinition-new --local-partial-types
@@ -726,7 +769,7 @@ def f() -> None:
     else:
         _ = ""
         reveal_type(_) # N: Revealed type is "builtins.str"
-    reveal_type(_) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(_) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNewRedefineWithStatement]
 # flags: --allow-redefinition-new --local-partial-types
@@ -750,7 +793,22 @@ def f2() -> None:
     else:
         with D() as x:
             reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineNoWideningDeferred]
+# flags: --allow-redefinition-new --local-partial-types
+def deferred() -> None:
+    c: C
+    x = 1
+    if int():
+        x = c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
 
 [case testNewRedefineTryStatement]
 # flags: --allow-redefinition-new --local-partial-types
@@ -766,12 +824,12 @@ def f1() -> None:
         reveal_type(x) # N: Revealed type is "builtins.str"
     except RuntimeError as e:
         reveal_type(e) # N: Revealed type is "builtins.RuntimeError"
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     except E as e:
         reveal_type(e) # N: Revealed type is "__main__.E"
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     reveal_type(e) # N: Revealed type is "<Deleted 'e'>"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f2() -> None:
     try:
@@ -780,7 +838,7 @@ def f2() -> None:
             x = ""
             return
     except Exception:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
         return
     reveal_type(x) # N: Revealed type is "builtins.int"
 
@@ -791,7 +849,7 @@ def f3() -> None:
             x = ""
             return
     finally:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f4() -> None:
@@ -807,8 +865,8 @@ def f4() -> None:
                         x = None
                         break
         finally:
-            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+            reveal_type(x) # N: Revealed type is "builtins.int | builtins.str | None"
+        reveal_type(x) # N: Revealed type is "builtins.int | None"
 [builtins fixtures/exception.pyi]
 
 [case testNewRedefineRaiseStatement]
@@ -821,7 +879,7 @@ def f1() -> None:
         raise Exception()
     else:
         x = 1
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.str | builtins.int"
 
 def f2() -> None:
     try:
@@ -831,8 +889,8 @@ def f2() -> None:
             raise Exception()
         reveal_type(x) # N: Revealed type is "builtins.int"
     except Exception:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/exception.pyi]
 
 
@@ -855,8 +913,8 @@ def f2() -> None:
         x, y = None, 2
         reveal_type(x) # N: Revealed type is "None"
         reveal_type(y) # N: Revealed type is "builtins.int"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
+    reveal_type(y) # N: Revealed type is "builtins.str | builtins.int"
 
 [case testNewRedefineForLoopBasics]
 # flags: --allow-redefinition-new --local-partial-types
@@ -876,8 +934,8 @@ def f2() -> None:
             reveal_type(x) # N: Revealed type is "None"
             reveal_type(y) # N: Revealed type is "builtins.int"
 
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
+    reveal_type(y) # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/for.pyi]
 
 [case testNewRedefineForLoop1]
@@ -889,7 +947,7 @@ def f1() -> None:
     x = ""
     for x in l():
         reveal_type(x) # N: Revealed type is "builtins.int"
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.str | builtins.int"
 
 def f2() -> None:
     for x in [1, 2]:
@@ -900,7 +958,7 @@ def f3() -> None:
     for x in [1, 2]:
         if int():
             x = "x"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/for.pyi]
 
 [case testNewRedefineForLoop2]
@@ -923,7 +981,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "Literal['hourly']? | Literal['daily']?"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
@@ -960,7 +1018,7 @@ def f2() -> None:
             break
         x = ""
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 def f3() -> None:
     if int():
@@ -980,8 +1038,8 @@ def f1() -> None:
             continue
         elif e is not None and int():
             break
-        reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
-    reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+        reveal_type(e) # N: Revealed type is "builtins.str | None"
+    reveal_type(e) # N: Revealed type is "builtins.str | None"
 
 def f2(e: Optional[str]) -> None:
     for x in ["a"]:
@@ -990,8 +1048,8 @@ def f2(e: Optional[str]) -> None:
             continue
         elif e is not None and int():
             break
-        reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
-    reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+        reveal_type(e) # N: Revealed type is "builtins.str | None"
+    reveal_type(e) # N: Revealed type is "builtins.str | None"
 
 [case testNewRedefineLoopAndPartialTypesSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1034,7 +1092,7 @@ if int():
     x = 0
 else:
     x = ""
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [file b.py]
 if int():
@@ -1071,20 +1129,49 @@ def f() -> None:
         x = a()
 
         while int():
-            x = [x]
+            # Use tuple to make revealed type a bit more compact.
+            x = (x,)
 
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any]]"
+    reveal_type(x) # N: Revealed type is "Any | tuple[Any | tuple[Any | tuple[Any | tuple[Any]]]]"
+[builtins fixtures/tuple.pyi]
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
 def func() -> None:
-    l = None
+    l = None # E: Need type annotation for "l"
 
     if int():
-        l = [] # E: Need type annotation for "l"
+        l = []
         l.append(1)
-    reveal_type(l) # N: Revealed type is "Union[None, builtins.list[Any]]"
+    reveal_type(l) # N: Revealed type is "None | builtins.list[Any]"
 [builtins fixtures/list.pyi]
+
+[case testNewRedefineLoopProgressiveWidening]
+# flags: --allow-redefinition-new --local-partial-types
+def foo() -> None:
+    while int():
+        if int():
+            x = 1
+        elif isinstance(x, list):
+            x = ""
+        elif isinstance(x, str):
+            x = None
+        else:
+            x = [1]
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int] | builtins.str | None"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNewRedefineAnyOrEmptyUnpackInLoop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def foo() -> None:
+    while int():
+        data: Any
+        x, y = data or ([], [])
+        # Requiring an annotation may be better, but we want to preserve old behaviour.
+        reveal_type(x)  # N: Revealed type is "Any | builtins.list[Never]"
+[builtins fixtures/isinstancelist.pyi]
 
 [case testNewRedefineNarrowingSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
@@ -1094,13 +1181,42 @@ def get() -> Union[tuple[Any, Any], tuple[None, None]]: ...
 
 def f() -> None:
     x, _ = get()
-    reveal_type(x) # N: Revealed type is "Union[Any, None]"
+    reveal_type(x) # N: Revealed type is "Any | None"
     if x and int():
         reveal_type(x) # N: Revealed type is "Any"
-    reveal_type(x) # N: Revealed type is "Union[Any, None]"
+    reveal_type(x) # N: Revealed type is "Any | None"
     if x and int():
         reveal_type(x) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testNewRedefinitionPartialTypeInLoopDeferred]
+# flags: --allow-redefinition-new --local-partial-types
+
+def f(self) -> None:
+    x = []
+    for i in [1, 2, 3]:
+        C().x
+        x.append(1)
+    reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testNewRedefineCorrectChangedOnPop]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def foo() -> None:
+    name: Optional[str] = None
+    name = None
+    for i in [1, 2, 3]:
+        reveal_type(name)  # N: Revealed type is "None | builtins.str"
+        if bool():
+            name = "a"
 
 [case testNewRedefinePartialTypeForUnderscore]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1186,4 +1302,201 @@ import pkg
 x = 0
 if int():
     x = ""
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+
+[case testNewRedefineNarrowingOnFirstAssignment]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+li: list[int]
+
+def test() -> None:
+    x: list[Any] = li
+    reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+
+    if bool():
+        y: list[Any] = li
+    else:
+        y = li
+    reveal_type(y)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineAnyNoSpecialCasing]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any
+
+def test() -> None:
+    a: Any
+    x = 1
+    if bool():
+        x = a
+    reveal_type(x)  # N: Revealed type is "builtins.int | Any"
+
+    if bool():
+        y = a
+    else:
+        y = 1
+    reveal_type(y)  # N: Revealed type is "Any | builtins.int"
+
+[case testNewRedefineSequentialRedefinitionToEmpty]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a",  "b", "c"]
+if bool():
+    items = ["a",  "b", "c"]
+elif bool():
+    items = [item.split() for item in items]
+else:
+    items = []  # OK
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineSequentialRedefinitionToEmpty2]
+# flags: --allow-redefinition-new --local-partial-types
+items = ["a", "b", "c"]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+items = [item.split() for item in items]
+reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+items = []
+# This is consistent with old behavior (see below), but we may want to change this.
+reveal_type(items)  # N: Revealed type is "builtins.list[Never]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowFromUnionToEmpyListOld]
+from typing import Union
+x: Union[list[str], list[int]]
+x = []
+reveal_type(x)  # N: Revealed type is "builtins.list[Never]"
+
+[case testNewRedefineRedefineToSubtypeItem]
+# flags: --allow-redefinition-new --local-partial-types
+class Super: ...
+class Sub(Super): ...
+
+if bool():
+    x = [Super(), Super()]
+else:
+    x = [Sub(), Sub()]
+    reveal_type(x[0])  # N: Revealed type is "__main__.Sub"
+
+[case testNewRedefineFunctionArgumentsFullContext]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional
+
+def process(items: list[Optional[str]]) -> None:
+    if not items:
+        items = [None]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str | None]"
+    process(items)  # OK
+
+[case testNewRedefineUnionArgumentFallbackUnion]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Union, Optional, TypeVar, Sequence
+
+T = TypeVar("T")
+def gen(x: T) -> Union[str, T]: ...
+
+def test(x: Optional[str]) -> None:
+    if x is None:
+        x = gen("foo")
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testNewRedefineUnionArgumentFallbackAsync]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Optional, TypeVar
+
+T = TypeVar("T")
+async def gen(x: T) -> T: ...
+
+async def test(x: Optional[str]) -> None:
+    if x is None:
+        x = await gen("foo")
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testNewRedefineFunctionArgumentsEmptyContext]
+# flags: --allow-redefinition-new --local-partial-types
+def process1(items: list[str]) -> None:
+    items = [item.split() for item in items]
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+
+def process2(items: list[str]) -> None:
+    if bool():
+        items = [item.split() for item in items]
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.list[builtins.str]]"
+
+def process3(items: list[str]) -> None:
+    if bool():
+        items = []
+        reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(items)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/primitives.pyi]
+
+[case testNewRedefineNarrowingForNestedUnionWithAny]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any, Union
+
+a: Any
+Int = Union[int, Any]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "Any"
+
+[case testNewRedefineNarrowingForNestedUnionWithNone]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Any, Union
+
+a: Any
+Int = Union[int, None]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "builtins.str | Any | builtins.int"
+
+[case testRegularNarrowingForNestedUnionWithAny]
+from typing import Any, Union
+
+a: Any
+Int = Union[int, Any]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "Any"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "Any"
+
+[case testRegularNarrowingForNestedUnionWithNone]
+from typing import Any, Union
+
+a: Any
+Int = Union[int, None]
+
+def test(x: Union[str, Int]) -> None:
+    x = a
+    reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+    y: Union[str, Int]
+    y = a
+    reveal_type(y)  # N: Revealed type is "builtins.str | Any | builtins.int"
+
+[case testNewRedefineWidenedArgumentDeferral]
+# flags: --allow-redefinition-new --local-partial-types
+def foo(x: int) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    if bool():
+        x = "no"
+    c: C
+    c.x
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...

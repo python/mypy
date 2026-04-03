@@ -8,8 +8,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, TypeVar, cast
 
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
@@ -33,6 +33,8 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -319,7 +321,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -501,14 +503,14 @@ def erase_to_bound(t: Type) -> Type:
         return t.upper_bound
     if isinstance(t, TypeType):
         if isinstance(t.item, TypeVarType):
-            return TypeType.make_normalized(t.item.upper_bound)
+            return TypeType.make_normalized(t.item.upper_bound, is_type_form=t.is_type_form)
     return t
 
 
 def callable_corresponding_argument(
     typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
-    """Return the argument a function that corresponds to `model`"""
+    """Return the argument of a function that corresponds to `model`"""
 
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
@@ -522,17 +524,23 @@ def callable_corresponding_argument(
         # taking both *args and **args, or a pair of functions like so:
 
         # def right(a: int = ...) -> None: ...
-        # def left(__a: int = ..., *, a: int = ...) -> None: ...
+        # def left(x: int = ..., /, *, a: int = ...) -> None: ...
         from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
+            # This is not principled, but prevents a crash. It's weird to have a FormalArgument
+            # that has an UnpackType.
+            and not isinstance(by_name.typ, UnpackType)
+            and not isinstance(by_pos.typ, UnpackType)
         ):
             return FormalArgument(
                 by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
             )
+        return by_name
+
     return by_name if by_name is not None else by_pos
 
 
@@ -621,9 +629,23 @@ def make_simplified_union(
                 else:
                     extra_attrs_set.add(instance.extra_attrs)
 
-        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+        # Code below is awkward, because we don't want the extra checks to affect
+        # performance in the common case.
+        erase_extra = False
+        if extra_attrs_set is not None:
             fallback = try_getting_instance_fallback(result)
-            if fallback:
+            if fallback is None:
+                return result
+            if len(extra_attrs_set) > 1:  # This case is too tricky to handle.
+                erase_extra = True
+            else:
+                # Check that all relevant items have the extra attributes.
+                for item in items:
+                    instance = try_getting_instance_fallback(item)
+                    if instance and instance.type == fallback.type and not instance.extra_attrs:
+                        erase_extra = True
+                        break
+            if erase_extra:
                 fallback.extra_attrs = None
 
     return result
@@ -666,15 +688,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
-                    tj = get_proper_type(tj)
+                    proper_tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
                     if (
-                        isinstance(tj, Instance)
-                        and tj.last_known_value is not None
+                        isinstance(proper_tj, Instance)
+                        and proper_tj.last_known_value is not None
                         and not (
                             isinstance(proper_ti, Instance)
-                            and tj.last_known_value == proper_ti.last_known_value
+                            and proper_tj.last_known_value == proper_ti.last_known_value
                         )
                     ):
                         continue
@@ -789,9 +811,9 @@ def false_only(t: Type) -> ProperType:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
         elif isinstance(t, Instance):
-            if t.type.is_final or t.type.is_enum:
+            if (t.type.is_final or t.type.is_enum) and state.strict_optional:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, LiteralType) and t.is_enum_literal():
+        elif isinstance(t, LiteralType) and t.is_enum_literal() and state.strict_optional:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
@@ -979,27 +1001,39 @@ def is_literal_type_like(t: Type | None) -> bool:
         return False
 
 
-def is_singleton_type(typ: Type) -> bool:
-    """Returns 'true' if this type is a "singleton type" -- if there exists
-    exactly only one runtime value associated with this type.
-
-    That is, given two values 'a' and 'b' that have the same type 't',
-    'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
-    always true.
-
-    Currently, this returns True when given NoneTypes, enum LiteralTypes,
-    enum types with a single value and ... (Ellipses).
-
-    Note that other kinds of LiteralTypes cannot count as singleton types. For
-    example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
-    that 'a is b' will always be true -- some implementations of Python will end up
-    constructing two distinct instances of 100001.
+def is_singleton_identity_type(typ: ProperType) -> bool:
     """
-    typ = get_proper_type(typ)
-    return typ.is_singleton_type()
+    Returns True if every value of this type is identical to every other value of this type,
+    as judged by the `is` operator.
+
+    Note that this is not true of certain LiteralType, such as Literal[100001] or Literal["string"]
+    """
+    if isinstance(typ, NoneType):
+        return True
+    if isinstance(typ, Instance):
+        return (
+            (typ.type.is_enum and len(typ.type.enum_members) == 1)
+            or (typ.type.fullname in ELLIPSIS_TYPE_NAMES)
+            or (typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES)
+        )
+    if isinstance(typ, LiteralType):
+        return typ.is_enum_literal() or isinstance(typ.value, bool)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance) and typ.item.type.is_final:
+        return True
+    if isinstance(typ, FunctionLike) and typ.is_type_obj() and typ.type_object().is_final:
+        return True
+    return False
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
+def is_singleton_equality_type(typ: ProperType) -> bool:
+    """
+    Returns True if every value of this type compares equal to every other value of this type,
+    as judged by the `==` operator.
+    """
+    return isinstance(typ, LiteralType) or is_singleton_identity_type(typ)
+
+
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1028,7 +1062,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
         ]
         return UnionType.make_union(items)
 
-    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+    if isinstance(typ, Instance) and (
+        target_fullname is None or typ.type.fullname == target_fullname
+    ):
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
@@ -1198,16 +1234,16 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
         return typ
     elif isinstance(typ, LiteralType):
         return typ.fallback
-    elif isinstance(typ, NoneType):
+    elif isinstance(typ, (NoneType, AnyType)):
         return None  # Fast path for None, which is common
     elif isinstance(typ, FunctionLike):
         return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
     elif isinstance(typ, TupleType):
         return typ.partial_fallback
     elif isinstance(typ, TypedDictType):
         return typ.fallback
-    elif isinstance(typ, TypeVarType):
-        return try_getting_instance_fallback(typ.upper_bound)
     return None
 
 

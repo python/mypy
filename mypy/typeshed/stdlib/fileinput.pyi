@@ -3,7 +3,7 @@ from _typeshed import AnyStr_co, StrOrBytesPath
 from collections.abc import Callable, Iterable, Iterator
 from types import GenericAlias, TracebackType
 from typing import IO, Any, AnyStr, Literal, Protocol, overload, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "input",
@@ -207,4 +207,9 @@ if sys.version_info >= (3, 10):
 else:
     def hook_compressed(filename: StrOrBytesPath, mode: str) -> IO[Any]: ...
 
-def hook_encoded(encoding: str, errors: str | None = None) -> Callable[[StrOrBytesPath, str], IO[Any]]: ...
+if sys.version_info >= (3, 10):
+    @deprecated("Deprecated since Python 3.10. Use `fileinput.input` or `fileinput.FileInput` instead.")
+    def hook_encoded(encoding: str, errors: str | None = None) -> Callable[[StrOrBytesPath, str], IO[Any]]: ...
+
+else:
+    def hook_encoded(encoding: str, errors: str | None = None) -> Callable[[StrOrBytesPath, str], IO[Any]]: ...

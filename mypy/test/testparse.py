@@ -21,8 +21,6 @@ class ParserSuite(DataSuite):
     base_path = "."
     files = find_test_files(pattern="parse*.test", exclude=["parse-errors.test"])
 
-    if sys.version_info < (3, 10):
-        files.remove("parse-python310.test")
     if sys.version_info < (3, 12):
         files.remove("parse-python312.test")
     if sys.version_info < (3, 13):
@@ -94,6 +92,8 @@ class ParseErrorSuite(DataSuite):
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         options = parse_options("\n".join(testcase.input), testcase, 0)
+        if options.python_version < defaults.PYTHON3_VERSION:
+            options.python_version = defaults.PYTHON3_VERSION
         if options.python_version != sys.version_info[:2]:
             skip()
         # Compile temporary file. The test file contains non-ASCII characters.

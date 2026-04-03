@@ -32,6 +32,9 @@ def lookup_fully_qualified(
             if raise_on_missing:
                 assert "." in head, f"Cannot find module for {name}"
             return None
+        # TODO: this logic is not correct as it confuses a submodule and a local symbol.
+        # A potential solution may be to use format like pkg.mod:Cls.method for fullname,
+        # but this is a relatively big change.
         head, tail = head.rsplit(".", maxsplit=1)
         rest.append(tail)
         mod = modules.get(head)

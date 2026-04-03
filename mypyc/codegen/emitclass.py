@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Callable
+from collections.abc import Callable, Mapping
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
+from mypyc.codegen.emit import (
+    Emitter,
+    HeaderDeclaration,
+    ReturnHandler,
+    native_function_doc_initializer,
+)
+from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -21,7 +25,15 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    CPYFUNCTION_NAME,
+    NATIVE_PREFIX,
+    PREFIX,
+    REG_PREFIX,
+    short_id_from_name,
+)
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -240,6 +252,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     dealloc_name = f"{name_prefix}_dealloc"
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
+    coroutine_setup_name = f"{name_prefix}_coroutine_setup"
 
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
@@ -251,8 +264,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if generate_full:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
-        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+        if not cl.is_acyclic:
+            fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
+            fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
@@ -331,8 +345,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         init_fn = cl.get_method("__init__")
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
-        generate_traverse_for_class(cl, traverse_name, emitter)
-        emit_line()
+        if not cl.is_acyclic:
+            generate_traverse_for_class(cl, traverse_name, emitter)
+            emit_line()
         generate_clear_for_class(cl, clear_name, emitter)
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
@@ -347,6 +362,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
         emit_line()
+        generate_coroutine_setup(cl, coroutine_setup_name, module, emitter)
+        emit_line()
     if del_method:
         generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
@@ -359,11 +376,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if cl.is_trait:
         generate_new_for_trait(cl, new_name, emitter)
 
-    generate_methods_table(cl, methods_name, emitter)
+    generate_methods_table(cl, methods_name, setup_name if generate_full else None, emitter)
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if generate_full:
+    if generate_full and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -391,6 +408,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         )
     )
 
+    if cl.coroutine_name:
+        cpyfunction = emitter.static_name(cl.name + "_cpyfunction", module)
+        emitter.emit_line(f"static PyObject *{cpyfunction} = NULL;")
+
     emitter.emit_line()
     if generate_full:
         generate_setup_for_class(cl, defaults_fn, vtable_name, shadow_vtable_name, emitter)
@@ -410,7 +431,7 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs: set[tuple[str, RType]] = set()
+    seen_attrs: set[str] = set()
     lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
@@ -427,9 +448,11 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                             lines.append(f"{BITMAP_TYPE} {attr};")
                             bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
-                if (attr, rtype) not in seen_attrs:
+                # Generated class may redefine certain attributes with different
+                # types in subclasses (this would be unsafe for user-defined classes).
+                if attr not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
-                    seen_attrs.add((attr, rtype))
+                    seen_attrs.add(attr)
 
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
@@ -600,7 +623,8 @@ def generate_setup_for_class(
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
         emitter.emit_line("Py_SET_REFCNT(self, 1);")
-        emitter.emit_line("PyObject_GC_Track(self);")
+        if not cl.is_acyclic:
+            emitter.emit_line("PyObject_GC_Track(self);")
         if defaults_fn is not None:
             emit_attr_defaults_func_call(defaults_fn, "self", emitter)
         emitter.emit_line("return (PyObject *)self;")
@@ -632,7 +656,7 @@ def generate_setup_for_class(
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
             if value != "NULL":
-                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
+                emitter.set_undefined_value(f"self->{emitter.attr(attr)}", rtype)
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -909,7 +933,8 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if not cl.is_acyclic:
+        emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
@@ -958,8 +983,17 @@ def generate_finalize_for_class(
     emitter.emit_line("}")
 
 
-def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
+def generate_methods_table(
+    cl: ClassIR, name: str, setup_name: str | None, emitter: Emitter
+) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
+    if setup_name:
+        # Store pointer to the setup function so it can be resolved dynamically
+        # in case of instance creation in __new__.
+        # CPy_SetupObject expects this method to be the first one in tp_methods.
+        emitter.emit_line(
+            f'{{"__internal_mypyc_setup", (PyCFunction){setup_name}, METH_O, NULL}},'
+        )
     for fn in cl.methods.values():
         if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
@@ -1163,10 +1197,11 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
-        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line("} else {")
+        emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -1243,3 +1278,49 @@ def native_class_doc_initializer(cl: ClassIR) -> str:
         text_sig = f"{cl.name}()"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def generate_coroutine_setup(
+    cl: ClassIR, coroutine_setup_name: str, module_name: str, emitter: Emitter
+) -> None:
+    emitter.emit_line("static bool")
+    emitter.emit_line(f"{NATIVE_PREFIX}{coroutine_setup_name}(PyObject *type)")
+    emitter.emit_line("{")
+
+    error_stmt = "    return 2;"
+
+    def emit_instance(fn: FuncIR, fn_name: str) -> str:
+        filepath = emitter.filepath or ""
+        return emitter.emit_cpyfunction_instance(fn, fn_name, filepath, error_stmt)
+
+    def success() -> None:
+        emitter.emit_line("return 1;")
+        emitter.emit_line("}")
+
+    if cl.coroutine_name:
+        # Callable class generated for a coroutine. It stores its function wrapper as an attribute.
+        wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
+        struct_name = cl.struct_name(emitter.names)
+        attr = emitter.attr(CPYFUNCTION_NAME)
+        emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
+        return success()
+
+    if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
+        return success()
+
+    emitter.emit_line("PyTypeObject *tp = (PyTypeObject *)type;")
+
+    for fn in cl.methods.values():
+        if not fn.decl.is_coroutine:
+            continue
+
+        name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+        wrapper_name = emit_instance(fn, name)
+        name_obj = f"{wrapper_name}_name"
+        emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+        emitter.emit_line(f"if (unlikely(!{name_obj}))")
+        emitter.emit_line(error_stmt)
+        emitter.emit_line(f"if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)")
+        emitter.emit_line(error_stmt)
+
+    return success()

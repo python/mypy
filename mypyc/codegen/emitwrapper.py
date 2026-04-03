@@ -452,9 +452,8 @@ def generate_bin_op_reverse_dunder_call(fn: FuncIR, emitter: Emitter, rmethod: s
     if fn.name in ("__pow__", "__rpow__"):
         # Ternary pow() will never call the reverse dunder.
         emitter.emit_line("if (obj_mod == Py_None) {")
-    emitter.emit_line(f"_Py_IDENTIFIER({rmethod});")
     emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", mypyc_interned_str.{});'.format(
             op_methods_to_symbols[fn.name], rmethod
         )
     )

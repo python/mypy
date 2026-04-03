@@ -30,10 +30,12 @@ Protocol = 0
 Tuple = 0
 _promote = 0
 Type = 0
+TypeForm = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
 TypedDict = 0
+TypeGuard = 0
 NoReturn = 0
 NewType = 0
 Self = 0
@@ -158,9 +160,11 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
-    def get(self, k: T) -> Optional[T_co]: pass
+    def get(self, key: T, /) -> Optional[T_co]: pass
     @overload
-    def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
+    def get(self, key: T, default: T_co, /) -> T_co: pass  # type: ignore[misc]
+    @overload
+    def get(self, key: T, default: V, /) -> Union[T_co, V]: pass
     def values(self) -> Iterable[T_co]: pass  # Approximate return type
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass

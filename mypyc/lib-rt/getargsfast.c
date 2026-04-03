@@ -119,7 +119,7 @@ static int
 parser_init(CPyArg_Parser *parser)
 {
     const char * const *keywords;
-    const char *format, *msg;
+    const char *format;
     int i, len, min, max, nkw;
     PyObject *kwtuple;
 
