@@ -12,8 +12,8 @@ import copy
 import enum
 import functools
 import importlib
-import importlib.machinery
 import inspect
+import keyword
 import os
 import pkgutil
 import re
@@ -35,11 +35,11 @@ from typing_extensions import is_typeddict
 
 import mypy.build
 import mypy.checkexpr
-import mypy.checkmember
 import mypy.erasetype
 import mypy.modulefinder
 import mypy.nodes
 import mypy.state
+import mypy.subtypes
 import mypy.types
 import mypy.version
 from mypy import nodes
@@ -145,6 +145,11 @@ class Error:
         """Whether or not the error is related to @disjoint_base."""
         # TODO: This is hacky, use error codes or something more resilient
         return "@disjoint_base" in self.message
+
+    def is_private_type_check_only_related(self) -> bool:
+        """Whether or not the error is related to @type_check_only on private types."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return self.message.endswith('Maybe mark it as "@type_check_only"?')
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -366,11 +371,7 @@ def verify_mypyfile(
         runtime_all_as_set = None
 
     # Check things in the stub
-    to_check = {
-        m
-        for m, o in stub.names.items()
-        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    }
+    to_check = {m for m, o in stub.names.items() if not o.module_hidden}
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         """Heuristics to determine whether a name originates from another module."""
@@ -440,6 +441,15 @@ def verify_mypyfile(
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
+        if (
+            is_probably_private(entry)
+            and not hasattr(runtime, entry)
+            and not isinstance(stub_entry, Missing)
+            and not _is_decoratable(stub_entry)
+        ):
+            # Skip private names that don't exist at runtime and which cannot
+            # be marked with @type_check_only.
+            continue
         try:
             runtime_entry = getattr(runtime, entry, MISSING)
         except Exception:
@@ -447,6 +457,19 @@ def verify_mypyfile(
             # from __getattr__ or similar.
             continue
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
+
+
+def _is_decoratable(stub: nodes.SymbolNode) -> bool:
+    if not isinstance(stub, nodes.TypeInfo):
+        return False
+    if stub.is_newtype:
+        return False
+    if stub.typeddict_type is not None:
+        return all(
+            name.isidentifier() and not keyword.iskeyword(name)
+            for name in stub.typeddict_type.items.keys()
+        )
+    return True
 
 
 def _verify_final(
@@ -640,7 +663,10 @@ def verify_typeinfo(
         return
 
     if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        msg = "is not present at runtime"
+        if is_probably_private(stub.name):
+            msg += '. Maybe mark it as "@type_check_only"?'
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
         # Yes, some runtime objects can be not types, no way to tell mypy about that.
@@ -1081,7 +1107,6 @@ def _verify_signature(
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
             and stub_arg.variable.name.strip("_") != "cls"
-            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 f'stub parameter "{stub_arg.variable.name}" should be positional-only '
@@ -1323,6 +1348,14 @@ def verify_var(
                 stub,
                 runtime,
             )
+    elif stub.final_value is not None and stub.final_value != runtime:
+        yield Error(
+            object_path,
+            "is inconsistent, stub value for Final var differs from runtime value",
+            stub,
+            runtime,
+            stub_desc=repr(stub.final_value),
+        )
 
 
 @verify.register(nodes.OverloadedFuncDef)
@@ -1522,7 +1555,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         ):
             return func
         if decorator.fullname == "builtins.classmethod":
-            if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
+            if func.arguments[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
                 raise StubtestFailure(
                     f"unexpected class parameter name {func.arguments[0].variable.name!r} "
                     f"in {dec.fullname}"
@@ -1540,9 +1573,68 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     for decorator in dec.original_decorators:
         resulting_func = apply_decorator_to_funcitem(decorator, func)
         if resulting_func is None:
+            # We couldn't figure out how to apply the decorator by transforming nodes, so try to
+            # reconstitute a FuncDef from the resulting type of the decorator
+            # This is worse because e.g. we lose the values of defaults
+            dec_type = mypy.types.get_proper_type(dec.type)
+            callable_type = None
+            if isinstance(dec_type, mypy.types.Instance):
+                callable_type = mypy.subtypes.find_member(
+                    "__call__", dec_type, dec_type, is_operator=True
+                )
+            elif isinstance(dec_type, mypy.types.CallableType):
+                callable_type = dec_type
+
+            callable_type = mypy.types.get_proper_type(callable_type)
+            if isinstance(callable_type, mypy.types.CallableType):
+                return _resolve_funcitem_from_callable_type(dec, callable_type)
             return None
+
         func = resulting_func
     return func
+
+
+def _resolve_funcitem_from_callable_type(
+    dec: nodes.Decorator, typ: mypy.types.CallableType
+) -> nodes.FuncDef | None:
+    if (
+        typ.arg_kinds == [nodes.ARG_STAR, nodes.ARG_STAR2]
+        and (var_arg := typ.var_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_arg.typ), mypy.types.AnyType)
+        and (var_kwarg := typ.kw_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_kwarg.typ), mypy.types.AnyType)
+    ):
+        # There isn't a FuncDef we can invent corresponding to a Callable[..., T]
+        return None
+
+    args: list[nodes.Argument] = []
+    for i, (arg_type, arg_kind, arg_name) in enumerate(
+        zip(typ.arg_types, typ.arg_kinds, typ.arg_names, strict=True)
+    ):
+        var_name = arg_name if arg_name is not None else f"__arg{i}"
+        var = nodes.Var(var_name, arg_type)
+        pos_only = arg_name is None and arg_kind == nodes.ARG_POS
+        args.append(
+            nodes.Argument(
+                variable=var,
+                type_annotation=arg_type,
+                initializer=None,  # CallableType doesn't store the values of defaults
+                kind=arg_kind,
+                pos_only=pos_only,
+            )
+        )
+
+    if dec.func.is_class:
+        if not args:
+            return None
+        # Munge classmethods, similar to logic in _resolve_funcitem_from_decorator
+        if args[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
+            return None
+        args.pop(0)
+
+    ret = nodes.FuncDef(name=typ.name or "", arguments=args, body=nodes.Block([]), typ=typ)
+    ret.is_class = dec.func.is_class
+    return ret
 
 
 @verify.register(nodes.Decorator)
@@ -2042,6 +2134,10 @@ def get_mypy_type_of_runtime_value(
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
+    if type(runtime) != runtime.__class__:
+        # Since `__class__` is redefined for an instance, we can't trust
+        # its `isinstance` checks, it can be dynamic. See #20919
+        return fallback
 
     value: bool | int | str
     if isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):
@@ -2239,6 +2335,7 @@ class _Arguments:
     ignore_missing_stub: bool
     ignore_positional_only: bool
     ignore_disjoint_bases: bool
+    strict_type_check_only: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2293,6 +2390,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.use_builtins_fixtures = use_builtins_fixtures
     options.show_traceback = args.show_traceback
     options.pdb = args.pdb
+    options.pos_only_special_methods = False
 
     if options.config_file:
 
@@ -2333,6 +2431,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
             if args.ignore_disjoint_bases and error.is_disjoint_base_related():
+                continue
+            if not args.strict_type_check_only and error.is_private_type_check_only_related():
                 continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
@@ -2429,6 +2529,11 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-disjoint-bases",
         action="store_true",
         help="Disable checks for PEP 800 @disjoint_base classes",
+    )
+    parser.add_argument(
+        "--strict-type-check-only",
+        action="store_true",
+        help="Require @type_check_only on private types that are not present at runtime",
     )
     parser.add_argument(
         "--allowlist",

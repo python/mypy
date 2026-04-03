@@ -31,11 +31,10 @@ from contextlib import nullcontext
 from itertools import groupby
 from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
-import mypy.build
 import mypy.state
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
-from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var
+from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo
 from mypy.options import Options
 from mypy.plugin import ClassDefContext
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -53,8 +52,6 @@ from mypy.semanal_classprop import (
 from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
-from mypy.server.aststrip import SavedAttributes
-from mypy.util import is_typeshed_file
 
 if TYPE_CHECKING:
     from mypy.build import Graph, State
@@ -131,23 +128,18 @@ def cleanup_builtin_scc(state: State) -> None:
 
 
 def semantic_analysis_for_targets(
-    state: State, nodes: list[FineGrainedDeferredNode], graph: Graph, saved_attrs: SavedAttributes
+    state: State, nodes: list[FineGrainedDeferredNode], graph: Graph
 ) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
-    except that we process only some targets. This is used in fine grained
+    except that we process only some targets. This is used in fine-grained
     incremental mode, when propagating an update.
-
-    The saved_attrs are implicitly declared instance attributes (attributes
-    defined on self) removed by AST stripper that may need to be reintroduced
-    here.  They must be added before any methods are analyzed.
     """
     patches: Patches = []
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
-    restore_saved_attrs(saved_attrs)
     analyzer = state.manager.semantic_analyzer
     for n in nodes:
         if isinstance(n.node, MypyFile):
@@ -160,30 +152,6 @@ def semantic_analysis_for_targets(
     apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
-
-
-def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
-    """Restore instance variables removed during AST strip that haven't been added yet."""
-    for (cdef, name), sym in saved_attrs.items():
-        info = cdef.info
-        existing = info.get(name)
-        defined_in_this_class = name in info.names
-        assert isinstance(sym.node, Var)
-        # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
-        # regarding the existing variable in class body or in a superclass:
-        # If the attribute of self is not defined in superclasses, create a new Var.
-        if (
-            existing is None
-            or
-            # (An abstract Var is considered as not defined.)
-            (isinstance(existing.node, Var) and existing.node.is_abstract_var)
-            or
-            # Also an explicit declaration on self creates a new Var unless
-            # there is already one defined in the class body.
-            sym.node.explicit_self_type
-            and not defined_in_this_class
-        ):
-            info.names[name] = sym
 
 
 def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
@@ -242,6 +210,9 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         # processing the same target twice in a row, which is inefficient.
         worklist = list(reversed(all_deferred))
         final_iteration = not any_progress
+    # Functions/methods that define/infer attributes are processed as part of top-levels.
+    # We need to clear the locals for those between fine-grained iterations.
+    analyzer.saved_locals.clear()
 
 
 def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetInfo]:
@@ -416,11 +387,6 @@ def semantic_analyze_target(
         )
         if isinstance(node, Decorator):
             infer_decorator_signature_if_simple(node, analyzer)
-    for dep in analyzer.imports:
-        state.add_dependency(dep)
-        priority = mypy.build.PRI_LOW
-        if priority <= state.priorities.get(dep, priority):
-            state.priorities[dep] = priority
 
     # Clear out some stale data to avoid memory leaks and astmerge
     # validity check confusion
@@ -456,10 +422,11 @@ def check_type_arguments_in_targets(
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
+    assert state.tree
     analyzer = TypeArgumentAnalyzer(
         errors,
         state.options,
-        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.tree.is_typeshed_file(state.options),
         state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():

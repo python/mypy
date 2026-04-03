@@ -49,6 +49,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     Integer,
@@ -87,6 +88,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bit_rprimitive,
     bitmap_rprimitive,
     bool_rprimitive,
@@ -97,6 +99,7 @@ from mypyc.ir.rtypes import (
     c_size_t_rprimitive,
     check_native_int_range,
     float_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
@@ -128,6 +131,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
+from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
 from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
@@ -315,6 +319,9 @@ class LowLevelIRBuilder:
 
     def set_mem(self, ptr: Value, value_type: RType, value: Value) -> None:
         self.add(SetMem(value_type, ptr, value, line=-1))
+
+    def get_element(self, reg: Value, field: str) -> Value:
+        return self.add(GetElement(reg, field))
 
     def load_address(self, name: str, rtype: RType) -> Value:
         return self.add(LoadAddress(rtype, name))
@@ -1653,6 +1660,9 @@ class LowLevelIRBuilder:
         if dunder_op:
             return dunder_op
 
+        if isinstance(rtype, RVec) and op == "in":
+            return vec_contains(self, rreg, lreg, line)
+
         primitive_ops_candidates = binary_ops.get(op, [])
         target = self.matching_primitive_op(primitive_ops_candidates, [lreg, rreg], line)
         assert target, "Unsupported binary operation: %s" % op
@@ -1976,6 +1986,26 @@ class LowLevelIRBuilder:
         elif op == "~":
             return self.unary_invert(value, line)
         raise RuntimeError("Unsupported unary operation: %s" % op)
+
+    def get_item(
+        self,
+        base: Value,
+        item: Value,
+        result_type: RType | None,
+        line: int,
+        *,
+        can_borrow: bool = False,
+    ) -> Value:
+        """Generate base[item]."""
+        if isinstance(base.type, RVec):
+            if is_int_rprimitive(item.type) or is_short_int_rprimitive(item.type):
+                item = self.coerce(item, int64_rprimitive, line)
+            if is_int64_rprimitive(item.type):
+                return vec_get_item(self, base, item, line, can_borrow=can_borrow)
+        # TODO: Move special casing for RTuple here from transform_index_expr
+        return self.gen_method_call(
+            base, "__getitem__", [item], result_type, line, can_borrow=can_borrow
+        )
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
@@ -2655,6 +2685,13 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
+        elif isinstance(typ, RVec):
+            len_value = vec_len_native(self, val)
+            if use_pyssize_t:
+                return len_value
+            count = Integer(1, c_pyssize_t_rprimitive, line)
+            return self.int_op(short_int_rprimitive, len_value, count, IntOp.LEFT_SHIFT, line)
+
         op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
         if op is not None:
             return op
@@ -2776,11 +2813,35 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
+        low_level_op = self._translate_special_low_level_method_call(
+            base_reg, name, args, result_type, line, can_borrow
+        )
+        if low_level_op is not None:
+            return low_level_op
         primitive_ops_candidates = method_call_ops.get(name, [])
         primitive_op = self.matching_primitive_op(
             primitive_ops_candidates, [base_reg] + args, line, result_type, can_borrow=can_borrow
         )
         return primitive_op
+
+    def _translate_special_low_level_method_call(
+        self,
+        base_reg: Value,
+        name: str,
+        args: list[Value],
+        result_type: RType | None,
+        line: int,
+        can_borrow: bool = False,
+    ) -> Value | None:
+        if name == "__getitem__" and len(args) == 1:
+            arg = args[0]
+            if isinstance(base_reg.type, RVec) and (
+                is_int64_rprimitive(arg.type) or is_tagged(arg.type)
+            ):
+                if is_tagged(arg.type):
+                    arg = self.coerce(arg, int64_rprimitive, line)
+                return vec_get_item(self, base_reg, arg, line)
+        return None
 
     def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
         """Add an equality comparison operation.
@@ -2986,7 +3047,7 @@ class ForBuilder:
         self.index = Register(start.type)
         self.top = BasicBlock()
         self.body = BasicBlock()
-        self.leave = BasicBlock()
+        self.loop_exit = BasicBlock()
 
     def begin(self) -> None:
         builder = self.builder
@@ -2995,11 +3056,11 @@ class ForBuilder:
         op = ComparisonOp.SLT if self.signed else ComparisonOp.ULT
         comp = ComparisonOp(self.index, self.end, op, line=-1)
         builder.add(comp)
-        builder.add(Branch(comp, self.body, self.leave, Branch.BOOL))
+        builder.add(Branch(comp, self.body, self.loop_exit, Branch.BOOL))
         builder.goto_and_activate(self.body)
 
     def finish(self) -> None:
         builder = self.builder
         builder.assign(self.index, builder.int_add(self.index, self.step))
         builder.goto(self.top)
-        builder.activate_block(self.leave)
+        builder.activate_block(self.loop_exit)

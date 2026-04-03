@@ -47,7 +47,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
     check_arg_kinds,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
@@ -1712,7 +1712,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             kinds.append(ARG_STAR2 if second_unpack_last else ARG_STAR)
             names.append(None)
         # Note that arglist below is only used for error context.
-        check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
+        check_param_names(names, [arglist] * len(args), self.fail, "Callable")
         check_arg_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
 
@@ -2097,7 +2097,6 @@ def fix_instance(
             # Already wrong arg count error, don't emit missing type parameters error as well.
             disallow_any = False
         t.args = ()
-        arg_count = 0
 
     args: list[Type] = [*(t.args[:max_tv_count])]
     any_type: AnyType | None = None
@@ -2160,6 +2159,15 @@ def instantiate_type_alias(
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
         return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
+
+    if (
+        no_args
+        and isinstance(node.target, ProperType)
+        and isinstance(node.target, Instance)
+        and node.target.type.fullname == "builtins.tuple"
+        and len(args)
+    ):
+        no_args = False
 
     max_tv_count = len(node.alias_tvars)
     act_len = len(args)
@@ -2481,13 +2489,14 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
+def validate_instance(t: Instance, fail: MsgCallback, indexed: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
         # This type is not ready to be validated, because of unknown total count.
         # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
+    empty_tuple_index = indexed and not t.args
     if t.type.has_type_var_tuple_type:
         min_tv_count = sum(
             not tv.has_default() and not isinstance(tv, TypeVarTupleType)
@@ -2550,7 +2559,6 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
                 t,
                 code=codes.TYPE_ARG,
             )
-            t.invalid = True
         return False
     return True
 

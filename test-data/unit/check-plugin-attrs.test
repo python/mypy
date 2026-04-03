@@ -1324,6 +1324,47 @@ D(b=17)
 [builtins fixtures/plugin_attrs.pyi]
 
 
+[case testAttrsKwOnlyClassAttributeFalse]
+from attrs import define, field
+@define(kw_only=True)
+class A:
+    a: int = field(kw_only=False)
+    b: int = 1
+A(0)
+A(1, b=3)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassAttributeFalseSubclass]
+from attrs import define, field
+@define(kw_only=True)
+class A:
+    a: int = field(kw_only=False)
+    b: int = 1
+@define(kw_only=True)
+class B(A):
+    c: int = field(kw_only=False)
+    d: int = 3
+
+B(0, 1)
+B(0, 1, b=3, d=4)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassAttributeFalseSubclassOnly]
+from attrs import define, field
+@define
+class A:
+    a: int
+    b: int = field(kw_only=True, default=1)
+@define(kw_only=True)
+class B(A):
+    c: int = field(kw_only=False)
+    d: int = 3
+
+B(0, 1)
+B(0, 1, b=3, d=4)
+[builtins fixtures/plugin_attrs.pyi]
+
+
 [case testAttrsKwOnlySubclass]
 import attr
 @attr.s

@@ -495,7 +495,7 @@ m.f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.pyi]
 def f(x: int = ...) -> None: pass
 
-[case testEllipsisDefaultArgValueInStub2]
+[case testEllipsisDefaultParamValueInStub2]
 import m
 def f1(x: int = ...) -> int: return 1
 def f2(x: int = '') -> int: return 1
@@ -503,11 +503,11 @@ def f2(x: int = '') -> int: return 1
 def g1(x: int = ...) -> int: pass
 def g2(x: int = '') -> int: pass
 [out]
-tmp/m.pyi:2: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
-main:2: error: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
-main:3: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
+tmp/m.pyi:2: error: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
+main:2: error: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+main:3: error: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 
-[case testEllipsisDefaultArgValueInNonStub]
+[case testEllipsisDefaultParamValueInNonStub]
 def ok_1(x: int = ...) -> None: pass
 def ok_2(x: int = ...) -> None: ...
 def ok_3(x: int = ...) -> None: raise NotImplementedError
@@ -516,16 +516,16 @@ def ok_5(x: int = ...) -> None:
     """Docstring here"""
     pass
 
-def bad_1(x: int = ...) -> None: 1   # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
-def bad_2(x: int = ...) -> None:     # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+def bad_1(x: int = ...) -> None: 1   # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+def bad_2(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
     """Docstring here"""
     ok_1()
-def bad_3(x: int = ...) -> None:     # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+def bad_3(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
     raise Exception("Some other exception")
 [builtins fixtures/exception.pyi]
 [out]
 
-[case testEllipsisDefaultArgValueInNonStubsOverload]
+[case testEllipsisDefaultParamValueInNonStubsOverload]
 from typing import overload, Union
 
 Both = Union[int, str]
@@ -534,7 +534,7 @@ Both = Union[int, str]
 def foo(x: int, y: int = ...) -> int: ...
 @overload
 def foo(x: str, y: str = ...) -> str: ...
-def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "int | str")
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for parameter "y" (default has type "ellipsis", parameter has type "int | str")
     return x
 
 @overload
@@ -546,7 +546,7 @@ def bar(x: Both, y: Both = ...) -> Both:
 [builtins fixtures/exception.pyi]
 [out]
 
-[case testEllipsisDefaultArgValueInNonStubsMethods]
+[case testEllipsisDefaultParamValueInNonStubsMethods]
 from typing import Generic, Protocol, TypeVar
 from abc import abstractmethod
 
@@ -555,14 +555,14 @@ class Wrap(Generic[T]): ...
 
 class MyProtocol(Protocol):
     def no_impl(self, x: Wrap[int] = ...) -> int: ...
-    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "Wrap[int]")
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "Wrap[int]")
 
 class MyAbstractClass:
     @abstractmethod
     def no_impl(self, x: Wrap[int] = ...) -> int: raise NotImplementedError
 
     @abstractmethod
-    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "Wrap[int]")
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "Wrap[int]")
 [builtins fixtures/exception.pyi]
 [out]
 
@@ -2233,12 +2233,12 @@ main:2: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
 
-[case testFailedImportFromTwoModules]
+-- Parallel mode gives only_once notes once *per worker*
+[case testFailedImportFromTwoModules_no_parallel]
 import c
 import b
 [file b.py]
 import c
-
 [out]
 -- TODO: it would be better for this to be in the other order
 tmp/b.py:1: error: Cannot find implementation or library stub for module named "c"
@@ -3243,3 +3243,49 @@ tmp/b.py:3: note:      Superclass:
 tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental]
+import a
+[file a.py]
+import b  # type: ignore[import]
+[file b.py]
+[delete b.py.2]
+[out]
+[out2]
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental2]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b  # type: ignore[import-not-found]
+[file b.py.2]
+[out]
+[out2]
+tmp/a.py:1: error: Unused "type: ignore" comment
+
+[case testTypeIgnoredImportsWorkWithCacheIncremental3]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b  # type: ignore[import-not-found]
+[file b.py]
+[delete b.py.2]
+[out]
+tmp/a.py:1: error: Unused "type: ignore" comment
+[out2]
+
+[case testImportErrorStaleLoadedFromCacheIncremental]
+import a
+[file a.py]
+import b
+import c
+[file c.py]
+x: int
+[file c.py.2]
+x: str
+[out]
+tmp/a.py:1: error: Cannot find implementation or library stub for module named "b"
+tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+tmp/a.py:1: error: Cannot find implementation or library stub for module named "b"
+tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

@@ -1456,7 +1456,7 @@ if int():
     b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
-[case testGeneratorNoSpuriousError]
+[case testGeneratorNoSpuriousError_no_native_parse]
 from typing import Iterable, overload
 
 @overload
@@ -1915,7 +1915,7 @@ None == None
 None < None  # E: Unsupported left operand type for < ("None")
 [builtins fixtures/ops.pyi]
 
-[case testDictWithStarExpr]
+[case testDictWithStarExpr_no_native_parse]
 
 b = {'z': 26, *a}  # E: Invalid syntax
 [builtins fixtures/dict.pyi]
@@ -2379,6 +2379,51 @@ if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", 
     pass
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithAnySentinel]
+# flags: --strict-equality
+from __future__ import annotations
+from typing import Any, cast
+
+class A: ...
+class B: ...
+
+sentinel: Any = object()
+
+def f1(a: A = sentinel, b: B = sentinel):
+    if a is sentinel and b is sentinel:
+        raise
+
+
+def f2(a: A | None = sentinel, b: B | None = sentinel):
+    if a is sentinel and b is sentinel:
+        raise
+
+
+sentinel_strict = object()
+
+def f3(a: A = sentinel_strict, b: B = sentinel_strict):  # E: Incompatible default for parameter "a" (default has type "object", parameter has type "A") \
+                                                         # E: Incompatible default for parameter "b" (default has type "object", parameter has type "B")
+    if a is sentinel_strict and b is sentinel_strict:  # E: Non-overlapping identity check (left operand type: "B", right operand type: "A")
+        raise
+
+
+def f4(a: A | None = sentinel_strict, b: B | None = sentinel_strict):  # E: Incompatible default for parameter "a" (default has type "object", parameter has type "A | None") \
+                                                                       # E: Incompatible default for parameter "b" (default has type "object", parameter has type "B | None")
+    if a is sentinel_strict and b is sentinel_strict:  # E: Non-overlapping identity check (left operand type: "B | None", right operand type: "A | None")
+        raise
+
+
+sentinel_inferred = cast(Any, object())
+
+def f5(a: A = sentinel_inferred, b: B = sentinel_inferred):
+    if a is sentinel_inferred and b is sentinel_inferred:  # E: Non-overlapping identity check (left operand type: "B", right operand type: "A")
+        raise
+
+def f6(a: A | None = sentinel_inferred, b: B | None = sentinel_inferred):
+    if a is sentinel_inferred and b is sentinel_inferred:  # E: Non-overlapping identity check (left operand type: "B | None", right operand type: "A | None")
+        raise
+[builtins fixtures/bool.pyi]
 
 [case testOverlappingAnyTypeWithoutStrictOptional]
 # flags: --no-strict-optional --strict-equality

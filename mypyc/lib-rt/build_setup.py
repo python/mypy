@@ -19,18 +19,11 @@ else:
     from distutils import ccompiler
 
 EXTRA_FLAGS_PER_COMPILER_TYPE_PER_PATH_COMPONENT = {
-    "unix": {
-        "base64/arch/ssse3": ["-mssse3"],
-        "base64/arch/sse41": ["-msse4.1"],
-        "base64/arch/sse42": ["-msse4.2"],
-        "base64/arch/avx2": ["-mavx2"],
-        "base64/arch/avx": ["-mavx"],
-    },
     "msvc": {
         "base64/arch/sse42": ["/arch:SSE4.2"],
         "base64/arch/avx2": ["/arch:AVX2"],
         "base64/arch/avx": ["/arch:AVX"],
-    },
+    }
 }
 
 ccompiler.CCompiler.__spawn = ccompiler.CCompiler.spawn  # type: ignore[attr-defined]

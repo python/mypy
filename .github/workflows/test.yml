@@ -112,6 +112,11 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
           test_mypyc: true
+        - name: Parallel tests with py314-windows-64, interpreted
+          python: '3.14'
+          os: windows-latest
+          toxenv: py
+          tox_extra_args: "-n 2 --mypy-num-workers=2 mypy/test/testcheck.py -k 'incremental or modules or classes'"
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'
@@ -200,7 +205,7 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install setuptools==75.1.0 tox==4.26.0
+        pip install tox==4.26.0
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
@@ -263,7 +268,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install setuptools==75.1.0 tox==4.26.0
+        run: pip install tox==4.26.0
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test

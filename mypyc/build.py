@@ -465,7 +465,12 @@ def construct_groups(
         groups = []
         used_sources = set()
         for files, name in separate:
-            group_sources = [src for src in sources if src.path in files]
+            normalized_files = {os.path.normpath(f) for f in files}
+            group_sources = [
+                src
+                for src in sources
+                if src.path is not None and os.path.normpath(src.path) in normalized_files
+            ]
             groups.append((group_sources, name))
             used_sources.update(group_sources)
         unused_sources = [src for src in sources if src not in used_sources]
@@ -603,6 +608,10 @@ def get_cflags(
             "-Wno-unknown-warning-option",
             "-Wno-unused-but-set-variable",
             "-Wno-ignored-optimization-argument",
+            # GCC at -O3 false-positives on struct hack (items[1]) in vec buffers
+            "-Wno-array-bounds",
+            "-Wno-stringop-overread",
+            "-Wno-stringop-overflow",
             # Disables C Preprocessor (cpp) warnings
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",

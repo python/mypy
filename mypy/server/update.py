@@ -128,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -136,8 +137,8 @@ from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    Context,
     Decorator,
+    FuncBase,
     FuncDef,
     ImportFrom,
     MypyFile,
@@ -154,7 +155,7 @@ from mypy.server.astdiff import (
     snapshot_symbol_table,
 )
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import SavedAttributes, strip_target
+from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
@@ -296,7 +297,7 @@ class FineGrainedBuildManager:
                 if not changed_modules:
                     # Preserve state needed for the next update.
                     self.previous_targets_with_errors = self.manager.errors.targets()
-                    messages = self.manager.errors.new_messages(self.resolve_location_cb)
+                    messages = self.manager.errors.new_messages()
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
@@ -320,11 +321,8 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages(self.resolve_location_cb).copy()
+        self.previous_messages = self.manager.errors.new_messages().copy()
         return self.update(changed_modules, [])
-
-    def resolve_location_cb(self, fullname: str) -> Context | None:
-        return self.manager.resolve_location(self.graph, fullname)
 
     def flush_cache(self) -> None:
         """Flush AST cache.
@@ -595,7 +593,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -731,7 +729,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -874,7 +873,7 @@ def propagate_changes_using_dependencies(
                 if id not in todo:
                     todo[id] = set()
                 manager.log_fine_grained(f"process target with error: {target}")
-                more_nodes, _ = lookup_target(manager, target)
+                more_nodes, _ = lookup_target(manager, target, id)
                 todo[id].update(more_nodes)
         triggered = set()
         # First invalidate subtype caches in all stale protocols.
@@ -952,7 +951,7 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained(f"process: {target}")
-                deferred, stale_proto = lookup_target(manager, target)
+                deferred, stale_proto = lookup_target(manager, target, module_id)
                 if stale_proto:
                     stale_protos.add(stale_proto)
                 result[module_id].update(deferred)
@@ -1008,14 +1007,13 @@ def reprocess_nodes(
     for target in targets:
         if target == module_id:
             for info in graph[module_id].early_errors:
-                manager.errors.add_error_info(info)
+                manager.errors.add_error_info(info, file=graph[module_id].xpath)
 
     # Strip semantic analysis information.
-    saved_attrs: SavedAttributes = {}
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname)
-        strip_target(deferred.node, saved_attrs)
-    semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
+        strip_target(deferred.node)
+    semantic_analysis_for_targets(graph[module_id], nodes, graph)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
@@ -1099,7 +1097,7 @@ def update_deps(
 
 
 def lookup_target(
-    manager: BuildManager, target: str
+    manager: BuildManager, target: str, module_id: str
 ) -> tuple[list[FineGrainedDeferredNode], TypeInfo | None]:
     """Look up a target by fully-qualified name.
 
@@ -1107,7 +1105,26 @@ def lookup_target(
     needs to be reprocessed. If the target represents a TypeInfo corresponding
     to a protocol, return it as a second item in the return tuple, otherwise None.
     """
+    deferred, stale_proto = _lookup_target_impl(manager, target)
 
+    # If there are function targets that can infer outer variables, they should
+    # be re-processed as part of the module top-level instead (for consistency).
+    regular = []
+    shared = []
+    for d in deferred:
+        if isinstance(d.node, FuncBase) and d.node.def_or_infer_vars:
+            shared.append(d)
+        else:
+            regular.append(d)
+    deferred = regular
+    if shared:
+        deferred.append(FineGrainedDeferredNode(manager.modules[module_id], None))
+    return deferred, stale_proto
+
+
+def _lookup_target_impl(
+    manager: BuildManager, target: str
+) -> tuple[list[FineGrainedDeferredNode], TypeInfo | None]:
     def not_found() -> None:
         manager.log_fine_grained(f"Can't find matching target for {target} (stale dependency?)")
 
@@ -1157,7 +1174,7 @@ def lookup_target(
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                method, _ = lookup_target(manager, target + "." + name)
+                method, _ = _lookup_target_impl(manager, target + "." + name)
                 result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):
