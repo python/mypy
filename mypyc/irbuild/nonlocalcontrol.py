@@ -63,7 +63,7 @@ class BaseNonlocalControl(NonlocalControl):
         assert False, "continue outside of loop"
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
-        builder.add(Return(value))
+        builder.add(Return(value, line))
 
 
 class LoopNonlocalControl(NonlocalControl):
@@ -193,7 +193,7 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
         self.saved = saved
 
     def gen_cleanup(self, builder: IRBuilder, line: int) -> None:
-        builder.call_c(restore_exc_info_op, [builder.read(self.saved)], line)
+        builder.call_c(restore_exc_info_op, [builder.read(self.saved, line)], line)
 
 
 class FinallyNonlocalControl(CleanupNonlocalControl):

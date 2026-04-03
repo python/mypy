@@ -5,7 +5,7 @@ from _typeshed import ReadableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Generator, Iterable
 from typing import Any, BinaryIO, ClassVar, Final, Literal, Protocol, TextIO, overload, type_check_only
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing_extensions import Self, TypeAlias, deprecated, disjoint_base
 
 __all__ = [
     "register",
@@ -191,6 +191,7 @@ def getincrementaldecoder(encoding: _BufferedEncoding) -> _BufferedIncrementalDe
 def getincrementaldecoder(encoding: str) -> _IncrementalDecoder: ...
 def getreader(encoding: str) -> _StreamReader: ...
 def getwriter(encoding: str) -> _StreamWriter: ...
+@deprecated("Deprecated since Python 3.14. Use `open()` instead.")
 def open(
     filename: str, mode: str = "r", encoding: str | None = None, errors: str = "strict", buffering: int = -1
 ) -> StreamReaderWriter: ...

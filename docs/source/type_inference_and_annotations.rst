@@ -159,7 +159,7 @@ on the declared type of ``arg`` in ``foo``:
 .. code-block:: python
 
     def foo(arg: list[int]) -> None:
-        print('Items:', ''.join(str(a) for a in arg))
+        print('Items:', ', '.join(str(a) for a in arg))
 
     foo([])  # OK
 
@@ -170,7 +170,7 @@ in the following statement:
 .. code-block:: python
 
     def foo(arg: list[int]) -> None:
-        print('Items:', ', '.join(arg))
+        print('Items:', ', '.join(str(a) for a in arg))
 
     a = []  # Error: Need type annotation for "a"
     foo(a)

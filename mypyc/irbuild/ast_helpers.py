@@ -90,12 +90,12 @@ def maybe_process_conditional_comparison(
         elif not is_fixed_width_rtype(rtype):
             right = self.coerce(right, ltype, e.line)
         reg = self.binary_op(left, right, op, e.line)
-        self.builder.flush_keep_alives()
+        self.builder.flush_keep_alives(e.line)
         self.add_bool_branch(reg, true, false)
     else:
         # "left op right" for two tagged integers
         reg = self.builder.binary_op(left, right, op, e.line)
-        self.flush_keep_alives()
+        self.flush_keep_alives(e.line)
         self.add_bool_branch(reg, true, false)
     return True
 

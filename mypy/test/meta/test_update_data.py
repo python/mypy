@@ -20,8 +20,7 @@ class UpdateDataSuite(Suite):
     def test_update_data(self) -> None:
         # Note: We test multiple testcases rather than 'test case per test case'
         #       so we could also exercise rewriting multiple testcases at once.
-        result = _run_pytest_update_data(
-            """
+        result = _run_pytest_update_data("""
             [case testCorrect]
             s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -74,12 +73,10 @@ class UpdateDataSuite(Suite):
             [file b.py]
             s2: str = 43  # E: baz
             [builtins fixtures/list.pyi]
-            """
-        )
+            """)
 
         # Assert
-        expected = dedent_docstring(
-            """
+        expected = dedent_docstring("""
         [case testCorrect]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -130,6 +127,5 @@ class UpdateDataSuite(Suite):
         [file b.py]
         s2: str = 43  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         [builtins fixtures/list.pyi]
-        """
-        )
+        """)
         assert result.input_updated == expected

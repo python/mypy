@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // Misc primitive operations + C helpers
 //
 // These are registered in mypyc.primitives.misc_ops.
@@ -27,12 +29,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        _Py_IDENTIFIER(send);
-        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
-        if (name == NULL) {
-            return NULL;
-        }
-        return PyObject_CallMethodOneArg(iter, name, val);
+        return PyObject_CallMethodOneArg(iter, mypyc_interned_str.send, val);
     }
 }
 
@@ -48,8 +45,6 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 // Signals an error (2) if the an exception should be propagated.
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
 {
-    _Py_IDENTIFIER(close);
-    _Py_IDENTIFIER(throw);
     PyObject *exc_type = (PyObject *)Py_TYPE(CPy_ExcState()->exc_value);
     PyObject *type, *value, *traceback;
     PyObject *_m;
@@ -57,7 +52,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     *outp = NULL;
 
     if (PyErr_GivenExceptionMatches(exc_type, PyExc_GeneratorExit)) {
-        _m = _PyObject_GetAttrId(iter, &PyId_close);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.close_);
         if (_m) {
             res = PyObject_CallNoArgs(_m);
             Py_DECREF(_m);
@@ -70,7 +65,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
             return 2;
         }
     } else {
-        _m = _PyObject_GetAttrId(iter, &PyId_throw);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.throw_);
         if (_m) {
             _CPy_GetExcInfo(&type, &value, &traceback);
             res = PyObject_CallFunctionObjArgs(_m, type, value, traceback, NULL);
@@ -86,6 +81,8 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
                 if (res) {
                     *outp = res;
                     return 1;
+                } else {
+                    return 2;
                 }
             }
         } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -112,7 +109,7 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // manage to work with TypingMeta and its friends.
     if (metaclass == &PyType_Type)
         return true;
-    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
+    PyObject *module = PyObject_GetAttr((PyObject *)metaclass, mypyc_interned_str.__module__);
     if (!module) {
         PyErr_Clear();
         return false;
@@ -247,7 +244,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
            sizeof(PyTypeObject) - sizeof(PyVarObject));
 
     if (bases != orig_bases) {
-        if (PyObject_SetAttrString((PyObject *)t, "__orig_bases__", orig_bases) < 0)
+        if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__orig_bases__, orig_bases) < 0)
             goto error;
     }
 
@@ -290,7 +287,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     // Reject anything that would give us a nontrivial __slots__,
     // because the layout will conflict
-    slots = PyObject_GetAttrString((PyObject *)t, "__slots__");
+    slots = PyObject_GetAttr((PyObject *)t, mypyc_interned_str.__slots__);
     if (slots) {
         // don't fail on an empty __slots__
         int is_true = PyObject_IsTrue(slots);
@@ -303,10 +300,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         PyErr_Clear();
     }
 
-    if (PyObject_SetAttrString((PyObject *)t, "__module__", modname) < 0)
-        goto error;
-
-    if (init_subclass((PyTypeObject *)t, NULL))
+    if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
         goto error;
 
     Py_XDECREF(dummy_class);
@@ -339,6 +333,16 @@ error:
     Py_XDECREF(dummy_class);
     Py_XDECREF(name);
     return NULL;
+}
+
+// Call __init_subclass__ on the appropriate base class of type.
+// This is separated from CPyType_FromTemplate so that class attributes
+// can be set before __init_subclass__ is called.
+bool CPy_InitSubclass(PyObject *type) {
+    if (init_subclass((PyTypeObject *)type, NULL)) {
+        return false;
+    }
+    return true;
 }
 
 static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
@@ -463,7 +467,7 @@ CPyPickle_GetState(PyObject *obj)
 {
     PyObject *attrs = NULL, *state = NULL;
 
-    attrs = PyObject_GetAttrString((PyObject *)Py_TYPE(obj), "__mypyc_attrs__");
+    attrs = PyObject_GetAttr((PyObject *)Py_TYPE(obj), mypyc_interned_str.__mypyc_attrs__);
     if (!attrs) {
         goto fail;
     }
@@ -558,6 +562,24 @@ PyObject *CPyTagged_Str(CPyTagged n) {
     } else {
         return PyObject_Str(CPyTagged_AsObject(n));
     }
+}
+
+static PyObject *CPyTagged_ShortToAsciiBytes(Py_ssize_t n) {
+    PyObject *obj = PyBytes_FromStringAndSize(NULL, MAX_INT_CHARS);
+    if (!obj) return NULL;
+    int len = fmt_ssize_t(PyBytes_AsString(obj), n);
+    Py_SET_SIZE(obj, len);
+    return obj;
+}
+
+PyObject *CPyTagged_AsciiBytes(CPyTagged n) {
+    if (CPyTagged_CheckShort(n)) {
+        return CPyTagged_ShortToAsciiBytes(CPyTagged_ShortAsSsize_t(n));
+    }
+    PyObject *str = PyObject_Str(CPyTagged_AsObject(n));
+    PyObject *bytes = PyUnicode_AsASCIIString(str);
+    CPy_DECREF(str);
+    return bytes;
 }
 
 void CPyDebug_Print(const char *msg) {
@@ -739,7 +761,7 @@ int CPyStatics_Initialize(PyObject **statics,
 // Call super(type(self), self)
 PyObject *
 CPy_Super(PyObject *builtins, PyObject *self) {
-    PyObject *super_type = PyObject_GetAttrString(builtins, "super");
+    PyObject *super_type = PyObject_GetAttr(builtins, mypyc_interned_str.super);
     if (!super_type)
         return NULL;
     PyObject *result = PyObject_CallFunctionObjArgs(
@@ -750,7 +772,7 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 
 static bool import_single(PyObject *mod_id, PyObject **mod_static,
                           PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
-    if (*mod_static == Py_None) {
+    if (Py_IsNone(*mod_static)) {
         CPyModule *mod = PyImport_Import(mod_id);
         if (mod == NULL) {
             return false;
@@ -859,6 +881,35 @@ PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *
     return mod;
 }
 
+// Import attributes from an already-imported native module and store them
+// in the globals dict.  Returns the module on success, NULL on error.
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names,
+                                   PyObject *as_names, PyObject *globals) {
+    PyObject *mod = PyImport_GetModule(mod_id);
+    if (mod == NULL) {
+        if (!PyErr_Occurred()) {
+            PyErr_Format(PyExc_ImportError, "module '%U' is not in sys.modules", mod_id);
+        }
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
+        PyObject *name = PyTuple_GET_ITEM(names, i);
+        PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
+        PyObject *obj = PyObject_GetAttr(mod, name);
+        if (obj == NULL) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+        int ret = CPyDict_SetItem(globals, as_name, obj);
+        Py_DECREF(obj);
+        if (ret < 0) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+    }
+    return mod;
+}
+
 // From CPython
 static PyObject *
 CPy_BinopTypeError(PyObject *left, PyObject *right, const char *op) {
@@ -875,9 +926,9 @@ PyObject *
 CPy_CallReverseOpMethod(PyObject *left,
                         PyObject *right,
                         const char *op,
-                        _Py_Identifier *method) {
+                        PyObject *method) {
     // Look up reverse method
-    PyObject *m = _PyObject_GetAttrId(right, method);
+    PyObject *m = PyObject_GetAttr(right, method);
     if (m == NULL) {
         // If reverse method not defined, generate TypeError instead AttributeError
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -894,7 +945,7 @@ CPy_CallReverseOpMethod(PyObject *left,
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
                                              PyObject *cls,
                                              PyObject *func) {
-    PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
+    PyObject *registry = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.registry);
     PyObject *register_func = NULL;
     PyObject *typing = NULL;
     PyObject *get_type_hints = NULL;
@@ -907,7 +958,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // passed a class
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
-            register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            register_func = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.register_);
             if (register_func == NULL) goto fail;
             return PyMethod_New(register_func, cls);
         }
@@ -928,7 +979,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         func = cls;
         typing = PyImport_ImportModule("typing");
         if (typing == NULL) goto fail;
-        get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
+        get_type_hints = PyObject_GetAttr(typing, mypyc_interned_str.get_type_hints);
 
         type_hints = PyObject_CallOneArg(get_type_hints, func);
         PyObject *argname;
@@ -949,7 +1000,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
     }
 
     // clear the cache so we consider the newly added function when dispatching
-    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    PyObject *dispatch_cache = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.dispatch_cache);
     if (dispatch_cache == NULL) goto fail;
     PyDict_Clear(dispatch_cache);
 
@@ -1063,9 +1114,7 @@ PyObject *CPy_GetName(PyObject *obj) {
     if (PyType_Check(obj)) {
         return PyType_GetName((PyTypeObject *)obj);
     }
-    _Py_IDENTIFIER(__name__);
-    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
-    return PyObject_GetAttr(obj, name);
+    return PyObject_GetAttr(obj, mypyc_interned_str.__name__);
 }
 
 #endif
@@ -1128,6 +1177,405 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
 }
 
 #endif
+
+#ifdef _WIN32
+#define SEP "\\"
+#else
+#define SEP "/"
+#endif
+
+// Cached class references for __spec__ / __loader__ construction.
+static PyObject *CPyImport_ModuleSpecClass = NULL;
+static PyObject *CPyImport_ExtFileLoaderClass = NULL;
+static PyObject *CPyImport_SpecKwnames = NULL;  // ("origin", "is_package")
+
+// Initialize cached references for ModuleSpec and ExtensionFileLoader.
+// Returns 0 on success, -1 on error.
+static int CPyImport_InitSpecClasses(void) {
+    if (CPyImport_ModuleSpecClass != NULL) {
+        return 0;
+    }
+    PyObject *machinery = PyImport_ImportModule("importlib.machinery");
+    if (machinery == NULL) {
+        return -1;
+    }
+    CPyImport_ModuleSpecClass = PyObject_GetAttrString(machinery, "ModuleSpec");
+    CPyImport_ExtFileLoaderClass = PyObject_GetAttrString(machinery, "ExtensionFileLoader");
+    Py_DECREF(machinery);
+    if (CPyImport_ModuleSpecClass == NULL || CPyImport_ExtFileLoaderClass == NULL) {
+        Py_CLEAR(CPyImport_ModuleSpecClass);
+        Py_CLEAR(CPyImport_ExtFileLoaderClass);
+        return -1;
+    }
+    PyObject *origin_str = PyUnicode_InternFromString("origin");
+    PyObject *is_package_str = PyUnicode_InternFromString("is_package");
+    if (origin_str == NULL || is_package_str == NULL) {
+        CPyError_OutOfMemory();
+    }
+    CPyImport_SpecKwnames = PyTuple_Pack(2, origin_str, is_package_str);
+    Py_DECREF(origin_str);
+    Py_DECREF(is_package_str);
+    if (CPyImport_SpecKwnames == NULL) {
+        CPyError_OutOfMemory();
+    }
+    return 0;
+}
+
+// Derive and set __file__ on modobj from the shared library path, module name,
+// and extension suffix. Returns 0 on success, -1 on error.
+static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
+                                    PyObject *shared_lib_file, PyObject *ext_suffix,
+                                    Py_ssize_t is_package) {
+    PyObject *file = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    if (rc < 0) {
+        return -1;
+    }
+    if (file != NULL) {
+        // __file__ already set, nothing to do.
+        Py_DECREF(file);
+        return 0;
+    }
+    // Derive __file__ from the shared library's __file__ (for its
+    // directory), the module name (dots -> path separators), and the
+    // extension suffix.  E.g. for module "a.b.c", shared lib
+    // "/path/to/group__mypyc.cpython-312-x86_64-linux-gnu.so",
+    // suffix ".cpython-312-x86_64-linux-gnu.so":
+    //   => "/path/to/a/b/c.cpython-312-x86_64-linux-gnu.so"
+    PyObject *derived_file = NULL;
+    if (shared_lib_file != NULL && shared_lib_file != Py_None &&
+            PyUnicode_Check(shared_lib_file)) {
+        Py_ssize_t sf_len = PyUnicode_GetLength(shared_lib_file);
+        // Find the last path separator, checking both '/' and '\\'
+        // for cross-platform support.
+        Py_ssize_t sep = PyUnicode_FindChar(shared_lib_file, '/', 0, sf_len, -1);
+        Py_ssize_t bsep = PyUnicode_FindChar(shared_lib_file, '\\', 0, sf_len, -1);
+        if (bsep > sep) {
+            sep = bsep;
+        }
+        // Use the same separator character found in the path, or
+        // the platform default if no separator was found.
+        Py_UCS4 sep_char = sep >= 0
+            ? PyUnicode_ReadChar(shared_lib_file, sep)
+            : (Py_UCS4)SEP[0];
+        PyObject *dot_str = PyUnicode_FromString(".");
+        PyObject *sep_str = PyUnicode_FromOrdinal(sep_char);
+        if (dot_str == NULL || sep_str == NULL) {
+            CPyError_OutOfMemory();
+        }
+        PyObject *module_path = PyUnicode_Replace(module_name, dot_str, sep_str, -1);
+        Py_DECREF(dot_str);
+        Py_DECREF(sep_str);
+        if (module_path == NULL) {
+            return -1;
+        }
+        // For packages, __file__ should point to __init__<ext>,
+        // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".
+        if (sep >= 0) {
+            PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
+            if (dir != NULL) {
+                if (is_package) {
+                    derived_file = PyUnicode_FromFormat(
+                        "%U%c%U%c__init__%U", dir, (int)sep_char,
+                        module_path, (int)sep_char, ext_suffix);
+                } else {
+                    derived_file = PyUnicode_FromFormat(
+                        "%U%c%U%U", dir, (int)sep_char,
+                        module_path, ext_suffix);
+                }
+                Py_DECREF(dir);
+            }
+        } else {
+            if (is_package) {
+                derived_file = PyUnicode_FromFormat(
+                    "%U%c__init__%U", module_path, (int)SEP[0], ext_suffix);
+            } else {
+                derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
+            }
+        }
+        Py_DECREF(module_path);
+    }
+    if (derived_file == NULL && !PyErr_Occurred()) {
+        derived_file = module_name;
+        Py_INCREF(derived_file);
+    }
+    if (derived_file == NULL ||
+            PyObject_SetAttrString(modobj, "__file__", derived_file) < 0) {
+        Py_XDECREF(derived_file);
+        return -1;
+    }
+    Py_DECREF(derived_file);
+    return 0;
+}
+
+// Set __path__ to [dirname(__file__)] on a package module if not already set.
+// Returns 0 on success, -1 on error.
+static int CPyImport_SetModulePath(PyObject *modobj) {
+    PyObject *existing_path = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__path__", &existing_path);
+    if (rc < 0) {
+        return -1;
+    }
+    if (existing_path != NULL) {
+        Py_DECREF(existing_path);
+        return 0;
+    }
+    PyObject *file = NULL;
+    rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    if (rc <= 0) {
+        return rc;
+    }
+    PyObject *os_path = PyImport_ImportModule("os.path");
+    if (os_path == NULL) {
+        Py_DECREF(file);
+        return -1;
+    }
+    PyObject *dir = PyObject_CallMethod(os_path, "dirname", "O", file);
+    Py_DECREF(os_path);
+    Py_DECREF(file);
+    if (dir == NULL) {
+        return -1;
+    }
+    PyObject *path_list = PyList_New(1);
+    if (path_list == NULL) {
+        CPyError_OutOfMemory();
+    }
+    PyList_SET_ITEM(path_list, 0, dir);  // steals ref to dir
+    int ret = PyObject_SetAttrString(modobj, "__path__", path_list);
+    Py_DECREF(path_list);
+    return ret;
+}
+
+// Set __spec__ and __loader__ on modobj if not already set.
+// Returns 0 on success, -1 on error.
+static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
+                                    Py_ssize_t is_package) {
+    PyObject *spec = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__spec__", &spec);
+    if (rc < 0) {
+        return -1;
+    }
+    if (spec != NULL && spec != Py_None) {
+        // __spec__ already set.
+        Py_DECREF(spec);
+        return 0;
+    }
+    Py_XDECREF(spec);
+    if (CPyImport_InitSpecClasses() < 0) {
+        return -1;
+    }
+    PyObject *file = NULL;
+    if (PyObject_GetOptionalAttrString(modobj, "__file__", &file) < 0) {
+        return -1;
+    }
+    if (file == NULL) {
+        file = Py_None;
+        Py_INCREF(file);
+    }
+    // ExtensionFileLoader(name, path)
+    PyObject *loader = PyObject_CallFunctionObjArgs(
+        CPyImport_ExtFileLoaderClass, module_name, file, NULL);
+    if (loader == NULL) {
+        Py_DECREF(file);
+        return -1;
+    }
+    // ModuleSpec(name, loader, *, origin=file, is_package=is_package)
+    PyObject *is_pkg_obj = is_package ? Py_True : Py_False;
+    PyObject *spec_args[] = {NULL, module_name, loader, file, is_pkg_obj};
+    spec = PyObject_Vectorcall(
+        CPyImport_ModuleSpecClass,
+        spec_args + 1,
+        2 | PY_VECTORCALL_ARGUMENTS_OFFSET,
+        CPyImport_SpecKwnames);
+    Py_DECREF(file);
+    if (spec == NULL) {
+        Py_DECREF(loader);
+        return -1;
+    }
+    if (is_package) {
+        // Set submodule_search_locations from __path__
+        PyObject *path = NULL;
+        if (PyObject_GetOptionalAttrString(modobj, "__path__", &path) < 0) {
+            Py_DECREF(spec);
+            Py_DECREF(loader);
+            return -1;
+        }
+        if (path != NULL) {
+            if (PyObject_SetAttrString(spec, "submodule_search_locations", path) < 0) {
+                Py_DECREF(path);
+                Py_DECREF(spec);
+                Py_DECREF(loader);
+                return -1;
+            }
+            Py_DECREF(path);
+        }
+    }
+    if (PyObject_SetAttrString(modobj, "__spec__", spec) < 0 ||
+            PyObject_SetAttrString(modobj, "__loader__", loader) < 0) {
+        Py_DECREF(spec);
+        Py_DECREF(loader);
+        return -1;
+    }
+    Py_DECREF(spec);
+    Py_DECREF(loader);
+    return 0;
+}
+
+PyObject *CPyImport_ImportNative(PyObject *module_name,
+                                 PyObject *(*init_only_fn)(void),
+                                 int (*exec_fn)(PyObject *),
+                                 CPyModule **module_static,
+                                 PyObject *shared_lib_file, PyObject *ext_suffix,
+                                 Py_ssize_t is_package) {
+    PyObject *parent_module = NULL;
+    PyObject *child_name = NULL;
+    PyObject *exc_type, *exc_val, *exc_tb;
+    Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+    if (name_len < 0) {
+        return NULL;
+    }
+    Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+    if (dot >= 0) {
+        // Import the parent package first to preserve import ordering semantics.
+        PyObject *parent_name = PyUnicode_Substring(module_name, 0, dot);
+        if (parent_name == NULL) {
+            CPyError_OutOfMemory();
+        }
+        child_name = PyUnicode_Substring(module_name, dot + 1, name_len);
+        if (child_name == NULL) {
+            CPyError_OutOfMemory();
+        }
+        parent_module = PyImport_Import(parent_name);
+        Py_DECREF(parent_name);
+        if (parent_module == NULL) {
+            Py_DECREF(child_name);
+            return NULL;
+        }
+    }
+
+    // Create the module object without executing the module body.
+    // CPyInitOnly_* uses an internal static to cache the module object.
+    // We then check sys.modules to determine whether the module body
+    // has already been executed (or is being executed in a circular import).
+    PyObject *module_dict = PyImport_GetModuleDict();
+    if (module_dict == NULL) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        return NULL;
+    }
+
+    PyObject *existing = PyDict_GetItemWithError(module_dict, module_name);
+    if (existing != NULL) {
+        if (*module_static != NULL) {
+            if (existing == (PyObject *)*module_static) {
+                Py_INCREF(existing);
+                Py_XDECREF(parent_module);
+                Py_XDECREF(child_name);
+                return existing;
+            }
+            PyErr_Format(PyExc_ImportError,
+                         "native module '%U' in sys.modules was replaced after initialization",
+                         module_name);
+            Py_XDECREF(parent_module);
+            Py_XDECREF(child_name);
+            return NULL;
+        }
+    }
+    if (PyErr_Occurred()) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        return NULL;
+    }
+
+    PyObject *modobj = init_only_fn();
+    if (modobj == NULL) {
+        Py_XDECREF(parent_module);
+        Py_XDECREF(child_name);
+        return NULL;
+    }
+
+    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+        goto fail;
+    }
+
+    if (*module_static != (CPyModule *)modobj) {
+        PyErr_Format(PyExc_ImportError,
+                     "native module '%U' was initialized inconsistently",
+                     module_name);
+        goto fail;
+    }
+
+    // Set __package__ before executing the module body so it is available
+    // during module initialization. For a package, __package__ is the module
+    // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
+    // top-level non-package module, it is "".
+    {
+        PyObject *pkg = NULL;
+        if (PyObject_GetOptionalAttrString(modobj, "__package__", &pkg) < 0) {
+            goto fail;
+        }
+        if (pkg == NULL || pkg == Py_None) {
+            Py_XDECREF(pkg);
+            PyObject *package_name;
+            if (is_package) {
+                package_name = module_name;
+                Py_INCREF(package_name);
+            } else if (dot >= 0) {
+                package_name = PyUnicode_Substring(module_name, 0, dot);
+            } else {
+                package_name = PyUnicode_FromString("");
+                if (package_name == NULL) {
+                    CPyError_OutOfMemory();
+                }
+            }
+            if (PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
+                Py_DECREF(package_name);
+                goto fail;
+            }
+            Py_DECREF(package_name);
+        } else {
+            Py_DECREF(pkg);
+        }
+    }
+
+    if (CPyImport_SetModuleFile(modobj, module_name, shared_lib_file, ext_suffix,
+                                 is_package) < 0) {
+        goto fail;
+    }
+    if (is_package && CPyImport_SetModulePath(modobj) < 0) {
+        goto fail;
+    }
+    if (CPyImport_SetModuleSpec(modobj, module_name, is_package) < 0) {
+        goto fail;
+    }
+
+    // Now execute the module body, with __file__ and __package__ already set.
+    if (exec_fn(modobj) != 0) {
+        goto fail;
+    }
+
+    // Match CPython import semantics: publish parent.child only after the
+    // child module finished executing successfully.
+    if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
+        goto fail;
+    }
+
+    Py_XDECREF(parent_module);
+    Py_XDECREF(child_name);
+    return modobj;
+
+fail:
+    // Clean up on failure so that a subsequent import attempt will retry
+    // initialization.
+    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+    PyObject_DelItem(module_dict, module_name);
+    PyErr_Clear();
+    PyErr_Restore(exc_type, exc_val, exc_tb);
+    Py_XDECREF(parent_module);
+    Py_XDECREF(child_name);
+    Py_DECREF(modobj);
+    return NULL;
+}
 
 #if CPY_3_14_FEATURES
 

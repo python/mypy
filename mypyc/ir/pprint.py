@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -29,6 +29,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -63,7 +64,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
-ErrorSource = Union[BasicBlock, Op]
+ErrorSource = BasicBlock | Op
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -280,6 +281,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
+    def visit_get_element(self, op: GetElement) -> str:
+        return self.format("%r = %r.%s", op, op.src, op.field)
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
 
@@ -414,7 +418,7 @@ def format_blocks(
         lines.append("L%d:%s" % (block.label, handler_msg))
         if block in source_to_error:
             for error in source_to_error[block]:
-                lines.append(f"  ERR: {error}")
+                lines.append(f"  ERROR: {error}")
         ops = block.ops
         if (
             isinstance(ops[-1], Goto)
@@ -429,8 +433,11 @@ def format_blocks(
             line = "    " + op.accept(visitor)
             lines.append(line)
             if op in source_to_error:
+                first = len(lines) - 1
+                # Use emojis to highlight the error
                 for error in source_to_error[op]:
-                    lines.append(f"  ERR: {error}")
+                    lines.append(f"    \U0001f446 ERROR: {error}")
+                lines[first] = " \U0000274c " + lines[first][4:]
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.

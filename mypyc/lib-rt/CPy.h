@@ -148,8 +148,13 @@ CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitLength(CPyTagged self);
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag);
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 
 PyObject *CPyTagged_Str(CPyTagged n);
+PyObject *CPyTagged_AsciiBytes(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
@@ -330,6 +335,11 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 static inline int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
+    #if CPY_3_12_FEATURES
+        if (likely(PyUnstable_Long_IsCompact(lobj))) {
+            return PyUnstable_Long_CompactValue(lobj);
+        }
+    #else
         Py_ssize_t size = Py_SIZE(lobj);
         if (likely(size == 1)) {
             // Fast path
@@ -337,6 +347,7 @@ static inline int64_t CPyLong_AsInt64(PyObject *o) {
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     return CPyLong_AsInt64_(o);
@@ -598,8 +609,8 @@ static void CPy_DecRef(PyObject *p) {
 }
 
 CPy_NOINLINE
-static void CPy_XDecRef(PyObject *p) {
-    CPy_XDECREF(p);
+static void CPy_XDecRef(void *p) {
+    CPy_XDECREF((PyObject *)p);
 }
 
 static inline CPyTagged CPyObject_Size(PyObject *obj) {
@@ -734,6 +745,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
@@ -768,7 +780,12 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
-
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
+PyObject *CPyStr_Lower(PyObject *str);
+PyObject *CPyStr_Upper(PyObject *str);
+bool CPyStr_IsSpace(PyObject *str);
+bool CPyStr_IsAlnum(PyObject *str);
+bool CPyStr_IsDigit(PyObject *str);
 
 // Bytes operations
 
@@ -779,8 +796,9 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
-
-
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
+int CPyBytes_Endswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
 
@@ -903,6 +921,7 @@ PyObject *CPyType_FromTemplate(PyObject *template_,
 PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
+bool CPy_InitSubclass(PyObject *type);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations,
                                PyObject *dataclass_type);
@@ -934,12 +953,20 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  _Py_Identifier *method);
+                                  PyObject *method);
 
 bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals);
+PyObject *CPyImport_ImportNative(PyObject *module_name,
+                                 PyObject *(*init_only_fn)(void),
+                                 int (*exec_fn)(PyObject *),
+                                 CPyModule **module_static,
+                                 PyObject *shared_lib_file, PyObject *ext_suffix,
+                                 Py_ssize_t is_package);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);
@@ -948,6 +975,33 @@ PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
+
+static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name) {
+    return _PyObject_GenericGetAttrWithDict(self, name, NULL, 1);
+}
+static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
+    return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
+}
+
+PyObject *CPy_SetupObject(PyObject *type);
+
+typedef struct {
+    PyCMethodObject func;
+
+    PyObject *func_name;
+    PyObject *func_code;
+} CPyFunction;
+
+PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
+                          PyCFunction func, int func_flags, const char *func_doc,
+                          int first_line, int code_flags, bool has_self_arg);
+PyObject* CPyFunction_get_name(PyObject *op, void *context);
+int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
+PyObject* CPyFunction_get_code(PyObject *op, void *context);
+PyObject* CPyFunction_get_defaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_kwdefaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_annotations(PyObject *op, void *context);
+int CPyFunction_set_annotations(PyObject *op, PyObject *value, void *context);
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);

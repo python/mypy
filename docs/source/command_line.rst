@@ -372,7 +372,7 @@ definitions or calls.
 
 .. option:: --untyped-calls-exclude
 
-    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    This flag allows one to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming there
     are no type annotations for ``third_party_lib`` available):
@@ -537,19 +537,21 @@ potentially problematic or redundant in some way.
                 print(x + "bad")
 
     To help prevent mypy from generating spurious warnings, the "Statement is
-    unreachable" warning will be silenced in exactly two cases:
+    unreachable" warning will be silenced in exactly three cases:
 
     1.  When the unreachable statement is a ``raise`` statement, is an
         ``assert False`` statement, or calls a function that has the :py:data:`~typing.NoReturn`
         return type hint. In other words, when the unreachable statement
         throws an error or terminates the program in some way.
-    2.  When the unreachable statement was *intentionally* marked as unreachable
+    2.  When the unreachable statement is ``return NotImplemented``. This
+        is allowed by mypy due to its use in operator overloading.
+    3.  When the unreachable statement was *intentionally* marked as unreachable
         using :ref:`version_and_platform_checks`.
 
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
-        inside any functions using :ref:`type-variable-value-restriction`.
+        inside any functions using :ref:`value-constrained type variables <value-constrained-type-variables>`.
 
         This limitation will be removed in future releases of mypy.
 
@@ -562,7 +564,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --deprecated-calls-exclude
 
-    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    This flag allows one to selectively disable :ref:`deprecated<code-deprecated>` warnings
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
 
@@ -596,8 +598,8 @@ of the above sections.
 .. option:: --allow-redefinition-new
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This *experimental* flag enables the redefinition of
-    unannotated variables with an arbitrary type. You will also need to enable
+    unrelated type. This flag enables the redefinition of *unannotated*
+    variables with an arbitrary type. You will also need to enable
     :option:`--local-partial-types <mypy --local-partial-types>`.
     Example:
 
@@ -629,11 +631,29 @@ of the above sections.
                 # Type of "x" is "str" here.
                 ...
 
+    Function arguments are special, changing their type within function body
+    is allowed even if they are annotated, but that annotation is used to infer
+    types of r.h.s. of all subsequent assignments. Such middle-ground semantics
+    provides good balance for majority of common use cases. For example:
+
+    .. code-block:: python
+
+        def process(values: list[float]) -> None:
+            if not values:
+                values = [0, 0, 0]
+            reveal_type(values)  # Revealed type is list[float]
+
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
-    The feature is still experimental, and the semantics may still change.
 
 .. option:: --allow-redefinition
+
+    This is an alias to :option:`--allow-redefinition-old <mypy --allow-redefinition-old>`.
+    In mypy v2.0 this will point to
+    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`, and will
+    eventually became the default.
+
+.. option:: --allow-redefinition-old
 
     This is an older variant of
     :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`.
@@ -687,7 +707,7 @@ of the above sections.
         reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
-    enabled by default for mypy in a future release.
+    enabled by default in mypy v2.0 release.
 
 .. option:: --no-implicit-reexport
 
@@ -958,12 +978,6 @@ in error messages.
     useful or they may be overly noisy. If ``N`` is negative, there is
     no limit. The default limit is -1.
 
-.. option:: --force-union-syntax
-
-    Always use ``Union[]`` and ``Optional[]`` for union types
-    in error messages (instead of the ``|`` operator),
-    even on Python 3.10+.
-
 
 .. _incremental:
 
@@ -1004,9 +1018,10 @@ beyond what incremental mode can offer, try running mypy in
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
     or ``--cache-dir=nul`` (Windows).
 
-.. option:: --sqlite-cache
+.. option:: --no-sqlite-cache
 
-    Use an `SQLite`_ database to store the cache.
+    Avoid using `SQLite`_ database to store the cache, instead write cache data
+    out to individual files.
 
 .. option:: --cache-fine-grained
 
@@ -1159,7 +1174,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1211,8 +1226,11 @@ List of currently incomplete/experimental features:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def test_values() -> {"width": int, "description": str}:
+         return {"width": 42, "description": "test"}
+
+* ``TypeForm``: this feature enables ``TypeForm``, as described in
+  `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
 
 
 Miscellaneous
