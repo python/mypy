@@ -209,8 +209,10 @@ jobs:
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
+      # Use local version of librt during self-compilation in tests.
       run: |
         pip install -r test-requirements.txt
+        pip install -U mypyc/lib-rt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
     - name: Setup tox environment
