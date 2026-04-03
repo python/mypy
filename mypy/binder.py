@@ -336,7 +336,12 @@ class ConditionalTypeBinder:
                 # See check-isinstance.test::testNoneCheckDoesNotMakeTypeVarOptional
                 # This is a safe assumption: the fact that we checked something with `is`
                 # or `isinstance` does not change the type of the value.
-                continue
+                if len(frames) == 1:
+                    # This is likely a sequential update, not a merge of
+                    # conditional branches. Let the update proceed to preserve narrowing.
+                    pass
+                else:
+                    continue
 
             # Remove exact duplicates to save pointless work later, this is
             # a micro-optimization for --allow-redefinition-new.
