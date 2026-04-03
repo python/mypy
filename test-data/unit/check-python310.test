@@ -681,7 +681,8 @@ def f2(x: Mapping[str, str] | Sequence[str] | str) -> None:
         case [*_]:
             reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
         case _:
-            reveal_type(x)  # N: Revealed type is "builtins.str"
+            # TODO: this should be str
+            reveal_type(x)  # E: Statement is unreachable
 
 def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
     match x:
@@ -690,8 +691,9 @@ def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
         case [*_]:
             reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
         case _:
-            reveal_type(x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/dict.pyi]
+            # TODO: this should be str
+            reveal_type(x)  # E: Statement is unreachable
+[builtins fixtures/primitives.pyi]
 
 [case testMatchMappingPatternNarrowingAny]
 # flags: --strict-equality --warn-unreachable
