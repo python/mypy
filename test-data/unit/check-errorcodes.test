@@ -493,7 +493,7 @@ def y() -> int: return 2
 def best() -> int: return 3
 @d  # type: ignore[misc]  # E: Unused "type: ignore" comment  [unused-ignore] \
                           # E: Untyped decorator makes function "z" untyped  [untyped-decorator] \
-                          # N: Error code "untyped-decorator" not covered by "type: ignore" comment
+                          # N: Error code "untyped-decorator" not covered by "type: ignore[misc]" comment
 def z() -> int: return 4
 
 [case testErrorCodeIndexing]
@@ -1128,11 +1128,13 @@ class D(TypedDict):
     x: int
 
 def f(d: D, s: str) -> None:
-    d[s]  # type: ignore[xyz] # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-                              # N: Error code "literal-required" not covered by "type: ignore[xyz]" comment
+    d[s]  # type: ignore[xyz] \
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code "literal-required" not covered by "type: ignore[xyz]" comment
     d[s] # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required]
-    d[s]  # type: ignore[misc]  # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-                                # N: Error code changed to literal-required; "type: ignore" comment may be out of date
+    d[s]  # type: ignore[misc] \
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code changed to literal-required; "type: ignore" comment may be out of date
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
