@@ -303,7 +303,6 @@ def parse_config_file(
     options: Options,
     set_strict_flags: Callable[[], None],
     filename: str | None,
-    stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> None:
     """Parse a config file into an Options object.
@@ -312,8 +311,7 @@ def parse_config_file(
 
     If filename is None, fall back to default config files.
     """
-    stdout = stdout or sys.stdout
-    stderr = stderr or sys.stderr
+    stderr = stderr if stderr is not None else sys.stderr
 
     ret = (
         _parse_individual_file(filename, stderr)
@@ -486,7 +484,7 @@ def parse_section(
     set_strict_flags: Callable[[], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
-    stderr: TextIO = sys.stderr,
+    stderr: TextIO | None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
 
