@@ -26,8 +26,10 @@ from mypy.nodes import (
     SetExpr,
     SliceExpr,
     StarExpr,
+    TemplateStrExpr,
     TupleExpr,
     TypeApplication,
+    TypeFormExpr,
     UnaryExpr,
     YieldExpr,
     YieldFromExpr,
@@ -122,6 +124,10 @@ class SubexpressionFinder(TraverserVisitor):
         self.add(e)
         super().visit_cast_expr(e)
 
+    def visit_type_form_expr(self, e: TypeFormExpr) -> None:
+        self.add(e)
+        super().visit_type_form_expr(e)
+
     def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
         self.add(e)
         super().visit_assert_type_expr(e)
@@ -149,6 +155,10 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_dict_expr(self, e: DictExpr) -> None:
         self.add(e)
         super().visit_dict_expr(e)
+
+    def visit_template_str_expr(self, e: TemplateStrExpr) -> None:
+        self.add(e)
+        super().visit_template_str_expr(e)
 
     def visit_set_expr(self, e: SetExpr) -> None:
         self.add(e)

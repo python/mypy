@@ -57,6 +57,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
+    c_int_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
@@ -68,7 +69,7 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
@@ -82,7 +83,7 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     exact_dict_set_item_op,
 )
-from mypyc.primitives.generic_ops import generic_getattr, py_setattr_op
+from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature, is_same_type
@@ -245,6 +246,12 @@ def gen_func_item(
     is_generator = fn_info.is_generator
     builder.enter(fn_info, ret_type=sig.ret_type)
 
+    if is_generator:
+        fitem = builder.fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        generator_class_ir = builder.mapper.fdef_to_generator[fitem]
+        builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
@@ -356,8 +363,12 @@ def gen_func_ir(
                 builder.module_name,
                 sig,
                 func_decl.kind,
-                func_decl.is_prop_getter,
-                func_decl.is_prop_setter,
+                is_prop_getter=func_decl.is_prop_getter,
+                is_prop_setter=func_decl.is_prop_setter,
+                is_generator=func_decl.is_generator,
+                is_coroutine=func_decl.is_coroutine,
+                implicit=func_decl.implicit,
+                internal=func_decl.internal,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
@@ -413,6 +424,57 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
             builder.self(), getattr.name, [attr_arg], object_rprimitive, line
         )
         builder.add(Return(getattr_result, line))
+
+
+def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDef) -> None:
+    """
+    Generate a wrapper function for __setattr__ that can be put into the tp_setattro slot.
+    The wrapper takes two arguments besides self - attribute name and the new value.
+    Returns 0 on success and -1 on failure. Restrictions are similar to the __getattr__
+    wrapper above.
+
+    The wrapper calls the user-defined __setattr__ when the value to set is not NULL.
+    When it's NULL, this means that the call to tp_setattro comes from a del statement,
+    so it calls __delattr__ instead. If __delattr__ is not overridden in the native class,
+    this will call the base implementation in object which doesn't work without __dict__.
+    """
+    name = setattr.name + "__wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = setattr.line
+
+    error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
+    if ir.allow_interpreted_subclasses:
+        builder.error(error_base + "it allows interpreted subclasses", line)
+    if ir.inherits_python:
+        builder.error(error_base + "it inherits from a non-native class", line)
+
+    with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
+        attr_arg = builder.add_argument("attr", object_rprimitive)
+        value_arg = builder.add_argument("value", object_rprimitive)
+
+        call_delattr, call_setattr = BasicBlock(), BasicBlock()
+        null = Integer(0, object_rprimitive, line)
+        is_delattr = builder.add(ComparisonOp(value_arg, null, ComparisonOp.EQ, line))
+        builder.add_bool_branch(is_delattr, call_delattr, call_setattr)
+
+        builder.activate_block(call_delattr)
+        delattr_symbol = cdef.info.get("__delattr__")
+        delattr = delattr_symbol.node if delattr_symbol else None
+        delattr_override = delattr is not None and not delattr.fullname.startswith("builtins.")
+        if delattr_override:
+            builder.gen_method_call(builder.self(), "__delattr__", [attr_arg], None, line)
+        else:
+            # Call internal function that cpython normally calls when deleting an attribute.
+            # Cannot call object.__delattr__ here because it calls PyObject_SetAttr internally
+            # which in turn calls our wrapper and recurses infinitely.
+            # Note that since native classes don't have __dict__, this will raise AttributeError
+            # for dynamic attributes.
+            builder.call_c(generic_setattr, [builder.self(), attr_arg, null], line)
+        builder.add(Return(Integer(0, c_int_rprimitive), line))
+
+        builder.activate_block(call_setattr)
+        builder.gen_method_call(builder.self(), setattr.name, [attr_arg, value_arg], None, line)
+        builder.add(Return(Integer(0, c_int_rprimitive), line))
 
 
 def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:
@@ -478,11 +540,25 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # children.
     if class_ir.allow_interpreted_subclasses:
         f = gen_glue(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
-        class_ir.glue_methods[(class_ir, name)] = f
+        # Use func_ir.decl.name (unique) rather than fdef.name, because for properties
+        # the getter and setter share the same fdef.name but have distinct decl names
+        # (e.g. "prop" vs "__mypyc_setter__prop"). Using fdef.name would cause the
+        # setter's glue to overwrite the getter's glue in the shadow vtable.
+        class_ir.glue_methods[(class_ir, func_ir.decl.name)] = f
         builder.functions.append(f)
 
     if fdef.name == "__getattr__":
         generate_getattr_wrapper(builder, cdef, fdef)
+    elif fdef.name == "__setattr__":
+        generate_setattr_wrapper(builder, cdef, fdef)
+    elif fdef.name == "__delattr__":
+        setattr = cdef.info.get("__setattr__")
+        if not setattr or not setattr.node or setattr.node.fullname.startswith("builtins."):
+            builder.error(
+                '"__delattr__" supported only in classes that also override "__setattr__", '
+                + "or inherit from a native class that overrides it.",
+                fdef.line,
+            )
 
 
 def handle_non_ext_method(
@@ -581,8 +657,9 @@ def gen_glue(
     """
     if fdef.is_property:
         return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
-    else:
-        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
+    if do_py_ops and target.name.startswith(PROPSET_PREFIX):
+        return gen_glue_property_setter(builder, base_sig, target, cls, base, fdef.line)
+    return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -694,6 +771,7 @@ def gen_glue_method(
             builder.module_name,
             FuncSignature(rt_args, ret_type),
             target.decl.kind,
+            is_coroutine=target.decl.is_coroutine,
         ),
         arg_regs,
         blocks,
@@ -773,15 +851,67 @@ def gen_glue_property(
     )
 
 
+def gen_glue_property_setter(
+    builder: IRBuilder, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR, line: int
+) -> FuncIR:
+    """Generate a shadow glue method for a property setter.
+
+    For interpreted subclasses, property setters can't be called via the
+    internal __mypyc_setter__<name> method. Instead, use Python's setattr
+    to set the property via the standard descriptor protocol.
+    """
+    builder.enter()
+    builder.ret_types[-1] = sig.ret_type
+
+    rt_args = list(sig.args)
+    rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+
+    arg_info = get_args(builder, rt_args, line)
+    args = arg_info.args
+
+    self_arg = args[0]
+    value_arg = args[1]
+
+    # Extract the property name from "__mypyc_setter__<name>"
+    assert target.name.startswith(PROPSET_PREFIX)
+    prop_name = target.name[len(PROPSET_PREFIX) :]
+
+    builder.primitive_op(
+        py_setattr_op,
+        [
+            self_arg,
+            builder.load_str(prop_name),
+            builder.coerce(value_arg, object_rprimitive, line),
+        ],
+        line,
+    )
+    retval = builder.coerce(builder.none(), sig.ret_type, line)
+    builder.add(Return(retval))
+
+    arg_regs, _, blocks, return_type, _ = builder.leave()
+    return FuncIR(
+        FuncDecl(
+            target.name + "__" + base.name + "_glue",
+            cls.name,
+            builder.module_name,
+            FuncSignature(rt_args, return_type),
+        ),
+        arg_regs,
+        blocks,
+    )
+
+
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     """Given a FuncDef, return the target for the instance of its callable class.
 
     If the function was not already defined somewhere, then define it
     and add it to the current environment.
     """
-    if fdef.original_def:
+    if orig := fdef.original_def:
+        if isinstance(orig, Decorator):
+            orig = orig.func
         # Get the target associated with the previously defined FuncDef.
-        return builder.lookup(fdef.original_def)
+        return builder.lookup(orig)
 
     if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
@@ -789,11 +919,6 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     return builder.add_local_reg(fdef, object_rprimitive)
 
 
-# This function still does not support the following imports.
-# import json as _json
-# from json import decoder
-# Using either _json.JSONDecoder or decoder.JSONDecoder as a type hint for a dataclass field will fail.
-# See issue mypyc/mypyc#1099.
 def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, line: int) -> Value:
     # typ.fullname contains the module where the class object was defined. However, it is possible
     # that the class object's module was not imported in the file currently being compiled. So, we
@@ -807,34 +932,17 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     # `mod2.mod3.OuterClass.InnerClass` and `unbounded_type.name` is `mod1.OuterClass.InnerClass`.
     # So, we must use unbounded_type.name to load the class object.
     # See issue mypyc/mypyc#1087.
-    load_attr_path = (
-        unbounded_type.name if isinstance(unbounded_type, UnboundType) else typ.fullname
-    ).removesuffix(f".{typ.name}")
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
     elif typ.fullname in builtin_names:
         builtin_addr_type, src = builtin_names[typ.fullname]
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
-    # This elif-condition finds the longest import that matches the load_attr_path.
-    elif module_name := max(
-        (i for i in builder.imports if load_attr_path == i or load_attr_path.startswith(f"{i}.")),
-        default="",
-        key=len,
-    ):
-        # Load the imported module.
-        loaded_module = builder.load_module(module_name)
-        # Recursively load attributes of the imported module. These may be submodules, classes or
-        # any other object.
-        for attr in (
-            load_attr_path.removeprefix(f"{module_name}.").split(".")
-            if load_attr_path != module_name
-            else []
-        ):
-            loaded_module = builder.py_get_attr(loaded_module, attr, line)
-        class_obj = builder.builder.get_attr(
-            loaded_module, typ.name, object_rprimitive, line, borrow=False
-        )
+    elif isinstance(unbounded_type, UnboundType):
+        path_parts = unbounded_type.name.split(".")
+        class_obj = builder.load_global_str(path_parts[0], line)
+        for attr in path_parts[1:]:
+            class_obj = builder.py_get_attr(class_obj, attr, line)
     else:
         class_obj = builder.load_global_str(typ.name, line)
 
@@ -989,7 +1097,7 @@ def generate_dispatch_glue_native_function(
 
 def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
     """Create an __init__ that sets registry and dispatch_cache to empty dicts"""
-    line = -1
+    line = builder.fn_info.fitem.line
     class_ir = builder.fn_info.callable_class.ir
     with builder.enter_method(class_ir, "__init__", bool_rprimitive):
         empty_dict = builder.call_c(dict_new_op, [], line)
@@ -1003,7 +1111,7 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
 
 
 def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    line = -1
+    line = fn_info.fitem.line
     with builder.enter_method(fn_info.callable_class.ir, "register", object_rprimitive):
         cls_arg = builder.add_argument("cls", object_rprimitive)
         func_arg = builder.add_argument("func", object_rprimitive, ArgKind.ARG_OPT)
@@ -1086,9 +1194,10 @@ def gen_property_getter_ir(
     name = func_decl.name
     builder.enter(name)
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    line = func_decl._line or -1
     if not is_trait:
-        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
-        builder.add(Return(value))
+        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, line)
+        builder.add(Return(value, line))
     else:
         builder.add(Unreachable())
     args, _, blocks, ret_type, fn_info = builder.leave()
@@ -1108,8 +1217,9 @@ def gen_property_setter_ir(
     value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
     assert name.startswith(PROPSET_PREFIX)
     attr_name = name[len(PROPSET_PREFIX) :]
+    line = func_decl._line or -1
     if not is_trait:
-        builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
-    builder.add(Return(builder.none()))
+        builder.add(SetAttr(self_reg, attr_name, value_reg, line))
+    builder.add(Return(builder.none(), line))
     args, _, blocks, ret_type, fn_info = builder.leave()
-    return FuncIR(func_decl, args, blocks)
+    return FuncIR(func_decl, args, blocks, line)

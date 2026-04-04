@@ -294,6 +294,7 @@ isn't supported by the runtime with some limitations, if you use
    def f(x: int | str) -> None:   # OK on Python 3.7 and later
        ...
 
+.. _no-strict-optional:
 .. _strict_optional:
 
 Optional types and the None type

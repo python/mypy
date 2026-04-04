@@ -147,6 +147,8 @@ class StrConv(NodeVisitor[str]):
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, f"MaxPos({o.max_pos})")
+        if o.is_coroutine:
+            a.insert(1, "Async")
         if o.abstract_status in (mypy.nodes.IS_ABSTRACT, mypy.nodes.IMPLICITLY_ABSTRACT):
             a.insert(-1, "Abstract")
         if o.is_static:
@@ -183,6 +185,9 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ("TypeVars", o.type_vars))
         if o.metaclass:
             a.insert(1, f"Metaclass({o.metaclass.accept(self)})")
+        if o.keywords:
+            keyword_items = [f"{k}={v.accept(self)}" for k, v in o.keywords.items()]
+            a.insert(1, f"Keywords({', '.join(keyword_items)})")
         if o.decorators:
             a.insert(1, ("Decorators", o.decorators))
         if o.info and o.info._promote:
@@ -212,6 +217,12 @@ class StrConv(NodeVisitor[str]):
 
     def visit_decorator(self, o: mypy.nodes.Decorator) -> str:
         return self.dump([o.var, o.decorators, o.func], o)
+
+    def visit_type_alias(self, o: mypy.nodes.TypeAlias, /) -> str:
+        return self.dump([o.name, o.target, o.alias_tvars, o.no_args], o)
+
+    def visit_placeholder_node(self, o: mypy.nodes.PlaceholderNode, /) -> str:
+        return self.dump([o.fullname], o)
 
     # Statements
 
@@ -466,6 +477,9 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o: mypy.nodes.CastExpr) -> str:
         return self.dump([o.expr, o.type], o)
 
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr) -> str:
+        return self.dump([o.type], o)
+
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr) -> str:
         return self.dump([o.expr, o.type], o)
 
@@ -487,6 +501,25 @@ class StrConv(NodeVisitor[str]):
 
     def visit_dict_expr(self, o: mypy.nodes.DictExpr) -> str:
         return self.dump([[k, v] for k, v in o.items], o)
+
+    def visit_template_str_expr(self, o: mypy.nodes.TemplateStrExpr) -> str:
+        items_repr: list[object] = []
+        for item in o.items:
+            if isinstance(item, tuple):
+                value_expr, source, conversion, format_spec = item
+                interpolation: list[object] = [
+                    ("Value", [value_expr]),
+                    f"Source({source!r})",
+                    f"Conversion({conversion!r})",
+                ]
+                if format_spec is None:
+                    interpolation.append("FormatSpec(None)")
+                else:
+                    interpolation.append(("FormatSpec", [format_spec]))
+                items_repr.append(("Interpolation", interpolation))
+            else:
+                items_repr.append(item)
+        return self.dump(items_repr, o)
 
     def visit_set_expr(self, o: mypy.nodes.SetExpr) -> str:
         return self.dump(o.items, o)

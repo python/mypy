@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // Exception related primitive operations
 //
 // These are registered in mypyc.primitives.exc_ops.
@@ -24,7 +26,7 @@ void CPy_Reraise(void) {
 }
 
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback) {
-    if (!PyType_Check(type) && value == Py_None) {
+    if (!PyType_Check(type) && Py_IsNone(value)) {
         // The first argument must be an exception instance
         value = type;
         type = (PyObject *)Py_TYPE(value);
@@ -121,11 +123,11 @@ static PyObject *CPy_GetTypeName(PyObject *type) {
     PyObject *module = NULL, *name = NULL;
     PyObject *full = NULL;
 
-    module = PyObject_GetAttrString(type, "__module__");
+    module = PyObject_GetAttr(type, mypyc_interned_str.__module__);
     if (!module || !PyUnicode_Check(module)) {
         goto out;
     }
-    name = PyObject_GetAttrString(type, "__qualname__");
+    name = PyObject_GetAttr(type, mypyc_interned_str.__qualname__);
     if (!name || !PyUnicode_Check(name)) {
         goto out;
     }

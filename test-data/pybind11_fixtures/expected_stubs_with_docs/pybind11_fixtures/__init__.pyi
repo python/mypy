@@ -1,4 +1,5 @@
-import os
+import pathlib
+import typing
 from . import demo as demo
 from typing import overload
 
@@ -7,27 +8,27 @@ class StaticMethods:
         """Initialize self.  See help(type(self)) for accurate signature."""
     @overload
     @staticmethod
-    def overloaded_static_method(value: int) -> int:
+    def overloaded_static_method(value: typing.SupportsInt) -> int:
         """overloaded_static_method(*args, **kwargs)
         Overloaded function.
 
-        1. overloaded_static_method(value: int) -> int
+        1. overloaded_static_method(value: typing.SupportsInt) -> int
 
-        2. overloaded_static_method(value: float) -> float
+        2. overloaded_static_method(value: typing.SupportsFloat) -> float
         """
     @overload
     @staticmethod
-    def overloaded_static_method(value: float) -> float:
+    def overloaded_static_method(value: typing.SupportsFloat) -> float:
         """overloaded_static_method(*args, **kwargs)
         Overloaded function.
 
-        1. overloaded_static_method(value: int) -> int
+        1. overloaded_static_method(value: typing.SupportsInt) -> int
 
-        2. overloaded_static_method(value: float) -> float
+        2. overloaded_static_method(value: typing.SupportsFloat) -> float
         """
     @staticmethod
-    def some_static_method(a: int, b: int) -> int:
-        """some_static_method(a: int, b: int) -> int
+    def some_static_method(a: typing.SupportsInt, b: typing.SupportsInt) -> int:
+        """some_static_method(a: typing.SupportsInt, b: typing.SupportsInt) -> int
 
         None
         """
@@ -46,10 +47,10 @@ class TestStruct:
 def func_incomplete_signature(*args, **kwargs):
     """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding"""
 def func_returning_optional() -> int | None:
-    """func_returning_optional() -> Optional[int]"""
+    """func_returning_optional() -> int | None"""
 def func_returning_pair() -> tuple[int, float]:
-    """func_returning_pair() -> Tuple[int, float]"""
-def func_returning_path() -> os.PathLike:
-    """func_returning_path() -> os.PathLike"""
+    """func_returning_pair() -> tuple[int, float]"""
+def func_returning_path() -> pathlib.Path:
+    """func_returning_path() -> pathlib.Path"""
 def func_returning_vector() -> list[float]:
-    """func_returning_vector() -> List[float]"""
+    """func_returning_vector() -> list[float]"""

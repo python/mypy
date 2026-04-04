@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Final, Optional
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     LITERAL_NO,
@@ -43,11 +42,13 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TupleExpr,
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -163,7 +164,7 @@ def extract_var_from_literal_hash(key: Key) -> Var | None:
     return None
 
 
-class _Hasher(ExpressionVisitor[Optional[Key]]):
+class _Hasher(ExpressionVisitor[Key | None]):
     def visit_int_expr(self, e: IntExpr) -> Key:
         return ("Literal", e.value)
 
@@ -244,6 +245,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_cast_expr(self, e: CastExpr) -> None:
         return None
 
+    def visit_type_form_expr(self, e: TypeFormExpr) -> None:
+        return None
+
     def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
         return None
 
@@ -311,6 +315,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_await_expr(self, e: AwaitExpr) -> None:
+        return None
+
+    def visit_template_str_expr(self, e: TemplateStrExpr) -> None:
         return None
 
     def visit_temp_node(self, e: TempNode) -> None:

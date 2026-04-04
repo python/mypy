@@ -296,6 +296,43 @@ main:2: error: Cannot find implementation or library stub for module named "m.n"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
 
+[case testMissingModuleFuzzyMatchThirdParty]
+import numpyy
+[out]
+main:1: error: Cannot find implementation or library stub for module named "numpyy"
+main:1: note: Did you mean "numpy"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchFromImport]
+from numpyy import array
+[out]
+main:1: error: Cannot find implementation or library stub for module named "numpyy"
+main:1: note: Did you mean "numpy"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchStdlib]
+import ittertools
+[out]
+main:1: error: Cannot find implementation or library stub for module named "ittertools"
+main:1: note: Did you mean "itertools"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchNoSuggestion]
+import xyzabc123
+[out]
+main:1: error: Cannot find implementation or library stub for module named "xyzabc123"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchUnderscorePrefix]
+import _pytest.fixtures
+[out]
+main:1: error: Cannot find implementation or library stub for module named "_pytest.fixtures"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchTypeIgnore]
+import numpyy  # type: ignore
+[out]
+
 [case testErrorInImportedModule]
 import m
 [file m.py]
@@ -361,15 +398,11 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
@@ -408,36 +441,26 @@ main:3: error: Cannot assign to literal
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: Cannot assign to function call
-[out version>=3.10]
 main:1: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
@@ -498,8 +521,6 @@ main:2: error: Cannot delete function call
 x = 1
 del x + 1
 [out]
-main:2: error: Cannot delete operator
-[out version>=3.10]
 main:2: error: Cannot delete expression
 
 [case testInvalidDel3]
@@ -881,8 +902,6 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
@@ -959,8 +978,6 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: Cannot assign to function call
-[out version>=3.10]
 main:2: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
@@ -1178,8 +1195,8 @@ def f(): # type: (int) -> int
 def g(x): # type: () -> int
   pass
 [out]
-main:2: error: Type signature has too many arguments
-main:4: error: Type signature has too few arguments
+main:2: error: Type signature has too many parameters
+main:4: error: Type signature has too few parameters
 
 [case testStaticmethodAndNonMethod]
 import typing
@@ -1303,8 +1320,6 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]
@@ -1493,7 +1508,7 @@ class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only u
 def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack
     pass
 
-def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** argument must be a TypedDict
+def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** parameter must be a TypedDict
     pass
 
 [builtins fixtures/dict.pyi]

@@ -303,8 +303,8 @@ to use inline TypedDict syntax. For example:
 
 .. code-block:: python
 
-    def test_values() -> {"int": int, "str": str}:
-        return {"int": 42, "str": "test"}
+    def test_values() -> {"width": int, "description": str}:
+        return {"width": 42, "description": "test"}
 
     class Response(TypedDict):
         status: int

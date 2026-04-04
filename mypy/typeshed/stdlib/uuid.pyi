@@ -1,7 +1,8 @@
 import builtins
 import sys
+from _typeshed import Unused
 from enum import Enum
-from typing import Final
+from typing import Final, NoReturn
 from typing_extensions import LiteralString, TypeAlias
 
 _FieldsType: TypeAlias = tuple[int, int, int, int, int, int]
@@ -13,6 +14,9 @@ class SafeUUID(Enum):
 
 class UUID:
     __slots__ = ("int", "is_safe", "__weakref__")
+    is_safe: Final[SafeUUID]
+    int: Final[builtins.int]
+
     def __init__(
         self,
         hex: str | None = None,
@@ -24,8 +28,6 @@ class UUID:
         *,
         is_safe: SafeUUID = SafeUUID.unknown,
     ) -> None: ...
-    @property
-    def is_safe(self) -> SafeUUID: ...
     @property
     def bytes(self) -> builtins.bytes: ...
     @property
@@ -40,8 +42,6 @@ class UUID:
     def fields(self) -> _FieldsType: ...
     @property
     def hex(self) -> str: ...
-    @property
-    def int(self) -> builtins.int: ...
     @property
     def node(self) -> builtins.int: ...
     @property
@@ -65,6 +65,7 @@ class UUID:
     def __gt__(self, other: UUID) -> bool: ...
     def __ge__(self, other: UUID) -> bool: ...
     def __hash__(self) -> builtins.int: ...
+    def __setattr__(self, name: Unused, value: Unused) -> NoReturn: ...
 
 def getnode() -> int: ...
 def uuid1(node: int | None = None, clock_seq: int | None = None) -> UUID: ...

@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // String primitive operations
 //
 // These are registered in mypyc.primitives.str_ops.
@@ -7,7 +9,7 @@
 
 // The _PyUnicode_CheckConsistency definition has been moved to the internal API
 // https://github.com/python/cpython/pull/106398
-#if defined(Py_DEBUG) && defined(CPY_3_13_FEATURES)
+#if defined(Py_DEBUG) && CPY_3_13_FEATURES
 #include "internal/pycore_unicodeobject.h"
 #endif
 
@@ -64,20 +66,33 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 #undef BLOOM_UPDATE
 }
 
-// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
-char CPyStr_Equal(PyObject *str1, PyObject *str2) {
-    if (str1 == str2) {
-        return 1;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(str1);
-    if (PyUnicode_GET_LENGTH(str2) != len)
+static inline char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
+    // This helper function only exists to deduplicate code in CPyStr_Equal and CPyStr_EqualLiteral
+    Py_ssize_t str1_length = PyUnicode_GET_LENGTH(str1);
+    if (str1_length != str2_length)
         return 0;
     int kind = PyUnicode_KIND(str1);
     if (PyUnicode_KIND(str2) != kind)
         return 0;
     const void *data1 = PyUnicode_DATA(str1);
     const void *data2 = PyUnicode_DATA(str2);
-    return memcmp(data1, data2, len * kind) == 0;
+    return memcmp(data1, data2, str1_length * kind) == 0;
+}
+
+// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
+char CPyStr_Equal(PyObject *str1, PyObject *str2) {
+    if (str1 == str2) {
+        return 1;
+    }
+    Py_ssize_t str2_length = PyUnicode_GET_LENGTH(str2);
+    return _CPyStr_Equal_NoIdentCheck(str1, str2, str2_length);
+}
+
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length) {
+    if (str == literal_str) {
+        return 1;
+    }
+    return _CPyStr_Equal_NoIdentCheck(str, literal_str, literal_length);
 }
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
@@ -94,13 +109,16 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
             void *data = PyUnicode_DATA(str);
             Py_UCS4 ch = PyUnicode_READ(kind, data, n);
+            if (ch < 256) {
+                // Latin-1 single-char strings are cached by CPython, so
+                // PyUnicode_FromOrdinal returns the cached object (with a
+                // new reference) instead of allocating a new string each time.
+                return PyUnicode_FromOrdinal(ch);
+            }
             PyObject *unicode = PyUnicode_New(1, ch);
             if (unicode == NULL)
                 return NULL;
-
-            if (PyUnicode_KIND(unicode) == PyUnicode_1BYTE_KIND) {
-                PyUnicode_1BYTE_DATA(unicode)[0] = (Py_UCS1)ch;
-            } else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+            if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
                 PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
             } else {
                 assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
@@ -308,7 +326,7 @@ static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) 
 
 // Copied from do_strip function in cpython.git/Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep) {
-    if (sep == NULL || sep == Py_None) {
+    if (sep == NULL || Py_IsNone(sep)) {
         Py_ssize_t len, i, j;
 
         // This check is needed from Python 3.9 and earlier.
@@ -605,4 +623,171 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     PyErr_Format(
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
+}
+
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(str, temp_count);
+}
+
+
+bool CPyStr_IsSpace(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    if (len == 0) return false;
+
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            if (!_Py_ascii_whitespace[data[i]])
+                return false;
+        }
+        return true;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (!Py_UNICODE_ISSPACE(ch))
+            return false;
+    }
+    return true;
+}
+
+bool CPyStr_IsAlnum(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    if (len == 0) return false;
+
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            if (!Py_ISALNUM(data[i]))
+                return false;
+        }
+        return true;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (!Py_UNICODE_ISALNUM(ch))
+            return false;
+    }
+    return true;
+}
+
+static inline int CPy_ASCII_Lower(unsigned char c) { return Py_TOLOWER(c); }
+static inline int CPy_ASCII_Upper(unsigned char c) { return Py_TOUPPER(c); }
+
+static inline PyObject *CPyStr_ChangeCase(PyObject *self,
+                                    int (*ascii_func)(unsigned char),
+#if CPY_3_13_FEATURES
+                                    PyObject *method_name
+#else
+                                    int (*unicode_func)(Py_UCS4, Py_UCS4 *)
+#endif
+                                    ) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    if (len == 0) {
+        Py_INCREF(self);
+        return self;
+    }
+
+    // ASCII fast path: 1-to-1, no expansion possible
+    if (PyUnicode_IS_ASCII(self)) {
+        PyObject *res = PyUnicode_New(len, 127);
+        if (res == NULL) return NULL;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(self);
+        Py_UCS1 *res_data = PyUnicode_1BYTE_DATA(res);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            res_data[i] = ascii_func(data[i]);
+        }
+        return res;
+    }
+
+#if CPY_3_13_FEATURES
+    // On 3.13+, _PyUnicode_ToLowerFull/ToUpperFull are no longer exported,
+    // so fall back to CPython's method implementation for non-ASCII strings.
+    return PyObject_CallMethodNoArgs(self, method_name);
+#else
+    // General Unicode: unicode_func handles 1-to-N expansion.
+    // Worst case: each codepoint expands to 3 (per Unicode standard).
+    // The tmp buffer is short-lived, and PyUnicode_FromKindAndData
+    // compacts the result to the optimal string kind automatically.
+    int kind = PyUnicode_KIND(self);
+    const void *data = PyUnicode_DATA(self);
+    Py_UCS4 *tmp = PyMem_Malloc(sizeof(Py_UCS4) * len * 3);
+    if (tmp == NULL) return PyErr_NoMemory();
+
+    Py_UCS4 mapped[3];
+    Py_ssize_t out_len = 0;
+    for (Py_ssize_t i = 0; i < len; i++) {
+        int n = unicode_func(PyUnicode_READ(kind, data, i), mapped);
+        for (int j = 0; j < n; j++) {
+            tmp[out_len++] = mapped[j];
+        }
+    }
+
+    PyObject *res = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, tmp, out_len);
+    PyMem_Free(tmp);
+    return res;
+#endif
+}
+
+PyObject *CPyStr_Lower(PyObject *self) {
+#if CPY_3_13_FEATURES
+    return CPyStr_ChangeCase(self, CPy_ASCII_Lower, mypyc_interned_str.lower);
+#else
+    return CPyStr_ChangeCase(self, CPy_ASCII_Lower, _PyUnicode_ToLowerFull);
+#endif
+}
+
+PyObject *CPyStr_Upper(PyObject *self) {
+#if CPY_3_13_FEATURES
+    return CPyStr_ChangeCase(self, CPy_ASCII_Upper, mypyc_interned_str.upper);
+#else
+    return CPyStr_ChangeCase(self, CPy_ASCII_Upper, _PyUnicode_ToUpperFull);
+#endif
+}
+
+bool CPyStr_IsDigit(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    if (len == 0) return false;
+
+#define CHECK_ISDIGIT(TYPE, DATA, CHECK)              \
+    {                                                 \
+        const TYPE *data = (const TYPE *)(DATA);      \
+        for (Py_ssize_t i = 0; i < len; i++) {        \
+            if (!CHECK(data[i]))                      \
+                return false;                         \
+        }                                             \
+    }
+
+    // ASCII fast path
+    if (PyUnicode_IS_ASCII(str)) {
+        CHECK_ISDIGIT(Py_UCS1, PyUnicode_1BYTE_DATA(str), Py_ISDIGIT);
+        return true;
+    }
+
+    switch (PyUnicode_KIND(str)) {
+    case PyUnicode_1BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS1, PyUnicode_1BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    case PyUnicode_2BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS2, PyUnicode_2BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    case PyUnicode_4BYTE_KIND:
+        CHECK_ISDIGIT(Py_UCS4, PyUnicode_4BYTE_DATA(str), Py_UNICODE_ISDIGIT);
+        break;
+    default:
+        Py_UNREACHABLE();
+    }
+    return true;
+
+#undef CHECK_ISDIGIT
 }

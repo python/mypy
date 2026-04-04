@@ -66,6 +66,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -73,6 +74,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -310,6 +312,9 @@ class IRBuilderVisitor(IRVisitor):
     def visit_dict_expr(self, expr: DictExpr) -> Value:
         return transform_dict_expr(self.builder, expr)
 
+    def visit_template_str_expr(self, expr: TemplateStrExpr) -> Value:
+        self.bail("Template strings are not supported by mypyc", expr.line)
+
     def visit_set_expr(self, expr: SetExpr) -> Value:
         return transform_set_expr(self.builder, expr)
 
@@ -386,6 +391,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr should have been handled in CallExpr"
+
+    def visit_type_form_expr(self, o: TypeFormExpr) -> Value:
+        assert False, "TypeFormExpr should have been handled in CallExpr"
 
     def visit_assert_type_expr(self, o: AssertTypeExpr) -> Value:
         assert False, "AssertTypeExpr should have been handled in CallExpr"

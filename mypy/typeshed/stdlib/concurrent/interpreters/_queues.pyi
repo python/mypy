@@ -45,14 +45,30 @@ if sys.version_info >= (3, 13):  # needed to satisfy pyright checks for Python <
         def empty(self) -> bool: ...
         def full(self) -> bool: ...
         def qsize(self) -> int: ...
-        def put(
-            self,
-            obj: object,
-            timeout: SupportsIndex | None = None,
-            *,
-            unbounditems: _AnyUnbound | None = None,
-            _delay: float = 0.01,
-        ) -> None: ...
+        if sys.version_info >= (3, 14):
+            def put(
+                self,
+                obj: object,
+                block: bool = True,
+                timeout: SupportsIndex | None = None,
+                *,
+                unbounditems: _AnyUnbound | None = None,
+                _delay: float = 0.01,
+            ) -> None: ...
+        else:
+            def put(
+                self,
+                obj: object,
+                timeout: SupportsIndex | None = None,
+                *,
+                unbounditems: _AnyUnbound | None = None,
+                _delay: float = 0.01,
+            ) -> None: ...
+
         def put_nowait(self, obj: object, *, unbounditems: _AnyUnbound | None = None) -> None: ...
-        def get(self, timeout: SupportsIndex | None = None, *, _delay: float = 0.01) -> object: ...
+        if sys.version_info >= (3, 14):
+            def get(self, block: bool = True, timeout: SupportsIndex | None = None, *, _delay: float = 0.01) -> object: ...
+        else:
+            def get(self, timeout: SupportsIndex | None = None, *, _delay: float = 0.01) -> object: ...
+
         def get_nowait(self) -> object: ...

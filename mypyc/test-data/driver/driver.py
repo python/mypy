@@ -23,7 +23,7 @@ for name in dir(native):
         tests_run += 1
         try:
             if inspect.iscoroutinefunction(test_func):
-                evloop.run_until_complete(test_func)
+                evloop.run_until_complete(test_func())
             else:
                 test_func()
         except Exception as e:

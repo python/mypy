@@ -101,9 +101,9 @@ d in a  # E: Unsupported right operand type for in ("A")
 d and a
 d or a
 if int():
-    c = d and b # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+    c = d and b # E: Incompatible types in assignment (expression has type "Any | bool", variable has type "C")
 if int():
-    c = d or b  # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+    c = d or b  # E: Incompatible types in assignment (expression has type "Any | bool", variable has type "C")
 
 if int():
     c = d + a
@@ -165,9 +165,9 @@ a or d
 if int():
     c = a in d  # E: Incompatible types in assignment (expression has type "bool", variable has type "C")
 if int():
-    c = b and d # E: Incompatible types in assignment (expression has type "Union[Literal[False], Any]", variable has type "C")
+    c = b and d # E: Incompatible types in assignment (expression has type "Literal[False] | Any", variable has type "C")
 if int():
-    c = b or d  # E: Incompatible types in assignment (expression has type "Union[Literal[True], Any]", variable has type "C")
+    c = b or d  # E: Incompatible types in assignment (expression has type "Literal[True] | Any", variable has type "C")
 if int():
     b = a + d
 if int():

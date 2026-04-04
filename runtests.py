@@ -20,6 +20,7 @@ MYPYC_COMMAND_LINE = "TestCommandLine"
 MYPYC_SEPARATE = "TestRunSeparate"
 MYPYC_MULTIMODULE = "multimodule"  # Subset of mypyc run tests that are slow
 ERROR_STREAM = "ErrorStreamSuite"
+DIFF_CACHE = "DiffCacheIntegrationTests"
 
 
 ALL_NON_FAST = [
@@ -35,6 +36,7 @@ ALL_NON_FAST = [
     MYPYC_COMMAND_LINE,
     MYPYC_SEPARATE,
     ERROR_STREAM,
+    DIFF_CACHE,
 ]
 
 
@@ -90,7 +92,7 @@ cmds = {
         "pytest",
         "-q",
         "-k",
-        " or ".join([DAEMON, MYPYC_EXTERNAL, MYPYC_COMMAND_LINE, ERROR_STREAM]),
+        " or ".join([DAEMON, MYPYC_EXTERNAL, MYPYC_COMMAND_LINE, ERROR_STREAM, DIFF_CACHE]),
     ],
     "mypyc-fast": ["pytest", "-q", "mypyc", "-k", f"not ({' or '.join(MYPYC_SLOW)})"],
     # Test cases that might take minutes to run

@@ -2,28 +2,52 @@
 
 from __future__ import annotations
 
-import json
 import os
 from abc import abstractmethod
 from collections import defaultdict
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Optional,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
+    TypeVar,
+    Union,
+    cast,
+)
 
+from librt.internal import (
+    read_float as read_float_bare,
+    read_int as read_int_bare,
+    read_str as read_str_bare,
+    write_int as write_int_bare,
+    write_str as write_str_bare,
+)
 from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.cache import (
+    DICT_INT_GEN,
+    DICT_STR_GEN,
+    DT_SPEC,
+    END_TAG,
+    LIST_GEN,
+    LIST_STR,
     LITERAL_COMPLEX,
     LITERAL_NONE,
-    Buffer,
+    ReadBuffer,
     Tag,
+    WriteBuffer,
     read_bool,
-    read_float,
+    read_bytes,
     read_int,
     read_int_list,
     read_int_opt,
+    read_json,
     read_literal,
     read_str,
     read_str_list,
@@ -31,9 +55,11 @@ from mypy.cache import (
     read_str_opt_list,
     read_tag,
     write_bool,
+    write_bytes,
     write_int,
     write_int_list,
     write_int_opt,
+    write_json,
     write_literal,
     write_str,
     write_str_list,
@@ -47,6 +73,11 @@ from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
     from mypy.patterns import Pattern
+
+
+@unique
+class NotParsed(Enum):
+    VALUE = "NotParsed"
 
 
 class Context:
@@ -268,16 +299,79 @@ class SymbolNode(Node):
             return method(data)
         raise NotImplementedError(f"unexpected .class {classname}")
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolNode:
+    def read(cls, data: ReadBuffer) -> SymbolNode:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
+
+
+class FileRawData:
+    """Raw (binary) data representing parsed, but not deserialized file."""
+
+    __slots__ = (
+        "defs",
+        "imports",
+        "raw_errors",
+        "ignored_lines",
+        "is_partial_stub_package",
+        "uses_template_strings",
+    )
+
+    defs: bytes
+    imports: bytes
+    raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
+    ignored_lines: dict[int, list[str]]
+    is_partial_stub_package: bool
+    uses_template_strings: bool
+
+    def __init__(
+        self,
+        defs: bytes,
+        imports: bytes,
+        raw_errors: list[dict[str, Any]],
+        ignored_lines: dict[int, list[str]],
+        is_partial_stub_package: bool,
+        uses_template_strings: bool,
+    ) -> None:
+        self.defs = defs
+        self.imports = imports
+        self.raw_errors = raw_errors
+        self.ignored_lines = ignored_lines
+        self.is_partial_stub_package = is_partial_stub_package
+        self.uses_template_strings = uses_template_strings
+
+    def write(self, data: WriteBuffer) -> None:
+        write_bytes(data, self.defs)
+        write_bytes(data, self.imports)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.raw_errors))
+        for err in self.raw_errors:
+            write_json(data, err)
+        write_tag(data, DICT_INT_GEN)
+        write_int_bare(data, len(self.ignored_lines))
+        for line, codes in self.ignored_lines.items():
+            write_int(data, line)
+            write_str_list(data, codes)
+        write_bool(data, self.is_partial_stub_package)
+        write_bool(data, self.uses_template_strings)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> FileRawData:
+        defs = read_bytes(data)
+        imports = read_bytes(data)
+        assert read_tag(data) == LIST_GEN
+        raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
+        assert read_tag(data) == DICT_INT_GEN
+        ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
+        return FileRawData(
+            defs, imports, raw_errors, ignored_lines, read_bool(data), read_bool(data)
+        )
 
 
 class MypyFile(SymbolNode):
@@ -297,9 +391,11 @@ class MypyFile(SymbolNode):
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
+        "uses_template_strings",
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
+        "raw_data",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -335,11 +431,15 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package: bool
+    # True if module contains at least one t-string (PEP 750 TemplateStr).
+    uses_template_strings: bool
     # Plugin-created dependencies
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
     _is_typeshed_file: bool | None
+    # For native parser store actual serialized data here.
+    raw_data: FileRawData | None
 
     def __init__(
         self,
@@ -367,8 +467,10 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
+        self.raw_data = None
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -424,7 +526,7 @@ class MypyFile(SymbolNode):
         tree.future_import_flags = set(data["future_import_flags"])
         return tree
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, MYPY_FILE)
         write_str(data, self._fullname)
         self.names.write(data, self._fullname)
@@ -432,9 +534,10 @@ class MypyFile(SymbolNode):
         write_str(data, self.path)
         write_bool(data, self.is_partial_stub_package)
         write_str_list(data, sorted(self.future_import_flags))
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> MypyFile:
+    def read(cls, data: ReadBuffer) -> MypyFile:
         assert read_tag(data) == MYPY_FILE
         tree = MypyFile([], [])
         tree._fullname = read_str(data)
@@ -444,6 +547,7 @@ class MypyFile(SymbolNode):
         tree.is_partial_stub_package = read_bool(data)
         tree.future_import_flags = set(read_str_list(data))
         tree.is_cache_skeleton = True
+        assert read_tag(data) == END_TAG
         return tree
 
 
@@ -556,6 +660,7 @@ class FuncBase(Node):
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "is_type_check_only",  # Uses "@type_check_only"
+        "def_or_infer_vars",
         "_fullname",
     )
 
@@ -576,6 +681,18 @@ class FuncBase(Node):
         self.is_final = False
         self.is_explicit_override = False
         self.is_type_check_only = False
+        # Can this function/method define variables or infer variables defined outside?
+        # In particular, we set this in cases like:
+        #     x = None
+        #     def foo() -> None:
+        #         global x
+        #         x = 1
+        # and
+        #     class C:
+        #         x = None
+        #         def foo(self) -> None:
+        #             self.x = 1
+        self.def_or_infer_vars = False
         # Name with module prefix
         self._fullname = ""
 
@@ -718,39 +835,43 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         # NOTE: res.info will be set in the fixup phase.
         return res
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, OVERLOADED_FUNC_DEF)
-        write_int(data, len(self.items))
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.items))
         for item in self.items:
             item.write(data)
         mypy.types.write_type_opt(data, self.type)
         write_str(data, self._fullname)
         if self.impl is None:
-            write_bool(data, False)
+            write_tag(data, LITERAL_NONE)
         else:
-            write_bool(data, True)
             self.impl.write(data)
-        write_flags(data, self, FUNCBASE_FLAGS)
+        write_flags(data, [self.is_property, self.is_class, self.is_static, self.is_final])
         write_str_opt(data, self.deprecated)
         write_int_opt(data, self.setter_index)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> OverloadedFuncDef:
-        res = OverloadedFuncDef([read_overload_part(data) for _ in range(read_int(data))])
+    def read(cls, data: ReadBuffer) -> OverloadedFuncDef:
+        assert read_tag(data) == LIST_GEN
+        res = OverloadedFuncDef([read_overload_part(data) for _ in range(read_int_bare(data))])
         typ = mypy.types.read_type_opt(data)
         if typ is not None:
             assert isinstance(typ, mypy.types.ProperType)
             res.type = typ
         res._fullname = read_str(data)
-        if read_bool(data):
-            res.impl = read_overload_part(data)
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            res.impl = read_overload_part(data, tag)
             # set line for empty overload items, as not set in __init__
             if len(res.items) > 0:
                 res.set_line(res.impl.line)
-        read_flags(data, res, FUNCBASE_FLAGS)
+        res.is_property, res.is_class, res.is_static, res.is_final = read_flags(data, num_flags=4)
         res.deprecated = read_str_opt(data)
         res.setter_index = read_int_opt(data)
         # NOTE: res.info will be set in the fixup phase.
+        assert read_tag(data) == END_TAG
         return res
 
     def is_dynamic(self) -> bool:
@@ -915,7 +1036,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
-        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -954,8 +1074,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
-        # Keep track of functions where self attributes are defined.
-        self.has_self_attr_def = False
         # This is needed because for positional-only arguments the name is set to None,
         # but we sometimes still want to show it in error messages.
         if arguments:
@@ -1029,37 +1147,73 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         del ret.min_args
         return ret
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, FUNC_DEF)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
         write_str(data, self._fullname)
-        write_flags(data, self, FUNCDEF_FLAGS)
+        write_flags(
+            data,
+            [
+                self.is_property,
+                self.is_class,
+                self.is_static,
+                self.is_final,
+                self.is_overload,
+                self.is_generator,
+                self.is_coroutine,
+                self.is_async_generator,
+                self.is_awaitable_coroutine,
+                self.is_decorated,
+                self.is_conditional,
+                self.is_trivial_body,
+                self.is_trivial_self,
+                self.is_mypy_only,
+            ],
+        )
         write_str_opt_list(data, self.arg_names)
         write_int_list(data, [int(ak.value) for ak in self.arg_kinds])
         write_int(data, self.abstract_status)
         if self.dataclass_transform_spec is None:
-            write_bool(data, False)
+            write_tag(data, LITERAL_NONE)
         else:
-            write_bool(data, True)
             self.dataclass_transform_spec.write(data)
         write_str_opt(data, self.deprecated)
         write_str_opt(data, self.original_first_arg)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> FuncDef:
+    def read(cls, data: ReadBuffer) -> FuncDef:
         name = read_str(data)
         typ: mypy.types.FunctionLike | None = None
-        if read_bool(data):
-            typ = mypy.types.read_function_like(data)
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            typ = mypy.types.read_function_like(data, tag)
         ret = FuncDef(name, [], Block([]), typ)
         ret._fullname = read_str(data)
-        read_flags(data, ret, FUNCDEF_FLAGS)
+        (
+            ret.is_property,
+            ret.is_class,
+            ret.is_static,
+            ret.is_final,
+            ret.is_overload,
+            ret.is_generator,
+            ret.is_coroutine,
+            ret.is_async_generator,
+            ret.is_awaitable_coroutine,
+            ret.is_decorated,
+            ret.is_conditional,
+            ret.is_trivial_body,
+            ret.is_trivial_self,
+            ret.is_mypy_only,
+        ) = read_flags(data, num_flags=14)
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = read_str_opt_list(data)
         ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
         ret.abstract_status = read_int(data)
-        if read_bool(data):
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == DT_SPEC
             ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
         ret.deprecated = read_str_opt(data)
         ret.original_first_arg = read_str_opt(data)
@@ -1067,6 +1221,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         del ret.arguments
         del ret.max_pos
         del ret.min_args
+        assert read_tag(data) == END_TAG
         return ret
 
 
@@ -1141,20 +1296,22 @@ class Decorator(SymbolNode, Statement):
         dec.is_overload = data["is_overload"]
         return dec
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, DECORATOR)
         self.func.write(data)
         self.var.write(data)
         write_bool(data, self.is_overload)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> Decorator:
+    def read(cls, data: ReadBuffer) -> Decorator:
         assert read_tag(data) == FUNC_DEF
         func = FuncDef.read(data)
         assert read_tag(data) == VAR
         var = Var.read(data)
         dec = Decorator(func, [], var)
         dec.is_overload = read_bool(data)
+        assert read_tag(data) == END_TAG
         return dec
 
     def is_dynamic(self) -> bool:
@@ -1220,6 +1377,7 @@ class Var(SymbolNode):
         "has_explicit_value",
         "allow_incompatible_override",
         "invalid_partial_type",
+        "is_argument",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1240,7 +1398,8 @@ class Var(SymbolNode):
         self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
-        # Is this initialized explicitly to a non-None value in class body?
+        # Is this variable declared in class body? The name is confusing, but it
+        # is a very old attribute, and changing will break some plugins.
         self.is_initialized_in_class = False
         self.is_staticmethod = False
         self.is_classmethod = False
@@ -1279,6 +1438,8 @@ class Var(SymbolNode):
         # If True, this means we didn't manage to infer full type and fall back to
         # something like list[Any]. We may decide to not use such types as context.
         self.invalid_partial_type = False
+        # Is it a variable symbol for a function argument?
+        self.is_argument = False
 
     @property
     def name(self) -> str:
@@ -1333,33 +1494,78 @@ class Var(SymbolNode):
         v.final_value = data.get("final_value")
         return v
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, VAR)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
         mypy.types.write_type_opt(data, self.setter_type)
         write_str(data, self._fullname)
-        write_flags(data, self, VAR_FLAGS)
+        write_flags(
+            data,
+            [
+                self.is_initialized_in_class,
+                self.is_staticmethod,
+                self.is_classmethod,
+                self.is_property,
+                self.is_settable_property,
+                self.is_suppressed_import,
+                self.is_classvar,
+                self.is_abstract_var,
+                self.is_final,
+                self.is_index_var,
+                self.final_unset_in_class,
+                self.final_set_in_init,
+                self.explicit_self_type,
+                self.is_ready,
+                self.is_inferred,
+                self.invalid_partial_type,
+                self.from_module_getattr,
+                self.has_explicit_value,
+                self.allow_incompatible_override,
+            ],
+        )
         write_literal(data, self.final_value)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> Var:
+    def read(cls, data: ReadBuffer) -> Var:
         name = read_str(data)
         typ = mypy.types.read_type_opt(data)
         v = Var(name, typ)
         setter_type: mypy.types.CallableType | None = None
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.CALLABLE_TYPE
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == mypy.types.CALLABLE_TYPE
             setter_type = mypy.types.CallableType.read(data)
         v.setter_type = setter_type
-        v.is_ready = False  # Override True default set in __init__
         v._fullname = read_str(data)
-        read_flags(data, v, VAR_FLAGS)
-        marker = read_tag(data)
-        if marker == LITERAL_COMPLEX:
-            v.final_value = complex(read_float(data), read_float(data))
-        elif marker != LITERAL_NONE:
-            v.final_value = read_literal(data, marker)
+        (
+            v.is_initialized_in_class,
+            v.is_staticmethod,
+            v.is_classmethod,
+            v.is_property,
+            v.is_settable_property,
+            v.is_suppressed_import,
+            v.is_classvar,
+            v.is_abstract_var,
+            v.is_final,
+            v.is_index_var,
+            v.final_unset_in_class,
+            v.final_set_in_init,
+            v.explicit_self_type,
+            v.is_ready,
+            v.is_inferred,
+            v.invalid_partial_type,
+            v.from_module_getattr,
+            v.has_explicit_value,
+            v.allow_incompatible_override,
+        ) = read_flags(data, num_flags=19)
+        tag = read_tag(data)
+        if tag == LITERAL_COMPLEX:
+            v.final_value = complex(read_float_bare(data), read_float_bare(data))
+        elif tag != LITERAL_NONE:
+            v.final_value = read_literal(data, tag)
+        assert read_tag(data) == END_TAG
         return v
 
 
@@ -1472,20 +1678,18 @@ class ClassDef(Statement):
         res.fullname = data["fullname"]
         return res
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, CLASS_DEF)
         write_str(data, self.name)
         mypy.types.write_type_list(data, self.type_vars)
         write_str(data, self.fullname)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> ClassDef:
-        res = ClassDef(
-            read_str(data),
-            Block([]),
-            [mypy.types.read_type_var_like(data) for _ in range(read_int(data))],
-        )
+    def read(cls, data: ReadBuffer) -> ClassDef:
+        res = ClassDef(read_str(data), Block([]), mypy.types.read_type_var_likes(data))
         res.fullname = read_str(data)
+        assert read_tag(data) == END_TAG
         return res
 
 
@@ -1792,19 +1996,26 @@ class PassStmt(Statement):
 
 
 class IfStmt(Statement):
-    __slots__ = ("expr", "body", "else_body")
+    __slots__ = ("expr", "body", "else_body", "unreachable_else")
 
-    __match_args__ = ("expr", "body", "else_body")
+    __match_args__ = ("expr", "body", "else_body", "unreachable_else")
 
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
+    # (If there is actually no else statement, semantic analysis may nevertheless create an
+    # empty else block and mark it permanently as unreachable to tell that the control flow
+    # must always go through the if block.)
+    unreachable_else: bool
+    # (Type checking may modify this flag repeatedly to indicate whether an actually available
+    # or unavailable else block is unreachable, considering the current type information.)
 
     def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
         self.else_body = else_body
+        self.unreachable_else = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
@@ -1980,15 +2191,20 @@ class IntExpr(Expression):
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value",)
+    __slots__ = ("value", "as_type")
 
     __match_args__ = ("value",)
 
     value: str  # '' by default
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -2289,7 +2505,7 @@ class IndexExpr(Expression):
     Also wraps type application such as List[int] as a special form.
     """
 
-    __slots__ = ("base", "index", "method_type", "analyzed")
+    __slots__ = ("base", "index", "method_type", "analyzed", "as_type")
 
     __match_args__ = ("base", "index")
 
@@ -2300,6 +2516,10 @@ class IndexExpr(Expression):
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed: TypeApplication | TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -2307,6 +2527,7 @@ class IndexExpr(Expression):
         self.index = index
         self.method_type = None
         self.analyzed = None
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -2364,6 +2585,7 @@ class OpExpr(Expression):
         "right_always",
         "right_unreachable",
         "analyzed",
+        "as_type",
     )
 
     __match_args__ = ("left", "op", "right")
@@ -2379,6 +2601,10 @@ class OpExpr(Expression):
     right_unreachable: bool
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(
         self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
@@ -2391,9 +2617,17 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
+
+
+# Expression subtypes that could represent the root of a valid type expression.
+#
+# May have an "as_type" attribute to hold the type for a type expression parsed
+# during the SemanticAnalyzer pass.
+MaybeTypeExpression = (IndexExpr, MemberExpr, NameExpr, OpExpr, StrExpr)
 
 
 class ComparisonExpr(Expression):
@@ -2471,6 +2705,23 @@ class CastExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
+
+
+class TypeFormExpr(Expression):
+    """TypeForm(type) expression."""
+
+    __slots__ = ("type",)
+
+    __match_args__ = ("type",)
+
+    type: mypy.types.Type
+
+    def __init__(self, typ: mypy.types.Type) -> None:
+        super().__init__()
+        self.type = typ
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_type_form_expr(self)
 
 
 class AssertTypeExpr(Expression):
@@ -2597,6 +2848,29 @@ class DictExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
+
+
+class TemplateStrExpr(Expression):
+    """Template string expression t'...'."""
+
+    __slots__ = ("items",)
+    __match_args__ = ("items",)
+
+    # Each item is either:
+    #   - a StrExpr (literal string segment), or
+    #   - a tuple (value_expr, source_text, conversion, format_spec_expr)
+    #     where conversion is str | None ("r", "s", "a", or None)
+    #     and format_spec_expr is Expression | None
+    items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+
+    def __init__(
+        self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    ) -> None:
+        super().__init__()
+        self.items = items
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_template_str_expr(self)
 
 
 class TupleExpr(Expression):
@@ -2905,7 +3179,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_VAR_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
@@ -2913,10 +3187,11 @@ class TypeVarExpr(TypeVarLikeExpr):
         self.upper_bound.write(data)
         self.default.write(data)
         write_int(data, self.variance)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeVarExpr:
-        return TypeVarExpr(
+    def read(cls, data: ReadBuffer) -> TypeVarExpr:
+        ret = TypeVarExpr(
             read_str(data),
             read_str(data),
             mypy.types.read_type_list(data),
@@ -2924,6 +3199,8 @@ class TypeVarExpr(TypeVarLikeExpr):
             mypy.types.read_type(data),
             read_int(data),
         )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class ParamSpecExpr(TypeVarLikeExpr):
@@ -2955,23 +3232,26 @@ class ParamSpecExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, PARAM_SPEC_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
         self.upper_bound.write(data)
         self.default.write(data)
         write_int(data, self.variance)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> ParamSpecExpr:
-        return ParamSpecExpr(
+    def read(cls, data: ReadBuffer) -> ParamSpecExpr:
+        ret = ParamSpecExpr(
             read_str(data),
             read_str(data),
             mypy.types.read_type(data),
             mypy.types.read_type(data),
             read_int(data),
         )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class TypeVarTupleExpr(TypeVarLikeExpr):
@@ -3023,7 +3303,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_VAR_TUPLE_EXPR)
         self.tuple_fallback.write(data)
         write_str(data, self._name)
@@ -3031,12 +3311,13 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         self.upper_bound.write(data)
         self.default.write(data)
         write_int(data, self.variance)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeVarTupleExpr:
+    def read(cls, data: ReadBuffer) -> TypeVarTupleExpr:
         assert read_tag(data) == mypy.types.INSTANCE
         fallback = mypy.types.Instance.read(data)
-        return TypeVarTupleExpr(
+        ret = TypeVarTupleExpr(
             read_str(data),
             read_str(data),
             mypy.types.read_type(data),
@@ -3044,6 +3325,8 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             mypy.types.read_type(data),
             read_int(data),
         )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class TypeAliasExpr(Expression):
@@ -3652,12 +3935,18 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
-                    return node
-                elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
-                    return node
-                else:
-                    return None
+            elif possible_redefinitions := sorted(
+                [n for n in cls.names.keys() if n.startswith(f"{name}-redefinition")]
+            ):
+                node = cls.names[possible_redefinitions[-1]].node
+            else:
+                continue
+            if isinstance(node, SYMBOL_FUNCBASE_TYPES):
+                return node
+            elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
+                return node
+            else:
+                return None
         return None
 
     def calculate_metaclass_type(self) -> mypy.types.Instance | None:
@@ -3915,7 +4204,7 @@ class TypeInfo(SymbolNode):
         ti.deprecated = data.get("deprecated")
         return ti
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_INFO)
         self.names.write(data, self.fullname)
         self.defn.write(data)
@@ -3933,24 +4222,38 @@ class TypeInfo(SymbolNode):
         mypy.types.write_type_opt(data, self.metaclass_type)
         mypy.types.write_type_opt(data, self.tuple_type)
         mypy.types.write_type_opt(data, self.typeddict_type)
-        write_flags(data, self, TypeInfo.FLAGS)
-        write_str(data, json.dumps(self.metadata))
+        write_flags(
+            data,
+            [
+                self.is_abstract,
+                self.is_enum,
+                self.fallback_to_any,
+                self.meta_fallback_to_any,
+                self.is_named_tuple,
+                self.is_newtype,
+                self.is_protocol,
+                self.runtime_protocol,
+                self.is_final,
+                self.is_disjoint_base,
+                self.is_intersection,
+            ],
+        )
+        write_json(data, self.metadata)
         if self.slots is None:
-            write_bool(data, False)
+            write_tag(data, LITERAL_NONE)
         else:
-            write_bool(data, True)
             write_str_list(data, sorted(self.slots))
         write_str_list(data, self.deletable_attributes)
         mypy.types.write_type_opt(data, self.self_type)
         if self.dataclass_transform_spec is None:
-            write_bool(data, False)
+            write_tag(data, LITERAL_NONE)
         else:
-            write_bool(data, True)
             self.dataclass_transform_spec.write(data)
         write_str_opt(data, self.deprecated)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeInfo:
+    def read(cls, data: ReadBuffer) -> TypeInfo:
         names = SymbolTable.read(data)
         assert read_tag(data) == CLASS_DEF
         defn = ClassDef.read(data)
@@ -3963,7 +4266,8 @@ class TypeInfo(SymbolNode):
         ti.type_vars = read_str_list(data)
         ti.has_param_spec_type = read_bool(data)
         ti.bases = []
-        for _ in range(read_int(data)):
+        assert read_tag(data) == LIST_GEN
+        for _ in range(read_int_bare(data)):
             assert read_tag(data) == mypy.types.INSTANCE
             ti.bases.append(mypy.types.Instance.read(data))
         # NOTE: ti.mro will be set in the fixup phase based on these
@@ -3978,34 +4282,49 @@ class TypeInfo(SymbolNode):
         # rechecked, it can tell that the mro has changed.
         ti._mro_refs = read_str_list(data)
         ti._promote = cast(list[mypy.types.ProperType], mypy.types.read_type_list(data))
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.INSTANCE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.INSTANCE
             ti.alt_promote = mypy.types.Instance.read(data)
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.INSTANCE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.INSTANCE
             ti.declared_metaclass = mypy.types.Instance.read(data)
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.INSTANCE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.INSTANCE
             ti.metaclass_type = mypy.types.Instance.read(data)
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.TUPLE_TYPE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.TUPLE_TYPE
             ti.tuple_type = mypy.types.TupleType.read(data)
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.TYPED_DICT_TYPE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.TYPED_DICT_TYPE
             ti.typeddict_type = mypy.types.TypedDictType.read(data)
-        read_flags(data, ti, TypeInfo.FLAGS)
-        metadata = read_str(data)
-        if metadata != "{}":
-            ti.metadata = json.loads(metadata)
-        if read_bool(data):
-            ti.slots = set(read_str_list(data))
+        (
+            ti.is_abstract,
+            ti.is_enum,
+            ti.fallback_to_any,
+            ti.meta_fallback_to_any,
+            ti.is_named_tuple,
+            ti.is_newtype,
+            ti.is_protocol,
+            ti.runtime_protocol,
+            ti.is_final,
+            ti.is_disjoint_base,
+            ti.is_intersection,
+        ) = read_flags(data, num_flags=11)
+        ti.metadata = read_json(data)
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == LIST_STR
+            ti.slots = {read_str_bare(data) for _ in range(read_int_bare(data))}
         ti.deletable_attributes = read_str_list(data)
-        if read_bool(data):
-            assert read_tag(data) == mypy.types.TYPE_VAR_TYPE
+        if (tag := read_tag(data)) != LITERAL_NONE:
+            assert tag == mypy.types.TYPE_VAR_TYPE
             ti.self_type = mypy.types.TypeVarType.read(data)
-        if read_bool(data):
+        tag = read_tag(data)
+        if tag != LITERAL_NONE:
+            assert tag == DT_SPEC
             ti.dataclass_transform_spec = DataclassTransformSpec.read(data)
         ti.deprecated = read_str_opt(data)
+        assert read_tag(data) == END_TAG
         return ti
 
 
@@ -4281,7 +4600,7 @@ class TypeAlias(SymbolNode):
             python_3_12_type_alias=python_3_12_type_alias,
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_ALIAS)
         write_str(data, self._fullname)
         write_str(data, self.module)
@@ -4290,14 +4609,15 @@ class TypeAlias(SymbolNode):
         write_bool(data, self.no_args)
         write_bool(data, self.normalized)
         write_bool(data, self.python_3_12_type_alias)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeAlias:
+    def read(cls, data: ReadBuffer) -> TypeAlias:
         fullname = read_str(data)
         module = read_str(data)
         target = mypy.types.read_type(data)
-        alias_tvars = [mypy.types.read_type_var_like(data) for _ in range(read_int(data))]
-        return TypeAlias(
+        alias_tvars = mypy.types.read_type_var_likes(data)
+        ret = TypeAlias(
             target,
             fullname,
             module,
@@ -4308,6 +4628,8 @@ class TypeAlias(SymbolNode):
             normalized=read_bool(data),
             python_3_12_type_alias=read_bool(data),
         )
+        assert read_tag(data) == END_TAG
+        return ret
 
 
 class PlaceholderNode(SymbolNode):
@@ -4567,7 +4889,8 @@ class SymbolTableNode:
             stnode.plugin_generated = data["plugin_generated"]
         return stnode
 
-    def write(self, data: Buffer, prefix: str, name: str) -> None:
+    def write(self, data: WriteBuffer, prefix: str, name: str) -> None:
+        write_tag(data, SYMBOL_TABLE_NODE)
         write_int(data, self.kind)
         write_bool(data, self.module_hidden)
         write_bool(data, self.module_public)
@@ -4595,9 +4918,11 @@ class SymbolTableNode:
         if cross_ref is None:
             assert self.node is not None
             self.node.write(data)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolTableNode:
+    def read(cls, data: ReadBuffer) -> SymbolTableNode:
+        assert read_tag(data) == SYMBOL_TABLE_NODE
         sym = SymbolTableNode(read_int(data), None)
         sym.module_hidden = read_bool(data)
         sym.module_public = read_bool(data)
@@ -4608,6 +4933,7 @@ class SymbolTableNode:
             sym.node = read_symbol(data)
         else:
             sym.cross_ref = cross_ref
+        assert read_tag(data) == END_TAG
         return sym
 
 
@@ -4661,7 +4987,7 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 st[key] = SymbolTableNode.deserialize(value)
         return st
 
-    def write(self, data: Buffer, fullname: str) -> None:
+    def write(self, data: WriteBuffer, fullname: str) -> None:
         size = 0
         for key, value in self.items():
             # Skip __builtins__: it's a reference to the builtins
@@ -4671,18 +4997,23 @@ class SymbolTable(dict[str, SymbolTableNode]):
             if key == "__builtins__" or value.no_serialize:
                 continue
             size += 1
-        write_int(data, size)
+        # We intentionally tag SymbolTable as a simple dictionary str -> SymbolTableNode.
+        write_tag(data, DICT_STR_GEN)
+        write_int_bare(data, size)
         for key in sorted(self):
             value = self[key]
             if key == "__builtins__" or value.no_serialize:
                 continue
-            write_str(data, key)
+            write_str_bare(data, key)
             value.write(data, fullname, key)
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolTable:
-        size = read_int(data)
-        return SymbolTable([(read_str(data), SymbolTableNode.read(data)) for _ in range(size)])
+    def read(cls, data: ReadBuffer) -> SymbolTable:
+        assert read_tag(data) == DICT_STR_GEN
+        size = read_int_bare(data)
+        return SymbolTable(
+            [(read_str_bare(data), SymbolTableNode.read(data)) for _ in range(size)]
+        )
 
 
 class DataclassTransformSpec:
@@ -4734,22 +5065,46 @@ class DataclassTransformSpec:
             field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
+        write_tag(data, DT_SPEC)
         write_bool(data, self.eq_default)
         write_bool(data, self.order_default)
         write_bool(data, self.kw_only_default)
         write_bool(data, self.frozen_default)
         write_str_list(data, self.field_specifiers)
+        write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> DataclassTransformSpec:
-        return DataclassTransformSpec(
+    def read(cls, data: ReadBuffer) -> DataclassTransformSpec:
+        ret = DataclassTransformSpec(
             eq_default=read_bool(data),
             order_default=read_bool(data),
             kw_only_default=read_bool(data),
             frozen_default=read_bool(data),
             field_specifiers=tuple(read_str_list(data)),
         )
+        assert read_tag(data) == END_TAG
+        return ret
+
+
+@trait
+class SplittingVisitor:
+    # If True, process function definitions. If False, don't. This is used
+    # for processing module top levels in fine-grained incremental mode.
+    recurse_into_functions: bool
+
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
 
 
 def get_flags(node: Node, names: list[str]) -> list[str]:
@@ -4761,15 +5116,18 @@ def set_flags(node: Node, flags: list[str]) -> None:
         setattr(node, name, True)
 
 
-def write_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
-    for flag in flags:
-        write_bool(data, getattr(node, flag))
+def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
+    assert len(flags) <= 26, "This many flags not supported yet"
+    packed = 0
+    for i, flag in enumerate(flags):
+        if flag:
+            packed |= 1 << i
+    write_int(data, packed)
 
 
-def read_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
-    for flag in flags:
-        if read_bool(data):
-            setattr(node, flag, True)
+def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
+    packed = read_int(data)
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -4835,7 +5193,7 @@ def check_arg_kinds(
             is_kw_arg = True
 
 
-def check_arg_names(
+def check_param_names(
     names: Sequence[str | None],
     nodes: list[T],
     fail: Callable[[str, T], None],
@@ -4844,7 +5202,7 @@ def check_arg_names(
     seen_names: set[str | None] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail(f'Duplicate argument "{name}" in {description}', node)
+            fail(f'Duplicate parameter "{name}" in {description}', node)
             break
         seen_names.add(name)
 
@@ -4889,45 +5247,119 @@ def local_definitions(
                 yield from local_definitions(node.names, fullname, node)
 
 
-MYPY_FILE: Final[Tag] = 0
-OVERLOADED_FUNC_DEF: Final[Tag] = 1
-FUNC_DEF: Final[Tag] = 2
-DECORATOR: Final[Tag] = 3
-VAR: Final[Tag] = 4
-TYPE_VAR_EXPR: Final[Tag] = 5
-PARAM_SPEC_EXPR: Final[Tag] = 6
-TYPE_VAR_TUPLE_EXPR: Final[Tag] = 7
-TYPE_INFO: Final[Tag] = 8
-TYPE_ALIAS: Final[Tag] = 9
-CLASS_DEF: Final[Tag] = 10
+# See docstring for mypy/cache.py for reserved tag ranges.
+MYPY_FILE: Final[Tag] = 50
+OVERLOADED_FUNC_DEF: Final[Tag] = 51
+FUNC_DEF: Final[Tag] = 52
+DECORATOR: Final[Tag] = 53
+VAR: Final[Tag] = 54
+TYPE_VAR_EXPR: Final[Tag] = 55
+PARAM_SPEC_EXPR: Final[Tag] = 56
+TYPE_VAR_TUPLE_EXPR: Final[Tag] = 57
+TYPE_INFO: Final[Tag] = 58
+TYPE_ALIAS: Final[Tag] = 59
+CLASS_DEF: Final[Tag] = 60
+SYMBOL_TABLE_NODE: Final[Tag] = 61
+
+EXPR_STMT: Final[Tag] = 160
+CALL_EXPR: Final[Tag] = 161
+NAME_EXPR: Final[Tag] = 162
+STR_EXPR: Final[Tag] = 163
+IMPORT: Final[Tag] = 164
+MEMBER_EXPR: Final[Tag] = 165
+OP_EXPR: Final[Tag] = 166
+INT_EXPR: Final[Tag] = 167
+IF_STMT: Final[Tag] = 168
+ASSIGNMENT_STMT: Final[Tag] = 169
+TUPLE_EXPR: Final[Tag] = 170
+BLOCK: Final[Tag] = 171
+INDEX_EXPR: Final[Tag] = 172
+LIST_EXPR: Final[Tag] = 173
+SET_EXPR: Final[Tag] = 174
+RETURN_STMT: Final[Tag] = 175
+WHILE_STMT: Final[Tag] = 176
+COMPARISON_EXPR: Final[Tag] = 177
+BOOL_OP_EXPR: Final[Tag] = 178
+FUNC_DEF_STMT: Final[Tag] = 179
+PASS_STMT: Final[Tag] = 180
+FLOAT_EXPR: Final[Tag] = 181
+UNARY_EXPR: Final[Tag] = 182
+DICT_EXPR: Final[Tag] = 183
+COMPLEX_EXPR: Final[Tag] = 184
+SLICE_EXPR: Final[Tag] = 185
+TEMP_NODE: Final[Tag] = 186
+RAISE_STMT: Final[Tag] = 187
+BREAK_STMT: Final[Tag] = 188
+CONTINUE_STMT: Final[Tag] = 189
+GENERATOR_EXPR: Final[Tag] = 190
+YIELD_EXPR: Final[Tag] = 191
+YIELD_FROM_EXPR: Final[Tag] = 192
+LIST_COMPREHENSION: Final[Tag] = 193
+SET_COMPREHENSION: Final[Tag] = 194
+DICT_COMPREHENSION: Final[Tag] = 195
+IMPORT_FROM: Final[Tag] = 196
+ASSERT_STMT: Final[Tag] = 197
+FOR_STMT: Final[Tag] = 198
+WITH_STMT: Final[Tag] = 199
+OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
+TRY_STMT: Final[Tag] = 201
+ELLIPSIS_EXPR: Final[Tag] = 202
+CONDITIONAL_EXPR: Final[Tag] = 203
+DEL_STMT: Final[Tag] = 204
+FSTRING_EXPR: Final[Tag] = 205
+FSTRING_INTERPOLATION: Final[Tag] = 206
+LAMBDA_EXPR: Final[Tag] = 207
+NAMED_EXPR: Final[Tag] = 208
+STAR_EXPR: Final[Tag] = 209
+BYTES_EXPR: Final[Tag] = 210
+GLOBAL_DECL: Final[Tag] = 211
+NONLOCAL_DECL: Final[Tag] = 212
+AWAIT_EXPR: Final[Tag] = 213
+BIG_INT_EXPR: Final[Tag] = 214
+IMPORT_ALL: Final[Tag] = 215
+MATCH_STMT: Final[Tag] = 216
+AS_PATTERN: Final[Tag] = 217
+OR_PATTERN: Final[Tag] = 218
+VALUE_PATTERN: Final[Tag] = 219
+SINGLETON_PATTERN: Final[Tag] = 220
+SEQUENCE_PATTERN: Final[Tag] = 221
+STARRED_PATTERN: Final[Tag] = 222
+MAPPING_PATTERN: Final[Tag] = 223
+CLASS_PATTERN: Final[Tag] = 224
+TYPE_ALIAS_STMT: Final[Tag] = 225
+IMPORT_METADATA: Final[Tag] = 226
+IMPORTFROM_METADATA: Final[Tag] = 227
+IMPORTALL_METADATA: Final[Tag] = 228
+TSTRING_EXPR: Final[Tag] = 229
 
 
-def read_symbol(data: Buffer) -> mypy.nodes.SymbolNode:
+def read_symbol(data: ReadBuffer) -> SymbolNode:
     tag = read_tag(data)
     # The branches here are ordered manually by type "popularity".
     if tag == VAR:
-        return mypy.nodes.Var.read(data)
+        return Var.read(data)
     if tag == FUNC_DEF:
-        return mypy.nodes.FuncDef.read(data)
+        return FuncDef.read(data)
     if tag == DECORATOR:
-        return mypy.nodes.Decorator.read(data)
+        return Decorator.read(data)
     if tag == TYPE_INFO:
-        return mypy.nodes.TypeInfo.read(data)
+        return TypeInfo.read(data)
     if tag == OVERLOADED_FUNC_DEF:
-        return mypy.nodes.OverloadedFuncDef.read(data)
+        return OverloadedFuncDef.read(data)
     if tag == TYPE_VAR_EXPR:
-        return mypy.nodes.TypeVarExpr.read(data)
+        return TypeVarExpr.read(data)
     if tag == TYPE_ALIAS:
-        return mypy.nodes.TypeAlias.read(data)
+        return TypeAlias.read(data)
     if tag == PARAM_SPEC_EXPR:
-        return mypy.nodes.ParamSpecExpr.read(data)
+        return ParamSpecExpr.read(data)
     if tag == TYPE_VAR_TUPLE_EXPR:
-        return mypy.nodes.TypeVarTupleExpr.read(data)
+        return TypeVarTupleExpr.read(data)
     assert False, f"Unknown symbol tag {tag}"
 
 
-def read_overload_part(data: Buffer) -> OverloadPart:
-    tag = read_tag(data)
+def read_overload_part(data: ReadBuffer, tag: Tag | None = None) -> OverloadPart:
+    if tag is None:
+        tag = read_tag(data)
     if tag == DECORATOR:
         return Decorator.read(data)
     if tag == FUNC_DEF:
