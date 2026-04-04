@@ -433,6 +433,7 @@ def add_attribute_to_class(
     return node
 
 
+# We keep the unused `api` parameter, to avoid breaking 3rd party dataclass-like plugins.
 def deserialize_and_fixup_type(data: str | JsonDict, api: SemanticAnalyzerPluginInterface) -> Type:
     typ = deserialize_type(data)
     assert fixer_state.node_fixer is not None

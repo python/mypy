@@ -2822,6 +2822,7 @@ class State:
         assert fixer_state.node_fixer is not None
         fixer_state.node_fixer.visit_symbol_table(self.tree.names)
         type_fixer = fixer_state.node_fixer.type_fixer
+        # Eagerly fix shared instances, before they are used by named_type() calls.
         if instance_cache.str_type is not None:
             instance_cache.str_type.accept(type_fixer)
         if instance_cache.function_type is not None:

@@ -55,7 +55,7 @@ class NodeFixer(NodeVisitor[None]):
         # incremental cache load (since there may be cross-refs into deleted
         # modules)
         self.allow_missing = allow_missing
-        self.type_fixer = TypeFixer(modules, allow_missing)
+        self.type_fixer = TypeFixer(self.modules, allow_missing)
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
     def visit_type_info(self, info: TypeInfo) -> None:
@@ -123,17 +123,17 @@ class NodeFixer(NodeVisitor[None]):
                     value.cross_ref = None
                     value.unfixed = False
                     value._node = self.modules[cross_ref]
+                # TODO: this should not be needed, looks like a daemon bug.
                 elif self.allow_missing:
-                    # TODO: this should not be needed, looks like a daemon bug.
                     self.resolve_cross_ref(value)
             # Look at private attribute to avoid triggering fixup eagerly.
             elif isinstance(value._node, TypeInfo):
-                # TypeInfo has no accept().
                 self.visit_type_info(value._node)
             else:
                 value.stored_info = self.current_info
 
     def resolve_cross_ref(self, value: SymbolTableNode) -> None:
+        """Replace cross-reference with an actual referred node."""
         assert value.cross_ref is not None
         cross_ref = value.cross_ref
         value.cross_ref = None
