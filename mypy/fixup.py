@@ -49,13 +49,13 @@ from mypy.visitor import NodeVisitor
 class NodeFixer(NodeVisitor[None]):
     current_info: TypeInfo | None = None
 
-    def __init__(self) -> None:
-        self.modules: dict[str, MypyFile] = {}
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
+        self.modules = modules
         # N.B: we do an allow_missing fixup when fixing up a fine-grained
         # incremental cache load (since there may be cross-refs into deleted
         # modules)
-        self.allow_missing = False
-        self.type_fixer = TypeFixer()
+        self.allow_missing = allow_missing
+        self.type_fixer = TypeFixer(modules, allow_missing)
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
     def visit_type_info(self, info: TypeInfo) -> None:
@@ -225,9 +225,9 @@ class NodeFixer(NodeVisitor[None]):
 
 
 class TypeFixer(TypeVisitor[None]):
-    def __init__(self) -> None:
-        self.modules: dict[str, MypyFile] = {}
-        self.allow_missing = False
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
+        self.modules = modules
+        self.allow_missing = allow_missing
 
     def visit_instance(self, inst: Instance) -> None:
         type_ref = inst.type_ref
@@ -434,6 +434,3 @@ def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
 def missing_alias() -> TypeAlias:
     suggestion = _SUGGESTION.format("alias")
     return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, "<missing>", line=-1, column=-1)
-
-
-node_fixer: Final = NodeFixer()

@@ -143,7 +143,8 @@ if TYPE_CHECKING:
 
 from mypy import errorcodes as codes
 from mypy.config_parser import get_config_module_names, parse_mypy_comments
-from mypy.fixup import node_fixer
+from mypy.fixer_state import fixer_state
+from mypy.fixup import NodeFixer
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
 from mypy.known_modules import get_known_modules, reset_known_modules_cache
@@ -813,11 +814,9 @@ class BuildManager:
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
         # Share same modules dictionary with the global fixer state.
-        node_fixer.modules = node_fixer.type_fixer.modules = self.modules
         # We need to set allow_missing when doing a fine-grained cache
         # load because we need to gracefully handle missing modules.
-        allow_missing = self.options.use_fine_grained_cache
-        node_fixer.allow_missing = node_fixer.type_fixer.allow_missing = allow_missing
+        fixer_state.node_fixer = NodeFixer(self.modules, self.options.use_fine_grained_cache)
         self.import_map: dict[str, set[str]] = {}
         self.missing_modules: dict[str, int] = {}
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
@@ -2820,8 +2819,9 @@ class State:
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # Do initial lightweight pass fixing TypeInfos and module cross-references.
-        node_fixer.visit_symbol_table(self.tree.names)
-        type_fixer = node_fixer.type_fixer
+        assert fixer_state.node_fixer is not None
+        fixer_state.node_fixer.visit_symbol_table(self.tree.names)
+        type_fixer = fixer_state.node_fixer.type_fixer
         if instance_cache.str_type is not None:
             instance_cache.str_type.accept(type_fixer)
         if instance_cache.function_type is not None:
