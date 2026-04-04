@@ -4768,13 +4768,15 @@ class SymbolTableNode:
 
     __slots__ = (
         "kind",
-        "node",
+        "_node",
         "module_public",
         "module_hidden",
         "cross_ref",
         "implicit",
         "plugin_generated",
         "no_serialize",
+        "unfixed",
+        "stored_info",
     )
 
     def __init__(
@@ -4789,13 +4791,15 @@ class SymbolTableNode:
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
-        self.node = node
+        self._node = node
         self.module_public = module_public
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref: str | None = None
         self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
+        self.unfixed = False
+        self.stored_info: TypeInfo | None = None
 
     @property
     def fullname(self) -> str | None:
@@ -4814,11 +4818,29 @@ class SymbolTableNode:
         else:
             return None
 
+    @property
+    def node(self) -> SymbolNode | None:
+        # Late import because of a circular dependency.
+        from mypy.fixup import node_fixer
+
+        if self.unfixed:
+            if self.cross_ref is not None:
+                node_fixer.resolve_cross_ref(self)
+            else:
+                node = self._node
+                assert node is not None
+                if self.stored_info is not None:
+                    set_info(node, self.stored_info)
+                node.accept(node_fixer)
+                self.unfixed = False
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
-            self.kind, self.node, self.module_public, self.implicit, self.module_hidden
+            self.kind, self._node, self.module_public, self.implicit, self.module_hidden
         )
         new.cross_ref = self.cross_ref
+        new.unfixed = self.unfixed
         return new
 
     def __str__(self) -> str:
@@ -4875,10 +4897,13 @@ class SymbolTableNode:
             # This will be fixed up later.
             stnode = SymbolTableNode(kind, None)
             stnode.cross_ref = data["cross_ref"]
+            stnode.unfixed = True
         else:
             assert "node" in data, data
             node = SymbolNode.deserialize(data["node"])
             stnode = SymbolTableNode(kind, node)
+            if not isinstance(node, TypeInfo):
+                stnode.unfixed = True
         if "module_hidden" in data:
             stnode.module_hidden = data["module_hidden"]
         if "module_public" in data:
@@ -4930,9 +4955,12 @@ class SymbolTableNode:
         sym.plugin_generated = read_bool(data)
         cross_ref = read_str_opt(data)
         if cross_ref is None:
-            sym.node = read_symbol(data)
+            sym._node = read_symbol(data)
+            if not isinstance(sym._node, TypeInfo):
+                sym.unfixed = True
         else:
             sym.cross_ref = cross_ref
+            sym.unfixed = True
         assert read_tag(data) == END_TAG
         return sym
 
@@ -5245,6 +5273,20 @@ def local_definitions(
             yield fullname, symnode, info
             if isinstance(node, TypeInfo):
                 yield from local_definitions(node.names, fullname, node)
+
+
+def set_info(node: SymbolNode, info: TypeInfo) -> None:
+    if isinstance(node, (FuncDef, Var)):
+        node.info = info
+    elif isinstance(node, Decorator):
+        node.var.info = info
+        node.func.info = info
+    elif isinstance(node, OverloadedFuncDef):
+        node.info = info
+        for item in node.items:
+            set_info(item, info)
+        if node.impl:
+            set_info(node.impl, info)
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.

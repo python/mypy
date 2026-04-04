@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from mypy.argmap import map_actuals_to_formals
-from mypy.fixup import TypeFixer
+from mypy.fixup import node_fixer
 from mypy.nodes import (
     ARG_POS,
     MDEF,
@@ -435,5 +435,5 @@ def add_attribute_to_class(
 
 def deserialize_and_fixup_type(data: str | JsonDict, api: SemanticAnalyzerPluginInterface) -> Type:
     typ = deserialize_type(data)
-    typ.accept(TypeFixer(api.modules, allow_missing=False))
+    typ.accept(node_fixer.type_fixer)
     return typ
