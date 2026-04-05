@@ -76,9 +76,8 @@ class ParseTestDataSuite(Suite):
             """)
 
         # Assert
-        assert (
-            "typical-looking error comment" in actual.stderr
-        )
+        assert "typical-looking error comment" in actual.stderr
+
     def test_lineleading_error_comment(self) -> None:
         # Act
         actual = _run_pytest("""
@@ -87,6 +86,4 @@ class ParseTestDataSuite(Suite):
             """)
 
         # Assert
-        assert (
-            "line-leading error comment" in actual.stderr
-        )
+        assert "line-leading error comment" in actual.stderr
