@@ -20,6 +20,7 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Final, cast
 
 import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
@@ -273,6 +274,10 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool, bool]:
+    # This is a horrible hack to work around a mypyc bug where imported
+    # module may be not ready in a thread sometimes.
+    while ast_serialize is None:
+        time.sleep(0.0001)  # type: ignore[unreachable]
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         skip_function_bodies=skip_function_bodies,
