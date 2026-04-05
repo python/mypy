@@ -961,7 +961,7 @@ class BuildManager:
             # TODO: we should probably use psutil instead.
             # With psutil we can get a number of physical cores, while all stdlib
             # functions include virtual cores (which is not optimal for performance).
-            available_threads = len(os.sched_getaffinity(0))
+            available_threads = os.cpu_count() or 2  # conservative fallback
             # For some reason there is no visible improvement with more than 8 threads.
             # TODO: consider writing our own ThreadPool as an optimization.
             with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
