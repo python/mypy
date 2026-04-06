@@ -3768,3 +3768,11 @@ class C:
 
 def defer() -> int:
     return 1
+
+[case testNarrowingForDefaultInInnerFunction]
+from typing import Optional
+
+def outer(x: Optional[float]) -> None:
+    if x is not None:
+        def inner(y: float = x) -> None: ...  # OK
+    def bad(y: float = x) -> None: ...  # E: Incompatible default for parameter "y" (default has type "float | None", parameter has type "float")
