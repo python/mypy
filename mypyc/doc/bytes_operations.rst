@@ -18,6 +18,7 @@ Operators
 * Concatenation (``b1 + b2``)
 * Indexing (``b[n]``)
 * Slicing (``b[n:m]``, ``b[n:]``, ``b[:m]``)
+* Repetition (``b * n``, ``n * b``)
 * Comparisons (``==``, ``!=``)
 
 .. _bytes-methods:
@@ -28,7 +29,10 @@ Methods
 * ``b.decode()``
 * ``b.decode(encoding: str)``
 * ``b.decode(encoding: str, errors: str)``
+* ``b1.endswith(b2: bytes)``
 * ``b.join(x: Iterable)``
+* ``b1.startswith(b2: bytes)``
+* ``b.translate(table: bytes)``
 
 .. note::
 

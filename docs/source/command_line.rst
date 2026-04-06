@@ -551,7 +551,7 @@ potentially problematic or redundant in some way.
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
-        inside any functions using :ref:`type-variable-value-restriction`.
+        inside any functions using :ref:`value-constrained type variables <value-constrained-type-variables>`.
 
         This limitation will be removed in future releases of mypy.
 
@@ -598,7 +598,7 @@ of the above sections.
 .. option:: --allow-redefinition-new
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This flag enables the redefinition of unannotated
+    unrelated type. This flag enables the redefinition of *unannotated*
     variables with an arbitrary type. You will also need to enable
     :option:`--local-partial-types <mypy --local-partial-types>`.
     Example:
@@ -645,7 +645,6 @@ of the above sections.
 
     Note: We are planning to turn this flag on by default in a future mypy
     release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
-    The feature is still experimental, and the semantics may still change.
 
 .. option:: --allow-redefinition
 
@@ -1019,9 +1018,10 @@ beyond what incremental mode can offer, try running mypy in
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
     or ``--cache-dir=nul`` (Windows).
 
-.. option:: --sqlite-cache
+.. option:: --no-sqlite-cache
 
-    Use an `SQLite`_ database to store the cache.
+    Avoid using `SQLite`_ database to store the cache, instead write cache data
+    out to individual files.
 
 .. option:: --cache-fine-grained
 

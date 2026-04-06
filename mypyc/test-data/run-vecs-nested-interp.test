@@ -321,3 +321,137 @@ def test_pop_index() -> None:
     v, item = pop(v, 0)
     assert item == vec[str](['15'])
     assert v == vec[vec[str]]()
+
+def test_iteration() -> None:
+    # Test empty nested vec iteration
+    for x in vec[vec[str]]():
+        assert False
+
+    # Test single item iteration
+    a = []
+    for x in vec[vec[str]]([vec[str](['a'])]):
+        a.append(x)
+    assert a == [vec[str](['a'])]
+
+    # Test multiple items iteration
+    a = []
+    for x in vec[vec[str]]([vec[str](['a']), vec[str](['b', 'c']), vec[str]()]):
+        a.append(x)
+    assert a == [vec[str](['a']), vec[str](['b', 'c']), vec[str]()]
+
+    # Test iteration with vec[vec[i64]]
+    a = []
+    for x in vec[vec[i64]]([vec[i64]([1, 2]), vec[i64]([3])]):
+        a.append(x)
+    assert a == [vec[i64]([1, 2]), vec[i64]([3])]
+
+def test_iteration_nested_loop() -> None:
+    # Test nested iteration over same vec
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b'])])
+    a = []
+    for x in v:
+        for y in v:
+            a.append((x, y))
+    assert a == [
+        (vec[str](['a']), vec[str](['a'])),
+        (vec[str](['a']), vec[str](['b'])),
+        (vec[str](['b']), vec[str](['a'])),
+        (vec[str](['b']), vec[str](['b'])),
+    ]
+
+def test_iteration_deeply_nested() -> None:
+    # Test vec[vec[vec[str]]] iteration
+    vvv = vec[vec[vec[str]]]([
+        vec[vec[str]]([vec[str](['a'])]),
+        vec[vec[str]]([vec[str](['b']), vec[str](['c'])])
+    ])
+    a = []
+    for x in vvv:
+        a.append(x)
+    assert len(a) == 2
+    assert a[0] == vec[vec[str]]([vec[str](['a'])])
+    assert a[1] == vec[vec[str]]([vec[str](['b']), vec[str](['c'])])
+
+def test_iterator_protocol() -> None:
+    # Test iter() and next() functions explicitly
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+    it = iter(v)
+    assert next(it) == vec[str](['a'])
+    assert next(it) == vec[str](['b'])
+    assert next(it) == vec[str](['c'])
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test multiple iterators on same vec
+    v = vec[vec[i64]]([vec[i64]([1]), vec[i64]([2])])
+    it1 = iter(v)
+    it2 = iter(v)
+    assert next(it1) == vec[i64]([1])
+    assert next(it2) == vec[i64]([1])
+    assert next(it1) == vec[i64]([2])
+    assert next(it2) == vec[i64]([2])
+
+    # Test empty vec iterator
+    it = iter(vec[vec[str]]())
+    with assertRaises(StopIteration):
+        next(it)
+
+def test_iterator_length_hint() -> None:
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c']), vec[str](['d']), vec[str](['e'])])
+    it = iter(v)
+    op: Any = getattr(sys, "modules")["operator"]
+    length_hint = op.length_hint
+    assert length_hint(it) == 5
+    next(it)
+    assert length_hint(it) == 4
+    next(it)
+    next(it)
+    assert length_hint(it) == 2
+    next(it)
+    next(it)
+    assert length_hint(it) == 0
+
+def test_contains() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v3 = vec[str](['c'])
+    v = vec[vec[str]]([v1, v2, v3])
+    assert v1 in v
+    assert v2 in v
+    assert v3 in v
+    assert vec[str]([]) not in v
+    assert vec[str](['d']) not in v
+
+def test_contains_empty() -> None:
+    v = vec[vec[str]]()
+    assert vec[str]([]) not in v
+    assert vec[str](['x']) not in v
+
+def test_contains_equality() -> None:
+    # Test that equality is used, not just identity
+    v = vec[vec[str]]([vec[str](['x', 'y'])])
+    assert vec[str](['x', 'y']) in v
+    assert vec[str](['x']) not in v
+    assert vec[str](['y']) not in v
+
+def test_contains_nested_i64() -> None:
+    v = vec[vec[i64]]([vec[i64]([1, 2]), vec[i64]([3])])
+    assert vec[i64]([1, 2]) in v
+    assert vec[i64]([3]) in v
+    assert vec[i64]([1]) not in v
+    assert vec[i64]([]) not in v
+
+def test_contains_wrong_type() -> None:
+    v: Any = vec[vec[str]]([vec[str](['x'])])
+    assert 'x' not in v
+    assert 123 not in v
+    assert None not in v
+    assert [] not in v
+
+def test_contains_deeply_nested() -> None:
+    inner = vec[vec[str]]([vec[str](['a'])])
+    v = vec[vec[vec[str]]]([inner])
+    assert inner in v
+    assert vec[vec[str]]([vec[str](['a'])]) in v
+    assert vec[vec[str]]([vec[str](['b'])]) not in v
+    assert vec[vec[str]]() not in v

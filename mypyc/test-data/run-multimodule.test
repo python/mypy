@@ -42,6 +42,402 @@ except TypeError:
 else:
     assert False
 
+[case testImportNonNativeSubmoduleFrom]
+# separate: [(["native.py", "other_pkg/__init__.py"], "testgroup")]
+import types
+from other_pkg import helper
+
+def f() -> int:
+    return helper.func()
+
+def g() -> types.ModuleType:
+    return helper
+[file other_pkg/__init__.py]
+[file other_pkg/helper.py]
+def func() -> int:
+    return 42
+[file driver.py]
+from native import f, g
+import other_pkg.helper
+assert f() == 42
+assert g() is other_pkg.helper
+
+[case testNativeSubmoduleOfNonNativePackageFrom]
+# separate: [(["native.py", "pkg/other_mod.py"], "testgroup")]
+from pkg import other_mod
+
+def f() -> int:
+    return other_mod.func()
+[file pkg/__init__.py]
+[file pkg/other_mod.py]
+def func() -> int:
+    return 42
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import pkg.other_mod
+assert native.f() == 42
+# other_mod should be in native's namespace and be the same object as pkg.other_mod
+assert native.other_mod is pkg.other_mod
+# native-to-native import should preserve module metadata such as __file__
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_mod.__file__.endswith(s) for s in ext_suffixes), native.other_mod.__file__
+# The directory of __file__ should reflect the package structure relative to the root
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(native.other_mod.__file__) == os.path.join(root_dir, "pkg"), \
+    native.other_mod.__file__
+
+[case testNativeSubmoduleOfNativePackageFrom]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+
+def f() -> int:
+    return other_sub.func()
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 42
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import other_pkg.other_sub
+assert native.f() == 42
+assert native.other_sub is other_pkg.other_sub
+# Fast path import should preserve __file__ as a proper extension path
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_sub.__file__.endswith(s) for s in ext_suffixes), native.other_sub.__file__
+# The directory of __file__ should reflect the package structure relative to the root
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(native.other_sub.__file__) == os.path.join(root_dir, "other_pkg"), \
+    native.other_sub.__file__
+
+[case testImportFromBucketingEndToEnd]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub as sub_alias, other_attr as attr_alias, py_sub as py_alias
+[file other_pkg/__init__.py]
+other_attr = 41
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 10
+[file other_pkg/py_sub.py]
+def func() -> int:
+    return 20
+[file driver.py]
+import importlib
+import native
+other_sub = importlib.import_module("other_pkg.other_sub")
+py_sub = importlib.import_module("other_pkg.py_sub")
+assert native.sub_alias is other_sub
+assert native.attr_alias == 41
+assert native.py_alias is py_sub
+assert native.sub_alias.func() == 10
+assert native.py_alias.func() == 20
+
+[case testNativeTopLevelModuleFileDir]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.func()
+[file other_top.py]
+def func() -> int:
+    return 99
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import other_top
+assert native.f() == 99
+# Top-level native module __file__ directory should match the shared lib's directory
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(other_top.__file__.endswith(s) for s in ext_suffixes), other_top.__file__
+root_dir = os.path.dirname(native.__file__)
+assert os.path.dirname(other_top.__file__) == root_dir, other_top.__file__
+
+[case testNativeDeeplyNestedSubmoduleFileDir]
+# separate: [(["native.py", "other_a/__init__.py", "other_a/other_b/__init__.py", "other_a/other_b/other_c.py"], "testgroup")]
+from other_a.other_b import other_c
+
+def f() -> int:
+    return other_c.func()
+[file other_a/__init__.py]
+[file other_a/other_b/__init__.py]
+[file other_a/other_b/other_c.py]
+def func() -> int:
+    return 77
+[file driver.py]
+import importlib.machinery
+import os
+import native
+import other_a.other_b.other_c
+assert native.f() == 77
+assert native.other_c is other_a.other_b.other_c
+# Deeply nested module __file__ should have correct extension suffix
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_c.__file__.endswith(s) for s in ext_suffixes), native.other_c.__file__
+# The directory should reflect the full package hierarchy
+root_dir = os.path.dirname(native.__file__)
+expected_dir = os.path.join(root_dir, "other_a", "other_b")
+assert os.path.dirname(native.other_c.__file__) == expected_dir, native.other_c.__file__
+
+[case testNativeImportPackageAttribute]
+# separate: [(["native.py", "other_top.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+import other_top
+from other_pkg import other_sub
+import other_pkg
+
+def get_top() -> str:
+    p = other_top.__package__
+    assert p is not None
+    return p
+
+def get_sub() -> str:
+    p = other_sub.__package__
+    assert p is not None
+    return p
+
+def get_pkg() -> str:
+    p = other_pkg.__package__
+    assert p is not None
+    return p
+[file other_top.py]
+def func() -> int:
+    return 1
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 2
+[file driver.py]
+from native import get_top, get_sub, get_pkg
+
+# Top-level module: __package__ should be "" (empty string)
+assert get_top() == "", repr(get_top())
+
+# Submodule: __package__ should be the parent package name
+assert get_sub() == "other_pkg", repr(get_sub())
+
+# Package __init__: __package__ should be the package name itself
+assert get_pkg() == "other_pkg", repr(get_pkg())
+
+[case testNativeImportFileAvailableAtInitTime]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+
+def f() -> int:
+    return other_sub.func()
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+# __file__ should be available during module initialization
+_file: str = __file__
+
+def func() -> int:
+    return 42
+[file driver.py]
+import importlib.machinery
+import native
+assert native.f() == 42
+# Verify that __file__ captured at init time has a valid extension suffix
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(native.other_sub._file.endswith(s) for s in ext_suffixes), native.other_sub._file
+
+[case testNativeImportPathAttribute]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+import other_pkg
+from other_pkg import other_sub
+
+def get_pkg_path() -> str:
+    return other_pkg.__path__[0]
+
+def get_sub_has_path() -> bool:
+    return hasattr(other_sub, '__path__')
+[file other_pkg/__init__.py]
+# __path__ should be available during package initialization
+_path: list[str] = __path__
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 1
+[file driver.py]
+import os
+import native
+
+# Package should have __path__ set to [dirname(__file__)]
+expected = os.path.dirname(native.other_pkg.__file__)
+assert native.get_pkg_path() == expected, (native.get_pkg_path(), expected)
+
+# __path__ should have been accessible at init time
+assert native.other_pkg._path == [expected], native.other_pkg._path
+
+# Non-package submodule should NOT have __path__
+assert not native.get_sub_has_path()
+
+[case testNativeImportPackageFileDirMatchesPath]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+import other_pkg
+from other_pkg import other_sub
+
+def get_pkg_file() -> str:
+    return other_pkg.__file__
+
+def get_pkg_path() -> str:
+    return other_pkg.__path__[0]
+
+def get_sub_file() -> str:
+    return other_sub.__file__
+[file other_pkg/__init__.py]
+x = 1
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 1
+[file driver.py]
+import os
+import native
+
+pkg_file = native.get_pkg_file()
+pkg_path = native.get_pkg_path()
+sub_file = native.get_sub_file()
+
+# Package __file__ should contain __init__ (e.g. other_pkg/__init__.cpython-312-x86_64-linux-gnu.so)
+assert "__init__" in os.path.basename(pkg_file), \
+    f"Package __file__ should contain __init__, got: {pkg_file}"
+
+# Package __path__ should be the directory containing the package's __init__ file
+assert pkg_path == os.path.dirname(pkg_file), \
+    f"__path__ ({pkg_path}) should equal dirname(__file__) ({os.path.dirname(pkg_file)})"
+
+# __path__ should end with the package name
+assert os.path.basename(pkg_path) == "other_pkg", \
+    f"__path__ should end with package name, got: {pkg_path}"
+
+# Submodule __file__ should be inside the package directory (i.e. inside __path__)
+assert os.path.dirname(sub_file) == pkg_path, \
+    f"Submodule dir ({os.path.dirname(sub_file)}) should equal package __path__ ({pkg_path})"
+
+[case testNativeImportSpecAttribute]
+# separate: [(["native.py", "other_top.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from typing import Any
+import other_top
+from other_pkg import other_sub
+import other_pkg
+
+def get_top_spec() -> Any:
+    return other_top.__spec__
+
+def get_sub_spec() -> Any:
+    return other_sub.__spec__
+
+def get_pkg_spec() -> Any:
+    return other_pkg.__spec__
+[file other_top.py]
+from typing import Any
+# __spec__ should be available during module initialization
+_spec: Any = __spec__  # type: ignore[name-defined]
+
+def func() -> int:
+    return 1
+[file other_pkg/__init__.py]
+[file other_pkg/other_sub.py]
+def func() -> int:
+    return 2
+[file driver.py]
+import importlib.machinery
+import native
+
+top_spec = native.get_top_spec()
+sub_spec = native.get_sub_spec()
+pkg_spec = native.get_pkg_spec()
+
+# __spec__.name should match the module name
+assert top_spec.name == "other_top"
+assert sub_spec.name == "other_pkg.other_sub"
+assert pkg_spec.name == "other_pkg"
+
+# __spec__ should have correct origin (same as __file__)
+assert top_spec.origin == native.other_top.__file__
+assert sub_spec.origin == native.other_sub.__file__
+
+# __spec__.loader should be an ExtensionFileLoader and also be set as __loader__
+assert isinstance(top_spec.loader, importlib.machinery.ExtensionFileLoader)
+assert native.other_top.__loader__ is top_spec.loader
+
+# Package spec should have submodule_search_locations
+assert pkg_spec.submodule_search_locations is not None
+
+# Non-package spec should not have submodule_search_locations
+assert top_spec.submodule_search_locations is None
+
+# __spec__ should be available at init time
+assert native.other_top._spec.name == "other_top"
+
+[case testNativeSubmoduleFailureDoesNotBindParentEarly]
+# separate: [(["native.py", "other_pkg/__init__.py", "other_pkg/other_sub.py"], "testgroup")]
+from other_pkg import other_sub
+[file other_pkg/__init__.py]
+x = 1
+[file other_pkg/other_sub.py]
+import other_pkg
+
+if hasattr(other_pkg, "other_sub"):
+    raise RuntimeError("parent attr visible too early")
+raise RuntimeError("boom from other_sub")
+[file driver.py]
+import sys
+import other_pkg
+
+try:
+    import native
+except RuntimeError as e:
+    assert str(e) == "boom from other_sub"
+else:
+    assert False, "import native should fail"
+
+assert not hasattr(other_pkg, "other_sub")
+assert "other_pkg.other_sub" not in sys.modules
+
+[case testNativeImportUsesExistingNativeSysModulesObject]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.value
+[file other_top.py]
+value = 42
+[file driver.py]
+import native
+import other_top
+
+assert native.other_top is other_top
+assert native.f() == 42
+
+[case testNativeImportRejectsForeignSysModulesObject]
+# separate: [(["native.py", "other_top.py"], "testgroup")]
+import other_top
+
+def f() -> int:
+    return other_top.value
+[file other_top.py]
+value = 42
+[file driver.py]
+import sys
+import types
+
+import other_top
+
+fake = types.ModuleType("other_top")
+fake.value = -1
+sys.modules["other_top"] = fake
+
+try:
+    import native
+except ImportError as e:
+    assert "other_top" in str(e)
+    assert "replaced after initialization" in str(e)
+else:
+    assert False, "import native should fail"
+
+assert sys.modules["other_top"] is fake
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
@@ -962,3 +1358,35 @@ def translate(b: bytes) -> bytes:
 [file driver.py]
 import native
 assert native.translate(b'ABCD') == b'BBCD'
+
+[case testCrossModuleAttrDefaults]
+from other import Parent
+
+class Child(Parent):
+    extra: int = 99
+
+def test() -> None:
+    c = Child()
+    assert c.config == {"key": "value"}
+    assert c.extra == 99
+    assert c.total == 60
+    p = Parent()
+    assert p.config == {"key": "value"}
+    assert p.total == 60
+    assert Parent.TAG == "parent"
+
+[file other.py]
+from typing import ClassVar, Dict
+MY_DEFAULT: Dict[str, str] = {"key": "value"}
+VAL_1: int = 10
+VAL_2: int = 20
+VAL_3: int = 30
+
+class Parent:
+    config: Dict[str, str] = MY_DEFAULT
+    total: int = VAL_1 + VAL_2 + VAL_3
+    TAG: ClassVar[str] = "parent"
+
+[file driver.py]
+from native import test
+test()

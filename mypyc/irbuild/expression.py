@@ -213,6 +213,17 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         else:
             return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
 
+    # If we're evaluating a class body and this name is a ClassVar defined earlier
+    # in the same class, load it from the class being built (type object for ext classes,
+    # class dict for non-ext classes) instead of module globals.
+    if builder.class_body_obj is not None and expr.name in builder.class_body_classvars:
+        if builder.class_body_ir is not None and builder.class_body_ir.is_ext_class:
+            return builder.py_get_attr(builder.class_body_obj, expr.name, expr.line)
+        else:
+            return builder.primitive_op(
+                dict_get_item_op, [builder.class_body_obj, builder.load_str(expr.name)], expr.line
+            )
+
     return builder.load_global(expr)
 
 
@@ -1164,20 +1175,45 @@ def _visit_display(
 
 
 # Comprehensions
+#
+# mypyc always inlines comprehensions (the loop body is emitted directly into
+# the enclosing function's IR, no implicit function call like CPython).
+#
+# However, when a comprehension body contains a lambda, we need a lightweight
+# scope boundary so the closure/env-class machinery can see the comprehension
+# as a separate scope. The comprehension is still inlined (same basic blocks
+# and registers), but we push a new FuncInfo and set up an env class so the
+# lambda can capture loop variables through the standard env-class chain.
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
-    return translate_list_comprehension(builder, o.generator)
+    gen = o.generator
+    if gen in builder.comprehension_to_fitem:
+        return _translate_comprehension_with_scope(
+            builder, gen, lambda: translate_list_comprehension(builder, gen)
+        )
+    return translate_list_comprehension(builder, gen)
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
-    return translate_set_comprehension(builder, o.generator)
+    gen = o.generator
+    if gen in builder.comprehension_to_fitem:
+        return _translate_comprehension_with_scope(
+            builder, gen, lambda: translate_set_comprehension(builder, gen)
+        )
+    return translate_set_comprehension(builder, gen)
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
     if raise_error_if_contains_unreachable_names(builder, o):
         return builder.none()
 
+    if o in builder.comprehension_to_fitem:
+        return _translate_comprehension_with_scope(builder, o, lambda: _dict_comp_body(builder, o))
+    return _dict_comp_body(builder, o)
+
+
+def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
     d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
@@ -1188,6 +1224,31 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return builder.read(d, o.line)
+
+
+def _translate_comprehension_with_scope(
+    builder: IRBuilder,
+    node: GeneratorExpr | DictionaryComprehension,
+    gen_body: Callable[[], Value],
+) -> Value:
+    """Wrap a comprehension body with a lightweight scope for closure capture."""
+    from mypyc.irbuild.context import FuncInfo
+    from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
+
+    comprehension_fdef = builder.comprehension_to_fitem[node]
+    fn_info = FuncInfo(
+        fitem=comprehension_fdef,
+        name=comprehension_fdef.name,
+        is_nested=True,
+        contains_nested=True,
+        is_comprehension_scope=True,
+    )
+
+    with builder.enter_scope(fn_info):
+        setup_env_class(builder)
+        finalize_env_class(builder)
+        add_vars_to_env(builder)
+        return gen_body()
 
 
 # Misc
@@ -1206,6 +1267,16 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning("Treating generator comprehension as list", o.line)
+    if o in builder.comprehension_to_fitem:
+        return builder.primitive_op(
+            iter_op,
+            [
+                _translate_comprehension_with_scope(
+                    builder, o, lambda: translate_list_comprehension(builder, o)
+                )
+            ],
+            o.line,
+        )
     return builder.primitive_op(iter_op, [translate_list_comprehension(builder, o)], o.line)
 
 

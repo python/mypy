@@ -599,7 +599,6 @@ def define_options(
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
-        strict_flag=True,
         help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )

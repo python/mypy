@@ -36,7 +36,11 @@ perhaps easily reimplement them in type-annotated Python, or extract
 the relevant code and annotate it. Now it may be easy to compile this
 code to speed it up.
 
-Second, you may be able to avoid the library altogether, or use an
+Second, the :doc:`librt <librt>` package provides optimized
+alternatives for certain standard library features that are designed
+for mypyc-compiled code.
+
+Third, you may be able to avoid the library altogether, or use an
 alternative, more efficient library to achieve the same purpose.
 
 Type annotations
@@ -155,9 +159,9 @@ Here are examples of features that are fast, in no particular order
 * Calling methods of native classes defined in the same compilation
   unit (with positional and/or keyword arguments)
 
-* Many integer operations
+* Many :ref:`integer operations <int-ops>`
 
-* Many ``float`` operations
+* Many :ref:`float operations <float-ops>`
 
 * Booleans
 
@@ -181,6 +185,9 @@ Here are examples of features that are fast, in no particular order
 
 * Comparing strings for equality
 
+* All features in the :doc:`librt <librt>` package, which are optimized
+  for compiled code
+
 These features are also fast, but somewhat less so (relative to other
 related operations):
 
@@ -191,6 +198,8 @@ related operations):
 * Setting dictionary items
 
 * Native :ref:`dict <dict-ops>` and :ref:`set <set-ops>` operations
+
+* Native :ref:`str <str-ops>` and :ref:`bytes <bytes-ops>` operations
 
 * Accessing module-level variables
 

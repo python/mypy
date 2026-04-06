@@ -352,6 +352,15 @@ def test_pop_optional() -> None:
     v, s = pop(v, -1)
     assert s is None
 
+def test_iter_and_next() -> None:
+    v = vec[str](["s1" + str(), "s2" + str(), "s3" + str()])
+    it = iter(v)
+    assert next(it) == "s1"
+    assert next(it) == "s2"
+    assert next(it) == "s3"
+    with assertRaises(StopIteration):
+        next(it)
+
 def f(x: vec[str]) -> None:
     pass
 

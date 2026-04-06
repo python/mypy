@@ -484,7 +484,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if cl.get_method(op.attr):
+        if op.is_propset:
             # Again, use vtable access for properties...
             assert not op.is_init and op.error_kind == ERR_FALSE, "%s %d %d %s" % (
                 op.attr,
@@ -809,9 +809,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: support tuple type
         assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
+        # Use offsetof to avoid undefined behavior when src is NULL
+        # (e.g., vec buf pointer for empty vecs). The &((T*)p)->field
+        # pattern is UB when p is NULL, which GCC -O3 can exploit.
         self.emit_line(
-            "{} = ({})&(({} *){})->{};".format(
-                dest, op.type._ctype, op.src_type.name, src, op.field
+            "{} = ({})((CPyPtr){} + offsetof({}, {}));".format(
+                dest, op.type._ctype, src, op.src_type.name, op.field
             )
         )
 

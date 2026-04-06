@@ -418,6 +418,18 @@ def test_doubly_nested_vec_i64_operations() -> None:
 
     # TODO: box/unbox
 
+def test_iter_and_next() -> None:
+    a = vec[str](["s1" + str()])
+    b = vec[str](["s2" + str()])
+    c = vec[str](["s3" + str()])
+    v = vec[vec[str]]([a, b, c])
+    it = iter(v)
+    assert next(it) == a
+    assert next(it) == b
+    assert next(it) == c
+    with assertRaises(StopIteration):
+        next(it)
+
 def f(x: vec[vec[str]]) -> None:
     pass
 
