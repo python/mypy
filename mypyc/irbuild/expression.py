@@ -1039,6 +1039,16 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 right_int = builder.coerce(right, int_rprimitive, e.line)
                 return builder.binary_op(left_int, right_int, first_op, e.line)
 
+        # For == and != on RInstance types that will lower to pointer identity
+        # (no custom __eq__), we can borrow both operands since identity
+        # comparison never touches the objects.
+        if first_op in ("==", "!=", "is", "is not"):
+            right_expr = e.operands[1]
+            if _will_be_identity_comparison(builder, left_expr, right_expr, first_op):
+                left = builder.accept(left_expr, can_borrow=True)
+                right = builder.accept(right_expr, can_borrow=True)
+                return transform_basic_comparison(builder, first_op, left, right, e.line)
+
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
@@ -1200,6 +1210,33 @@ def transform_basic_comparison(
     if negate:
         target = builder.unary_op(target, "not", line)
     return target
+
+
+def _will_be_identity_comparison(
+    builder: IRBuilder, left_expr: Expression, right_expr: Expression, op: str
+) -> bool:
+    """Check if a comparison will lower to pointer identity (no __eq__ call).
+
+    This is true for:
+    - 'is' / 'is not' (always identity)
+    - '==' / '!=' on RInstance types that have no custom __eq__ and where
+      comparison behavior can't vary at runtime
+    """
+    if op in ("is", "is not"):
+        return True
+    # For == / !=, check if both sides are the same RInstance type with no __eq__
+    left_type = builder.node_type(left_expr)
+    right_type = builder.node_type(right_expr)
+    if not (isinstance(left_type, RInstance) and left_type == right_type):
+        return False
+    cl = left_type.class_ir
+    if cl.has_method("__eq__"):
+        return False
+    if not cl.is_method_final("__eq__") or not cl.is_method_final("__ne__"):
+        return False
+    if cl.inherits_python or cl.is_augmented:
+        return False
+    return True
 
 
 def _is_type_object(typ: ProperType | None) -> bool:
