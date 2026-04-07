@@ -1390,3 +1390,23 @@ class Parent:
 [file driver.py]
 from native import test
 test()
+
+[case testExtraOpsFunction_experimental_librt]
+from librt.strings import BytesWriter
+
+def call_write(b: bytes) -> bytes:
+    w = BytesWriter()
+    w.write(b)  # calls CPyBytesWriter_Write defined in byteswriter_extra_ops.c
+    return w.getvalue()
+
+[file other.py]
+from native import call_write
+
+def test(b: bytes) -> bytes:
+    return call_write(b)
+
+[file driver.py]
+from other import test
+
+input = b'x' * 512
+assert test(input) == input

@@ -2,6 +2,7 @@
 #define STATIC_DATA
 
 #include "static_data.h"
+#include "strings/librt_strings.h"
 
 // Adopted from numpy 2.4.0: numpy/_core/src/multiarry/npy_static_data.c
 
@@ -71,5 +72,11 @@ intern_strings(void) {
     INTERN_STRING(values, "values");
     return 0;
 }
+
+#ifdef MYPYC_EXPERIMENTAL
+
+void *LibRTStrings_API[LIBRT_STRINGS_API_LEN] = {0};
+
+#endif // MYPYC_EXPERIMENTAL
 
 #endif

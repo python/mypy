@@ -30,7 +30,7 @@ import_librt_strings(void)
 // LIBRT_STRINGS_API_VERSION.
 #define LIBRT_STRINGS_API_LEN 14
 
-static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
+extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
 typedef struct {
     PyObject_HEAD
