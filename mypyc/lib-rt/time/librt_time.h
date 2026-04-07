@@ -18,7 +18,7 @@ import_librt_time(void)
 #define LIBRT_TIME_API_VERSION 1
 #define LIBRT_TIME_API_LEN 3
 
-static void *LibRTTime_API[LIBRT_TIME_API_LEN];
+extern void *LibRTTime_API[LIBRT_TIME_API_LEN];
 
 #define LibRTTime_ABIVersion (*(int (*)(void)) LibRTTime_API[0])
 #define LibRTTime_APIVersion (*(int (*)(void)) LibRTTime_API[1])

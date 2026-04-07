@@ -45,7 +45,7 @@ static PyObject *extract_symbol_internal(PyObject *data);
 
 #else
 
-static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
+extern void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 
 #define ReadBuffer_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[0])
 #define WriteBuffer_internal (*(PyObject* (*)(void)) NativeInternal_API[1])

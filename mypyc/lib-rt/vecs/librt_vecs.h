@@ -847,15 +847,15 @@ PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *arg
 PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
 
 // Global API pointers initialized by import_librt_vecs()
-static VecCapsule *VecApi;
-static VecI64API VecI64Api;
-static VecI32API VecI32Api;
-static VecI16API VecI16Api;
-static VecU8API VecU8Api;
-static VecFloatAPI VecFloatApi;
-static VecBoolAPI VecBoolApi;
-static VecTAPI VecTApi;
-static VecNestedAPI VecNestedApi;
+extern VecCapsule *VecApi;
+extern VecI64API VecI64Api;
+extern VecI32API VecI32Api;
+extern VecI16API VecI16Api;
+extern VecU8API VecU8Api;
+extern VecFloatAPI VecFloatApi;
+extern VecBoolAPI VecBoolApi;
+extern VecTAPI VecTApi;
+extern VecNestedAPI VecNestedApi;
 
 static int
 import_librt_vecs(void)

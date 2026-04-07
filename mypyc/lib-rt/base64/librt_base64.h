@@ -7,7 +7,7 @@
 #define LIBRT_BASE64_API_VERSION 2
 #define LIBRT_BASE64_API_LEN 4
 
-static void *LibRTBase64_API[LIBRT_BASE64_API_LEN];
+extern void *LibRTBase64_API[LIBRT_BASE64_API_LEN];
 
 #define LibRTBase64_ABIVersion (*(int (*)(void)) LibRTBase64_API[0])
 #define LibRTBase64_APIVersion (*(int (*)(void)) LibRTBase64_API[1])
