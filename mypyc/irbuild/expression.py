@@ -473,7 +473,12 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         if val is not None:
             return val
 
-        obj = builder.accept(callee.expr)
+        # Borrow the receiver if it's a native struct field access (e.g. expression.args).
+        # The KeepAlive on the struct owner guarantees the field value stays alive.
+        can_borrow = isinstance(callee.expr, MemberExpr) and builder.is_native_attr_ref(
+            callee.expr
+        )
+        obj = builder.accept(callee.expr, can_borrow=can_borrow)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.gen_method_call(
             obj,

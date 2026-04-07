@@ -127,10 +127,11 @@ L0:
     keep_alive self
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = self.next
-    r4 = cast(__main__.Node, r3)
+    r3 = borrow self.next
+    r4 = borrow cast(__main__.Node, r3)
     r5 = r4.length()
     r6 = CPyTagged_Add(2, r5)
+    keep_alive self, r3
     return r6
 L2:
     return 2
