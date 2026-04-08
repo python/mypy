@@ -314,8 +314,6 @@ def shallow_erase_type_for_equality(typ: Type) -> ProperType:
             return p_typ
         any_type = AnyType(TypeOfAny.special_form)
         return p_typ.copy_modified(
-            arg_types=[any_type for _ in p_typ.arg_types],
-            ret_type=any_type,
-            variables=(),
+            arg_types=[any_type for _ in p_typ.arg_types], ret_type=any_type, variables=()
         )
     return p_typ
