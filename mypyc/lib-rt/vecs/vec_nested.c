@@ -285,6 +285,38 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
     }
 }
 
+// Extend 'vec' with items from 'iterable', stealing 'vec'.
+// Return extended 'vec', or error vec on failure.
+VecNested VecNested_Extend(VecNested vec, PyObject *iterable) {
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        VecNestedBufItem vecitem;
+        if (VecNested_UnboxItem(vec, item, &vecitem) < 0) {
+            Py_DECREF(iter);
+            VEC_DECREF(vec);
+            Py_DECREF(item);
+            return vec_error();
+        }
+        vec = VecNested_Append(vec, vecitem);
+        Py_DECREF(item);
+        if (VEC_IS_ERROR(vec)) {
+            Py_DECREF(iter);
+            return vec;
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    return vec;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
     VecNestedBufItem *items = self.buf->items;
@@ -621,6 +653,7 @@ VecNestedAPI Vec_NestedAPI = {
     VecNested_Pop,
     VecNested_Remove,
     VecNested_Slice,
+    VecNested_Extend,
 };
 
 #endif  // MYPYC_EXPERIMENTAL

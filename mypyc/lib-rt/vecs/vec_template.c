@@ -332,6 +332,37 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
     }
 }
 
+// Extend 'vec' with items from 'iterable', stealing 'vec'.
+// Return extended 'vec', or error vec on failure.
+VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        ITEM_C_TYPE x = UNBOX_ITEM(item);
+        Py_DECREF(item);
+        if (IS_UNBOX_ERROR(x)) {
+            Py_DECREF(iter);
+            VEC_DECREF(vec);
+            return vec_error();
+        }
+        vec = FUNC(Append)(vec, x);
+        if (VEC_IS_ERROR(vec)) {
+            Py_DECREF(iter);
+            return vec;
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    return vec;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
@@ -500,6 +531,7 @@ NAME(API) FEATURES = {
     FUNC(Pop),
     FUNC(Remove),
     FUNC(Slice),
+    FUNC(Extend),
 };
 
 #endif  // MYPYC_EXPERIMENTAL

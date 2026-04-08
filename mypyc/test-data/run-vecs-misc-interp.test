@@ -20,6 +20,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 u8: Any = mypy_extensions.u8
 i16: Any = mypy_extensions.i16
 i32: Any = mypy_extensions.i32
@@ -504,6 +505,31 @@ def test_cap_buffer_reuse() -> None:
     v = append(v, False)
     v[0] = False
     assert old[0] is False
+
+def test_extend_float() -> None:
+    v = vec[float]([1.0])
+    v = extend(v, [2.5, 3.5])
+    assert v == vec[float]([1.0, 2.5, 3.5])
+
+def test_extend_i32() -> None:
+    v = vec[i32]([1])
+    v = extend(v, [2, 3])
+    assert v == vec[i32]([1, 2, 3])
+
+def test_extend_i16() -> None:
+    v = vec[i16]([1])
+    v = extend(v, [2, 3])
+    assert v == vec[i16]([1, 2, 3])
+
+def test_extend_u8() -> None:
+    v = vec[u8]([1])
+    v = extend(v, [2, 3])
+    assert v == vec[u8]([1, 2, 3])
+
+def test_extend_bool() -> None:
+    v = vec[bool]([True])
+    v = extend(v, [False, True])
+    assert v == vec[bool]([True, False, True])
 
 [case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.vecs can be built without experimental features

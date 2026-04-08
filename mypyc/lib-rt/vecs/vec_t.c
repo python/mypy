@@ -299,6 +299,37 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
     }
 }
 
+// Extend 'vec' with items from 'iterable', stealing 'vec'.
+// Return extended 'vec', or error vec on failure.
+VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (!VecT_ItemCheck(vec, item, item_type)) {
+            Py_DECREF(iter);
+            VEC_DECREF(vec);
+            Py_DECREF(item);
+            return vec_error();
+        }
+        vec = VecT_Append(vec, item, item_type);
+        Py_DECREF(item);
+        if (VEC_IS_ERROR(vec)) {
+            Py_DECREF(iter);
+            return vec;
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    return vec;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecT VecT_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
@@ -611,6 +642,7 @@ VecTAPI Vec_TAPI = {
     VecT_Pop,
     VecT_Remove,
     VecT_Slice,
+    VecT_Extend,
 };
 
 #endif  // MYPYC_EXPERIMENTAL
