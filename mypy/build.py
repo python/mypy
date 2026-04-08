@@ -126,6 +126,7 @@ from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
+    get_available_threads,
     get_mypy_comments,
     hash_digest,
     hash_digest_bytes,
@@ -958,12 +959,9 @@ class BuildManager:
         if self.options.native_parser:
             futures = []
             parsed_states = set()
-            # TODO: we should probably use psutil instead.
-            # With psutil we can get a number of physical cores, while all stdlib
-            # functions include virtual cores (which is not optimal for performance).
-            available_threads = os.cpu_count() or 2  # conservative fallback
-            # For some reason there is no visible improvement with more than 8 threads.
-            # TODO: consider writing our own ThreadPool as an optimization.
+            available_threads = get_available_threads()
+            # Overhead from trying to parallelize (small) blocking portion of
+            # parse_file_inner() results in no visible improvement with more than 8 threads.
             with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
                 for state in states:
                     state.needs_parse = False
