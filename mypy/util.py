@@ -995,11 +995,9 @@ def get_available_threads() -> int:
         cpu_count = 2
 
     affinity = None
-    try:
-        # Not available on old Python versions on some platforms.
+    # Not available on old Python versions on some platforms.
+    if sys.platform == "linux":
         affinity = os.sched_getaffinity(0)
-    except AttributeError:
-        pass
     if PSUTIL_AVAILABLE:
         try:
             # Currently not supported on macOS.
