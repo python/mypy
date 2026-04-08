@@ -8030,14 +8030,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             type_ranges = [self.get_type_range_of_type(item) for item in typ.items]
             if any(t is None for t in type_ranges):
                 return None
-            valid_ranges = [t for t in type_ranges if not isinstance(get_proper_type(t.item), UninhabitedType)]
+            valid_ranges = [
+                t for t in type_ranges if not isinstance(get_proper_type(t.item), UninhabitedType)
+            ]
             if not valid_ranges:
                 return TypeRange(UninhabitedType(), is_upper_bound=False)
             # If the only meaningful type we can extract is "object", we've lost
             # type precision (e.g. from a widened _ClassInfo alias). Return None
             # to avoid narrowing to a useless type.
             item = make_simplified_union([t.item for t in valid_ranges])
-            if isinstance(get_proper_type(item), Instance) and get_proper_type(item).type.fullname == "builtins.object":
+            if (
+                isinstance(get_proper_type(item), Instance)
+                and get_proper_type(item).type.fullname == "builtins.object"
+            ):
                 return None
             return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
