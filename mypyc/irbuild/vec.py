@@ -435,6 +435,33 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
     return call
 
 
+def vec_extend(builder: LowLevelIRBuilder, vec: Value, iterable: Value, line: int) -> Value:
+    vec_type = vec.type
+    assert isinstance(vec_type, RVec)
+    item_type = vec_type.item_type
+    coerced_iterable = builder.coerce(iterable, object_rprimitive, line)
+    item_type_arg: list[Value] = []
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.extend"
+    elif vec_type.depth() == 0:
+        name = "VecTApi.extend"
+        item_type_arg = [vec_item_type(builder, item_type, line)]
+    else:
+        name = "VecNestedApi.extend"
+    return builder.add(
+        CallC(
+            name,
+            [vec, coerced_iterable] + item_type_arg,
+            vec_type,
+            steals=[True, False] + ([False] if item_type_arg else []),
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
+    )
+
+
 def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) -> Value:
     assert isinstance(base.type, RVec)
     vec_type = base.type
