@@ -8478,13 +8478,16 @@ def conditional_types(
     if from_equality:
         # We erase generic args because values with different generic types can compare equal
         # For instance, cast(list[str], []) and cast(list[int], [])
+        # We also erase the current type for the overlap check, to correctly handle
+        # generic callables with different type variables (see mypy#21182).
+        erased_current = shallow_erase_type_for_equality(current_type)
         proposed_type = shallow_erase_type_for_equality(proposed_type)
-        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=False):
+        if not is_overlapping_types(erased_current, proposed_type, ignore_promotions=False):
             # Equality narrowing is one of the places at runtime where subtyping with promotion
             # does happen to match runtime semantics
             # Expression is never of any type in proposed_type_ranges
             return UninhabitedType(), default
-        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        if not is_overlapping_types(erased_current, proposed_type, ignore_promotions=True):
             return default, default
     else:
         if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):

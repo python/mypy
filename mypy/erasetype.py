@@ -288,7 +288,13 @@ class LastKnownValueEraser(TypeTranslator):
 
 
 def shallow_erase_type_for_equality(typ: Type) -> ProperType:
-    """Erase type variables from Instance's"""
+    """Erase type variables from types for equality narrowing.
+
+    At runtime, generic type parameters are erased, so values with different
+    generic types can compare equal (e.g. ``cast(list[str], []) == cast(list[int], [])``).
+    This function erases generic type information so that equality-based type
+    narrowing does not incorrectly conclude that two values can never be equal.
+    """
     p_typ = get_proper_type(typ)
     if isinstance(p_typ, Instance):
         if not p_typ.args:
@@ -298,4 +304,18 @@ def shallow_erase_type_for_equality(typ: Type) -> ProperType:
     if isinstance(p_typ, UnionType):
         items = [shallow_erase_type_for_equality(item) for item in p_typ.items]
         return UnionType.make_union(items)
+    if isinstance(p_typ, CallableType):
+        # Erase generic type variables from non-type-object callables.
+        # Type objects (classes like TupleLike) keep their type identity,
+        # but regular generic functions have their type vars erased to Any
+        # since at runtime, generic functions with different type args can
+        # be the same object (e.g. the identity function).
+        if not p_typ.variables or p_typ.is_type_obj():
+            return p_typ
+        any_type = AnyType(TypeOfAny.special_form)
+        return p_typ.copy_modified(
+            arg_types=[any_type for _ in p_typ.arg_types],
+            ret_type=any_type,
+            variables=(),
+        )
     return p_typ
