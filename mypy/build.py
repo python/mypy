@@ -3137,14 +3137,15 @@ class State:
         if manager.errors.is_error_code_enabled(
             codes.POSSIBLY_UNDEFINED
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
-            self.tree.accept(
-                PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules),
-                    self.type_map(),
-                    self.options,
-                    self.tree.names,
+            with self.wrap_context():
+                self.tree.accept(
+                    PossiblyUndefinedVariableVisitor(
+                        MessageBuilder(manager.errors, manager.modules),
+                        self.type_map(),
+                        self.options,
+                        self.tree.names,
+                    )
                 )
-            )
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -3366,14 +3367,16 @@ class State:
             if self.meta and self.options.fine_grained_incremental:
                 self.verify_dependencies(suppressed_only=True)
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
+            with self.wrap_context():
+                self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
 
     def generate_ignore_without_code_notes(self) -> None:
         if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_ignore_without_code_errors(
-                self.xpath, self.options.warn_unused_ignores, is_typeshed
-            )
+            with self.wrap_context():
+                self.manager.errors.generate_ignore_without_code_errors(
+                    self.xpath, self.options.warn_unused_ignores, is_typeshed
+                )
 
 
 # Module import and diagnostic glue
@@ -3678,12 +3681,14 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
     # immediately if it's empty or only contains comments.
     # But beware, some package may be the ancestor of many modules,
     # so we'd need to cache the decision.
+    save_import_context = manager.errors.import_context()
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id, manager.options)
     manager.error(None, f'Ancestor package "{id}" ignored', only_once=True)
     manager.note(
         None, "(Using --follow-imports=error, submodule passed on command line)", only_once=True
     )
+    manager.errors.set_import_context(save_import_context)
 
 
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:

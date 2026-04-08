@@ -463,17 +463,18 @@ def apply_class_plugin_hooks(graph: Graph, scc: list[str], errors: Errors) -> No
             state = graph[module]
             tree = state.tree
             assert tree
-            for _, node, _ in tree.local_definitions():
-                if isinstance(node.node, TypeInfo):
-                    if not apply_hooks_to_class(
-                        state.manager.semantic_analyzer,
-                        module,
-                        node.node,
-                        state.options,
-                        tree,
-                        errors,
-                    ):
-                        incomplete = True
+            with state.wrap_context():
+                for _, node, _ in tree.local_definitions():
+                    if isinstance(node.node, TypeInfo):
+                        if not apply_hooks_to_class(
+                            state.manager.semantic_analyzer,
+                            module,
+                            node.node,
+                            state.options,
+                            tree,
+                            errors,
+                        ):
+                            incomplete = True
 
 
 def apply_hooks_to_class(
