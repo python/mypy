@@ -1,13 +1,7 @@
 #ifndef STATIC_DATA
 #define STATIC_DATA
 
-#include "CPy.h"
 #include "static_data.h"
-#include "base64/librt_base64.h"
-#include "internal/librt_internal.h"
-#include "strings/librt_strings.h"
-#include "time/librt_time.h"
-#include "vecs/librt_vecs.h"
 
 // Adopted from numpy 2.4.0: numpy/_core/src/multiarry/npy_static_data.c
 
@@ -77,24 +71,5 @@ intern_strings(void) {
     INTERN_STRING(values, "values");
     return 0;
 }
-
-#ifdef MYPYC_EXPERIMENTAL
-
-void *LibRTStrings_API[LIBRT_STRINGS_API_LEN] = {0};
-void *LibRTTime_API[LIBRT_TIME_API_LEN] = {0};
-VecCapsule *VecApi = NULL;
-VecI64API VecI64Api = {0};
-VecI32API VecI32Api = {0};
-VecI16API VecI16Api = {0};
-VecU8API VecU8Api = {0};
-VecFloatAPI VecFloatApi = {0};
-VecBoolAPI VecBoolApi = {0};
-VecTAPI VecTApi = {0};
-VecNestedAPI VecNestedApi = {0};
-
-#endif // MYPYC_EXPERIMENTAL
-
-void *LibRTBase64_API[LIBRT_BASE64_API_LEN] = {0};
-void *NativeInternal_API[LIBRT_INTERNAL_API_LEN] = {0};
 
 #endif
