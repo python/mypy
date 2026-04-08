@@ -588,7 +588,7 @@ class GroupGenerator:
             for source_dep in sorted(source_deps, key=lambda d: d.path):
                 base_emitter.emit_line(f'#include "{source_dep.path}"')
             if self.compiler_options.depends_on_librt_internal:
-                base_emitter.emit_line('#include <internal/librt_internal_static.c>')
+                base_emitter.emit_line("#include <internal/librt_internal_static.c>")
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
