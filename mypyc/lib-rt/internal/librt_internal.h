@@ -2,6 +2,7 @@
 #define LIBRT_INTERNAL_H
 
 #include <Python.h>
+#include <stdbool.h>
 
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility

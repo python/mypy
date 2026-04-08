@@ -53,11 +53,22 @@ class ModDesc(NamedTuple):
 
 
 LIBRT_MODULES = [
-    ModDesc("librt.internal", ["internal/librt_internal.c"], [], ["internal"]),
-    ModDesc("librt.strings", ["strings/librt_strings.c"], [], ["strings"]),
+    ModDesc(
+        "librt.internal",
+        ["internal/librt_internal_static.c", "internal/librt_internal.c"],
+        [],
+        ["internal"],
+    ),
+    ModDesc(
+        "librt.strings",
+        ["strings/librt_strings_static.c", "strings/librt_strings.c"],
+        [],
+        ["strings"],
+    ),
     ModDesc(
         "librt.base64",
         [
+            "base64/librt_base64_static.c",
             "base64/librt_base64.c",
             "base64/lib.c",
             "base64/codec_choose.c",
@@ -107,6 +118,7 @@ LIBRT_MODULES = [
     ModDesc(
         "librt.vecs",
         [
+            "vecs/librt_vecs_static.c",
             "vecs/librt_vecs.c",
             "vecs/vec_i64.c",
             "vecs/vec_i32.c",
@@ -120,7 +132,9 @@ LIBRT_MODULES = [
         ["vecs/librt_vecs.h", "vecs/vec_template.c"],
         ["vecs"],
     ),
-    ModDesc("librt.time", ["time/librt_time.c"], ["time/librt_time.h"], []),
+    ModDesc(
+        "librt.time", ["time/librt_time_static.c", "time/librt_time.c"], ["time/librt_time.h"], []
+    ),
 ]
 
 try:
