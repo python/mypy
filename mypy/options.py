@@ -78,6 +78,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "fixed_format_cache",
         "untyped_calls_exclude",
         "enable_incomplete_feature",
+        "disable_ignores",
     }
 ) - {"debug_cache"}
 
@@ -269,6 +270,9 @@ class Options:
         # Error codes to enable
         self.enable_error_code: list[str] = []
         self.enabled_error_codes: set[ErrorCode] = set()
+
+        # Disable all type ignore comments
+        self.disable_ignores = False
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
