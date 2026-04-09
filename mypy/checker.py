@@ -5393,6 +5393,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if isinstance(ttype, AnyType):
                 all_types.append(ttype)
                 continue
+            if isinstance(ttype, UninhabitedType):
+                continue
 
             if isinstance(ttype, FunctionLike):
                 item = ttype.items[0]
@@ -6674,8 +6676,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # If we have found non-trivial restrictions from the regular comparisons,
         # then return soon. Otherwise try to infer restrictions involving `len(x)`.
         # TODO: support regular and len() narrowing in the same chain.
-        if any(m != ({}, {}) for m in partial_type_maps):
-            return reduce_conditional_maps(partial_type_maps)
+        if any(len(m[0]) or len(m[1]) for m in partial_type_maps):
+            return reduce_conditional_maps(partial_type_maps, use_meet=True)
         else:
             # Use meet for `and` maps to get correct results for chained checks
             # like `if 1 < len(x) < 4: ...`
@@ -6899,6 +6901,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 expr_in_type_expr = type_expr.expr
             else:
                 continue
+
+            p_expr_type = get_proper_type(operand_types[i])
+            if isinstance(p_expr_type, TypeType) and isinstance(p_expr_type.item, TypeVarType):
+                # This mirrors logic in comparison_type_narrowing_helper
+                # In theory, this is like `i not in narrowable_indices`, except that
+                # narrowable_indices filters all type(x) narrowing as it's a call
+                continue
+
             for j in expr_indices:
                 if i == j:
                     continue
@@ -8734,7 +8744,13 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {"builtins.bytearray", "builtins.memoryview"}
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {
+    "builtins.bytearray",
+    "builtins.memoryview",
+    "builtins.frozenset",
+    "_collections_abc.dict_keys",
+    "_collections_abc.dict_items",
+}
 
 
 def has_custom_eq_checks(t: Type) -> bool:
@@ -8744,7 +8760,7 @@ def has_custom_eq_checks(t: Type) -> bool:
         # custom_special_method has special casing for builtins.* and typing.* that make the
         # above always return False. So here we return True if the a value of a builtin type
         # will ever compare equal to value of another type, e.g. a bytes value can compare equal
-        # to a bytearray value. We also include builtins collections, see testNarrowingCollections
+        # to a bytearray value.
         or (
             isinstance(pt := get_proper_type(t), Instance)
             and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS

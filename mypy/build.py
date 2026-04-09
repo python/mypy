@@ -877,7 +877,7 @@ class BuildManager:
                 ]
             )
 
-        self.metastore = create_metastore(options, parallel_worker)
+        self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -1616,13 +1616,10 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
+def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        # We use this flag in both coordinator and workers to speed up commits,
-        # see mypy.metastore.connect_db() for details.
-        sync_off = options.num_workers > 0 or parallel_worker
-        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options), sync_off=sync_off)
+        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options))
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
     return mds

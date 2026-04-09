@@ -802,7 +802,7 @@ def error_in_variadic(exc: Tuple[int, ...]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testExceptWithMultipleTypes5]
-from typing import Tuple, Type, Union
+from typing import Tuple, Type, Union, Never
 
 class E1(BaseException): pass
 class E2(BaseException): pass
@@ -849,7 +849,36 @@ def error_in_tuple_union(exc: Tuple[Union[Type[E1], Type[E2]], Union[Type[E3], i
         pass
     except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
         pass
+[builtins fixtures/tuple.pyi]
 
+[case testExceptWithMultipleTypes6]
+from typing import Never
+
+def random() -> bool: ...
+
+def error_in_empty_tuple() -> None:
+    try:
+        pass
+    except () as e:  # E: Need type annotation for "e"
+        pass
+
+def error_in_empty_tuple_annotated(exc: tuple[()]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Need type annotation for "e"
+        pass
+
+def error_in_conditional_empty_tuple() -> None:
+    try:
+        pass
+    except (BaseException if random() else ()) as e:
+        pass
+
+def error_in_never(exc: Never) -> None:
+    try:
+        pass
+    except exc as e:  # E: Need type annotation for "e"
+        pass
 [builtins fixtures/tuple.pyi]
 
 [case testExceptWithAnyTypes]
