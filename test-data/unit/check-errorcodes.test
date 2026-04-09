@@ -21,6 +21,77 @@ def f() -> None:
 [file m.py]
 [builtins fixtures/module.pyi]
 
+[case testErrorCodeUndefinedNameSuggestion]
+my_variable = 42
+my_constant = 100
+
+x = my_variabel  # E: Name "my_variabel" is not defined; did you mean "my_variable"?  [name-defined]
+
+def calculate_sum(items: int) -> int:
+    return items
+
+calculate_summ(1)  # E: Name "calculate_summ" is not defined; did you mean "calculate_sum"?  [name-defined]
+
+class MyClass:
+    pass
+
+y = MyClas()  # E: Name "MyClas" is not defined; did you mean "MyClass"?  [name-defined]
+
+unknown_xyz  # E: Name "unknown_xyz" is not defined  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionLocal]
+def foo() -> None:
+    local_value = 10
+    x = local_valeu  # E: Name "local_valeu" is not defined; did you mean "local_value"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionOuterScope]
+top_level_var = 42
+
+def foo() -> None:
+    x = top_level_vr  # E: Name "top_level_vr" is not defined; did you mean "top_level_var"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionClassBody]
+class Foo:
+    class_attr = 10
+    x = class_atr  # E: Name "class_atr" is not defined; did you mean "class_attr"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionFromImport]
+from m import some_function
+
+some_functon(1)  # E: Name "some_functon" is not defined; did you mean "some_function"?  [name-defined]
+
+[file m.py]
+def some_function(x: int) -> int:
+    return x
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionBuiltin]
+x = lenn  # E: Name "lenn" is not defined; did you mean "len"?  [name-defined]
+[builtins fixtures/len.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionClassMethod]
+class Foo:
+    class_attr = 10
+    def method(self) -> None:
+        x = class_atr  # E: Name "class_atr" is not defined  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionMultiple]
+total_count = 1
+total_counts = 2
+x = total_countt  # E: Name "total_countt" is not defined; did you mean "total_count" or "total_counts"?  [name-defined]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedNameSuggestionIgnored]
+my_variable = 42
+x = my_variabel  # type: ignore[name-defined]
+y = my_variabel  # type: ignore
+[builtins fixtures/module.pyi]
+
 [case testErrorCodeUnclassifiedError]
 class A:
     def __init__(self) -> int: \
@@ -60,26 +131,28 @@ for v in x:  # type: int, int  # type: ignore[syntax]
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
 'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                 # N: Error code "attr-defined" not covered by "type: ignore[xyz]" comment
 'x'.foobar  # type: ignore
 
 [case testErrorCodeIgnore2]
 a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
 b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                  # N: Error code "attr-defined" not covered by "type: ignore[xyz]" comment
 c = 'x'.foobar  # type: int  # type: ignore
 
 [case testErrorCodeIgnoreMultiple1]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                      # N: Error code "attr-defined" not covered by "type: ignore[name-defined, xyz]" comment
 a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                                         # N: Error code "name-defined" not covered by "type: ignore[xyz, w, attr-defined]" comment
+a = 'x'.foobar(b)  # type: ignore[ w,  xyz,    attr-defined]  # E: Name "b" is not defined  [name-defined] \
+                                                              # N: Error code "name-defined" not covered by "type: ignore[w, xyz, attr-defined]" comment
 
 [case testErrorCodeIgnoreMultiple2]
 a = 'x'.foobar(c) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(c) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                                 # N: Error code "attr-defined" not covered by "type: ignore[name-defined, xyz]" comment
 
 [case testErrorCodeWarnUnusedIgnores1]
 # flags: --warn-unused-ignores
@@ -145,7 +218,7 @@ z # type: ignore[name-defined]
 "y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore]
 z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore] \
                                       # E: Name "z" is not defined  [name-defined] \
-                                      # N: Error code "name-defined" not covered by "type: ignore" comment
+                                      # N: Error code "name-defined" not covered by "type: ignore[ignore-without-code]" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
@@ -171,21 +244,21 @@ x2 # type: ignore   [ name-defined ]
 x3 # type: ignore   [ xyz , name-defined ]
 x4 # type: ignore[xyz,name-defined]
 y  # type: ignore   [xyz]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                           # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 y  # type: ignore[  xyz  ]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                            # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 y  # type: ignore[ xyz , foo  ]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                 # N: Error code "name-defined" not covered by "type: ignore[xyz, foo]" comment
 
 a = z  # type: int  # type: ignore  [name-defined]
 b = z2  # type: int  # type: ignore  [ name-defined ]
 c = z2  # type: int  # type: ignore  [ name-defined , xyz ]
 d = zz # type: int  # type: ignore  [xyz]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                           # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 e = zz # type: int  # type: ignore  [ xyz ]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                             # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                                 # N: Error code "name-defined" not covered by "type: ignore[xyz, foo]" comment
 
 [case testErrorCodeIgnoreAfterArgComment]
 def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
@@ -199,7 +272,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     pass
 
 def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined] \
-      # N: Error code "name-defined" not covered by "type: ignore" comment
+                                           # N: Error code "name-defined" not covered by "type: ignore[foo]" comment
       ):
     # type () -> None
     pass
@@ -420,7 +493,7 @@ def y() -> int: return 2
 def best() -> int: return 3
 @d  # type: ignore[misc]  # E: Unused "type: ignore" comment  [unused-ignore] \
                           # E: Untyped decorator makes function "z" untyped  [untyped-decorator] \
-                          # N: Error code "untyped-decorator" not covered by "type: ignore" comment
+                          # N: Error code "untyped-decorator" not covered by "type: ignore[misc]" comment
 def z() -> int: return 4
 
 [case testErrorCodeIndexing]
@@ -1056,12 +1129,12 @@ class D(TypedDict):
 
 def f(d: D, s: str) -> None:
     d[s]  # type: ignore[xyz] \
-    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-    # N: Error code "literal-required" not covered by "type: ignore" comment
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code "literal-required" not covered by "type: ignore[xyz]" comment
     d[s] # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required]
-    d[s]  # type: ignore[misc]  \
-    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-    # N: Error code changed to literal-required; "type: ignore" comment may be out of date
+    d[s]  # type: ignore[misc] \
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code changed to literal-required; "type: ignore" comment may be out of date
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

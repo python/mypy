@@ -4234,8 +4234,8 @@ class SemanticAnalyzer(
                     # Invalidate recursive status cache in case it was previously set.
                     existing.node._is_recursive = None
             else:
-                # Otherwise just replace existing placeholder with type alias.
-                existing.node = alias_node
+                # Otherwise just replace existing placeholder with type alias *in place*.
+                existing._node = alias_node
                 updated = True
             if updated:
                 if self.final_iteration:
@@ -5333,7 +5333,7 @@ class SemanticAnalyzer(
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
                             assert rnode.node is not None
-                            lnode.node = rnode.node
+                            lnode._node = rnode.node
 
     def process__all__(self, s: AssignmentStmt) -> None:
         """Export names if argument is a __all__ assignment."""
@@ -5772,8 +5772,8 @@ class SemanticAnalyzer(
                         # Invalidate recursive status cache in case it was previously set.
                         existing.node._is_recursive = None
                 else:
-                    # Otherwise just replace existing placeholder with type alias.
-                    existing.node = alias_node
+                    # Otherwise just replace existing placeholder with type alias *in place*.
+                    existing._node = alias_node
                     updated = True
 
                 if updated:
@@ -7148,7 +7148,7 @@ class SemanticAnalyzer(
         i = 1
         # Don't serialize redefined nodes. They are likely to have
         # busted internal references which can cause problems with
-        # serialization and they can't have any external references to
+        # serialization, and they can't have any external references to
         # them.
         symbol.no_serialize = True
         while True:
@@ -7529,6 +7529,18 @@ class SemanticAnalyzer(
             self.record_incomplete_ref()
             return
         message = f'Name "{name}" is not defined'
+        if (
+            not self.msg.prefer_simple_messages()
+            and "." not in name
+            and not (name.startswith("__") and name.endswith("__"))
+            and f"builtins.{name}" not in SUGGESTED_TEST_FIXTURES
+            and ctx.line not in self.errors.ignored_lines.get(self.errors.file, {})
+        ):
+            alternatives = self._get_names_in_scope()
+            alternatives.discard(name)
+            matches = best_matches(name, alternatives, n=3)
+            if matches:
+                message += f"; did you mean {pretty_seq(matches, 'or')}?"
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if f"builtins.{name}" in SUGGESTED_TEST_FIXTURES:
@@ -7552,6 +7564,39 @@ class SemanticAnalyzer(
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit(".", 1)[-1])
             self.note(hint, ctx, code=codes.NAME_DEFINED)
+
+    def _get_names_in_scope(self) -> set[str]:
+        """Collect all names visible in the current scope for fuzzy matching suggestions.
+
+        This includes:
+        - Local variables (from function scopes)
+        - Class attributes (only when directly in class body, not in methods)
+        - Global/module-level names
+        - Builtins
+        """
+        names: set[str] = set()
+
+        for table in self.locals:
+            if table is not None:
+                names.update(table.keys())
+
+        if self.is_class_scope():
+            assert self.type is not None
+            names.update(self.type.names.keys())
+
+        names.update(self.globals.keys())
+
+        b = self.globals.get("__builtins__", None)
+        if b:
+            assert isinstance(b.node, MypyFile)
+            for builtin_name in b.node.names.keys():
+                if not (
+                    len(builtin_name) > 1 and builtin_name[0] == "_" and builtin_name[1] != "_"
+                ):
+                    names.add(builtin_name)
+
+        # Filter out internal/dunder names that aren't useful as suggestions
+        return {n for n in names if not n.startswith("__")}
 
     def already_defined(
         self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None, noun: str

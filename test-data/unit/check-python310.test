@@ -1,6 +1,7 @@
 -- Capture Pattern --
 
 [case testMatchCapturePatternType]
+# flags: --strict-equality --warn-unreachable
 class A: ...
 m: A
 
@@ -11,7 +12,7 @@ match m:
 -- Literal Pattern --
 
 [case testMatchLiteralPatternNarrows]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -23,7 +24,7 @@ match m:
         reveal_type(other)  # N: Revealed type is "builtins.object"
 
 [case testMatchLiteralPatternNarrows2]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 m: Any
@@ -87,11 +88,11 @@ b: int
 import b
 
 class A: ...
-m: A
 
-match m:
-    case b.b:
-        reveal_type(m)  # E: Statement is unreachable
+def f(m: A) -> None:
+    match m:
+        case b.b:
+            reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 class B: ...
 b: B
@@ -100,11 +101,10 @@ b: B
 # flags: --strict-equality --warn-unreachable
 import b
 
-m: int
-
-match m:
-    case b.b:
-        reveal_type(m)  # E: Statement is unreachable
+def f(m: int) -> None:
+    match m:
+        case b.b:
+            reveal_type(m)  # E: Statement is unreachable
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -112,6 +112,7 @@ b: str
 -- Sequence Pattern --
 
 [case testMatchSequencePatternCaptures]
+# flags: --strict-equality --warn-unreachable
 from typing import List
 m: List[int]
 
@@ -121,6 +122,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternCapturesStarred]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[int]
 
@@ -131,6 +133,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternNarrowsInner]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[object]
 
@@ -139,6 +142,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
 [case testMatchSequencePatternNarrowsOuter]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: object
 
@@ -147,6 +151,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
 [case testMatchSequencePatternAlreadyNarrowerInner]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[bool]
 
@@ -155,6 +160,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
 [case testMatchSequencePatternAlreadyNarrowerOuter]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[object]
 
@@ -163,6 +169,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
 [case testMatchSequencePatternAlreadyNarrowerBoth]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[bool]
 
@@ -171,6 +178,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
 [case testMatchNestedSequencePatternNarrowsInner]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: Sequence[Sequence[object]]
 
@@ -179,6 +187,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
 [case testMatchNestedSequencePatternNarrowsOuter]
+# flags: --strict-equality --warn-unreachable
 from typing import Sequence
 m: object
 
@@ -187,6 +196,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
 [case testMatchSequencePatternDoesntNarrowInvariant]
+# flags: --strict-equality --warn-unreachable
 from typing import List
 m: List[object]
 
@@ -196,6 +206,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternMatches]
+# flags: --strict-equality --warn-unreachable
 import array, collections
 from typing import Sequence, Iterable
 
@@ -246,19 +257,20 @@ match m8:
 
 match m9:
     case [i]:
-        reveal_type(i)
+        reveal_type(i)  # E: Statement is unreachable
 
 match m10:
     case [j]:
-        reveal_type(j)
+        reveal_type(j)  # E: Statement is unreachable
 
 match m11:
     case [k]:
-        reveal_type(k)
+        reveal_type(k)  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testMatchSequencePatternCapturesTuple]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -271,27 +283,30 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleTooLong]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str]
 
 match m:
     case [a, b, c]:
-        reveal_type(a)
+        reveal_type(a)  # E: Statement is unreachable
         reveal_type(b)
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleTooShort]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str, bool]
 
 match m:
     case [a, b]:
-        reveal_type(a)
+        reveal_type(a)  # E: Statement is unreachable
         reveal_type(b)
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleNarrows]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[object, object]
 
@@ -301,6 +316,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarred]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -313,6 +329,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarredUnion]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str, float, bool]
 
@@ -325,18 +342,20 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarredTooShort]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 m: Tuple[int]
 reveal_type(m)  # N: Revealed type is "tuple[builtins.int]"
 
 match m:
     case [a, *b, c]:
-        reveal_type(a)
+        reveal_type(a)  # E: Statement is unreachable
         reveal_type(b)
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
 [case testMatchNonMatchingSequencePattern]
+# flags: --strict-equality --warn-unreachable
 from typing import List
 
 x: List[int]
@@ -368,6 +387,7 @@ match [SubClass("a"), SubClass("b")]:
 # now propagate the type information up to the parent.
 
 [case testMatchNarrowingUnionTypedDictViaIndex]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict
 
 class A(TypedDict):
@@ -389,6 +409,7 @@ match d["tag"]:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchNarrowingUnionClassViaAttribute]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal
 
 class A:
@@ -409,6 +430,7 @@ match d.tag:
         reveal_type(d.num)  # N: Revealed type is "builtins.int"
 
 [case testMatchSequenceUnion]
+# flags: --strict-equality --warn-unreachable
 from typing import List, Union
 m: Union[List[List[str]], str]
 
@@ -418,6 +440,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternNarrowSubjectItems]
+# flags: --strict-equality --warn-unreachable
 m: int
 n: str
 o: bool
@@ -438,6 +461,7 @@ reveal_type(o)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternNarrowSubjectItemsRecursive]
+# flags: --strict-equality --warn-unreachable
 m: int
 n: int
 o: int
@@ -456,36 +480,39 @@ match m, (n, o), (p, (q, r)):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternSequencesLengthMismatchNoNarrowing]
+# flags: --strict-equality --warn-unreachable
 m: int
 n: str
 o: bool
 
 match m, n, o:
     case [3, "foo"]:
-        pass
+        pass  # E: Statement is unreachable
     case [3, "foo", True, True]:
-        pass
+        pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternSequencesLengthMismatchNoNarrowingRecursive]
+# flags: --strict-equality --warn-unreachable
 m: int
 n: int
 o: int
 
 match m, (n, o):
     case [0]:
-        pass
+        pass  # E: Statement is unreachable
     case [0, 1, [2]]:
-        pass
+        pass  # E: Statement is unreachable
     case [0, [1]]:
-        pass
+        pass  # E: Statement is unreachable
     case [0, [1, 2, 3]]:
-        pass
+        pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
 -- Mapping Pattern --
 
 [case testMatchMappingPatternCaptures]
+# flags: --strict-equality --warn-unreachable
 from typing import Dict
 import b
 m: Dict[str, int]
@@ -516,6 +543,7 @@ b: int
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDict]
+# flags: --strict-equality --warn-unreachable
 from typing import TypedDict
 
 class A(TypedDict):
@@ -537,6 +565,7 @@ match m:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictWithLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import TypedDict
 import b
 
@@ -564,6 +593,7 @@ o: Final[str] = "o"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictWithNonLiteral]
+# flags: --strict-equality --warn-unreachable
 from typing import TypedDict
 import b
 
@@ -603,6 +633,7 @@ b: int
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCaptureRest]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -611,6 +642,7 @@ match m:
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternCaptureRestFromMapping]
+# flags: --strict-equality --warn-unreachable
 from typing import Mapping
 
 m: Mapping[str, int]
@@ -621,6 +653,7 @@ match m:
 [builtins fixtures/dict.pyi]
 
 [case testMatchMappingPatternNarrowing]
+# flags: --strict-equality --warn-unreachable
 from typing import Mapping, Sequence
 
 def f1(x: dict[str, str] | list[str] | str) -> None:
@@ -648,7 +681,8 @@ def f2(x: Mapping[str, str] | Sequence[str] | str) -> None:
         case [*_]:
             reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
         case _:
-            reveal_type(x)  # N: Revealed type is "builtins.str"
+            # TODO: this should be str
+            reveal_type(x)  # E: Statement is unreachable
 
 def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
     match x:
@@ -657,10 +691,12 @@ def f2_rest(x: Mapping[str, str] | Sequence[str] | str) -> None:
         case [*_]:
             reveal_type(x)  # N: Revealed type is "typing.Sequence[builtins.str]"
         case _:
-            reveal_type(x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/dict.pyi]
+            # TODO: this should be str
+            reveal_type(x)  # E: Statement is unreachable
+[builtins fixtures/primitives.pyi]
 
 [case testMatchMappingPatternNarrowingAny]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 def f1(x: Any) -> None:
@@ -677,6 +713,7 @@ def f2(x: Any) -> None:
 -- Class Pattern --
 
 [case testMatchClassPatternCapturePositional]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -693,6 +730,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternMemberClassCapturePositional]
+# flags: --strict-equality --warn-unreachable
 import b
 
 m: b.A
@@ -711,6 +749,7 @@ class A:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternCaptureKeyword]
+# flags: --strict-equality --warn-unreachable
 class A:
     a: str
     b: int
@@ -723,6 +762,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 
 [case testMatchClassPatternCaptureSelf]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -751,6 +791,7 @@ match m:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchClassPatternNarrowSelfCapture]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -779,6 +820,7 @@ match m:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchClassPatternCaptureSelfSubtype]
+# flags: --strict-equality --warn-unreachable
 class A(str):
     pass
 
@@ -798,6 +840,7 @@ def f2(x: B):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchInvalidClassPattern]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -813,6 +856,7 @@ match m:
         reveal_type(n)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureDataclass]
+# flags: --strict-equality --warn-unreachable
 from dataclasses import dataclass
 
 @dataclass
@@ -829,6 +873,7 @@ match m:
 [builtins fixtures/dataclasses.pyi]
 
 [case testMatchClassPatternCaptureDataclassNoMatchArgs]
+# flags: --strict-equality --warn-unreachable
 from dataclasses import dataclass
 
 @dataclass(match_args=False)
@@ -840,10 +885,11 @@ m: A
 
 match m:
     case A(i, j):  # E: Class "__main__.A" doesn't define "__match_args__"
-        pass
+        pass  # E: Statement is unreachable
 [builtins fixtures/dataclasses.pyi]
 
 [case testMatchClassPatternCaptureDataclassPartialMatchArgs]
+# flags: --strict-equality --warn-unreachable
 from dataclasses import dataclass, field
 
 @dataclass
@@ -855,12 +901,13 @@ m: A
 
 match m:
     case A(i, j):  # E: Too many positional patterns for class pattern
-        pass
+        pass  # E: Statement is unreachable
     case A(k):
         reveal_type(k)  # N: Revealed type is "builtins.str"
 [builtins fixtures/dataclasses.pyi]
 
 [case testMatchClassPatternCaptureNamedTupleInline]
+# flags: --strict-equality --warn-unreachable
 from collections import namedtuple
 
 A = namedtuple("A", ["a", "b"])
@@ -874,6 +921,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchClassPatternCaptureNamedTupleInlineTyped]
+# flags: --strict-equality --warn-unreachable
 from typing import NamedTuple
 
 A = NamedTuple("A", [("a", str), ("b", int)])
@@ -887,6 +935,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchClassPatternCaptureNamedTupleClass]
+# flags: --strict-equality --warn-unreachable
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -902,6 +951,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternCaptureNamedTuple]
+# flags: --strict-equality --warn-unreachable
 from typing import NamedTuple
 
 class N(NamedTuple):
@@ -917,6 +967,7 @@ match a:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternCaptureGeneric]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -932,6 +983,7 @@ match m:
         reveal_type(i)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureVariadicGeneric]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -947,6 +999,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternCaptureGenericAlreadyKnown]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -962,6 +1015,7 @@ match m:
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testMatchClassPatternCaptureFilledGenericTypeAlias]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -975,9 +1029,10 @@ m: object
 
 match m:
     case B(a=i):  # E: Class pattern class must not be a type alias with type parameters
-        reveal_type(i)
+        reveal_type(i)  # E: Statement is unreachable
 
 [case testMatchClassPatternCaptureGenericTypeAlias]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -994,6 +1049,7 @@ match m:
         pass
 
 [case testMatchClassPatternNarrows]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -1011,6 +1067,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNarrowsUnion]
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Union
 
 class A:
@@ -1047,6 +1104,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -1067,6 +1125,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternIntersection]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -1085,6 +1144,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 class A: ...
 
@@ -1104,6 +1164,7 @@ match n:
         reveal_type(k)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternDuplicateKeyword]
+# flags: --strict-equality --warn-unreachable
 class A:
     a: str
 
@@ -1111,9 +1172,10 @@ m: object
 
 match m:
     case A(a=i, a=j):  # E: Duplicate keyword pattern "a"
-        pass
+        pass  # E: Statement is unreachable
 
 [case testMatchClassPatternDuplicateImplicitKeyword]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -1124,10 +1186,11 @@ m: object
 
 match m:
     case A(i, a=j):  # E: Keyword "a" already matches a positional pattern
-        pass
+        pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternTooManyPositionals]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 class A:
@@ -1139,7 +1202,7 @@ m: object
 
 match m:
     case A(i, j, k):  # E: Too many positional patterns for class pattern
-        pass
+        pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternIsNotType]
@@ -1166,6 +1229,7 @@ def match_int_any(m: object, a: int | Any):
             reveal_type(j)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternAny]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 Foo: Any
@@ -1211,7 +1275,7 @@ def test_callable(x: Callable[[object], int]) -> None:
             reveal_type(other)  # E: Statement is unreachable
 
 [case testMatchClassPatternCallbackProtocol]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any, Callable
 from typing_extensions import Protocol, runtime_checkable
 
@@ -1253,7 +1317,7 @@ def test_callable(x: Callable[[object], int]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testMatchClassPatternAnyCallableProtocol]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any, Callable
 from typing_extensions import Protocol, runtime_checkable
 
@@ -1289,6 +1353,7 @@ def test_callable(x: Callable[[object], int]) -> None:
 
 
 [case testMatchClassPatternProtocol]
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 from typing_extensions import Protocol, runtime_checkable
 
@@ -1313,6 +1378,7 @@ def test_impl(x: Impl) -> None:
 
 
 [case testMatchClassPatternNestedGenerics]
+# flags: --strict-equality --warn-unreachable
 # From cpython test_patma.py
 x = [[{0: 0}]]
 match x:
@@ -1439,6 +1505,7 @@ def main(m: object):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNonFinalMatchArgs]
+# flags: --strict-equality --warn-unreachable
 class A:
     __match_args__ = ("a", "b")
     a: str
@@ -1453,6 +1520,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchAnyTupleMatchArgs]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple, Any
 
 class A:
@@ -1470,6 +1538,7 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNonLiteralMatchArgs]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 b: str = "b"
@@ -1482,13 +1551,14 @@ m: object
 
 match m:
     case A(i, j, k):  # E: Too many positional patterns for class pattern
-        pass
+        pass  # E: Statement is unreachable
     case A(i, j):
         reveal_type(i)  # N: Revealed type is "builtins.str"
         reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchExternalMatchArgs]
+# flags: --strict-equality --warn-unreachable
 from typing import Final, Literal
 
 args: Final = ("a", "b")
@@ -1510,6 +1580,7 @@ class B:
 -- As Pattern --
 
 [case testMatchAsPattern]
+# flags: --strict-equality --warn-unreachable
 m: int
 
 match m:
@@ -1518,6 +1589,7 @@ match m:
         reveal_type(l)  # N: Revealed type is "builtins.int"
 
 [case testMatchAsPatternNarrows]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1525,6 +1597,7 @@ match m:
         reveal_type(l)  # N: Revealed type is "builtins.int"
 
 [case testMatchAsPatternCapturesOr]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1532,6 +1605,7 @@ match m:
         reveal_type(n)  # N: Revealed type is "Literal[1] | Literal[2]"
 
 [case testMatchAsPatternAlreadyNarrower]
+# flags: --strict-equality --warn-unreachable
 m: bool
 
 match m:
@@ -1541,6 +1615,7 @@ match m:
 -- Or Pattern --
 
 [case testMatchOrPatternNarrows]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1548,6 +1623,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
 
 [case testMatchOrPatternNarrowsStr]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1555,6 +1631,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal['foo'] | Literal['bar']"
 
 [case testMatchOrPatternNarrowsUnion]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1562,6 +1639,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal[1] | Literal['foo']"
 
 [case testMatchOrPatternCapturesMissing]
+# flags: --strict-equality --warn-unreachable
 from typing import List
 m: List[int]
 
@@ -1572,6 +1650,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchOrPatternCapturesJoin]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1582,6 +1661,7 @@ match m:
 -- Interactions --
 
 [case testMatchCapturePatternMultipleCases]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1593,6 +1673,7 @@ match m:
 reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testMatchCapturePatternMultipleCaptures]
+# flags: --strict-equality --warn-unreachable
 from typing import Iterable
 
 m: Iterable[int]
@@ -1603,6 +1684,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchCapturePatternPreexistingSame]
+# flags: --strict-equality --warn-unreachable
 a: int
 m: int
 
@@ -1611,6 +1693,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.int"
 
 [case testMatchCapturePatternPreexistingNarrows]
+# flags: --strict-equality --warn-unreachable
 a: int
 m: bool
 
@@ -1623,6 +1706,7 @@ a = 3
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
 [case testMatchCapturePatternPreexistingIncompatible]
+# flags: --strict-equality --warn-unreachable
 a: str
 m: int
 
@@ -1633,6 +1717,7 @@ match m:
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchCapturePatternPreexistingIncompatibleLater]
+# flags: --strict-equality --warn-unreachable
 a: str
 m: object
 
@@ -1645,6 +1730,7 @@ match m:
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchCapturePatternFromFunctionReturningUnion]
+# flags: --strict-equality --warn-unreachable
 def func1(arg: bool) -> str | int: ...
 def func2(arg: bool) -> bytes | int: ...
 
@@ -1660,6 +1746,7 @@ def main() -> None:
             reveal_type(a)  # N: Revealed type is "builtins.int"
 
 [case testMatchCapturePatternFromAsyncFunctionReturningUnion]
+# flags: --strict-equality --warn-unreachable
 async def func1(arg: bool) -> str | int: ...
 async def func2(arg: bool) -> bytes | int: ...
 
@@ -1677,6 +1764,7 @@ async def main() -> None:
 -- Guards --
 
 [case testMatchSimplePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 def guard() -> bool: ...
@@ -1686,6 +1774,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchAlwaysTruePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
@@ -1693,13 +1782,15 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchAlwaysFalsePatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
     case a if False:
-        reveal_type(a)
+        reveal_type(a)  # E: Statement is unreachable
 
 [case testMatchRedefiningPatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
@@ -1707,6 +1798,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "Literal[1]?"
 
 [case testMatchAssigningPatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: str
 
 match m:
@@ -1714,6 +1806,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchNarrowingPatternGuard]
+# flags: --strict-equality --warn-unreachable
 m: object
 
 match m:
@@ -1722,6 +1815,7 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchIncompatiblePatternGuard]
+# flags: --strict-equality --warn-unreachable
 class A: ...
 class B: ...
 
@@ -1742,6 +1836,7 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchSubjectAssignExprWithGuard]
+# flags: --strict-equality --warn-unreachable
 from typing import Optional
 def func() -> Optional[str]: ...
 
@@ -1754,6 +1849,7 @@ match m := func():
 -- Exhaustiveness --
 
 [case testMatchUnionNegativeNarrowing]
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 m: Union[str, int]
@@ -1767,6 +1863,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.int"
 
 [case testMatchOrPatternNegativeNarrowing]
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 m: Union[str, bytes, int]
@@ -1779,6 +1876,7 @@ match m:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
 [case testMatchExhaustiveReturn]
+# flags: --strict-equality --warn-unreachable
 def foo(value) -> int:
   match value:
     case "bar":
@@ -1787,6 +1885,7 @@ def foo(value) -> int:
       return 2
 
 [case testMatchNonExhaustiveReturn]
+# flags: --strict-equality --warn-unreachable
 def foo(value) -> int:  # E: Missing return statement
   match value:
     case "bar":
@@ -1795,6 +1894,7 @@ def foo(value) -> int:  # E: Missing return statement
       return 2
 
 [case testMatchMoreExhaustiveReturnCases]
+# flags: --strict-equality --warn-unreachable
 def g(value: int | None) -> int:
     match value:
         case int():
@@ -1810,6 +1910,7 @@ def b(value: bool) -> int:
             return 3
 
 [case testMatchMiscNonExhaustiveReturn]
+# flags: --strict-equality --warn-unreachable
 class C:
     a: int | str
 
@@ -1846,6 +1947,7 @@ def f5(x: bool) -> int:  # E: Missing return statement
 [builtins fixtures/dict.pyi]
 
 [case testMatchNonExhaustiveError]
+# flags: --strict-equality --warn-unreachable
 from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
 
@@ -1859,6 +1961,7 @@ def f(value: int) -> int:  # E: Missing return statement
             assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
 
 [case testMatchExhaustiveNoError]
+# flags: --strict-equality --warn-unreachable
 from typing import NoReturn, Union, Literal
 def assert_never(x: NoReturn) -> None: ...
 
@@ -1869,10 +1972,11 @@ def f(value: Literal[1] | Literal[2]) -> int:
         case 2:
             return 1
         case o:
-            assert_never(o)
+            assert_never(o)  # E: Statement is unreachable
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
+# flags: --strict-equality --warn-unreachable
 from typing import Literal, Union, Sequence, Tuple
 
 m1: Sequence[int | str]
@@ -2031,6 +2135,7 @@ def f6(d1: list[str], d2: list[str]):
 
 
 [case testMatchTupleUnions]
+# flags: --strict-equality --warn-unreachable
 from typing_extensions import Unpack
 
 m1: tuple[int, str] | None
@@ -2094,6 +2199,7 @@ match m9:
 
 
 [case testMatchEnumSingleChoice]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import NoReturn
 
@@ -2113,12 +2219,13 @@ def f(m: Medal) -> None:
             # net change we don't end up inserting the LiteralType into the type map
             reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
-            assert_never(m)
+            assert_never(m)  # E: Statement is unreachable
 
     reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
 
 [case testMatchLiteralPatternEnumNegativeNarrowing]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -2148,7 +2255,7 @@ def g(m: Medal) -> int:
 [builtins fixtures/enum.pyi]
 
 [case testMatchLiteralOrValuePattern]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal
 
 def test1(x: Literal[1,2,3]) -> None:
@@ -2177,6 +2284,7 @@ def test3(x: Literal[1,2,3]) -> None:
             reveal_type(x)  # N: Revealed type is "Literal[2]"
 
 [case testMatchLiteralPatternEnumWithTypedAttribute]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
@@ -2207,11 +2315,12 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)
+        assert_never(unreachable)  # E: Statement is unreachable
 
 [builtins fixtures/tuple.pyi]
 
 [case testMatchLiteralPatternFunctionalEnum]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
@@ -2227,7 +2336,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)
+        assert_never(unreachable)  # E: Statement is unreachable
 [builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals]
@@ -2250,6 +2359,7 @@ match m:
 [builtins fixtures/enum.pyi]
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
+# flags: --strict-equality --warn-unreachable
 def f(x: int | str) -> int:
     match x:
         case x if isinstance(x, str):
@@ -2259,6 +2369,7 @@ def f(x: int | str) -> int:
 [builtins fixtures/isinstance.pyi]
 
 [case testMatchNarrowDownUnionPartially]
+# flags: --strict-equality --warn-unreachable
 
 def f(x: int | str) -> None:
     match x:
@@ -2279,6 +2390,7 @@ def h(x: int | str | None) -> None:
     reveal_type(x)  # N: Revealed type is "None"
 
 [case testMatchNarrowDownUsingLiteralMatch]
+# flags: --strict-equality --warn-unreachable
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -2328,6 +2440,7 @@ def union(x: str | bool) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNarrowDownUnionUsingClassPattern]
+# flags: --strict-equality --warn-unreachable
 
 class Foo: ...
 class Bar(Foo): ...
@@ -2344,6 +2457,7 @@ def test_2(bar: Bar | str) -> None:
 
 
 [case testMatchAssertFalseToSilenceFalsePositives]
+# flags: --strict-equality --warn-unreachable
 class C:
     a: int | str
 
@@ -2365,6 +2479,7 @@ def g(c: C) -> int:
     assert False
 
 [case testMatchAsPatternExhaustiveness]
+# flags: --strict-equality --warn-unreachable
 def f(x: int | str) -> int:
     match x:
         case int() as n:
@@ -2373,6 +2488,7 @@ def f(x: int | str) -> int:
             return 1
 
 [case testMatchOrPatternExhaustiveness]
+# flags: --strict-equality --warn-unreachable
 from typing import NoReturn, Literal
 def assert_never(x: NoReturn) -> None: ...
 
@@ -2403,6 +2519,7 @@ def f(x: A) -> None:
     reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B"> | __main__.<subclass of "__main__.A" and "__main__.C">"
 
 [case testMatchWithBreakAndContinue]
+# flags: --strict-equality --warn-unreachable
 def f(x: int | str | None) -> None:
     i = int()
     while i:
@@ -2415,6 +2532,7 @@ def f(x: int | str | None) -> None:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | None"
 
 [case testMatchNarrowDownWithStarred-skip]
+# flags: --strict-equality --warn-unreachable
 from typing import List
 def f(x: List[int] | int) -> None:
     match x:
@@ -2427,6 +2545,7 @@ def f(x: List[int] | int) -> None:
 -- Misc
 
 [case testMatchAndWithStatementScope]
+# flags: --strict-equality --warn-unreachable
 from m import A, B
 
 with A() as x:
@@ -2468,6 +2587,7 @@ class B:
     def __exit__(self, x, y, z) -> None: ...
 
 [case testOverrideMatchArgs]
+# flags: --strict-equality --warn-unreachable
 class AST:
    __match_args__ = ()
 
@@ -2502,7 +2622,7 @@ def f(x: AST) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchReachableDottedNames]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 class Consts:
     BLANK = ""
     SPECIAL = "asdf"
@@ -2518,6 +2638,7 @@ def test_func(test_str: str) -> str:
 
 
 [case testNoneTypeWarning]
+# flags: --strict-equality --warn-unreachable
 from types import NoneType
 
 def foo(x: NoneType): # E: NoneType should not be used as a type, please use None instead
@@ -2526,6 +2647,7 @@ def foo(x: NoneType): # E: NoneType should not be used as a type, please use Non
 [builtins fixtures/tuple.pyi]
 
 [case testMatchTupleInstanceUnionNoCrash]
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 
 def func(e: Union[str, tuple[str]]) -> None:
@@ -2535,6 +2657,7 @@ def func(e: Union[str, tuple[str]]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchTupleOptionalNoCrash]
+# flags: --strict-equality --warn-unreachable
 foo: tuple[int] | None
 match foo:
     case x,:
@@ -2561,6 +2684,7 @@ def main2(var: tuple[int, int] | tuple[str, str] | tuple[str, int]):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
+# flags: --strict-equality --warn-unreachable
 from typing import Generic, Final, TypeVar, Union
 from dataclasses import dataclass
 
@@ -2627,6 +2751,7 @@ match input_arg:
 [builtins fixtures/dataclasses.pyi]
 
 [case testMatchValueConstrainedTypeVar]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar, Iterable
 
 S = TypeVar("S", int, str)
@@ -2642,7 +2767,7 @@ def my_func(pairs: Iterable[tuple[S, S]]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testPossiblyUndefinedMatch]
-# flags: --enable-error-code possibly-undefined
+# flags: --enable-error-code possibly-undefined --strict-equality --warn-unreachable
 def f0(x: int | str) -> int:
     match x:
         case int():
@@ -2705,7 +2830,7 @@ def f6(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testPossiblyUndefinedMatchUnreachable]
-# flags: --enable-error-code possibly-undefined
+# flags: --enable-error-code possibly-undefined --strict-equality --warn-unreachable
 import typing
 
 def f0(x: int) -> int:
@@ -2729,7 +2854,7 @@ def f1(x: int) -> int:
 [typing fixtures/typing-medium.pyi]
 
 [case testUsedBeforeDefMatchWalrus]
-# flags: --enable-error-code used-before-def
+# flags: --enable-error-code used-before-def --strict-equality --warn-unreachable
 import typing
 
 def f0(x: int) -> None:
@@ -2742,6 +2867,7 @@ def f0(x: int) -> None:
     d = y
 
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
+# flags: --strict-equality --warn-unreachable
 from typing import overload
 class C:
     @overload
@@ -2758,6 +2884,7 @@ Y = None | D
 [builtins fixtures/type.pyi]
 
 [case testMatchStatementWalrus]
+# flags: --strict-equality --warn-unreachable
 class A:
     a = 1
 
@@ -2782,6 +2909,7 @@ def f() -> None:
             reveal_type(y.a)  # N: Revealed type is "builtins.int"
 
 [case testNarrowedVariableInNestedModifiedInMatch]
+# flags: --strict-equality --warn-unreachable
 from typing import Optional
 
 def match_stmt_error1(x: Optional[str]) -> None:
@@ -2851,7 +2979,7 @@ def match_stmt_error5(x: Optional[str]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSubjectRedefinition]
-# flags: --allow-redefinition
+# flags: --allow-redefinition --strict-equality --warn-unreachable
 def transform1(a: str) -> int:
     ...
 
@@ -2876,6 +3004,7 @@ def redefinition_bad(a: int):
 [builtins fixtures/primitives.pyi]
 
 [case testPatternMatchingClassPatternLocation]
+# flags: --strict-equality --warn-unreachable
 # See https://github.com/python/mypy/issues/15496
 from some_missing_lib import DataFrame, Series  # type: ignore[import]
 from typing import TypeVar
@@ -2896,7 +3025,7 @@ def f2(x: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchGuardReachability]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 def f1(e: int) -> int:
     match e:
         case x if True:
@@ -2938,7 +3067,7 @@ def f4(e: int | str | bytes) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchGuardAlwaysTrueAlwaysFalse]
-# flags: --warn-unreachable --always-true TRUEFLAG --always-false FALSEFLAG
+# flags: --warn-unreachable --always-true TRUEFLAG --always-false FALSEFLAG --strict-equality
 TRUEFLAG = False
 FALSEFLAG = True
 
@@ -2957,6 +3086,7 @@ def false_flag(e: int) -> None:
             1 + "asdf"
 
 [case testMatchSequencePatternVariadicTupleNotTooShort]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -2970,7 +3100,7 @@ match fm1:
 fm2: Tuple[int, int, Unpack[Tuple[str, ...]], int]
 match fm2:
     case [fa2, fb2]:
-        reveal_type(fa2)
+        reveal_type(fa2)  # E: Statement is unreachable
         reveal_type(fb2)
 
 fm3: Tuple[int, int, Unpack[Tuple[str, ...]], int]
@@ -3006,7 +3136,38 @@ match m3:
         reveal_type(c3)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternVariadicTuple]
+# flags: --strict-equality --warn-unreachable
+from typing_extensions import Unpack
+
+def f1(m: tuple[int, Unpack[tuple[str, ...]], int]) -> None:
+    match m:
+        case (a1, b1):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+        case (a2, b2, c2):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
+        case (a3, b3, c3, d3):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.str, builtins.int]"
+        case (a4, *b4, c4):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
+        case _:
+            reveal_type(m)  # E: Statement is unreachable
+
+
+def f2(m: tuple[int] | tuple[str, str] | tuple[int, Unpack[tuple[str, ...]], int]):
+    match m:
+        case (x,):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int]"
+        case (x, y):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.str, builtins.str] | tuple[builtins.int, builtins.int]"
+        case (x, y, z):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
+        case _:
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequencePatternTypeVarTupleNotTooShort]
+# flags: --strict-equality --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3022,7 +3183,7 @@ def test(xs: Tuple[Unpack[Ts]]) -> None:
     fm2: Tuple[int, int, Unpack[Ts], int]
     match fm2:
         case [fa2, fb2]:
-            reveal_type(fa2)
+            reveal_type(fa2)  # E: Statement is unreachable
             reveal_type(fb2)
 
     fm3: Tuple[int, int, Unpack[Ts], int]
@@ -3059,6 +3220,7 @@ def test(xs: Tuple[Unpack[Ts]]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternTypeVarBoundNoCrash]
+# flags: --strict-equality --warn-unreachable
 # This was crashing: https://github.com/python/mypy/issues/18089
 from typing import TypeVar, Sequence, Any
 
@@ -3071,6 +3233,7 @@ def f(x: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternTypeVarBoundNarrows]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar, Sequence
 
 T = TypeVar("T", bound=Sequence[int | str])
@@ -3086,7 +3249,7 @@ def f(x: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingTypeVarMatch]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/18126
 from typing import TypeVar
@@ -3101,6 +3264,7 @@ def fn_case(arg: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNoneCheckDoesNotMakeTypeVarOptionalMatch]
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 
 T = TypeVar('T')
@@ -3116,7 +3280,7 @@ def foo(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testMatchSequenceReachableFromAny]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Any
 
 def maybe_list(d: Any) -> int:
@@ -3148,21 +3312,23 @@ def nested_in_dict(d: dict[str, Any]) -> int:
 [builtins fixtures/dict.pyi]
 
 [case testMatchRebindsOuterFunctionName]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Literal
 
-def x() -> tuple[Literal["test"]]: ...
+def f() -> None:
+    def x() -> tuple[Literal["test"]]: ...
 
-match x():
-    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
-        reveal_type(x)  # E: Statement is unreachable
-    case foo:
-        foo
+    match x():
+        case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]") \
+                                   # E: Non-overlapping equality check (left operand type: "Callable[[], tuple[Literal['test']]]", right operand type: "Literal['test']")
+            reveal_type(x)  # E: Statement is unreachable
+        case foo:
+            foo
 
 [builtins fixtures/dict.pyi]
 
 [case testMatchRebindsInnerFunctionName]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 class Some:
     value: int | str
     __match_args__ = ("value",)
@@ -3199,7 +3365,7 @@ def fn2(x: Some | int | str) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testMatchFunctionCall]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 def fn() -> int | str: ...
 
@@ -3212,7 +3378,7 @@ match fn():
         other  # E: Statement is unreachable
 
 [case testMatchAttribute]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 class A:
     foo: int | str
@@ -3226,7 +3392,7 @@ match A().foo:
         other  # E: Statement is unreachable
 
 [case testMatchLiteral]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 def int_literal() -> None:
     match 12:
@@ -3247,7 +3413,7 @@ def str_literal() -> None:
             other  # E: Statement is unreachable
 
 [case testMatchOperations]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 x: int
 match -x:
@@ -3276,7 +3442,7 @@ match 1 > 2:
 [builtins fixtures/ops.pyi]
 
 [case testMatchDictItem]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 m: dict[str, int | str]
 k: str
@@ -3292,7 +3458,7 @@ match m[k]:
 [builtins fixtures/dict.pyi]
 
 [case testMatchLiteralValuePathological]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 match 0:
     case 0 as i:
@@ -3303,6 +3469,7 @@ match 0:
         other  # E: Statement is unreachable
 
 [case testMatchNamedTupleSequence]
+# flags: --strict-equality --warn-unreachable
 from typing import Any, NamedTuple
 
 class T(NamedTuple):
@@ -3318,7 +3485,7 @@ def f(t: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchTypeObjectTypeVar]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import TypeVar
 import b
 
@@ -3343,7 +3510,7 @@ class Two: ...
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineMatchBasics]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
 def f1(x: int | str | list[bytes]) -> None:
     match x:
@@ -3356,7 +3523,7 @@ def f1(x: int | str | list[bytes]) -> None:
     reveal_type(y) # N: Revealed type is "builtins.str | builtins.bytes"
 
 [case testNewRedefineLoopWithMatch]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
 def f1() -> None:
     while True:
@@ -3381,6 +3548,7 @@ def f2() -> None:
 [builtins fixtures/list.pyi]
 
 [case testExhaustiveMatchNoFlag]
+# flags: --strict-equality --warn-unreachable
 
 a: int = 5
 match a:
@@ -3397,6 +3565,7 @@ match b:
         pass
 
 [case testNonExhaustiveMatchNoFlag]
+# flags: --strict-equality --warn-unreachable
 
 a: int = 5
 match a:
@@ -3410,7 +3579,7 @@ match b:
 
 
 [case testExhaustiveMatchWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 a: int = 5
 match a:
@@ -3427,7 +3596,7 @@ match b:
         pass
 
 [case testNonExhaustiveMatchWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 a: int = 5
 match a: # E: Match statement has unhandled case for values of type "int" \
@@ -3441,7 +3610,7 @@ match b: # E: Match statement has unhandled case for values of type "str" \
     case "bye":
         pass
 [case testNonExhaustiveMatchEnumWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 import enum
 
@@ -3461,7 +3630,7 @@ match val: # E: Match statement has unhandled case for values of type "Literal[C
 [builtins fixtures/enum.pyi]
 
 [case testExhaustiveMatchEnumWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 import enum
 
@@ -3479,7 +3648,7 @@ match val:
 [builtins fixtures/enum.pyi]
 
 [case testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 import enum
 
@@ -3497,7 +3666,7 @@ match val: # E: Match statement has unhandled case for values of type "Literal[C
 [builtins fixtures/enum.pyi]
 
 [case testExhaustiveMatchEnumFallbackWithFlag]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 import enum
 
@@ -3517,7 +3686,7 @@ match val:
 
 # Fork of testMatchNarrowingUnionTypedDictViaIndex to check behaviour with exhaustive match flag
 [case testExhaustiveMatchNarrowingUnionTypedDictViaIndex]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
 from typing import Literal, TypedDict
 
@@ -3539,6 +3708,7 @@ match d["tag"]: # E: Match statement has unhandled case for values of type "Lite
 [typing fixtures/typing-typeddict.pyi]
 
 [case testEnumTypeObjectMember]
+# flags: --strict-equality --warn-unreachable
 import enum
 from typing import NoReturn
 
@@ -3556,10 +3726,11 @@ match value_type:
     case ValueType.STR:
         pass
     case _:
-        assert_never(value_type)
+        assert_never(value_type)  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
 [case testAssignmentToFinalInMatchCaseNotAllowed]
+# flags: --strict-equality --warn-unreachable
 from typing import Final
 
 FOO: Final[int] = 10
@@ -3570,7 +3741,7 @@ match val:
         pass
 
 [case testMatchExhaustivenessWithDeferral]
-# flags: --enable-error-code exhaustive-match
+# flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 from typing import Literal
 import unknown_module  # E: Cannot find implementation or library stub for module named "unknown_module" \
                        # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -3585,6 +3756,7 @@ def foo(e: Literal[0, 1]) -> None:
 defer = unknown_module.foo
 
 [case testMatchErrorsIncorrectName]
+# flags: --strict-equality --warn-unreachable
 class A:
     pass
 
@@ -3593,6 +3765,7 @@ match 5:
         pass
 
 [case testMatchAllowsAnyClassArgsForAny]
+# flags: --strict-equality --warn-unreachable
 match 5:
     case BlahBlah(a, b):  # E: Name "BlahBlah" is not defined
         reveal_type(a)  # N: Revealed type is "Any"
@@ -3601,6 +3774,7 @@ match 5:
         reveal_type(c)  # N: Revealed type is "Any"
 
 [case testMatchAllowsNoneTypeAsClass]
+# flags: --strict-equality --warn-unreachable
 import types
 
 class V:
@@ -3617,6 +3791,7 @@ def fun(val: str | None):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchMappingRestErrorLocation]
+# flags: --strict-equality --warn-unreachable
 rest: list[int]
 data: list[int]
 match data:
@@ -3629,7 +3804,7 @@ match config:
 [builtins fixtures/dict.pyi]
 
 [case testMatchTypeNarrowing]
-# flags: --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 import builtins
 import typing
 import types
@@ -3703,6 +3878,7 @@ def type_object(field_type: type[object]) -> str:
 
 
 [case testMatchFinalClass]
+# flags: --strict-equality --warn-unreachable
 from typing import final, NoReturn
 
 def assert_never(x: NoReturn) -> NoReturn: ...

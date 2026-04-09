@@ -1478,6 +1478,26 @@ def f(x: Any):
     x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowingAny]
+# flags: --warn-unreachable
+from typing import Any
+
+class A: pass
+class B(A): pass
+
+def f1(x: Any) -> None:
+    if x and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if isinstance(x, A) and x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+
+def f2(x: Any) -> None:
+    if isinstance(x, A) and not isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if not isinstance(x, B) and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceOfGenericClassRetainsParameters]
 # flags: --warn-unreachable
 from typing import List, Union
@@ -2134,27 +2154,22 @@ else:
 # flags: --warn-unreachable
 from typing import List, Optional
 
-x: List[str]
-y: Optional[int]
-
-if y in x:
-    reveal_type(y)  # E: Statement is unreachable
-else:
-    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+def f(x: List[str], y: Optional[int]) -> None:
+    if y in x:
+        reveal_type(y)  # E: Statement is unreachable
+    else:
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 
 [case testNarrowTypeAfterInListNested]
 # flags: --warn-unreachable
 from typing import List, Optional, Any
 
-x: Optional[int]
-lst: Optional[List[int]]
-nested_any: List[List[Any]]
-
-if lst in nested_any:
-    reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
-if x in nested_any:
-    reveal_type(x) # E: Statement is unreachable
+def f(x: Optional[int], lst: Optional[List[int]], nested_any: List[List[Any]]) -> None:
+    if lst in nested_any:
+        reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
+    if x in nested_any:
+        reveal_type(x) # E: Statement is unreachable
 [builtins fixtures/list.pyi]
 
 [case testNarrowTypeAfterInTuple]

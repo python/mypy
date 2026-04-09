@@ -504,6 +504,14 @@ function_op(
 )
 
 function_op(
+    name="librt.internal.extract_symbol",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="extract_symbol_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
     name="librt.base64.b64encode",
     arg_types=[bytes_rprimitive],
     return_type=bytes_rprimitive,

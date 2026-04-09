@@ -1727,7 +1727,7 @@ reveal_type(c)  # N: Revealed type is "__main__.C"
 
 c1: C
 if isinstance(c1, tp) and isinstance(c1, D):
-    reveal_type(c1)  # N: Revealed type is "Any"
+    reveal_type(c1)  # N: Revealed type is "__main__.D"
 else:
     reveal_type(c1)  # N: Revealed type is "__main__.C"
 reveal_type(c1)  # N: Revealed type is "__main__.C"
@@ -1741,7 +1741,7 @@ reveal_type(c2)  # N: Revealed type is "__main__.C"
 
 c3: C
 if isinstance(c3, D) and isinstance(c3, tp):
-    reveal_type(c3)  # N: Revealed type is "Any"
+    reveal_type(c3)  # N: Revealed type is "__main__.D"
 else:
     reveal_type(c3)  # N: Revealed type is "__main__.C"
 reveal_type(c3)  # N: Revealed type is "__main__.C"
@@ -2802,13 +2802,13 @@ while x is not None and b():
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop1]
 # flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
 
-x = 1
-while True:
-    if x == str():
-        break
-    x = str()
-    if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
-        break  # E: Statement is unreachable
+def f(x: int) -> None:
+    while True:
+        if x == str():
+            break
+        x = str()
+        if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
+            break  # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop2]
@@ -2818,11 +2818,11 @@ class A: ...
 class B: ...
 class C: ...
 
-x = A()
-while True:
-    if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
-        break  # E: Statement is unreachable
-    x = B()
+def f(x: A) -> None:
+    while True:
+        if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
+            break  # E: Statement is unreachable
+        x = B()
 [builtins fixtures/primitives.pyi]
 
 [case testAvoidFalseNonOverlappingEqualityCheckInLoop3]
@@ -3264,6 +3264,39 @@ def bad_but_should_pass(has_key: bool, key: bool, s: tuple[bool, ...]) -> None:
         reveal_type(key)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowChainedComparisonMeet]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from typing import Any
+
+def f1(a: str | None, b: str | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+
+def f2(a: Any | None, b: str | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "builtins.str | None"
+
+def f3(a: str | None, b: Any | None) -> None:
+    if None is not a == b:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any | builtins.str | None"
+
+    if (None is not a) and (a == b):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowTypeObject]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
@@ -3360,6 +3393,30 @@ def f(x: str, y: Any, z: object):
     if type(x) == type(z):
         reveal_type(x) # N: Revealed type is "builtins.str"
         reveal_type(z) # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+[case testTypeEqualsCheckWideningSelf]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+from typing_extensions import Self
+
+class A:
+    def f(self: Self, y: Any, z: object):
+        if type(self) is type(y):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(y) # N: Revealed type is "Self`0"
+
+        if type(self) is type(z):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(z) # N: Revealed type is "Self`0"
+
+        if type(self) == type(y):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(y) # N: Revealed type is "Self`0"
+
+        if type(self) == type(z):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(z) # N: Revealed type is "Self`0"
 [builtins fixtures/primitives.pyi]
 
 [case testTypeEqualsCheckUsingIs]
