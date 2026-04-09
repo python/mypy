@@ -8032,7 +8032,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 return None
             # Filter out None and UninhabitedType entries (type checkers need explicit None check)
             valid_ranges = [
-                t for t in type_ranges
+                t
+                for t in type_ranges
                 if t is not None and not isinstance(get_proper_type(t.item), UninhabitedType)
             ]
             if not valid_ranges:
@@ -8042,7 +8043,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # to avoid narrowing to a useless type.
             item = make_simplified_union([t.item for t in valid_ranges])
             proper_item = get_proper_type(item)
-            if isinstance(proper_item, Instance) and proper_item.type.fullname == "builtins.object":
+            if (
+                isinstance(proper_item, Instance)
+                and proper_item.type.fullname == "builtins.object"
+            ):
                 return None
             return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
