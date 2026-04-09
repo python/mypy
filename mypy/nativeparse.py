@@ -280,6 +280,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
+        cache_version=1,
     )
     return (
         ast_bytes,
@@ -823,6 +824,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
         if has_name:
             var_name = read_str(data)
             var_expr = NameExpr(var_name)
+            read_loc(data, var_expr)
             vars_list.append(var_expr)
         else:
             vars_list.append(None)
