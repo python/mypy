@@ -1957,7 +1957,7 @@ class TypeConverter:
 
         if not isinstance(self.parent(), ast3.List):
             note = None
-            if constructor and not e.keywords and len(e.args) == 1:
+            if constructor and not e.keywords:
                 note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
