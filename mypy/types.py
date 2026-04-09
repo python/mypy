@@ -2311,6 +2311,15 @@ class CallableType(FunctionLike):
         ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
             ret = get_proper_type(ret.upper_bound)
+        if isinstance(ret, UnionType):
+            # When the TypeVar has a union bound, pick the first item's
+            # fallback. This is only used for is_protocol checks, which
+            # are not applicable to union-bound typevars.
+            first = get_proper_type(ret.items[0])
+            if isinstance(first, Instance):
+                ret = first
+            else:
+                ret = self.fallback
         if isinstance(ret, TupleType):
             ret = ret.partial_fallback
         if isinstance(ret, TypedDictType):

@@ -1900,6 +1900,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     return is_subtype(NoneType(), node.type.ret_type)
         return False
 
+    def _replace_callable_return_type(self, tp: Type, replacement: Type) -> ProperType:
+        """Replace the return type of a callable or overloaded type with replacement."""
+        ptp = get_proper_type(tp)
+        if isinstance(ptp, CallableType):
+            return ptp.copy_modified(ret_type=replacement)
+        if isinstance(ptp, Overloaded):
+            return Overloaded([c.copy_modified(ret_type=replacement) for c in ptp.items])
+        return ptp
+
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
 
@@ -1936,6 +1945,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
                 callee = Overloaded([c.copy_modified(ret_type=item) for c in callee.items])
+            elif isinstance(callee, UnionType):
+                callee = UnionType(
+                    [
+                        self._replace_callable_return_type(tp, item)
+                        for tp in callee.relevant_items()
+                    ],
+                    callee.line,
+                )
             return callee
         # We support Type of namedtuples but not of tuples in general
         if isinstance(item, TupleType) and tuple_fallback(item).type.fullname != "builtins.tuple":
