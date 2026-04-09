@@ -1,0 +1,30 @@
+From d88a4b774fc59ecd0f2d0fdda8e0e61092adafd3 Mon Sep 17 00:00:00 2001
+From: Ivan Levkivskyi <levkivskyi@gmail.com>
+Date: Wed, 8 Apr 2026 00:01:44 +0100
+Subject: [PATCH] Revert dict.__or__ typeshed change
+
+---
+ mypy/typeshed/stdlib/builtins.pyi | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
+index 674142d70..25b21ba97 100644
+--- a/mypy/typeshed/stdlib/builtins.pyi
++++ b/mypy/typeshed/stdlib/builtins.pyi
+@@ -1142,7 +1142,13 @@ class dict(MutableMapping[_KT, _VT]):
+     def __reversed__(self) -> Iterator[_KT]: ...
+     __hash__: ClassVar[None]  # type: ignore[assignment]
+     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
++    @overload
++    def __or__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
++    @overload
+     def __or__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
++    @overload
++    def __ror__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
++    @overload
+     def __ror__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
+     # dict.__ior__ should be kept roughly in line with MutableMapping.update()
+     @overload  # type: ignore[misc]
+-- 
+2.25.1
+
