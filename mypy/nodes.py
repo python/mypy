@@ -4767,6 +4767,8 @@ class SymbolTableNode:
     __slots__ = (
         "kind",
         "_node",
+        "_node_bytes",
+        "_node_tag",
         "module_public",
         "module_hidden",
         "cross_ref",
@@ -4790,6 +4792,8 @@ class SymbolTableNode:
     ) -> None:
         self.kind = kind
         self._node = node
+        self._node_bytes = b""
+        self._node_tag: Tag = 0
         self.module_public = module_public
         self.implicit = implicit
         self.module_hidden = module_hidden
@@ -4824,6 +4828,9 @@ class SymbolTableNode:
             if self.cross_ref is not None:
                 node_fixer.resolve_cross_ref(self)
             else:
+                if self._node is None:
+                    self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+                    self._node_bytes = b""
                 node = self._node
                 assert node is not None
                 if self.stored_info is not None:
@@ -4958,11 +4965,8 @@ class SymbolTableNode:
             if tag == TYPE_INFO:
                 sym._node = TypeInfo.read(data)
             else:
-                # This logic is temporary, to make sure we don't introduce
-                # regressions until we have proper lazy deserialization.
-                # It has negligible performance impact.
-                node_bytes = extract_symbol(data)
-                sym._node = read_symbol(ReadBuffer(node_bytes), tag)
+                sym._node_bytes = extract_symbol(data)
+                sym._node_tag = tag
                 sym.unfixed = True
         else:
             sym.cross_ref = cross_ref
