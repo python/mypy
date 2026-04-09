@@ -959,7 +959,7 @@ class BuildManager:
         if self.options.native_parser:
             futures = []
             parsed_states = set()
-            # Use at least --num-threads if specified by user.
+            # Use at least --num-workers if specified by user.
             available_threads = max(get_available_threads(), self.options.num_workers)
             # Overhead from trying to parallelize (small) blocking portion of
             # parse_file_inner() results in no visible improvement with more than 8 threads.
