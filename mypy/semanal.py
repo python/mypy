@@ -4234,8 +4234,8 @@ class SemanticAnalyzer(
                     # Invalidate recursive status cache in case it was previously set.
                     existing.node._is_recursive = None
             else:
-                # Otherwise just replace existing placeholder with type alias.
-                existing.node = alias_node
+                # Otherwise just replace existing placeholder with type alias *in place*.
+                existing._node = alias_node
                 updated = True
             if updated:
                 if self.final_iteration:
@@ -5333,7 +5333,7 @@ class SemanticAnalyzer(
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
                             assert rnode.node is not None
-                            lnode.node = rnode.node
+                            lnode._node = rnode.node
 
     def process__all__(self, s: AssignmentStmt) -> None:
         """Export names if argument is a __all__ assignment."""
@@ -5772,8 +5772,8 @@ class SemanticAnalyzer(
                         # Invalidate recursive status cache in case it was previously set.
                         existing.node._is_recursive = None
                 else:
-                    # Otherwise just replace existing placeholder with type alias.
-                    existing.node = alias_node
+                    # Otherwise just replace existing placeholder with type alias *in place*.
+                    existing._node = alias_node
                     updated = True
 
                 if updated:
@@ -7148,7 +7148,7 @@ class SemanticAnalyzer(
         i = 1
         # Don't serialize redefined nodes. They are likely to have
         # busted internal references which can cause problems with
-        # serialization and they can't have any external references to
+        # serialization, and they can't have any external references to
         # them.
         symbol.no_serialize = True
         while True:

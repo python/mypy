@@ -561,7 +561,7 @@ def replace_nodes_in_symbol_table(
                 new = replacements[node.node]
                 old = node.node
                 replace_object_state(new, old, skip_slots=_get_ignored_slots(new))
-                node.node = new
+                node._node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
                 node.node.accept(NodeReplaceVisitor(replacements))

@@ -3395,6 +3395,30 @@ def f(x: str, y: Any, z: object):
         reveal_type(z) # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 
+[case testTypeEqualsCheckWideningSelf]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+from typing_extensions import Self
+
+class A:
+    def f(self: Self, y: Any, z: object):
+        if type(self) is type(y):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(y) # N: Revealed type is "Self`0"
+
+        if type(self) is type(z):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(z) # N: Revealed type is "Self`0"
+
+        if type(self) == type(y):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(y) # N: Revealed type is "Self`0"
+
+        if type(self) == type(z):
+            reveal_type(self) # N: Revealed type is "Self`0"
+            reveal_type(z) # N: Revealed type is "Self`0"
+[builtins fixtures/primitives.pyi]
+
 [case testTypeEqualsCheckUsingIs]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
