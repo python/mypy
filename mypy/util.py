@@ -992,18 +992,15 @@ def get_available_threads() -> int:
         cpu_count = psutil_cpu_count or os_cpu_count
     else:
         # A conservative fallback in case we cannot determine CPU count in any way.
-        cpu_count = 2
+        cpu_count = 4
 
     affinity = None
     # Not available on old Python versions on some platforms.
     if sys.platform == "linux":
         affinity = os.sched_getaffinity(0)
-    if PSUTIL_AVAILABLE:
-        try:
-            # Currently not supported on macOS.
-            affinity = psutil.Process().cpu_affinity()
-        except AttributeError:
-            pass
+    if PSUTIL_AVAILABLE and sys.platform != "darwin":
+        # Currently not supported on macOS.
+        affinity = psutil.Process().cpu_affinity()
 
     assert cpu_count is not None
     if affinity:
