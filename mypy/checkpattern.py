@@ -31,6 +31,7 @@ from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype
 from mypy.typeops import (
     coerce_to_literal,
+    custom_special_method,
     make_simplified_union,
     try_getting_str_literals_from_type,
     tuple_fallback,
@@ -39,6 +40,7 @@ from mypy.types import (
     AnyType,
     FunctionLike,
     Instance,
+    LiteralType,
     NoneType,
     ProperType,
     TupleType,
@@ -205,6 +207,24 @@ class PatternChecker(PatternVisitor[PatternType]):
         current_type = self.type_context[-1]
         typ = self.chk.expr_checker.accept(o.expr)
         typ = coerce_to_literal(typ)
+
+        # For enum literal types without custom __eq__, use conditional_types_with_intersection
+        # directly to avoid the overly-conservative enum ambiguity check in
+        # narrow_type_by_identity_equality. In match statements, value patterns narrow
+        # based on the exact value, so StrEnum/IntEnum ambiguity with str/int is not a
+        # concern when the other union members are unrelated types.
+        # Enums with custom __eq__ are excluded to preserve existing narrowing behavior.
+        proper_typ = get_proper_type(typ)
+        if (
+            isinstance(proper_typ, LiteralType)
+            and proper_typ.is_enum_literal()
+            and not custom_special_method(proper_typ.fallback, "__eq__", check_all=False)
+        ):
+            narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
+                current_type, [get_type_range(typ)], o, default=current_type
+            )
+            return PatternType(narrowed_type, rest_type, {})
+
         node = TempNode(current_type)
         # Value patterns are essentially a syntactic sugar on top of `if x == Value`.
         # They should be treated equivalently.
