@@ -1941,14 +1941,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # with typevar.
             callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
             callee = get_proper_type(callee)
+            # When the TypeVar has a union bound, use the bound as the return type
+            # instead of the TypeVar itself, since calling the constructor should
+            # return an instance of one of the union members.
+            return_type = item
+            upper_bound = get_proper_type(item.upper_bound)
+            if isinstance(upper_bound, UnionType):
+                return_type = upper_bound
             if isinstance(callee, CallableType):
-                callee = callee.copy_modified(ret_type=item)
+                callee = callee.copy_modified(ret_type=return_type)
             elif isinstance(callee, Overloaded):
-                callee = Overloaded([c.copy_modified(ret_type=item) for c in callee.items])
+                callee = Overloaded([c.copy_modified(ret_type=return_type) for c in callee.items])
             elif isinstance(callee, UnionType):
                 callee = UnionType(
                     [
-                        self._replace_callable_return_type(tp, item)
+                        self._replace_callable_return_type(tp, return_type)
                         for tp in callee.relevant_items()
                     ],
                     callee.line,
