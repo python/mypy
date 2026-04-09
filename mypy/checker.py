@@ -8042,11 +8042,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # type precision (e.g. from a widened _ClassInfo alias). Return None
             # to avoid narrowing to a useless type.
             item = make_simplified_union([t.item for t in valid_ranges])
-            proper_item = get_proper_type(item)
-            if (
-                isinstance(proper_item, Instance)
-                and proper_item.type.fullname == "builtins.object"
-            ):
+            if isinstance(item, Instance) and item.type.fullname == "builtins.object":
                 return None
             return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
