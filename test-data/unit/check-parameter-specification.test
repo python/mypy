@@ -2756,3 +2756,19 @@ reveal_type(Sneaky(f8, 1, y='').kwargs)  # N: Revealed type is "builtins.dict[bu
 reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
 reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
 [builtins fixtures/paramspec.pyi]
+
+[case testOverloadParamSpecNoFalsePositiveCannotMatch]
+# Test that overloads using P.args/P.kwargs don't trigger false
+# "overload will never be matched" errors when combined with
+# overloads using explicit keyword-only parameters.
+from typing import Any, overload, ParamSpec, TypeVar, Callable
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+@overload
+def bar(f: Callable[P, T], *a: P.args, **k: P.kwargs) -> T: ...
+@overload
+def bar(f: Callable[..., T], *a: Any, baz: int, **k: Any) -> T: ...
+def bar(f, *a, **k): ...
+[builtins fixtures/paramspec.pyi]

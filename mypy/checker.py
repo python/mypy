@@ -228,6 +228,7 @@ from mypy.types import (
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
+    ParamSpecType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
@@ -8954,6 +8955,16 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
 
     Assumes that both signatures have overlapping argument counts.
     """
+    # If the signature uses ParamSpec-flavored *args or **kwargs, we cannot
+    # reliably determine overlap. Erasing a ParamSpec to Any makes
+    # P.args/P.kwargs look like *Any/**Any, which appears to accept all
+    # arguments — but in reality the ParamSpec is constrained to the
+    # wrapped function's parameters. This leads to false positives where
+    # we incorrectly conclude that the other overload can never match.
+    for arg_type in signature.arg_types:
+        if isinstance(arg_type, ParamSpecType) and arg_type.flavor != 0:  # BARE = 0
+            return False
+
     # The extra erasure is needed to prevent spurious errors
     # in situations where an `Any` overload is used as a fallback
     # for an overload with type variables. The spurious error appears
