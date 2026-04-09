@@ -804,7 +804,7 @@ _write_long_int(PyObject *data, CPyTagged value) {
     }
 
     // Write absolute integer value as byte array in a variable-length little endian format.
-    int i;
+    Py_ssize_t i;
     for (i = len; i > 1; i -= 2) {
         if (write_tag_internal(
                 data, hex_to_int(str[i - 1]) | (hex_to_int(str[i - 2]) << 4)) == CPY_NONE_ERROR)
@@ -1037,7 +1037,7 @@ _skip_list_gen(PyObject *data) {
     Py_ssize_t size = _read_size(data);
     if (size < 0)
         return CPY_NONE_ERROR;
-    int i;
+    Py_ssize_t i;
     for (i = 0; i < size; i++) {
         uint8_t tag = read_tag_internal(data);
         if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
@@ -1054,7 +1054,7 @@ _skip_list_int(PyObject *data) {
     Py_ssize_t size = _read_size(data);
     if (size < 0)
         return CPY_NONE_ERROR;
-    int i;
+    Py_ssize_t i;
     for (i = 0; i < size; i++) {
         if (unlikely(_skip_int(data) == CPY_NONE_ERROR))
             return CPY_NONE_ERROR;
@@ -1067,7 +1067,7 @@ _skip_list_str_bytes(PyObject *data) {
     Py_ssize_t size = _read_size(data);
     if (size < 0)
         return CPY_NONE_ERROR;
-    int i;
+    Py_ssize_t i;
     for (i = 0; i < size; i++) {
         if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
             return CPY_NONE_ERROR;
@@ -1080,7 +1080,7 @@ _skip_dict_str_gen(PyObject *data) {
     Py_ssize_t size = _read_size(data);
     if (size < 0)
         return CPY_NONE_ERROR;
-    int i;
+    Py_ssize_t i;
     for (i = 0; i < size; i++) {
         // Bare key followed by tagged value.
         if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
@@ -1147,6 +1147,8 @@ _skip_object(PyObject *data, uint8_t tag) {
         return _skip_int(data);
     if (tag == INSTANCE)
         return _skip_instance(data);
+    // We intentionally exclude MypyFile as a sanity check. Module symbols should
+    // be always handled via cross_ref, and never appear in a symbol table as is.
     if (tag > MYPY_FILE && tag < RESERVED)
         return _skip_class(data);
     if (tag == LIST_INT)
