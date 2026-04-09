@@ -1410,3 +1410,55 @@ from other import test
 
 input = b'x' * 512
 assert test(input) == input
+
+[case testLibrtDependencyInImportedFile_experimental_librt]
+# Test that a compiled file (other.py) that does not depend on librt can import another compiled
+# file (native.py) that does. In separate compilation mode, the C extension for other.py includes
+# a header file with C definitions for the imported objects from native.py but the other.py C
+# extension does not include the header for the librt module. So this makes sure that the included
+# C definitions are generic (PyObjects instead of actual librt types) and don't "leak" the
+# dependency.
+from librt.strings import BytesWriter, write_i16_le
+
+glob = BytesWriter()
+
+def fn_returns_librt_type(b: bytes) -> BytesWriter:
+    w = BytesWriter()
+    w.write(b)
+    return w
+
+class ClassWithLibrtTypeMember:
+    def __init__(self, w: BytesWriter) -> None:
+        self.writer = w
+
+    def method_returns_librt_type(self) -> BytesWriter:
+        return self.writer
+
+[file other.py]
+import struct
+
+from native import glob, fn_returns_librt_type, ClassWithLibrtTypeMember, write_i16_le
+
+def test_global(b: bytes) -> None:
+    glob.write(b)
+    assert glob.getvalue() == b
+
+def test_fn(b: bytes) -> None:
+    assert fn_returns_librt_type(b).getvalue() == b
+
+def test_class(b: bytes) -> None:
+    c = ClassWithLibrtTypeMember(glob)
+    assert c.method_returns_librt_type().getvalue() == b
+
+def test_reexport() -> None:
+    write_i16_le(glob, 42)
+    assert glob.getvalue()[-2:] == struct.pack("<h", 42)
+
+[file driver.py]
+from other import test_global, test_fn, test_class, test_reexport
+
+input = b'x' * 512
+test_global(input)
+test_fn(input)
+test_class(input)
+test_reexport()

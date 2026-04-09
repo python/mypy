@@ -638,27 +638,29 @@ class GroupGenerator:
         ext_declarations.emit_line(f"#define MYPYC_NATIVE{self.group_suffix}_H")
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
-        if self.compiler_options.depends_on_librt_internal:
-            ext_declarations.emit_line("#include <internal/librt_internal.h>")
-        if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <base64/librt_base64.h>")
-        if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <strings/librt_strings.h>")
-        if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <time/librt_time.h>")
-        if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <vecs/librt_vecs.h>")
-        # Include headers for conditional source files
-        source_deps = collect_source_dependencies(self.modules)
-        for source_dep in sorted(source_deps, key=lambda d: d.path):
-            if header := source_dep.get_header():
-                ext_declarations.emit_line(f'#include "{header}"')
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line(f"#define MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line("#include <Python.h>")
         declarations.emit_line("#include <CPy.h>")
+
+        if self.compiler_options.depends_on_librt_internal:
+            declarations.emit_line("#include <internal/librt_internal.h>")
+        if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
+            declarations.emit_line("#include <base64/librt_base64.h>")
+        if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
+            declarations.emit_line("#include <strings/librt_strings.h>")
+        if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
+            declarations.emit_line("#include <time/librt_time.h>")
+        if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
+            declarations.emit_line("#include <vecs/librt_vecs.h>")
+        # Include headers for conditional source files
+        source_deps = collect_source_dependencies(self.modules)
+        for source_dep in sorted(source_deps, key=lambda d: d.path):
+            if header := source_dep.get_header():
+                declarations.emit_line(f'#include "{header}"')
+
         declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         declarations.emit_line()
         declarations.emit_line("int CPyGlobalsInit(void);")
