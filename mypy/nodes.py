@@ -21,6 +21,7 @@ from typing import (
 )
 
 from librt.internal import (
+    extract_symbol,
     read_float as read_float_bare,
     read_int as read_int_bare,
     read_str as read_str_bare,
@@ -4937,13 +4938,8 @@ class SymbolTableNode:
                 # This logic is temporary, to make sure we don't introduce
                 # regressions until we have proper lazy deserialization.
                 # It has negligible performance impact.
-                try:
-                    from librt.internal import extract_symbol
-                except ImportError:
-                    sym.node = read_symbol(data, tag)
-                else:
-                    node_bytes = extract_symbol(data)
-                    sym.node = read_symbol(ReadBuffer(node_bytes), tag)
+                node_bytes = extract_symbol(data)
+                sym.node = read_symbol(ReadBuffer(node_bytes), tag)
         else:
             sym.cross_ref = cross_ref
         assert read_tag(data) == END_TAG
