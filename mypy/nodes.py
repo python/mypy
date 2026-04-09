@@ -4838,6 +4838,7 @@ class SymbolTableNode:
         )
         new.cross_ref = self.cross_ref
         new.unfixed = self.unfixed
+        new.stored_info = self.stored_info
         return new
 
     def __str__(self) -> str:
