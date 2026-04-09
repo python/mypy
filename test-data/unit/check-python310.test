@@ -3136,6 +3136,36 @@ match m3:
         reveal_type(c3)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternVariadicTuple]
+# flags: --strict-equality --warn-unreachable
+from typing_extensions import Unpack
+
+def f1(m: tuple[int, Unpack[tuple[str, ...]], int]) -> None:
+    match m:
+        case (a1, b1):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+        case (a2, b2, c2):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
+        case (a3, b3, c3, d3):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.str, builtins.int]"
+        case (a4, *b4, c4):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
+        case _:
+            reveal_type(m)  # E: Statement is unreachable
+
+
+def f2(m: tuple[int] | tuple[str, str] | tuple[int, Unpack[tuple[str, ...]], int]):
+    match m:
+        case (x,):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int]"
+        case (x, y):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.str, builtins.str] | tuple[builtins.int, builtins.int]"
+        case (x, y, z):
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
+        case _:
+            reveal_type(m)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequencePatternTypeVarTupleNotTooShort]
 # flags: --strict-equality --warn-unreachable
 from typing import Tuple
