@@ -30,6 +30,7 @@ from librt.internal import ReadBuffer, read_tag
 
 from mypy import util
 from mypy.build import (
+    ACK_MESSAGE,
     GRAPH_MESSAGE,
     SCC,
     SCC_REQUEST_MESSAGE,
@@ -201,7 +202,8 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 meta_files.append(meta_file)
             send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
             # Only proceed with the implementations if there are no blockers so far.
-            AckMessage.read(receive(server))
+            if should_shutdown(receive(server), ACK_MESSAGE):
+                break
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
