@@ -2562,6 +2562,26 @@ reveal_type(f)
 [out]
 main:2: note: Revealed type is "def () -> builtins.int"
 
+[case testDeferredLambdaInOverload]
+from typing import Any, Callable, overload
+
+@overload
+def option(*, callback: Callable[[str], object] = ...) -> Any: ...
+@overload
+def option(*, callback: Callable[[int], object] = ...) -> Any: ...
+def option(**kwargs: object) -> None: pass
+
+def test() -> None:
+    option(callback=lambda x: [y for y in x])  # OK
+    x = C().x
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
+[builtins fixtures/primitives.pyi]
+
 [case testRevealLocalsFunction]
 a = 1.0
 
