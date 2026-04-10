@@ -78,6 +78,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "fixed_format_cache",
         "untyped_calls_exclude",
         "enable_incomplete_feature",
+        "install_types",
     }
 ) - {"debug_cache"}
 

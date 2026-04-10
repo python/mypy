@@ -145,7 +145,8 @@ if TYPE_CHECKING:
 
 from mypy import errorcodes as codes
 from mypy.config_parser import get_config_module_names, parse_mypy_comments
-from mypy.fixup import fixup_module
+from mypy.fixer_state import fixer_state
+from mypy.fixup import NodeFixer
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
 from mypy.known_modules import get_known_modules, reset_known_modules_cache
@@ -814,6 +815,10 @@ class BuildManager:
         self.options = options
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
+        # Share same modules dictionary with the global fixer state.
+        # We need to set allow_missing when doing a fine-grained cache
+        # load because we need to gracefully handle missing modules.
+        fixer_state.node_fixer = NodeFixer(self.modules, self.options.use_fine_grained_cache)
         self.import_map: dict[str, set[str]] = {}
         self.missing_modules: dict[str, int] = {}
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
@@ -879,7 +884,7 @@ class BuildManager:
                 ]
             )
 
-        self.metastore = create_metastore(options, parallel_worker)
+        self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -1217,7 +1222,9 @@ class BuildManager:
         done_sccs = []
         results = {}
         for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
-            data = SccResponseMessage.read(receive(self.workers[idx].conn))
+            buf = receive(self.workers[idx].conn)
+            assert read_tag(buf) == SCC_RESPONSE_MESSAGE
+            data = SccResponseMessage.read(buf)
             if not data.is_interface:
                 # Mark worker as free after it finished checking implementation.
                 self.free_workers.add(idx)
@@ -1622,13 +1629,10 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
+def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        # We use this flag in both coordinator and workers to speed up commits,
-        # see mypy.metastore.connect_db() for details.
-        sync_off = options.num_workers > 0 or parallel_worker
-        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options), sync_off=sync_off)
+        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options))
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
     return mds
@@ -2836,9 +2840,21 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        # We need to set allow_missing when doing a fine-grained cache
-        # load because we need to gracefully handle missing modules.
-        fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
+        # Do initial lightweight pass fixing TypeInfos and module cross-references.
+        assert fixer_state.node_fixer is not None
+        fixer_state.node_fixer.visit_symbol_table(self.tree.names)
+        type_fixer = fixer_state.node_fixer.type_fixer
+        # Eagerly fix shared instances, before they are used by named_type() calls.
+        if instance_cache.str_type is not None:
+            instance_cache.str_type.accept(type_fixer)
+        if instance_cache.function_type is not None:
+            instance_cache.function_type.accept(type_fixer)
+        if instance_cache.int_type is not None:
+            instance_cache.int_type.accept(type_fixer)
+        if instance_cache.bool_type is not None:
+            instance_cache.bool_type.accept(type_fixer)
+        if instance_cache.object_type is not None:
+            instance_cache.object_type.accept(type_fixer)
 
     # Methods for processing modules from source code.
 
@@ -4183,7 +4199,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     graph_message.write(buf)
     graph_data = buf.getvalue()
     for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
+        buf = receive(worker.conn)
+        assert read_tag(buf) == ACK_MESSAGE
         worker.conn.write_bytes(graph_data)
 
     sccs = sorted_components(graph)
@@ -4203,10 +4220,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     sccs_message.write(buf)
     sccs_data = buf.getvalue()
     for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
+        buf = receive(worker.conn)
+        assert read_tag(buf) == ACK_MESSAGE
         worker.conn.write_bytes(sccs_data)
     for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
+        buf = receive(worker.conn)
+        assert read_tag(buf) == ACK_MESSAGE
 
     manager.free_workers = set(range(manager.options.num_workers))
 
@@ -4785,7 +4804,6 @@ class AckMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> AckMessage:
-        assert read_tag(buf) == ACK_MESSAGE
         return AckMessage()
 
     def write(self, buf: WriteBuffer) -> None:
@@ -4812,7 +4830,6 @@ class SccRequestMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccRequestMessage:
-        assert read_tag(buf) == SCC_REQUEST_MESSAGE
         return SccRequestMessage(
             scc_id=read_int_opt(buf),
             import_errors={
@@ -4897,7 +4914,6 @@ class SccResponseMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccResponseMessage:
-        assert read_tag(buf) == SCC_RESPONSE_MESSAGE
         scc_id = read_int(buf)
         is_interface = read_bool(buf)
         tag = read_tag(buf)
@@ -4943,7 +4959,6 @@ class SourcesDataMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SourcesDataMessage:
-        assert read_tag(buf) == SOURCES_DATA_MESSAGE
         sources = [
             BuildSource(
                 read_str_opt(buf),
@@ -4975,7 +4990,6 @@ class SccsDataMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccsDataMessage:
-        assert read_tag(buf) == SCCS_DATA_MESSAGE
         sccs = [
             SCC(set(read_str_list(buf)), read_int(buf), read_int_list(buf))
             for _ in range(read_int_bare(buf))
@@ -5003,7 +5017,6 @@ class GraphMessage(IPCMessage):
     @classmethod
     def read(cls, buf: ReadBuffer, manager: BuildManager | None = None) -> GraphMessage:
         assert manager is not None
-        assert read_tag(buf) == GRAPH_MESSAGE
         graph = {read_str_bare(buf): State.read(buf, manager) for _ in range(read_int_bare(buf))}
         missing_modules = {read_str_bare(buf): read_int(buf) for _ in range(read_int_bare(buf))}
         message = GraphMessage(graph=graph, missing_modules=missing_modules)

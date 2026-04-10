@@ -1478,6 +1478,26 @@ def f(x: Any):
     x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowingAny]
+# flags: --warn-unreachable
+from typing import Any
+
+class A: pass
+class B(A): pass
+
+def f1(x: Any) -> None:
+    if x and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if isinstance(x, A) and x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+
+def f2(x: Any) -> None:
+    if isinstance(x, A) and not isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if not isinstance(x, B) and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceOfGenericClassRetainsParameters]
 # flags: --warn-unreachable
 from typing import List, Union

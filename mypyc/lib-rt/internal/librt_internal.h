@@ -11,11 +11,11 @@
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
- #define LIBRT_INTERNAL_API_VERSION 0
+ #define LIBRT_INTERNAL_API_VERSION 1
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_INTERNAL_API_VERSION.
-#define LIBRT_INTERNAL_API_LEN 20
+#define LIBRT_INTERNAL_API_LEN 21
 
 #ifdef LIBRT_INTERNAL_MODULE
 
@@ -41,6 +41,7 @@ static uint8_t cache_version_internal(void);
 static PyTypeObject *ReadBuffer_type_internal(void);
 static PyTypeObject *WriteBuffer_type_internal(void);
 static int NativeInternal_API_Version(void);
+static PyObject *extract_symbol_internal(PyObject *data);
 
 #else
 
@@ -66,6 +67,7 @@ static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 #define ReadBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[17])
 #define WriteBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[18])
 #define NativeInternal_API_Version (*(int (*)(void)) NativeInternal_API[19])
+#define extract_symbol_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[20])
 
 static int
 import_librt_internal(void)
