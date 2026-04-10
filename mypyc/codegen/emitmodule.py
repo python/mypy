@@ -444,7 +444,7 @@ def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
             if isinstance(dep, SourceDep):
                 source_deps.add(dep)
             else:
-                source_deps.add(dep.static_data_dep())
+                source_deps.add(dep.api_dep())
     return source_deps
 
 
@@ -588,7 +588,7 @@ class GroupGenerator:
             for source_dep in sorted(source_deps, key=lambda d: d.path):
                 base_emitter.emit_line(f'#include "{source_dep.path}"')
             if self.compiler_options.depends_on_librt_internal:
-                base_emitter.emit_line("#include <internal/librt_internal_static.c>")
+                base_emitter.emit_line("#include <internal/librt_internal_api.c>")
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
@@ -658,8 +658,7 @@ class GroupGenerator:
         # Include headers for conditional source files
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
-            if header := source_dep.get_header():
-                declarations.emit_line(f'#include "{header}"')
+            declarations.emit_line(f'#include "{source_dep.get_header()}"')
 
         declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         declarations.emit_line()

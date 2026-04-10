@@ -80,11 +80,10 @@ class TestHeaderInclusion(unittest.TestCase):
             if op.dependencies:
                 for dep in op.dependencies:
                     if isinstance(dep, SourceDep):
-                        if fname := dep.get_header():
-                            header_fnam = os.path.join(base_dir, fname)
-                            if os.path.isfile(header_fnam):
-                                with open(os.path.join(base_dir, header_fnam)) as f:
-                                    header += f.read()
+                        header_fnam = os.path.join(base_dir, dep.get_header())
+                        if os.path.isfile(header_fnam):
+                            with open(os.path.join(base_dir, header_fnam)) as f:
+                                header += f.read()
 
         for op in all_ops:
             if op.c_function_name is not None:

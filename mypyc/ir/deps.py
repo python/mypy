@@ -19,28 +19,23 @@ class Capsule:
     def __hash__(self) -> int:
         return hash(("Capsule", self.name))
 
-    def static_data_dep(self) -> SourceDep:
+    def api_dep(self) -> SourceDep:
         module = self.name.split(".")[-1]
-        return SourceDep(
-            f"{module}/librt_{module}_static.c", has_header=False, include_dirs=[module]
-        )
+        return SourceDep(f"{module}/librt_{module}_api.c", include_dirs=[module])
 
 
 class SourceDep:
     """Defines a C source file that a primitive may require.
 
-    Each source file may also have a corresponding .h file (replace .c with .h)
+    Each source file must also have a corresponding .h file (replace .c with .h)
     that gets implicitly #included if the source is used.
     include_dirs are passed to the C compiler when the file is compiled as a
     shared library separate from the C extension.
     """
 
-    def __init__(
-        self, path: str, *, has_header: bool = True, include_dirs: list[str] | None = None
-    ) -> None:
+    def __init__(self, path: str, *, include_dirs: list[str] | None = None) -> None:
         # Relative path from mypyc/lib-rt, e.g. 'bytes_extra_ops.c'
         self.path: Final = path
-        self.has_header: Final = has_header
         self.include_dirs: Final = include_dirs or []
 
     def __repr__(self) -> str:
@@ -52,9 +47,9 @@ class SourceDep:
     def __hash__(self) -> int:
         return hash(("SourceDep", self.path))
 
-    def get_header(self) -> str | None:
+    def get_header(self) -> str:
         """Get the header file path by replacing .c with .h"""
-        return self.path.replace(".c", ".h") if self.has_header else None
+        return self.path.replace(".c", ".h")
 
 
 Dependency = Capsule | SourceDep
