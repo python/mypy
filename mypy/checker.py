@@ -2702,7 +2702,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_final_deletable(typ)
 
             if defn.decorators:
-                sig: Type = type_object_type(defn.info, self.named_type)
+                sig: Type = type_object_type(defn.info)
                 # Decorators are applied in reverse order.
                 for decorator in reversed(defn.decorators):
                     if isinstance(decorator, CallExpr) and isinstance(

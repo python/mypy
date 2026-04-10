@@ -68,7 +68,7 @@ from mypy.cache import (
     write_str_opt_list,
     write_tag,
 )
-from mypy.fixer_state import fixer_state
+from mypy.modules_state import modules_state
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -4819,7 +4819,7 @@ class SymbolTableNode:
     @property
     def node(self) -> SymbolNode | None:
         if self.unfixed:
-            node_fixer = fixer_state.node_fixer
+            node_fixer = modules_state.node_fixer
             assert node_fixer is not None
             if self.cross_ref is not None:
                 node_fixer.resolve_cross_ref(self)

@@ -1224,7 +1224,7 @@ def is_protocol_implementation(
             supertype = find_member(member, right, left)
             assert supertype is not None
 
-            subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
+            subtype = get_protocol_member(left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1253,9 +1253,7 @@ def is_protocol_implementation(
                 if IS_EXPLICIT_SETTER in superflags:
                     supertype = find_member(member, right, left, is_lvalue=True)
                 if IS_EXPLICIT_SETTER in subflags:
-                    subtype = mypy.typeops.get_protocol_member(
-                        left, member, class_obj, is_lvalue=True
-                    )
+                    subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
                 # At this point we know attribute is present on subtype, otherwise we
                 # would return False above.
                 assert supertype is not None and subtype is not None
@@ -1291,6 +1289,30 @@ def is_protocol_implementation(
     )
     type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
+
+
+def get_protocol_member(
+    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+) -> Type | None:
+    if member == "__call__" and class_obj:
+        # Special case: class objects always have __call__ that is just the constructor.
+        return mypy.typeops.type_object_type(left.type)
+
+    if member == "__call__" and left.type.is_metaclass(precise=True):
+        # Special case: we want to avoid falling back to metaclass __call__
+        # if constructor signature didn't match, this can cause many false negatives.
+        return None
+
+    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    if isinstance(subtype, PartialType):
+        subtype = (
+            NoneType()
+            if subtype.type is None
+            else Instance(
+                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+            )
+        )
+    return subtype
 
 
 def find_member(
