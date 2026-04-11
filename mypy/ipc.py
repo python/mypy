@@ -38,7 +38,11 @@ else:
     _IPCHandle = socket.socket
 
 # Size of the message packed as !L, i.e. 4 bytes in network order (big-endian).
-HEADER_SIZE = 4
+HEADER_SIZE: Final = 4
+
+# This is Linux default socket buffer size (for 64 bit), so we will not
+# introduce an additional obstacle when exchanging a large IPC message.
+MAX_READ: Final = 212992
 
 
 # TODO: we should make sure consistent exceptions are raised on different platforms.
@@ -80,10 +84,10 @@ class IPCBase:
         self.message_size = None
         return bytes(bdata)
 
-    def read(self, size: int = 100000) -> str:
+    def read(self, size: int = MAX_READ) -> str:
         return self.read_bytes(size).decode("utf-8")
 
-    def read_bytes(self, size: int = 100000) -> bytes:
+    def read_bytes(self, size: int = MAX_READ) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
         if sys.platform == "win32":
             while True:
