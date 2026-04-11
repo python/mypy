@@ -1247,3 +1247,13 @@ class CodecKey(NamedTuple):
 \[mypy-importlib.*]
 follow_imports = skip
 follow_imports_for_stubs = True
+
+[case testParallelRunWithSyntaxError]
+# cmd: mypy a.py --num-workers=2 --pretty
+[file a.py]
+1 2
+[out]
+a.py:1: error: Simple statements must be separated by newlines or semicolons
+    1 2
+       ^
+== Return code: 2

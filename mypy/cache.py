@@ -239,6 +239,7 @@ class CacheMeta:
 # Always use this type alias to refer to type tags.
 Tag = u8
 
+# Note: all tags should be kept in sync with lib-rt/internal/librt_internal.c.
 # Primitives.
 LITERAL_FALSE: Final[Tag] = 0
 LITERAL_TRUE: Final[Tag] = 1
@@ -264,6 +265,7 @@ DT_SPEC: Final[Tag] = 151
 # Four integers representing source file (line, column) range.
 LOCATION: Final[Tag] = 152
 
+RESERVED: Final[Tag] = 254
 END_TAG: Final[Tag] = 255
 
 
