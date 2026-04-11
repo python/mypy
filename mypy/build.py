@@ -4570,6 +4570,12 @@ def process_stale_scc_implementation(
     unfinished_modules = set(stale)
     for id in stale:
         checker = graph[id].type_checker()
+        # Optimization: if this is a 3rd party library, or we ignore errors
+        # otherwise in this module, skip the implementations altogether.
+        if checker.can_skip_diagnostics and not checker.options.preserve_asts:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+            continue
         # We need to reset deferral count after possibly deferring any methods that
         # are considered part of the top-level (because they define/infer variables).
         checker.pass_num = 0
