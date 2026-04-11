@@ -157,7 +157,7 @@ CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 def connect_db(db_file: str) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
-    db = sqlite3.dbapi2.connect(db_file)
+    db = sqlite3.dbapi2.connect(db_file, check_same_thread=False)
     # This is a bit unfortunate (as we may get corrupt cache after e.g. Ctrl + C),
     # but without this flag, commits are *very* slow, especially when using HDDs,
     # see https://www.sqlite.org/faq.html#q19 for details.
