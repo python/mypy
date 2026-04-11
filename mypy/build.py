@@ -1173,6 +1173,7 @@ class BuildManager:
 
     def broadcast(self, message: bytes) -> None:
         """Broadcast same message to all workers in parallel."""
+        t0 = time.time()
         threads = []
         for worker in self.workers:
             thread = Thread(target=worker.conn.write_bytes, args=(message,))
@@ -1180,6 +1181,7 @@ class BuildManager:
             threads.append(thread)
         for thread in threads:
             thread.join()
+        self.add_stats(broadcast_time=time.time() - t0)
 
     def wait_ack(self) -> None:
         """Wait for an ack from all workers."""
@@ -1207,6 +1209,7 @@ class BuildManager:
                 for mod_id in scc.mod_ids
                 if (path := graph[mod_id].xpath) in self.errors.recorded
             }
+            t0 = time.time()
             send(
                 self.workers[idx].conn,
                 SccRequestMessage(
@@ -1224,6 +1227,7 @@ class BuildManager:
                     },
                 ),
             )
+            self.add_stats(scc_send_time=time.time() - t0)
 
     def wait_for_done(
         self, graph: Graph

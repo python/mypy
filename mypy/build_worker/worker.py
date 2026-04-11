@@ -197,7 +197,9 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         except CompileError as blocker:
             send(server, SccResponseMessage(scc_id=scc_id, blocker=blocker))
         else:
+            t1 = time.time()
             send(server, SccResponseMessage(scc_id=scc_id, result=result))
+            manager.add_stats(scc_send_time=time.time() - t1)
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
