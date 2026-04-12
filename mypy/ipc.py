@@ -366,6 +366,10 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
 
     Return index of each readable connection in the original list.
     """
+    unread_messages = [i for i, conn in enumerate(conns) if conn.buffer]
+    if unread_messages:
+        # If we already have unread messages in the buffer, return those first.
+        return unread_messages
     if sys.platform == "win32":
         # Windows doesn't support select() on named pipes. Instead, start an overlapped
         # ReadFile on each pipe (which internally creates an event via CreateEventW),

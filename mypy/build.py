@@ -1234,7 +1234,6 @@ class BuildManager:
             assert data.result is not None
             results.update(data.result)
             if data.is_interface:
-                send(self.workers[idx].conn, AckMessage())
                 done_sccs.append(self.scc_by_id[scc_id])
         self.submit_to_workers(graph)  # advance after some workers are free.
         return (

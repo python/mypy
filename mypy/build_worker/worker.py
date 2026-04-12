@@ -5,12 +5,13 @@ The protocol of communication with the coordinator is as following:
 * Read (pickled) build options from command line.
 * Populate status file with pid and socket address.
 * Receive build sources from coordinator.
-* Load graph using the sources, and send ack to coordinator.
+* Initialize build manager with the sources, and send ack to coordinator.
+* Receive build graph from coordinator, and ack it.
 * Receive SCC structure from coordinator, and ack it.
-* Receive an SCC id from coordinator, process it, and send back the results.
-* Each SCC is processed in two phases: interface then implementation, with an ack in
-  between. (It is not 100% clear why the ack is needed, but deadlocks happen without it)
-* When prompted by coordinator (with a scc_id=None message), cleanup and shutdown.
+* In a loop:
+  - Receive an SCC id from coordinator, and start processing it.
+  - SCC is processed in two phases: interface and implementation, send a response after each.
+  - When prompted by coordinator (with a scc_id=None message), cleanup and shutdown.
 """
 
 from __future__ import annotations
@@ -30,7 +31,6 @@ from librt.internal import ReadBuffer, read_tag
 
 from mypy import util
 from mypy.build import (
-    ACK_MESSAGE,
     GRAPH_MESSAGE,
     SCC,
     SCC_REQUEST_MESSAGE,
@@ -201,9 +201,6 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
             send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
-            # Only proceed with the implementations if there are no blockers so far.
-            if should_shutdown(receive(server), ACK_MESSAGE):
-                break
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
