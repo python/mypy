@@ -197,7 +197,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 gc.enable()
             result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
-            manager.metastore.commit()
+            manager.commit()
         except CompileError as blocker:
             send(server, SccResponseMessage(scc_id=scc_id, blocker=blocker))
         else:
