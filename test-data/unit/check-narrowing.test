@@ -3993,3 +3993,25 @@ def f2(func: Callable[..., T], arg: str) -> T:
         return func(arg)
     return func(arg)
 [builtins fixtures/primitives.pyi]
+
+
+[case testPropagatedParentNarrowingMeet]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+
+class A:
+    tag: int
+
+class B:
+    tag: int
+    name = "b"
+
+class C:
+    tag: str
+
+def stringify(value: A | B | C) -> str:
+    if isinstance(value.tag, int) and isinstance(value, B):
+        reveal_type(value)  # N: Revealed type is "__main__.B"
+        return value.name
+    return ""
+[builtins fixtures/tuple.pyi]

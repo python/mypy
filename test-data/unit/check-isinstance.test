@@ -3070,7 +3070,7 @@ if hasattr(mod, "y"):
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testMultipleHasAttr-xfail]
+[case testMultipleHasAttr]
 # flags: --warn-unreachable
 # https://github.com/python/mypy/issues/20596
 from __future__ import annotations
