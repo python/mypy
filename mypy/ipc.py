@@ -13,10 +13,10 @@ import struct
 import sys
 import tempfile
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from select import select
 from types import TracebackType
-from typing import Final, Sequence
+from typing import Final
 from typing_extensions import Self
 
 from librt.base64 import urlsafe_b64encode
@@ -219,6 +219,10 @@ class IPCClient(IPCBase):
             )
         else:
             self.connection = socket.socket(socket.AF_UNIX)
+            # This is already default on Linux, we set same buffer size
+            # for macOS vs Linux consistency to simplify reasoning.
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             self.connection.settimeout(timeout)
             self.connection.connect(name)
 
@@ -295,6 +299,10 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
+                # This is already default on Linux, we set same buffer size
+                # for macOS vs Linux consistency to simplify reasoning.
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
