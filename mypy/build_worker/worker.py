@@ -179,22 +179,17 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         manager.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         scc_id = scc_message.scc_id
         if scc_id is None:
+            gc_stats = gc.get_stats()
+            manager.add_stats(
+                gc_collections_gen0=gc_stats[0]["collections"],
+                gc_collections_gen1=gc_stats[1]["collections"],
+            )
             manager.dump_stats()
             break
         scc = manager.scc_by_id[scc_id]
         t0 = time.time()
         try:
-            if platform.python_implementation() == "CPython":
-                # Since we are splitting the GC freeze hack into multiple smaller freezes,
-                # we should collect young generations to not accumulate accidental garbage.
-                gc.collect(generation=1)
-                gc.collect(generation=0)
-                gc.disable()
             load_states(scc, graph, manager, scc_message.import_errors, scc_message.mod_data)
-            if platform.python_implementation() == "CPython":
-                gc.freeze()
-                gc.unfreeze()
-                gc.enable()
             result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.commit()
