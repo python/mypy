@@ -1256,7 +1256,10 @@ class BuildManager:
 
         done_sccs = []
         results = {}
-        for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
+        t0 = time.time()
+        ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
+        t1 = time.time()
+        for idx in ready:
             buf = receive(self.workers[idx].conn)
             assert read_tag(buf) == SCC_RESPONSE_MESSAGE
             data = SccResponseMessage.read(buf)
@@ -1267,6 +1270,7 @@ class BuildManager:
             assert data.result is not None
             results.update(data.result)
             done_sccs.append(self.scc_by_id[scc_id])
+        self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         self.submit_to_workers(graph)  # advance after some workers are free.
         return (
             done_sccs,

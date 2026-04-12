@@ -16,7 +16,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from select import select
 from types import TracebackType
-from typing import Final
+from typing import Final, Sequence
 from typing_extensions import Self
 
 from librt.base64 import urlsafe_b64encode
@@ -365,7 +365,7 @@ def read_status(status_file: str) -> dict[str, object]:
     return data
 
 
-def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> list[int]:
     """Wait until some connections are readable.
 
     Return index of each readable connection in the original list.
