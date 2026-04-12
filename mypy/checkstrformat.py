@@ -39,13 +39,12 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
-    Node,
     StarExpr,
     StrExpr,
     TempNode,
     TupleExpr,
 )
-from mypy.parse import parse
+from mypy.parse import parse, report_parse_error
 from mypy.subtypes import is_subtype
 from mypy.typeops import custom_special_method
 from mypy.types import (
@@ -582,9 +581,12 @@ class StringFormatterChecker:
 
         temp_errors = Errors(self.chk.options)
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
-        temp_ast: Node = parse(
+        temp_ast, parse_errors = parse(
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
         )
+        for error in parse_errors:
+            # New parser reports errors lazily.
+            report_parse_error(error, temp_errors)
         if temp_errors.is_errors():
             self.msg.fail(
                 f'Syntax error in format specifier "{spec.field}"',

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Final, cast
+from typing import Final, cast
 
 import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
 from librt.internal import (
@@ -102,6 +102,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     OverloadPart,
+    ParseError,
     PassStmt,
     RaiseStmt,
     RefExpr,
@@ -169,17 +170,11 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 class State:
     def __init__(self, options: Options) -> None:
         self.options = options
-        self.errors: list[dict[str, Any]] = []
+        self.errors: list[ParseError] = []
         self.num_funcs = 0
 
     def add_error(
-        self,
-        message: str,
-        line: int,
-        column: int,
-        *,
-        blocker: bool = False,
-        code: str | None = None,
+        self, message: str, line: int, column: int, *, blocker: bool = False, code: str
     ) -> None:
         """Report an error at a specific location.
 
@@ -197,7 +192,7 @@ class State:
 
 def native_parse(
     filename: str, options: Options, skip_function_bodies: bool = False, imports_only: bool = False
-) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+) -> tuple[MypyFile, list[ParseError], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
     Uses the ast_serialize Rust extension to parse Python code and deserialize
@@ -215,7 +210,7 @@ def native_parse(
     Returns:
         A tuple containing:
         - MypyFile: The parsed AST as a mypy AST node
-        - list[dict[str, Any]]: List of parse errors and deserialization errors
+        - list[ParseError]: List of parse errors and deserialization errors
         - TypeIgnores: List of (line_number, ignored_codes) tuples for type: ignore comments
     """
     # If the path is a directory, return empty AST (matching fastparse behavior)
@@ -273,7 +268,7 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool, bool]:
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool]:
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
     while ast_serialize is None:
@@ -289,7 +284,7 @@ def parse_to_binary_ast(
     )
     return (
         ast_bytes,
-        cast("list[dict[str, Any]]", errors),
+        errors,
         ignores,
         import_bytes,
         ast_data["is_partial_package"],

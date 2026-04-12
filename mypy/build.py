@@ -26,10 +26,11 @@ import subprocess
 import sys
 import time
 import types
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
-from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
+from concurrent.futures import ThreadPoolExecutor, wait
 from heapq import heappop, heappush
 from textwrap import dedent
+from threading import Lock
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -117,6 +118,7 @@ from mypy.nodes import (
     ImportBase,
     ImportFrom,
     MypyFile,
+    ParseError,
     SymbolTable,
 )
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
@@ -163,7 +165,7 @@ from mypy.modulefinder import (
 )
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import load_from_raw, parse
+from mypy.parse import load_from_raw, parse, report_parse_error
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
@@ -802,6 +804,8 @@ class BuildManager:
         parallel_worker: bool = False,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
+        # Use in cases where we need to prevent race conditions in stats reporting.
+        self.stats_lock = Lock()
         self.stdout = stdout
         self.stderr = stderr
         self.start_time = time.time()
@@ -954,7 +958,7 @@ class BuildManager:
             for key, value in sorted(self.stats_summary().items()):
                 print(f"{key + ':':24}{value}")
 
-    def parse_all(self, states: Iterable[State]) -> None:
+    def parse_all(self, states: list[State]) -> None:
         """Parse multiple files in parallel (if possible) and compute dependencies.
 
         Note: this duplicates a bit of logic from State.parse_file(). This is done
@@ -963,11 +967,12 @@ class BuildManager:
         """
         if self.options.native_parser:
             futures = []
-            parsed_states = set()
+            parsed_states = {}
             # Use at least --num-workers if specified by user.
             available_threads = max(get_available_threads(), self.options.num_workers)
             # Overhead from trying to parallelize (small) blocking portion of
             # parse_file_inner() results in no visible improvement with more than 8 threads.
+            # TODO: reuse thread pool and/or batch small files in single submit() call.
             with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
                 for state in states:
                     state.needs_parse = False
@@ -978,18 +983,31 @@ class BuildManager:
                     # the side effect of parsing inline mypy configurations.
                     state.get_source()
                     if state.id not in self.ast_cache:
+                        self.log(f"Parsing {state.xpath} ({state.id})")
+                        ignore_errors = state.ignore_all or state.options.ignore_errors
+                        if ignore_errors:
+                            self.errors.ignored_files.add(state.xpath)
                         futures.append(executor.submit(state.parse_file_inner, state.source or ""))
-                        parsed_states.add(state)
+                        parsed_states[state.id] = state
                     else:
                         self.log(f"Using cached AST for {state.xpath} ({state.id})")
                         state.tree, state.early_errors = self.ast_cache[state.id]
-                for fut in wait(futures, return_when=FIRST_EXCEPTION).done:
-                    # This will raise exceptions, if any.
-                    fut.result()
+                for fut in wait(futures).done:
+                    state_id, parse_errors = fut.result()
+                    if parse_errors:
+                        state = parsed_states[state_id]
+                        with state.wrap_context():
+                            self.errors.set_file(state.xpath, state.id, options=state.options)
+                            for error in parse_errors:
+                                # New parser reports errors lazily.
+                                report_parse_error(error, self.errors)
+                            if self.errors.is_blockers():
+                                self.log("Bailing due to parse errors")
+                                self.errors.raise_error()
 
             for state in states:
                 assert state.tree is not None
-                if state in parsed_states:
+                if state.id in parsed_states:
                     state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                     state.semantic_analysis_pass1()
                     self.ast_cache[state.id] = (state.tree, state.early_errors)
@@ -1126,10 +1144,9 @@ class BuildManager:
         id: str,
         path: str,
         source: str,
-        ignore_errors: bool,
         options: Options,
         raw_data: FileRawData | None = None,
-    ) -> MypyFile:
+    ) -> tuple[MypyFile, list[ParseError]]:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
@@ -1139,25 +1156,24 @@ class BuildManager:
             # Currently, we can use the native parser only for actual files.
             imports_only = True
         t0 = time.time()
-        if ignore_errors:
-            self.errors.ignored_files.add(path)
+        parse_errors: list[ParseError] = []
         if raw_data:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
-            tree = parse(source, path, id, self.errors, options=options, imports_only=imports_only)
+            tree, parse_errors = parse(
+                source, path, id, self.errors, options=options, imports_only=imports_only
+            )
         tree._fullname = id
-        self.add_stats(
-            files_parsed=1,
-            modules_parsed=int(not tree.is_stub),
-            stubs_parsed=int(tree.is_stub),
-            parse_time=time.time() - t0,
-        )
-
-        if self.errors.is_blockers():
-            self.log("Bailing due to parse errors")
-            self.errors.raise_error()
-        return tree
+        if self.stats_enabled:
+            with self.stats_lock:
+                self.add_stats(
+                    files_parsed=1,
+                    modules_parsed=int(not tree.is_stub),
+                    stubs_parsed=int(tree.is_stub),
+                    parse_time=time.time() - t0,
+                )
+        return tree, parse_errors
 
     def load_fine_grained_deps(self, id: str) -> dict[str, set[str]]:
         t0 = time.time()
@@ -2942,20 +2958,15 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return source
 
-    def parse_file_inner(self, source: str, raw_data: FileRawData | None = None) -> None:
+    def parse_file_inner(
+        self, source: str, raw_data: FileRawData | None = None
+    ) -> tuple[str, list[ParseError]]:
         t0 = time_ref()
-        self.manager.log(f"Parsing {self.xpath} ({self.id})")
-        with self.wrap_context():
-            ignore_errors = self.ignore_all or self.options.ignore_errors
-            self.tree = self.manager.parse_file(
-                self.id,
-                self.xpath,
-                source,
-                ignore_errors=ignore_errors,
-                options=self.options,
-                raw_data=raw_data,
-            )
+        self.tree, parse_errors = self.manager.parse_file(
+            self.id, self.xpath, source, options=self.options, raw_data=raw_data
+        )
         self.time_spent_us += time_spent_us(t0)
+        return self.id, parse_errors
 
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
         """Parse file and run first pass of semantic analysis.
@@ -2972,7 +2983,19 @@ class State:
         manager = self.manager
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         if self.id not in manager.ast_cache:
-            self.parse_file_inner(source, raw_data)
+            self.manager.log(f"Parsing {self.xpath} ({self.id})")
+            ignore_errors = self.ignore_all or self.options.ignore_errors
+            if ignore_errors:
+                self.manager.errors.ignored_files.add(self.xpath)
+            with self.wrap_context():
+                manager.errors.set_file(self.xpath, self.id, options=self.options)
+                _, parse_errors = self.parse_file_inner(source, raw_data)
+                for error in parse_errors:
+                    # New parser reports errors lazily.
+                    report_parse_error(error, manager.errors)
+                if manager.errors.is_blockers():
+                    manager.log("Bailing due to parse errors")
+                    manager.errors.raise_error()
             # Make a copy of any errors produced during parse time so that
             # fine-grained mode can repeat them when the module is
             # reprocessed.
@@ -4005,13 +4028,14 @@ def load_graph(
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
     ready = set(new)
-    not_ready: set[State] = set()
+    # Use list to make syntax error order a bit more stable.
+    not_ready: list[State] = []
     for st in new:
         if st not in ready:
             # We have run out of states, parse all we have.
             assert st in not_ready
             manager.parse_all(not_ready)
-            ready |= not_ready
+            ready.update(not_ready)
             not_ready.clear()
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
@@ -4090,7 +4114,7 @@ def load_graph(
                     graph[newst.id] = newst
                     new.append(newst)
                     if newst.needs_parse:
-                        not_ready.add(newst)
+                        not_ready.append(newst)
                     else:
                         ready.add(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
