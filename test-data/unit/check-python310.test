@@ -3699,9 +3699,9 @@ class B(TypedDict):
     num: int
 
 d: A | B
-match d["tag"]: # E: Match statement has unhandled case for values of type "Literal['b']" \
+match d["tag"]: # E: Match statement has unhandled case for values of type "B" \
                 # N: If match statement is intended to be non-exhaustive, add `case _: pass` \
-                # E: Match statement has unhandled case for values of type "B"
+                # E: Match statement has unhandled case for values of type "Literal['b']"
     case "a":
         reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
         reveal_type(d["name"])  # N: Revealed type is "builtins.str"
