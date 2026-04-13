@@ -45,10 +45,10 @@ from mypy.build import (
     process_stale_scc,
 )
 from mypy.cache import Tag, read_int_opt
-from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
+from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCException, IPCServer, receive, send
+from mypy.ipc import IPCException, IPCServer, ready_to_read, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.nodes import FileRawData
 from mypy.options import Options
@@ -170,9 +170,13 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     # Notify coordinator we are ready to start processing SCCs.
     send(server, AckMessage())
     while True:
+        t0 = time.time()
+        ready_to_read([server], WORKER_IDLE_TIMEOUT)
+        t1 = time.time()
         buf = receive(server)
         assert read_tag(buf) == SCC_REQUEST_MESSAGE
         scc_message = SccRequestMessage.read(buf)
+        manager.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         scc_id = scc_message.scc_id
         if scc_id is None:
             manager.dump_stats()
@@ -193,11 +197,13 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 gc.enable()
             result = process_stale_scc(graph, scc, manager, from_cache=graph_data.from_cache)
             # We must commit after each SCC, otherwise we break --sqlite-cache.
-            manager.metastore.commit()
+            manager.commit()
         except CompileError as blocker:
             send(server, SccResponseMessage(scc_id=scc_id, blocker=blocker))
         else:
+            t1 = time.time()
             send(server, SccResponseMessage(scc_id=scc_id, result=result))
+            manager.add_stats(scc_send_time=time.time() - t1)
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
