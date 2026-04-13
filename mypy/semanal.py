@@ -2110,9 +2110,7 @@ class SemanticAnalyzer(
         # Pre-scan class body to find names assigned at class scope level.
         # This must happen after enter_class (which pushes an empty set) so we
         # can replace it with the real set.
-        self.class_body_assigned_names[-1] = collect_class_body_assigned_names(
-            defn.defs.body
-        )
+        self.class_body_assigned_names[-1] = collect_class_body_assigned_names(defn.defs.body)
         if any(b.self_type is not None for b in defn.info.mro):
             self.setup_self_type()
         defn.defs.accept(self)
@@ -8396,7 +8394,7 @@ def collect_class_body_assigned_names(stmts: list[Statement]) -> set[str]:
     This mirrors CPython's compile-time analysis that determines whether a name
     in a class body is accessed via LOAD_NAME (class dict -> globals -> builtins)
     or LOAD_CLASSDEREF or LOAD_FROM_DICT_OR_DEREF (class dict -> enclosing function cell).
-    
+
     Names that are assigned anywhere in the class body (even inside if/for/while/try/with blocks)
     use LOAD_NAME, so they should NOT be resolved from enclosing function locals.
 
