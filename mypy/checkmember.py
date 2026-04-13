@@ -13,9 +13,11 @@ from mypy.expandtype import (
     expand_type_by_instance,
     freshen_all_functions_type_vars,
 )
+from mypy.lookup import lookup_stdlib_typeinfo
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types
 from mypy.messages import MessageBuilder
+from mypy.modules_state import modules_state
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
@@ -74,6 +76,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    instance_cache,
 )
 
 
@@ -1525,7 +1528,7 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
     )
 
 
-def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+def has_operator(typ: Type, op_method: str) -> bool:
     """Does type have operator with the given name?
 
     Note: this follows the rules for operator access, in particular:
@@ -1544,7 +1547,7 @@ def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance
     if isinstance(typ, AnyType):
         return True
     if isinstance(typ, UnionType):
-        return all(has_operator(x, op_method, named_type) for x in typ.relevant_items())
+        return all(has_operator(x, op_method) for x in typ.relevant_items())
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         return typ.fallback.type.has_readable_member(op_method)
     if isinstance(typ, TypeType):
@@ -1555,27 +1558,33 @@ def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance
         if isinstance(item, TypeVarType):
             item = item.values_or_bound()
         if isinstance(item, UnionType):
-            return all(meta_has_operator(x, op_method, named_type) for x in item.relevant_items())
-        return meta_has_operator(item, op_method, named_type)
-    return instance_fallback(typ, named_type).type.has_readable_member(op_method)
+            return all(meta_has_operator(x, op_method) for x in item.relevant_items())
+        return meta_has_operator(item, op_method)
+    return instance_fallback(typ).type.has_readable_member(op_method)
 
 
-def instance_fallback(typ: ProperType, named_type: Callable[[str], Instance]) -> Instance:
+def instance_fallback(typ: ProperType) -> Instance:
     if isinstance(typ, Instance):
         return typ
     if isinstance(typ, TupleType):
         return tuple_fallback(typ)
     if isinstance(typ, (LiteralType, TypedDictType)):
         return typ.fallback
-    return named_type("builtins.object")
+    if instance_cache.object_type is None:
+        object_typeinfo = lookup_stdlib_typeinfo("builtins.object", modules_state.modules)
+        instance_cache.object_type = Instance(object_typeinfo, [])
+    return instance_cache.object_type
 
 
-def meta_has_operator(item: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+def meta_has_operator(item: Type, op_method: str) -> bool:
     item = get_proper_type(item)
     if isinstance(item, AnyType):
         return True
-    item = instance_fallback(item, named_type)
-    meta = item.type.metaclass_type or named_type("builtins.type")
+    item = instance_fallback(item)
+    meta = item.type.metaclass_type
+    if meta is None:
+        type_type = lookup_stdlib_typeinfo("builtins.type", modules_state.modules)
+        meta = Instance(type_type, [])
     return meta.type.has_readable_member(op_method)
 
 

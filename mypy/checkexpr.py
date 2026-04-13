@@ -427,7 +427,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # We special case NoneType, because its stub definition is not related to None.
                 return TypeType(NoneType())
             else:
-                return type_object_type(node, self.named_type)
+                return type_object_type(node)
         elif isinstance(node, TypeAlias):
             # Something that refers to a type alias appears in runtime context.
             # Note that we suppress bogus errors for alias redefinitions,
@@ -1908,7 +1908,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         if isinstance(item, Instance):
-            res = type_object_type(item.type, self.named_type)
+            res = type_object_type(item.type)
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
             expanded = expand_type_by_instance(res, item)
@@ -4076,6 +4076,44 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             object_type=base_type,
         )
 
+    def lookup_operator(self, op_name: str, base_type: Type, context: Context) -> Type | None:
+        """Looks up the given operator and returns the corresponding type,
+        if it exists."""
+
+        # This check is an important performance optimization.
+        if not has_operator(base_type, op_name):
+            return None
+
+        with self.msg.filter_errors() as w:
+            member = analyze_member_access(
+                name=op_name,
+                typ=base_type,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=True,
+                original_type=base_type,
+                context=context,
+                chk=self.chk,
+                in_literal_context=self.is_literal_context(),
+            )
+            return None if w.has_new_errors() else member
+
+    def lookup_definer(self, typ: Instance, attr_name: str) -> str | None:
+        """Returns the name of the class that contains the actual definition of attr_name.
+
+        So if class A defines foo and class B subclasses A, running
+        `get_class_defined_in(B, "foo")` would return the full name of A.
+
+        However, if B were to override and redefine foo, that method call would
+        return the full name of B instead.
+
+        If the attr name is not present in the given class or its MRO, returns None.
+        """
+        for cls in typ.type.mro:
+            if cls.names.get(attr_name):
+                return cls.fullname
+        return None
+
     def check_op_reversible(
         self,
         op_name: str,
@@ -4085,48 +4123,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         right_expr: Expression,
         context: Context,
     ) -> tuple[Type, Type]:
-        def lookup_operator(op_name: str, base_type: Type) -> Type | None:
-            """Looks up the given operator and returns the corresponding type,
-            if it exists."""
-
-            # This check is an important performance optimization.
-            if not has_operator(base_type, op_name, self.named_type):
-                return None
-
-            with self.msg.filter_errors() as w:
-                member = analyze_member_access(
-                    name=op_name,
-                    typ=base_type,
-                    is_lvalue=False,
-                    is_super=False,
-                    is_operator=True,
-                    original_type=base_type,
-                    context=context,
-                    chk=self.chk,
-                    in_literal_context=self.is_literal_context(),
-                )
-                return None if w.has_new_errors() else member
-
-        def lookup_definer(typ: Instance, attr_name: str) -> str | None:
-            """Returns the name of the class that contains the actual definition of attr_name.
-
-            So if class A defines foo and class B subclasses A, running
-            'get_class_defined_in(B, "foo")` would return the full name of A.
-
-            However, if B were to override and redefine foo, that method call would
-            return the full name of B instead.
-
-            If the attr name is not present in the given class or its MRO, returns None.
-            """
-            for cls in typ.type.mro:
-                if cls.names.get(attr_name):
-                    return cls.fullname
-            return None
-
         left_type = get_proper_type(left_type)
         right_type = get_proper_type(right_type)
 
-        # If either the LHS or the RHS are Any, we can't really concluding anything
+        # If either the LHS or the RHS are Any, we can't really conclude anything
         # about the operation since the Any type may or may not define an
         # __op__ or __rop__ method. So, we punt and return Any instead.
 
@@ -4142,8 +4142,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         rev_op_name = operators.reverse_op_methods[op_name]
 
-        left_op = lookup_operator(op_name, left_type)
-        right_op = lookup_operator(rev_op_name, right_type)
+        left_op = self.lookup_operator(op_name, left_type, context)
+        right_op = self.lookup_operator(rev_op_name, right_type, context)
 
         # STEP 2a:
         # We figure out in which order Python will call the operator methods. As it
@@ -4168,7 +4168,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 #    B: right's __rop__ method is different from left's __op__ method
                 not (isinstance(left_type, Instance) and isinstance(right_type, Instance))
                 or (
-                    lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
+                    self.lookup_definer(left_type, op_name)
+                    != self.lookup_definer(right_type, rev_op_name)
                     and (
                         left_type.type.alt_promote is None
                         or left_type.type.alt_promote.type is not right_type.type
@@ -4931,10 +4932,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
             item = get_proper_type(item)
             if isinstance(item, Instance):
-                tp = type_object_type(item.type, self.named_type)
+                tp = type_object_type(item.type)
                 return self.apply_type_arguments_to_callable(tp, item.args, tapp)
             elif isinstance(item, TupleType) and item.partial_fallback.type.is_named_tuple:
-                tp = type_object_type(item.partial_fallback.type, self.named_type)
+                tp = type_object_type(item.partial_fallback.type)
                 return self.apply_type_arguments_to_callable(tp, item.partial_fallback.args, tapp)
             elif isinstance(item, TypedDictType):
                 return self.typeddict_callable_from_context(item)
@@ -5003,7 +5004,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
-            tp = type_object_type(item.type, self.named_type)
+            tp = type_object_type(item.type)
             if alias.no_args:
                 return tp
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
@@ -5013,7 +5014,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Tuple[str, int]() fails at runtime, only named tuples and subclasses work.
             tuple_fallback(item).type.fullname != "builtins.tuple"
         ):
-            return type_object_type(tuple_fallback(item).type, self.named_type)
+            return type_object_type(tuple_fallback(item).type)
         elif isinstance(item, TypedDictType):
             return self.typeddict_callable_from_context(item)
         elif isinstance(item, NoneType):

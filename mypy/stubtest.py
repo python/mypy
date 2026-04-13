@@ -2097,20 +2097,11 @@ def get_mypy_type_of_runtime_value(
                 skip_type_object_type = True
 
     if isinstance(runtime, type) and not skip_type_object_type:
-
-        def _named_type(name: str) -> mypy.types.Instance:
-            parts = name.rsplit(".", maxsplit=1)
-            node = get_mypy_node_for_name(parts[0], parts[1])
-            assert isinstance(node, nodes.TypeInfo)
-            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
-            return mypy.types.Instance(node, [any_type] * len(node.defn.type_vars))
-
         # Try and look up a stub for the runtime object itself
         # The logic here is similar to ExpressionChecker.analyze_ref_expr
         type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
         if isinstance(type_info, nodes.TypeInfo):
-            result: mypy.types.Type | None = None
-            result = mypy.typeops.type_object_type(type_info, _named_type)
+            result = mypy.typeops.type_object_type(type_info)
             if mypy.checkexpr.is_type_type_context(type_context):
                 # This is the type in a type[] expression, so substitute type
                 # variables with Any.
