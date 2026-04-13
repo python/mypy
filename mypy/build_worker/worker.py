@@ -49,10 +49,10 @@ from mypy.build import (
     process_stale_scc_interface,
 )
 from mypy.cache import Tag, read_int_opt
-from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
+from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCException, IPCServer, receive, send
+from mypy.ipc import IPCException, IPCServer, ready_to_read, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.nodes import FileRawData
 from mypy.options import Options
@@ -174,11 +174,20 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     # Notify coordinator we are ready to start processing SCCs.
     send(server, AckMessage())
     while True:
+        t0 = time.time()
+        ready_to_read([server], WORKER_IDLE_TIMEOUT)
+        t1 = time.time()
         buf = receive(server)
         assert read_tag(buf) == SCC_REQUEST_MESSAGE
         scc_message = SccRequestMessage.read(buf)
+        manager.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         scc_id = scc_message.scc_id
         if scc_id is None:
+            gc_stats = gc.get_stats()
+            manager.add_stats(
+                gc_collections_gen0=gc_stats[0]["collections"],
+                gc_collections_gen1=gc_stats[1]["collections"],
+            )
             manager.dump_stats()
             break
         scc = manager.scc_by_id[scc_id]
@@ -189,7 +198,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 graph, scc, manager, from_cache=graph_data.from_cache
             )
             # We must commit after each SCC, otherwise we break --sqlite-cache.
-            manager.metastore.commit()
+            manager.commit()
         except CompileError as blocker:
             send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, blocker=blocker))
         else:
@@ -200,7 +209,9 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 stale.append(id)
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
+            t1 = time.time()
             send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
+            manager.add_stats(scc_send_time=time.time() - t1)
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
@@ -210,7 +221,9 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                     server, SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
                 )
             else:
+                t1 = time.time()
                 send(server, SccResponseMessage(scc_id=scc_id, is_interface=False, result=result))
+                manager.add_stats(scc_send_time=time.time() - t1)
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
@@ -222,12 +235,6 @@ def load_states(
     mod_data: dict[str, tuple[bytes, FileRawData | None]],
 ) -> None:
     """Re-create full state of an SCC as it would have been in coordinator."""
-    if platform.python_implementation() == "CPython":
-        # Since we are splitting the GC freeze hack into multiple smaller freezes,
-        # we should collect young generations to not accumulate accidental garbage.
-        gc.collect(generation=1)
-        gc.collect(generation=0)
-        gc.disable()
     for id in scc.mod_ids:
         state = graph[id]
         # Re-clone options since we don't send them, it is usually faster than deserializing.
@@ -246,10 +253,6 @@ def load_states(
             manager.errors.set_file(state.xpath, id, state.options)
             for err_info in import_errors[id]:
                 manager.errors.add_error_info(err_info)
-    if platform.python_implementation() == "CPython":
-        gc.freeze()
-        gc.unfreeze()
-        gc.enable()
 
 
 def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:
