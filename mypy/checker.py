@@ -6975,12 +6975,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
-        all_mappings = []
+        all_mappings = [new_types]
         for expr, expr_type in new_types.items():
             all_mappings.append(self.refine_parent_types(expr, expr_type))
-        return and_conditional_maps(
-            new_types, reduce_and_conditional_type_maps(all_mappings, use_meet=True), use_meet=True
-        )
+        return reduce_and_conditional_type_maps(all_mappings, use_meet=True)
 
     def refine_parent_types(self, expr: Expression, expr_type: Type) -> TypeMap:
         """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
