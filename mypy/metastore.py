@@ -162,6 +162,7 @@ def connect_db(db_file: str) -> sqlite3.Connection:
     # but without this flag, commits are *very* slow, especially when using HDDs,
     # see https://www.sqlite.org/faq.html#q19 for details.
     db.execute("PRAGMA synchronous=OFF")
+    db.execute("PRAGMA journal_mode=WAL")
     db.executescript(SCHEMA)
     return db
 
@@ -171,8 +172,8 @@ class SqliteMetadataStore(MetadataStore):
         # We check startswith instead of equality because the version
         # will have already been appended by the time the cache dir is
         # passed here.
+        self.db = None
         if cache_dir_prefix.startswith(os.devnull):
-            self.db = None
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
