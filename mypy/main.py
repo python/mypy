@@ -100,6 +100,8 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        if options.cache_dir == os.devnull:
+            fail("error: cache must be enabled in parallel mode", stderr, options)
 
     if options.allow_redefinition_new and not options.local_partial_types:
         fail(

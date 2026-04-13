@@ -1257,3 +1257,11 @@ a.py:1: error: Simple statements must be separated by newlines or semicolons
     1 2
        ^
 == Return code: 2
+
+[case testCannotDisableCacheInParallelMode]
+# cmd: mypy --cache-dir=/dev/null --num-workers=2 a.py
+[file a.py]
+pass
+[out]
+error: cache must be enabled in parallel mode
+== Return code: 2

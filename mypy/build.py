@@ -4799,7 +4799,7 @@ def process_stale_scc_implementation(
             write_cache_meta_ex(meta_file, meta_ex, manager)
             scc_result[id] = ModuleResult(None, formatted)
         else:
-            # If there are bo error, only write the cache, don't send anything back
+            # If there are no errors, only write the cache, don't send anything back
             # to the caller (as a micro-optimization).
             write_cache_meta_ex(meta_file, meta_ex, manager)
 

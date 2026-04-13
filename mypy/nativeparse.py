@@ -20,10 +20,17 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
+import sys
 import time
 from typing import Final, cast
 
-import ast_serialize  # type: ignore[import-not-found, unused-ignore]
+try:
+    import ast_serialize  # type: ignore[import-not-found, unused-ignore]
+except ImportError:
+    print("error: native parser not installed")
+    print("note: to install run `pip install mypy[native-parser]`")
+    sys.exit(2)
+
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
