@@ -1745,7 +1745,12 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     source = mypy.util.decode_python_encoding(data)
     errors = Errors(mypy_options)
     mod.ast, errs = mypy.parse.parse(
-        source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
+        source,
+        fnam=mod.path,
+        module=mod.module,
+        errors=errors,
+        options=mypy_options,
+        file_exists=True,
     )
     mod.ast._fullname = mod.module
     for err in errs:

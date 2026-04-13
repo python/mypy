@@ -959,66 +959,87 @@ class BuildManager:
                 print(f"{key + ':':24}{value}")
 
     def parse_all(self, states: list[State]) -> None:
-        """Parse multiple files in parallel (if possible) and compute dependencies.
-
-        Note: this duplicates a bit of logic from State.parse_file(). This is done
-        as a micro-optimization to parallelize only those parts of the code that
-        can be parallelized efficiently.
-        """
-        if self.options.native_parser:
-            futures = []
-            parsed_states = {}
-            # Use at least --num-workers if specified by user.
-            available_threads = max(get_available_threads(), self.options.num_workers)
-            # Overhead from trying to parallelize (small) blocking portion of
-            # parse_file_inner() results in no visible improvement with more than 8 threads.
-            # TODO: reuse thread pool and/or batch small files in single submit() call.
-            with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
-                for state in states:
-                    state.needs_parse = False
-                    if state.tree is not None:
-                        # The file was already parsed.
-                        continue
-                    # New parser reads source from file directly, we do this only for
-                    # the side effect of parsing inline mypy configurations.
-                    state.get_source()
-                    if state.id not in self.ast_cache:
-                        self.log(f"Parsing {state.xpath} ({state.id})")
-                        ignore_errors = state.ignore_all or state.options.ignore_errors
-                        if ignore_errors:
-                            self.errors.ignored_files.add(state.xpath)
-                        futures.append(executor.submit(state.parse_file_inner, state.source or ""))
-                        parsed_states[state.id] = state
-                    else:
-                        self.log(f"Using cached AST for {state.xpath} ({state.id})")
-                        state.tree, state.early_errors = self.ast_cache[state.id]
-                for fut in wait(futures).done:
-                    state_id, parse_errors = fut.result()
-                    if parse_errors:
-                        state = parsed_states[state_id]
-                        with state.wrap_context():
-                            self.errors.set_file(state.xpath, state.id, options=state.options)
-                            for error in parse_errors:
-                                # New parser reports errors lazily.
-                                report_parse_error(error, self.errors)
-                            if self.errors.is_blockers():
-                                self.log("Bailing due to parse errors")
-                                self.errors.raise_error()
-
-            for state in states:
-                assert state.tree is not None
-                if state.id in parsed_states:
-                    state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
-                    state.semantic_analysis_pass1()
-                    self.ast_cache[state.id] = (state.tree, state.early_errors)
-                self.modules[state.id] = state.tree
-                state.check_blockers()
-                state.setup_errors()
-        else:
+        """Parse multiple files in parallel (if possible) and compute dependencies."""
+        if not self.options.native_parser:
             # Old parser cannot be parallelized.
             for state in states:
                 state.parse_file()
+            self.post_parse_all(states)
+            return
 
+        sequential_states = []
+        parallel_states = []
+        for state in states:
+            if state.tree is not None:
+                # The file was already parsed.
+                continue
+            if not self.fscache.exists(state.xpath):
+                # New parser only supports parsing on-disk files.
+                sequential_states.append(state)
+                continue
+            parallel_states.append(state)
+        self.parse_parallel(sequential_states, parallel_states)
+        self.post_parse_all(states)
+
+    def parse_parallel(self, sequential_states: list[State], parallel_states: list[State]) -> None:
+        """Perform parallel parsing of states.
+
+        Note: this duplicates a bit of logic from State.parse_file(). This is done
+        as an optimization to parallelize only those parts of the code that can be
+        parallelized efficiently.
+        """
+        futures = []
+        parallel_parsed_states = {}
+        # Use at least --num-workers if specified by user.
+        available_threads = max(get_available_threads(), self.options.num_workers)
+        # Overhead from trying to parallelize (small) blocking portion of
+        # parse_file_inner() results in no visible improvement with more than 8 threads.
+        # TODO: reuse thread pool and/or batch small files in single submit() call.
+        with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
+            for state in parallel_states:
+                state.needs_parse = False
+                # New parser reads source from file directly, we do this only for
+                # the side effect of parsing inline mypy configurations.
+                state.get_source()
+                if state.id not in self.ast_cache:
+                    self.log(f"Parsing {state.xpath} ({state.id})")
+                    ignore_errors = state.ignore_all or state.options.ignore_errors
+                    if ignore_errors:
+                        self.errors.ignored_files.add(state.xpath)
+                    futures.append(executor.submit(state.parse_file_inner, state.source or ""))
+                    parallel_parsed_states[state.id] = state
+                else:
+                    self.log(f"Using cached AST for {state.xpath} ({state.id})")
+                    state.tree, state.early_errors = self.ast_cache[state.id]
+
+            # Parse sequential before waiting on parallel.
+            for state in sequential_states:
+                state.parse_file()
+
+            for fut in wait(futures).done:
+                state_id, parse_errors = fut.result()
+                # New parser reports errors lazily, add them if any.
+                if parse_errors:
+                    state = parallel_parsed_states[state_id]
+                    with state.wrap_context():
+                        self.errors.set_file(state.xpath, state.id, options=state.options)
+                        for error in parse_errors:
+                            report_parse_error(error, self.errors)
+                        if self.errors.is_blockers():
+                            self.log("Bailing due to parse errors")
+                            self.errors.raise_error()
+
+        for state in parallel_states:
+            assert state.tree is not None
+            if state.id in parallel_parsed_states:
+                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                state.semantic_analysis_pass1()
+                self.ast_cache[state.id] = (state.tree, state.early_errors)
+            self.modules[state.id] = state.tree
+            state.check_blockers()
+            state.setup_errors()
+
+    def post_parse_all(self, states: list[State]) -> None:
         for state in states:
             state.compute_dependencies()
             if self.workers and state.tree:
@@ -1152,7 +1173,8 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         imports_only = False
-        if self.workers and self.fscache.exists(path):
+        file_exists = self.fscache.exists(path)
+        if self.workers and file_exists:
             # Currently, we can use the native parser only for actual files.
             imports_only = True
         t0 = time.time()
@@ -1162,7 +1184,13 @@ class BuildManager:
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
             tree, parse_errors = parse(
-                source, path, id, self.errors, options=options, imports_only=imports_only
+                source,
+                path,
+                id,
+                self.errors,
+                options=options,
+                file_exists=file_exists,
+                imports_only=imports_only,
             )
         tree._fullname = id
         if self.stats_enabled:

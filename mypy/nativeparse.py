@@ -271,8 +271,11 @@ def parse_to_binary_ast(
 ) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool]:
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
+    t0 = time.time()
     while ast_serialize is None:
         time.sleep(0.0001)  # type: ignore[unreachable]
+        if time.time() - t0 > 10.0:
+            raise ImportError("Cannot import ast_serialize")
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         skip_function_bodies=skip_function_bodies,

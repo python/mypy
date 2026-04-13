@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 
 from librt.internal import ReadBuffer
@@ -18,6 +17,7 @@ def parse(
     module: str | None,
     errors: Errors,
     options: Options,
+    file_exists: bool,
     imports_only: bool = False,
 ) -> tuple[MypyFile, list[ParseError]]:
     """Parse a source file, without doing any semantic analysis.
@@ -30,7 +30,7 @@ def parse(
     if options.native_parser:
         # Native parser only works with actual files on disk
         # Fall back to fastparse for in-memory source or non-existent files
-        if os.path.exists(fnam):
+        if file_exists:
             import mypy.nativeparse
 
             ignore_errors = options.ignore_errors or fnam in errors.ignored_files
