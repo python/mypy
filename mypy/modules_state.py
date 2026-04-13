@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 # hot code in SymbolTableNode.node().
 
 
-class FixerState:
+class ModulesState:
     def __init__(self) -> None:
         self.node_fixer: NodeFixer | None = None
         self.modules: dict[str, MypyFile] = {}
 
 
-modules_state: Final = FixerState()
+modules_state: Final = ModulesState()
