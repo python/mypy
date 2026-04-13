@@ -51,7 +51,9 @@ class SourceDep:
     shared library separate from the C extension.
     """
 
-    def __init__(self, path: str, *, include_dirs: list[str] | None = None, internal=True) -> None:
+    def __init__(
+        self, path: str, *, include_dirs: list[str] | None = None, internal: bool = True
+    ) -> None:
         # Relative path from mypyc/lib-rt, e.g. 'bytes_extra_ops.c'
         self.path: Final = path
         self.include_dirs: Final = include_dirs or []
