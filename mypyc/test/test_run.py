@@ -102,7 +102,7 @@ from mypyc.build import mypycify
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
                            multi_file={}, opt_level='{}', install_librt={},
-                           experimental_features={}),
+                           experimental_features={}, depends_on_librt_internal={}),
 )
 """
 
@@ -332,6 +332,7 @@ class TestRun(MypycDataSuite):
                     opt_level,
                     False,  # install_librt - use cached version instead
                     experimental_features,
+                    librt_internal,
                 )
             )
 

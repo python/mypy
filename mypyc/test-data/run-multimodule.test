@@ -1462,3 +1462,24 @@ test_global(input)
 test_fn(input)
 test_class(input)
 test_reexport()
+
+[case testLibrtInternalInImportedFile_librt_internal]
+from librt.internal import ReadBuffer, WriteBuffer, write_str, read_str, cache_version
+
+def get_buffer_round_trip_result(s: str) -> str:
+    assert cache_version() == 0
+    w = WriteBuffer()
+    write_str(w, s)
+    r = ReadBuffer(w.getvalue())
+    return read_str(r)
+
+[file other.py]
+from native import get_buffer_round_trip_result
+
+def test_buffer_round_trip() -> None:
+    assert get_buffer_round_trip_result("foo") == "foo"
+
+[file driver.py]
+from other import test_buffer_round_trip
+
+test_buffer_round_trip()

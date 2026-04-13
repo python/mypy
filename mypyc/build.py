@@ -794,6 +794,11 @@ def mypycify(
             files_to_copy.append(source_dep.get_header())
             include_dirs.update(source_dep.include_dirs)
 
+        if compiler_options.depends_on_librt_internal:
+            files_to_copy.append("internal/librt_internal_api.h")
+            files_to_copy.append("internal/librt_internal_api.c")
+            include_dirs.add("internal")
+
         # Copy all files
         for name in files_to_copy:
             rt_file = os.path.join(build_dir, name)
