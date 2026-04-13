@@ -994,7 +994,7 @@ def get_available_threads() -> int:
         # A conservative fallback in case we cannot determine CPU count in any way.
         cpu_count = 4
 
-    affinity = None
+    affinity: set[int] | list[int] | None = None
     # Not available on old Python versions on some platforms.
     if sys.platform == "linux":
         affinity = os.sched_getaffinity(0)
