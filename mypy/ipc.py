@@ -13,7 +13,7 @@ import struct
 import sys
 import tempfile
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from select import select
 from types import TracebackType
 from typing import Final
@@ -38,7 +38,11 @@ else:
     _IPCHandle = socket.socket
 
 # Size of the message packed as !L, i.e. 4 bytes in network order (big-endian).
-HEADER_SIZE = 4
+HEADER_SIZE: Final = 4
+
+# This is Linux default socket buffer size (for 64 bit), so we will not
+# introduce an additional obstacle when exchanging a large IPC message.
+MAX_READ: Final = 212992
 
 
 # TODO: we should make sure consistent exceptions are raised on different platforms.
@@ -80,10 +84,10 @@ class IPCBase:
         self.message_size = None
         return bytes(bdata)
 
-    def read(self, size: int = 100000) -> str:
+    def read(self, size: int = MAX_READ) -> str:
         return self.read_bytes(size).decode("utf-8")
 
-    def read_bytes(self, size: int = 100000) -> bytes:
+    def read_bytes(self, size: int = MAX_READ) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
         if sys.platform == "win32":
             while True:
@@ -215,6 +219,10 @@ class IPCClient(IPCBase):
             )
         else:
             self.connection = socket.socket(socket.AF_UNIX)
+            # This is already default on Linux, we set same buffer size
+            # for macOS vs Linux consistency to simplify reasoning.
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             self.connection.settimeout(timeout)
             self.connection.connect(name)
 
@@ -291,6 +299,10 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
+                # This is already default on Linux, we set same buffer size
+                # for macOS vs Linux consistency to simplify reasoning.
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
@@ -361,7 +373,7 @@ def read_status(status_file: str) -> dict[str, object]:
     return data
 
 
-def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> list[int]:
     """Wait until some connections are readable.
 
     Return index of each readable connection in the original list.

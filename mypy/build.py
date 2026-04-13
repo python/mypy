@@ -29,6 +29,7 @@ import types
 from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
 from heapq import heappop, heappush
 from textwrap import dedent
+from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -371,6 +372,7 @@ def build(
     extra_plugins = extra_plugins or []
 
     workers = []
+    connect_threads = []
     if options.num_workers > 0:
         # TODO: switch to something more efficient than pickle (also in the daemon).
         pickled_options = pickle.dumps(options.snapshot())
@@ -383,10 +385,17 @@ def build(
         buf = WriteBuffer()
         sources_message.write(buf)
         sources_data = buf.getvalue()
+
+        def connect(wc: WorkerClient, data: bytes) -> None:
+            # Start loading sources in each worker as soon as it is up.
+            wc.connect()
+            wc.conn.write_bytes(data)
+
+        # We don't wait for workers to be ready until they are actually needed.
         for worker in workers:
-            # Start loading graph in each worker as soon as it is up.
-            worker.connect()
-            worker.conn.write_bytes(sources_data)
+            thread = Thread(target=connect, args=(worker, sources_data))
+            thread.start()
+            connect_threads.append(thread)
 
     try:
         result = build_inner(
@@ -399,6 +408,7 @@ def build(
             stderr,
             extra_plugins,
             workers,
+            connect_threads,
         )
         result.errors = messages
         return result
@@ -412,6 +422,10 @@ def build(
         e.messages = messages
         raise
     finally:
+        # In case of an early crash it is better to wait for workers to become ready, and
+        # shut them down cleanly. Otherwise, they will linger until connection timeout.
+        for thread in connect_threads:
+            thread.join()
         for worker in workers:
             try:
                 send(worker.conn, SccRequestMessage(scc_id=None, import_errors={}, mod_data={}))
@@ -431,6 +445,7 @@ def build_inner(
     stderr: TextIO,
     extra_plugins: Sequence[Plugin],
     workers: list[WorkerClient],
+    connect_threads: list[Thread],
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
         # Run gc less frequently, as otherwise we can spend a large fraction of
@@ -486,7 +501,7 @@ def build_inner(
 
     reset_global_state()
     try:
-        graph = dispatch(sources, manager, stdout)
+        graph = dispatch(sources, manager, stdout, connect_threads)
         if not options.fine_grained_incremental:
             type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
@@ -496,9 +511,7 @@ def build_inner(
         warn_unused_configs(options, flush_errors)
         return BuildResult(manager, graph)
     finally:
-        t0 = time.time()
-        manager.metastore.commit()
-        manager.add_stats(cache_commit_time=time.time() - t0)
+        manager.commit()
         manager.log(
             "Build finished in %.3f seconds with %d modules, and %d errors"
             % (
@@ -1119,6 +1132,11 @@ class BuildManager:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, self.modules, type_map, options)
 
+    def commit(self) -> None:
+        t0 = time.time()
+        self.metastore.commit()
+        self.add_stats(cache_commit_time=time.time() - t0)
+
     def verbosity(self) -> int:
         return self.options.verbosity
 
@@ -1156,6 +1174,24 @@ class BuildManager:
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
 
+    def broadcast(self, message: bytes) -> None:
+        """Broadcast same message to all workers in parallel."""
+        t0 = time.time()
+        threads = []
+        for worker in self.workers:
+            thread = Thread(target=worker.conn.write_bytes, args=(message,))
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+        self.add_stats(broadcast_time=time.time() - t0)
+
+    def wait_ack(self) -> None:
+        """Wait for an ack from all workers."""
+        for worker in self.workers:
+            buf = receive(worker.conn)
+            assert read_tag(buf) == ACK_MESSAGE
+
     def submit(self, graph: Graph, sccs: list[SCC]) -> None:
         """Submit a stale SCC for processing in current process or parallel workers."""
         if self.workers:
@@ -1176,6 +1212,7 @@ class BuildManager:
                 for mod_id in scc.mod_ids
                 if (path := graph[mod_id].xpath) in self.errors.recorded
             }
+            t0 = time.time()
             send(
                 self.workers[idx].conn,
                 SccRequestMessage(
@@ -1193,6 +1230,7 @@ class BuildManager:
                     },
                 ),
             )
+            self.add_stats(scc_send_time=time.time() - t0)
 
     def wait_for_done(
         self, graph: Graph
@@ -1221,7 +1259,10 @@ class BuildManager:
 
         done_sccs = []
         results = {}
-        for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
+        t0 = time.time()
+        ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
+        t1 = time.time()
+        for idx in ready:
             buf = receive(self.workers[idx].conn)
             assert read_tag(buf) == SCC_RESPONSE_MESSAGE
             data = SccResponseMessage.read(buf)
@@ -1232,6 +1273,7 @@ class BuildManager:
             assert data.result is not None
             results.update(data.result)
             done_sccs.append(self.scc_by_id[scc_id])
+        self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         self.submit_to_workers(graph)  # advance after some workers are free.
         return (
             done_sccs,
@@ -3685,7 +3727,12 @@ def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None
 # The driver
 
 
-def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) -> Graph:
+def dispatch(
+    sources: list[BuildSource],
+    manager: BuildManager,
+    stdout: TextIO,
+    connect_threads: list[Thread],
+) -> Graph:
     log_configuration(manager, sources)
 
     t0 = time.time()
@@ -3742,7 +3789,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         dump_graph(graph, stdout)
         return graph
 
-    # Fine grained dependencies that didn't have an associated module in the build
+    # Fine-grained dependencies that didn't have an associated module in the build
     # are serialized separately, so we read them after we load the graph.
     # We need to read them both for running in daemon mode and if we are generating
     # a fine-grained cache (so that we can properly update them incrementally).
@@ -3755,25 +3802,28 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         if fg_deps_meta is not None:
             manager.fg_deps_meta = fg_deps_meta
         elif manager.stats.get("fresh_metas", 0) > 0:
-            # Clear the stats so we don't infinite loop because of positive fresh_metas
+            # Clear the stats, so we don't infinite loop because of positive fresh_metas
             manager.stats.clear()
             # There were some cache files read, but no fine-grained dependencies loaded.
             manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
             manager.cache_enabled = False
             manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager, stdout)
+            return dispatch(sources, manager, stdout, connect_threads)
 
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the
     # graph---we'll handle it all later.
     if not manager.use_fine_grained_cache():
+        # Wait for workers since they may be needed at this point.
+        for thread in connect_threads:
+            thread.join()
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
         manager.old_plugins_snapshot = manager.plugins_snapshot
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            # If we are running a daemon or are going to write cache for further fine grained use,
-            # then we need to collect fine grained protocol dependencies.
+            # If we are running a daemon or are going to write cache for further fine-grained use,
+            # then we need to collect fine-grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
             type_state.add_all_protocol_deps(manager.fg_deps)
@@ -4166,10 +4216,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     buf = WriteBuffer()
     graph_message.write(buf)
     graph_data = buf.getvalue()
-    for worker in manager.workers:
-        buf = receive(worker.conn)
-        assert read_tag(buf) == ACK_MESSAGE
-        worker.conn.write_bytes(graph_data)
+    manager.wait_ack()
+    manager.broadcast(graph_data)
 
     sccs = sorted_components(graph)
     manager.log(
@@ -4187,13 +4235,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     buf = WriteBuffer()
     sccs_message.write(buf)
     sccs_data = buf.getvalue()
-    for worker in manager.workers:
-        buf = receive(worker.conn)
-        assert read_tag(buf) == ACK_MESSAGE
-        worker.conn.write_bytes(sccs_data)
-    for worker in manager.workers:
-        buf = receive(worker.conn)
-        assert read_tag(buf) == ACK_MESSAGE
+    manager.wait_ack()
+    manager.broadcast(sccs_data)
+    manager.wait_ack()
 
     manager.free_workers = set(range(manager.options.num_workers))
 
@@ -4339,9 +4383,7 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            # Parallel workers perform loading in many smaller "pieces", so we
-            # should repeat the GC hack multiple times to actually benefit from it.
-            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
         ):
             # When deserializing cache we create huge amount of new objects, so even
             # with our generous GC thresholds, GC is still doing a lot of pointless
@@ -4350,8 +4392,6 @@ def process_stale_scc(
             # generation with the freeze()/unfreeze() trick below. This is arguably
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
-            gc.collect(generation=1)
-            gc.collect(generation=0)
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
@@ -4359,7 +4399,7 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
         ):
             manager.gc_freeze_cycles += 1
             gc.freeze()
