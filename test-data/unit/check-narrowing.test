@@ -4007,6 +4007,7 @@ def identity(x: T) -> T:
 
 def msg(cmp_property: Callable[[T], S]) -> None:
     if cmp_property == identity:
+        # TODO: the swapping of these reveal's is not ideal
         reveal_type(cmp_property)  # N: Revealed type is "def [T] (x: T`-1) -> T`-1"
         reveal_type(identity)  # N: Revealed type is "def (T`-1) -> S`-2"
         return
