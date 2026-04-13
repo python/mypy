@@ -317,6 +317,49 @@ VecNested VecNested_Extend(VecNested vec, PyObject *iterable) {
     return vec;
 }
 
+// Extend 'dst' with items from 'src' vec, stealing 'dst', borrowing 'src'.
+// Return extended vec, or error vec on failure.
+VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
+    if (src.len == 0)
+        return dst;
+    Py_ssize_t new_len = dst.len + src.len;
+    Py_ssize_t cap = VEC_CAP(dst);
+    if (new_len <= cap) {
+        // Fast path: enough capacity
+        for (Py_ssize_t i = 0; i < src.len; i++) {
+            VecNestedBufItem item = src.buf->items[i];
+            Py_XINCREF(item.buf);
+            // Slot may have duplicate ref from prior remove/pop
+            Py_XDECREF(dst.buf->items[dst.len + i].buf);
+            dst.buf->items[dst.len + i] = item;
+        }
+        dst.len = new_len;
+        return dst;
+    }
+    // Need to reallocate
+    Py_ssize_t new_cap = cap;
+    while (new_cap < new_len)
+        new_cap = 2 * new_cap + 1;
+    VecNested new = vec_alloc(new_cap, dst.buf->item_type, dst.buf->depth);
+    if (VEC_IS_ERROR(new)) {
+        VEC_DECREF(dst);
+        return new;
+    }
+    // Copy existing items (move refs, zero old slots)
+    memcpy(new.buf->items, dst.buf->items, sizeof(VecNestedBufItem) * dst.len);
+    memset(dst.buf->items, 0, sizeof(VecNestedBufItem) * dst.len);
+    // Copy src items (incref each buf)
+    for (Py_ssize_t i = 0; i < src.len; i++) {
+        VecNestedBufItem item = src.buf->items[i];
+        Py_XINCREF(item.buf);
+        new.buf->items[dst.len + i] = item;
+    }
+    memset(new.buf->items + new_len, 0, sizeof(VecNestedBufItem) * (new_cap - new_len));
+    new.len = new_len;
+    VEC_DECREF(dst);
+    return new;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
     VecNestedBufItem *items = self.buf->items;
@@ -654,6 +697,7 @@ VecNestedAPI Vec_NestedAPI = {
     VecNested_Remove,
     VecNested_Slice,
     VecNested_Extend,
+    VecNested_ExtendVec,
 };
 
 #endif  // MYPYC_EXPERIMENTAL

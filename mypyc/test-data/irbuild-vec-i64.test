@@ -189,6 +189,19 @@ L0:
     r0 = VecI64Api.extend(v, it)
     return r0
 
+[case testVecI64ExtendVec]
+from librt.vecs import vec, extend
+from mypy_extensions import i64
+
+def f(v: vec[i64], v2: vec[i64]) -> vec[i64]:
+    return extend(v, v2)
+[out]
+def f(v, v2):
+    v, v2, r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.extend_vec(v, v2)
+    return r0
+
 [case testVecI64SetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64

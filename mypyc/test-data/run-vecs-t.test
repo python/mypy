@@ -5,7 +5,7 @@
 from typing import Final, Any, Iterable, Optional, Tuple
 
 from mypy_extensions import i64
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 
 from testutil import assertRaises
 
@@ -500,3 +500,18 @@ def test_cap_negative() -> None:
         vec[str](capacity=-1)
     with assertRaises(ValueError):
         vec[str](['x'], capacity=-1)
+
+def extend_vec(v: vec[str], v2: vec[str]) -> vec[str]:
+    return extend(v, v2)
+
+def test_extend_vec() -> None:
+    v = extend_vec(vec[str](['a', 'b']), vec[str](['c', 'd']))
+    assert v == vec[str](['a', 'b', 'c', 'd'])
+
+def test_extend_vec_empty_src() -> None:
+    v = extend_vec(vec[str](['a']), vec[str]())
+    assert v == vec[str](['a'])
+
+def test_extend_vec_empty_dst() -> None:
+    v = extend_vec(vec[str](), vec[str](['x', 'y']))
+    assert v == vec[str](['x', 'y'])

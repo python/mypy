@@ -279,6 +279,7 @@ typedef struct _VecI64API {
     // TODO: Py_ssize_t
     VecI64 (*slice)(VecI64, int64_t, int64_t);
     VecI64 (*extend)(VecI64, PyObject *);
+    VecI64 (*extend_vec)(VecI64, VecI64);
 } VecI64API;
 
 // vec[i32] operations + type objects (stored in a capsule)
@@ -295,6 +296,7 @@ typedef struct _VecI32API {
     // TODO: Py_ssize_t
     VecI32 (*slice)(VecI32, int64_t, int64_t);
     VecI32 (*extend)(VecI32, PyObject *);
+    VecI32 (*extend_vec)(VecI32, VecI32);
 } VecI32API;
 
 // vec[i16] operations + type objects (stored in a capsule)
@@ -311,6 +313,7 @@ typedef struct _VecI16API {
     // TODO: Py_ssize_t
     VecI16 (*slice)(VecI16, int64_t, int64_t);
     VecI16 (*extend)(VecI16, PyObject *);
+    VecI16 (*extend_vec)(VecI16, VecI16);
 } VecI16API;
 
 // vec[u8] operations + type objects (stored in a capsule)
@@ -327,6 +330,7 @@ typedef struct _VecU8API {
     // TODO: Py_ssize_t
     VecU8 (*slice)(VecU8, int64_t, int64_t);
     VecU8 (*extend)(VecU8, PyObject *);
+    VecU8 (*extend_vec)(VecU8, VecU8);
 } VecU8API;
 
 // vec[float] operations + type objects (stored in a capsule)
@@ -343,6 +347,7 @@ typedef struct _VecFloatAPI {
     // TODO: Py_ssize_t
     VecFloat (*slice)(VecFloat, int64_t, int64_t);
     VecFloat (*extend)(VecFloat, PyObject *);
+    VecFloat (*extend_vec)(VecFloat, VecFloat);
 } VecFloatAPI;
 
 // vec[bool] operations + type objects (stored in a capsule)
@@ -359,6 +364,7 @@ typedef struct _VecBoolAPI {
     // TODO: Py_ssize_t
     VecBool (*slice)(VecBool, int64_t, int64_t);
     VecBool (*extend)(VecBool, PyObject *);
+    VecBool (*extend_vec)(VecBool, VecBool);
 } VecBoolAPI;
 
 #ifndef MYPYC_DECLARED_tuple_T2VOO
@@ -388,6 +394,7 @@ typedef struct _VecTAPI {
     // TODO: Py_ssize_t
     VecT (*slice)(VecT, int64_t, int64_t);
     VecT (*extend)(VecT, PyObject *, size_t);
+    VecT (*extend_vec)(VecT, VecT, size_t);
 } VecTAPI;
 
 
@@ -416,6 +423,7 @@ typedef struct _VecNestedAPI {
     // TODO: Py_ssize_t
     VecNested (*slice)(VecNested, int64_t, int64_t);
     VecNested (*extend)(VecNested, PyObject *);
+    VecNested (*extend_vec)(VecNested, VecNested);
 } VecNestedAPI;
 
 typedef struct {
@@ -516,6 +524,7 @@ static inline int VecI64_IsUnboxError(int64_t x) {
 PyObject *VecI64_Box(VecI64);
 VecI64 VecI64_Append(VecI64, int64_t x);
 VecI64 VecI64_Extend(VecI64, PyObject *iterable);
+VecI64 VecI64_ExtendVec(VecI64 dst, VecI64 src);
 VecI64 VecI64_Remove(VecI64, int64_t x);
 VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
 
@@ -547,6 +556,7 @@ static inline int VecI32_IsUnboxError(int32_t x) {
 PyObject *VecI32_Box(VecI32);
 VecI32 VecI32_Append(VecI32, int32_t x);
 VecI32 VecI32_Extend(VecI32, PyObject *iterable);
+VecI32 VecI32_ExtendVec(VecI32 dst, VecI32 src);
 VecI32 VecI32_Remove(VecI32, int32_t x);
 VecI32PopResult VecI32_Pop(VecI32 v, Py_ssize_t index);
 
@@ -578,6 +588,7 @@ static inline int VecI16_IsUnboxError(int16_t x) {
 PyObject *VecI16_Box(VecI16);
 VecI16 VecI16_Append(VecI16, int16_t x);
 VecI16 VecI16_Extend(VecI16, PyObject *iterable);
+VecI16 VecI16_ExtendVec(VecI16 dst, VecI16 src);
 VecI16 VecI16_Remove(VecI16, int16_t x);
 VecI16PopResult VecI16_Pop(VecI16 v, Py_ssize_t index);
 
@@ -612,6 +623,7 @@ static inline int VecU8_IsUnboxError(uint8_t x) {
 PyObject *VecU8_Box(VecU8);
 VecU8 VecU8_Append(VecU8, uint8_t x);
 VecU8 VecU8_Extend(VecU8, PyObject *iterable);
+VecU8 VecU8_ExtendVec(VecU8 dst, VecU8 src);
 VecU8 VecU8_Remove(VecU8, uint8_t x);
 VecU8PopResult VecU8_Pop(VecU8 v, Py_ssize_t index);
 
@@ -636,6 +648,7 @@ static inline int VecFloat_IsUnboxError(double x) {
 PyObject *VecFloat_Box(VecFloat);
 VecFloat VecFloat_Append(VecFloat, double x);
 VecFloat VecFloat_Extend(VecFloat, PyObject *iterable);
+VecFloat VecFloat_ExtendVec(VecFloat dst, VecFloat src);
 VecFloat VecFloat_Remove(VecFloat, double x);
 VecFloatPopResult VecFloat_Pop(VecFloat v, Py_ssize_t index);
 
@@ -673,6 +686,7 @@ static inline int VecBool_IsUnboxError(char x) {
 PyObject *VecBool_Box(VecBool);
 VecBool VecBool_Append(VecBool, char x);
 VecBool VecBool_Extend(VecBool, PyObject *iterable);
+VecBool VecBool_ExtendVec(VecBool dst, VecBool src);
 VecBool VecBool_Remove(VecBool, char x);
 VecBoolPopResult VecBool_Pop(VecBool v, Py_ssize_t index);
 
@@ -699,6 +713,7 @@ PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap);
 PyObject *VecT_Box(VecT vec, size_t item_type);
 VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
 VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type);
+VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type);
 VecT VecT_Remove(VecT vec, PyObject *x);
 VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
 
@@ -713,6 +728,7 @@ PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *itera
 PyObject *VecNested_Box(VecNested);
 VecNested VecNested_Append(VecNested vec, VecNestedBufItem x);
 VecNested VecNested_Extend(VecNested vec, PyObject *iterable);
+VecNested VecNested_ExtendVec(VecNested dst, VecNested src);
 VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
 VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index);
 

@@ -9,7 +9,7 @@
 
 from typing import Any, cast
 from mypy_extensions import i64, i32, i16, u8
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 from testutil import assertRaises
 
 def test_create_empty() -> None:
@@ -263,3 +263,10 @@ def test_cap_misc() -> None:
     assert len(v_nested) == 0
     v_nested = append(v_nested, vec[float]([1.0]))
     assert v_nested[0] == vec[float]([1.0])
+
+def extend_float(v: vec[float], v2: vec[float]) -> vec[float]:
+    return extend(v, v2)
+
+def test_extend_vec_float() -> None:
+    v = extend_float(vec[float]([1.0]), vec[float]([2.5, 3.5]))
+    assert v == vec[float]([1.0, 2.5, 3.5])

@@ -3,7 +3,7 @@ from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 
 from mypy_extensions import i64, i32
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 
 from testutil import assertRaises
 
@@ -555,3 +555,20 @@ def test_cap_negative() -> None:
         vec[vec[i64]](capacity=-1)
     with assertRaises(ValueError):
         vec[vec[i64]]([vec[i64]([1])], capacity=-1)
+
+def extend_nested(v: vec[vec[str]], v2: vec[vec[str]]) -> vec[vec[str]]:
+    return extend(v, v2)
+
+def test_extend_vec() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v = extend_nested(vec[vec[str]]([v1]), vec[vec[str]]([v2]))
+    assert v == vec[vec[str]]([v1, v2])
+
+def test_extend_vec_empty_src() -> None:
+    v = extend_nested(vec[vec[str]]([vec[str](['x'])]), vec[vec[str]]())
+    assert v == vec[vec[str]]([vec[str](['x'])])
+
+def test_extend_vec_empty_dst() -> None:
+    v = extend_nested(vec[vec[str]](), vec[vec[str]]([vec[str](['y'])]))
+    assert v == vec[vec[str]]([vec[str](['y'])])

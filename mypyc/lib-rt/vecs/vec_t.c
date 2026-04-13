@@ -330,6 +330,59 @@ VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
     return vec;
 }
 
+// Extend 'dst' with items from 'src' vec, stealing 'dst', borrowing 'src'.
+// Return extended vec, or error vec on failure.
+VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
+    if (src.len == 0)
+        return dst;
+    Py_ssize_t new_len = dst.len + src.len;
+    if (dst.buf == NULL) {
+        // dst is empty, allocate new buf
+        VecT new = vec_alloc(new_len, item_type);
+        if (VEC_IS_ERROR(new))
+            return new;
+        for (Py_ssize_t i = 0; i < src.len; i++) {
+            Py_INCREF(src.buf->items[i]);
+            new.buf->items[i] = src.buf->items[i];
+        }
+        memset(new.buf->items + src.len, 0, sizeof(PyObject *) * (new_len - src.len));
+        new.len = new_len;
+        return new;
+    }
+    Py_ssize_t cap = VEC_CAP(dst);
+    if (new_len <= cap) {
+        // Fast path: enough capacity
+        for (Py_ssize_t i = 0; i < src.len; i++) {
+            Py_INCREF(src.buf->items[i]);
+            // Slot may have duplicate ref from prior remove/pop
+            Py_XSETREF(dst.buf->items[dst.len + i], src.buf->items[i]);
+        }
+        dst.len = new_len;
+        return dst;
+    }
+    // Need to reallocate
+    Py_ssize_t new_cap = cap;
+    while (new_cap < new_len)
+        new_cap = 2 * new_cap + 1;
+    VecT new = vec_alloc(new_cap, dst.buf->item_type);
+    if (VEC_IS_ERROR(new)) {
+        VEC_DECREF(dst);
+        return new;
+    }
+    // Copy existing items (move refs, zero old slots)
+    memcpy(new.buf->items, dst.buf->items, sizeof(PyObject *) * dst.len);
+    memset(dst.buf->items, 0, sizeof(PyObject *) * dst.len);
+    // Copy src items (incref each)
+    for (Py_ssize_t i = 0; i < src.len; i++) {
+        Py_INCREF(src.buf->items[i]);
+        new.buf->items[dst.len + i] = src.buf->items[i];
+    }
+    memset(new.buf->items + new_len, 0, sizeof(PyObject *) * (new_cap - new_len));
+    new.len = new_len;
+    VEC_DECREF(dst);
+    return new;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecT VecT_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
@@ -643,6 +696,7 @@ VecTAPI Vec_TAPI = {
     VecT_Remove,
     VecT_Slice,
     VecT_Extend,
+    VecT_ExtendVec,
 };
 
 #endif  // MYPYC_EXPERIMENTAL

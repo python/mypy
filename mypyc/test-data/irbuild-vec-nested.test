@@ -85,6 +85,18 @@ L0:
     r0 = VecNestedApi.extend(v, it)
     return r0
 
+[case testVecNestedExtendVec]
+from librt.vecs import vec, extend
+
+def f(v: vec[vec[str]], v2: vec[vec[str]]) -> vec[vec[str]]:
+    return extend(v, v2)
+[out]
+def f(v, v2):
+    v, v2, r0 :: vec[vec[str]]
+L0:
+    r0 = VecNestedApi.extend_vec(v, v2)
+    return r0
+
 [case testVecNestedLen_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
