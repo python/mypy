@@ -26,6 +26,9 @@ class Capsule:
         module = self.name.split(".")[-1]
         return SourceDep(f"{module}/librt_{module}_api.c", include_dirs=[module])
 
+    # TODO: This SourceDep is really only used for its associated header so it would make more sense
+    # to add a separate type. Alternatively, see if this can be removed altogether if we move the
+    # definitions that depend on this header from the external header of the C extension.
     def external_dep(self) -> SourceDep:
         """External source dependency of the capsule that may be included in external headers of C
         extensions that depend on the capsule.
