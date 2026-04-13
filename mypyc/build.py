@@ -517,7 +517,9 @@ def mypyc_build(
     *,
     separate: bool | list[tuple[list[str], str | None]] = False,
     only_compile_paths: Iterable[str] | None = None,
-    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[tuple[str, list[str]]]] | None = None,
+    skip_cgen_input: (
+        tuple[list[list[tuple[str, str]]], list[tuple[str, list[str], bool]]] | None
+    ) = None,
     always_use_shared_lib: bool = False,
 ) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]], list[SourceDep]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
@@ -551,7 +553,10 @@ def mypyc_build(
         write_file(os.path.join(compiler_options.target_dir, "ops.txt"), ops_text)
     else:
         group_cfiles = skip_cgen_input[0]
-        source_deps = [SourceDep(path, include_dirs=dirs) for (path, dirs) in skip_cgen_input[1]]
+        source_deps = [
+            SourceDep(path, include_dirs=dirs, internal=internal)
+            for (path, dirs, internal) in skip_cgen_input[1]
+        ]
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
@@ -668,7 +673,9 @@ def mypycify(
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: bool | list[tuple[list[str], str | None]] = False,
-    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[tuple[str, list[str]]]] | None = None,
+    skip_cgen_input: (
+        tuple[list[list[tuple[str, str]]], list[tuple[str, list[str], bool]]] | None
+    ) = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,

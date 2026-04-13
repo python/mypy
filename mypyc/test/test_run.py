@@ -299,7 +299,10 @@ class TestRun(MypycDataSuite):
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
             deps = sorted(
-                ((dep.path, dep.include_dirs) for dep in collect_source_dependencies(ir)),
+                (
+                    (dep.path, dep.include_dirs, dep.internal)
+                    for dep in collect_source_dependencies(ir)
+                ),
                 key=lambda tup: tup[0],
             )
             if errors.num_errors:
