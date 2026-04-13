@@ -3993,3 +3993,33 @@ def f2(func: Callable[..., T], arg: str) -> T:
         return func(arg)
     return func(arg)
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingEqualityTypeVarTarget]
+# Regression test for https://github.com/python/mypy/issues/21199
+# When the RHS of == is a TypeVar, the LHS should not be narrowed to the TypeVar type.
+# flags: --python-version 3.10
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def func_basic(x: int, y: T) -> None:
+    # x: int should remain int after comparing with TypeVar y; no error on x += 1
+    assert x == y
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    x += 1
+
+def func_union(x: int | str, y: T) -> None:
+    # x: int | str should not be narrowed to T when compared with TypeVar
+    assert x == y
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+def func_not_equal(x: int | str, y: T) -> None:
+    # != should also not over-narrow based on TypeVar
+    if x != y:
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+
+def func_concrete_target(x: int | str, y: int) -> None:
+    # When the target is a concrete type (not TypeVar), narrowing is still allowed
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]

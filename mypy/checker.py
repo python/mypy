@@ -6787,6 +6787,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 ):
                     continue
 
+                # Do not narrow based on a TypeVar target: we don't know its concrete type,
+                # so narrowing e.g. `x: int` to `T` when comparing `x == y: T` is wrong.
+                # The narrowed TypeVar type is typically a supertype of the original, causing
+                # false errors on subsequent operations. See: github.com/python/mypy/issues/21199
+                if isinstance(get_proper_type(target_type), TypeVarLikeType):
+                    continue
+
                 target = TypeRange(target_type, is_upper_bound=False)
 
                 if_map, else_map = conditional_types_to_typemaps(
