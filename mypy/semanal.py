@@ -4370,9 +4370,7 @@ class SemanticAnalyzer(
                 "tuple" if isinstance(get_proper_type(current_node.target), TupleType) else "union"
             )
             messages.append(f"Invalid recursive alias: a {target} item of itself")
-        if detect_diverging_alias(
-            current_node, current_node.target, self.lookup_qualified, self.tvar_scope
-        ):
+        if detect_diverging_alias(current_node, current_node.target):
             messages.append("Invalid recursive alias: type variable nesting on right hand side")
         if messages:
             current_node.target = AnyType(TypeOfAny.from_error)

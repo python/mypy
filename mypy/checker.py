@@ -2702,7 +2702,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_final_deletable(typ)
 
             if defn.decorators:
-                sig: Type = type_object_type(defn.info, self.named_type)
+                sig: Type = type_object_type(defn.info)
                 # Decorators are applied in reverse order.
                 for decorator in reversed(defn.decorators):
                     if isinstance(decorator, CallExpr) and isinstance(
@@ -6957,10 +6957,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
         """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
 
-        Specifically, this function accepts two mappings of expression to original types:
-        the original mapping (existing_types), and a new mapping (new_types) intended to
-        update the original.
-
         This function iterates through new_types and attempts to use the information to try
         refining any parent types that happen to be unions.
 
@@ -6979,23 +6975,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
-        output_map = {}
+        all_mappings = [new_types]
         for expr, expr_type in new_types.items():
-            # The original inferred type should always be present in the output map, of course
-            output_map[expr] = expr_type
+            all_mappings.append(self.refine_parent_types(expr, expr_type))
+        return reduce_and_conditional_type_maps(all_mappings, use_meet=True)
 
-            # Next, try using this information to refine the parent types, if applicable.
-            new_mapping = self.refine_parent_types(expr, expr_type)
-            for parent_expr, proposed_parent_type in new_mapping.items():
-                # We don't try inferring anything if we've already inferred something for
-                # the parent expression.
-                # TODO: Consider picking the narrower type instead of always discarding this?
-                if parent_expr in new_types:
-                    continue
-                output_map[parent_expr] = proposed_parent_type
-        return output_map
-
-    def refine_parent_types(self, expr: Expression, expr_type: Type) -> Mapping[Expression, Type]:
+    def refine_parent_types(self, expr: Expression, expr_type: Type) -> TypeMap:
         """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
         the parent types based on the 'expr_type'.
 
@@ -8744,6 +8729,8 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
         return ms[0]
     result = ms[0]
     for m in ms[1:]:
+        if not m:
+            continue  # this is a micro-optimisation
         result = and_conditional_maps(result, m, use_meet=use_meet)
     return result
 

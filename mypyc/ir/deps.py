@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Final
 
 
@@ -17,17 +19,48 @@ class Capsule:
     def __hash__(self) -> int:
         return hash(("Capsule", self.name))
 
+    def internal_dep(self) -> SourceDep:
+        """Internal source dependency of the capsule that should only be included in the C extensions
+        that depend on the capsule, eg. by importing a type or function from the capsule.
+        """
+        module = self.name.split(".")[-1]
+        return SourceDep(f"{module}/librt_{module}_api.c", include_dirs=[module])
+
+    # TODO: This SourceDep is really only used for its associated header so it would make more sense
+    # to add a separate type. Alternatively, see if this can be removed altogether if we move the
+    # definitions that depend on this header from the external header of the C extension.
+    def external_dep(self) -> SourceDep:
+        """External source dependency of the capsule that may be included in external headers of C
+        extensions that depend on the capsule.
+
+        The external headers of the C extensions are included by other C extensions that don't
+        necessarily import the capsule. However, they may need type definitions from the capsule
+        for types that are used in the exports table of the included C extensions.
+
+        Only the external header should be included in this case because if the other C extension
+        doesn't import the capsule, it also doesn't include the definition for its API table and
+        including the internal header would result in undefined symbols.
+        """
+        module = self.name.split(".")[-1]
+        return SourceDep(f"{module}/librt_{module}.c", include_dirs=[module], internal=False)
+
 
 class SourceDep:
     """Defines a C source file that a primitive may require.
 
     Each source file must also have a corresponding .h file (replace .c with .h)
     that gets implicitly #included if the source is used.
+    include_dirs are passed to the C compiler when the file is compiled as a
+    shared library separate from the C extension.
     """
 
-    def __init__(self, path: str) -> None:
+    def __init__(
+        self, path: str, *, include_dirs: list[str] | None = None, internal: bool = True
+    ) -> None:
         # Relative path from mypyc/lib-rt, e.g. 'bytes_extra_ops.c'
         self.path: Final = path
+        self.include_dirs: Final = include_dirs or []
+        self.internal: Final = internal
 
     def __repr__(self) -> str:
         return f"SourceDep(path={self.path!r})"

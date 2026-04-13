@@ -357,6 +357,7 @@ def build_using_shared_lib(
     deps: list[str],
     build_dir: str,
     extra_compile_args: list[str],
+    extra_include_dirs: list[str],
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
@@ -373,7 +374,7 @@ def build_using_shared_lib(
         get_extension()(
             shared_lib_name(group_name),
             sources=cfiles,
-            include_dirs=[include_dir(), build_dir],
+            include_dirs=[include_dir(), build_dir] + extra_include_dirs,
             depends=deps,
             extra_compile_args=extra_compile_args,
         )
@@ -399,7 +400,10 @@ def build_using_shared_lib(
 
 
 def build_single_module(
-    sources: list[BuildSource], cfiles: list[str], extra_compile_args: list[str]
+    sources: list[BuildSource],
+    cfiles: list[str],
+    extra_compile_args: list[str],
+    extra_include_dirs: list[str],
 ) -> list[Extension]:
     """Produce the list of extension modules for a standalone extension.
 
@@ -409,7 +413,7 @@ def build_single_module(
         get_extension()(
             sources[0].module,
             sources=cfiles,
-            include_dirs=[include_dir()],
+            include_dirs=[include_dir()] + extra_include_dirs,
             extra_compile_args=extra_compile_args,
         )
     ]
@@ -513,7 +517,9 @@ def mypyc_build(
     *,
     separate: bool | list[tuple[list[str], str | None]] = False,
     only_compile_paths: Iterable[str] | None = None,
-    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
+    skip_cgen_input: (
+        tuple[list[list[tuple[str, str]]], list[tuple[str, list[str], bool]]] | None
+    ) = None,
     always_use_shared_lib: bool = False,
 ) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]], list[SourceDep]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
@@ -547,7 +553,10 @@ def mypyc_build(
         write_file(os.path.join(compiler_options.target_dir, "ops.txt"), ops_text)
     else:
         group_cfiles = skip_cgen_input[0]
-        source_deps = [SourceDep(d) for d in skip_cgen_input[1]]
+        source_deps = [
+            SourceDep(path, include_dirs=dirs, internal=internal)
+            for (path, dirs, internal) in skip_cgen_input[1]
+        ]
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
@@ -664,7 +673,9 @@ def mypycify(
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: bool | list[tuple[list[str], str | None]] = False,
-    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
+    skip_cgen_input: (
+        tuple[list[list[tuple[str, str]]], list[tuple[str, list[str], bool]]] | None
+    ) = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,
@@ -781,12 +792,19 @@ def mypycify(
     # runtime library in. Otherwise it just gets #included to save on
     # compiler invocations.
     shared_cfilenames = []
+    include_dirs = set()
     if not compiler_options.include_runtime_files:
         # Collect all files to copy: runtime files + conditional source files
         files_to_copy = list(RUNTIME_C_FILES)
         for source_dep in source_deps:
             files_to_copy.append(source_dep.path)
             files_to_copy.append(source_dep.get_header())
+            include_dirs.update(source_dep.include_dirs)
+
+        if compiler_options.depends_on_librt_internal:
+            files_to_copy.append("internal/librt_internal_api.h")
+            files_to_copy.append("internal/librt_internal_api.c")
+            include_dirs.add("internal")
 
         # Copy all files
         for name in files_to_copy:
@@ -797,6 +815,7 @@ def mypycify(
                 shared_cfilenames.append(rt_file)
 
     extensions = []
+    extra_include_dirs = [os.path.join(include_dir(), dir) for dir in include_dirs]
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
         if lib_name:
             extensions.extend(
@@ -807,11 +826,14 @@ def mypycify(
                     deps,
                     build_dir,
                     cflags,
+                    extra_include_dirs,
                 )
             )
         else:
             extensions.extend(
-                build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
+                build_single_module(
+                    group_sources, cfilenames + shared_cfilenames, cflags, extra_include_dirs
+                )
             )
 
     if install_librt:

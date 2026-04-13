@@ -189,6 +189,12 @@ def main(
     list([res])  # noqa: C410
 
 
+class BuildResultThunk:
+    # We pass this around so that we avoid freeing memory, which is slow
+    def __init__(self, build_result: build.BuildResult | None) -> None:
+        self._result = build_result
+
+
 def run_build(
     sources: list[BuildSource],
     options: Options,
@@ -196,7 +202,7 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> tuple[build.BuildResult | None, list[str], bool]:
+) -> tuple[BuildResultThunk | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
@@ -227,8 +233,12 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
+
+    if res:
+        res.manager.metastore.close()
+
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
-    return res, messages, blockers
+    return BuildResultThunk(res), messages, blockers
 
 
 def show_messages(

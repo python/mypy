@@ -525,6 +525,20 @@ and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=f8f0794d0fe249c06dc9f31a004d85be6cca6ced+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 1.20.1
+
+- Always disable sync in SQLite cache (Ivan Levkivskyi, PR [21184](https://github.com/python/mypy/pull/21184))
+- Temporarily skip few base64 tests (Ivan Levkivskyi, PR [21193](https://github.com/python/mypy/pull/21193))
+- Revert `dict.__or__` typeshed change (Ivan Levkivskyi, PR [21186](https://github.com/python/mypy/pull/21186))
+- Fix narrowing for match case with variadic tuples (Shantanu, PR [21192](https://github.com/python/mypy/pull/21192))
+- Avoid narrowing `type[T]` in type calls (Shantanu, PR [21174](https://github.com/python/mypy/pull/21174))
+- Fix regression for catching empty tuple in except (Shantanu, PR [21153](https://github.com/python/mypy/pull/21153))
+- Fix reachability for frozenset and dict view narrowing (Shantanu, PR [21151](https://github.com/python/mypy/pull/21151))
+- Fix narrowing with chained comparison (Shantanu, PR [21150](https://github.com/python/mypy/pull/21150))
+- Avoid narrowing to unreachable at module level (Shantanu, PR [21144](https://github.com/python/mypy/pull/21144))
+- Allow dangerous identity comparisons to `Any` typed variables (Shantanu, PR [21142](https://github.com/python/mypy/pull/21142))
+- `--warn-unused-config` should not be a strict flag (Ivan Levkivskyi, PR [21139](https://github.com/python/mypy/pull/21139))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:

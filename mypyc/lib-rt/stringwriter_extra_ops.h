@@ -8,7 +8,7 @@
 #include <Python.h>
 
 #include "mypyc_util.h"
-#include "strings/librt_strings.h"
+#include "strings/librt_strings_api.h"
 
 static inline CPyTagged
 CPyStringWriter_Len(PyObject *obj) {

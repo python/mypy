@@ -20,9 +20,10 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-from typing import Any, Final, cast
+import time
+from typing import Final, cast
 
-import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
+import ast_serialize  # type: ignore[import-not-found, unused-ignore]
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
@@ -101,6 +102,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     OverloadPart,
+    ParseError,
     PassStmt,
     RaiseStmt,
     RefExpr,
@@ -168,27 +170,13 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 class State:
     def __init__(self, options: Options) -> None:
         self.options = options
-        self.errors: list[dict[str, Any]] = []
+        self.errors: list[ParseError] = []
         self.num_funcs = 0
 
     def add_error(
-        self,
-        message: str,
-        line: int,
-        column: int,
-        *,
-        blocker: bool = False,
-        code: str | None = None,
+        self, message: str, line: int, column: int, *, blocker: bool = False, code: str
     ) -> None:
-        """Report an error at a specific location.
-
-        Args:
-            message: Error message to display
-            line: Line number where error occurred
-            column: Column number where error occurred
-            blocker: If True, this error blocks further analysis
-            code: Error code for categorization
-        """
+        """Report an error at a specific location."""
         self.errors.append(
             {"line": line, "column": column, "message": message, "blocker": blocker, "code": code}
         )
@@ -196,26 +184,14 @@ class State:
 
 def native_parse(
     filename: str, options: Options, skip_function_bodies: bool = False, imports_only: bool = False
-) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+) -> tuple[MypyFile, list[ParseError], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
-    Uses the ast_serialize Rust extension to parse Python code and deserialize
-    the resulting AST directly into mypy's native AST representation.
+    Return (MypyFile, errors, type_ignores).
 
-    Args:
-        filename: Path to the Python source file to parse
-        options: Mypy options affecting parsing behavior (e.g., Python version)
-        skip_function_bodies: If True, many function and method bodies are omitted from
-            the AST, useful for parsing stubs or extracting signatures without full
-            implementation details
-        imports_only: If True create an empty MypyFile with actual serialized defs
-            stored in binary_data.
-
-    Returns:
-        A tuple containing:
-        - MypyFile: The parsed AST as a mypy AST node
-        - list[dict[str, Any]]: List of parse errors and deserialization errors
-        - TypeIgnores: List of (line_number, ignored_codes) tuples for type: ignore comments
+    The caller should set these additional attributes on the returned MypyFile:
+      - ignored_lines: dict of type ignore comments (from the TypeIgnores return value)
+      - is_stub: whether the file is a .pyi stub
     """
     # If the path is a directory, return empty AST (matching fastparse behavior)
     # This can happen for packages that only contain .pyc files without source
@@ -245,7 +221,6 @@ def native_parse(
             b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
         )
     node.uses_template_strings = uses_template_strings
-    # Merge deserialization errors with parsing errors
     all_errors = errors + state.errors
     return node, all_errors, ignores
 
@@ -272,7 +247,14 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool, bool]:
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool]:
+    # This is a horrible hack to work around a mypyc bug where imported
+    # module may be not ready in a thread sometimes.
+    t0 = time.time()
+    while ast_serialize is None:
+        time.sleep(0.0001)  # type: ignore[unreachable]
+        if time.time() - t0 > 10.0:
+            raise ImportError("Cannot import ast_serialize")
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         skip_function_bodies=skip_function_bodies,
@@ -284,7 +266,7 @@ def parse_to_binary_ast(
     )
     return (
         ast_bytes,
-        cast("list[dict[str, Any]]", errors),
+        errors,
         ignores,
         import_bytes,
         ast_data["is_partial_package"],
@@ -339,22 +321,17 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return a
     elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
-        # Read operator string
         op = read_str(data)
-        # Read lvalue (target)
         lvalue = read_expression(state, data)
-        # Read rvalue (value)
         rvalue = read_expression(state, data)
         stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.IF_STMT:
-        # Read the main if condition and body
         expr = read_expression(state, data)
         body = read_block(state, data)
 
-        # Read elif clauses
         num_elif = read_int(data)
         elif_exprs = []
         elif_bodies = []
@@ -372,21 +349,17 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         # Build from the bottom up, starting with the final else body
         current_else = else_body
 
-        # Process elif clauses in reverse order
-        for i in range(len(elif_exprs) - 1, -1, -1):
-            elif_stmt = IfStmt([elif_exprs[i]], [elif_bodies[i]], current_else)
-            # Set location from the elif expression
-            elif_stmt.line = elif_exprs[i].line
-            elif_stmt.column = elif_exprs[i].column
-            # Set end location based on what follows
+        for elif_expr, elif_body in reversed(list(zip(elif_exprs, elif_bodies))):
+            elif_stmt = IfStmt([elif_expr], [elif_body], current_else)
+            elif_stmt.line = elif_expr.line
+            elif_stmt.column = elif_expr.column
             if current_else is not None:
                 elif_stmt.end_line = current_else.end_line
                 elif_stmt.end_column = current_else.end_column
             else:
-                elif_stmt.end_line = elif_bodies[i].end_line
-                elif_stmt.end_column = elif_bodies[i].end_column
+                elif_stmt.end_line = elif_body.end_line
+                elif_stmt.end_column = elif_body.end_column
 
-            # Wrap in a Block to become the else clause for the outer if
             current_else = Block([elif_stmt])
             set_line_column_range(current_else, elif_stmt)
 
@@ -581,10 +554,9 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
 
 
 def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], bool]:
-    """Read function/lambda parameters from the buffer.
+    """Read function/lambda parameters.
 
-    Returns:
-        A tuple of (arguments list, has_annotations flag)
+    Return (parameters, has_annotations).
     """
     expect_tag(data, LIST_GEN)
     n_args = read_int_bare(data)
@@ -607,7 +579,6 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
             default = None
         pos_only = read_bool(data)
 
-        # Apply implicit_optional if enabled and default is None
         if state.options.implicit_optional and ann is not None:
             optional = isinstance(default, NameExpr) and default.name == "None"
             if isinstance(ann, UnboundType):
@@ -723,7 +694,6 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     else:
         type_params = None
 
-    # Keywords (all keyword arguments including metaclass)
     expect_tag(data, DICT_STR_GEN)
     n_keywords = read_int_bare(data)
     keywords = []
@@ -732,9 +702,7 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         value = read_expression(state, data)
         keywords.append((key, value))
 
-    # Extract metaclass from keywords if present
     metaclass = dict(keywords).get("metaclass") if keywords else None
-    # Remove metaclass from keywords since it's passed as a separate field
     filtered_keywords = [(k, v) for k, v in keywords if k != "metaclass"] if keywords else None
 
     class_def = ClassDef(
@@ -846,7 +814,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     else:
         finally_body = None
 
-    # Read is_star flag (for except* in Python 3.11+)
+    # except* (Python 3.11+)
     is_star = read_bool(data)
 
     stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
@@ -864,7 +832,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         n = read_int_bare(data)
         args = tuple(read_type(state, data) for i in range(n))
         empty_tuple_index = read_bool(data)
-        # Read optional original_str_expr
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_expr = None
@@ -872,7 +839,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             original_str_expr = read_str_bare(data)
         else:
             assert False, f"Unexpected tag for original_str_expr: {t}"
-        # Read optional original_str_fallback
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_fallback = None
@@ -891,13 +857,10 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return unbound
     elif tag == types.UNION_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
-        # Read uses_pep604_syntax flag
         uses_pep604_syntax = read_bool(data)
-        # Read optional original_str_expr
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_expr = None
@@ -905,7 +868,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             original_str_expr = read_str_bare(data)
         else:
             assert False, f"Unexpected tag for original_str_expr: {t}"
-        # Read optional original_str_fallback
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_fallback = None
@@ -921,7 +883,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return union
     elif tag == types.LIST_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
@@ -930,7 +891,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return type_list
     elif tag == types.TUPLE_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
@@ -960,7 +920,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return typeddict_type
     elif tag == types.ELLIPSIS_TYPE:
-        # EllipsisType has no attributes
         ellipsis_type = EllipsisType()
         read_loc(data, ellipsis_type)
         expect_end_tag(data)
@@ -1002,31 +961,23 @@ def read_type(state: State, data: ReadBuffer) -> Type:
 
 
 def stringify_type_name(typ: Type) -> str | None:
-    """Extract qualified name from a type (for Arg constructor detection)."""
     if isinstance(typ, UnboundType):
         return typ.name
     return None
 
 
 def extract_arg_name(typ: Type) -> str | None:
-    """Extract argument name from a type (for Arg name parameter)."""
     if isinstance(typ, RawExpressionType) and typ.base_type_name == "builtins.str":
         return typ.literal_value  # type: ignore[return-value]
     elif isinstance(typ, UnboundType):
-        # String literals in type context are parsed as UnboundType (forward references)
-        # For Arg names, these are typically simple names without dots
         if typ.name == "None":
             return None
-        # Return the name as-is (it's the argument name)
         return typ.name
     return None  # Invalid, but let validation handle it
 
 
 def read_call_type(state: State, data: ReadBuffer) -> Type:
-    """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
-
-    This performs validation and error reporting similar to mypy/fastparse.py.
-    """
+    """Read Call in type context (Arg/DefaultArg/VarArg/KwArg constructor)."""
     callee_type = read_type(state, data)
 
     # Read positional arguments
@@ -1049,16 +1000,13 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
         kw_value = read_type(state, data)
         kwargs.append((kw_name, kw_value))
 
-    # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
     constructor = stringify_type_name(callee_type)
 
-    # We'll read location before processing errors so we can report them correctly
     invalid = AnyType(TypeOfAny.from_error)
     read_loc(data, invalid)
     expect_end_tag(data)
 
     if not constructor:
-        # ARG_CONSTRUCTOR_NAME_EXPECTED
         state.add_error(
             message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value,
             invalid.line,
@@ -1084,7 +1032,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
             name = extract_arg_name(arg)
             name_set_from_positional = True
         else:
-            # ARG_CONSTRUCTOR_TOO_MANY_ARGS
             state.add_error(
                 message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value,
                 invalid.line,
@@ -1096,7 +1043,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     # Process keyword arguments
     for kw_name, kw_value in kwargs:
         if kw_name == "name":
-            # MULTIPLE_VALUES_FOR_NAME_KWARG
             if name is not None and name_set_from_positional:
                 state.add_error(
                     message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
@@ -1107,7 +1053,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 )
             name = extract_arg_name(kw_value)
         elif kw_name == "type":
-            # MULTIPLE_VALUES_FOR_TYPE_KWARG
             if typ is not default_type and typ_set_from_positional:
                 state.add_error(
                     message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
@@ -1118,7 +1063,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 )
             typ = kw_value
         else:
-            # ARG_CONSTRUCTOR_UNEXPECTED_ARG
             state.add_error(
                 message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
                 invalid.line,
@@ -1127,14 +1071,12 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 code="misc",
             )
 
-    # Create CallableArgument
     call_arg = CallableArgument(typ, name, constructor)
     set_line_column_range(call_arg, invalid)
     return call_arg
 
 
 def read_pattern(state: State, data: ReadBuffer) -> Pattern:
-    """Read a pattern node from the buffer."""
     tag = read_tag(data)
     if tag == nodes.AS_PATTERN:
         has_pattern = read_bool(data)
@@ -1185,7 +1127,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return sequence_pattern
     elif tag == nodes.STARRED_PATTERN:
-        # Read optional capture name
         has_name = read_bool(data)
         if has_name:
             name_str = read_str(data)
@@ -1372,7 +1313,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         generator = read_generator_expr(state, data)
         expr = ListComprehension(generator)
         read_loc(data, expr)
-        # Also copy location to the inner generator
         set_line_column_range(generator, expr)
         expect_end_tag(data)
         return expr
@@ -1380,7 +1320,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         generator = read_generator_expr(state, data)
         expr = SetComprehension(generator)
         read_loc(data, expr)
-        # Also copy location to the inner generator
         set_line_column_range(generator, expr)
         expect_end_tag(data)
         return expr
@@ -1476,7 +1415,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
             else:
                 keys.append(None)
         values = read_expression_list(state, data)
-        # Zip keys and values into items
         items = list(zip(keys, values))
         expr = DictExpr(items)
         read_loc(data, expr)
@@ -1504,7 +1442,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.TEMP_NODE:
-        # TempNode with no attributes
         temp = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
         expect_end_tag(data)
         return temp
@@ -1587,16 +1524,10 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
-    elif tag == nodes.NAMED_EXPR:
+    elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
-        # AssignmentExpr expects target to be a NameExpr
-        if not isinstance(target, NameExpr):
-            # In case target is not a NameExpr, we need to handle this
-            # For now, we'll assert since the grammar should ensure it's a NameExpr
-            assert isinstance(
-                target, NameExpr
-            ), f"Expected NameExpr for target, got {type(target)}"
+        assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
@@ -1608,7 +1539,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.BYTES_EXPR:
-        # Read bytes literal as string
         value = read_str(data)
         expr = BytesExpr(value)
         read_loc(data, expr)
@@ -1855,10 +1785,7 @@ def get_executable_if_block_with_overloads(
 def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Statement]:
     """Merge consecutive function overloads into OverloadedFuncDef nodes.
 
-    This function processes a list of statements and combines function overloads
-    (marked with @overload decorator) that have the same name into a single
-    OverloadedFuncDef node. It also handles conditional overloads (overloads
-    inside if statements) when the condition can be evaluated.
+    Also handles conditional overloads (overloads inside if statements).
     """
     ret: list[Statement] = []
     current_overload: list[OverloadPart] = []
@@ -2004,14 +1931,7 @@ def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Stateme
 
 
 def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
-    """Deserialize import metadata from bytes into mypy AST nodes.
-
-    Args:
-        import_bytes: Serialized import metadata from the Rust parser
-
-    Returns:
-        List of Import and ImportFrom AST nodes with location and metadata
-    """
+    """Deserialize import metadata from bytes into mypy AST nodes."""
     if not import_bytes:
         return []
 
@@ -2076,12 +1996,6 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
 
 
 def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | ImportAll) -> None:
-    """Read location and metadata flags from buffer and set them on the import statement.
-
-    Args:
-        data: Buffer containing serialized data
-        stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
-    """
     read_loc(data, stmt)
 
     # Metadata flags as a single integer bitfield

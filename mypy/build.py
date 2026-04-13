@@ -27,9 +27,10 @@ import sys
 import time
 import types
 from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
+from concurrent.futures import ThreadPoolExecutor, wait
 from heapq import heappop, heappush
 from textwrap import dedent
-from threading import Thread
+from threading import Lock, Thread
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -117,6 +118,7 @@ from mypy.nodes import (
     ImportBase,
     ImportFrom,
     MypyFile,
+    ParseError,
     SymbolTable,
 )
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
@@ -126,6 +128,7 @@ from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
+    get_available_threads,
     get_mypy_comments,
     hash_digest,
     hash_digest_bytes,
@@ -144,7 +147,6 @@ if TYPE_CHECKING:
 
 from mypy import errorcodes as codes
 from mypy.config_parser import get_config_module_names, parse_mypy_comments
-from mypy.fixer_state import fixer_state
 from mypy.fixup import NodeFixer
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
@@ -160,9 +162,10 @@ from mypy.modulefinder import (
     SearchPaths,
     compute_search_paths,
 )
+from mypy.modules_state import modules_state
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import load_from_raw, parse
+from mypy.parse import load_from_raw, parse, report_parse_error
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
@@ -813,6 +816,8 @@ class BuildManager:
         parallel_worker: bool = False,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
+        # Use in cases where we need to prevent race conditions in stats reporting.
+        self.stats_lock = Lock()
         self.stdout = stdout
         self.stderr = stderr
         self.start_time = time.time()
@@ -829,7 +834,8 @@ class BuildManager:
         # Share same modules dictionary with the global fixer state.
         # We need to set allow_missing when doing a fine-grained cache
         # load because we need to gracefully handle missing modules.
-        fixer_state.node_fixer = NodeFixer(self.modules, self.options.use_fine_grained_cache)
+        modules_state.modules = self.modules
+        modules_state.node_fixer = NodeFixer(self.modules, self.options.use_fine_grained_cache)
         self.import_map: dict[str, set[str]] = {}
         self.missing_modules: dict[str, int] = {}
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
@@ -965,6 +971,96 @@ class BuildManager:
             for key, value in sorted(self.stats_summary().items()):
                 print(f"{key + ':':24}{value}")
 
+    def parse_all(self, states: list[State]) -> None:
+        """Parse multiple files in parallel (if possible) and compute dependencies."""
+        if not self.options.native_parser:
+            # Old parser cannot be parallelized.
+            for state in states:
+                state.parse_file()
+            self.post_parse_all(states)
+            return
+
+        sequential_states = []
+        parallel_states = []
+        for state in states:
+            if state.tree is not None:
+                # The file was already parsed.
+                continue
+            if not self.fscache.exists(state.xpath):
+                # New parser only supports parsing on-disk files.
+                sequential_states.append(state)
+                continue
+            parallel_states.append(state)
+        self.parse_parallel(sequential_states, parallel_states)
+        self.post_parse_all(states)
+
+    def parse_parallel(self, sequential_states: list[State], parallel_states: list[State]) -> None:
+        """Perform parallel parsing of states.
+
+        Note: this duplicates a bit of logic from State.parse_file(). This is done
+        as an optimization to parallelize only those parts of the code that can be
+        parallelized efficiently.
+        """
+        futures = []
+        parallel_parsed_states = {}
+        # Use at least --num-workers if specified by user.
+        available_threads = max(get_available_threads(), self.options.num_workers)
+        # Overhead from trying to parallelize (small) blocking portion of
+        # parse_file_inner() results in no visible improvement with more than 8 threads.
+        # TODO: reuse thread pool and/or batch small files in single submit() call.
+        with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
+            for state in parallel_states:
+                state.needs_parse = False
+                # New parser reads source from file directly, we do this only for
+                # the side effect of parsing inline mypy configurations.
+                state.get_source()
+                if state.id not in self.ast_cache:
+                    self.log(f"Parsing {state.xpath} ({state.id})")
+                    ignore_errors = state.ignore_all or state.options.ignore_errors
+                    if ignore_errors:
+                        self.errors.ignored_files.add(state.xpath)
+                    futures.append(executor.submit(state.parse_file_inner, state.source or ""))
+                    parallel_parsed_states[state.id] = state
+                else:
+                    self.log(f"Using cached AST for {state.xpath} ({state.id})")
+                    state.tree, state.early_errors = self.ast_cache[state.id]
+
+            # Parse sequential before waiting on parallel.
+            for state in sequential_states:
+                state.parse_file()
+
+            for fut in wait(futures).done:
+                state_id, parse_errors = fut.result()
+                # New parser reports errors lazily, add them if any.
+                if parse_errors:
+                    state = parallel_parsed_states[state_id]
+                    with state.wrap_context():
+                        self.errors.set_file(state.xpath, state.id, options=state.options)
+                        for error in parse_errors:
+                            report_parse_error(error, self.errors)
+                        if self.errors.is_blockers():
+                            self.log("Bailing due to parse errors")
+                            self.errors.raise_error()
+
+        for state in parallel_states:
+            assert state.tree is not None
+            if state.id in parallel_parsed_states:
+                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                state.semantic_analysis_pass1()
+                self.ast_cache[state.id] = (state.tree, state.early_errors)
+            self.modules[state.id] = state.tree
+            state.check_blockers()
+            state.setup_errors()
+
+    def post_parse_all(self, states: list[State]) -> None:
+        for state in states:
+            state.compute_dependencies()
+            if self.workers and state.tree:
+                # We don't need imports in coordinator process anymore, we parse only to
+                # compute dependencies.
+                state.tree.imports = []
+                del self.ast_cache[state.id]
+
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
 
@@ -1082,38 +1178,43 @@ class BuildManager:
         id: str,
         path: str,
         source: str,
-        ignore_errors: bool,
         options: Options,
         raw_data: FileRawData | None = None,
-    ) -> MypyFile:
+    ) -> tuple[MypyFile, list[ParseError]]:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         imports_only = False
-        if self.workers and self.fscache.exists(path):
+        file_exists = self.fscache.exists(path)
+        if self.workers and file_exists:
             # Currently, we can use the native parser only for actual files.
             imports_only = True
         t0 = time.time()
-        if ignore_errors:
-            self.errors.ignored_files.add(path)
+        parse_errors: list[ParseError] = []
         if raw_data:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
-            tree = parse(source, path, id, self.errors, options=options, imports_only=imports_only)
+            tree, parse_errors = parse(
+                source,
+                path,
+                id,
+                self.errors,
+                options=options,
+                file_exists=file_exists,
+                imports_only=imports_only,
+            )
         tree._fullname = id
-        self.add_stats(
-            files_parsed=1,
-            modules_parsed=int(not tree.is_stub),
-            stubs_parsed=int(tree.is_stub),
-            parse_time=time.time() - t0,
-        )
-
-        if self.errors.is_blockers():
-            self.log("Bailing due to parse errors")
-            self.errors.raise_error()
-        return tree
+        if self.stats_enabled:
+            with self.stats_lock:
+                self.add_stats(
+                    files_parsed=1,
+                    modules_parsed=int(not tree.is_stub),
+                    stubs_parsed=int(tree.is_stub),
+                    parse_time=time.time() - t0,
+                )
+        return tree, parse_errors
 
     def load_fine_grained_deps(self, id: str) -> dict[str, set[str]]:
         t0 = time.time()
@@ -2551,8 +2652,7 @@ class State:
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine-grained mode.
                 if exist_added_packages(suppressed, manager):
-                    state.parse_file()  # This is safe because the cache is anyway stale.
-                    state.compute_dependencies()
+                    state.needs_parse = True  # This is safe because the cache is anyway stale.
                 # This is an inverse to the situation above. If we had an import like this:
                 #     from pkg import mod
                 # and then mod was deleted, we need to force recompute dependencies, to
@@ -2561,8 +2661,7 @@ class State:
                 #     import pkg
                 #     import pkg.mod
                 if exist_removed_submodules(dependencies, manager):
-                    state.parse_file()  # Same as above, the current state is stale anyway.
-                    state.compute_dependencies()
+                    state.needs_parse = True  # Same as above, the current state is stale anyway.
             state.size_hint = meta.size
         else:
             # When doing a fine-grained cache load, pretend we only
@@ -2572,14 +2671,17 @@ class State:
                 manager.log(f"Deferring module to fine-grained update {path} ({id})")
                 raise ModuleNotFound
 
-            # Parse the file (and then some) to get the dependencies.
-            state.parse_file(temporary=temporary)
-            state.compute_dependencies()
-            if manager.workers and state.tree:
-                # We don't need imports in coordinator process anymore, we parse only to
-                # compute dependencies.
-                state.tree.imports = []
-                del manager.ast_cache[id]
+            if temporary:
+                # Eagerly parse temporary states, they are needed rarely.
+                state.parse_file(temporary=True)
+                state.compute_dependencies()
+                if state.manager.workers and state.tree:
+                    # We don't need imports in coordinator process anymore, we parse only to
+                    # compute dependencies.
+                    state.tree.imports = []
+                    del state.manager.ast_cache[state.id]
+            else:
+                state.needs_parse = True
 
         return state
 
@@ -2642,6 +2744,8 @@ class State:
         # Pre-computed opaque value of suppressed_deps_opts() used
         # to minimize amount of data sent to parallel workers.
         self.known_suppressed_deps_opts: bytes | None = None
+        # An internal flag used by build manager to schedule states for parsing.
+        self.needs_parse = False
 
     def write(self, buf: WriteBuffer) -> None:
         """Serialize State for sending to build worker.
@@ -2860,9 +2964,9 @@ class State:
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # Do initial lightweight pass fixing TypeInfos and module cross-references.
-        assert fixer_state.node_fixer is not None
-        fixer_state.node_fixer.visit_symbol_table(self.tree.names)
-        type_fixer = fixer_state.node_fixer.type_fixer
+        assert modules_state.node_fixer is not None
+        modules_state.node_fixer.visit_symbol_table(self.tree.names)
+        type_fixer = modules_state.node_fixer.type_fixer
         # Eagerly fix shared instances, before they are used by named_type() calls.
         if instance_cache.str_type is not None:
             instance_cache.str_type.accept(type_fixer)
@@ -2877,26 +2981,9 @@ class State:
 
     # Methods for processing modules from source code.
 
-    def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
-        """Parse file and run first pass of semantic analysis.
-
-        Everything done here is local to the file. Don't depend on imported
-        modules in any way. Also record module dependencies based on imports.
-        """
-        if self.tree is not None:
-            # The file was already parsed (in __init__()).
-            return
-
+    def get_source(self) -> str:
+        """Get module source and parse inline mypy configurations."""
         manager = self.manager
-
-        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
-        cached = self.id in manager.ast_cache
-        modules = manager.modules
-        if not cached:
-            manager.log(f"Parsing {self.xpath} ({self.id})")
-        else:
-            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
-
         t0 = time_ref()
 
         with self.wrap_context():
@@ -2938,33 +3025,60 @@ class State:
             self.check_for_invalid_options()
 
             self.size_hint = len(source)
-            if not cached:
-                ignore_errors = self.ignore_all or self.options.ignore_errors
-                self.tree = manager.parse_file(
-                    self.id,
-                    self.xpath,
-                    source,
-                    ignore_errors=ignore_errors,
-                    options=self.options,
-                    raw_data=raw_data,
-                )
-            else:
-                # Reuse a cached AST
-                self.tree = manager.ast_cache[self.id][0]
-
         self.time_spent_us += time_spent_us(t0)
+        return source
 
-        if not cached:
+    def parse_file_inner(
+        self, source: str, raw_data: FileRawData | None = None
+    ) -> tuple[str, list[ParseError]]:
+        t0 = time_ref()
+        self.tree, parse_errors = self.manager.parse_file(
+            self.id, self.xpath, source, options=self.options, raw_data=raw_data
+        )
+        self.time_spent_us += time_spent_us(t0)
+        return self.id, parse_errors
+
+    def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
+        """Parse file and run first pass of semantic analysis.
+
+        Everything done here is local to the file. Don't depend on imported
+        modules in any way. Logic here should be kept in sync with BuildManager.parse_all().
+        """
+        self.needs_parse = False
+        if self.tree is not None:
+            # The file was already parsed.
+            return
+
+        source = self.get_source()
+        manager = self.manager
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
+        if self.id not in manager.ast_cache:
+            self.manager.log(f"Parsing {self.xpath} ({self.id})")
+            ignore_errors = self.ignore_all or self.options.ignore_errors
+            if ignore_errors:
+                self.manager.errors.ignored_files.add(self.xpath)
+            with self.wrap_context():
+                manager.errors.set_file(self.xpath, self.id, options=self.options)
+                _, parse_errors = self.parse_file_inner(source, raw_data)
+                for error in parse_errors:
+                    # New parser reports errors lazily.
+                    report_parse_error(error, manager.errors)
+                if manager.errors.is_blockers():
+                    manager.log("Bailing due to parse errors")
+                    manager.errors.raise_error()
             # Make a copy of any errors produced during parse time so that
             # fine-grained mode can repeat them when the module is
             # reprocessed.
             self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
             self.semantic_analysis_pass1()
         else:
-            self.early_errors = manager.ast_cache[self.id][1]
+            # Reuse a cached AST
+            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
+            self.tree, self.early_errors = manager.ast_cache[self.id]
 
+        assert self.tree is not None
         if not temporary:
-            modules[self.id] = self.tree
+            manager.modules[self.id] = self.tree
             self.check_blockers()
 
         manager.ast_cache[self.id] = (self.tree, self.early_errors)
@@ -3136,14 +3250,15 @@ class State:
         if manager.errors.is_error_code_enabled(
             codes.POSSIBLY_UNDEFINED
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
-            self.tree.accept(
-                PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules),
-                    self.type_map(),
-                    self.options,
-                    self.tree.names,
+            with self.wrap_context():
+                self.tree.accept(
+                    PossiblyUndefinedVariableVisitor(
+                        MessageBuilder(manager.errors, manager.modules),
+                        self.type_map(),
+                        self.options,
+                        self.tree.names,
+                    )
                 )
-            )
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -3365,14 +3480,16 @@ class State:
             if self.meta and self.options.fine_grained_incremental:
                 self.verify_dependencies(suppressed_only=True)
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
+            with self.wrap_context():
+                self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
 
     def generate_ignore_without_code_notes(self) -> None:
         if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_ignore_without_code_errors(
-                self.xpath, self.options.warn_unused_ignores, is_typeshed
-            )
+            with self.wrap_context():
+                self.manager.errors.generate_ignore_without_code_errors(
+                    self.xpath, self.options.warn_unused_ignores, is_typeshed
+                )
 
 
 # Module import and diagnostic glue
@@ -3677,12 +3794,14 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
     # immediately if it's empty or only contains comments.
     # But beware, some package may be the ancestor of many modules,
     # so we'd need to cache the decision.
+    save_import_context = manager.errors.import_context()
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id, manager.options)
     manager.error(None, f'Ancestor package "{id}" ignored', only_once=True)
     manager.note(
         None, "(Using --follow-imports=error, submodule passed on command line)", only_once=True
     )
+    manager.errors.set_import_context(save_import_context)
 
 
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
@@ -3978,6 +4097,7 @@ def load_graph(
         graph[st.id] = st
         new.append(st)
         entry_points.add(bs.module)
+    manager.parse_all([state for state in new if state.needs_parse])
 
     # Note: Running this each time could be slow in the daemon. If it's a problem, we
     # can do more work to maintain this incrementally.
@@ -3985,7 +4105,16 @@ def load_graph(
 
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
+    ready = set(new)
+    # Use list to make syntax error order a bit more stable.
+    not_ready: list[State] = []
     for st in new:
+        if st not in ready:
+            # We have run out of states, parse all we have.
+            assert st in not_ready
+            manager.parse_all(not_ready)
+            ready.update(not_ready)
+            not_ready.clear()
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
         # when they show up as direct dependencies, and there's a
@@ -4041,6 +4170,7 @@ def load_graph(
                         newst_path = newst.abspath
 
                         if newst_path in seen_files:
+                            manager.errors.set_file(newst.xpath, newst.id, manager.options)
                             manager.error(
                                 None,
                                 "Source file found twice under different module names: "
@@ -4061,6 +4191,10 @@ def load_graph(
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
+                    if newst.needs_parse:
+                        not_ready.append(newst)
+                    else:
+                        ready.add(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
     # modules that are back in graph. We need to do this after the loop to cover edge cases
     # like where a namespace package ancestor is shared by a typed and an untyped package.
@@ -4383,9 +4517,7 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            # Parallel workers perform loading in many smaller "pieces", so we
-            # should repeat the GC hack multiple times to actually benefit from it.
-            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
         ):
             # When deserializing cache we create huge amount of new objects, so even
             # with our generous GC thresholds, GC is still doing a lot of pointless
@@ -4394,8 +4526,6 @@ def process_stale_scc(
             # generation with the freeze()/unfreeze() trick below. This is arguably
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
-            gc.collect(generation=1)
-            gc.collect(generation=0)
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
@@ -4403,7 +4533,7 @@ def process_stale_scc(
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
-            and (manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES or manager.parallel_worker)
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
         ):
             manager.gc_freeze_cycles += 1
             gc.freeze()

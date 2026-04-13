@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 
 from librt.internal import ReadBuffer
@@ -8,7 +7,7 @@ from librt.internal import ReadBuffer
 from mypy import errorcodes as codes
 from mypy.cache import read_int
 from mypy.errors import Errors
-from mypy.nodes import FileRawData, MypyFile
+from mypy.nodes import FileRawData, MypyFile, ParseError
 from mypy.options import Options
 
 
@@ -18,9 +17,9 @@ def parse(
     module: str | None,
     errors: Errors,
     options: Options,
-    raise_on_error: bool = False,
+    file_exists: bool,
     imports_only: bool = False,
-) -> MypyFile:
+) -> tuple[MypyFile, list[ParseError]]:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -31,14 +30,12 @@ def parse(
     if options.native_parser:
         # Native parser only works with actual files on disk
         # Fall back to fastparse for in-memory source or non-existent files
-        if os.path.exists(fnam):
+        if file_exists:
             import mypy.nativeparse
 
             ignore_errors = options.ignore_errors or fnam in errors.ignored_files
             # If errors are ignored, we can drop many function bodies to speed up type checking.
             strip_function_bodies = ignore_errors and not options.preserve_asts
-
-            errors.set_file(fnam, module, options=options)
             tree, parse_errors, type_ignores = mypy.nativeparse.native_parse(
                 fnam,
                 options,
@@ -51,26 +48,7 @@ def parse(
             tree.is_stub = fnam.endswith(".pyi")
             # Note: tree.imports is populated directly by native_parse with deserialized
             # import metadata, so we don't need to collect imports via AST traversal
-
-            # Report parse errors
-            for error in parse_errors:
-                message = error["message"]
-                # Standardize error message by capitalizing the first word
-                message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
-                # Respect blocker status from error, default to True for syntax errors
-                is_blocker = error.get("blocker", True)
-                error_code = error.get("code")
-                if error_code is None:
-                    error_code = codes.SYNTAX
-                else:
-                    # Fallback to [syntax] for backwards compatibility.
-                    error_code = codes.error_codes.get(error_code) or codes.SYNTAX
-                errors.report(
-                    error["line"], error["column"], message, blocker=is_blocker, code=error_code
-                )
-            if raise_on_error and errors.is_errors():
-                errors.raise_error()
-            return tree
+            return tree, parse_errors
         # Fall through to fastparse for non-existent files
 
     assert not imports_only
@@ -79,9 +57,7 @@ def parse(
     import mypy.fastparse
 
     tree = mypy.fastparse.parse(source, fnam=fnam, module=module, errors=errors, options=options)
-    if raise_on_error and errors.is_errors():
-        errors.raise_error()
-    return tree
+    return tree, []
 
 
 def load_from_raw(
@@ -112,14 +88,21 @@ def load_from_raw(
     all_errors = raw_data.raw_errors + state.errors
     errors.set_file(fnam, module, options=options)
     for error in all_errors:
-        message = error["message"]
-        message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
-        is_blocker = error.get("blocker", True)
-        error_code = error.get("code")
-        if error_code is None:
-            error_code = codes.SYNTAX
-        else:
-            error_code = codes.error_codes.get(error_code) or codes.SYNTAX
         # Note we never raise in this function, so it should not be called in coordinator.
-        errors.report(error["line"], error["column"], message, blocker=is_blocker, code=error_code)
+        report_parse_error(error, errors)
     return tree
+
+
+def report_parse_error(error: ParseError, errors: Errors) -> None:
+    message = error["message"]
+    # Standardize error message by capitalizing the first word
+    message = re.sub(r"^(\s*\w)", lambda m: m.group(1).upper(), message)
+    # Respect blocker status from error, default to True for syntax errors
+    is_blocker = error.get("blocker", True)
+    error_code = error.get("code")
+    if error_code is None:
+        error_code = codes.SYNTAX
+    else:
+        # Fallback to [syntax] for backwards compatibility.
+        error_code = codes.error_codes.get(error_code) or codes.SYNTAX
+    errors.report(error["line"], error["column"], message, blocker=is_blocker, code=error_code)
