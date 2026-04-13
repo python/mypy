@@ -183,6 +183,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         manager.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         scc_id = scc_message.scc_id
         if scc_id is None:
+            # This indicates a shutdown request. Add GC stats before exiting.
             gc_stats = gc.get_stats()
             manager.add_stats(
                 gc_collections_gen0=gc_stats[0]["collections"],
@@ -200,7 +201,8 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             # We must commit after each SCC, otherwise we break --sqlite-cache.
             manager.commit()
         except CompileError as blocker:
-            send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, blocker=blocker))
+            message = SccResponseMessage(scc_id=scc_id, is_interface=True, blocker=blocker)
+            timed_send(manager, server, message)
         else:
             mod_results = {}
             stale = []
@@ -209,22 +211,24 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 stale.append(id)
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
-            t1 = time.time()
-            send(server, SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results))
-            manager.add_stats(scc_send_time=time.time() - t1)
+            message = SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results)
+            timed_send(manager, server, message)
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
                 manager.metastore.commit()
             except CompileError as blocker:
-                send(
-                    server, SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
-                )
+                message = SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
             else:
-                t1 = time.time()
-                send(server, SccResponseMessage(scc_id=scc_id, is_interface=False, result=result))
-                manager.add_stats(scc_send_time=time.time() - t1)
+                message = SccResponseMessage(scc_id=scc_id, is_interface=False, result=result)
+            timed_send(manager, server, message)
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
+
+
+def timed_send(manager: BuildManager, server: IPCServer, message: SccResponseMessage) -> None:
+    t0 = time.time()
+    send(server, message)
+    manager.add_stats(scc_send_time=time.time() - t0)
 
 
 def load_states(
