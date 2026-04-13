@@ -13,10 +13,6 @@ import_librt_time(void)
 
 void *LibRTTime_API[LIBRT_TIME_API_LEN] = {0};
 
-#define LibRTTime_ABIVersion (*(int (*)(void)) LibRTTime_API[0])
-#define LibRTTime_APIVersion (*(int (*)(void)) LibRTTime_API[1])
-#define LibRTTime_time (*(double (*)(void)) LibRTTime_API[2])
-
 int
 import_librt_time(void)
 {

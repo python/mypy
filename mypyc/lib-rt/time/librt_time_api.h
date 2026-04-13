@@ -1,16 +1,12 @@
 #ifndef LIBRT_TIME_API_H
 #define LIBRT_TIME_API_H
 
+#include "librt_time.h"
+
 int
 import_librt_time(void);
 
 #ifdef MYPYC_EXPERIMENTAL
-
-#include <Python.h>
-
-#define LIBRT_TIME_ABI_VERSION 1
-#define LIBRT_TIME_API_VERSION 1
-#define LIBRT_TIME_API_LEN 3
 
 extern void *LibRTTime_API[LIBRT_TIME_API_LEN];
 
