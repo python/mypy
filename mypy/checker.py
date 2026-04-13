@@ -6979,12 +6979,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         for expr, expr_type in new_types.items():
             all_mappings.append(self.refine_parent_types(expr, expr_type))
         return and_conditional_maps(
-            new_types,
-            reduce_and_conditional_type_maps(all_mappings, use_meet=True),
-            use_meet=True
+            new_types, reduce_and_conditional_type_maps(all_mappings, use_meet=True), use_meet=True
         )
 
-    def refine_parent_types(self, expr: Expression, expr_type: Type) -> Mapping[Expression, Type]:
+    def refine_parent_types(self, expr: Expression, expr_type: Type) -> TypeMap:
         """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
         the parent types based on the 'expr_type'.
 
