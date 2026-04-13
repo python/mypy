@@ -29,7 +29,7 @@ from librt.internal import (
     read_str as read_str_bare,
 )
 
-from mypy import errorcodes as codes, message_registry, nodes, types
+from mypy import message_registry, nodes, types
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -47,7 +47,6 @@ from mypy.cache import (
     read_str_opt,
     read_tag,
 )
-from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -179,7 +178,7 @@ class State:
         column: int,
         *,
         blocker: bool = False,
-        code: ErrorCode = codes.MISC,
+        code: str | None = None,
     ) -> None:
         """Report an error at a specific location."""
         self.errors.append(
@@ -1010,6 +1009,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
             invalid.line,
             invalid.column,
             blocker=True,
+            code="misc",
         )
         return invalid
 
@@ -1034,6 +1034,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 invalid.line,
                 invalid.column,
                 blocker=True,
+                code="misc",
             )
 
     # Process keyword arguments
@@ -1045,6 +1046,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     invalid.line,
                     invalid.column,
                     blocker=True,
+                    code="misc",
                 )
             name = extract_arg_name(kw_value)
         elif kw_name == "type":
@@ -1054,6 +1056,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                     invalid.line,
                     invalid.column,
                     blocker=True,
+                    code="misc",
                 )
             typ = kw_value
         else:
@@ -1062,6 +1065,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 invalid.line,
                 invalid.column,
                 blocker=True,
+                code="misc",
             )
 
     call_arg = CallableArgument(typ, name, constructor)
@@ -1692,7 +1696,11 @@ def is_stripped_if_stmt(stmt: Statement) -> bool:
 def fail_merge_overload(state: State, node: IfStmt) -> None:
     """Report an error when overloads cannot be merged due to unknown condition."""
     state.add_error(
-        message_registry.FAILED_TO_MERGE_OVERLOADS.value, node.line, node.column, blocker=False
+        message_registry.FAILED_TO_MERGE_OVERLOADS.value,
+        node.line,
+        node.column,
+        blocker=False,
+        code="misc",
     )
 
 
