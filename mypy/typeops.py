@@ -141,7 +141,6 @@ def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
         return None
 
 
-# We keep the unused `named_type` argument to avoid breaking plugins.
 def type_object_type(
     info: TypeInfo, named_type: Callable[[str], Instance] | None = None
 ) -> ProperType:
@@ -153,6 +152,7 @@ def type_object_type(
 
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
+    Note: we keep the unused `named_type` argument to avoid breaking plugins.
     """
     allow_cache = (
         checker_state.type_checker is not None
