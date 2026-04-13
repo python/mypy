@@ -651,16 +651,9 @@ class TypeOpsSuite(Suite):
         outer_s = TypeVarType("S", "S", TypeVarId(2), [], self.fx.o, any_type)
         generic_t = TypeVarType("T", "T", TypeVarId(-1), [], self.fx.o, any_type)
 
-        callable_type = CallableType(
-            [outer_t], [ARG_POS], [None], outer_s, self.fx.function
-        )
+        callable_type = CallableType([outer_t], [ARG_POS], [None], outer_s, self.fx.function)
         generic_identity = CallableType(
-            [generic_t],
-            [ARG_POS],
-            [None],
-            generic_t,
-            self.fx.function,
-            variables=[generic_t],
+            [generic_t], [ARG_POS], [None], generic_t, self.fx.function, variables=[generic_t]
         )
 
         assert is_overlapping_types(callable_type, generic_identity)
