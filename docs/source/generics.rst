@@ -693,10 +693,11 @@ contravariant, use type variables defined with special keyword arguments
    my_box = Box(Square())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
+.. _value-constrained-type-variables:
 .. _type-variable-value-restriction:
 
-Type variables with value restriction
-*************************************
+Value-constrained type variables
+*********************************
 
 By default, a type variable can be replaced with any type -- or any type that
 is a subtype of the upper bound, which defaults to ``object``. However, sometimes
@@ -727,8 +728,9 @@ The same thing is also possibly using the legacy syntax (Python 3.11 or earlier)
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-No matter which syntax you use, such a type variable is called a type variable
-with a value restriction. Importantly, this is different from a union type,
+No matter which syntax you use, such a type variable is called a
+value-constrained type variable (the allowed types are accessible at runtime
+via ``TypeVar.__constraints__``). Importantly, this is different from a union type,
 since combinations of ``str`` and ``bytes`` are not accepted:
 
 .. code-block:: python
@@ -760,7 +762,7 @@ for the type variable, which in this case is ``str``.
 
 This is thus subtly different from using ``str | bytes`` as an upper bound,
 where the return type would be ``S`` (see :ref:`type-variable-upper-bound`).
-Using a value restriction is correct for ``concat``, since ``concat``
+Using a value constraint is correct for ``concat``, since ``concat``
 actually returns a ``str`` instance in the above example:
 
 .. code-block:: python
@@ -775,7 +777,7 @@ value of :py:func:`re.compile`, where ``S`` can be either ``str``
 or ``bytes``. Regular expressions can be based on a string or a
 bytes pattern.
 
-A type variable may not have both a value restriction and an upper bound.
+A type variable may not have both value constraints and an upper bound.
 
 Note that you may come across :py:data:`~typing.AnyStr` imported from
 :py:mod:`typing`. This feature is now deprecated, but it means the same
@@ -1330,7 +1332,7 @@ Here are examples using the legacy syntax (Python 3.11 and earlier):
     for i, j in NewVec[int]():
         ...
 
-Using type variable bounds or value restriction in generic aliases has
+Using type variable bounds or value constraints in generic aliases has
 the same effect as in generic classes and functions.
 
 

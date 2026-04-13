@@ -1113,6 +1113,39 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testInitSubclassWithClassVar]
+from typing import ClassVar
+
+class Base:
+    name: ClassVar[str] = "base"
+    required: ClassVar[int] = -1
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        cls.required = len(cls.name)
+
+class Child(Base):
+    name: ClassVar[str] = "child"
+
+class GrandChild(Child):
+    name: ClassVar[str] = "grandchild"
+
+class NoOverride(Base):
+    pass
+
+[file driver.py]
+from native import Base, Child, GrandChild, NoOverride
+
+# __init_subclass__ should see the subclass's own ClassVar values
+assert Child.name == "child"
+assert Child.required == 5, f"expected 5, got {Child.required}"
+
+assert GrandChild.name == "grandchild"
+assert GrandChild.required == 10, f"expected 10, got {GrandChild.required}"
+
+# No override should use inherited value
+assert NoOverride.name == "base"
+assert NoOverride.required == 4, f"expected 4, got {NoOverride.required}"
+
 [case testDefaultVars]
 from typing import Optional
 class A:
@@ -2127,8 +2160,40 @@ class H:
 
 [file other.py]
 # Run in both interpreted and compiled mode
+import gc
 
-from native import A, B, C, D, E, F, G
+from native import A, B, C, D, E, F, Foo, G
+
+def test_leaks() -> None:
+    a = A()
+
+    gc.collect()
+    before = gc.get_objects()
+    for _ in range(100):
+        a.foo = Foo()
+    gc.collect()
+    after = gc.get_objects()
+
+    diff = len(after) - len(before)
+    # Small difference is expected, if the property setter call was leaking objects
+    # we would get a difference similar to the number of iterations above.
+    assert diff <= 2, diff
+
+def set_foo(foo: Foo) -> None:
+    a = A()
+    a.foo = foo
+
+def test_use_after_passing_to_prop_setter() -> None:
+    foo = Foo()
+
+    foo.attr = "before"
+    assert foo.attr == "before", foo.attr
+
+    set_foo(foo)
+    assert foo.attr == "before", foo.attr
+
+    foo.attr = "after"
+    assert foo.attr == "after", foo.attr
 
 a = A()
 assert a.x == 0
@@ -2161,6 +2226,9 @@ assert f.x == 50
 g = G(4)
 g.x = 20
 assert g.x == 20
+
+test_leaks()
+test_use_after_passing_to_prop_setter()
 
 [file driver.py]
 # Run the tests in both interpreted and compiled mode
@@ -5619,3 +5687,241 @@ def test_read_corrupted_data() -> None:
             print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
             print(">>>", e, data)
             raise
+
+[case testAcyclicClass]
+import gc
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(acyclic=True)
+class Leaf:
+    def __init__(self, x: int, s: str) -> None:
+        self.x = x
+        self.s = s
+
+def test_basic() -> None:
+    o = Leaf(5, "hello")
+    assert o.x == 5
+    assert o.s == "hello"
+    o.x = 10
+    assert o.x == 10
+
+def test_gc_not_tracked() -> None:
+    o = Leaf(1, "a")
+    assert not gc.is_tracked(o)
+
+def test_dealloc() -> None:
+    for i in range(1000):
+        o = Leaf(i, str(i))
+    # Just verify no crash or leak during repeated alloc/dealloc
+
+@mypyc_attr(acyclic=True)
+class AcyclicBase:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class DerivedNotAcyclic(AcyclicBase):
+    """Derived without acyclic -- still participates in GC."""
+    def __init__(self, x: int, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+@mypyc_attr(acyclic=True)
+class DerivedAcyclic(AcyclicBase):
+    """Derived with acyclic -- also opts out of GC."""
+    def __init__(self, x: int, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_derived_not_acyclic() -> None:
+    d = DerivedNotAcyclic(3, "hi")
+    assert d.x == 3
+    assert d.y == "hi"
+    # Subclass without @mypyc_attr(acyclic=True) still participates in GC
+    assert gc.is_tracked(d)
+
+def test_derived_acyclic() -> None:
+    d = DerivedAcyclic(3, "hi")
+    assert d.x == 3
+    assert d.y == "hi"
+    assert not gc.is_tracked(d)
+
+[case testTraitVtableGrandparentMethod]
+from typing import Any
+from mypy_extensions import trait
+
+@trait
+class Base:
+    def value(self) -> Any:
+        return 42
+
+@trait
+class Middle(Base):
+    pass
+
+@trait
+class Child(Middle):
+    def derived(self) -> Any:
+        return self.value()
+
+class Concrete(Child):
+    pass
+
+class Sub(Concrete):
+    def value(self) -> Any:
+        return 99
+
+[file driver.py]
+from native import Concrete, Sub
+c = Concrete()
+assert c.value() == 42
+assert c.derived() == 42
+s = Sub()
+assert s.value() == 99
+assert s.derived() == 99
+
+[case testTraitVtableGrandparentMethodAllowInterpretedSubclasses]
+from typing import Any
+from mypy_extensions import trait, mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Base:
+    def value(self) -> Any:
+        return 42
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Middle(Base):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Child(Middle):
+    def derived(self) -> Any:
+        return self.value()
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Concrete(Child):
+    pass
+
+[file driver.py]
+from native import Concrete
+c = Concrete()
+assert c.value() == 42
+assert c.derived() == 42
+
+[case testPropertyShadowVtableGlue]
+from typing import List
+import mypy_extensions
+
+@mypy_extensions.mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    _x: str
+    _y: List[int]
+    def __init__(self) -> None:
+        self._x = ""
+        self._y = []
+
+    @property
+    def x(self) -> str:
+        return self._x
+
+    @x.setter
+    def x(self, v: str) -> None:
+        self._x = v
+
+    @property
+    def y(self) -> List[int]:
+        return self._y
+
+    @y.setter
+    def y(self, v: List[int]) -> None:
+        self._y = v
+
+    def method(self) -> str:
+        self.x = "a"
+        self.y = [1]
+        return self.x + str(len(self.y))
+
+[file driver.py]
+from native import Base
+
+Sub = type("Sub", (Base,), {})
+s = Sub()
+assert s.method() == "a1"
+
+[case testClassVarSelfReference]
+# ClassVar initializers that reference other ClassVars from the same class.
+# In CPython, the class body executes as a function where earlier assignments
+# are available to later ones. mypyc must replicate this by loading from the
+# class being built (type object for ext classes, class dict for non-ext)
+# instead of module globals.
+from typing import ClassVar, Dict, Set
+
+class Ext:
+    A: ClassVar[Set[int]] = {1, 2, 3}
+    B: ClassVar[Set[int]] = {4, 5, 6}
+    C: ClassVar[Set[int]] = A | B
+
+class ExtChained:
+    X: ClassVar[Set[int]] = {1, 2}
+    Y: ClassVar[Set[int]] = X | {3}
+    Z: ClassVar[Set[int]] = Y | {4}
+
+class ExtDict:
+    BASE: ClassVar[Dict[str, int]] = {"a": 1, "b": 2}
+    EXTENDED: ClassVar[Dict[str, int]] = {**BASE, "c": 3}
+
+class ExtSub(Ext):
+    E: ClassVar[Set[int]] = {7, 8}
+
+[file driver.py]
+from native import Ext, ExtChained, ExtDict, ExtSub
+
+assert Ext.A == {1, 2, 3}
+assert Ext.B == {4, 5, 6}
+assert Ext.C == {1, 2, 3, 4, 5, 6}
+
+assert ExtChained.X == {1, 2}
+assert ExtChained.Y == {1, 2, 3}
+assert ExtChained.Z == {1, 2, 3, 4}
+
+assert ExtDict.BASE == {"a": 1, "b": 2}
+assert ExtDict.EXTENDED == {"a": 1, "b": 2, "c": 3}
+
+assert ExtSub.C == {1, 2, 3, 4, 5, 6}
+assert ExtSub.E == {7, 8}
+
+[case testClassVarSelfReferenceNonExt]
+# Same as testClassVarSelfReference but for non-extension classes.
+from typing import ClassVar, Dict, Set
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonExt:
+    A: ClassVar[Set[str]] = {"a", "b"}
+    B: ClassVar[Set[str]] = {"c"}
+    C: ClassVar[Set[str]] = A | B
+
+@mypyc_attr(native_class=False)
+class NonExtDict:
+    BASE: ClassVar[Dict[str, int]] = {"x": 1}
+    EXTENDED: ClassVar[Dict[str, int]] = {**BASE, "y": 2}
+
+@mypyc_attr(native_class=False)
+class NonExtChained:
+    X: ClassVar[Set[int]] = {10}
+    Y: ClassVar[Set[int]] = X | {20}
+    Z: ClassVar[Set[int]] = Y | {30}
+
+[file driver.py]
+from native import NonExt, NonExtDict, NonExtChained
+
+assert NonExt.A == {"a", "b"}
+assert NonExt.B == {"c"}
+assert NonExt.C == {"a", "b", "c"}
+
+assert NonExtDict.BASE == {"x": 1}
+assert NonExtDict.EXTENDED == {"x": 1, "y": 2}
+
+assert NonExtChained.Z == {10, 20, 30}

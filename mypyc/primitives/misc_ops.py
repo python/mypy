@@ -129,11 +129,29 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module (plain)
+# Import a module using the Python import system.
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyImport_Import",
+    error_kind=ERR_MAGIC,
+)
+
+# Import a native same-group module directly via C-level init/exec functions.
+native_import_op = custom_op(
+    # (module name, init-only function, exec function, module static,
+    #  shared lib __file__, ext suffix, is_package)
+    arg_types=[
+        str_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
+        object_pointer_rprimitive,
+        object_rprimitive,
+        str_rprimitive,
+        c_pyssize_t_rprimitive,
+    ],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_ImportNative",
     error_kind=ERR_MAGIC,
 )
 
@@ -157,6 +175,14 @@ import_from_many_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyImport_ImportFromMany",
+    error_kind=ERR_MAGIC,
+)
+
+# Get attributes from an already-imported native module and store them in globals.
+get_native_attrs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetNativeAttrs",
     error_kind=ERR_MAGIC,
 )
 
@@ -237,6 +263,15 @@ pytype_from_template_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyType_FromTemplate",
     error_kind=ERR_MAGIC,
+)
+
+# Call __init_subclass__ on a type. Separated from CPyType_FromTemplate
+# so that class attributes can be set before __init_subclass__ is called.
+py_init_subclass_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPy_InitSubclass",
+    error_kind=ERR_FALSE,
 )
 
 # Create a dataclass from an extension class. See
@@ -466,6 +501,14 @@ function_op(
     return_type=uint8_rprimitive,
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.internal.extract_symbol",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="extract_symbol_internal",
+    error_kind=ERR_MAGIC,
 )
 
 function_op(

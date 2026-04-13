@@ -34,6 +34,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
     find_unpack_in_list,
+    flatten_nested_unions,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
@@ -314,11 +315,13 @@ class ConditionalTypeBinder:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
             # Keys can be narrowed using two different semantics. The new semantics
-            # is enabled for plain variables when bind_all is true, and it allows
+            # is enabled for inferred variables when bind_all is true, and it allows
             # variable types to be widened using subsequent assignments. This is
-            # tricky to support for instance attributes (primarily due to deferrals),
-            # so we don't use it for them.
-            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
+            # not allowed for instance attributes and annotated variables.
+            var = extract_var_from_literal_hash(key)
+            old_semantics = (
+                not self.bind_all or var is None or not var.is_inferred and not var.is_argument
+            )
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
@@ -327,9 +330,7 @@ class ConditionalTypeBinder:
 
             resulting_values = [x for x in resulting_values if x is not None]
 
-            if all_reachable and all(
-                x is not None and not x.from_assignment for x in resulting_values
-            ):
+            if all_reachable and all(not x.from_assignment for x in resulting_values):
                 # Do not synthesize a new type if we encountered a conditional block
                 # (if, while or match-case) without assignments.
                 # See check-isinstance.test::testNoneCheckDoesNotMakeTypeVarOptional
@@ -337,21 +338,28 @@ class ConditionalTypeBinder:
                 # or `isinstance` does not change the type of the value.
                 continue
 
-            current_type = resulting_values[0]
-            assert current_type is not None
-            type = current_type.type
+            # Remove exact duplicates to save pointless work later, this is
+            # a micro-optimization for --allow-redefinition-new.
+            seen_types = set()
+            resulting_types = []
+            for rv in resulting_values:
+                assert rv is not None
+                if rv.type in seen_types:
+                    continue
+                resulting_types.append(rv.type)
+                seen_types.add(rv.type)
+
+            type = resulting_types[0]
             declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
-                if not all(
-                    t is not None and is_same_type(type, t.type) for t in resulting_values[1:]
-                ):
+                if not all(is_same_type(type, t) for t in resulting_types[1:]):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 possible_types = []
-                for t in resulting_values:
+                for t in resulting_types:
                     assert t is not None
-                    possible_types.append(t.type)
+                    possible_types.append(t)
                 if len(possible_types) == 1:
                     # This is to avoid calling get_proper_type() unless needed, as this may
                     # interfere with our (hacky) TypeGuard support.
@@ -385,9 +393,31 @@ class ConditionalTypeBinder:
                         )
                         if simplified == self.declarations[key]:
                             type = simplified
-            if current_value is None or not is_same_type(type, current_value.type):
+            if (
+                current_value is None
+                or not is_same_type(type, current_value.type)
+                # Manually carry over any narrowing from hasattr() from inner frames. This is
+                # a bit ad-hoc, but our handling of hasattr() is on best effort basis anyway.
+                or isinstance(p_type := get_proper_type(type), Instance)
+                and p_type.extra_attrs
+            ):
                 self._put(key, type, from_assignment=True)
-                changed = True
+                if current_value is not None or extract_var_from_literal_hash(key) is None:
+                    # We definitely learned something new
+                    changed = True
+                elif not changed:
+                    # If there is no current value compare with the declaration. This prevents
+                    # reporting false changes in cases like this:
+                    #     x: int
+                    #     if foo():
+                    #         x = 1
+                    #     else:
+                    #         x = 2
+                    # We check partial types and widening in accept_loop() separately, so
+                    # this should be safe.
+                    changed = declaration_type is not None and not is_same_type(
+                        type, declaration_type
+                    )
 
         self.frames[-1].unreachable = not frames
 
@@ -476,24 +506,24 @@ class ConditionalTypeBinder:
                 # First case: a local/global variable without explicit annotation,
                 # in this case we just assign Any (essentially following the SSA logic).
                 self.put(expr, type)
-            elif isinstance(p_declared, UnionType) and any(
-                isinstance(get_proper_type(item), NoneType) for item in p_declared.items
-            ):
-                # Second case: explicit optional type, in this case we optimize for a common
-                # pattern when an untyped value used as a fallback replacing None.
-                new_items = [
-                    type if isinstance(get_proper_type(item), NoneType) else item
-                    for item in p_declared.items
-                ]
-                self.put(expr, UnionType(new_items))
-            elif isinstance(p_declared, UnionType) and any(
-                isinstance(get_proper_type(item), AnyType) for item in p_declared.items
-            ):
-                # Third case: a union already containing Any (most likely from an un-imported
-                # name), in this case we allow assigning Any as well.
-                self.put(expr, type)
+            elif isinstance(p_declared, UnionType):
+                all_items = flatten_nested_unions(p_declared.items)
+                if any(isinstance(get_proper_type(item), NoneType) for item in all_items):
+                    # Second case: explicit optional type, in this case we optimize for
+                    # a common pattern when an untyped value used as a fallback replacing None.
+                    new_items = [
+                        type if isinstance(get_proper_type(item), NoneType) else item
+                        for item in all_items
+                    ]
+                    self.put(expr, UnionType(new_items))
+                elif any(isinstance(get_proper_type(item), AnyType) for item in all_items):
+                    # Third case: a union already containing Any (most likely from
+                    # an un-imported name), in this case we allow assigning Any as well.
+                    self.put(expr, type)
+                else:
+                    # In all other cases we don't narrow to Any to minimize false negatives.
+                    self.put(expr, declared_type)
             else:
-                # In all other cases we don't narrow to Any to minimize false negatives.
                 self.put(expr, declared_type)
         elif isinstance(p_declared, AnyType):
             # Mirroring the first case above, we don't narrow to a precise type if the variable

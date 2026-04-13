@@ -8,6 +8,8 @@ from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
 
+from librt.internal import WriteBuffer, write_bool, write_str
+
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
@@ -21,7 +23,7 @@ class BuildType:
 
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
-    "allow_redefinition",
+    "allow_redefinition_old",
     "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
@@ -68,6 +70,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "native_parser",
         "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
@@ -75,8 +78,14 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "strict_bytes",
         "fixed_format_cache",
         "untyped_calls_exclude",
+        "enable_incomplete_feature",
+        "install_types",
     }
 ) - {"debug_cache"}
+
+# OPTIONS_AFFECTING_CACHE without "platform", as a sorted tuple for fast iteration.
+# "platform" is handled separately in options_snapshot().
+OPTIONS_AFFECTING_CACHE_NO_PLATFORM: Final = tuple(sorted(OPTIONS_AFFECTING_CACHE - {"platform"}))
 
 # Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
@@ -223,10 +232,10 @@ class Options:
 
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
-        self.allow_redefinition = False
+        self.allow_redefinition_old = False
 
         # Allow flexible variable redefinition with an arbitrary type, in different
-        # blocks and and at different nesting levels
+        # blocks and at different nesting levels
         self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
@@ -295,8 +304,8 @@ class Options:
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
-        self.sqlite_cache = False
-        self.fixed_format_cache = False
+        self.sqlite_cache = True
+        self.fixed_format_cache = True
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False
@@ -368,6 +377,8 @@ class Options:
         self.show_error_end: bool = False
         self.hide_error_codes = False
         self.show_error_code_links = False
+        # This is an internal-only flag to simplify migrating test output.
+        self.reveal_verbose_types = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -375,6 +386,8 @@ class Options:
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
+        # If True, use the native parser (experimental)
+        self.native_parser = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types
@@ -410,6 +423,9 @@ class Options:
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
+        # Treat special methods as being implicitly positional-only.
+        # Set to False when running stubtest.
+        self.pos_only_special_methods = True
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
@@ -424,7 +440,7 @@ class Options:
         self.mypyc_skip_c_generation = False
 
     def use_star_unpack(self) -> bool:
-        return self.python_version >= (3, 11)
+        return self.python_version >= (3, 11) or not self.reveal_verbose_types
 
     def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
@@ -612,11 +628,29 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> dict[str, object]:
-        result: dict[str, object] = {}
-        for opt in OPTIONS_AFFECTING_CACHE:
+    def select_options_affecting_cache(self) -> tuple[str, list[object]]:
+        """Return (platform, [values...]) for options that affect the cache.
+
+        The list contains values for OPTIONS_AFFECTING_CACHE_NO_PLATFORM
+        in sorted attribute name order. Keys are omitted since the cache
+        is invalidated when the mypy version changes, and keys are constant
+        on any specific mypy version.
+        """
+        result: list[object] = []
+        for opt in OPTIONS_AFFECTING_CACHE_NO_PLATFORM:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):
                 val = sorted([code.code for code in val])
-            result[opt] = val
-        return result
+            result.append(val)
+        return self.platform, result
+
+    def dep_import_options(self) -> bytes:
+        """Return opaque bytes with options that can affect dependent modules as well.
+
+        The value can be compared for equality to detect changed options.
+        """
+        buf = WriteBuffer()
+        write_bool(buf, self.ignore_missing_imports)
+        write_str(buf, self.follow_imports)
+        write_bool(buf, self.follow_imports_for_stubs)
+        return buf.getvalue()

@@ -1007,7 +1007,7 @@ class D(TypedDict):
     b: NotRequired[str]
 
 def test(d: D) -> None:
-    reveal_type(d.get)  # N: Revealed type is "Overload(def (k: builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
+    reveal_type(d.get)  # N: Revealed type is "Overload(def (builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1151,12 +1151,12 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
         # N: Possible overload variants: \
-        # N:     def get(self, k: str) -> object \
+        # N:     def get(self, str, /) -> object \
         # N:     def get(self, str, object, /) -> object \
         # N:     def [V] get(self, str, V, /) -> object
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
                  # N: Possible overload variants: \
-                 # N:     def get(self, k: str) -> object \
+                 # N:     def get(self, str, /) -> object \
                  # N:     def get(self, str, object, /) -> object \
                  # N:     def [V] get(self, str, int | V, /) -> object
 x = d.get('z')
@@ -2515,6 +2515,17 @@ class ForwardDeclared: pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictCannotBeDisjointBase]
+from typing import TypedDict
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
+class A(TypedDict):
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict
 
@@ -3749,7 +3760,7 @@ B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfol
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithClassLevelKeywords]
+[case testTypedDictWithClassLevelKeywords_no_native_parse]
 from typing import TypedDict, Generic, TypeVar
 
 T = TypeVar('T')
@@ -3849,7 +3860,7 @@ def f(self, **kwargs: Unpack[TD]) -> None:
 def g(self, *, x: float) -> None: ...
 @overload
 def g(self, *, y: str) -> None: ...
-def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     z  # E: Name "z" is not defined
 
 class A:

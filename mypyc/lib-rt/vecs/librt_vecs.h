@@ -4,20 +4,11 @@
 // Header for the implementation of librt.vecs, which defines the 'vec' type.
 // Refer to librt_vecs.c for more detailed information.
 
-#ifndef MYPYC_EXPERIMENTAL
-
-static int
-import_librt_vecs(void)
-{
-    // All librt.vecs features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdint.h>
+
+#ifdef MYPYC_EXPERIMENTAL
 
 // Magic (native) integer return value on exception. Caller must also
 // use PyErr_Occurred() since this overlaps with valid integer values.
@@ -460,6 +451,7 @@ typedef struct {
     VecU8API *u8;
     VecFloatAPI *float_;
     VecBoolAPI *bool_;
+    PyTypeObject *(*get_vec_type)(void);  // Function to get base VecType for isinstance checks
 } VecCapsule;
 
 #define VEC_BUF_SIZE(b) ((b)->ob_base.ob_size)
@@ -491,6 +483,16 @@ extern PyTypeObject VecFloatType;
 extern PyTypeObject VecBoolType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
+
+// Iterator type objects for vec iteration
+extern PyTypeObject VecI64IterType;
+extern PyTypeObject VecI32IterType;
+extern PyTypeObject VecI16IterType;
+extern PyTypeObject VecU8IterType;
+extern PyTypeObject VecFloatIterType;
+extern PyTypeObject VecBoolIterType;
+extern PyTypeObject VecTIterType;
+extern PyTypeObject VecNestedIterType;
 
 // Type objects corresponding to the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *LibRTVecs_I64TypeObj;

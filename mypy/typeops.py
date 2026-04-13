@@ -14,7 +14,9 @@ from typing import Any, TypeVar, cast
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.lookup import lookup_stdlib_typeinfo
 from mypy.maptype import map_instance_to_supertype
+from mypy.modules_state import modules_state
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
@@ -65,6 +67,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    instance_cache,
     remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
@@ -138,7 +141,9 @@ def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
         return None
 
 
-def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> ProperType:
+def type_object_type(
+    info: TypeInfo, named_type: Callable[[str], Instance] | None = None
+) -> ProperType:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is generally of form
@@ -147,6 +152,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
 
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
+    Note: we keep the unused `named_type` argument to avoid breaking plugins.
     """
     allow_cache = (
         checker_state.type_checker is not None
@@ -181,12 +187,9 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
 
     if info.metaclass_type is not None:
         fallback = info.metaclass_type
-    elif checker_state.type_checker:
-        # Prefer direct call when it is available. It is faster, and,
-        # unfortunately, some callers provide bogus callback.
-        fallback = checker_state.type_checker.named_type("builtins.type")
     else:
-        fallback = named_type("builtins.type")
+        type_type = lookup_stdlib_typeinfo("builtins.type", modules_state.modules)
+        fallback = Instance(type_type, [])
 
     if init_index < new_index:
         method: FuncBase | Decorator = init_method.node
@@ -201,13 +204,18 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
             if info.fallback_to_any:
                 # Construct a universal callable as the prototype.
                 any_type = AnyType(TypeOfAny.special_form)
+                if instance_cache.function_type is None:
+                    function_typeinfo = lookup_stdlib_typeinfo(
+                        "builtins.function", modules_state.modules
+                    )
+                    instance_cache.function_type = Instance(function_typeinfo, [])
                 sig = CallableType(
                     arg_types=[any_type, any_type],
                     arg_kinds=[ARG_STAR, ARG_STAR2],
                     arg_names=["_args", "_kwds"],
                     ret_type=any_type,
                     is_bound=True,
-                    fallback=named_type("builtins.function"),
+                    fallback=instance_cache.function_type,
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
                 if allow_cache and state.strict_optional:
@@ -629,9 +637,23 @@ def make_simplified_union(
                 else:
                     extra_attrs_set.add(instance.extra_attrs)
 
-        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+        # Code below is awkward, because we don't want the extra checks to affect
+        # performance in the common case.
+        erase_extra = False
+        if extra_attrs_set is not None:
             fallback = try_getting_instance_fallback(result)
-            if fallback:
+            if fallback is None:
+                return result
+            if len(extra_attrs_set) > 1:  # This case is too tricky to handle.
+                erase_extra = True
+            else:
+                # Check that all relevant items have the extra attributes.
+                for item in items:
+                    instance = try_getting_instance_fallback(item)
+                    if instance and instance.type == fallback.type and not instance.extra_attrs:
+                        erase_extra = True
+                        break
+            if erase_extra:
                 fallback.extra_attrs = None
 
     return result
@@ -1220,16 +1242,16 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
         return typ
     elif isinstance(typ, LiteralType):
         return typ.fallback
-    elif isinstance(typ, NoneType):
+    elif isinstance(typ, (NoneType, AnyType)):
         return None  # Fast path for None, which is common
     elif isinstance(typ, FunctionLike):
         return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
     elif isinstance(typ, TupleType):
         return typ.partial_fallback
     elif isinstance(typ, TypedDictType):
         return typ.fallback
-    elif isinstance(typ, TypeVarType):
-        return try_getting_instance_fallback(typ.upper_bound)
     return None
 
 
@@ -1245,38 +1267,6 @@ def fixup_partial_type(typ: Type) -> Type:
         return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
     else:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
-
-
-def get_protocol_member(
-    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
-) -> Type | None:
-    if member == "__call__" and class_obj:
-        # Special case: class objects always have __call__ that is just the constructor.
-
-        # TODO: this is wrong, it creates callables that are not recognized as type objects.
-        # Long-term, we should probably get rid of this callback argument altogether.
-        def named_type(fullname: str) -> Instance:
-            return Instance(left.type.mro[-1], [])
-
-        return type_object_type(left.type, named_type)
-
-    if member == "__call__" and left.type.is_metaclass(precise=True):
-        # Special case: we want to avoid falling back to metaclass __call__
-        # if constructor signature didn't match, this can cause many false negatives.
-        return None
-
-    from mypy.subtypes import find_member
-
-    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
-    if isinstance(subtype, PartialType):
-        subtype = (
-            NoneType()
-            if subtype.type is None
-            else Instance(
-                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
-            )
-        )
-    return subtype
 
 
 def _is_disjoint_base(info: TypeInfo) -> bool:

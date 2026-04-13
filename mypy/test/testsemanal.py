@@ -8,6 +8,7 @@ from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
 from mypy.nodes import TypeInfo
 from mypy.options import Options
+from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
@@ -19,8 +20,9 @@ from mypy.test.helpers import (
 )
 
 # Semantic analyzer test cases: dump parse tree
-
 # Semantic analysis test case description files.
+from mypy.types import TypeStrVisitor
+
 semanal_files = find_test_files(
     pattern="semanal-*.test",
     exclude=[
@@ -38,6 +40,7 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
+    options.reveal_verbose_types = True
     return options
 
 
@@ -154,14 +157,22 @@ class SemAnalTypeInfoSuite(DataSuite):
     required_out_section = True
     files = ["semanal-typeinfo.test"]
 
+    def setup(self) -> None:
+        super().setup()
+        self.str_conv = StrConv(options=Options())
+        self.type_str_conv = TypeStrVisitor(options=Options())
+
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
+        src = "\n".join(testcase.input)
+        options = get_semanal_options(src, testcase)
+        self.str_conv.options = options
+        self.type_str_conv.options = options
         try:
             # Build test case input.
-            src = "\n".join(testcase.input)
             result = build.build(
                 sources=[BuildSource("main", None, src)],
-                options=get_semanal_options(src, testcase),
+                options=options,
                 alt_lib_path=test_temp_dir,
             )
             a = result.errors
@@ -179,7 +190,7 @@ class SemAnalTypeInfoSuite(DataSuite):
                                 typeinfos[n.fullname] = n.node
 
             # The output is the symbol table converted into a string.
-            a = str(typeinfos).split("\n")
+            a = typeinfos.dump(self.str_conv, self.type_str_conv).split("\n")
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
@@ -190,10 +201,10 @@ class SemAnalTypeInfoSuite(DataSuite):
 
 
 class TypeInfoMap(dict[str, TypeInfo]):
-    def __str__(self) -> str:
+    def dump(self, str_conv: StrConv, type_str_conv: TypeStrVisitor) -> str:
         a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
-            ti = ("\n" + "  ").join(str(y).split("\n"))
+            ti = ("\n" + "  ").join(y.dump(str_conv, type_str_conv).split("\n"))
             a.append(f"  {x} : {ti}")
         a[-1] += ")"
         return "\n".join(a)

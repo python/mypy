@@ -286,7 +286,7 @@ x = 1
 x in 1,  # E: Unsupported right operand type for in ("int")
 [builtins fixtures/tuple.pyi]
 
-[case testTrailingCommaInIfParsing]
+[case testTrailingCommaInIfParsing_no_native_parse]
 if x in 1, : pass
 [out]
 main:1: error: Invalid syntax
@@ -300,7 +300,7 @@ class C:
 main:2: error: The return type of "__init__" must be None
 
 -- WritesCache signals to testcheck to do the cache validation
-[case testWritesCache]
+[case testWritesCache-writescache]
 import a
 import d
 [file a.py]
@@ -310,7 +310,7 @@ import c
 [file c.py]
 [file d.py]
 
-[case testWritesCacheErrors]
+[case testWritesCacheErrors-writescache]
 import a
 import d
 [file a.py]

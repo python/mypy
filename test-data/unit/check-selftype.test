@@ -1058,7 +1058,7 @@ class A:
     def f(x: int) -> None: ...
     def g(self: None) -> None: ...
 [out]
-main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+main:3: error: "self" parameter missing for a non-static method (or an invalid type for self)
 main:4: error: The erased type of self "None" is not a supertype of its class "__main__.A"
 
 [case testUnionPropertyField]

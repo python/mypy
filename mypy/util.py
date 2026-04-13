@@ -28,6 +28,13 @@ try:
 except ImportError:
     CURSES_ENABLED = False
 
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
 T = TypeVar("T")
 
 TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
@@ -35,6 +42,7 @@ TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
 DEFAULT_SOURCE_OFFSET: Final = 4
+CODE_START: Final = " " * DEFAULT_SOURCE_OFFSET
 DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
@@ -729,6 +737,14 @@ class FancyFormatter:
             start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
+    def is_marker_line(self, line: str) -> bool:
+        s_line = line.lstrip()
+        return (
+            line.startswith(CODE_START)
+            and s_line.startswith("^")
+            and set(s_line).issubset({"^", "~"})
+        )
+
     def fit_in_terminal(
         self, messages: list[str], fixed_terminal_width: int | None = None
     ) -> list[str]:
@@ -736,12 +752,12 @@ class FancyFormatter:
         width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
         for i, error in enumerate(messages):
-            if ": error:" in error:
+            # TODO: detecting source code highlights through an indent can be surprising.
+            if not error.startswith(CODE_START) and ": error:" in error:
                 loc, msg = error.split("error:", maxsplit=1)
                 msg = soft_wrap(msg, width, first_offset=len(loc) + len("error: "))
                 new_messages[i] = loc + "error:" + msg
-            if error.startswith(" " * DEFAULT_SOURCE_OFFSET) and "^" not in error:
-                # TODO: detecting source code highlights through an indent can be surprising.
+            elif error.startswith(CODE_START) and not self.is_marker_line(error):
                 # Restore original error message and error location.
                 error = error[DEFAULT_SOURCE_OFFSET:]
                 marker_line = messages[i + 1]
@@ -768,7 +784,12 @@ class FancyFormatter:
 
     def colorize(self, error: str) -> str:
         """Colorize an output line by highlighting the status and error code."""
-        if ": error:" in error:
+        # TODO: detecting source code highlights through an indent can be surprising.
+        if error.startswith(CODE_START):
+            if not self.is_marker_line(error):
+                return self.style(error, "none", dim=True)
+            return self.style(error, "red")
+        elif ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
             if self.hide_error_codes:
                 return (
@@ -790,11 +811,6 @@ class FancyFormatter:
             loc, msg = error.split("note:", maxsplit=1)
             formatted = self.highlight_quote_groups(self.underline_link(msg))
             return loc + self.style("note:", "blue") + formatted
-        elif error.startswith(" " * DEFAULT_SOURCE_OFFSET):
-            # TODO: detecting source code highlights through an indent can be surprising.
-            if "^" not in error:
-                return self.style(error, "none", dim=True)
-            return self.style(error, "red")
         else:
             return error
 
@@ -950,3 +966,46 @@ def json_loads(data: bytes) -> Any:
     if orjson is not None:
         return orjson.loads(data)
     return json.loads(data)
+
+
+_AVAILABLE_THREADS: int | None = None
+
+
+def get_available_threads() -> int:
+    """Determine number of physical cores that current process can use (best effort)."""
+    global _AVAILABLE_THREADS
+    if _AVAILABLE_THREADS is not None:
+        return _AVAILABLE_THREADS
+
+    # This takes into account -X cpu_count and/or PYTHON_CPU_COUNT, but always
+    # counts virtual cores (which is not what we want for CPU bound tasks).
+    os_cpu_count = os.cpu_count()
+    if PSUTIL_AVAILABLE:
+        # Unlike os, psutil can determine number of physical cores.
+        psutil_cpu_count = psutil.cpu_count(logical=False)
+    else:
+        psutil_cpu_count = None
+
+    if psutil_cpu_count and os_cpu_count:
+        cpu_count = min(psutil_cpu_count, os_cpu_count)
+    elif psutil_cpu_count or os_cpu_count:
+        cpu_count = psutil_cpu_count or os_cpu_count
+    else:
+        # A conservative fallback in case we cannot determine CPU count in any way.
+        cpu_count = 4
+
+    affinity: set[int] | list[int] | None = None
+    # Not available on old Python versions on some platforms.
+    if sys.platform == "linux":
+        affinity = os.sched_getaffinity(0)
+    if PSUTIL_AVAILABLE and sys.platform != "darwin":
+        # Currently not supported on macOS.
+        affinity = psutil.Process().cpu_affinity()
+
+    assert cpu_count is not None
+    if affinity:
+        available_threads = min(cpu_count, len(affinity))
+    else:
+        available_threads = cpu_count
+    _AVAILABLE_THREADS = available_threads
+    return available_threads

@@ -1,11 +1,12 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdbool.h>
+
+#define BASE64_EXPORTS
+
 #include "librt_base64.h"
 #include "libbase64.h"
 #include "pythoncapi_compat.h"
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static PyObject *
 b64decode_handle_invalid_input(
@@ -239,39 +240,21 @@ b64decode_handle_invalid_input(
         return PyErr_NoMemory();
     }
 
-    // Copy base64 characters and some padding to the new buffer
+    int pad_chars = 0;
+    // Copy base64 characters to the new buffer. Ignore padding to conform to RFC 4648 section 3.3.
     for (size_t i = 0; i < srclen; i++) {
         char c = src[i];
         if (is_valid_base64_char(c, false)) {
             newbuf[newbuf_len++] = c;
+            pad_chars = 0;
         } else if (c == '=') {
-            // Copy a necessary amount of padding
-            int remainder = newbuf_len % 4;
-            if (remainder == 0) {
-                // No padding needed
-                break;
-            }
-            int numpad = 4 - remainder;
-            // Check that there is at least the required amount padding (CPython ignores
-            // extra padding)
-            while (numpad > 0) {
-                if (i == srclen || src[i] != '=') {
-                    break;
-                }
-                newbuf[newbuf_len++] = '=';
-                i++;
-                numpad--;
-                // Skip non-base64 alphabet characters within padding
-                while (i < srclen && !is_valid_base64_char(src[i], true)) {
-                    i++;
-                }
-            }
-            break;
+            pad_chars++;
         }
     }
 
+    int quad_pos = newbuf_len % 4;
     // Stdlib always performs a non-strict padding check
-    if (newbuf_len % 4 != 0) {
+    if (quad_pos != 0 && quad_pos + pad_chars < 4) {
         if (freesrc) {
             PyMem_Free((void *)src);
         }
@@ -279,6 +262,15 @@ b64decode_handle_invalid_input(
         PyMem_Free(newbuf);
         PyErr_SetString(PyExc_ValueError, "Incorrect padding");
         return NULL;
+    }
+
+    if (quad_pos != 0) {
+        // Add padding at the end to make the input length a multiple of 4. We know that this padding
+        // is present in src because otherwise we would report the "Incorrect padding" error above.
+        while (quad_pos < 4) {
+            newbuf[newbuf_len++] = '=';
+            quad_pos++;
+        }
     }
 
     size_t outlen = max_out;
@@ -327,19 +319,13 @@ urlsafe_b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
     return b64decode_internal(args[0], true);
 }
 
-#endif
-
 static PyMethodDef librt_base64_module_methods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using Base64.")},
     {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode a Base64 encoded bytes object or ASCII string.")},
     {"urlsafe_b64encode", (PyCFunction)urlsafe_b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using URL and file system safe Base64 alphabet.")},
     {"urlsafe_b64decode", (PyCFunction)urlsafe_b64decode, METH_FASTCALL, PyDoc_STR("Decode bytes or ASCII string using URL and file system safe Base64 alphabet.")},
-#endif
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 base64_abi_version(void) {
@@ -351,12 +337,9 @@ base64_api_version(void) {
     return LIBRT_BASE64_API_VERSION;
 }
 
-#endif
-
 static int
 librt_base64_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     // Export mypy internal C API, be careful with the order!
     static void *base64_api[LIBRT_BASE64_API_LEN] = {
         (void *)base64_abi_version,
@@ -368,7 +351,6 @@ librt_base64_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 

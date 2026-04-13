@@ -1407,3 +1407,120 @@ def test_star2_fastpath() -> None:
     assert star2(x="a", y=3) == "aaa"
 def test_star2_fastpath_generic() -> None:
     assert star2_generic({"x": "a", "y": 3}) == "aaa"
+
+[case testLambdaInListComprehension]
+# Lambda inside list comprehension at module level
+funcs_list = [lambda x, i=i: x + i for i in range(3)]
+
+def test_module_level() -> None:
+    assert [f(10) for f in funcs_list] == [10, 11, 12]
+
+def test_in_function() -> None:
+    funcs = [lambda x, i=i: x + i for i in range(3)]
+    assert [f(10) for f in funcs] == [10, 11, 12]
+    # Different parameter name than loop variable
+    funcs2 = [lambda x, n=i: x + n for i in range(3)]
+    assert [f(10) for f in funcs2] == [10, 11, 12]
+
+[case testLambdaInDictComprehension]
+# Lambda inside dict comprehension at module level
+funcs_dict = {k: lambda x, k=k: x + k for k in range(3)}
+
+def test_module_level() -> None:
+    assert funcs_dict[0](10) == 10
+    assert funcs_dict[1](10) == 11
+    assert funcs_dict[2](10) == 12
+
+def test_in_function() -> None:
+    d = {k: (lambda k=k: k * 2) for k in range(3)}
+    assert d[0]() == 0
+    assert d[1]() == 2
+    assert d[2]() == 4
+    # Different parameter name than loop variable
+    d2 = {k: (lambda n=k: n * 2) for k in range(3)}
+    assert d2[0]() == 0
+    assert d2[1]() == 2
+    assert d2[2]() == 4
+
+[case testLambdaInSetComprehension]
+def test_set_comp() -> None:
+    funcs = {(lambda i=i: i) for i in range(3)}
+    results = {f() for f in funcs}
+    assert results == {0, 1, 2}
+    # Different parameter name than loop variable
+    funcs2 = {(lambda n=i: n) for i in range(3)}
+    results2 = {f() for f in funcs2}
+    assert results2 == {0, 1, 2}
+
+[case testLambdaInComprehensionCaptureOuter]
+# Lambda capturing both loop var and outer function var
+def test_capture_outer_and_loop() -> None:
+    base = 100
+    funcs = [lambda i=i: i + base for i in range(3)]
+    assert funcs[0]() == 100
+    assert funcs[1]() == 101
+    assert funcs[2]() == 102
+    # Different parameter name than loop variable
+    funcs2 = [lambda n=i: n + base for i in range(3)]
+    assert funcs2[0]() == 100
+    assert funcs2[1]() == 101
+    assert funcs2[2]() == 102
+
+[case testLambdaInDictComprehensionLateBind]
+# Dict comprehension with late-binding lambda (no default arg)
+def test_dict_comp_late_bind() -> None:
+    d = {name: (lambda: name) for name in ("a", "b")}
+    # Late binding: all lambdas see the final value of 'name'
+    assert d["a"]() == "b"
+    assert d["b"]() == "b"
+
+[case testLambdaInComprehensionClassLevel]
+# Lambda inside comprehension at class level
+from typing import ClassVar
+class Foo:
+    A: ClassVar[object] = {name: (lambda: name) for name in ("a", "b")}
+
+[file driver.py]
+from native import Foo
+assert Foo.A["a"]() == "b"
+assert Foo.A["b"]() == "b"
+
+[case testLambdaInGeneratorExpression]
+def test_generator_with_lambda_default() -> None:
+    result = list((lambda i=i: i * 2) for i in range(4))
+    assert [f() for f in result] == [0, 2, 4, 6]
+    # Different parameter name than loop variable
+    result2 = list((lambda n=i: n * 2) for i in range(4))
+    assert [f() for f in result2] == [0, 2, 4, 6]
+
+[case testLambdaInComprehensionWithParamIterable]
+# Lambda inside comprehension where the iterable is a function parameter.
+# The comprehension scope must be able to read variables from the enclosing
+# function scope (not just the comprehension's own env class).
+from typing import List, Callable
+
+def transform(items: List[int]) -> List[Callable[[], int]]:
+    return [(lambda i=i: i * 2) for i in items]  # type: ignore[misc]
+
+def transform_different_name(items: List[int]) -> List[Callable[[], int]]:
+    return [(lambda n=i: n * 2) for i in items]  # type: ignore[misc]
+
+def uses_multiple_params(items: List[str], sep: str) -> List[Callable[[], str]]:
+    return [(lambda s=s: s + sep) for s in items]  # type: ignore[misc]
+
+def uses_multiple_params_different_name(items: List[str], sep: str) -> List[Callable[[], str]]:
+    return [(lambda t=s: t + sep) for s in items]  # type: ignore[misc]
+
+def test_param_iterable() -> None:
+    funcs = transform([1, 2, 3])
+    assert [f() for f in funcs] == [2, 4, 6]
+    # Different parameter name than loop variable
+    funcs2 = transform_different_name([1, 2, 3])
+    assert [f() for f in funcs2] == [2, 4, 6]
+
+def test_multiple_params() -> None:
+    funcs = uses_multiple_params(["a", "b"], "!")
+    assert [f() for f in funcs] == ["a!", "b!"]
+    # Different parameter name than loop variable
+    funcs2 = uses_multiple_params_different_name(["a", "b"], "!")
+    assert [f() for f in funcs2] == ["a!", "b!"]

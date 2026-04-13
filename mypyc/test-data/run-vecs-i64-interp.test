@@ -231,6 +231,45 @@ def test_iteration_nested() -> None:
                  (5, 2), (5, 5), (5, 7),
                  (7, 2), (7, 5), (7, 7)]
 
+def test_iterator_protocol() -> None:
+    # Test iter() and next() functions explicitly
+    v = vec[i64]([1, 2, 3])
+    it = iter(v)
+    assert next(it) == 1
+    assert next(it) == 2
+    assert next(it) == 3
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test multiple iterators on same vec
+    v = vec[i64]([10, 20])
+    it1 = iter(v)
+    it2 = iter(v)
+    assert next(it1) == 10
+    assert next(it2) == 10
+    assert next(it1) == 20
+    assert next(it2) == 20
+
+    # Test empty vec iterator
+    it = iter(vec[i64]())
+    with assertRaises(StopIteration):
+        next(it)
+
+def test_iterator_length_hint() -> None:
+    v = vec[i64]([1, 2, 3, 4, 5])
+    it = iter(v)
+    op: Any = getattr(sys, "modules")["operator"]
+    length_hint = op.length_hint
+    assert length_hint(it) == 5
+    next(it)
+    assert length_hint(it) == 4
+    next(it)
+    next(it)
+    assert length_hint(it) == 2
+    next(it)
+    next(it)
+    assert length_hint(it) == 0
+
 def test_slicing() -> None:
     v = vec[i64](range(5))
     assert v[1:4] == vec[i64]([1, 2, 3])
@@ -272,6 +311,41 @@ def test_contains() -> None:
     assert -1233453452 not in v
     vv = vec[i64]()
     assert 3 not in vv
+
+def test_contains_boundary_values() -> None:
+    v = vec[i64]([0, 2**63 - 1, -2**63])
+    assert 0 in v
+    assert 2**63 - 1 in v
+    assert -2**63 in v
+    assert 1 not in v
+    assert -1 not in v
+
+def test_contains_wrong_type() -> None:
+    # Wrong type should return False, not raise
+    v: Any = vec[i64]([1, 2, 3])
+    assert 'x' not in v
+    assert None not in v
+    assert [] not in v
+    # Overflow should also return False
+    assert 2**63 not in v
+    assert -2**63 - 1 not in v
+
+def test_contains_float() -> None:
+    # float == int equality should work via boxed fallback
+    v: Any = vec[i64]([1, 2, 3])
+    assert 2.0 in v
+    assert 3.0 in v
+    assert 1.5 not in v
+    assert 0.0 not in v
+
+def test_contains_bool() -> None:
+    # bool is a subclass of int, so True/False should work
+    v: Any = vec[i64]([0, 1, 5])
+    assert True in v
+    assert False in v
+    v2: Any = vec[i64]([2, 3])
+    assert True not in v2
+    assert False not in v2
 
 def test_remove() -> None:
     a = [4, 7, 9]

@@ -19,7 +19,7 @@ def dump(fname: str, python_version: tuple[int, int], quiet: bool = False) -> No
     options.python_version = python_version
     with open(fname, "rb") as f:
         s = f.read()
-        tree = parse(s, fname, None, errors=Errors(options), options=options)
+        tree = parse(s, fname, None, errors=Errors(options), options=options, file_exists=True)
         if not quiet:
             print(tree)
 

@@ -296,6 +296,43 @@ main:2: error: Cannot find implementation or library stub for module named "m.n"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
 
+[case testMissingModuleFuzzyMatchThirdParty]
+import numpyy
+[out]
+main:1: error: Cannot find implementation or library stub for module named "numpyy"
+main:1: note: Did you mean "numpy"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchFromImport]
+from numpyy import array
+[out]
+main:1: error: Cannot find implementation or library stub for module named "numpyy"
+main:1: note: Did you mean "numpy"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchStdlib]
+import ittertools
+[out]
+main:1: error: Cannot find implementation or library stub for module named "ittertools"
+main:1: note: Did you mean "itertools"?
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchNoSuggestion]
+import xyzabc123
+[out]
+main:1: error: Cannot find implementation or library stub for module named "xyzabc123"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchUnderscorePrefix]
+import _pytest.fixtures
+[out]
+main:1: error: Cannot find implementation or library stub for module named "_pytest.fixtures"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testMissingModuleFuzzyMatchTypeIgnore]
+import numpyy  # type: ignore
+[out]
+
 [case testErrorInImportedModule]
 import m
 [file m.py]
@@ -1158,8 +1195,8 @@ def f(): # type: (int) -> int
 def g(x): # type: () -> int
   pass
 [out]
-main:2: error: Type signature has too many arguments
-main:4: error: Type signature has too few arguments
+main:2: error: Type signature has too many parameters
+main:4: error: Type signature has too few parameters
 
 [case testStaticmethodAndNonMethod]
 import typing

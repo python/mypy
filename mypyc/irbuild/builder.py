@@ -58,7 +58,15 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import (
+    BITMAP_BITS,
+    EXT_SUFFIX,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    MODULE_PREFIX,
+    SELF_NAME,
+    TEMP_ATTR_NAME,
+    shared_lib_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -76,6 +84,8 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
+    LoadAddress,
+    LoadGlobal,
     LoadStatic,
     MethodCall,
     Op,
@@ -92,9 +102,11 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -105,6 +117,7 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
 )
@@ -128,11 +141,18 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.vec import vec_set_item
+from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
+from mypyc.primitives.misc_ops import (
+    check_unpack_count_op,
+    get_module_dict_op,
+    import_op,
+    native_import_op,
+)
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
@@ -225,10 +245,19 @@ class IRBuilder:
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
+        self.comprehension_to_fitem = pbv.comprehension_to_fitem
 
         self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
+
+        # Class body context: tracks ClassVar names defined so far when processing
+        # a class body, so that intra-class references (e.g. C = A | B where A is
+        # a ClassVar defined earlier in the same class) can be resolved correctly.
+        # Without this, mypyc looks up such names in module globals, which fails.
+        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_obj: Value | None = None
+        self.class_body_ir: ClassIR | None = None
 
         # This list operates similarly to a function call stack for nested functions. Whenever a
         # function definition begins to be generated, a FuncInfo instance is added to the stack,
@@ -249,6 +278,10 @@ class IRBuilder:
         self.imports: dict[str, None] = {}
 
         self.can_borrow = False
+
+        # When set, load_globals_dict uses this module instead of self.module_name.
+        # Used by generate_attr_defaults_init for cross-module inherited defaults.
+        self.globals_lookup_module: str | None = None
 
     # High-level control
 
@@ -420,8 +453,8 @@ class IRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
 
-    def builtin_len(self, val: Value, line: int) -> Value:
-        return self.builder.builtin_len(val, line)
+    def builtin_len(self, val: Value, line: int, use_pyssize_t: bool = False) -> Value:
+        return self.builder.builtin_len(val, line, use_pyssize_t)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
@@ -446,15 +479,56 @@ class IRBuilder:
         # doesn't cause contention.
         self.builder.set_immortal_if_free_threaded(val, line)
 
-    def gen_import(self, id: str, line: int) -> None:
-        self.imports[id] = None
+    def gen_import(self, module: str, line: int) -> None:
+        self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(id, line, needs_import, out)
+        self.check_if_module_loaded(module, line, needs_import, out)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_str(id, line)], line)
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        if self.is_native_module(module) and self.is_same_group_module(module):
+            # Use custom import machinery for native-to-native imports in the same group
+            init_only_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+            )
+            exec_func = self.add(
+                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
+            )
+            module_static = self.add(
+                LoadAddress(
+                    object_pointer_rprimitive,
+                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                )
+            )
+            group_name = self.mapper.group_map.get(self.module_name)
+            if group_name is not None:
+                shared_lib_mod_name = shared_lib_name(group_name)
+                mod_dict = self.call_c(get_module_dict_op, [], line)
+                shared_lib_obj = self.primitive_op(
+                    dict_get_item_op, [mod_dict, self.load_str(shared_lib_mod_name, line)], line
+                )
+                shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
+            else:
+                shared_lib_file = self.none_object(line)
+            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            is_pkg = self.is_package_module(module)
+            value = self.call_c(
+                native_import_op,
+                [
+                    self.load_str(module, line),
+                    init_only_func,
+                    exec_func,
+                    module_static,
+                    shared_lib_file,
+                    ext_suffix,
+                    Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
+                ],
+                line,
+            )
+        else:
+            # Import using generic Python C API
+            value = self.call_c(import_op, [self.load_str(module, line)], line)
+        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
@@ -769,10 +843,13 @@ class IRBuilder:
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
-            target_reg2 = self.gen_method_call(
-                target.base, "__setitem__", [target.index, rvalue_reg], None, line
-            )
-            assert target_reg2 is not None, target.base.type
+            if isinstance(target.base.type, RVec):
+                vec_set_item(self.builder, target.base, target.index, rvalue_reg, line)
+            else:
+                target_reg2 = self.gen_method_call(
+                    target.base, "__setitem__", [target.index, rvalue_reg], None, line
+                )
+                assert target_reg2 is not None, target.base.type
         elif isinstance(target, AssignmentTargetTuple):
             if isinstance(rvalue_reg.type, RTuple) and target.star_idx is None:
                 rtypes = rvalue_reg.type.types
@@ -1081,6 +1158,20 @@ class IRBuilder:
         """Is the given module one compiled by mypyc?"""
         return self.mapper.is_native_module(module)
 
+    def is_same_group_module(self, module: str) -> bool:
+        """Is the given module in the same compilation group as the current module?
+
+        Modules in the same group share a compiled C extension and can reference
+        each other's C-level symbols directly. Modules in separate groups (separate
+        compilation mode) must use the Python import system instead.
+        """
+        return self.mapper.group_map.get(module) == self.mapper.group_map.get(self.module_name)
+
+    def is_package_module(self, module: str) -> bool:
+        """Is the given module a package (i.e., an __init__.py file)?"""
+        st = self.graph.get(module)
+        return st is not None and st.tree is not None and st.tree.is_package_init_file()
+
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         return self.mapper.is_native_ref_expr(expr)
 
@@ -1259,6 +1350,37 @@ class IRBuilder:
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
     @contextmanager
+    def enter_scope(self, fn_info: FuncInfo) -> Iterator[None]:
+        """Push a lightweight scope for comprehensions.
+
+        Unlike enter(), this reuses the same LowLevelIRBuilder (same basic
+        blocks and registers) but pushes new symtable and fn_info entries
+        so that the closure machinery sees a scope boundary.
+        """
+        self.builders.append(self.builder)
+        # Copy the parent symtable so variables from the enclosing scope
+        # (e.g. function parameters used as the comprehension iterable)
+        # remain accessible. The comprehension is inlined (same basic blocks
+        # and registers), so the parent's register references are still valid.
+        self.symtables.append(dict(self.symtables[-1]))
+        self.runtime_args.append([])
+        self.fn_info = fn_info
+        self.fn_infos.append(self.fn_info)
+        self.ret_types.append(none_rprimitive)
+        self.nonlocal_control.append(BaseNonlocalControl())
+        try:
+            yield
+        finally:
+            self.builders.pop()
+            self.symtables.pop()
+            self.runtime_args.pop()
+            self.ret_types.pop()
+            self.fn_infos.pop()
+            self.nonlocal_control.pop()
+            self.builder = self.builders[-1]
+            self.fn_info = self.fn_infos[-1]
+
+    @contextmanager
     def enter_method(
         self,
         class_ir: ClassIR,
@@ -1417,7 +1539,8 @@ class IRBuilder:
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
+        module = self.globals_lookup_module or self.module_name
+        return self.add(LoadStatic(dict_rprimitive, "globals", module))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")
@@ -1526,7 +1649,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
 
 
 def remangle_redefinition_name(name: str) -> str:
-    """Remangle names produced by mypy when allow-redefinition is used and a name
+    """Remangle names produced by mypy when allow-redefinition-old is used and a name
     is used with multiple types within a single block.
 
     We only need to do this for locals, because the name is used as the name of the register;
