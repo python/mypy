@@ -14,11 +14,13 @@ from typing import (
     Final,
     Optional,
     TypeAlias as _TypeAlias,
+    TypedDict,
     TypeGuard,
     TypeVar,
     Union,
     cast,
 )
+from typing_extensions import NotRequired
 
 from librt.internal import (
     extract_symbol,
@@ -39,7 +41,9 @@ from mypy.cache import (
     LIST_GEN,
     LIST_STR,
     LITERAL_COMPLEX,
+    LITERAL_FALSE,
     LITERAL_NONE,
+    LITERAL_TRUE,
     ReadBuffer,
     Tag,
     WriteBuffer,
@@ -313,6 +317,39 @@ class SymbolNode(Node):
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
+class ParseError(TypedDict):
+    line: int
+    column: int
+    message: str
+    blocker: NotRequired[bool]
+    code: NotRequired[str]
+
+
+def write_parse_error(data: WriteBuffer, err: ParseError) -> None:
+    write_int(data, err["line"])
+    write_int(data, err["column"])
+    write_str(data, err["message"])
+    if (blocker := err.get("blocker")) is not None:
+        write_bool(data, blocker)
+    else:
+        write_tag(data, LITERAL_NONE)
+    write_str_opt(data, err.get("code"))
+
+
+def read_parse_error(data: ReadBuffer) -> ParseError:
+    err: ParseError = {"line": read_int(data), "column": read_int(data), "message": read_str(data)}
+    tag = read_tag(data)
+    if tag == LITERAL_TRUE:
+        err["blocker"] = True
+    elif tag == LITERAL_FALSE:
+        err["blocker"] = False
+    else:
+        assert tag == LITERAL_NONE
+    if (code := read_str_opt(data)) is not None:
+        err["code"] = code
+    return err
+
+
 class FileRawData:
     """Raw (binary) data representing parsed, but not deserialized file."""
 
@@ -327,7 +364,7 @@ class FileRawData:
 
     defs: bytes
     imports: bytes
-    raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
+    raw_errors: list[ParseError]
     ignored_lines: dict[int, list[str]]
     is_partial_stub_package: bool
     uses_template_strings: bool
@@ -336,7 +373,7 @@ class FileRawData:
         self,
         defs: bytes,
         imports: bytes,
-        raw_errors: list[dict[str, Any]],
+        raw_errors: list[ParseError],
         ignored_lines: dict[int, list[str]],
         is_partial_stub_package: bool,
         uses_template_strings: bool,
@@ -354,7 +391,7 @@ class FileRawData:
         write_tag(data, LIST_GEN)
         write_int_bare(data, len(self.raw_errors))
         for err in self.raw_errors:
-            write_json(data, err)
+            write_parse_error(data, err)
         write_tag(data, DICT_INT_GEN)
         write_int_bare(data, len(self.ignored_lines))
         for line, codes in self.ignored_lines.items():
@@ -368,7 +405,7 @@ class FileRawData:
         defs = read_bytes(data)
         imports = read_bytes(data)
         assert read_tag(data) == LIST_GEN
-        raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
+        raw_errors = [read_parse_error(data) for _ in range(read_int_bare(data))]
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
         return FileRawData(
