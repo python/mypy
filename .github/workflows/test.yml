@@ -116,7 +116,7 @@ jobs:
           python: '3.14'
           os: windows-latest
           toxenv: py
-          tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py --maxfail=1"
+          tox_extra_args: "-n 1 --mypy-num-workers=8 mypy/test/testcheck.py --maxfail=1"
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'
