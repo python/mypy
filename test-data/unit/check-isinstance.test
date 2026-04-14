@@ -2319,6 +2319,17 @@ assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowsAfterNoneCheckWithAnyUnion]
+# flags: --warn-unreachable
+from typing import Any, Union
+
+def f(val: Union[Any, str]) -> None:
+    if val is None or isinstance(val, str):
+        reveal_type(val)  # N: Revealed type is "None | builtins.str"
+        return
+    reveal_type(val)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceIgnoredImport]
 # flags: --warn-unreachable
 from typing import Union
