@@ -377,6 +377,8 @@ def build(
     stderr = stderr or sys.stderr
     extra_plugins = extra_plugins or []
 
+    # Create metastore before workers to avoid race conditions.
+    metastore = create_metastore(options, parallel_worker=False)
     workers = []
     connect_threads = []
     # A quasi-unique ID for this specific mypy invocation.
@@ -422,6 +424,7 @@ def build(
             extra_plugins,
             workers,
             connect_threads,
+            metastore,
         )
         result.errors = messages
         return result
@@ -461,6 +464,7 @@ def build_inner(
     extra_plugins: Sequence[Plugin],
     workers: list[WorkerClient],
     connect_threads: list[Thread],
+    metastore: MetadataStore,
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
         # Run gc less frequently, as otherwise we can spend a large fraction of
@@ -509,6 +513,7 @@ def build_inner(
         fscache=fscache,
         stdout=stdout,
         stderr=stderr,
+        metastore=metastore,
     )
     manager.workers = workers
     if manager.verbosity() >= 2:
@@ -826,6 +831,7 @@ class BuildManager:
         stderr: TextIO,
         error_formatter: ErrorFormatter | None = None,
         parallel_worker: bool = False,
+        metastore: MetadataStore | None = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         # Use in cases where we need to prevent race conditions in stats reporting.
@@ -913,7 +919,9 @@ class BuildManager:
                 ]
             )
 
-        self.metastore = create_metastore(options, parallel_worker=parallel_worker)
+        if metastore is None:
+            metastore = create_metastore(options, parallel_worker=parallel_worker)
+        self.metastore = metastore
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
