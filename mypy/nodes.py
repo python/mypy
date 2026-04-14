@@ -14,13 +14,16 @@ from typing import (
     Final,
     Optional,
     TypeAlias as _TypeAlias,
+    TypedDict,
     TypeGuard,
     TypeVar,
     Union,
     cast,
 )
+from typing_extensions import NotRequired
 
 from librt.internal import (
+    extract_symbol,
     read_float as read_float_bare,
     read_int as read_int_bare,
     read_str as read_str_bare,
@@ -38,7 +41,9 @@ from mypy.cache import (
     LIST_GEN,
     LIST_STR,
     LITERAL_COMPLEX,
+    LITERAL_FALSE,
     LITERAL_NONE,
+    LITERAL_TRUE,
     ReadBuffer,
     Tag,
     WriteBuffer,
@@ -67,6 +72,7 @@ from mypy.cache import (
     write_str_opt_list,
     write_tag,
 )
+from mypy.modules_state import modules_state
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -311,6 +317,39 @@ class SymbolNode(Node):
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
+class ParseError(TypedDict):
+    line: int
+    column: int
+    message: str
+    blocker: NotRequired[bool]
+    code: NotRequired[str]
+
+
+def write_parse_error(data: WriteBuffer, err: ParseError) -> None:
+    write_int(data, err["line"])
+    write_int(data, err["column"])
+    write_str(data, err["message"])
+    if (blocker := err.get("blocker")) is not None:
+        write_bool(data, blocker)
+    else:
+        write_tag(data, LITERAL_NONE)
+    write_str_opt(data, err.get("code"))
+
+
+def read_parse_error(data: ReadBuffer) -> ParseError:
+    err: ParseError = {"line": read_int(data), "column": read_int(data), "message": read_str(data)}
+    tag = read_tag(data)
+    if tag == LITERAL_TRUE:
+        err["blocker"] = True
+    elif tag == LITERAL_FALSE:
+        err["blocker"] = False
+    else:
+        assert tag == LITERAL_NONE
+    if (code := read_str_opt(data)) is not None:
+        err["code"] = code
+    return err
+
+
 class FileRawData:
     """Raw (binary) data representing parsed, but not deserialized file."""
 
@@ -325,7 +364,7 @@ class FileRawData:
 
     defs: bytes
     imports: bytes
-    raw_errors: list[dict[str, Any]]  # TODO: switch to more precise type here.
+    raw_errors: list[ParseError]
     ignored_lines: dict[int, list[str]]
     is_partial_stub_package: bool
     uses_template_strings: bool
@@ -334,7 +373,7 @@ class FileRawData:
         self,
         defs: bytes,
         imports: bytes,
-        raw_errors: list[dict[str, Any]],
+        raw_errors: list[ParseError],
         ignored_lines: dict[int, list[str]],
         is_partial_stub_package: bool,
         uses_template_strings: bool,
@@ -352,7 +391,7 @@ class FileRawData:
         write_tag(data, LIST_GEN)
         write_int_bare(data, len(self.raw_errors))
         for err in self.raw_errors:
-            write_json(data, err)
+            write_parse_error(data, err)
         write_tag(data, DICT_INT_GEN)
         write_int_bare(data, len(self.ignored_lines))
         for line, codes in self.ignored_lines.items():
@@ -366,7 +405,7 @@ class FileRawData:
         defs = read_bytes(data)
         imports = read_bytes(data)
         assert read_tag(data) == LIST_GEN
-        raw_errors = [read_json(data) for _ in range(read_int_bare(data))]
+        raw_errors = [read_parse_error(data) for _ in range(read_int_bare(data))]
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
         return FileRawData(
@@ -472,12 +511,12 @@ class MypyFile(SymbolNode):
         self._is_typeshed_file = None
         self.raw_data = None
 
-    def local_definitions(self) -> Iterator[Definition]:
+    def local_definitions(self, *, impl_only: bool = False) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
 
         This doesn't include imported definitions.
         """
-        return local_definitions(self.names, self.fullname)
+        return local_definitions(self.names, self.fullname, impl_only=impl_only)
 
     @property
     def name(self) -> str:
@@ -1036,6 +1075,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "is_invalid_redefinition",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -1080,6 +1120,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             self.original_first_arg: str | None = arguments[0].variable.name
         else:
             self.original_first_arg = None
+        # Whether this function is an invalid redefinition of variable with the same name?
+        # We record this status to avoid multiple (similar but different) errors in case
+        # of partial types etc.
+        self.is_invalid_redefinition = False
 
     @property
     def name(self) -> str:
@@ -4730,9 +4774,10 @@ class SymbolTableNode:
     they should be correct.
 
     Attributes:
-        node: AST node of definition. Among others, this can be one of
+        _node: AST node of definition. Among others, this can be one of
             FuncDef, Var, TypeInfo, TypeVarExpr or MypyFile -- or None
-            for cross_ref that hasn't been fixed up yet.
+            for cross_ref that hasn't been fixed up yet. Should not be accessed
+            directly, only via the `node` property.
         kind: Kind of node. Possible values:
                - LDEF: local definition
                - GDEF: global (module-level) definition
@@ -4742,25 +4787,20 @@ class SymbolTableNode:
         module_public: If False, this name won't be imported via
             'from <module> import *'. This has no effect on names within
             classes.
-        module_hidden: If True, the name will be never exported (needed for
+        module_hidden: If True, the name will never be exported (needed for
             stub files)
         cross_ref: For deserialized MypyFile nodes, the referenced module
             name; for other nodes, optionally the name of the referenced object.
         implicit: Was this defined by assignment to self attribute?
         plugin_generated: Was this symbol generated by a plugin?
             (And therefore needs to be removed in aststrip.)
-        no_serialize: Do not serialize this node if True. This is used to prevent
-            keys in the cache that refer to modules on which this file does not
-            depend. Currently this can happen if there is a module not in build
-            used e.g. like this:
-                import a.b.c # type: ignore
-            This will add a submodule symbol to parent module `a` symbol table,
-            but `a.b` is _not_ added as its dependency. Therefore, we should
-            not serialize these symbols as they may not be found during fixup
-            phase, instead they will be re-added during subsequent patch parents
-            phase.
-            TODO: Refactor build.py to make dependency tracking more transparent
-            and/or refactor look-up functions to not require parent patching.
+        no_serialize: Do not serialize this node if True. This is used for internal
+            and/or temporary symbols such as function redefinitions.
+        unfixed: Indicates that this symbol is fresh after deserialization and
+            needs fixup, such as resolving cross-references etc.
+        stored_info: TypeInfo containing this symbol. Normally code accesses this
+            on the `node` attribute, but it may be not ready during deserialization,
+            so we temporarily store info on the symbol itself.
 
     NOTE: No other attributes should be added to this class unless they
     are shared by all node kinds.
@@ -4768,13 +4808,17 @@ class SymbolTableNode:
 
     __slots__ = (
         "kind",
-        "node",
+        "_node",
+        "_node_bytes",
+        "_node_tag",
         "module_public",
         "module_hidden",
         "cross_ref",
         "implicit",
         "plugin_generated",
         "no_serialize",
+        "unfixed",
+        "stored_info",
     )
 
     def __init__(
@@ -4789,13 +4833,17 @@ class SymbolTableNode:
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
-        self.node = node
+        self._node = node
+        self._node_bytes = b""
+        self._node_tag: Tag = 0
         self.module_public = module_public
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref: str | None = None
         self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
+        self.unfixed = False
+        self.stored_info: TypeInfo | None = None
 
     @property
     def fullname(self) -> str | None:
@@ -4814,11 +4862,33 @@ class SymbolTableNode:
         else:
             return None
 
+    @property
+    def node(self) -> SymbolNode | None:
+        if self.unfixed:
+            node_fixer = modules_state.node_fixer
+            assert node_fixer is not None
+            if self.cross_ref is not None:
+                node_fixer.resolve_cross_ref(self)
+            else:
+                if self._node is None:
+                    self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+                    self._node_bytes = b""
+                node = self._node
+                assert node is not None
+                if self.stored_info is not None:
+                    set_info(node, self.stored_info)
+                    self.stored_info = None
+                node.accept(node_fixer)
+                self.unfixed = False
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
-            self.kind, self.node, self.module_public, self.implicit, self.module_hidden
+            self.kind, self._node, self.module_public, self.implicit, self.module_hidden
         )
         new.cross_ref = self.cross_ref
+        new.unfixed = self.unfixed
+        new.stored_info = self.stored_info
         return new
 
     def __str__(self) -> str:
@@ -4875,10 +4945,13 @@ class SymbolTableNode:
             # This will be fixed up later.
             stnode = SymbolTableNode(kind, None)
             stnode.cross_ref = data["cross_ref"]
+            stnode.unfixed = True
         else:
             assert "node" in data, data
             node = SymbolNode.deserialize(data["node"])
             stnode = SymbolTableNode(kind, node)
+            if not isinstance(node, TypeInfo):
+                stnode.unfixed = True
         if "module_hidden" in data:
             stnode.module_hidden = data["module_hidden"]
         if "module_public" in data:
@@ -4930,9 +5003,16 @@ class SymbolTableNode:
         sym.plugin_generated = read_bool(data)
         cross_ref = read_str_opt(data)
         if cross_ref is None:
-            sym.node = read_symbol(data)
+            tag = read_tag(data)
+            if tag == TYPE_INFO:
+                sym._node = TypeInfo.read(data)
+            else:
+                sym._node_bytes = extract_symbol(data)
+                sym._node_tag = tag
+                sym.unfixed = True
         else:
             sym.cross_ref = cross_ref
+            sym.unfixed = True
         assert read_tag(data) == END_TAG
         return sym
 
@@ -5227,11 +5307,12 @@ def get_func_def(typ: mypy.types.CallableType) -> SymbolNode | None:
 
 
 def local_definitions(
-    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None
+    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None, impl_only: bool = False
 ) -> Iterator[Definition]:
     """Iterate over local definitions (not imported) in a symbol table.
 
-    Recursively iterate over class members and nested classes.
+    Recursively iterate over class members and nested classes. If impl_only is True, do
+    not yield the classes themselves, only methods.
     """
     # TODO: What should the name be? Or maybe remove it?
     for name, symnode in names.items():
@@ -5242,9 +5323,36 @@ def local_definitions(
         fullname = name_prefix + "." + shortname
         node = symnode.node
         if node and node.fullname == fullname:
-            yield fullname, symnode, info
+            yield_node = True
+            if impl_only:
+                if not isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)):
+                    yield_node = False
+                else:
+                    impl = node.func if isinstance(node, Decorator) else node
+                    # We never type-check generated methods. The generated classes however
+                    # need to be visited, so we don't skip them below.
+                    yield_node = not impl.def_or_infer_vars and not symnode.plugin_generated
+            if isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)) and "@" in fullname:
+                yield_node = False
+            if yield_node:
+                yield fullname, symnode, info
             if isinstance(node, TypeInfo):
-                yield from local_definitions(node.names, fullname, node)
+                yield from local_definitions(node.names, fullname, node, impl_only)
+
+
+def set_info(node: SymbolNode, info: TypeInfo) -> None:
+    """Add `info` attribute to all relevant components of the node."""
+    if isinstance(node, (FuncDef, Var)):
+        node.info = info
+    elif isinstance(node, Decorator):
+        node.var.info = info
+        node.func.info = info
+    elif isinstance(node, OverloadedFuncDef):
+        node.info = info
+        for item in node.items:
+            set_info(item, info)
+        if node.impl:
+            set_info(node.impl, info)
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.
@@ -5261,6 +5369,7 @@ TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
+# Tags 160+ are shared with the ast_serialize Rust extension and must be kept in sync.
 EXPR_STMT: Final[Tag] = 160
 CALL_EXPR: Final[Tag] = 161
 NAME_EXPR: Final[Tag] = 162
@@ -5309,7 +5418,7 @@ DEL_STMT: Final[Tag] = 204
 FSTRING_EXPR: Final[Tag] = 205
 FSTRING_INTERPOLATION: Final[Tag] = 206
 LAMBDA_EXPR: Final[Tag] = 207
-NAMED_EXPR: Final[Tag] = 208
+ASSIGNMENT_EXPR: Final[Tag] = 208
 STAR_EXPR: Final[Tag] = 209
 BYTES_EXPR: Final[Tag] = 210
 GLOBAL_DECL: Final[Tag] = 211
@@ -5333,8 +5442,7 @@ IMPORTALL_METADATA: Final[Tag] = 228
 TSTRING_EXPR: Final[Tag] = 229
 
 
-def read_symbol(data: ReadBuffer) -> SymbolNode:
-    tag = read_tag(data)
+def read_symbol(data: ReadBuffer, tag: Tag) -> SymbolNode:
     # The branches here are ordered manually by type "popularity".
     if tag == VAR:
         return Var.read(data)
@@ -5342,8 +5450,6 @@ def read_symbol(data: ReadBuffer) -> SymbolNode:
         return FuncDef.read(data)
     if tag == DECORATOR:
         return Decorator.read(data)
-    if tag == TYPE_INFO:
-        return TypeInfo.read(data)
     if tag == OVERLOADED_FUNC_DEF:
         return OverloadedFuncDef.read(data)
     if tag == TYPE_VAR_EXPR:

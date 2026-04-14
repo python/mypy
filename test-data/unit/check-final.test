@@ -144,7 +144,7 @@ reveal_type(C().f)  # N: Revealed type is "Overload(def (x: builtins.int) -> bui
 [case testFinalDefiningMethOverloadedStubs]
 from mod import C
 
-reveal_type(C().f)
+reveal_type(C().f)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
 [file mod.pyi]
 from typing import final, overload
 
@@ -157,12 +157,9 @@ class C:
 
     @overload
     def bad(self, x: int) -> int: ...
-    @final  # Error!
+    @final  # E: In a stub file @final must be applied only to the first overload
     @overload
     def bad(self, x: str) -> str: ...
-[out]
-tmp/mod.pyi:12: error: In a stub file @final must be applied only to the first overload
-main:3: note: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
 
 [case testFinalDefiningProperty]
 from typing import final
@@ -1251,7 +1248,9 @@ def check_final_init() -> None:
     new_instance.__init__()
 [builtins fixtures/tuple.pyi]
 
-[case testNarrowingOfFinalPersistsInFunctions]
+-- This is tricky and expensive to support in parallel mode.
+-- We may want to stop supporting this niche use case
+[case testNarrowingOfFinalPersistsInFunctions_no_parallel]
 from typing import Final, Union
 
 def _init() -> Union[int, None]:

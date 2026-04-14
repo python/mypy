@@ -1163,7 +1163,8 @@ class A:
 [out1]
 main:2: error: "A" has no attribute "bar"
 
-[case testIncrementalChangedError]
+-- Order of files unstable in parallel mode
+[case testIncrementalChangedError_no_parallel]
 import m
 [file m.py]
 import n
@@ -1325,7 +1326,8 @@ tmp/main.py:4: note: Revealed type is "builtins.str"
 [out2]
 tmp/main.py:4: note: Revealed type is "Any"
 
-[case testIncrementalFixedBugCausesPropagation]
+-- Order of files unstable in parallel mode
+[case testIncrementalFixedBugCausesPropagation_no_parallel]
 import mod1
 
 [file mod1.py]
@@ -1365,7 +1367,8 @@ tmp/mod1.py:3: note: Revealed type is "builtins.int"
 [out2]
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
 
-[case testIncrementalIncidentalChangeWithBugCausesPropagation]
+-- Order of files unstable in parallel mode
+[case testIncrementalIncidentalChangeWithBugCausesPropagation_no_parallel]
 import mod1
 
 [file mod1.py]
@@ -1400,12 +1403,12 @@ class C:
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
-
 [out2]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.str"
 
-[case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
+-- Order of files unstable in parallel mode
+[case testIncrementalIncidentalChangeWithBugFixCausesPropagation_no_parallel]
 import mod1
 
 [file mod1.py]
@@ -1973,7 +1976,8 @@ main:2: error: Name "nonexisting" is not defined
 [out2]
 main:2: error: Name "nonexisting" is not defined
 
-[case testIncrementalInnerClassAttrInMethodReveal]
+-- Order of files unstable in parallel mode
+[case testIncrementalInnerClassAttrInMethodReveal_no_parallel]
 import crash
 reveal_type(crash.C().a)
 reveal_type(crash.D().a)
@@ -4085,7 +4089,8 @@ main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 [out2]
 [rechecked b]
 
-[case testIncrementalDataclassesThreeFiles]
+-- Order of files unstable in parallel mode
+[case testIncrementalDataclassesThreeFiles_no_parallel]
 from c import C
 C('foo', 5, True)
 
@@ -5407,7 +5412,8 @@ tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.B">"
 [out2]
 tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.C">"
 
-[case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable]
+-- Order of files unstable in parallel mode
+[case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable_no_parallel]
 import c
 [file a.py]
 class A:
@@ -5441,7 +5447,8 @@ tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 tmp/b.py:2: error: Cannot determine type of "y"
 tmp/c.py:2: note: Revealed type is "Any"
 
-[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
+-- Order of files unstable in parallel mode
+[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection_no_parallel]
 import c
 [file a.py]
 class A:

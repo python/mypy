@@ -365,23 +365,20 @@ main:4: error: Too many arguments for "x"
 [case testRelativeImports]
 import typing
 import m.a
-m.a.x = m.a.y # Error
+m.a.x = m.a.y  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m/__init__.py]
 [file m/a.py]
 import typing
 from .b import A, B, x, y
 z = x
 if int():
-    z = y # Error
+    z = y  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m/b.py]
 import typing
 class A: pass
 class B: pass
 x = A()
 y = B()
-[out]
-tmp/m/a.py:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testRelativeImports2]
 import typing
@@ -497,15 +494,11 @@ def f(x: int = ...) -> None: pass
 
 [case testEllipsisDefaultParamValueInStub2]
 import m
-def f1(x: int = ...) -> int: return 1
-def f2(x: int = '') -> int: return 1
+def f1(x: int = ...) -> int: return 1  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+def f2(x: int = '') -> int: return 1  # E: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 [file m.pyi]
 def g1(x: int = ...) -> int: pass
-def g2(x: int = '') -> int: pass
-[out]
-tmp/m.pyi:2: error: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
-main:2: error: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
-main:3: error: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
+def g2(x: int = '') -> int: pass  # E: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 
 [case testEllipsisDefaultParamValueInNonStub]
 def ok_1(x: int = ...) -> None: pass
@@ -523,7 +516,6 @@ def bad_2(x: int = ...) -> None:     # E: Incompatible default for parameter "x"
 def bad_3(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
     raise Exception("Some other exception")
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testEllipsisDefaultParamValueInNonStubsOverload]
 from typing import overload, Union
@@ -544,7 +536,6 @@ def bar(x: str, y: str = ...) -> str: ...
 def bar(x: Both, y: Both = ...) -> Both:
     raise NotImplementedError
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testEllipsisDefaultParamValueInNonStubsMethods]
 from typing import Generic, Protocol, TypeVar
@@ -564,7 +555,6 @@ class MyAbstractClass:
     @abstractmethod
     def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "Wrap[int]")
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testStarImportOverlapping]
 from m1 import *
@@ -2083,29 +2073,19 @@ def __getattr__(name: str) -> str: ...
 [case testModuleLevelGetattrInvalidSignature]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "builtins.str"
 
 [file has_getattr.pyi]
-def __getattr__(x: int, y: str) -> str: ...
-
-[out]
-tmp/has_getattr.pyi:1: error: Invalid signature "Callable[[int, str], str]" for "__getattr__"
-main:3: note: Revealed type is "builtins.str"
-
+def __getattr__(x: int, y: str) -> str: ...  # E: Invalid signature "Callable[[int, str], str]" for "__getattr__"
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrNotCallable]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "Any"
 
 [file has_getattr.pyi]
-__getattr__ = 3
-
-[out]
-tmp/has_getattr.pyi:1: error: Invalid signature "int" for "__getattr__"
-main:3: note: Revealed type is "Any"
-
+__getattr__ = 3  # E: Invalid signature "int" for "__getattr__"
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrUntyped]
@@ -2195,17 +2175,13 @@ __getattr__ = make_getattr_good()  # OK
 
 [case testModuleLevelGetattrAssignedBad]
 import non_stub
-reveal_type(non_stub.name)
+reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
 [file non_stub.py]
 from typing import Callable
 
 def make_getattr_bad() -> Callable[[], int]: ...
-__getattr__ = make_getattr_bad()
-
-[out]
-tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
-main:2: note: Revealed type is "builtins.int"
+__getattr__ = make_getattr_bad()  # E: Invalid signature "Callable[[], int]" for "__getattr__"
 
 [case testModuleLevelGetattrImportedGood]
 import non_stub
@@ -2219,18 +2195,13 @@ def __getattr__(name: str) -> int: ...
 
 [case testModuleLevelGetattrImportedBad]
 import non_stub
-reveal_type(non_stub.name)
+reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
 [file non_stub.py]
 from has_getattr import __getattr__
 
 [file has_getattr.py]
-def __getattr__() -> int: ...
-
-[out]
-tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
-main:2: note: Revealed type is "builtins.int"
-
+def __getattr__() -> int: ...  # E: Invalid signature "Callable[[], int]" for "__getattr__"
 [builtins fixtures/module.pyi]
 
 -- Parallel mode gives only_once notes once *per worker*
