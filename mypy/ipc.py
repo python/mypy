@@ -431,6 +431,18 @@ def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> lis
                 ready.append(i)
             else:
                 ov.cancel()
+                # CancelIoEx is asynchronous -- wait for it to finalize so we
+                # can tell whether the read actually completed before the cancel
+                # took effect.  If it did, the byte has been consumed from the
+                # pipe and must be preserved in the connection buffer.
+                if _winapi.WaitForSingleObject(ov.event, 1000) == _winapi.WAIT_OBJECT_0:
+                    try:
+                        ov.GetOverlappedResult(False)
+                    except OSError:
+                        continue
+                    data = ov.getbuffer()
+                    if data:
+                        conns[i].buffer.extend(data)
 
         return ready
 
