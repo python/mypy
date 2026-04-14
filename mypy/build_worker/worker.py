@@ -95,7 +95,7 @@ def main(argv: list[str]) -> None:
     server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
 
     if sys.platform == "win32":
-        print("Writing status file:", status_file)
+        print(f"Writing status file: {status_file} at {time.time()}")
 
     try:
         with open(status_file, "w") as f:

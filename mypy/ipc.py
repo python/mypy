@@ -12,6 +12,7 @@ import shutil
 import struct
 import sys
 import tempfile
+import time
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from select import select
@@ -362,7 +363,7 @@ def read_status(status_file: str) -> dict[str, object]:
     invalid JSON or the JSON is not a dict.
     """
     if sys.platform == "win32":
-        print("Reading status file:", status_file)
+        print(f"Reading status file: {status_file} at {time.time()}")
     if not os.path.isfile(status_file):
         raise BadStatus("No status file found")
     with open(status_file) as f:
