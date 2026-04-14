@@ -91,6 +91,7 @@ from mypy.checker import DeferredNode, TypeChecker
 from mypy.defaults import (
     WORKER_CONNECTION_TIMEOUT,
     WORKER_DONE_TIMEOUT,
+    WORKER_SHUTDOWN_TIMEOUT,
     WORKER_START_INTERVAL,
     WORKER_START_TIMEOUT,
 )
@@ -288,7 +289,6 @@ class WorkerClient:
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
         last_exception: Exception | None = None
-        print(f"Reading until: {end_time}")
         while time.time() < end_time:
             try:
                 data = read_status(self.status_file)
@@ -310,14 +310,14 @@ class WorkerClient:
             except Exception as exc:
                 last_exception = exc
                 break
-        print(f"Failed to establish connection with worker: {last_exception} at {time.time()}")
+        print(f"Failed to establish connection with worker: {last_exception}")
 
     def close(self) -> None:
         if self.connected:
             self.conn.close()
         # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
         try:
-            self.proc.wait(timeout=1)
+            self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
             pass
         if os.path.isfile(self.status_file):
@@ -349,7 +349,7 @@ def build(
 
     If a flush_errors callback is provided, all error messages will be
     passed to it and the errors and messages fields of BuildResult and
-    CompileError (respectively) will be empty. Otherwise those fields will
+    CompileError (respectively) will be empty. Otherwise, those fields will
     report any error messages.
 
     Args:
@@ -359,6 +359,9 @@ def build(
         (takes precedence over other directories)
       flush_errors: optional function to flush errors after a file is processed
       fscache: optionally a file-system cacher
+      stdout: Output stream to use instead of `sys.stdout`
+      stderr: Error stream to use instead of `sys.stderr`
+      extra_plugins: Plugins to use in addition to those loaded from config
       worker_env: An environment to start parallel build workers (used for tests)
     """
     # If we were not given a flush_errors, we use one that will populate those

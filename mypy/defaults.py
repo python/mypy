@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Final
 
 # Earliest fully supported Python 3.x version. Used as the default Python
@@ -45,8 +46,12 @@ MANY_ERRORS_THRESHOLD: Final = -1
 
 RECURSION_LIMIT: Final = 2**14
 
-WORKER_START_INTERVAL: Final = 0.01
-WORKER_START_TIMEOUT: Final = 3
+# It looks like Windows is slow with processes, causing test flakiness even
+# with our generous timeouts, so we set them higher.
+WORKER_START_INTERVAL: Final = 0.01 if sys.platform != "win32" else 0.03
+WORKER_START_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
+WORKER_SHUTDOWN_TIMEOUT: Final = 1 if sys.platform != "win32" else 3
+
 WORKER_CONNECTION_TIMEOUT: Final = 10
 WORKER_IDLE_TIMEOUT: Final = 600
 WORKER_DONE_TIMEOUT: Final = 600
