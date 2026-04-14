@@ -2138,6 +2138,38 @@ class NonNative:
 class InterpSub:
     pass
 
+[case testAcyclicClassRequiresAcyclicBases]
+from typing import Generic, TypeVar
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+
+class NonAcyclicBase:
+    pass
+
+@mypyc_attr(acyclic=True)
+class AcyclicBase:
+    pass
+
+@mypyc_attr(acyclic=True)
+class GoodDerived(AcyclicBase):
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadDerived(NonAcyclicBase):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "__main__.NonAcyclicBase"
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadGeneric(Generic[T]):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "typing.Generic"
+    pass
+
+[case testAcyclicGenericIsRejected_python3_12]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(acyclic=True)
+class BadGeneric[T]:  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "typing.Generic"
+    pass
+
 [case testUnsupportedGetAttr]
 from mypy_extensions import mypyc_attr
 
