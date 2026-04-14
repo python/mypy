@@ -1957,7 +1957,9 @@ class TypeConverter:
 
         if not isinstance(self.parent(), ast3.List):
             note = None
-            if constructor:
+            if constructor and not e.keywords:
+                # Only suggest Foo[...] when there are no keyword arguments,
+                # since Foo[arg=val] is a SyntaxError (see #16506).
                 note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:

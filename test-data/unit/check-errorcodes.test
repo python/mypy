@@ -122,6 +122,11 @@ for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxError4_no_native_parse]
+# Keyword arguments in type annotation should not suggest Foo[...] (see #16506)
+def f(a: Foo(arg=int)) -> int:  # E: Invalid type comment or annotation  [valid-type]
+    pass
+
 [case testErrorCodeSyntaxErrorIgnoreNote]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # type: ignore[valid-type]
