@@ -6963,3 +6963,25 @@ def f(x: Union[Literal["b"], str]) -> str: ...
 def f(x: str) -> object:
     return x
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralOptionalArgNotDisjoint]
+# Overloads that differ in an optional positional Literal arg still overlap:
+# a call like f(1) omits mode and matches both signatures.
+from typing import Literal, overload
+@overload
+def f(x: int, mode: Literal[True] = ...) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  # N: Flipping the order of overloads will fix this error
+@overload
+def f(x: object, mode: Literal[False] = ...) -> str: ...
+def f(x: object, mode: bool = True) -> object: ...
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralOptionalKwOnlyNotDisjoint]
+# Overloads that differ in an optional keyword-only Literal arg still overlap:
+# a call like f(1) omits mode and matches both signatures.
+from typing import Literal, overload
+@overload
+def f(x: int, *, mode: Literal[True] = ...) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  # N: Flipping the order of overloads will fix this error
+@overload
+def f(x: object, *, mode: Literal[False] = ...) -> str: ...
+def f(x: object, *, mode: bool = True) -> object: ...
+[builtins fixtures/tuple.pyi]

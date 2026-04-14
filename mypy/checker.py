@@ -8977,13 +8977,21 @@ LiteralFingerprint = dict[int, frozenset[tuple[type, LiteralValue]]]
 def build_literal_fingerprint(sig: CallableType) -> LiteralFingerprint:
     """Build a LiteralFingerprint for one overload signature.
 
-    Each argument position that carries only LiteralType values (including
-    unions such as ``Literal["a", "b"]``) is recorded as a frozenset of
-    ``(type(value), value)`` pairs.  Positions with any non-literal type are
-    omitted so the disjointedness check is conservative.
+    Each *required* argument position (ARG_POS or ARG_NAMED) that carries only
+    LiteralType values (including unions such as ``Literal["a", "b"]``) is
+    recorded as a frozenset of ``(type(value), value)`` pairs.  Positions with
+    any non-literal type, or with an optional argument kind (ARG_OPT,
+    ARG_NAMED_OPT, ARG_STAR, ARG_STAR2), are omitted.
+
+    Optional arguments are excluded because a caller can always omit them,
+    meaning two overloads that differ only in an optional Literal argument still
+    overlap (a call that omits the argument matches both).  Only required
+    arguments can prove that no single call can match both overloads.
     """
     fingerprint: LiteralFingerprint = {}
-    for idx, arg_type in enumerate(sig.arg_types):
+    for idx, (arg_kind, arg_type) in enumerate(zip(sig.arg_kinds, sig.arg_types)):
+        if not arg_kind.is_required():
+            continue
         proper = get_proper_type(arg_type)
         if isinstance(proper, LiteralType):
             fingerprint[idx] = frozenset([(type(proper.value), proper.value)])
