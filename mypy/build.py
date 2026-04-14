@@ -3992,8 +3992,9 @@ def dispatch(
         # Wait for workers since they may be needed at this point.
         for thread in connect_threads:
             thread.join()
-        if not all(wc.connected for wc in manager.workers):
-            raise OSError("Build workers failed to start")
+        not_connected = [str(idx) for idx, wc in enumerate(manager.workers) if not wc.connected]
+        if not_connected:
+            raise OSError(f"Cannot connect to build worker(s): {', '.join(not_connected)}")
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
