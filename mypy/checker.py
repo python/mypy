@@ -6560,6 +6560,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         operands = [collapse_walrus(x) for x in node.operands]
         operand_types = []
         narrowable_operand_index_to_hash = {}
+        narrowable_operand_hash_to_index = {}
         for i, expr in enumerate(operands):
             if not self.has_type(expr):
                 return {}, {}
@@ -6584,6 +6585,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 h = literal_hash(expr)
                 if h is not None:
                     narrowable_operand_index_to_hash[i] = h
+                    narrowable_operand_hash_to_index[h] = i
 
         # Step 2: Group operands chained by either the 'is' or '==' operands
         # together. For all other operands, we keep them in groups of size 2.
@@ -6674,6 +6676,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if_map, else_map = else_map, if_map
 
             partial_type_maps.append((if_map, else_map))
+
+            # Chained comparisons are conjunctions evaluated left-to-right. Feed what we learned
+            # from earlier true comparisons into later comparisons, similarly to `and`.
+            if len(simplified_operator_list) > 1:
+                for expr, expr_type in if_map.items():
+                    h = literal_hash(expr)
+                    if h is None or h not in narrowable_operand_hash_to_index:
+                        continue
+                    operand_index = narrowable_operand_hash_to_index[h]
+                    operand_types[operand_index] = meet_types(
+                        operand_types[operand_index], expr_type
+                    )
 
         # If we have found non-trivial restrictions from the regular comparisons,
         # then return soon. Otherwise try to infer restrictions involving `len(x)`.
@@ -6959,10 +6973,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
         """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
 
-        Specifically, this function accepts two mappings of expression to original types:
-        the original mapping (existing_types), and a new mapping (new_types) intended to
-        update the original.
-
         This function iterates through new_types and attempts to use the information to try
         refining any parent types that happen to be unions.
 
@@ -6981,23 +6991,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
-        output_map = {}
+        all_mappings = [new_types]
         for expr, expr_type in new_types.items():
-            # The original inferred type should always be present in the output map, of course
-            output_map[expr] = expr_type
+            all_mappings.append(self.refine_parent_types(expr, expr_type))
+        return reduce_and_conditional_type_maps(all_mappings, use_meet=True)
 
-            # Next, try using this information to refine the parent types, if applicable.
-            new_mapping = self.refine_parent_types(expr, expr_type)
-            for parent_expr, proposed_parent_type in new_mapping.items():
-                # We don't try inferring anything if we've already inferred something for
-                # the parent expression.
-                # TODO: Consider picking the narrower type instead of always discarding this?
-                if parent_expr in new_types:
-                    continue
-                output_map[parent_expr] = proposed_parent_type
-        return output_map
-
-    def refine_parent_types(self, expr: Expression, expr_type: Type) -> Mapping[Expression, Type]:
+    def refine_parent_types(self, expr: Expression, expr_type: Type) -> TypeMap:
         """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
         the parent types based on the 'expr_type'.
 
@@ -8746,6 +8745,8 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
         return ms[0]
     result = ms[0]
     for m in ms[1:]:
+        if not m:
+            continue  # this is a micro-optimisation
         result = and_conditional_maps(result, m, use_meet=use_meet)
     return result
 

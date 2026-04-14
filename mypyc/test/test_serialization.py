@@ -91,6 +91,8 @@ def assert_modules_same(ir1: ModuleIR, ir2: ModuleIR) -> None:
 
     assert_blobs_same(ir1.final_names, ir2.final_names, (ir1.fullname, "final_names"))
 
+    assert ir1.dependencies == ir2.dependencies
+
 
 def check_serialization_roundtrip(irs: dict[str, ModuleIR]) -> None:
     """Check that we can serialize modules out and deserialize them to the same thing."""
