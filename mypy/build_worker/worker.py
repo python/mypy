@@ -216,7 +216,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             try:
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
-                manager.metastore.commit()
+                manager.commit()
             except CompileError as blocker:
                 message = SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
             else:

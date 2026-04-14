@@ -969,9 +969,12 @@ class BuildManager:
 
     def dump_stats(self) -> None:
         if self.stats_enabled:
-            print("Stats:")
+            lines = ["Stats:"]
             for key, value in sorted(self.stats_summary().items()):
-                print(f"{key + ':':24}{value}")
+                fmt = ".3f" if isinstance(value, float) else "d"
+                lines.append(f"{key + ':':24}{value:{fmt}}")
+            # Call print once so that we don't get a mess in parallel mode.
+            print("\n".join(lines) + "\n\n", end="")
 
     def parse_all(self, states: list[State]) -> None:
         """Parse multiple files in parallel (if possible) and compute dependencies."""
@@ -1377,7 +1380,7 @@ class BuildManager:
             results.update(data.result)
             if data.is_interface:
                 done_sccs.append(self.scc_by_id[scc_id])
-            self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
+        self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         self.submit_to_workers(graph)  # advance after some workers are free.
         return (
             # Note that "done" means interface-ready in this context. This is what
