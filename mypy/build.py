@@ -1294,9 +1294,20 @@ class BuildManager:
 
     def wait_ack(self) -> None:
         """Wait for an ack from all workers."""
-        for worker in self.workers:
-            buf = receive(worker.conn)
+        for idx in range(len(self.workers)):
+            buf = self.receive_worker_message(idx)
             assert read_tag(buf) == ACK_MESSAGE
+
+    def receive_worker_message(self, idx: int) -> ReadBuffer:
+        """Receive a single message from a worker, with crash diagnostics."""
+        try:
+            return receive(self.workers[idx].conn)
+        except OSError as exc:
+            exit_code = self.workers[idx].proc.poll()
+            exit_status = f"exit code {exit_code}" if exit_code is not None else "still running"
+            raise OSError(
+                f"Worker {idx} disconnected before sending data ({exit_status})"
+            ) from exc
 
     def submit(self, graph: Graph, sccs: list[SCC]) -> None:
         """Submit a stale SCC for processing in current process or parallel workers."""
@@ -1367,7 +1378,7 @@ class BuildManager:
         ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
         t1 = time.time()
         for idx in ready:
-            buf = receive(self.workers[idx].conn)
+            buf = self.receive_worker_message(idx)
             assert read_tag(buf) == SCC_RESPONSE_MESSAGE
             data = SccResponseMessage.read(buf)
             if not data.is_interface:
