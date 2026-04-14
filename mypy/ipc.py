@@ -433,13 +433,25 @@ def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> lis
             # Wait for the cancel (or completed read) to finalize.
             _winapi.WaitForSingleObject(ov.event, 1000)
             try:
-                ov.GetOverlappedResult(False)
-            except OSError:
+                _, err = ov.GetOverlappedResult(False)
+            except OSError as e:
+                err = e.winerror
+                # Cancellation is expected here; broken/disconnected pipes should be
+                # surfaced as readable so the follow-up receive observes EOF/closure.
+                if err not in (
+                    _winapi.ERROR_OPERATION_ABORTED,
+                    _winapi.ERROR_BROKEN_PIPE,
+                    _winapi.ERROR_NETNAME_DELETED,
+                ):
+                    # Anything else is a real IPC failure, not part of the probe race.
+                    raise
+            if err == _winapi.ERROR_OPERATION_ABORTED:
                 # Operation was successfully cancelled -- no data consumed.
                 continue
-            data = ov.getbuffer()
-            if data:
-                conns[i].buffer.extend(data)
+            if err == 0:
+                data = ov.getbuffer()
+                if data:
+                    conns[i].buffer.extend(data)
             ready.append(i)
 
         return ready
