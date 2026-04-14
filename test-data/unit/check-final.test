@@ -60,8 +60,6 @@ reveal_type(C().x)  # N: Revealed type is "builtins.float"
 [out]
 
 [case testFinalInvalidDefinitions]
-
-# Errors are shown in a different order with the new analyzer.
 from typing import Final, Any
 
 x = y = 1  # type: Final[float]  # E: Invalid final declaration
@@ -432,7 +430,6 @@ y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
 # flags: --disallow-redefinition
-# Error formatting is subtly different with new analyzer.
 from typing import Final
 
 x: Final = 1
@@ -459,16 +456,14 @@ z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleReexport]
-
-# Error formatting is subtly different with the new analyzer.
 from typing import Final
 
 from lib import X
 from lib.mod import ID
 
-X = 1  # Error!
-ID: Final = 1  # Two errors!
-ID = 1  # Error!
+X = 1  # E: Cannot assign to final name "X"
+ID: Final = 1  # E: Cannot redefine an existing name as final
+ID = 1  # E: Cannot assign to final name "ID"
 [file lib/__init__.pyi]
 from lib.const import X as X
 
@@ -478,13 +473,8 @@ from lib.const import *
 [file lib/const.pyi]
 from typing import Final
 
-ID: Final  # Error!
+ID: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 X: Final[int]
-[out]
-tmp/lib/const.pyi:3: error: Type in Final[...] can only be omitted if there is an initializer
-main:8: error: Cannot assign to final name "X"
-main:9: error: Cannot redefine an existing name as final
-main:10: error: Cannot assign to final name "ID"
 
 [case testFinalReassignFuncScope]
 from typing import Final
