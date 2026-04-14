@@ -430,10 +430,8 @@ def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> lis
         for _, ov in pending:
             ov.cancel()
         for i, ov in pending:
-            # Wait for the cancel (or completed read) to finalize.
-            _winapi.WaitForSingleObject(ov.event, 1000)
             try:
-                _, err = ov.GetOverlappedResult(False)
+                _, err = ov.GetOverlappedResult(True)
             except OSError as e:
                 err = e.winerror
                 # Cancellation is expected here; broken/disconnected pipes should be
