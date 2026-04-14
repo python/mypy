@@ -288,6 +288,7 @@ class WorkerClient:
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
         last_exception: Exception | None = None
+        print(f"Reading until: {end_time}")
         while time.time() < end_time:
             try:
                 data = read_status(self.status_file)
@@ -309,10 +310,11 @@ class WorkerClient:
             except Exception as exc:
                 last_exception = exc
                 break
-        print("Failed to establish connection with worker:", last_exception)
+        print(f"Failed to establish connection with worker: {last_exception} at {time.time()}")
 
     def close(self) -> None:
-        self.conn.close()
+        if self.connected:
+            self.conn.close()
         # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
         try:
             self.proc.wait(timeout=1)
