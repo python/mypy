@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.deps import Capsule, Dependency, SourceDep
+from mypyc.ir.deps import Capsule, Dependency, HeaderDep, SourceDep
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType, deserialize_type
@@ -48,6 +48,14 @@ class ModuleIR:
                     "internal": dep.internal,
                 }
                 serialized_deps.append(source_dep)
+            elif isinstance(dep, HeaderDep):
+                header_dep: JsonDict = {
+                    "type": "HeaderDep",
+                    "path": dep.path,
+                    "include_dirs": dep.include_dirs,
+                    "internal": dep.internal,
+                }
+                serialized_deps.append(header_dep)
 
         return {
             "fullname": self.fullname,
@@ -77,6 +85,14 @@ class ModuleIR:
             elif dep_dict["type"] == "SourceDep":
                 deps.add(
                     SourceDep(
+                        dep_dict["path"],
+                        include_dirs=dep_dict["include_dirs"],
+                        internal=dep_dict["internal"],
+                    )
+                )
+            elif dep_dict["type"] == "HeaderDep":
+                deps.add(
+                    HeaderDep(
                         dep_dict["path"],
                         include_dirs=dep_dict["include_dirs"],
                         internal=dep_dict["internal"],

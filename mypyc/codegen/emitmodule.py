@@ -56,7 +56,15 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, LIBRT_TIME, LIBRT_VECS, SourceDep
+from mypyc.ir.deps import (
+    LIBRT_BASE64,
+    LIBRT_STRINGS,
+    LIBRT_TIME,
+    LIBRT_VECS,
+    Capsule,
+    HeaderDep,
+    SourceDep,
+)
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -436,24 +444,31 @@ def load_scc_from_cache(
     return modules
 
 
-def collect_source_dependencies(
-    modules: dict[str, ModuleIR], *, internal: bool = True
-) -> set[SourceDep]:
-    """Collect all SourceDep dependencies from all modules.
-
-    If internal is set to False, returns only the dependencies that can be exported to C extensions
-    dependent on the one currently being compiled.
-    """
+def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
+    """Collect all SourceDep dependencies from all modules."""
     source_deps: set[SourceDep] = set()
     for module in modules.values():
         for dep in module.dependencies:
             if isinstance(dep, SourceDep):
-                if internal == dep.internal:
+                if dep.internal:
                     source_deps.add(dep)
+            elif isinstance(dep, Capsule):
+                source_deps.add(dep.internal_dep())
+    return source_deps
+
+
+def collect_header_dependencies(modules: dict[str, ModuleIR], *, internal: bool) -> set[str]:
+    """Collect all header dependencies from all modules."""
+    header_deps: set[str] = set()
+    for module in modules.values():
+        for dep in module.dependencies:
+            if isinstance(dep, (SourceDep, HeaderDep)):
+                if dep.internal == internal:
+                    header_deps.add(dep.get_header())
             else:
                 capsule_dep = dep.internal_dep() if internal else dep.external_dep()
-                source_deps.add(capsule_dep)
-    return source_deps
+                header_deps.add(capsule_dep.get_header())
+    return header_deps
 
 
 def compile_modules_to_c(
@@ -652,9 +667,9 @@ class GroupGenerator:
             if self.compiler_options.depends_on_librt_internal:
                 decls.emit_line(f'#include "internal/librt_internal{suffix}.h"')
             # Include headers for conditional source files
-            source_deps = collect_source_dependencies(self.modules, internal=internal)
-            for source_dep in sorted(source_deps, key=lambda d: d.path):
-                decls.emit_line(f'#include "{source_dep.get_header()}"')
+            header_deps = collect_header_dependencies(self.modules, internal=internal)
+            for header_dep in sorted(header_deps):
+                decls.emit_line(f'#include "{header_dep}"')
 
         emit_dep_headers(ext_declarations, False)
 
