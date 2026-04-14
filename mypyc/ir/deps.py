@@ -26,11 +26,8 @@ class Capsule:
         module = self.name.split(".")[-1]
         return SourceDep(f"{module}/librt_{module}_api.c", include_dirs=[module])
 
-    # TODO: This SourceDep is really only used for its associated header so it would make more sense
-    # to add a separate type. Alternatively, see if this can be removed altogether if we move the
-    # definitions that depend on this header from the external header of the C extension.
-    def external_dep(self) -> SourceDep:
-        """External source dependency of the capsule that may be included in external headers of C
+    def external_dep(self) -> HeaderDep:
+        """External header dependency of the capsule that may be included in external headers of C
         extensions that depend on the capsule.
 
         The external headers of the C extensions are included by other C extensions that don't
@@ -42,7 +39,7 @@ class Capsule:
         including the internal header would result in undefined symbols.
         """
         module = self.name.split(".")[-1]
-        return SourceDep(f"{module}/librt_{module}.c", include_dirs=[module], internal=False)
+        return HeaderDep(f"{module}/librt_{module}.h", include_dirs=[module], internal=False)
 
 
 class SourceDep:
@@ -76,7 +73,36 @@ class SourceDep:
         return self.path.replace(".c", ".h")
 
 
-Dependency = Capsule | SourceDep
+class HeaderDep:
+    """Defines a C header file that a primitive may require.
+
+    The header gets explicitly #included if the dependency is used.
+    include_dirs are passed to the C compiler when the generated extension
+    is compiled separately and needs to include the header.
+    """
+
+    def __init__(
+        self, path: str, *, include_dirs: list[str] | None = None, internal: bool = True
+    ) -> None:
+        # Relative path from mypyc/lib-rt, e.g. 'strings/librt_strings.h'
+        self.path: Final = path
+        self.include_dirs: Final = include_dirs or []
+        self.internal: Final = internal
+
+    def __repr__(self) -> str:
+        return f"HeaderDep(path={self.path!r})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, HeaderDep) and self.path == other.path
+
+    def __hash__(self) -> int:
+        return hash(("HeaderDep", self.path))
+
+    def get_header(self) -> str:
+        return self.path
+
+
+Dependency = Capsule | SourceDep | HeaderDep
 
 
 LIBRT_STRINGS: Final = Capsule("librt.strings")
