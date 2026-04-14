@@ -448,7 +448,7 @@ def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> lis
             if err == _winapi.ERROR_OPERATION_ABORTED:
                 # Operation was successfully cancelled -- no data consumed.
                 continue
-            if err == 0:
+            if err in (0, _winapi.ERROR_MORE_DATA):
                 data = ov.getbuffer()
                 if data:
                     conns[i].buffer.extend(data)
