@@ -421,28 +421,26 @@ def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> lis
                     ov.cancel()
                 raise IPCException(f"Failed to wait for connections: {_winapi.GetLastError()}")
 
-        # Check which pending operations completed, cancel the rest
+        # Cancel all pending operations. CancelIoEx is asynchronous, so an
+        # operation may have completed before the cancel took effect. We then
+        # wait for all operations to finalize and check each result: completed
+        # reads get their data saved and are marked ready; cancelled ones are
+        # simply skipped. This avoids a race between checking if an operation
+        # is signaled and cancelling it.
+        for _, ov in pending:
+            ov.cancel()
         for i, ov in pending:
-            if _winapi.WaitForSingleObject(ov.event, 0) == _winapi.WAIT_OBJECT_0:
-                _, err = ov.GetOverlappedResult(True)
-                data = ov.getbuffer()
-                if data:
-                    conns[i].buffer.extend(data)
-                ready.append(i)
-            else:
-                ov.cancel()
-                # CancelIoEx is asynchronous -- wait for it to finalize so we
-                # can tell whether the read actually completed before the cancel
-                # took effect.  If it did, the byte has been consumed from the
-                # pipe and must be preserved in the connection buffer.
-                if _winapi.WaitForSingleObject(ov.event, 1000) == _winapi.WAIT_OBJECT_0:
-                    try:
-                        ov.GetOverlappedResult(False)
-                    except OSError:
-                        continue
-                    data = ov.getbuffer()
-                    if data:
-                        conns[i].buffer.extend(data)
+            # Wait for the cancel (or completed read) to finalize.
+            _winapi.WaitForSingleObject(ov.event, 1000)
+            try:
+                ov.GetOverlappedResult(False)
+            except OSError:
+                # Operation was successfully cancelled -- no data consumed.
+                continue
+            data = ov.getbuffer()
+            if data:
+                conns[i].buffer.extend(data)
+            ready.append(i)
 
         return ready
 
