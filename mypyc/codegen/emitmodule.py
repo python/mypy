@@ -457,9 +457,7 @@ def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
     return source_deps
 
 
-def collect_header_dependencies(
-    modules: dict[str, ModuleIR], *, internal: bool
-) -> set[str]:
+def collect_header_dependencies(modules: dict[str, ModuleIR], *, internal: bool) -> set[str]:
     """Collect all header dependencies from all modules."""
     header_deps: set[str] = set()
     for module in modules.values():
