@@ -361,6 +361,8 @@ def read_status(status_file: str) -> dict[str, object]:
     Raise BadStatus if the status file doesn't exist or contains
     invalid JSON or the JSON is not a dict.
     """
+    if sys.platform == "win32":
+        print("Reading status file:", status_file)
     if not os.path.isfile(status_file):
         raise BadStatus("No status file found")
     with open(status_file) as f:

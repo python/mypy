@@ -283,6 +283,7 @@ class WorkerClient:
         ]
         # Return early without waiting, caller must call connect() before using the client.
         self.proc = subprocess.Popen(command, env=env)
+        self.connected = False
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
@@ -303,12 +304,12 @@ class WorkerClient:
                     # verify PIDs reliably.
                     assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
+                self.connected = True
                 return
             except Exception as exc:
                 last_exception = exc
                 break
         print("Failed to establish connection with worker:", last_exception)
-        sys.exit(2)
 
     def close(self) -> None:
         self.conn.close()
@@ -394,6 +395,8 @@ def build(
         def connect(wc: WorkerClient, data: bytes) -> None:
             # Start loading sources in each worker as soon as it is up.
             wc.connect()
+            if not wc.connected:
+                return
             wc.conn.write_bytes(data)
 
         # We don't wait for workers to be ready until they are actually needed.
@@ -432,6 +435,8 @@ def build(
         for thread in connect_threads:
             thread.join()
         for worker in workers:
+            if not worker.connected:
+                continue
             try:
                 send(worker.conn, SccRequestMessage(scc_id=None, import_errors={}, mod_data={}))
             except (OSError, IPCException):
@@ -3972,6 +3977,8 @@ def dispatch(
         # Wait for workers since they may be needed at this point.
         for thread in connect_threads:
             thread.join()
+        if not all(wc.connected for wc in manager.workers):
+            raise OSError("Build workers failed to start")
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)

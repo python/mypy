@@ -94,6 +94,9 @@ def main(argv: list[str]) -> None:
     status_file = args.status_file
     server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
 
+    if sys.platform == "win32":
+        print("Writing status file:", status_file)
+
     try:
         with open(status_file, "w") as f:
             json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
