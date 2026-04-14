@@ -404,6 +404,35 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 )
         else:
             # Otherwise, use direct or offset struct access.
+            # For classes with allow_interpreted_subclasses, an interpreted
+            # subclass may override class attributes in its __dict__. The
+            # compiled code reads from instance struct slots, so we check if
+            # the instance is a compiled type (via tp_flags). If not, fall
+            # back to Python's generic attribute lookup which respects the MRO.
+            # We use the CPy_TPFLAGS_MYPYC_COMPILED flag (set on all mypyc-compiled
+            # types) so that compiled subclasses get direct struct access while only
+            # interpreted subclasses hit the slow path.
+            use_fallback = cl.allow_interpreted_subclasses and not cl.is_trait
+            if use_fallback:
+                fallback_attr = self.emitter.temp_name()
+                fallback_result = self.emitter.temp_name()
+                self.declarations.emit_line(f"PyObject *{fallback_attr};")
+                self.declarations.emit_line(f"PyObject *{fallback_result};")
+                self.emit_line(f"if (!(Py_TYPE({obj})->tp_flags & CPy_TPFLAGS_MYPYC_COMPILED)) {{")
+                self.emit_line(f'{fallback_attr} = PyUnicode_FromString("{op.attr}");')
+                self.emit_line(
+                    f"{fallback_result} = PyObject_GenericGetAttr((PyObject *){obj}, {fallback_attr});"
+                )
+                self.emit_line(f"Py_DECREF({fallback_attr});")
+                if attr_rtype.is_unboxed:
+                    self.emitter.emit_unbox(
+                        fallback_result, dest, attr_rtype, raise_exception=False
+                    )
+                    self.emit_line(f"Py_XDECREF({fallback_result});")
+                else:
+                    self.emit_line(f"{dest} = {fallback_result};")
+                self.emit_line("} else {")
+
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)
@@ -445,6 +474,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     self.emit_line("goto %s;" % self.label(merged_branch.false))
                 self.op_index += 1
             elif not always_defined:
+                self.emitter.emit_line("}")
+
+            if use_fallback:
                 self.emitter.emit_line("}")
 
     def get_attr_with_allow_error_value(self, op: GetAttr) -> None:
