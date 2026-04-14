@@ -913,37 +913,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         is_descriptor_get = defn.info and defn.name == "__get__"
 
-        # Pre-extract callable types and literal fingerprints for each overload item.
-        item_sigs: list[CallableType | None] = []
-        item_literal_fingerprints: list[LiteralFingerprint] = []
-        for item in defn.items:
-            assert isinstance(item, Decorator)
-            sig = self.extract_callable_type(item.var.type, item)
-            item_sigs.append(sig)
-            item_literal_fingerprints.append(
-                build_literal_fingerprint(sig) if sig is not None else {}
-            )
-
+        # Pre-extract callable types and literal fingerprints for each overload
+        # item, skipping items whose signature could not be extracted.
+        # Each entry is (original 0-based index, Decorator, sig, fingerprint).
+        prepared_items: list[tuple[int, Decorator, CallableType, LiteralFingerprint]] = []
         for i, item in enumerate(defn.items):
             assert isinstance(item, Decorator)
-            sig1 = item_sigs[i]
-            if sig1 is None:
-                continue
+            sig = self.extract_callable_type(item.var.type, item)
+            if sig is not None:
+                prepared_items.append((i, item, sig, build_literal_fingerprint(sig)))
 
-            for j, item2 in enumerate(defn.items[i + 1 :], i + 1):
-                assert isinstance(item2, Decorator)
-                sig2 = item_sigs[j]
-                if sig2 is None:
-                    continue
-
+        for prepared_items_i, (i, item, sig1, literals_fingerprint1) in enumerate(prepared_items):
+            for j, item2, sig2, literals_fingerprint2 in prepared_items[prepared_items_i + 1 :]:
                 if not are_argument_counts_overlapping(sig1, sig2):
                     continue
 
                 # If there is any argument position where both overloads
                 # carry a LiteralType with different values they are disjoint.
-                if literal_args_are_disjoint(
-                    item_literal_fingerprints[i], item_literal_fingerprints[j]
-                ):
+                if literal_args_are_disjoint(literals_fingerprint1, literals_fingerprint2):
                     continue
 
                 if overload_can_never_match(sig1, sig2):
@@ -8978,13 +8965,45 @@ def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -
     return typ.copy_modified(variables=list(typ.variables) + class_type_vars)
 
 
-# Fingerprint type for literal-disjointness checks: maps argument index to
+# Fingerprint type for literal-disjointedness checks: maps argument index to
 # the set of (Python type of value, value) pairs present at that position.
 # Using type(value) as part of the key means Literal[1] (int) and
 # Literal[True] (bool) are kept distinct even though 1 == True in Python.
 # A union such as Literal["a", "b"] or Literal["a"] | Literal["b"] produces
-# a frozenset of two entries; a plain Literal["a"] produces a singleton set.
+# a frozenset of two entries; a plain Literal["a"] produces a length 1 set.
 LiteralFingerprint = dict[int, frozenset[tuple[type, LiteralValue]]]
+
+
+def build_literal_fingerprint(sig: CallableType) -> LiteralFingerprint:
+    """Build a LiteralFingerprint for one overload signature.
+
+    Each argument position that carries only LiteralType values (including
+    unions such as ``Literal["a", "b"]``) is recorded as a frozenset of
+    ``(type(value), value)`` pairs.  Positions with any non-literal type are
+    omitted so the disjointedness check is conservative.
+    """
+    fingerprint: LiteralFingerprint = {}
+    for idx, arg_type in enumerate(sig.arg_types):
+        proper = get_proper_type(arg_type)
+        if isinstance(proper, LiteralType):
+            fingerprint[idx] = frozenset([(type(proper.value), proper.value)])
+        elif isinstance(proper, UnionType):
+            # Literal["a", "b"] and Literal["a"] | Literal["b"] are both
+            # represented as a UnionType of LiteralTypes.  Collect all the
+            # literal values; if any member is not a LiteralType the whole
+            # position is skipped (a non-literal in the union makes it too
+            # broad to prove disjointedness).
+            vals: set[tuple[type, LiteralValue]] = set()
+            for member in proper.items:
+                m = get_proper_type(member)
+                if isinstance(m, LiteralType):
+                    vals.add((type(m.value), m.value))
+                else:
+                    vals = set()
+                    break
+            if vals:
+                fingerprint[idx] = frozenset(vals)
+    return fingerprint
 
 
 def literal_args_are_disjoint(fp1: LiteralFingerprint, fp2: LiteralFingerprint) -> bool:
@@ -8999,38 +9018,6 @@ def literal_args_are_disjoint(fp1: LiteralFingerprint, fp2: LiteralFingerprint) 
         if vals2 is not None and vals1.isdisjoint(vals2):
             return True
     return False
-
-
-def build_literal_fingerprint(sig: CallableType) -> LiteralFingerprint:
-    """Build a LiteralFingerprint for one overload signature.
-
-    Each argument position that carries only LiteralType values (including
-    unions such as ``Literal["a", "b"]``) is recorded as a frozenset of
-    ``(type(value), value)`` pairs.  Positions with any non-literal type are
-    omitted so the disjointness check is conservative.
-    """
-    fingerprint: LiteralFingerprint = {}
-    for idx, arg_type in enumerate(sig.arg_types):
-        proper = get_proper_type(arg_type)
-        if isinstance(proper, LiteralType):
-            fingerprint[idx] = frozenset([(type(proper.value), proper.value)])
-        elif isinstance(proper, UnionType):
-            # Literal["a", "b"] and Literal["a"] | Literal["b"] are both
-            # represented as a UnionType of LiteralTypes.  Collect all the
-            # literal values; if any member is not a LiteralType the whole
-            # position is skipped (a non-literal in the union makes it too
-            # broad to prove disjointness).
-            vals: set[tuple[type, LiteralValue]] = set()
-            for member in proper.items:
-                m = get_proper_type(member)
-                if isinstance(m, LiteralType):
-                    vals.add((type(m.value), m.value))
-                else:
-                    vals = set()
-                    break
-            if vals:
-                fingerprint[idx] = frozenset(vals)
-    return fingerprint
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
