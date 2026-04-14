@@ -133,7 +133,7 @@ class MypycPlugin(Plugin):
                 self.group_map[id] = (name, modules)
 
         self.compiler_options = compiler_options
-        self.metastore = create_metastore(options)
+        self.metastore = create_metastore(options, parallel_worker=False)
 
     def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
         # The config data we report is the group map entry for the module.
