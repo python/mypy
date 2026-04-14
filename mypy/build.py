@@ -1795,7 +1795,6 @@ def exclude_from_backups(target_dir: str) -> None:
 def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        print(f"Create metastore: {parallel_worker} at {time.time()}")
         mds: MetadataStore = SqliteMetadataStore(
             _cache_dir_prefix(options), set_journal_mode=not parallel_worker
         )
