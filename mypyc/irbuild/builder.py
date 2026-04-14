@@ -1553,8 +1553,7 @@ class IRBuilder:
         return (
             isinstance(obj_rtype, RInstance)
             and obj_rtype.class_ir.is_ext_class
-            and obj_rtype.class_ir.has_attr(expr.name)
-            and not obj_rtype.class_ir.get_method(expr.name)
+            and any(expr.name in ir.attributes for ir in obj_rtype.class_ir.mro)
         )
 
     def mark_block_unreachable(self) -> None:

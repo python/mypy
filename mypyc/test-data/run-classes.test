@@ -5925,3 +5925,47 @@ assert NonExtDict.BASE == {"x": 1}
 assert NonExtDict.EXTENDED == {"x": 1, "y": 2}
 
 assert NonExtChained.Z == {10, 20, 30}
+
+[case testPropertyGetterLeak]
+class Bar:
+    pass
+
+class Foo:
+    def __init__(self) -> None:
+        self.obj: object = Bar()
+
+    @property
+    def val(self) -> object:
+        return self.obj
+
+[file other.py]
+import gc
+from native import Foo, Bar
+
+def check(foo: Foo) -> bool:
+    return isinstance(foo.val, Bar)
+
+def test_property_getter_no_leak() -> None:
+    foo = Foo()
+    gc.collect()
+    before = gc.get_objects()
+    for _ in range(100):
+        check(foo)
+    gc.collect()
+    after = gc.get_objects()
+    diff = len(after) - len(before)
+    assert diff <= 2, diff
+
+test_property_getter_no_leak()
+
+[file driver.py]
+import sys
+from other import check
+from native import Foo
+
+foo = Foo()
+init = sys.getrefcount(foo.obj)
+for _ in range(100):
+    check(foo)
+after = sys.getrefcount(foo.obj)
+assert after - init == 0, f"Leaked {after - init} refs"
