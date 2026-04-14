@@ -379,12 +379,16 @@ def build(
 
     workers = []
     connect_threads = []
+    # A quasi-unique ID for this specific mypy invocation.
+    build_id = os.urandom(4).hex()
     if options.num_workers > 0:
         # TODO: switch to something more efficient than pickle (also in the daemon).
         pickled_options = pickle.dumps(options.snapshot())
         options_data = b64encode(pickled_options).decode()
         workers = [
-            WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
+            WorkerClient(
+                f".mypy_worker.{build_id}.{idx}.json", options_data, worker_env or os.environ
+            )
             for idx in range(options.num_workers)
         ]
         sources_message = SourcesDataMessage(sources=sources)
@@ -396,6 +400,7 @@ def build(
             # Start loading sources in each worker as soon as it is up.
             wc.connect()
             if not wc.connected:
+                # Caller should detect this and fail gracefully.
                 return
             wc.conn.write_bytes(data)
 
