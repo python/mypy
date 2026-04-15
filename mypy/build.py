@@ -1052,15 +1052,12 @@ class BuildManager:
         with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
             for state in parallel_states:
                 state.needs_parse = False
-                # New parser reads source from file directly, we do this only for
-                # the side effect of parsing inline mypy configurations.
-                state.get_source()
                 if state.id not in self.ast_cache:
                     self.log(f"Parsing {state.xpath} ({state.id})")
                     ignore_errors = state.ignore_all or state.options.ignore_errors
                     if ignore_errors:
                         self.errors.ignored_files.add(state.xpath)
-                    futures.append(executor.submit(state.parse_file_inner, state.source or ""))
+                    futures.append(executor.submit(state.parse_file_inner, ""))
                     parallel_parsed_states.append(state)
                     parallel_parsed_states_set.add(state)
                 else:
@@ -1093,6 +1090,25 @@ class BuildManager:
         for state in parallel_states:
             assert state.tree is not None
             if state in parallel_parsed_states_set:
+                # Extract source_hash and mypy_comments from raw_data produced by
+                # the native parser, avoiding a separate sequential get_source() call.
+                raw_data = state.tree.raw_data
+                if raw_data is not None:
+                    state.source_hash = raw_data.source_hash
+                    if raw_data.mypy_comments:
+                        changes, config_errors = parse_mypy_comments(
+                            raw_data.mypy_comments, state.options
+                        )
+                        state.options = state.options.apply_changes(changes)
+                        self.errors.set_file(state.xpath, state.id, state.options)
+                        for lineno, error in config_errors:
+                            self.error(lineno, error)
+                    state.check_for_invalid_options()
+                else:
+                    # Fallback for non-native parser path (shouldn't normally happen
+                    # in the parallel path, but be safe).
+                    state.get_source()
+                state.size_hint = os.path.getsize(state.xpath)
                 state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                 state.semantic_analysis_pass1()
                 self.ast_cache[state.id] = (state.tree, state.early_errors)
