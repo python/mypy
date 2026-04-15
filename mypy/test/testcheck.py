@@ -88,7 +88,7 @@ class TypeCheckSuite(DataSuite):
             for step in range(1, num_steps + 1):
                 idx = step - 2
                 ops = steps[idx] if idx < len(steps) and idx >= 0 else []
-                self.run_case_once(testcase, ops, step)
+                self.run_case_once(testcase, ops, step, True)
         else:
             self.run_case_once(testcase)
 
@@ -110,6 +110,7 @@ class TypeCheckSuite(DataSuite):
         testcase: DataDrivenTestCase,
         operations: list[FileOperation] | None = None,
         incremental_step: int = 0,
+        is_incremental: bool = False,
     ) -> None:
         if operations is None:
             operations = []
@@ -227,11 +228,18 @@ class TypeCheckSuite(DataSuite):
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a, incremental_step=incremental_step)
 
+        ignore_modules_order = False
         if options.num_workers > 0:
+            ignore_modules_order = is_incremental
             # TypeVarIds are not stable in parallel checking, normalize.
             a = remove_typevar_ids(a)
             output = remove_typevar_ids(output)
-        assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            output,
+            a,
+            msg.format(testcase.file, testcase.line),
+            ignore_modules_order=ignore_modules_order,
+        )
 
         if res:
             if options.cache_dir != os.devnull:
