@@ -4427,6 +4427,10 @@ def find_stale_sccs(
 
 def process_graph(graph: Graph, manager: BuildManager) -> None:
     """Process everything in dependency order."""
+    if manager.workers:
+        # Commit any cache writes from graph loading before workers try to read them.
+        manager.commit()
+
     # Broadcast graph to workers before computing SCCs to save a bit of time.
     # TODO: check if we can optimize by sending only part of the graph needed for given SCC.
     # For example only send modules in the SCC and their dependencies.
