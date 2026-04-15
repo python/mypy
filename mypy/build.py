@@ -1818,8 +1818,11 @@ def exclude_from_backups(target_dir: str) -> None:
 def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
+        num_shards = max(options.num_workers, 1)
         mds: MetadataStore = SqliteMetadataStore(
-            _cache_dir_prefix(options), set_journal_mode=not parallel_worker
+            _cache_dir_prefix(options),
+            set_journal_mode=not parallel_worker,
+            num_shards=num_shards,
         )
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
