@@ -1273,6 +1273,10 @@ class BuildManager:
         self.metastore.commit()
         self.add_stats(cache_commit_time=time.time() - t0)
 
+    def commit_module(self, meta_file: str) -> None:
+        """Commit cache writes for a single module (identified by its meta file path)."""
+        self.metastore.commit_path(meta_file)
+
     def verbosity(self) -> int:
         return self.options.verbosity
 
@@ -4682,6 +4686,8 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
     t4 = time.time()
     # Flush errors, and write cache in two phases: first data files, then meta files.
+    # The two-phase structure is needed because meta.dep_hashes references interface_hash
+    # values from other modules in the SCC, which are updated by write_cache().
     meta_tuples = {}
     errors_by_id = {}
     for id in stale:
@@ -4692,7 +4698,11 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
-        meta_tuples[id] = graph[id].write_cache()
+        meta_tuple = graph[id].write_cache()
+        meta_tuples[id] = meta_tuple
+        # Commit data file write immediately to avoid holding shard locks across modules.
+        if meta_tuple is not None:
+            manager.commit_module(meta_tuple[1])
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
@@ -4716,6 +4726,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             error_lines=errors_by_id.get(id, []),
         )
         write_cache_meta_ex(meta_file, meta_ex, manager)
+        manager.commit_module(meta_file)
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
         load_missing_time=t1 - t0,
@@ -4768,6 +4779,9 @@ def process_stale_scc_interface(
     for id in stale:
         meta_tuple = graph[id].write_cache()
         meta_tuples[id] = meta_tuple
+        # Commit data file write immediately to avoid holding shard locks across modules.
+        if meta_tuple is not None:
+            manager.commit_module(meta_tuple[1])
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
@@ -4780,6 +4794,7 @@ def process_stale_scc_interface(
             if state.priorities.get(dep) != PRI_INDIRECT
         ]
         write_cache_meta(meta, manager, meta_file)
+        manager.commit_module(meta_file)
         scc_result.append((id, ModuleResult(graph[id].interface_hash.hex(), []), meta_file))
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
@@ -4859,6 +4874,7 @@ def process_stale_scc_implementation(
             # If there are no errors, only write the cache, don't send anything back
             # to the caller (as a micro-optimization).
             write_cache_meta_ex(meta_file, meta_ex, manager)
+        manager.commit_module(meta_file)
 
     manager.add_stats(type_check_time_implementation=time.time() - t0)
     return scc_result
