@@ -207,6 +207,17 @@ def f(a: Foo(int)) -> int:
 main:7: error: Invalid type comment or annotation
 main:7: note: Suggestion: use Foo[...] instead of Foo(...)
 
+[case testFasterParseCallWithKeywordArgs_no_native_parse]
+
+def Foo(sort: bool) -> type:
+    return int
+
+def f(a: Foo(sort=True)) -> int:
+    pass
+[out]
+main:5: error: Invalid type comment or annotation
+main:5: note: Cannot use a function call in a type annotation
+
 [case testFastParseMatMul]
 
 from typing import Any
