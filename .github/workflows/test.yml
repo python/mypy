@@ -139,6 +139,7 @@ jobs:
     timeout-minutes: 60
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VIRTUALENV_SYSTEM_SITE_PACKAGES: ${{ matrix.test_mypyc && 1 || 0 }}
       # Rich (pip) -- Disable color for windows + pytest
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
@@ -209,8 +210,10 @@ jobs:
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
+      # Use local version of librt during self-compilation in tests.
       run: |
         pip install -r test-requirements.txt
+        pip install -U mypyc/lib-rt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
     - name: Setup tox environment

@@ -3,6 +3,7 @@ from typing import Any, cast
 import base64
 import binascii
 import random
+import sys
 
 from librt.base64 import b64encode, b64decode, urlsafe_b64encode, urlsafe_b64decode
 
@@ -121,6 +122,14 @@ def test_decode_with_non_base64_chars() -> None:
             check_decode(b"e" + b + b"A==", encoded=True)
             check_decode(b"eA=" + b + b"=", encoded=True)
 
+def has_stdlib_b64decode_bugfix() -> bool:
+    # stdlib b64decode has a bug in older python versions where it skips processing the input data
+    # after the first padded quad. It was changed to conform to RFC 4648 section 3.3 in cpython 3.13.13+,
+    # 3.14.4+ and 3.15+. The librt implementation was changed to match the correct behavior regardless
+    # of python version so some inputs result in different results than stdlib on older python.
+    _, minor, micro, _, _ = sys.version_info
+    return minor > 14 or (minor == 14 and micro >= 4) or (minor == 13 and micro >= 13)
+
 def check_decode_error(b: bytes, ignore_stdlib: bool = False) -> None:
     if not ignore_stdlib:
         with assertRaises(binascii.Error):
@@ -135,9 +144,7 @@ def test_decode_with_invalid_padding() -> None:
     check_decode_error(b"eA=")
     check_decode_error(b"eHk")
     check_decode_error(b"eA = ")
-
-    # Here stdlib behavior seems nonsensical, so we don't try to duplicate it
-    check_decode_error(b"eA=a=", ignore_stdlib=True)
+    check_decode_error(b"eA==x", ignore_stdlib=not has_stdlib_b64decode_bugfix())
 
 def test_decode_with_extra_data_after_padding() -> None:
     check_decode(b"=", encoded=True)
@@ -146,9 +153,10 @@ def test_decode_with_extra_data_after_padding() -> None:
     check_decode(b"====", encoded=True)
     check_decode(b"eA===", encoded=True)
     check_decode(b"eHk==", encoded=True)
-    check_decode(b"eA==x", encoded=True)
-    check_decode(b"eHk=x", encoded=True)
-    check_decode(b"eA==abc=======efg", encoded=True)
+    if has_stdlib_b64decode_bugfix():
+        check_decode(b"eA=a=", encoded=True)
+        check_decode(b"eHk=x", encoded=True)
+        check_decode(b"eA==abc=======efg", encoded=True)
 
 def test_decode_wrappers() -> None:
     funcs: list[Any] = [b64decode, urlsafe_b64decode]

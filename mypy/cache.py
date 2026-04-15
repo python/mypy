@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 7
+CACHE_VERSION: Final = 8
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -77,7 +77,12 @@ ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | N
 
 
 class CacheMeta:
-    """Class representing cache metadata for a module."""
+    """Class representing cache metadata for a module.
+
+    This class represents the data known after checking module interface only, i.e.
+    this doesn't have: error messages and indirect dependencies, these are stored
+    in CacheMetaEx.
+    """
 
     def __init__(
         self,
@@ -236,9 +241,64 @@ class CacheMeta:
             return None
 
 
+class CacheMetaEx:
+    """Class representing "implementation-specific" part of cache metadata for a module."""
+
+    def __init__(
+        self,
+        dependencies: list[str],
+        suppressed: list[str],
+        dep_hashes: list[bytes],
+        error_lines: list[ErrorTuple],
+    ) -> None:
+        self.dependencies = dependencies
+        self.suppressed = suppressed
+        self.dep_hashes = dep_hashes
+        self.error_lines = error_lines
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "dependencies": self.dependencies,
+            "suppressed": self.suppressed,
+            "dep_hashes": [dep.hex() for dep in self.dep_hashes],
+            "error_lines": self.error_lines,
+        }
+
+    @classmethod
+    def deserialize(cls, meta: dict[str, Any]) -> CacheMetaEx | None:
+        try:
+            return CacheMetaEx(
+                dependencies=meta["dependencies"],
+                suppressed=meta["suppressed"],
+                dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
+                error_lines=[tuple(err) for err in meta["error_lines"]],
+            )
+        except (KeyError, ValueError):
+            return None
+
+    def write(self, data: WriteBuffer) -> None:
+        write_str_list(data, self.dependencies)
+        write_str_list(data, self.suppressed)
+        write_bytes_list(data, self.dep_hashes)
+        write_errors(data, self.error_lines)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> CacheMetaEx | None:
+        try:
+            return CacheMetaEx(
+                dependencies=read_str_list(data),
+                suppressed=read_str_list(data),
+                dep_hashes=read_bytes_list(data),
+                error_lines=read_errors(data),
+            )
+        except (ValueError, AssertionError):
+            return None
+
+
 # Always use this type alias to refer to type tags.
 Tag = u8
 
+# Note: all tags should be kept in sync with lib-rt/internal/librt_internal.c.
 # Primitives.
 LITERAL_FALSE: Final[Tag] = 0
 LITERAL_TRUE: Final[Tag] = 1
@@ -264,6 +324,7 @@ DT_SPEC: Final[Tag] = 151
 # Four integers representing source file (line, column) range.
 LOCATION: Final[Tag] = 152
 
+RESERVED: Final[Tag] = 254
 END_TAG: Final[Tag] = 255
 
 

@@ -64,6 +64,9 @@ files = [
     "irbuild-match.test",
 ]
 
+if sys.version_info >= (3, 12):
+    files.append("irbuild-python312.test")
+
 if sys.version_info >= (3, 14):
     files.append("irbuild-python314.test")
 

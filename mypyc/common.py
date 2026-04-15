@@ -68,7 +68,7 @@ BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
 # Runtime C library files that are always included (some ops may bring
-# extra dependencies via mypyc.ir.SourceDep)
+# extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)
 RUNTIME_C_FILES: Final = [
     "init.c",
     "getargs.c",

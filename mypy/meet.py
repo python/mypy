@@ -541,12 +541,23 @@ def is_overlapping_types(
         return False
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
+        # We run is_callable_compatible in both directions, similar to the logic
+        # in is_unsafe_overlapping_overload_signatures
+        # See comments in https://github.com/python/mypy/pull/5476
         return is_callable_compatible(
             left,
             right,
             is_compat=_is_overlapping_types,
             is_proper_subtype=False,
             ignore_pos_arg_names=not overlap_for_overloads,
+            allow_partial_overlap=True,
+        ) or is_callable_compatible(
+            right,
+            left,
+            is_compat=_is_overlapping_types,
+            is_proper_subtype=False,
+            ignore_pos_arg_names=not overlap_for_overloads,
+            check_args_covariantly=True,
             allow_partial_overlap=True,
         )
 

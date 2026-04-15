@@ -2229,3 +2229,17 @@ def f(x: int, y: list[str]):
     x in y
 [out]
 _testStrictEqualityWithList.py:3: error: Non-overlapping container check (element type: "int", container item type: "str")
+
+[case testDictOrUnionEdgeCases]
+from typing import Mapping, Sequence, Union
+
+d: dict[str, list[str]]
+m: Mapping[str, Sequence[str]] = d | d
+
+A = dict[str, Union[A, int]]
+d1: A
+d2: A
+d3: A = d1 | d2
+reveal_type(d1 | d2)
+[out]
+_testDictOrUnionEdgeCases.py:10: note: Revealed type is "dict[str, dict[str, ... | int] | int]"

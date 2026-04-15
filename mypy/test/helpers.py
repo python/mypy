@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import time
+from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from re import Pattern
 from typing import IO, Any
@@ -106,14 +107,64 @@ def render_diff_range(
             output.write("\n")
 
 
+def dump_original_errors(errors: list[str]) -> None:
+    sys.stderr.write("Original errors:\n")
+    for err in errors:
+        sys.stderr.write(err + "\n")
+
+
+def module_order(errors: list[str]) -> list[str]:
+    result = []
+    seen = set()
+    mods = []
+    for e in errors:
+        if ":" not in e:
+            dump_original_errors(errors)
+            pytest.fail(f"Only module scoped errors are supported, got {e}")
+        mod, _ = e.split(":", maxsplit=1)
+        mods.append(mod)
+    for i, mod in enumerate(mods):
+        if i > 0:
+            if mod != mods[i - 1] and mod in seen:
+                dump_original_errors(errors)
+                pytest.fail(f"Each module must form a single block, {mod} appears split")
+        if mod not in seen:
+            result.append(mod)
+            seen.add(mod)
+    return result
+
+
+def match_module_order(actual: list[str], expected_order: list[str]) -> list[str]:
+    actual_by_mod = defaultdict(list)
+    actual_order = module_order(actual)
+    if set(actual_order) != set(expected_order):
+        # Different files, give up and show actual errors.
+        return actual
+    for a in actual:
+        mod, _ = a.split(":", maxsplit=1)
+        actual_by_mod[mod].append(a)
+    result = []
+    for mod in expected_order:
+        result.extend(actual_by_mod[mod])
+    return result
+
+
 def assert_string_arrays_equal(
-    expected: list[str], actual: list[str], msg: str, *, traceback: bool = False
+    expected: list[str],
+    actual: list[str],
+    msg: str,
+    *,
+    traceback: bool = False,
+    ignore_modules_order: bool = False,
 ) -> None:
     """Assert that two string arrays are equal.
 
     Display any differences in a human-readable form.
     """
     actual = clean_up(actual)
+    if ignore_modules_order:
+        expected_module_order = module_order(expected)
+        actual = match_module_order(actual, expected_module_order)
     if expected != actual:
         expected_ranges, actual_ranges = diff_ranges(expected, actual)
         sys.stderr.write("Expected:\n")

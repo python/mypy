@@ -18,7 +18,7 @@ class _TestRunner(Protocol):
 # not really documented
 class TestProgram:
     result: unittest.result.TestResult
-    module: None | str | ModuleType
+    module: ModuleType | None
     verbosity: int
     failfast: bool | None
     catchbreak: bool | None
@@ -30,7 +30,7 @@ class TestProgram:
         durations: unittest.result._DurationsType | None
         def __init__(
             self,
-            module: None | str | ModuleType = "__main__",
+            module: ModuleType | str | None = "__main__",
             defaultTest: str | Iterable[str] | None = None,
             argv: list[str] | None = None,
             testRunner: type[_TestRunner] | _TestRunner | None = None,

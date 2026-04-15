@@ -1478,6 +1478,26 @@ def f(x: Any):
     x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowingAny]
+# flags: --warn-unreachable
+from typing import Any
+
+class A: pass
+class B(A): pass
+
+def f1(x: Any) -> None:
+    if x and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if isinstance(x, A) and x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+
+def f2(x: Any) -> None:
+    if isinstance(x, A) and not isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if not isinstance(x, B) and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceOfGenericClassRetainsParameters]
 # flags: --warn-unreachable
 from typing import List, Union
@@ -2299,6 +2319,17 @@ assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowsAfterNoneCheckWithAnyUnion]
+# flags: --warn-unreachable
+from typing import Any, Union
+
+def f(val: Union[Any, str]) -> None:
+    if val is None or isinstance(val, str):
+        reveal_type(val)  # N: Revealed type is "None | builtins.str"
+        return
+    reveal_type(val)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceIgnoredImport]
 # flags: --warn-unreachable
 from typing import Union
@@ -3050,7 +3081,7 @@ if hasattr(mod, "y"):
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testMultipleHasAttr-xfail]
+[case testMultipleHasAttr]
 # flags: --warn-unreachable
 # https://github.com/python/mypy/issues/20596
 from __future__ import annotations

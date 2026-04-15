@@ -11,7 +11,6 @@ import os
 import tempfile
 import unittest
 from collections.abc import Iterator
-from typing import Any
 
 from mypy import defaults, nodes
 from mypy.cache import (
@@ -25,7 +24,7 @@ from mypy.cache import (
 )
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile
+from mypy.nodes import MypyFile, ParseError
 from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
@@ -102,7 +101,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     )
 
 
-def format_error(err: dict[str, Any]) -> str:
+def format_error(err: ParseError) -> str:
     return f"{err['line']}:{err['column']}: error: {err['message']}"
 
 
