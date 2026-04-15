@@ -1238,9 +1238,7 @@ def check_final_init() -> None:
     new_instance.__init__()
 [builtins fixtures/tuple.pyi]
 
--- This is tricky and expensive to support in parallel mode.
--- We may want to stop supporting this niche use case
-[case testNarrowingOfFinalPersistsInFunctions_no_parallel]
+[case testNarrowingOfFinalInFunctionsNotSpecial]
 from typing import Final, Union
 
 def _init() -> Union[int, None]:
@@ -1249,18 +1247,17 @@ def _init() -> Union[int, None]:
 FOO: Final = _init()
 
 class Example:
-
     if FOO is not None:
         reveal_type(FOO)  # N: Revealed type is "builtins.int"
 
         def fn(self) -> int:
-            return FOO
+            return FOO  # E: Incompatible return value type (got "int | None", expected "int")
 
 if FOO is not None:
     reveal_type(FOO)  # N: Revealed type is "builtins.int"
 
     def func() -> int:
-        return FOO
+        return FOO  # E: Incompatible return value type (got "int | None", expected "int")
 
 [case testDisjointBase]
 from typing_extensions import disjoint_base
