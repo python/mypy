@@ -1390,3 +1390,138 @@ class Parent:
 [file driver.py]
 from native import test
 test()
+
+[case testExtraOpsFunction_experimental_librt]
+from librt.strings import BytesWriter
+
+def call_write(b: bytes) -> bytes:
+    w = BytesWriter()
+    w.write(b)  # calls CPyBytesWriter_Write defined in byteswriter_extra_ops.c
+    return w.getvalue()
+
+[file other.py]
+from native import call_write
+
+def test(b: bytes) -> bytes:
+    return call_write(b)
+
+[file driver.py]
+from other import test
+
+input = b'x' * 512
+assert test(input) == input
+
+[case testLibrtDependencyInImportedFile_experimental_librt]
+# Test that a compiled file (other.py) that does not depend on librt can import another compiled
+# file (native.py) that does.
+from librt.vecs import vec, append, pop
+
+def call_append(s: str) -> str:
+    v = vec[str]()
+    v = append(v, s)
+    _, rv = pop(v)
+    return rv
+
+[file other.py]
+from native import call_append
+
+def test_append() -> None:
+    assert call_append("test123") == "test123"
+
+[file driver.py]
+from other import test_append
+
+test_append()
+
+[case testIndirectLibrtDependency_experimental_librt]
+# Test that a compiled file (other.py) that indirectly depends on librt can import another compiled
+# file (native.py) that directly depends on it.
+from librt.strings import BytesWriter, write_i16_le
+from librt.vecs import vec, append, pop
+from mypy_extensions import i64
+
+glob_bw = BytesWriter()
+glob_vec = vec[str](["one", "two", "three"])
+
+def fn_returns_bw(b: bytes) -> BytesWriter:
+    w = BytesWriter()
+    w.write(b)
+    return w
+
+def fn_returns_vec(i: i64) -> vec[i64]:
+    v = vec[i64]()
+    v = append(v, i)
+    return v
+
+class ClassWithLibrtTypeMember:
+    def __init__(self, w: BytesWriter, v: vec[str]) -> None:
+        self.writer = w
+        self.vec = vec[vec[str]]([v])
+
+    def method_returns_bw(self) -> BytesWriter:
+        return self.writer
+
+    def method_returns_vec(self) -> vec[vec[str]]:
+        return self.vec
+
+[file other.py]
+import struct
+
+from native import (
+    glob_bw, glob_vec, fn_returns_bw, fn_returns_vec, ClassWithLibrtTypeMember, write_i16_le, pop
+)
+from mypy_extensions import i64
+
+def test_global(b: bytes) -> None:
+    glob_bw.write(b)
+    assert glob_bw.getvalue() == b
+
+    glob_vec[1] = "not two"
+    assert glob_vec[1] == "not two"
+
+def test_fn(b: bytes, i: i64) -> None:
+    assert fn_returns_bw(b).getvalue() == b
+    assert fn_returns_vec(i)[0] == i
+
+def test_class(b: bytes) -> None:
+    c = ClassWithLibrtTypeMember(glob_bw, glob_vec)
+    assert c.method_returns_bw().getvalue() == b
+    assert c.method_returns_vec()[0] == glob_vec
+
+def test_reexport() -> None:
+    write_i16_le(glob_bw, 42)
+    assert glob_bw.getvalue()[-2:] == struct.pack("<h", 42)
+
+    glob_vec, s = pop(glob_vec)
+    assert len(glob_vec) == 2
+    assert s == "three"
+
+[file driver.py]
+from other import test_global, test_fn, test_class, test_reexport
+
+input = b'x' * 512
+test_global(input)
+test_fn(input, 512)
+test_class(input)
+test_reexport()
+
+[case testLibrtInternalInImportedFile_librt_internal]
+from librt.internal import ReadBuffer, WriteBuffer, write_str, read_str, cache_version
+
+def get_buffer_round_trip_result(s: str) -> str:
+    assert cache_version() == 0
+    w = WriteBuffer()
+    write_str(w, s)
+    r = ReadBuffer(w.getvalue())
+    return read_str(r)
+
+[file other.py]
+from native import get_buffer_round_trip_result
+
+def test_buffer_round_trip() -> None:
+    assert get_buffer_round_trip_result("foo") == "foo"
+
+[file driver.py]
+from other import test_buffer_round_trip
+
+test_buffer_round_trip()

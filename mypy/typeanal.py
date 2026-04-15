@@ -2351,16 +2351,9 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
     """See docstring of detect_diverging_alias() for details."""
 
     # TODO: this doesn't really need to be a translator, but we don't have a trivial visitor.
-    def __init__(
-        self,
-        seen_nodes: set[TypeAlias],
-        lookup: Callable[[str, Context], SymbolTableNode | None],
-        scope: TypeVarLikeScope,
-    ) -> None:
+    def __init__(self, seen_nodes: set[TypeAlias]) -> None:
         super().__init__()
         self.seen_nodes = seen_nodes
-        self.lookup = lookup
-        self.scope = scope
         self.diverging = False
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
@@ -2377,19 +2370,14 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             # All clear for this expansion chain.
             return t
         new_nodes = self.seen_nodes | {t.alias}
-        visitor = DivergingAliasDetector(new_nodes, self.lookup, self.scope)
+        visitor = DivergingAliasDetector(new_nodes)
         _ = get_proper_type(t).accept(visitor)
         if visitor.diverging:
             self.diverging = True
         return t
 
 
-def detect_diverging_alias(
-    node: TypeAlias,
-    target: Type,
-    lookup: Callable[[str, Context], SymbolTableNode | None],
-    scope: TypeVarLikeScope,
-) -> bool:
+def detect_diverging_alias(node: TypeAlias, target: Type) -> bool:
     """This detects type aliases that will diverge during type checking.
 
     For example F = Something[..., F[List[T]]]. At each expansion step this will produce
@@ -2401,7 +2389,7 @@ def detect_diverging_alias(
     They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
     Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
     """
-    visitor = DivergingAliasDetector({node}, lookup, scope)
+    visitor = DivergingAliasDetector({node})
     _ = target.accept(visitor)
     return visitor.diverging
 

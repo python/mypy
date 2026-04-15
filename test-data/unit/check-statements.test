@@ -851,9 +851,7 @@ def error_in_tuple_union(exc: Tuple[Union[Type[E1], Type[E2]], Union[Type[E3], i
         pass
 [builtins fixtures/tuple.pyi]
 
-[case testExceptWithMultipleTypes6_no_parallel]
-# For no_parallel, see:
-# https://github.com/mypyc/ast_serialize/issues/50
+[case testExceptWithMultipleTypes6]
 from typing import Never
 
 def random() -> bool: ...

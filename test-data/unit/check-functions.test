@@ -1122,7 +1122,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Missing positional argument "x" in call to "x"
+    A.x() # E: Missing positional argument "x" in call to "x" of "A"
 
 class A:
     @staticmethod
@@ -1144,7 +1144,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Missing positional argument "a" in call to "x"
+    A.x() # E: Missing positional argument "a" in call to "x" of "A"
 
 class A:
     @classmethod
@@ -2562,6 +2562,26 @@ reveal_type(f)
 [out]
 main:2: note: Revealed type is "def () -> builtins.int"
 
+[case testDeferredLambdaInOverload]
+from typing import Any, Callable, overload
+
+@overload
+def option(*, callback: Callable[[str], object] = ...) -> Any: ...
+@overload
+def option(*, callback: Callable[[int], object] = ...) -> Any: ...
+def option(**kwargs: object) -> None: pass
+
+def test() -> None:
+    option(callback=lambda x: [y for y in x])  # OK
+    x = C().x
+
+class C:
+    def __init__(self) -> None:
+        self.x = defer()
+
+def defer() -> int: ...
+[builtins fixtures/primitives.pyi]
+
 [case testRevealLocalsFunction]
 a = 1.0
 
@@ -3768,6 +3788,14 @@ class C:
 
 def defer() -> int:
     return 1
+
+[case testNarrowingForDefaultInInnerFunction]
+from typing import Optional
+
+def outer(x: Optional[float]) -> None:
+    if x is not None:
+        def inner(y: float = x) -> None: ...  # OK
+    def bad(y: float = x) -> None: ...  # E: Incompatible default for parameter "y" (default has type "float | None", parameter has type "float")
 
 [case testMissingPositionalArgShiftDetectedMiddle]
 def f(x: int, y: str, z: bytes, aa: int) -> None: ...

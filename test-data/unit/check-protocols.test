@@ -4558,7 +4558,30 @@ def bad() -> Proto:
                    # N:     Expected: \
                    # N:         def f(self) -> int \
                    # N:     Got: \
-                   # N:         def f() -> str \
+                   # N:         def f(self) -> str \
+
+class Impl:
+    @defer
+    def f(self) -> int: ...
+
+[case testProtocolCheckDefersNode2]
+from typing import Any, Callable, Protocol, TypeVar
+
+class Proto(Protocol):
+    def f(self) -> int:
+        ...
+
+T = TypeVar("T")
+def defer(f: Callable[[T], int]) -> Callable[[T], list[int]]:
+    ...
+
+def bad() -> Proto:
+    return Impl()  # E: Incompatible return value type (got "Impl", expected "Proto") \
+                   # N: Following member(s) of "Impl" have conflicts: \
+                   # N:     Expected: \
+                   # N:         def f(self) -> int \
+                   # N:     Got: \
+                   # N:         def f(self) -> list[int] \
 
 class Impl:
     @defer

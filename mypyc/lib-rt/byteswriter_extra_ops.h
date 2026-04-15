@@ -8,7 +8,7 @@
 #include <Python.h>
 
 #include "mypyc_util.h"
-#include "strings/librt_strings.h"
+#include "strings/librt_strings_api.h"
 #include "strings/librt_strings_common.h"
 
 // BytesWriter: Length and capacity

@@ -56,7 +56,15 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, LIBRT_TIME, LIBRT_VECS, SourceDep
+from mypyc.ir.deps import (
+    LIBRT_BASE64,
+    LIBRT_STRINGS,
+    LIBRT_TIME,
+    LIBRT_VECS,
+    Capsule,
+    HeaderDep,
+    SourceDep,
+)
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -133,7 +141,7 @@ class MypycPlugin(Plugin):
                 self.group_map[id] = (name, modules)
 
         self.compiler_options = compiler_options
-        self.metastore = create_metastore(options)
+        self.metastore = create_metastore(options, parallel_worker=False)
 
     def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
         # The config data we report is the group map entry for the module.
@@ -442,8 +450,25 @@ def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
     for module in modules.values():
         for dep in module.dependencies:
             if isinstance(dep, SourceDep):
-                source_deps.add(dep)
+                if dep.internal:
+                    source_deps.add(dep)
+            elif isinstance(dep, Capsule):
+                source_deps.add(dep.internal_dep())
     return source_deps
+
+
+def collect_header_dependencies(modules: dict[str, ModuleIR], *, internal: bool) -> set[str]:
+    """Collect all header dependencies from all modules."""
+    header_deps: set[str] = set()
+    for module in modules.values():
+        for dep in module.dependencies:
+            if isinstance(dep, (SourceDep, HeaderDep)):
+                if dep.internal == internal:
+                    header_deps.add(dep.get_header())
+            else:
+                capsule_dep = dep.internal_dep() if internal else dep.external_dep()
+                header_deps.add(capsule_dep.get_header())
+    return header_deps
 
 
 def compile_modules_to_c(
@@ -585,6 +610,8 @@ class GroupGenerator:
             source_deps = collect_source_dependencies(self.modules)
             for source_dep in sorted(source_deps, key=lambda d: d.path):
                 base_emitter.emit_line(f'#include "{source_dep.path}"')
+            if self.compiler_options.depends_on_librt_internal:
+                base_emitter.emit_line('#include "internal/librt_internal_api.c"')
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
@@ -634,26 +661,27 @@ class GroupGenerator:
         ext_declarations.emit_line(f"#define MYPYC_NATIVE{self.group_suffix}_H")
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
-        if self.compiler_options.depends_on_librt_internal:
-            ext_declarations.emit_line("#include <internal/librt_internal.h>")
-        if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <base64/librt_base64.h>")
-        if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <strings/librt_strings.h>")
-        if any(LIBRT_TIME in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <time/librt_time.h>")
-        if any(LIBRT_VECS in mod.dependencies for mod in self.modules.values()):
-            ext_declarations.emit_line("#include <vecs/librt_vecs.h>")
-        # Include headers for conditional source files
-        source_deps = collect_source_dependencies(self.modules)
-        for source_dep in sorted(source_deps, key=lambda d: d.path):
-            ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
+
+        def emit_dep_headers(decls: Emitter, internal: bool) -> None:
+            suffix = "_api" if internal else ""
+            if self.compiler_options.depends_on_librt_internal:
+                decls.emit_line(f'#include "internal/librt_internal{suffix}.h"')
+            # Include headers for conditional source files
+            header_deps = collect_header_dependencies(self.modules, internal=internal)
+            for header_dep in sorted(header_deps):
+                decls.emit_line(f'#include "{header_dep}"')
+
+        emit_dep_headers(ext_declarations, False)
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line(f"#define MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line("#include <Python.h>")
         declarations.emit_line("#include <CPy.h>")
+
+        if not self.compiler_options.include_runtime_files:
+            emit_dep_headers(declarations, True)
+
         declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         declarations.emit_line()
         declarations.emit_line("int CPyGlobalsInit(void);")

@@ -102,7 +102,7 @@ from mypyc.build import mypycify
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
                            multi_file={}, opt_level='{}', install_librt={},
-                           experimental_features={}),
+                           experimental_features={}, depends_on_librt_internal={}),
 )
 """
 
@@ -298,7 +298,13 @@ class TestRun(MypycDataSuite):
             ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
-            deps = sorted(dep.path for dep in collect_source_dependencies(ir))
+            deps = sorted(
+                (
+                    (dep.path, dep.include_dirs, dep.internal)
+                    for dep in collect_source_dependencies(ir)
+                ),
+                key=lambda tup: tup[0],
+            )
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"
@@ -329,6 +335,7 @@ class TestRun(MypycDataSuite):
                     opt_level,
                     False,  # install_librt - use cached version instead
                     experimental_features,
+                    librt_internal,
                 )
             )
 

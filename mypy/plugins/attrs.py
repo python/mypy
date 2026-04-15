@@ -734,7 +734,7 @@ def _parse_converter(
         ):
             converter_type = converter_expr.node.type
         elif isinstance(converter_expr.node, TypeInfo):
-            converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
+            converter_type = type_object_type(converter_expr.node)
     elif (
         isinstance(converter_expr, IndexExpr)
         and isinstance(converter_expr.analyzed, TypeApplication)
@@ -742,7 +742,7 @@ def _parse_converter(
         and isinstance(converter_expr.base.node, TypeInfo)
     ):
         # The converter is a generic type.
-        converter_type = type_object_type(converter_expr.base.node, ctx.api.named_type)
+        converter_type = type_object_type(converter_expr.base.node)
         if isinstance(converter_type, CallableType):
             converter_type = apply_generic_arguments(
                 converter_type,
