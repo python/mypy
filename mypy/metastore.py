@@ -181,6 +181,25 @@ def _stable_hash(s: str) -> int:
     return int.from_bytes(hashlib.md5(s.encode("utf-8")).digest()[:4], "little")
 
 
+def _cache_stem(name: str) -> str:
+    """Extract the canonical module stem from a cache file path.
+
+    All cache files for a module share a common prefix (the stem):
+      foo/bar/baz.meta.ff, foo/bar/baz.data.ff, foo/bar/baz.meta_ex.ff, etc.
+    For packages: foo/bar/__init__.meta.ff -> foo/bar/__init__
+
+    Global files like @deps.meta.json -> @deps
+    """
+    # Split at first '.' in the basename to get the stem.
+    # E.g. "foo/bar/baz.meta.ff" -> "foo/bar/baz"
+    #      "foo/bar/__init__.data.ff" -> "foo/bar/__init__"
+    #      "@deps.meta.json" -> "@deps"
+    dot = name.find(".")
+    if dot == -1:
+        return name
+    return name[:dot]
+
+
 class SqliteMetadataStore(MetadataStore):
     def __init__(
         self, cache_dir_prefix: str, set_journal_mode: bool = False, num_shards: int = 1
@@ -218,12 +237,12 @@ class SqliteMetadataStore(MetadataStore):
             raise FileNotFoundError()
         if self.num_shards <= 1:
             return self.dbs[0]
-        return self.dbs[_stable_hash(name) % self.num_shards]
+        return self.dbs[_stable_hash(_cache_stem(name)) % self.num_shards]
 
     def _shard_index(self, name: str) -> int:
         if self.num_shards <= 1:
             return 0
-        return _stable_hash(name) % self.num_shards
+        return _stable_hash(_cache_stem(name)) % self.num_shards
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
