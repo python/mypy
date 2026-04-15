@@ -155,10 +155,17 @@ CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 """
 
 
-def connect_db(db_file: str, set_journal_mode: bool) -> sqlite3.Connection:
+def connect_db(db_file: str, set_journal_mode: bool, autocommit: bool = False) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
-    db = sqlite3.dbapi2.connect(db_file, check_same_thread=False)
+    db = sqlite3.dbapi2.connect(
+        db_file,
+        check_same_thread=False,
+        # With autocommit, each statement is its own transaction, so the write lock
+        # is held only for microseconds per INSERT. This avoids long lock holds that
+        # block other workers writing to the same shard.
+        isolation_level=None if autocommit else "DEFERRED",
+    )
     # This is a bit unfortunate (as we may get corrupt cache after e.g. Ctrl + C),
     # but without this flag, commits are *very* slow, especially when using HDDs,
     # see https://www.sqlite.org/faq.html#q19 for details.
@@ -187,6 +194,9 @@ class SqliteMetadataStore(MetadataStore):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
+        # Use autocommit when sharded so each INSERT is its own transaction,
+        # minimizing lock hold time across workers.
+        autocommit = num_shards > 1
         if num_shards <= 1:
             self.dbs.append(
                 connect_db(os_path_join(cache_dir_prefix, "cache.db"), set_journal_mode)
@@ -195,7 +205,9 @@ class SqliteMetadataStore(MetadataStore):
             for i in range(num_shards):
                 self.dbs.append(
                     connect_db(
-                        os_path_join(cache_dir_prefix, f"cache.{i}.db"), set_journal_mode
+                        os_path_join(cache_dir_prefix, f"cache.{i}.db"),
+                        set_journal_mode,
+                        autocommit=autocommit,
                     )
                 )
         # Track which shards have been written to since last commit.
