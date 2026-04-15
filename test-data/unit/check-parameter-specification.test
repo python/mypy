@@ -1276,7 +1276,8 @@ def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
 def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
     f(*args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[int, ...]"; expected "P.args" \
-                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                        # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return 1
 
 def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -1306,7 +1307,8 @@ def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
 def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
     f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*tuple[int, ...]"; expected "P.args" \
-                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                           # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return 1
 
 def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -2417,7 +2419,8 @@ def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2 = partial(func, 1, *args)
     d = {"":""}
     func2(**d)  # E: Too few arguments \
-                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return func2(**kwargs)
 
 def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:

@@ -1016,6 +1016,7 @@ main:12: note: Revealed type is "typing.Iterator[builtins.int]"
 main:13: note: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 main:14: error: Argument after ** must have string keys
 main:14: error: Argument 1 to "func_with_kwargs" has incompatible type "**X1[str, int]"; expected "int"
+main:14: note: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 
