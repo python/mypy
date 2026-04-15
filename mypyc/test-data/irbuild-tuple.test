@@ -1196,8 +1196,7 @@ def f():
     r4 :: i32
     r5 :: bit
     r6 :: short_int
-    r7 :: object
-    r8 :: tuple
+    r7 :: tuple
 L0:
     r0 = PyList_New(0)
     r1 = 0
@@ -1215,9 +1214,8 @@ L3:
     r1 = r6
     goto L1
 L4:
-    r7 = PyObject_GetIter(r0)
-    r8 = PySequence_Tuple(r7)
-    return r8
+    r7 = PyList_AsTuple(r0)
+    return r7
 def f2():
     r0 :: list
     r1 :: short_int
