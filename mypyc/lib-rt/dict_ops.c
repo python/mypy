@@ -274,6 +274,7 @@ char CPyDict_Clear(PyObject *dict) {
         if (res == NULL) {
             return 0;
         }
+        Py_DECREF(res);
     }
     return 1;
 }

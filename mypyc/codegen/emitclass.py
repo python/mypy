@@ -836,7 +836,8 @@ def generate_new_for_class(
         emitter.emit_line(
             f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
         )
-        emitter.emit_lines("if (ret == NULL)", "    return NULL;")
+        emitter.emit_lines("if (ret == NULL) {", "    Py_DECREF(self);", "    return NULL;", "}")
+        emitter.emit_line("Py_DECREF(ret);")
         emitter.emit_line("return self;")
     emitter.emit_line("}")
 

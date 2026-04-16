@@ -100,6 +100,8 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        if options.cache_dir == os.devnull:
+            fail("error: cache must be enabled in parallel mode", stderr, options)
 
     if options.allow_redefinition_new and not options.local_partial_types:
         fail(
@@ -189,6 +191,12 @@ def main(
     list([res])  # noqa: C410
 
 
+class BuildResultThunk:
+    # We pass this around so that we avoid freeing memory, which is slow
+    def __init__(self, build_result: build.BuildResult | None) -> None:
+        self._result = build_result
+
+
 def run_build(
     sources: list[BuildSource],
     options: Options,
@@ -196,7 +204,7 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> tuple[build.BuildResult | None, list[str], bool]:
+) -> tuple[BuildResultThunk | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
@@ -227,8 +235,12 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
+
+    if res:
+        res.manager.metastore.close()
+
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
-    return res, messages, blockers
+    return BuildResultThunk(res), messages, blockers
 
 
 def show_messages(
@@ -599,7 +611,6 @@ def define_options(
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
-        strict_flag=True,
         help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )

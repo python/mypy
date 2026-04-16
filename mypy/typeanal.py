@@ -233,11 +233,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
-        # Should we allow new type syntax when targeting older Python versions
-        # like 'list[int]' or 'X | Y' (allowed in stubs and with `__future__` import)?
-        self.always_allow_new_syntax = self.api.is_stub_file or self.api.is_future_flag_set(
-            "annotations"
-        )
         # Should we accept unbound type variables? This is currently used for class bases,
         # and alias right hand sides (before they are analyzed as type aliases).
         self.allow_unbound_tvars = allow_unbound_tvars
@@ -1412,13 +1407,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
-        if (
-            t.uses_pep604_syntax is True
-            and t.is_evaluated is True
-            and not self.always_allow_new_syntax
-            and not self.options.python_version >= (3, 10)
-        ):
-            self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
         return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
@@ -2351,16 +2339,9 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
     """See docstring of detect_diverging_alias() for details."""
 
     # TODO: this doesn't really need to be a translator, but we don't have a trivial visitor.
-    def __init__(
-        self,
-        seen_nodes: set[TypeAlias],
-        lookup: Callable[[str, Context], SymbolTableNode | None],
-        scope: TypeVarLikeScope,
-    ) -> None:
+    def __init__(self, seen_nodes: set[TypeAlias]) -> None:
         super().__init__()
         self.seen_nodes = seen_nodes
-        self.lookup = lookup
-        self.scope = scope
         self.diverging = False
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
@@ -2377,19 +2358,14 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             # All clear for this expansion chain.
             return t
         new_nodes = self.seen_nodes | {t.alias}
-        visitor = DivergingAliasDetector(new_nodes, self.lookup, self.scope)
+        visitor = DivergingAliasDetector(new_nodes)
         _ = get_proper_type(t).accept(visitor)
         if visitor.diverging:
             self.diverging = True
         return t
 
 
-def detect_diverging_alias(
-    node: TypeAlias,
-    target: Type,
-    lookup: Callable[[str, Context], SymbolTableNode | None],
-    scope: TypeVarLikeScope,
-) -> bool:
+def detect_diverging_alias(node: TypeAlias, target: Type) -> bool:
     """This detects type aliases that will diverge during type checking.
 
     For example F = Something[..., F[List[T]]]. At each expansion step this will produce
@@ -2401,7 +2377,7 @@ def detect_diverging_alias(
     They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
     Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
     """
-    visitor = DivergingAliasDetector({node}, lookup, scope)
+    visitor = DivergingAliasDetector({node})
     _ = target.accept(visitor)
     return visitor.diverging
 

@@ -142,7 +142,7 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testCanCreateTypedDictWithClassOldVersion]
+[case testCanCreateTypedDictWithClassFunctionBases]
 # Test that we can use class-syntax to merge function-based TypedDicts
 from typing import TypedDict
 

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from librt import base64
 from librt.internal import ReadBuffer, WriteBuffer
 
-from mypy.cache import CacheMeta
+from mypy.cache import CacheMeta, CacheMetaEx
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.util import json_dumps, json_loads
 
@@ -69,6 +69,7 @@ def normalize_meta(meta: CacheMeta) -> None:
 
     Zero out mtimes and sort dependencies deterministically.
     """
+    # TODO: handle dep_hashes here and in relevant parts below.
     meta.mtime = 0
     meta.data_mtime = 0
     meta.dependencies, meta.suppressed, meta.dep_prios, meta.dep_lines = sort_deps(
@@ -115,7 +116,18 @@ def load(cache: MetadataStore, s: str) -> Any:
             return data
         normalize_meta(meta)
         return serialize_meta_ff(meta, version_prefix)
-    if s.endswith((".data.ff", ".err.ff")):
+    if s.endswith(".meta_ex.ff"):
+        buf = ReadBuffer(data)
+        meta = CacheMetaEx.read(buf)
+        if meta is None:
+            # Can't deserialize. Fall back to raw bytes as above
+            return data
+        meta.dependencies.sort()
+        meta.suppressed.sort()
+        outbuf = WriteBuffer()
+        meta.write(outbuf)
+        return outbuf.getvalue()
+    if s.endswith(".data.ff"):
         return data
     obj = json_loads(data)
     if s.endswith(".meta.json"):

@@ -373,6 +373,86 @@ def test_bool_pop() -> None:
     assert n is True
     assert v == vec[bool]([True, False])
 
+# Iteration tests for all item types
+
+def test_iteration() -> None:
+    # Test iteration for each primitive type
+    for x in vec[float]():
+        assert False
+    a = []
+    for x in vec[float]([1.5, 2.5, 3.5]):
+        a.append(x)
+    assert a == [1.5, 2.5, 3.5]
+
+    for x in vec[u8]():
+        assert False
+    a = []
+    for x in vec[u8]([1, 2, 255]):
+        a.append(x)
+    assert a == [1, 2, 255]
+
+    for x in vec[i16]():
+        assert False
+    a = []
+    for x in vec[i16]([-1000, 0, 1000]):
+        a.append(x)
+    assert a == [-1000, 0, 1000]
+
+    for x in vec[i32]():
+        assert False
+    a = []
+    for x in vec[i32]([-100000, 0, 100000]):
+        a.append(x)
+    assert a == [-100000, 0, 100000]
+
+    for x in vec[bool]():
+        assert False
+    a = []
+    for x in vec[bool]([True, False, True]):
+        a.append(x)
+    assert a == [True, False, True]
+
+def test_iterator_protocol() -> None:
+    # Test iter() and next() for float
+    v_float = vec[float]([1.5, 2.5])
+    it = iter(v_float)
+    assert next(it) == 1.5
+    assert next(it) == 2.5
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test iter() and next() for u8
+    v_u8 = vec[u8]([10, 20])
+    it = iter(v_u8)
+    assert next(it) == 10
+    assert next(it) == 20
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test iter() and next() for i16
+    v_i16 = vec[i16]([-100, 100])
+    it = iter(v_i16)
+    assert next(it) == -100
+    assert next(it) == 100
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test iter() and next() for i32
+    v_i32 = vec[i32]([-1000, 1000])
+    it = iter(v_i32)
+    assert next(it) == -1000
+    assert next(it) == 1000
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test bool specifically since values are True/False singletons
+    v_bool = vec[bool]([True, False])
+    it = iter(v_bool)
+    assert next(it) is True
+    assert next(it) is False
+    with assertRaises(StopIteration):
+        next(it)
+
 [case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.vecs can be built without experimental features
 import librt.vecs

@@ -59,14 +59,17 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     options = options.apply_changes(changes)
 
     try:
-        n = parse(
+        errors = Errors(options)
+        n, _ = parse(
             bytes(source, "ascii"),
             fnam="main",
             module="__main__",
-            errors=Errors(options),
+            errors=errors,
             options=options,
-            raise_on_error=True,
+            file_exists=False,
         )
+        if errors.is_errors():
+            errors.raise_error()
         a = n.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
@@ -97,14 +100,17 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
         if options.python_version != sys.version_info[:2]:
             skip()
         # Compile temporary file. The test file contains non-ASCII characters.
+        errors = Errors(options)
         parse(
             bytes("\n".join(testcase.input), "utf-8"),
             INPUT_FILE_NAME,
             "__main__",
-            errors=Errors(options),
+            errors=errors,
             options=options,
-            raise_on_error=True,
+            file_exists=False,
         )
+        if errors.is_errors():
+            errors.raise_error()
         raise AssertionError("No errors reported")
     except CompileError as e:
         if e.module_with_blocker is not None:

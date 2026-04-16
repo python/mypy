@@ -68,6 +68,7 @@ from mypy.subtypes import (
     IS_VAR,
     find_member,
     get_member_flags,
+    get_protocol_member,
     is_same_type,
     is_subtype,
 )
@@ -3110,7 +3111,7 @@ def get_conflict_protocol_types(
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
+        subtype = get_protocol_member(left, member, class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
@@ -3126,7 +3127,7 @@ def get_conflict_protocol_types(
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
-            set_subtype = mypy.typeops.get_protocol_member(left, member, class_obj, is_lvalue=True)
+            set_subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
             if set_subtype and not is_same_type(set_subtype, subtype):
                 different_setter = True
             subtype = set_subtype

@@ -343,9 +343,14 @@ class CheckerScope:
 
     def current_self_type(self) -> Instance | TupleType | None:
         """Same as active_self_type() but handle functions nested in methods."""
+        if (item := self.current_class()) is not None:
+            return fill_typevars(item)
+        return None
+
+    def current_class(self) -> TypeInfo | None:
         for item in reversed(self.stack):
             if isinstance(item, TypeInfo):
-                return fill_typevars(item)
+                return item
         return None
 
     def is_top_level(self) -> bool:

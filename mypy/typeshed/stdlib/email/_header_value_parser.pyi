@@ -26,8 +26,8 @@ SPECIALSNL: Final[set[str]]
 def make_quoted_pairs(value: Any) -> str: ...
 def quote_string(value: Any) -> str: ...
 
-if sys.version_info >= (3, 13):
-    # Added in Python 3.13.12, 3.14.3
+if sys.version_info >= (3, 10):
+    # Added in Python 3.10.20, 3.11.15, 3.12.13, 3.13.12, 3.14.3
     def make_parenthesis_pairs(value: Any) -> str: ...
 
 rfc2047_matcher: Final[Pattern[str]]

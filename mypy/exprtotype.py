@@ -145,11 +145,7 @@ def expr_to_unanalyzed_type(
             return base
         else:
             raise TypeTranslationError()
-    elif (
-        isinstance(expr, OpExpr)
-        and expr.op == "|"
-        and ((options.python_version >= (3, 10)) or allow_new_syntax)
-    ):
+    elif isinstance(expr, OpExpr) and expr.op == "|":
         return UnionType(
             [
                 expr_to_unanalyzed_type(

@@ -12,7 +12,8 @@ from typing import Any
 
 from mypyc.build import get_cflags, include_dir
 
-base_dir = os.path.join(os.path.dirname(__file__), "..", "..")
+from .config import PREFIX
+
 EXCLUDED_LIB_RT_COMPILE_FILES = ["static_data.c"]
 
 
@@ -88,7 +89,7 @@ class TestExternal(unittest.TestCase):
                     "--run-capi-tests",
                 ],
                 env=env,
-                cwd=os.path.join(base_dir, "mypyc", "lib-rt"),
+                cwd=os.path.join(PREFIX, "mypyc", "lib-rt"),
             )
             # Run C unit tests.
             env = os.environ.copy()

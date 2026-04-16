@@ -8,16 +8,7 @@
 #include <Python.h>
 #include <stdint.h>
 
-#ifndef MYPYC_EXPERIMENTAL
-
-static int
-import_librt_vecs(void)
-{
-    // All librt.vecs features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
+#ifdef MYPYC_EXPERIMENTAL
 
 // Magic (native) integer return value on exception. Caller must also
 // use PyErr_Occurred() since this overlaps with valid integer values.
@@ -493,6 +484,16 @@ extern PyTypeObject VecBoolType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
+// Iterator type objects for vec iteration
+extern PyTypeObject VecI64IterType;
+extern PyTypeObject VecI32IterType;
+extern PyTypeObject VecI16IterType;
+extern PyTypeObject VecU8IterType;
+extern PyTypeObject VecFloatIterType;
+extern PyTypeObject VecBoolIterType;
+extern PyTypeObject VecTIterType;
+extern PyTypeObject VecNestedIterType;
+
 // Type objects corresponding to the 'i64', 'i32', 'i16, and 'u8' types
 extern PyTypeObject *LibRTVecs_I64TypeObj;
 extern PyTypeObject *LibRTVecs_I32TypeObj;
@@ -835,38 +836,6 @@ PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
 int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item);
 PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
 PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
-
-// Global API pointers initialized by import_librt_vecs()
-static VecCapsule *VecApi;
-static VecI64API VecI64Api;
-static VecI32API VecI32Api;
-static VecI16API VecI16Api;
-static VecU8API VecU8Api;
-static VecFloatAPI VecFloatApi;
-static VecBoolAPI VecBoolApi;
-static VecTAPI VecTApi;
-static VecNestedAPI VecNestedApi;
-
-static int
-import_librt_vecs(void)
-{
-    PyObject *mod = PyImport_ImportModule("librt.vecs");
-    if (mod == NULL)
-        return -1;
-    Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    VecApi = PyCapsule_Import("librt.vecs._C_API", 0);
-    if (!VecApi)
-        return -1;
-    VecI64Api = *VecApi->i64;
-    VecI32Api = *VecApi->i32;
-    VecI16Api = *VecApi->i16;
-    VecU8Api = *VecApi->u8;
-    VecFloatApi = *VecApi->float_;
-    VecBoolApi = *VecApi->bool_;
-    VecTApi = *VecApi->t;
-    VecNestedApi = *VecApi->nested;
-    return 0;
-}
 
 #endif  // MYPYC_EXPERIMENTAL
 

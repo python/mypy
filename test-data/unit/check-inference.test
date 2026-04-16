@@ -1727,14 +1727,16 @@ b = {} # E: Need type annotation for "b" (hint: "b: dict[<type>, <type>] = ...")
 b[{}] = 1
 [builtins fixtures/dict.pyi]
 
-[case testInferDictInitializedToEmptyAndUpdatedFromMethod]
+-- Parallel mode does not support --no-local-partial-types
+[case testInferDictInitializedToEmptyAndUpdatedFromMethod_no_parallel]
 # flags: --no-local-partial-types
 map = {}
 def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
-[case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
+-- Parallel mode does not support --no-local-partial-types
+[case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated_no_parallel]
 # flags: --no-local-partial-types
 map = {}
 def add():
@@ -2412,15 +2414,12 @@ class R:
 [case testMultipassAndMultipleFiles]
 import m
 def f() -> None:
-    x()
+    x()  # E: "int" not callable
 x = 0
 [file m.py]
 def g() -> None:
-    y()
+    y()  # E: "int" not callable
 y = 0
-[out]
-tmp/m.py:2: error: "int" not callable
-main:3: error: "int" not callable
 
 [case testForwardReferenceToDecoratedClassMethod]
 from typing import TypeVar, Callable
@@ -2783,7 +2782,8 @@ x = ''  # E: Incompatible types in assignment (expression has type "str", variab
 def g() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int | None"
 
-[case testLocalPartialTypesWithGlobalInitializedToNone4]
+-- TODO: combine 4 tests below back into 2 when possible.
+[case testLocalPartialTypesWithGlobalInitializedToNone4_no_parallel]
 # flags: --local-partial-types --no-strict-optional
 a = None
 
@@ -2795,12 +2795,36 @@ a = ''
 reveal_type(a)  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 
-[case testLocalPartialTypesWithGlobalInitializedToNone5]
+[case testLocalPartialTypesWithGlobalInitializedToNone5_no_parallel]
 # flags: --local-partial-types
 a = None
 
 def f() -> None:
     reveal_type(a)  # N: Revealed type is "None"
+
+reveal_type(a)  # N: Revealed type is "None"
+a = ''
+reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToNone4_parallel_only]
+# flags: --local-partial-types --no-strict-optional
+a = None
+
+def f() -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+
+reveal_type(a)  # N: Revealed type is "None"
+a = ''
+reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToNone5_parallel_only]
+# flags: --local-partial-types
+a = None
+
+def f() -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str | None"
 
 reveal_type(a)  # N: Revealed type is "None"
 a = ''
@@ -3599,7 +3623,7 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testAllowPlainNoneForPartialAtModuleScope]
-# flags: --local-partial-types --python-version 3.10
+# flags: --local-partial-types
 x = None
 reveal_type(x)  # N: Revealed type is "None"
 

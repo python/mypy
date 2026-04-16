@@ -3,7 +3,7 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
-#include "vecs/librt_vecs.h"
+#include "vecs/librt_vecs_api.h"
 
 // Check if obj is an instance of vec (any vec type)
 static inline int CPyVec_Check(PyObject *obj) {

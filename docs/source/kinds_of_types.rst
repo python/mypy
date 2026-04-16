@@ -315,9 +315,8 @@ such as ``int | None``. This is called an *optional type*:
            return None  # Error: None not compatible with int
        return len(s)
 
-To support Python 3.9 and earlier, you can use the :py:data:`~typing.Optional`
-type modifier instead, such as ``Optional[int]`` (``Optional[X]`` is
-the preferred shorthand for ``Union[X, None]``):
+You can also use the :py:data:`~typing.Optional` type modifier, such as
+``Optional[int]`` (``Optional[X]`` is the shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
@@ -515,12 +514,11 @@ distinguish them from implicit type aliases:
   it can't be used in contexts which require a class object. For example, it's
   not valid as a base class and it can't be used to construct instances.
 
-There is also use an older syntax for defining explicit type aliases, which was
-introduced in Python 3.10 (:pep:`613`):
+There is also use an older syntax for defining explicit type aliases (:pep:`613`):
 
 .. code-block:: python
 
-   from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
+   from typing import TypeAlias
 
    AliasType: TypeAlias = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 

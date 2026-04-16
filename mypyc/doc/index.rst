@@ -29,6 +29,13 @@ generate fast code.
 
 .. toctree::
    :maxdepth: 2
+   :caption: librt: Runtime Library reference
+
+   librt
+   librt_base64
+
+.. toctree::
+   :maxdepth: 2
    :caption: Native operations reference
 
    native_operations

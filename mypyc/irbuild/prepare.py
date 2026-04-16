@@ -26,6 +26,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    IndexExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
@@ -117,6 +118,12 @@ def build_type_map(
                 prepare_non_ext_class_def(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
+
+    # Validate cross-class properties after all ClassIR flags are populated.
+    for module, cdef in classes:
+        with catch_errors(module.path, cdef.line):
+            if mapper.type_to_ir[cdef.info].is_ext_class:
+                validate_acyclic_class_bases(module.path, cdef, errors, mapper)
 
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
@@ -343,6 +350,51 @@ def can_subclass_builtin(builtin_base: str) -> bool:
             "builtins.object",
         )
     )
+
+
+def get_removed_base_fullname(expr: Expression) -> str | None:
+    if isinstance(expr, IndexExpr):
+        expr = expr.base
+    if isinstance(expr, RefExpr):
+        return expr.fullname
+    return None
+
+
+def find_non_acyclic_base(cdef: ClassDef, mapper: Mapper) -> str | None:
+    if cdef.type_args:
+        return "typing.Generic"
+
+    for expr in cdef.removed_base_type_exprs:
+        if fullname := get_removed_base_fullname(expr):
+            return fullname
+        return "a removed base class"
+
+    for base in cdef.info.mro[1:]:
+        if base.fullname == "builtins.object":
+            continue
+
+        base_ir = mapper.type_to_ir.get(base)
+        if base_ir is not None and base_ir.is_acyclic:
+            continue
+
+        return base.fullname
+
+    return None
+
+
+def validate_acyclic_class_bases(
+    path: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    if not ir.is_acyclic:
+        return
+
+    if fullname := find_non_acyclic_base(cdef, mapper):
+        errors.error(
+            f'"acyclic" can\'t be used in a class that inherits from non-acyclic type "{fullname}"',
+            path,
+            cdef.line,
+        )
 
 
 def prepare_class_def(

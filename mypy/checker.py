@@ -353,8 +353,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     tscope: Scope
     scope: CheckerScope
-    # Innermost enclosing type
-    type: TypeInfo | None
     # Stack of function return types
     return_types: list[Type]
     # Flags; true for dynamically typed functions
@@ -432,7 +430,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
         self.globals = tree.names
-        self.type = None
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -512,7 +509,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.inferred_attribute_types = None
         self.scope = CheckerScope(self.tree)
 
-    def check_first_pass(self) -> None:
+    def check_first_pass(self, recurse_into_functions: bool = True) -> None:
         """Type check the entire file, but defer functions with unresolved references.
 
         Unresolved references are forward references to variables
@@ -522,7 +519,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         Deferred functions will be processed by check_second_pass().
         """
-        self.recurse_into_functions = True
+        self.recurse_into_functions = recurse_into_functions
         with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options
@@ -718,11 +715,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     #
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        # If a function/method can infer variable types, it should be processed as part
-        # of the module top level (i.e. module interface).
-        if not self.recurse_into_functions and not defn.def_or_infer_vars:
-            return
-        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
+        # We always process overload as part of the top-level to infer various
+        # externally visible properties like its type, similar to visit_decorator().
+        # Only the body of the implementation is checked as a function-level target.
+        # TODO: clean-up deferral logic and the daemon to avoid unnecessary work.
+        with self.tscope.function_scope(defn):
             self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -771,6 +768,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 settable = defn.items[0].var.is_settable_property
                 # Do not visit the second time the items we checked above.
                 if (settable and i > 1) or (not settable and i > 0):
+                    # Type check initialization expressions.
+                    # TODO: initializers can infer types if they contain a walrus,
+                    # it may be not safe to optimize them away completely.
+                    if not self.can_skip_diagnostics:
+                        self.check_default_params(fdef.func)
                     self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             else:
                 # Perform full check for real overloads to infer type of all decorated
@@ -1196,6 +1198,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
+        # Type check initialization expressions as part of top-level.
+        if not self.can_skip_diagnostics:
+            self.check_default_params(defn)
+        if defn.original_def:
+            # Override previous definition (may affect externally visible types).
+            new_type = self.function_type(defn)
+            self.check_func_def_override(defn, new_type)
         if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
@@ -1210,10 +1219,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         found_method_base_classes = self.check_method_override(defn)
                         self.check_explicit_override_decorator(defn, found_method_base_classes)
                     self.check_inplace_operator_method(defn)
-            if defn.original_def:
-                # Override previous definition.
-                new_type = self.function_type(defn)
-                self.check_func_def_override(defn, new_type)
 
     def check_func_item(
         self,
@@ -1262,12 +1267,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # decorated function.
             orig_type = defn.original_def.type
             if orig_type is None:
-                # If other branch is unreachable, we don't type check it and so we might
+                # If other branch is unreachable, we don't type check it, and so we might
                 # not have a type for the original definition
                 return
             if isinstance(orig_type, PartialType):
                 if orig_type.type is None:
-                    # Ah this is a partial type. Give it the type of the function.
+                    # Ah, this is a partial type. Give it the type of the function.
                     orig_def = defn.original_def
                     if isinstance(orig_def, Decorator):
                         var = orig_def.var
@@ -1279,8 +1284,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         del partial_types[var]
                 else:
                     # Trying to redefine something like partial empty list as function.
+                    defn.is_invalid_redefinition = True
                     self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
-            else:
+            elif not defn.is_invalid_redefinition:
                 name_expr = NameExpr(defn.name)
                 name_expr.node = defn.original_def
                 self.binder.assign_type(name_expr, new_type, orig_type)
@@ -1320,29 +1326,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not self.can_skip_diagnostics:
                     self.check_funcdef_item(item, typ, name, defn=defn, original_typ=original_typ)
 
-                # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
-                if defn.is_awaitable_coroutine:
-                    # Update the return type to AwaitableGenerator.
-                    # (This doesn't exist in typing.py, only in typing.pyi.)
-                    t = typ.ret_type
-                    c = defn.is_coroutine
-                    ty = self.get_generator_yield_type(t, c)
-                    tc = self.get_generator_receive_type(t, c)
-                    if c:
-                        tr = self.get_coroutine_return_type(t)
-                    else:
-                        tr = self.get_generator_return_type(t, c)
-                    ret_type = self.named_generic_type(
-                        "typing.AwaitableGenerator", [ty, tc, tr, t]
-                    )
-                    typ = typ.copy_modified(ret_type=ret_type)
-                    defn.type = typ
-
                 # Push return type.
                 self.return_types.append(typ.ret_type)
 
                 with self.scope.push_function(defn):
-                    # We temporary push the definition to get the self type as
+                    # We temporarily push the definition to get the self type as
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
 
@@ -1383,11 +1371,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     # Need to store arguments again for the expanded item.
                     store_argument_type(item, i, typ, self.named_generic_type)
-
-                # Type check initialization expressions.
-                body_is_trivial = is_trivial_body(defn.body)
-                if not self.can_skip_diagnostics:
-                    self.check_default_params(item, body_is_trivial)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -1445,6 +1428,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.binder.pop_frame(True, 0)
 
             if not unreachable:
+                body_is_trivial = is_trivial_body(defn.body)
                 if defn.is_generator or is_named_instance(
                     self.return_types[-1], "typing.AwaitableGenerator"
                 ):
@@ -1618,7 +1602,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return bool(func.arg_types)
 
         with self.scope.push_function(defn):
-            # We temporary push the definition to get the self type as
+            # We temporarily push the definition to get the self type as
             # visible from *inside* of this function/method.
             ref_type: Type | None = self.scope.active_self_type()
             if ref_type is None:
@@ -1675,10 +1659,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         Note that this doesn't do a full CFG analysis but uses a line number based
         heuristic that isn't correct in some (rare) cases.
         """
-        if v.is_final:
-            # Final vars are definitely never reassigned.
-            return False
-
         outers = self.tscope.outer_functions()
         if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
@@ -1710,7 +1690,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         context=typ.ret_type,
                     )
 
-    def check_default_params(self, item: FuncItem, body_is_trivial: bool) -> None:
+    def check_default_params(self, item: FuncItem, body_is_trivial: bool | None = None) -> None:
+        if body_is_trivial is None:
+            body_is_trivial = is_trivial_body(item.body)
+        # Although initializers are checked as part of the top-level, we do not
+        # show errors in them if they appear in an unannotated function.
+        self.dynamic_funcs.append(item.is_dynamic())
         for param in item.arguments:
             if param.initializer is None:
                 continue
@@ -1744,6 +1729,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 rvalue_name="default",
                 notes=notes,
             )
+        self.dynamic_funcs.pop()
 
     def is_forward_op_method(self, method_name: str) -> bool:
         return method_name in operators.reverse_op_methods
@@ -2680,11 +2666,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         if not can_have_shared_disjoint_base(typ.bases):
             self.fail(message_registry.INCOMPATIBLE_DISJOINT_BASES.format(typ.name), defn)
-        with (
-            self.tscope.class_scope(defn.info),
-            self.enter_partial_types(is_class=True),
-            self.enter_class(defn.info),
-        ):
+        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
@@ -2702,7 +2684,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_final_deletable(typ)
 
             if defn.decorators:
-                sig: Type = type_object_type(defn.info, self.named_type)
+                sig: Type = type_object_type(defn.info)
                 # Decorators are applied in reverse order.
                 for decorator in reversed(defn.decorators):
                     if isinstance(decorator, CallExpr) and isinstance(
@@ -2752,15 +2734,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
         infer_class_variances(defn.info)
-
-    @contextmanager
-    def enter_class(self, type: TypeInfo) -> Iterator[None]:
-        original_type = self.type
-        self.type = type
-        try:
-            yield
-        finally:
-            self.type = original_type
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -5393,6 +5366,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if isinstance(ttype, AnyType):
                 all_types.append(ttype)
                 continue
+            if isinstance(ttype, UninhabitedType):
+                continue
 
             if isinstance(ttype, FunctionLike):
                 item = ttype.items[0]
@@ -5604,6 +5579,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def visit_decorator_inner(
         self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
     ) -> None:
+        # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
+        defn = e.func
+        if defn.is_awaitable_coroutine:
+            assert isinstance(defn.type, CallableType)
+            # Update the return type to AwaitableGenerator (unless we already did).
+            # Note, this doesn't exist in typing.py, only in typing.pyi.
+            if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
+                t = defn.type.ret_type
+                c = defn.is_coroutine
+                ty = self.get_generator_yield_type(t, c)
+                tc = self.get_generator_receive_type(t, c)
+                if c:
+                    tr = self.get_coroutine_return_type(t)
+                else:
+                    tr = self.get_generator_return_type(t, c)
+                ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
+                typ = defn.type.copy_modified(ret_type=ret_type)
+                defn.type = typ
+
+        # Type check initialization expressions as part of top-level.
+        if not self.can_skip_diagnostics:
+            self.check_default_params(defn)
+
         if self.recurse_into_functions or e.func.def_or_infer_vars:
             with self.tscope.function_scope(e.func), self.set_recurse_into_functions():
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
@@ -6108,11 +6106,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         short_name = format_type_bare(typ, self.options)
         cdef, info = self.make_fake_typeinfo(cur_module.fullname, gen_name, short_name, [typ])
 
-        # Build up a fake FuncDef so we can populate the symbol table.
+        # Build up a fake FuncDef, so we can populate the symbol table.
         func_def = FuncDef("__call__", [], Block([]), callable_type)
         func_def._fullname = cdef.fullname + ".__call__"
         func_def.info = info
-        info.names["__call__"] = SymbolTableNode(MDEF, func_def)
+        sym = SymbolTableNode(MDEF, func_def)
+        sym.plugin_generated = True
+        info.names["__call__"] = sym
 
         cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 
@@ -6556,6 +6556,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         operands = [collapse_walrus(x) for x in node.operands]
         operand_types = []
         narrowable_operand_index_to_hash = {}
+        narrowable_operand_hash_to_index = {}
         for i, expr in enumerate(operands):
             if not self.has_type(expr):
                 return {}, {}
@@ -6580,6 +6581,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 h = literal_hash(expr)
                 if h is not None:
                     narrowable_operand_index_to_hash[i] = h
+                    narrowable_operand_hash_to_index[h] = i
 
         # Step 2: Group operands chained by either the 'is' or '==' operands
         # together. For all other operands, we keep them in groups of size 2.
@@ -6671,11 +6673,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
             partial_type_maps.append((if_map, else_map))
 
+            # Chained comparisons are conjunctions evaluated left-to-right. Feed what we learned
+            # from earlier true comparisons into later comparisons, similarly to `and`.
+            if len(simplified_operator_list) > 1:
+                for expr, expr_type in if_map.items():
+                    h = literal_hash(expr)
+                    if h is None or h not in narrowable_operand_hash_to_index:
+                        continue
+                    operand_index = narrowable_operand_hash_to_index[h]
+                    operand_types[operand_index] = meet_types(
+                        operand_types[operand_index], expr_type
+                    )
+
         # If we have found non-trivial restrictions from the regular comparisons,
         # then return soon. Otherwise try to infer restrictions involving `len(x)`.
         # TODO: support regular and len() narrowing in the same chain.
-        if any(m != ({}, {}) for m in partial_type_maps):
-            return reduce_conditional_maps(partial_type_maps)
+        if any(len(m[0]) or len(m[1]) for m in partial_type_maps):
+            return reduce_conditional_maps(partial_type_maps, use_meet=True)
         else:
             # Use meet for `and` maps to get correct results for chained checks
             # like `if 1 < len(x) < 4: ...`
@@ -6803,11 +6817,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # It is correct to always narrow here. It improves behaviour on tests and
                     # detects many inaccurate type annotations on primer.
                     # However, because mypy does not currently check unreachable code, it feels
-                    # risky to narrow to unreachable without --warn-unreachable.
+                    # risky to narrow to unreachable without --warn-unreachable or not
+                    # at module level
                     # See also this specific primer comment, where I force primer to run with
                     # --warn-unreachable to see what code we would stop checking:
                     # https://github.com/python/mypy/pull/20660#issuecomment-3865794148
-                    if self.options.warn_unreachable or not is_unreachable_map(if_map):
+                    if (
+                        self.options.warn_unreachable and len(self.scope.stack) != 1
+                    ) or not is_unreachable_map(if_map):
                         all_if_maps.append(if_map)
 
         # Handle narrowing for operands with custom __eq__ methods specially
@@ -6896,6 +6913,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 expr_in_type_expr = type_expr.expr
             else:
                 continue
+
+            p_expr_type = get_proper_type(operand_types[i])
+            if isinstance(p_expr_type, TypeType) and isinstance(p_expr_type.item, TypeVarType):
+                # This mirrors logic in comparison_type_narrowing_helper
+                # In theory, this is like `i not in narrowable_indices`, except that
+                # narrowable_indices filters all type(x) narrowing as it's a call
+                continue
+
             for j in expr_indices:
                 if i == j:
                     continue
@@ -6944,10 +6969,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
         """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
 
-        Specifically, this function accepts two mappings of expression to original types:
-        the original mapping (existing_types), and a new mapping (new_types) intended to
-        update the original.
-
         This function iterates through new_types and attempts to use the information to try
         refining any parent types that happen to be unions.
 
@@ -6966,23 +6987,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
-        output_map = {}
+        all_mappings = [new_types]
         for expr, expr_type in new_types.items():
-            # The original inferred type should always be present in the output map, of course
-            output_map[expr] = expr_type
+            all_mappings.append(self.refine_parent_types(expr, expr_type))
+        return reduce_and_conditional_type_maps(all_mappings, use_meet=True)
 
-            # Next, try using this information to refine the parent types, if applicable.
-            new_mapping = self.refine_parent_types(expr, expr_type)
-            for parent_expr, proposed_parent_type in new_mapping.items():
-                # We don't try inferring anything if we've already inferred something for
-                # the parent expression.
-                # TODO: Consider picking the narrower type instead of always discarding this?
-                if parent_expr in new_types:
-                    continue
-                output_map[parent_expr] = proposed_parent_type
-        return output_map
-
-    def refine_parent_types(self, expr: Expression, expr_type: Type) -> Mapping[Expression, Type]:
+    def refine_parent_types(self, expr: Expression, expr_type: Type) -> TypeMap:
         """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
         the parent types based on the 'expr_type'.
 
@@ -8338,7 +8348,7 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
 
     @property
     def type(self) -> TypeInfo | None:
-        return self._chk.type
+        return self._chk.scope.current_class()
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
@@ -8620,25 +8630,40 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
     the truth of e2.
     """
     # Both conditions can be true; combine the information. Anything
-    # we learn from either conditions' truth is valid. If the same
-    # expression's type is refined by both conditions, we somewhat
-    # arbitrarily give precedence to m2 unless m1 value is Any.
-    # In the future, we could use an intersection type or meet_types().
+    # we learn from either conditions' truth is valid.
     result = m2.copy()
-    m2_keys = {literal_hash(n2) for n2 in m2}
-    for n1 in m1:
-        if literal_hash(n1) not in m2_keys or isinstance(
-            get_proper_type(m1[n1]), (AnyType, UninhabitedType)
-        ):
-            result[n1] = m1[n1]
+    m2_exprs = {literal_hash(e2): e2 for e2 in m2}
+    for e1 in m1:
+        e1_hash = literal_hash(e1)
+        if e1_hash not in m2_exprs:
+            result[e1] = m1[e1]
+            continue
+
+        if not use_meet:
+            # If use_meet=False and the same expression's type is refined by both conditions,
+            # we somewhat arbitrarily give precedence to m2, unless a) m1's value is Never, or
+            # b) m2's value is Any and m1 isn't a union that could have been narrowed to Any.
+            t1 = m1[e1]
+            pt1 = get_proper_type(t1)
+            if isinstance(pt1, UninhabitedType):
+                result[e1] = t1
+            else:
+                e2 = m2_exprs[e1_hash]
+                pt2 = get_proper_type(m2[e2])
+                if isinstance(pt2, AnyType) and not (
+                    isinstance(pt1, UnionType)
+                    and any(isinstance(get_proper_type(item), AnyType) for item in pt1.items)
+                ):
+                    result[e1] = t1
+
     if use_meet:
         # For now, meet common keys only if specifically requested.
         # This is currently used for tuple types narrowing, where having
         # a precise result is important.
-        for n1 in m1:
-            for n2 in m2:
-                if literal_hash(n1) == literal_hash(n2):
-                    result[n1] = meet_types(m1[n1], m2[n2])
+        for e1 in m1:
+            for e2 in m2:
+                if literal_hash(e1) == literal_hash(e2):
+                    result[e1] = meet_types(m1[e1], m2[e2])
     return result
 
 
@@ -8727,11 +8752,19 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
         return ms[0]
     result = ms[0]
     for m in ms[1:]:
+        if not m:
+            continue  # this is a micro-optimisation
         result = and_conditional_maps(result, m, use_meet=use_meet)
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {"builtins.bytearray", "builtins.memoryview"}
+BUILTINS_CUSTOM_EQ_CHECKS: Final = {
+    "builtins.bytearray",
+    "builtins.memoryview",
+    "builtins.frozenset",
+    "_collections_abc.dict_keys",
+    "_collections_abc.dict_items",
+}
 
 
 def has_custom_eq_checks(t: Type) -> bool:
@@ -8741,7 +8774,7 @@ def has_custom_eq_checks(t: Type) -> bool:
         # custom_special_method has special casing for builtins.* and typing.* that make the
         # above always return False. So here we return True if the a value of a builtin type
         # will ever compare equal to value of another type, e.g. a bytes value can compare equal
-        # to a bytearray value. We also include builtins collections, see testNarrowingCollections
+        # to a bytearray value.
         or (
             isinstance(pt := get_proper_type(t), Instance)
             and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS

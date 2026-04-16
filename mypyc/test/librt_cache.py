@@ -31,9 +31,10 @@ import filelock
 
 from mypyc.build import LIBRT_MODULES, get_cflags, include_dir
 from mypyc.common import RUNTIME_C_FILES
+from mypyc.test.config import PREFIX
 
 
-def _librt_build_hash(experimental: bool) -> str:
+def _librt_build_hash(experimental: bool, opt_level: str) -> str:
     """Compute hash for librt build, including sources and build environment."""
     # Import lazily to ensure mypyc.build has ensured that distutils is correctly set up
     from distutils import ccompiler
@@ -41,6 +42,7 @@ def _librt_build_hash(experimental: bool) -> str:
     h = hashlib.sha256()
     # Include experimental flag
     h.update(b"exp" if experimental else b"noexp")
+    h.update(f"opt={opt_level}".encode())
     # Include full Python version string (includes git hash for dev builds)
     h.update(sys.version.encode())
     # Include debug build status (gettotalrefcount only exists in debug builds)
@@ -72,7 +74,7 @@ def _librt_build_hash(experimental: bool) -> str:
     return h.hexdigest()[:16]
 
 
-def _generate_setup_py(build_dir: str, experimental: bool) -> str:
+def _generate_setup_py(build_dir: str, experimental: bool, opt_level: str) -> str:
     """Generate setup.py content for building librt directly.
 
     We inline LIBRT_MODULES/RUNTIME_C_FILES/include_dir/cflags values to avoid
@@ -80,8 +82,8 @@ def _generate_setup_py(build_dir: str, experimental: bool) -> str:
     """
     lib_rt_dir = include_dir()
 
-    # Get compiler flags using the shared helper (with -O0 for faster builds)
-    cflags = get_cflags(opt_level="0", experimental_features=experimental)
+    # Get compiler flags using the shared helper
+    cflags = get_cflags(opt_level=opt_level, experimental_features=experimental)
 
     # Serialize values to inline in generated setup.py
     librt_modules_repr = repr(
@@ -135,7 +137,7 @@ setup(name='librt_cached', ext_modules=extensions)
 """
 
 
-def get_librt_path(experimental: bool = True) -> str:
+def get_librt_path(experimental: bool = True, opt_level: str = "0") -> str:
     """Get path to librt built from the repository, building and caching if necessary.
 
     Uses build/librt-cache/ under the repo root (gitignored). The cache is
@@ -146,14 +148,14 @@ def get_librt_path(experimental: bool = True) -> str:
 
     Args:
         experimental: Whether to enable experimental features.
+        opt_level: Optimization level ("0".."3") used when building librt.
 
     Returns:
         Path to directory containing built librt modules.
     """
     # Use build/librt-cache/ under the repo root (gitignored)
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    cache_root = os.path.join(repo_root, "build", "librt-cache")
-    build_hash = _librt_build_hash(experimental)
+    cache_root = os.path.join(PREFIX, "build", "librt-cache")
+    build_hash = _librt_build_hash(experimental, opt_level)
     build_dir = os.path.join(cache_root, f"librt-{build_hash}")
     lock_file = os.path.join(cache_root, f"librt-{build_hash}.lock")
     marker = os.path.join(build_dir, ".complete")
@@ -186,7 +188,7 @@ def get_librt_path(experimental: bool = True) -> str:
         # Write setup.py
         setup_py = os.path.join(build_dir, "setup.py")
         with open(setup_py, "w") as f:
-            f.write(_generate_setup_py(build_dir, experimental))
+            f.write(_generate_setup_py(build_dir, experimental, opt_level))
 
         # Build (parallel builds don't work well because multiple extensions
         # share the same runtime C files, causing race conditions)
@@ -207,7 +209,7 @@ def get_librt_path(experimental: bool = True) -> str:
 
 
 def run_with_librt(
-    file_path: str, experimental: bool = True, check: bool = True
+    file_path: str, experimental: bool = True, check: bool = True, opt_level: str = "0"
 ) -> subprocess.CompletedProcess[str]:
     """Run a Python file in a subprocess with built librt available.
 
@@ -218,11 +220,12 @@ def run_with_librt(
         file_path: Path to Python file to execute.
         experimental: Whether to use experimental features.
         check: If True, raise CalledProcessError on non-zero exit.
+        opt_level: Optimization level ("0".."3") used when building librt.
 
     Returns:
         CompletedProcess with stdout, stderr, and returncode.
     """
-    librt_path = get_librt_path(experimental)
+    librt_path = get_librt_path(experimental, opt_level=opt_level)
     # Prepend librt path to PYTHONPATH
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
