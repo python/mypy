@@ -1061,6 +1061,25 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            class spam:
+                @property
+                def eggs(self) -> int: ...
+                @eggs.deleter
+                def eggs(self) -> None: ...
+            """,
+            runtime="""
+            class spam:
+                @property
+                def eggs(self):
+                    return 42
+                @eggs.deleter
+                def eggs(self):
+                    print("eggs")
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_cached_property(self) -> Iterator[Case]:
