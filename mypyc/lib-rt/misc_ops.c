@@ -1158,6 +1158,9 @@ void CPyTrace_LogEvent(const char *location, const char *line, const char *op, c
 typedef struct {
     PyObject_HEAD
     PyObject *name;
+#if CPY_3_15_FEATURES
+    PyObject *qualname;
+#endif
     PyObject *type_params;
     PyObject *compute_value;
     PyObject *value;
