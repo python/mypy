@@ -152,8 +152,8 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             def read_all(cache_dir: str) -> dict[str, bytes]:
                 store = SqliteMetadataStore(cache_dir)
                 result = {name: store.read(name) for name in store.list_all()}
-                assert store.db is not None
-                store.db.close()
+                for db in store.dbs:
+                    db.close()
                 return result
 
             before = read_all(patched_ver)
