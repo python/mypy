@@ -2113,8 +2113,6 @@ class SemanticAnalyzer(
             and not has_placeholder(defn.info.typeddict_type)
         ):
             # This is a valid TypedDict, and it is fully analyzed.
-            for decorator in defn.decorators:
-                decorator.accept(self)
             return True
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
