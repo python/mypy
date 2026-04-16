@@ -25,9 +25,6 @@ extern "C" {
 #if PY_VERSION_HEX < 0x030b00B4 && !defined(PYPY_VERSION)
 #  include "frameobject.h"        // PyFrameObject, PyFrame_GetBack()
 #endif
-#if PY_VERSION_HEX < 0x030C00A3
-#  include <structmember.h>       // T_SHORT, READONLY
-#endif
 
 
 #ifndef _Py_CAST
@@ -1428,6 +1425,11 @@ PyUnicodeWriter_WriteStr(PyUnicodeWriter *writer, PyObject *obj)
 static inline int
 PyUnicodeWriter_WriteRepr(PyUnicodeWriter *writer, PyObject *obj)
 {
+    if (obj == NULL) {
+        return _PyUnicodeWriter_WriteASCIIString((_PyUnicodeWriter*)writer,
+                                                 "<NULL>", 6);
+    }
+
     PyObject *str = PyObject_Repr(obj);
     if (str == NULL) {
         return -1;
@@ -1572,6 +1574,11 @@ static inline int PyLong_IsZero(PyObject *obj)
 
 // gh-124502 added PyUnicode_Equal() to Python 3.14.0a0
 #if PY_VERSION_HEX < 0x030E00A0
+
+#if PY_VERSION_HEX >= 0x030d0000 && !defined(PYPY_VERSION)
+PyAPI_FUNC(int) _PyUnicode_Equal(PyObject *str1, PyObject *str2);
+#endif
+
 static inline int PyUnicode_Equal(PyObject *str1, PyObject *str2)
 {
     if (!PyUnicode_Check(str1)) {
@@ -1586,8 +1593,6 @@ static inline int PyUnicode_Equal(PyObject *str1, PyObject *str2)
     }
 
 #if PY_VERSION_HEX >= 0x030d0000 && !defined(PYPY_VERSION)
-    PyAPI_FUNC(int) _PyUnicode_Equal(PyObject *str1, PyObject *str2);
-
     return _PyUnicode_Equal(str1, str2);
 #elif PY_VERSION_HEX >= 0x03060000 && !defined(PYPY_VERSION)
     return _PyUnicode_EQ(str1, str2);
@@ -1610,11 +1615,14 @@ static inline PyObject* PyBytes_Join(PyObject *sep, PyObject *iterable)
 
 
 #if PY_VERSION_HEX < 0x030E00A0
+
+#if PY_VERSION_HEX >= 0x03000000 && !defined(PYPY_VERSION)
+PyAPI_FUNC(Py_hash_t) _Py_HashBytes(const void *src, Py_ssize_t len);
+#endif
+
 static inline Py_hash_t Py_HashBuffer(const void *ptr, Py_ssize_t len)
 {
 #if PY_VERSION_HEX >= 0x03000000 && !defined(PYPY_VERSION)
-    PyAPI_FUNC(Py_hash_t) _Py_HashBytes(const void *src, Py_ssize_t len);
-
     return _Py_HashBytes(ptr, len);
 #else
     Py_hash_t hash;
@@ -1919,43 +1927,46 @@ PyLongWriter_Finish(PyLongWriter *writer)
 
 
 #if PY_VERSION_HEX < 0x030C00A3
-#  define Py_T_SHORT      T_SHORT
-#  define Py_T_INT        T_INT
-#  define Py_T_LONG       T_LONG
-#  define Py_T_FLOAT      T_FLOAT
-#  define Py_T_DOUBLE     T_DOUBLE
-#  define Py_T_STRING     T_STRING
-#  define _Py_T_OBJECT    T_OBJECT
-#  define Py_T_CHAR       T_CHAR
-#  define Py_T_BYTE       T_BYTE
-#  define Py_T_UBYTE      T_UBYTE
-#  define Py_T_USHORT     T_USHORT
-#  define Py_T_UINT       T_UINT
-#  define Py_T_ULONG      T_ULONG
-#  define Py_T_STRING_INPLACE  T_STRING_INPLACE
-#  define Py_T_BOOL       T_BOOL
-#  define Py_T_OBJECT_EX  T_OBJECT_EX
-#  define Py_T_LONGLONG   T_LONGLONG
-#  define Py_T_ULONGLONG  T_ULONGLONG
-#  define Py_T_PYSSIZET   T_PYSSIZET
+#  define Py_T_SHORT      0
+#  define Py_T_INT        1
+#  define Py_T_LONG       2
+#  define Py_T_FLOAT      3
+#  define Py_T_DOUBLE     4
+#  define Py_T_STRING     5
+#  define _Py_T_OBJECT    6
+#  define Py_T_CHAR       7
+#  define Py_T_BYTE       8
+#  define Py_T_UBYTE      9
+#  define Py_T_USHORT     10
+#  define Py_T_UINT       11
+#  define Py_T_ULONG      12
+#  define Py_T_STRING_INPLACE  13
+#  define Py_T_BOOL       14
+#  define Py_T_OBJECT_EX  16
+#  define Py_T_LONGLONG   17
+#  define Py_T_ULONGLONG  18
+#  define Py_T_PYSSIZET   19
 
 #  if PY_VERSION_HEX >= 0x03000000 && !defined(PYPY_VERSION)
-#    define _Py_T_NONE      T_NONE
+#    define _Py_T_NONE      20
 #  endif
 
-#  define Py_READONLY            READONLY
-#  define Py_AUDIT_READ          READ_RESTRICTED
-#  define _Py_WRITE_RESTRICTED   PY_WRITE_RESTRICTED
+#  define Py_READONLY            1
+#  define Py_AUDIT_READ          2
+#  define _Py_WRITE_RESTRICTED   4
 #endif
 
 
 // gh-127350 added Py_fopen() and Py_fclose() to Python 3.14a4
 #if PY_VERSION_HEX < 0x030E00A4
+
+#if 0x030400A2 <= PY_VERSION_HEX && !defined(PYPY_VERSION)
+PyAPI_FUNC(FILE*) _Py_fopen_obj(PyObject *path, const char *mode);
+#endif
+
 static inline FILE* Py_fopen(PyObject *path, const char *mode)
 {
 #if 0x030400A2 <= PY_VERSION_HEX && !defined(PYPY_VERSION)
-    PyAPI_FUNC(FILE*) _Py_fopen_obj(PyObject *path, const char *mode);
-
     return _Py_fopen_obj(path, mode);
 #else
     FILE *f;
@@ -1992,6 +2003,8 @@ static inline int Py_fclose(FILE *file)
 
 
 #if 0x03080000 <= PY_VERSION_HEX && PY_VERSION_HEX < 0x030E0000 && !defined(PYPY_VERSION)
+PyAPI_FUNC(const PyConfig*) _Py_GetConfig(void);
+
 static inline PyObject*
 PyConfig_Get(const char *name)
 {
@@ -2127,8 +2140,6 @@ PyConfig_Get(const char *name)
             return Py_NewRef(value);
         }
 
-        PyAPI_FUNC(const PyConfig*) _Py_GetConfig(void);
-
         const PyConfig *config = _Py_GetConfig();
         void *member = (char *)config + spec->offset;
         switch (spec->type) {
@@ -2227,6 +2238,81 @@ static inline int PyUnstable_Object_IsUniquelyReferenced(PyObject *obj)
     return (_Py_IsOwnedByCurrentThread(obj) &&
             _Py_atomic_load_uint32_relaxed(&obj->ob_ref_local) == 1 &&
             _Py_atomic_load_ssize_relaxed(&obj->ob_ref_shared) == 0);
+#endif
+}
+#endif
+
+// gh-128926 added PyUnstable_TryIncRef() and PyUnstable_EnableTryIncRef() to
+// Python 3.14.0a5. Adapted from _Py_TryIncref() and _PyObject_SetMaybeWeakref().
+#if PY_VERSION_HEX < 0x030E00A5
+static inline int PyUnstable_TryIncRef(PyObject *op)
+{
+#ifndef Py_GIL_DISABLED
+    if (Py_REFCNT(op) > 0) {
+        Py_INCREF(op);
+        return 1;
+    }
+    return 0;
+#else
+    // _Py_TryIncrefFast()
+    uint32_t local = _Py_atomic_load_uint32_relaxed(&op->ob_ref_local);
+    local += 1;
+    if (local == 0) {
+        // immortal
+        return 1;
+    }
+    if (_Py_IsOwnedByCurrentThread(op)) {
+        _Py_INCREF_STAT_INC();
+        _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, local);
+#ifdef Py_REF_DEBUG
+        _Py_INCREF_IncRefTotal();
+#endif
+        return 1;
+    }
+
+    // _Py_TryIncRefShared()
+    Py_ssize_t shared = _Py_atomic_load_ssize_relaxed(&op->ob_ref_shared);
+    for (;;) {
+        // If the shared refcount is zero and the object is either merged
+        // or may not have weak references, then we cannot incref it.
+        if (shared == 0 || shared == _Py_REF_MERGED) {
+            return 0;
+        }
+
+        if (_Py_atomic_compare_exchange_ssize(
+                &op->ob_ref_shared,
+                &shared,
+                shared + (1 << _Py_REF_SHARED_SHIFT))) {
+#ifdef Py_REF_DEBUG
+            _Py_INCREF_IncRefTotal();
+#endif
+            _Py_INCREF_STAT_INC();
+            return 1;
+        }
+    }
+#endif
+}
+
+static inline void PyUnstable_EnableTryIncRef(PyObject *op)
+{
+#ifdef Py_GIL_DISABLED
+    // _PyObject_SetMaybeWeakref()
+    if (_Py_IsImmortal(op)) {
+        return;
+    }
+    for (;;) {
+        Py_ssize_t shared = _Py_atomic_load_ssize_relaxed(&op->ob_ref_shared);
+        if ((shared & _Py_REF_SHARED_FLAG_MASK) != 0) {
+            // Nothing to do if it's in WEAKREFS, QUEUED, or MERGED states.
+            return;
+        }
+        if (_Py_atomic_compare_exchange_ssize(
+                &op->ob_ref_shared, &shared, shared | _Py_REF_MAYBE_WEAKREF)) {
+            return;
+        }
+    }
+#else
+    (void)op;  // unused argument
 #endif
 }
 #endif
@@ -2587,6 +2673,40 @@ PyUnstable_Unicode_GET_CACHED_HASH(PyObject *op)
 }
 #endif
 
+#if 0x030D0000 <= PY_VERSION_HEX && PY_VERSION_HEX < 0x030F00A7 && !defined(PYPY_VERSION)
+// Immortal objects were implemented in Python 3.12, however there is no easy API
+// to make objects immortal until 3.14 which has _Py_SetImmortal(). Since
+// immortal objects are primarily needed for free-threading, this API is implemented
+// for 3.14 using _Py_SetImmortal() and uses private macros on 3.13.
+#if 0x030E0000 <= PY_VERSION_HEX
+PyAPI_FUNC(void) _Py_SetImmortal(PyObject *op);
+#endif
+
+static inline int
+PyUnstable_SetImmortal(PyObject *op)
+{
+    assert(op != NULL);
+    if (!PyUnstable_Object_IsUniquelyReferenced(op) || PyUnicode_Check(op)) {
+        return 0;
+    }
+#if 0x030E0000 <= PY_VERSION_HEX
+    _Py_SetImmortal(op);
+#else
+    // Python 3.13 doesn't export _Py_SetImmortal() function
+    if (PyObject_GC_IsTracked(op)) {
+        PyObject_GC_UnTrack(op);
+    }
+#ifdef Py_GIL_DISABLED
+    op->ob_tid = _Py_UNOWNED_TID;
+    op->ob_ref_local = _Py_IMMORTAL_REFCNT_LOCAL;
+    op->ob_ref_shared = 0;
+#else
+    op->ob_refcnt = _Py_IMMORTAL_REFCNT;
+#endif
+#endif
+    return 1;
+}
+#endif
 
 #ifdef __cplusplus
 }
