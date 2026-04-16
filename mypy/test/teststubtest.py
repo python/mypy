@@ -1825,6 +1825,19 @@ assert annotations
             runtime="class D:\n  def __class_getitem__(cls, type): ...",
             error=None,
         )
+        if sys.version_info >= (3, 12):
+            # PEP 695 generic syntax implicitly provides __class_getitem__ at runtime
+            yield Case(
+                stub="class D2[T]: ...",
+                runtime="class D2:\n    def __class_getitem__(cls, _): return cls",
+                error=None,
+            )
+            # Non-generic stub still reports missing __class_getitem__
+            yield Case(
+                stub="class D3: ...",
+                runtime="class D3:\n    def __class_getitem__(cls, _): return cls",
+                error="D3.__class_getitem__",
+            )
         yield Case(
             stub="class E:\n  def __getitem__(self, item: object) -> object: ...",
             runtime="class E:\n  def __getitem__(self, item: object, /) -> object: ...",
