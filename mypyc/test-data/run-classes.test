@@ -5946,10 +5946,10 @@ def check(foo: Foo) -> bool:
     return isinstance(foo.val, Bar)
 
 def test_property_getter_no_leak() -> None:
-    foo = Foo()
     gc.collect()
     before = gc.get_objects()
     for _ in range(100):
+        foo = Foo()
         check(foo)
     gc.collect()
     after = gc.get_objects()
