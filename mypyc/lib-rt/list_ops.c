@@ -37,6 +37,7 @@ char CPyList_Clear(PyObject *list) {
         if (res == NULL) {
             return 0;
         }
+        Py_DECREF(res);
     }
     return 1;
 }
