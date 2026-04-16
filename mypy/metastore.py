@@ -11,12 +11,13 @@ We provide two implementations.
 from __future__ import annotations
 
 import binascii
-import hashlib
 import os
 import time
 from abc import abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
+
+from mypy_extensions import i64
 
 from mypy.util import os_path_join
 
@@ -177,28 +178,30 @@ def connect_db(db_file: str, set_journal_mode: bool) -> sqlite3.Connection:
     return db
 
 
-def _stable_hash(s: str) -> int:
-    """A deterministic hash, consistent across processes (unlike built-in hash())."""
-    return int.from_bytes(hashlib.md5(s.encode("utf-8")).digest()[:4], "little")
+def hash_path_stem(s: str) -> int:
+    """Hash the stem of a cache file path (everything before the first dot in the basename).
 
-
-def _cache_stem(name: str) -> str:
-    """Extract the canonical module stem from a cache file path.
-
-    All cache files for a module share a common prefix (the stem):
-      foo/bar/baz.meta.ff, foo/bar/baz.data.ff, foo/bar/baz.meta_ex.ff, etc.
-    For packages: foo/bar/__init__.meta.ff -> foo/bar/__init__
-
-    Global files like @deps.meta.json -> @deps
+    This is a combined stem-extraction + hash function optimized for mypyc compilation.
+    Uses only integer arithmetic, avoiding intermediate string allocations.
     """
-    # Split at first '.' in the basename to get the stem.
-    # E.g. "foo/bar/baz.meta.ff" -> "foo/bar/baz"
-    #      "foo/bar/__init__.data.ff" -> "foo/bar/__init__"
-    #      "@deps.meta.json" -> "@deps"
-    dot = name.find(".")
-    if dot == -1:
-        return name
-    return name[:dot]
+    # First find end of stem (scanning backwards, stop at first dot after last separator)
+    i = len(s) - 1
+    end: i64 = i
+    while i >= 0:
+        c: i64 = ord(s[i])
+        if c == ord("/") or c == ord("\\"):
+            break
+        if c == ord("."):
+            end = i
+        i -= 1
+    # Calculate hash
+    hv: i64 = 123
+    i = end
+    while i >= 0:
+        c = i64(ord(s[i]))
+        hv = (hv * 33) ^ c
+        i -= 1
+    return (hv ^ (hv >> 16) ^ (hv >> 32) ^ (hv >> 48)) & 0xFFFFFF
 
 
 class SqliteMetadataStore(MetadataStore):
@@ -234,12 +237,12 @@ class SqliteMetadataStore(MetadataStore):
             raise FileNotFoundError()
         if self.num_shards <= 1:
             return self.dbs[0]
-        return self.dbs[_stable_hash(_cache_stem(name)) % self.num_shards]
+        return self.dbs[hash_path_stem(name) % self.num_shards]
 
     def _shard_index(self, name: str) -> int:
         if self.num_shards <= 1:
             return 0
-        return _stable_hash(_cache_stem(name)) % self.num_shards
+        return hash_path_stem(name) % self.num_shards
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
