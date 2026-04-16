@@ -131,7 +131,12 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
         }
     } else {
         PyObject *index_obj = CPyTagged_AsObject(index);
-        return PyObject_GetItem(str, index_obj);
+        if (index_obj == NULL) {
+            return NULL;
+        }
+        PyObject *result = PyObject_GetItem(str, index_obj);
+        Py_DECREF(index_obj);
+        return result;
     }
 }
 
