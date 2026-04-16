@@ -378,7 +378,6 @@ class Application:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnly]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(kw_only=True)
@@ -398,7 +397,6 @@ Application(rating='name', name=123) # E: Argument "rating" to "Application" has
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyOnField]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 
 @dataclass
@@ -417,7 +415,6 @@ Application(123, rating='name') # E: Argument 1 to "Application" has incompatibl
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyOnFieldFalse]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 
 @dataclass
@@ -434,7 +431,6 @@ Application('name')  # E: Too few arguments for "Application"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinel]
-# flags: --python-version 3.10
 from dataclasses import dataclass, KW_ONLY
 
 @dataclass
@@ -453,7 +449,6 @@ Application('name', rating=123)  # E: Too many positional arguments for "Applica
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -473,7 +468,6 @@ Application(123, rating=123)  # E: "Application" gets multiple values for keywor
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinelAndSubclass]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -500,7 +494,6 @@ D(123, False)  # E: Argument 1 to "D" has incompatible type "int"; expected "str
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithMultipleSentinel]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -1427,7 +1420,6 @@ reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testDataclassWithSlotsArg]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1443,7 +1435,6 @@ class Some:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsDef]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=False)
@@ -1460,7 +1451,6 @@ class Some:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsDerivedFromNonSlot]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 class A:
@@ -1476,7 +1466,6 @@ class B(A):
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsConflict]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1498,7 +1487,6 @@ class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsRuntimeAttr]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1527,7 +1515,6 @@ NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 
 
 [case testSlotsDefinitionWithTwoPasses1]
-# flags: --python-version 3.10
 # https://github.com/python/mypy/issues/11821
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
@@ -1545,7 +1532,6 @@ class Node(Generic[V]):  # Error was here
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses2]
-# flags: --python-version 3.10
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
 
@@ -1563,7 +1549,6 @@ class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses3]
-# flags: --python-version 3.10
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
 
@@ -1581,7 +1566,6 @@ class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses4]
-# flags: --python-version 3.10
 import dataclasses as dtc
 
 PublishedMessagesVar = dict[int, 'PublishedMessages']
@@ -1592,7 +1576,6 @@ class PublishedMessages:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassSlotsWithDeferredBase]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass
@@ -1653,7 +1636,6 @@ def foo() -> None:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesMultipleInheritanceWithNonDataclass]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass
@@ -1828,7 +1810,6 @@ class MyClass(MyGeneric[MyDataclass]): ...
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithMatchArgs]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 @dataclass
 class One:
@@ -1849,7 +1830,6 @@ reveal_type(e.__match_args__)  # N: Revealed type is "tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithMatchArgsAndKwOnly]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 @dataclass(kw_only=True)
 class One:
@@ -1865,7 +1845,6 @@ reveal_type(Two.__match_args__)  # N: Revealed type is "tuple[Literal['a']]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithoutMatchArgs]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 @dataclass(match_args=False)
 class One:

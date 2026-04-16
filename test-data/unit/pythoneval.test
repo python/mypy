@@ -1614,7 +1614,6 @@ _testNarrowTypeForDictKeys.py:13: note: Revealed type is "str"
 _testNarrowTypeForDictKeys.py:15: note: Revealed type is "str | None"
 
 [case testTypeAliasWithNewStyleUnion]
-# flags: --python-version 3.10
 from typing import Literal, Type, TypeAlias, TypeVar
 
 Foo = Literal[1, 2]
@@ -1650,9 +1649,9 @@ def foo(x: T) -> T:
     a: A
     return x
 [out]
-_testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "type[int] | str"
-_testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "type[int] | str"
+_testTypeAliasWithNewStyleUnion.py:4: note: Revealed type is "typing._SpecialForm"
+_testTypeAliasWithNewStyleUnion.py:24: note: Revealed type is "type[int] | str"
+_testTypeAliasWithNewStyleUnion.py:27: note: Revealed type is "type[int] | str"
 
 [case testTypeAliasWithNewStyleUnionInStub]
 import m
@@ -1753,7 +1752,6 @@ _testTypedDictUnionGetFull.py:11: note: Revealed type is "TypedDict(_testTypedDi
 
 [case testTupleWithDifferentArgsPy310]
 # https://github.com/python/mypy/issues/11098
-# flags: --python-version 3.10
 Correct1 = str | tuple[float, float, str]
 Correct2 = tuple[float] | str
 Correct3 = tuple[float, ...] | str
@@ -1782,15 +1780,15 @@ WrongEllipsis = tuple[float, float, ...] | str  # Error
 
 reveal_type(tuple[int, str]((1, "x")))
 [out]
-_testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "str | tuple[float, float, str]"
-_testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "tuple[float] | str"
-_testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "tuple[float, ...] | str"
-_testTupleWithDifferentArgsPy310.py:18: note: Revealed type is "tuple[float, str]"
-_testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "tuple[float, ...]"
-_testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "list[tuple[int, str]]"
-_testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
-_testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
-_testTupleWithDifferentArgsPy310.py:29: note: Revealed type is "tuple[int, str]"
+_testTupleWithDifferentArgsPy310.py:14: note: Revealed type is "str | tuple[float, float, str]"
+_testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "tuple[float] | str"
+_testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "tuple[float, ...] | str"
+_testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "tuple[float, str]"
+_testTupleWithDifferentArgsPy310.py:18: note: Revealed type is "tuple[float, ...]"
+_testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "list[tuple[int, str]]"
+_testTupleWithDifferentArgsPy310.py:25: error: Invalid type: try using Literal[1] instead?
+_testTupleWithDifferentArgsPy310.py:26: error: Unexpected "..."
+_testTupleWithDifferentArgsPy310.py:28: note: Revealed type is "tuple[int, str]"
 
 [case testEnumIterMetaInference]
 import socket

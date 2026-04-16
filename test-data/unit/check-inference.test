@@ -3623,7 +3623,7 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testAllowPlainNoneForPartialAtModuleScope]
-# flags: --local-partial-types --python-version 3.10
+# flags: --local-partial-types
 x = None
 reveal_type(x)  # N: Revealed type is "None"
 

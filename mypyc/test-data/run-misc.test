@@ -986,9 +986,6 @@ elif sys.version_info[:2] == (3, 11):
 elif sys.version_info[:2] == (3, 10):
     def version() -> int:
         return 10
-elif sys.version_info[:2] == (3, 9):
-    def version() -> int:
-        return 9
 else:
     raise Exception("we don't support this version yet!")
 

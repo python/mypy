@@ -1689,7 +1689,7 @@ else:
 
 
 [case testNarrowingWithTupleOfTypesPy310Plus]
-# flags: --python-version 3.10 --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 class Base: ...
 
 class Impl1(Base): ...
@@ -2373,7 +2373,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType4]
-# flags: --python-version 3.10 --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 from types import NoneType
 from typing import Type, Union
@@ -2386,7 +2386,7 @@ def f(cls: Type[Union[None, int]]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType]
-# flags: --warn-unreachable --python-version 3.10 --strict-equality
+# flags: --warn-unreachable --strict-equality
 
 from types import NoneType
 from typing import final
@@ -2620,7 +2620,7 @@ def foo(location: ParameterLocation):
 [builtins fixtures/primitives.pyi]
 
 [case testConsistentNarrowingEqAndIn]
-# flags: --python-version 3.10 --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/17864
 def f(x: str | int) -> None:
@@ -2636,7 +2636,7 @@ def f(x: str | int) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testConsistentNarrowingEqAndInWithCustomEq]
-# flags: --python-version 3.10 --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 
 # https://github.com/python/mypy/issues/17864
 class C:
@@ -3063,7 +3063,7 @@ reveal_type(t.foo)  # N: Revealed type is "__main__.C"
 [builtins fixtures/property.pyi]
 
 [case testNarrowingNotImplemented]
-# flags: --python-version 3.10 --warn-unreachable
+# flags: --warn-unreachable
 from __future__ import annotations
 import types
 

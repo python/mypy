@@ -1788,7 +1788,6 @@ NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgs]
-# flags: --python-version 3.10
 import attr
 
 @attr.s(match_args=True, auto_attribs=True)
@@ -1804,7 +1803,6 @@ reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "tuple
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsDefaultCase]
-# flags: --python-version 3.10
 import attr
 
 @attr.s(auto_attribs=True)
@@ -1825,7 +1823,6 @@ reveal_type(t2.__match_args__)  # N: Revealed type is "tuple[Literal['x']?, Lite
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsOverrideExisting]
-# flags: --python-version 3.10
 import attr
 from typing import Final
 
@@ -1848,7 +1845,6 @@ reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "tuple
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsMultipleInheritance]
-# flags: --python-version 3.10
 import attr
 
 @attr.s
@@ -2169,7 +2165,6 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testEvolveUnion]
-# flags: --python-version 3.10
 from typing import Generic, TypeVar
 import attrs
 
@@ -2199,7 +2194,6 @@ a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of 
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testEvolveUnionOfTypeVar]
-# flags: --python-version 3.10
 import attrs
 from typing import TypeVar
 

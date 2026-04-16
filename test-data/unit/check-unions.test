@@ -1334,7 +1334,6 @@ x = y  # E: Incompatible types in assignment (expression has type "C1 | C2 | C3 
        # N: Item in the first union not in the second: "None"
 
 [case testTypeAliasWithOldUnionIsInstance]
-# flags: --python-version 3.10
 from typing import Union
 SimpleAlias = Union[int, str]
 

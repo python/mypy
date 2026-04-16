@@ -7055,7 +7055,6 @@ def guard(x: object) -> TypeIs[int]:
 [builtins fixtures/tuple.pyi]
 
 [case testStartUsingPEP604Union]
-# flags: --python-version 3.10
 import a
 [file a.py]
 import lib

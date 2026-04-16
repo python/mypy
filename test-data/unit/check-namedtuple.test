@@ -1155,7 +1155,6 @@ def f(fields) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleHasMatchArgs]
-# flags: --python-version 3.10
 from typing import NamedTuple
 class One(NamedTuple):
     bar: int
