@@ -80,6 +80,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    is_unannotated_any,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
@@ -898,13 +899,7 @@ def _add_init(
             if isinstance(sym_node, Var) and sym_node.is_final:
                 sym_node.final_set_in_init = True
     args = pos_args + kw_only_args
-    if all(
-        # We use getattr rather than instance checks because the variable.type
-        # might be wrapped into a Union or some other type, but even non-Any
-        # types reliably track the fact that the argument was not annotated.
-        getattr(arg.variable.type, "type_of_any", None) == TypeOfAny.unannotated
-        for arg in args
-    ):
+    if all(arg.variable.type and is_unannotated_any(arg.variable.type) for arg in args):
         # This workaround makes --disallow-incomplete-defs usable with attrs,
         # but is definitely suboptimal as a long-term solution.
         # See https://github.com/python/mypy/issues/5954 for discussion.

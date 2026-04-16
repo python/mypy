@@ -240,6 +240,7 @@ from mypy.types import (
     instance_cache,
     is_literal_type,
     is_named_instance,
+    is_unannotated_any,
 )
 from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
@@ -1746,12 +1747,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not show_untyped:
             return
 
-        # Check for functions with unspecified/not fully specified types.
-        def is_unannotated_any(t: Type) -> bool:
-            if not isinstance(t, ProperType):
-                return False
-            return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
-
         has_explicit_annotation = isinstance(fdef.type, CallableType) and any(
             not is_unannotated_any(t) for t in fdef.type.arg_types + [fdef.type.ret_type]
         )
@@ -2810,7 +2805,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             sym = defn.info.names["__members__"]
             if isinstance(sym.node, Var) and sym.node.has_explicit_value:
                 # `__members__` will always be overwritten by `Enum` and is considered
-                # read-only so we disallow assigning a value to it
+                # read-only, so we disallow assigning a value to it
                 self.fail(message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN, sym.node)
         for base in defn.info.mro[1:-1]:  # we don't need self and `object`
             if base.is_enum and base.fullname not in ENUM_BASES:
