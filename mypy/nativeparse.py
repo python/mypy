@@ -271,7 +271,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=1,
+        cache_version=2,
     )
     return (
         ast_bytes,
@@ -939,6 +939,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.RAW_EXPRESSION_TYPE:
         type_name = read_str(data)
         value: types.LiteralValue | str | None
+        note: str | None = None
         if type_name == "builtins.bool":
             value = read_bool(data)
         elif type_name == "builtins.int":
@@ -953,9 +954,11 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             tag = read_tag(data)
             assert tag == LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
             value = None
+            # Read optional note (cache_version >= 2)
+            note = read_str_opt(data)
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
-        raw_type = RawExpressionType(value, type_name)
+        raw_type = RawExpressionType(value, type_name, note=note)
         read_loc(data, raw_type)
         expect_end_tag(data)
         return raw_type

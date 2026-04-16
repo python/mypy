@@ -194,7 +194,7 @@ def f(x, y):  # E: Type signature has too few parameters
 f(1, 2)
 f(1) # E: Missing positional argument "y" in call to "f"
 
-[case testFasterParseTypeErrorCustom_no_native_parse]
+[case testFasterParseTypeErrorCustom]
 
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -207,7 +207,7 @@ def f(a: Foo(int)) -> int:
 main:7: error: Invalid type comment or annotation
 main:7: note: Suggestion: use Foo[...] instead of Foo(...)
 
-[case testFasterParseCallWithKeywordArgs_no_native_parse]
+[case testFasterParseCallWithKeywordArgs]
 
 def Foo(sort: bool) -> type:
     return int
