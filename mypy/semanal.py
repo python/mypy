@@ -195,7 +195,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import TYPE_FORM, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -3701,8 +3701,7 @@ class SemanticAnalyzer(
             )
 
     def analyze_rvalue_as_type_form(self, s: AssignmentStmt) -> None:
-        if TYPE_FORM in self.options.enable_incomplete_feature:
-            self.try_parse_as_type_expression(s.rvalue)
+        self.try_parse_as_type_expression(s.rvalue)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
@@ -5452,8 +5451,7 @@ class SemanticAnalyzer(
             self.fail('"return" not allowed in except* block', s, serious=True)
         if s.expr:
             s.expr.accept(self)
-            if TYPE_FORM in self.options.enable_incomplete_feature:
-                self.try_parse_as_type_expression(s.expr)
+            self.try_parse_as_type_expression(s.expr)
         self.statement = old
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
@@ -6056,11 +6054,9 @@ class SemanticAnalyzer(
             expr.analyzed.accept(self)
         else:
             # Normal call expression.
-            calculate_type_forms = TYPE_FORM in self.options.enable_incomplete_feature
             for a in expr.args:
                 a.accept(self)
-                if calculate_type_forms:
-                    self.try_parse_as_type_expression(a)
+                self.try_parse_as_type_expression(a)
 
             if (
                 isinstance(expr.callee, MemberExpr)
