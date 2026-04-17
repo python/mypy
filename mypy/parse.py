@@ -17,7 +17,6 @@ def parse(
     module: str | None,
     errors: Errors,
     options: Options,
-    file_exists: bool,
     eager: bool = False,
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
@@ -29,25 +28,21 @@ def parse(
     the parse errors, use eager=True.
     """
     if options.native_parser:
-        # Native parser only works with actual files on disk
-        # Fall back to fastparse for in-memory source or non-existent files
-        if file_exists:
-            import mypy.nativeparse
+        import mypy.nativeparse
 
-            ignore_errors = options.ignore_errors or fnam in errors.ignored_files
-            # If errors are ignored, we can drop many function bodies to speed up type checking.
-            strip_function_bodies = ignore_errors and not options.preserve_asts
-            tree, _, _ = mypy.nativeparse.native_parse(
-                fnam, options, skip_function_bodies=strip_function_bodies
-            )
-            # Set is_stub based on file extension
-            tree.is_stub = fnam.endswith(".pyi")
-            # Note: tree.imports is populated directly by load_from_raw() with deserialized
-            # import metadata, so we don't need to collect imports via AST traversal
-            if eager and tree.raw_data is not None:
-                tree = load_from_raw(fnam, module, tree.raw_data, errors, options)
-            return tree
-        # Fall through to fastparse for non-existent files
+        ignore_errors = options.ignore_errors or fnam in errors.ignored_files
+        # If errors are ignored, we can drop many function bodies to speed up type checking.
+        strip_function_bodies = ignore_errors and not options.preserve_asts
+        tree, _, _ = mypy.nativeparse.native_parse(
+            fnam, options, source, skip_function_bodies=strip_function_bodies
+        )
+        # Set is_stub based on file extension
+        tree.is_stub = fnam.endswith(".pyi")
+        # Note: tree.imports is populated directly by load_from_raw() with deserialized
+        # import metadata, so we don't need to collect imports via AST traversal
+        if eager and tree.raw_data is not None:
+            tree = load_from_raw(fnam, module, tree.raw_data, errors, options)
+        return tree
 
     if options.transform_source is not None:
         source = options.transform_source(source)

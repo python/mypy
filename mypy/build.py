@@ -1282,13 +1282,12 @@ class BuildManager:
 
         Raise CompileError if there is a parse error.
         """
-        file_exists = self.fscache.exists(path, real_only=True)
         t0 = time.time()
         if raw_data:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
-            tree = parse(source, path, id, self.errors, options=options, file_exists=file_exists)
+            tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         if self.stats_enabled:
             with self.stats_lock:

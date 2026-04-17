@@ -1750,7 +1750,6 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
         module=mod.module,
         errors=errors,
         options=mypy_options,
-        file_exists=True,
         eager=True,
     )
     mod.ast._fullname = mod.module
