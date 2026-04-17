@@ -11,6 +11,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    char_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
@@ -439,6 +440,14 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+method_op(
+    name="isalpha",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAlpha",
+    error_kind=ERR_NEVER,
+)
+
 
 # obj.decode()
 method_op(
@@ -583,5 +592,66 @@ str_get_item_unsafe_as_int_op = custom_primitive_op(
     return_type=short_int_rprimitive,
     c_function_name="CPyStr_GetItemUnsafeAsInt",
     error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+
+# Char classification / case-conversion method_ops routed to codepoint
+# helpers in str_extra_ops.h.
+method_op(
+    name="isspace",
+    arg_types=[char_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyChar_IsSpace",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+method_op(
+    name="isdigit",
+    arg_types=[char_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyChar_IsDigit",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+method_op(
+    name="isalnum",
+    arg_types=[char_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyChar_IsAlnum",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+method_op(
+    name="isalpha",
+    arg_types=[char_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyChar_IsAlpha",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+method_op(
+    name="isidentifier",
+    arg_types=[char_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyChar_IsIdentifier",
+    error_kind=ERR_NEVER,
+    dependencies=[STR_EXTRA_OPS],
+)
+# ERR_MAGIC: non-ASCII path can raise MemoryError from PyObject_CallMethod.
+# char's error_overlap=False makes the -113 sentinel authoritative.
+method_op(
+    name="upper",
+    arg_types=[char_rprimitive],
+    return_type=char_rprimitive,
+    c_function_name="CPyChar_Upper",
+    error_kind=ERR_MAGIC,
+    dependencies=[STR_EXTRA_OPS],
+)
+method_op(
+    name="lower",
+    arg_types=[char_rprimitive],
+    return_type=char_rprimitive,
+    c_function_name="CPyChar_Lower",
+    error_kind=ERR_MAGIC,
     dependencies=[STR_EXTRA_OPS],
 )

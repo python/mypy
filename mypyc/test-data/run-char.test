@@ -1,0 +1,271 @@
+[case testCharBoxUnbox]
+from typing import Any
+from mypy_extensions import char
+
+def test_box_and_unbox() -> None:
+    # Single-char strings
+    for s in ["a", "Z", "0", " ", "\n", "\0"]:
+        o: Any = s
+        c: char = o
+        o2: Any = c
+        assert o2 == s, f"round-trip failed for {s!r}: got {o2!r}"
+
+    # Empty string -> empty sentinel
+    o3: Any = ""
+    c2: char = o3
+    o4: Any = c2
+    assert o4 == "", f"empty round-trip failed: got {o4!r}"
+
+def test_unbox_errors() -> None:
+    # Multi-char string should raise ValueError
+    try:
+        o: Any = "ab"
+        c: char = o
+        assert False, "should have raised"
+    except ValueError:
+        pass
+
+    # Non-str should raise TypeError
+    try:
+        o2: Any = 42
+        c2: char = o2
+        assert False, "should have raised"
+    except TypeError:
+        pass
+
+[case testCharBool]
+from mypy_extensions import char
+
+def is_truthy(c: char) -> bool:
+    return bool(c)
+
+def test_bool() -> None:
+    # Non-empty chars are truthy (including NUL)
+    assert is_truthy(char("a"))
+    assert is_truthy(char("\0"))
+    assert is_truthy(char(" "))
+    # Empty sentinel is falsy
+    assert not is_truthy(char(""))
+
+[case testCharEquality]
+from mypy_extensions import char
+
+def eq(a: char, b: char) -> bool:
+    return a == b
+
+def ne(a: char, b: char) -> bool:
+    return a != b
+
+def eq_literal(c: char) -> bool:
+    return c == "x"
+
+def ne_literal(c: char) -> bool:
+    return c != "\n"
+
+def test_equality() -> None:
+    assert eq(char("a"), char("a"))
+    assert not eq(char("a"), char("b"))
+    assert ne(char("a"), char("b"))
+    assert not ne(char("a"), char("a"))
+
+    # Empty sentinels
+    assert eq(char(""), char(""))
+    assert ne(char(""), char("a"))
+
+    # Literal comparisons
+    assert eq_literal(char("x"))
+    assert not eq_literal(char("y"))
+    assert ne_literal(char("a"))
+    assert not ne_literal(char("\n"))
+
+[case testCharClassification]
+from mypy_extensions import char
+
+def test_isspace() -> None:
+    assert char(" ").isspace()
+    assert char("\t").isspace()
+    assert char("\n").isspace()
+    assert not char("a").isspace()
+    assert not char("1").isspace()
+
+def test_isdigit() -> None:
+    assert char("0").isdigit()
+    assert char("9").isdigit()
+    assert not char("a").isdigit()
+    assert not char(" ").isdigit()
+
+def test_isalnum() -> None:
+    assert char("a").isalnum()
+    assert char("Z").isalnum()
+    assert char("5").isalnum()
+    assert not char(" ").isalnum()
+    assert not char("!").isalnum()
+
+def test_isalpha() -> None:
+    assert char("a").isalpha()
+    assert char("Z").isalpha()
+    assert not char("5").isalpha()
+    assert not char(" ").isalpha()
+
+def test_isidentifier() -> None:
+    assert char("a").isidentifier()
+    assert char("_").isidentifier()
+    assert char("Z").isidentifier()
+    assert not char("0").isidentifier()
+    assert not char(" ").isidentifier()
+    assert not char("+").isidentifier()
+
+[case testCharUpper]
+from mypy_extensions import char
+
+def upper(c: char) -> char:
+    return c.upper()
+
+def test_upper() -> None:
+    # ASCII lowercase -> uppercase
+    assert upper(char("a")) == "A"
+    assert upper(char("z")) == "Z"
+    # Already uppercase or non-alpha -> unchanged
+    assert upper(char("A")) == "A"
+    assert upper(char("0")) == "0"
+    assert upper(char(" ")) == " "
+
+def test_upper_non_ascii() -> None:
+    # Non-ASCII letters whose uppercase is a single codepoint
+    # route through the PyObject_CallMethod fallback.
+    assert upper(char("\u03c0")) == "\u03a0"  # π -> Π
+    assert upper(char("\u00f1")) == "\u00d1"  # ñ -> Ñ
+    assert upper(char("\u00b5")) == "\u039c"  # µ (micro) -> Μ (Greek Mu)
+
+def test_upper_multi_char_fallback() -> None:
+    # Pinning test: when str.upper() produces >1 codepoint, char can't
+    # hold the result so the original codepoint is returned unchanged.
+    # Callers that need full Unicode casing (ß -> SS, ligatures) must
+    # use str(c).upper().
+    assert upper(char("\u00df")) == "\u00df"  # ß -> ß (not SS)
+    assert upper(char("\ufb01")) == "\ufb01"  # ﬁ -> ﬁ (not FI)
+
+def lower(c: char) -> char:
+    return c.lower()
+
+def test_lower() -> None:
+    # ASCII uppercase -> lowercase
+    assert lower(char("A")) == "a"
+    assert lower(char("Z")) == "z"
+    # Already lowercase or non-alpha -> unchanged
+    assert lower(char("a")) == "a"
+    assert lower(char("0")) == "0"
+    assert lower(char(" ")) == " "
+
+def test_lower_non_ascii() -> None:
+    # Non-ASCII letters whose lowercase is a single codepoint route
+    # through the PyObject_CallMethod fallback.
+    assert lower(char("\u03a0")) == "\u03c0"  # Π -> π
+    assert lower(char("\u00d1")) == "\u00f1"  # Ñ -> ñ
+
+[case testCharIsIdentifierNonAscii]
+from mypy_extensions import char
+
+def is_id(c: char) -> bool:
+    return c.isidentifier()
+
+def test_non_ascii_isidentifier() -> None:
+    # Non-ASCII identifier chars — delegates to PyUnicode_IsIdentifier
+    # for correct XID_Start handling. The old ASCII-only approximation
+    # got some of these wrong.
+    assert is_id(char("\u03c0"))   # π — XID_Start (Greek letter)
+    assert is_id(char("\u00b5"))   # µ — XID_Start (micro sign)
+    assert is_id(char("\u00f1"))   # ñ — XID_Start (Latin letter)
+    # Non-XID_Start characters
+    assert not is_id(char("\u00b2"))  # ² — superscript, not XID_Start
+    assert not is_id(char("\u00a9"))  # © — symbol, not XID_Start
+
+[case testCharHighUnicode]
+from typing import Any
+from mypy_extensions import char
+
+def roundtrip(s: str) -> str:
+    c: char = s
+    out: Any = c
+    return out
+
+def test_high_codepoints() -> None:
+    # Emoji and other astral-plane codepoints (> 0xFFFF) round-trip
+    # correctly since char stores int32 (full Unicode range fits).
+    emoji = "\U0001F600"
+    assert ord(emoji) == 0x1F600
+    assert roundtrip(emoji) == emoji
+
+    # BMP boundary
+    bmp = "\uFFFD"  # replacement character
+    assert roundtrip(bmp) == bmp
+
+def test_high_codepoint_bool() -> None:
+    # High codepoints are truthy (not the -1 sentinel).
+    c: char = "\U0001F600"
+    assert bool(c)
+
+[case testCharOrd]
+from mypy_extensions import char
+
+def char_ord(c: char) -> int:
+    return ord(c)
+
+def test_ord() -> None:
+    assert char_ord(char("a")) == 97
+    assert char_ord(char("A")) == 65
+    assert char_ord(char("\0")) == 0
+    assert char_ord(char("\u03c0")) == 960  # π
+    assert char_ord(char("\U0001F600")) == 128512  # emoji
+
+[case testCharStrPromotion]
+from typing import Any
+from mypy_extensions import char
+
+def char_to_str(c: char) -> str:
+    return c
+
+def str_to_char(s: str) -> char:
+    return s
+
+def test_promotion() -> None:
+    # char -> str
+    s: str = char_to_str(char("x"))
+    assert s == "x"
+    assert type(s) is str
+
+    # str -> char (1-char string)
+    c: char = str_to_char("y")
+    s2: Any = c
+    assert s2 == "y"
+
+    # Empty string promotion
+    s3: str = char_to_str(char(""))
+    assert s3 == ""
+
+[case testCharConcat]
+from mypy_extensions import char
+
+def test_concat() -> None:
+    c: char = char("a")
+    # char + str
+    result: str = c + "bc"
+    assert result == "abc"
+    # str + char
+    result2: str = "xy" + c
+    assert result2 == "xya"
+
+[case testCharStrIndexCompare]
+def compare_index(s: str, i: int, ch: str) -> bool:
+    return s[i] == ch
+
+def compare_index_ne(s: str, i: int, ch: str) -> bool:
+    return s[i] != ch
+
+def test_str_index_compare() -> None:
+    s = "hello world"
+    assert compare_index(s, 0, "h")
+    assert not compare_index(s, 0, "x")
+    assert compare_index(s, 5, " ")
+    assert compare_index_ne(s, 0, "x")
+    assert not compare_index_ne(s, 0, "h")

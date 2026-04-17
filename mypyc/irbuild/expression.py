@@ -80,22 +80,28 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    RType,
     RVec,
     bool_rprimitive,
+    char_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
     is_bytearray_rprimitive,
     is_bytes_rprimitive,
+    is_char_rprimitive,
     is_fixed_width_rtype,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     object_rprimitive,
     set_rprimitive,
+    short_int_rprimitive,
     vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
@@ -121,6 +127,7 @@ from mypyc.irbuild.specialize import (
     apply_method_specialization,
     translate_object_new,
     translate_object_setattr,
+    try_emit_str_index_as_int,
 )
 from mypyc.irbuild.vec import (
     as_platform_int,
@@ -908,6 +915,66 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     return None
 
 
+def _codepoint_kind(builder: IRBuilder, expr: Expression, expr_type: RType) -> str | None:
+    """Classify expr as a codepoint candidate without emitting IR.
+
+    Returns "char", "index" (for ``s[i]`` with int-like index), or None.
+    """
+    if is_char_rprimitive(expr_type):
+        return "char"
+    if isinstance(expr, IndexExpr) and is_str_rprimitive(builder.node_type(expr.base)):
+        idx_type = builder.node_type(expr.index)
+        if is_tagged(idx_type) or is_fixed_width_rtype(idx_type):
+            return "index"
+    return None
+
+
+def _emit_codepoint_value(
+    builder: IRBuilder, expr: Expression, kind: str
+) -> tuple[Value, RType]:
+    """Emit the codepoint read. ``kind`` must come from _codepoint_kind."""
+    if kind == "char":
+        return builder.accept(expr), char_rprimitive
+    assert isinstance(expr, IndexExpr)
+    val = try_emit_str_index_as_int(builder, expr)
+    assert val is not None  # _codepoint_kind guarantees this
+    return val, short_int_rprimitive
+
+
+def try_specialize_codepoint_compare(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    """Rewrite ``x == y`` / ``x != y`` to an int compare of codepoints when at
+    least one side is a codepoint (``char`` value or ``s[i]`` on a str) and the
+    other is either another codepoint or a 0/1-char str literal. Avoids the
+    1-char PyObject alloc + PyUnicode_Compare.
+    """
+    if op not in ("==", "!="):
+        return None
+    lhs_kind = _codepoint_kind(builder, lhs, builder.node_type(lhs))
+    rhs_kind = _codepoint_kind(builder, rhs, builder.node_type(rhs))
+    if lhs_kind is None and rhs_kind is None:
+        return None
+    # Codepoint on both sides: direct int compare.
+    if lhs_kind is not None and rhs_kind is not None:
+        l_val, _ = _emit_codepoint_value(builder, lhs, lhs_kind)
+        r_val, _ = _emit_codepoint_value(builder, rhs, rhs_kind)
+        return builder.binary_op(l_val, r_val, op, line)
+    # One side codepoint, other side must fold to a 0/1-char str literal.
+    if lhs_kind is not None:
+        cp_expr, cp_kind, lit_expr = lhs, lhs_kind, rhs
+    else:
+        assert rhs_kind is not None
+        cp_expr, cp_kind, lit_expr = rhs, rhs_kind, lhs
+    folded = constant_fold_expr(builder, lit_expr)
+    if not isinstance(folded, str) or len(folded) > 1:
+        return None  # No IR emitted yet — safe to bail.
+    val, rtype = _emit_codepoint_value(builder, cp_expr, cp_kind)
+    # Empty string encodes as -1 (char empty sentinel).
+    codepoint = -1 if len(folded) == 0 else ord(folded)
+    return builder.binary_op(val, Integer(codepoint, rtype, line), op, line)
+
+
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
@@ -918,6 +985,15 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             return result
 
     if len(e.operators) == 1:
+        # Codepoint fast path: char/char, char/s[i], or codepoint/1-char-literal
+        # -> int compare instead of PyUnicode_Compare.
+        if first_op in ("==", "!="):
+            result = try_specialize_codepoint_compare(
+                builder, first_op, e.operands[0], e.operands[1], e.line
+            )
+            if result is not None:
+                return result
+
         # Special some common simple cases
         if first_op in ("is", "is not"):
             right_expr = e.operands[1]

@@ -190,6 +190,10 @@ MYPYC_NATIVE_INT_NAMES: Final = (
     "mypy_extensions.u8",
 )
 
+# Mypyc native char type (compatible with builtins.str, bidirectionally;
+# stored unboxed as an int32 codepoint with -1 as the empty sentinel).
+MYPYC_NATIVE_CHAR_NAMES: Final = ("mypy_extensions.char",)
+
 DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
     "typing_extensions.dataclass_transform",

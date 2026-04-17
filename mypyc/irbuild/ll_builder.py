@@ -104,6 +104,7 @@ from mypyc.ir.rtypes import (
     is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_c_py_ssize_t_rprimitive,
+    is_char_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
@@ -697,6 +698,7 @@ class LowLevelIRBuilder:
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
+            or (is_char_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
             or is_uint8_rprimitive(src.type)
         ):
@@ -729,7 +731,7 @@ class LowLevelIRBuilder:
         self.activate_block(slow)
         if is_int64_rprimitive(src_type):
             conv_op = int64_to_int_op
-        elif is_int32_rprimitive(src_type):
+        elif is_int32_rprimitive(src_type) or is_char_rprimitive(src_type):
             assert PLATFORM_SIZE == 4
             conv_op = ssize_t_to_int_op
         else:
@@ -2138,6 +2140,12 @@ class LowLevelIRBuilder:
         elif is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
             result = self.comparison_op(value, zero, ComparisonOp.NEQ, value.line)
+        elif is_char_rprimitive(value.type):
+            # char is falsy only for the empty sentinel (-1). A codepoint of
+            # 0 (NUL) is a valid non-empty char and must be truthy, matching
+            # str bool semantics where ``"\0"`` is truthy.
+            empty = Integer(-1, value.type)
+            result = self.add(ComparisonOp(value, empty, ComparisonOp.NEQ))
         elif is_fixed_width_rtype(value.type):
             zero = Integer(0, value.type)
             result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))

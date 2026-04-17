@@ -36,6 +36,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_CHAR_NAMES,
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -2200,6 +2201,10 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
             # "int" covers all native int types
             if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
+                return True
+        elif isinstance(item, Instance) and supertype.type.fullname == "builtins.str":
+            # "str" covers the native char type
+            if item.type.fullname in MYPYC_NATIVE_CHAR_NAMES:
                 return True
     # TODO: Add more special cases.
     return False

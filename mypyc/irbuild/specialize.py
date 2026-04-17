@@ -1189,6 +1189,28 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
     return None
 
 
+def try_emit_str_index_as_int(builder: IRBuilder, index_expr: IndexExpr) -> Value | None:
+    """If ``index_expr`` is ``s[i]`` where ``s: str`` and ``i`` is an int-like
+    value, emit the fast path that reads the character as its integer codepoint
+    (with bounds checking). Returns None if the pattern does not apply.
+    """
+    base_type = builder.node_type(index_expr.base)
+    if not is_str_rprimitive(base_type):
+        return None
+    idx_type = builder.node_type(index_expr.index)
+    if not (is_tagged(idx_type) or is_fixed_width_rtype(idx_type)):
+        return None
+    return translate_getitem_with_bounds_check(
+        builder,
+        index_expr.base,
+        [index_expr.index],
+        index_expr,
+        str_adjust_index_op,
+        str_range_check_op,
+        str_get_item_unsafe_as_int_op,
+    )
+
+
 @specialize_function("builtins.ord")
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
@@ -1200,25 +1222,9 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 
     # Check for ord(s[i]) where s is str and i is an integer
     if isinstance(arg_expr, IndexExpr):
-        # Check base type
-        base_type = builder.node_type(arg_expr.base)
-        if is_str_rprimitive(base_type):
-            # Check index type
-            index_expr = arg_expr.index
-            index_type = builder.node_type(index_expr)
-            if is_tagged(index_type) or is_fixed_width_rtype(index_type):
-                # This is ord(s[i]) where s is str and i is an integer.
-                # Generate specialized inline code using the helper.
-                result = translate_getitem_with_bounds_check(
-                    builder,
-                    arg_expr.base,
-                    [arg_expr.index],
-                    expr,
-                    str_adjust_index_op,
-                    str_range_check_op,
-                    str_get_item_unsafe_as_int_op,
-                )
-                return result
+        result = try_emit_str_index_as_int(builder, arg_expr)
+        if result is not None:
+            return result
 
     return None
 

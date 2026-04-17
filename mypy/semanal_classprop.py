@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
+from mypy.types import MYPYC_NATIVE_CHAR_NAMES, MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -184,5 +184,11 @@ def add_type_promotion(
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
         defn.info.alt_promote = Instance(int_sym.node, [])
+    # Same pattern for str <-> char (mypyc native char type).
+    if defn.fullname in MYPYC_NATIVE_CHAR_NAMES:
+        str_sym = builtin_names["str"]
+        assert isinstance(str_sym.node, TypeInfo)
+        str_sym.node._promote.append(Instance(defn.info, []))
+        defn.info.alt_promote = Instance(str_sym.node, [])
     if promote_targets:
         defn.info._promote.extend(promote_targets)

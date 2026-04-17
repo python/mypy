@@ -394,6 +394,20 @@ uint8_rprimitive: Final = RPrimitive(
     error_overlap=True,
 )
 
+# char: single Unicode codepoint stored as int32; -1 empty sentinel, -113
+# error sentinel. Distinct from int32_rprimitive so specializers can route
+# char-typed operations through codepoint primitives.
+char_rprimitive: Final = RPrimitive(
+    "char",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int32_t",
+    size=4,
+    error_overlap=False,
+)
+
 # The following unsigned native int types (u16, u32, u64) are not
 # exposed to the user. They are for internal use within mypyc only.
 
@@ -597,11 +611,16 @@ def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
         or is_int32_rprimitive(rtype)
         or is_int16_rprimitive(rtype)
         or is_uint8_rprimitive(rtype)
+        or is_char_rprimitive(rtype)
     )
 
 
 def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is uint8_rprimitive
+
+
+def is_char_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is char_rprimitive
 
 
 def is_uint32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:

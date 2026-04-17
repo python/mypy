@@ -44,6 +44,7 @@ from mypyc.ir.rtypes import (
     is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
     is_bytes_rprimitive,
+    is_char_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
@@ -1083,6 +1084,13 @@ class Emitter:
             self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
             if not isinstance(error, AssignHandler):
                 self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_char_rprimitive(typ):
+            assert not optional
+            if declare_dest:
+                self.emit_line(f"int32_t {dest};")
+            self.emit_line(f"{dest} = CPyChar_FromObject({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_uint8_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             assert not optional  # Not supported for overlapping error values
@@ -1230,6 +1238,8 @@ class Emitter:
                 self.emit_inc_ref(dest, object_rprimitive)
         elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ) or is_uint8_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
+        elif is_char_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = CPyChar_ToStr({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
         elif is_float_rprimitive(typ):
