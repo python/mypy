@@ -189,7 +189,10 @@ class State:
 
 
 def native_parse(
-    filename: str, options: Options, skip_function_bodies: bool = False
+    filename: str,
+    options: Options,
+    source: str | bytes | None = None,
+    skip_function_bodies: bool = False,
 ) -> tuple[MypyFile, list[ParseError], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
@@ -218,7 +221,7 @@ def native_parse(
         uses_template_strings,
         source_hash,
         mypy_comments,
-    ) = parse_to_binary_ast(filename, options, skip_function_bodies)
+    ) = parse_to_binary_ast(filename, options, source, skip_function_bodies)
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
@@ -255,7 +258,10 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 
 def parse_to_binary_ast(
-    filename: str, options: Options, skip_function_bodies: bool = False
+    filename: str,
+    options: Options,
+    source: str | bytes | None = None,
+    skip_function_bodies: bool = False,
 ) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
@@ -266,6 +272,7 @@ def parse_to_binary_ast(
             raise ImportError("Cannot import ast_serialize")
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
+        source,
         skip_function_bodies=skip_function_bodies,
         python_version=options.python_version,
         platform=options.platform,
