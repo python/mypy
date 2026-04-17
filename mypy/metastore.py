@@ -201,7 +201,14 @@ def hash_path_stem(s: str) -> int:
         c = i64(ord(s[i]))
         hv = (hv * 33) ^ c
         i -= 1
-    return (hv ^ (hv >> 16) ^ (hv >> 32) ^ (hv >> 48)) & 0xFFFFFF
+    # Murmur3 finalizer for better bit avalanche (improves shard uniformity)
+    hv = (hv ^ (hv >> 32)) & 0xFFFFFFFF
+    hv ^= hv >> 16
+    hv = (hv * 0x85EBCA6B) & 0xFFFFFFFF
+    hv ^= hv >> 13
+    hv = (hv * 0xC2B2AE35) & 0xFFFFFFFF
+    hv ^= hv >> 16
+    return int(hv)
 
 
 class SqliteMetadataStore(MetadataStore):
