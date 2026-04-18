@@ -3106,7 +3106,8 @@ class State:
         modules in any way. Logic here should be kept in sync with BuildManager.parse_all().
         """
         self.needs_parse = False
-        if self.tree is not None:
+        tree = self.tree
+        if tree is not None:
             # The file was already parsed.
             return
 
@@ -3121,15 +3122,14 @@ class State:
             with self.wrap_context():
                 manager.errors.set_file(self.xpath, self.id, options=self.options)
                 self.parse_file_inner(source, raw_data)
-                tree: MypyFile | None = self.tree
-                assert tree is not None
+                assert self.tree is not None
                 # New parser returns serialized trees that need to be de-serialized.
-                if tree.raw_data is not None:
+                if self.tree.raw_data is not None:
                     assert raw_data is None
                     self.tree = load_from_raw(
                         self.xpath,
                         self.id,
-                        tree.raw_data,
+                        self.tree.raw_data,
                         manager.errors,
                         self.options,
                         imports_only=bool(self.manager.workers),
