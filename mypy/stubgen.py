@@ -1744,17 +1744,16 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
         data = f.read()
     source = mypy.util.decode_python_encoding(data)
     errors = Errors(mypy_options)
-    mod.ast, errs = mypy.parse.parse(
+    mod.ast = mypy.parse.parse(
         source,
         fnam=mod.path,
         module=mod.module,
         errors=errors,
         options=mypy_options,
         file_exists=True,
+        eager=True,
     )
     mod.ast._fullname = mod.module
-    for err in errs:
-        mypy.parse.report_parse_error(err, errors)
     if errors.is_blockers():
         # Syntax error!
         for m in errors.new_messages():
