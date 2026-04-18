@@ -660,3 +660,16 @@ def remove_trivial(types: Iterable[Type]) -> list[Type]:
     if removed_none:
         return [NoneType()]
     return [UninhabitedType()]
+
+
+class InstantiateAliasVisitor(ExpandTypeVisitor):
+    def visit_union_type(self, t: UnionType) -> Type:
+        # Unlike regular expand_type(), we don't do any simplification for unions,
+        # not even removing strict duplicates. There are three reasons for this:
+        #   * get_proper_type() is a very hot function, even slightest slow down will
+        #     cause a perf regression
+        #   * We want to preserve this historical behaviour, to avoid possible
+        #     regressions
+        #   * Simplifying unions may (indirectly) call get_proper_type(), causing
+        #     infinite recursion.
+        return mypy.type_visitor.TypeTranslator.visit_union_type(self, t)

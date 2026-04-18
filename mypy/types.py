@@ -379,6 +379,8 @@ class TypeAliasType(Type):
             ):
                 mapping[tvar.id] = sub
 
+        from mypy.expandtype import InstantiateAliasVisitor
+
         return self.alias.target.accept(InstantiateAliasVisitor(mapping))
 
     @property
@@ -4441,22 +4443,3 @@ def write_type_map(data: WriteBuffer, value: dict[str, Type]) -> None:
     for key in sorted(value):
         write_str_bare(data, key)
         value[key].write(data)
-
-
-# This cyclic import is unfortunate, but to avoid it we would need to move away all uses
-# of get_proper_type() from types.py. Majority of them have been removed, but few remaining
-# are quite tricky to get rid of, but ultimately we want to do it at some point.
-from mypy.expandtype import ExpandTypeVisitor
-
-
-class InstantiateAliasVisitor(ExpandTypeVisitor):
-    def visit_union_type(self, t: UnionType) -> Type:
-        # Unlike regular expand_type(), we don't do any simplification for unions,
-        # not even removing strict duplicates. There are three reasons for this:
-        #   * get_proper_type() is a very hot function, even slightest slow down will
-        #     cause a perf regression
-        #   * We want to preserve this historical behaviour, to avoid possible
-        #     regressions
-        #   * Simplifying unions may (indirectly) call get_proper_type(), causing
-        #     infinite recursion.
-        return TypeTranslator.visit_union_type(self, t)
