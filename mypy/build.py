@@ -1023,7 +1023,12 @@ class BuildManager:
                 sequential_states.append(state)
                 continue
             parallel_states.append(state)
-        self.parse_parallel(sequential_states, parallel_states)
+        if len(parallel_states) > 1:
+            self.parse_parallel(sequential_states, parallel_states)
+        else:
+            # Avoid using executor when there is no parallelism.
+            for state in states:
+                state.parse_file()
         if post_parse:
             self.post_parse_all(states)
 
