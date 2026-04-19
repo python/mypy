@@ -53,6 +53,9 @@ and currently mostly sits where it was historically. Some rules about this are:
 * In general, we want to put as much of logic into phase two for better performance.
 * Try keeping things clear/consistent, right now the boundary always sits at the point when
   we push the function on the scope stack and call check_func_item().
+
+Note: some parts of the type-checker live in other `check*.py` files, like `checkexpr.py`,
+the orchestration between various type-checking phases and passes is done in `build.py`.
 """
 
 from __future__ import annotations
