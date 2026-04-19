@@ -1,4 +1,59 @@
-"""Mypy type checker."""
+"""Mypy type checker.
+
+Infer types of expressions and type-check the AST. We use multi-pass architecture,
+this means we re-visit the AST until either all types are inferred, or we hit the
+upper limit on number of passes (currently 3). The number of passes is intentionally
+low, mostly to keep performance predictable. An example of code where more than one
+pass is needed:
+
+    def foo() -> None:
+        C().x += 1  # we don't know the type of x before we visit C
+
+    class C:
+        def __init__(self) -> None:
+            self.x = <some non-literal expression>
+
+In this example, encountering attribute C.x will trigger handle_cannot_determine_type()
+which in turn will schedule foo() to be re-visited in the next pass. This process is
+called deferring, some notes on it:
+* Only a top-level function or method can be deferred. For historical reasons we don't
+  defer module top-levels.
+* There are two reasons that can trigger deferral: a type of name/attribute used in
+  a function body is not inferred yet, or type of superclass node is not known when
+  checking LSP.
+* In first case, the actual deferred node will be always FuncDef, even if the actual
+  top-level function is either a Decorator or an OverloadedFuncDef.
+* In the second case, the deferred node will be actual top-level node, unless FuncDef
+  is sufficient (in case when deferring a method of a class nested in function).
+* When a function was deferred we suppress most errors, and infer all expressions as
+  Any until the end of deferred function. This is done to avoid false positives. We may
+  change this in future by adding a special kind of Any that signifies not ready type.
+
+Second important aspect of architecture is two-phase checking. Currently, it is only
+used in parallel type-checking mode, but at some point it will the default in sequential
+mode as well.
+
+In first phase (called interface phase) we type-check only module top-levels, function
+signatures, and bodies of functions/methods that were found during semantic analysis as
+(possibly) affecting external module interface (most notably __init__ methods). This is
+done by setting recurse_into_functions flag to False. We handle all deferrals triggered
+during this phase (still with recurse_into_functions being False) before moving to
+the next one.
+
+In second phase (called implementation phase) we type-check only the bodies of functions
+and methods not type-checked in interface phase. This is done by setting
+recurse_into_functions to True, and gathering all functions/methods with def_or_infer_vars
+flag being False. Note that we execute only parts of the relevant visit methods that
+were not executed before (i.e. we don't handle function signatures twice), see
+check_partial() method for more details.
+
+The boundary between function signature logic and function body logic is somewhat arbitrary,
+and currently mostly sits where it was historically. Some rules about this are:
+* Any logic that can *change* function signature *must* be executed in phase one.
+* In general, we want to put as much of logic into phase two for better performance.
+* Try keeping things clear/consistent, right now the boundary always sits at the point when
+  we push the function on the scope stack and call check_func_item().
+"""
 
 from __future__ import annotations
 
@@ -559,13 +614,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         todo: Sequence[DeferredNode | FineGrainedDeferredNode] | None = None,
         *,
         allow_constructor_cache: bool = True,
+        recurse_into_functions: bool = True,
+        impl_only: bool = False,
     ) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
         """
         self.allow_constructor_cache = allow_constructor_cache
-        self.recurse_into_functions = True
+        self.recurse_into_functions = recurse_into_functions
         with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             if not todo and not self.deferred_nodes:
                 return False
@@ -591,21 +648,51 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         if active_typeinfo:
                             stack.enter_context(self.tscope.class_scope(active_typeinfo))
                             stack.enter_context(self.scope.push_class(active_typeinfo))
-                        self.check_partial(node)
+                        self.check_partial(node, impl_only=impl_only)
             return True
 
-    def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
+    def check_partial(
+        self, node: DeferredNodeType | FineGrainedDeferredNodeType, impl_only: bool
+    ) -> None:
         self.widened_vars = []
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
-            self.recurse_into_functions = True
             with self.binder.top_frame_context():
-                self.accept(node)
+                # TODO: use impl_only in the daemon as well.
+                if not impl_only:
+                    self.accept(node)
+                    return
+                if isinstance(node, (FuncDef, Decorator)):
+                    self.check_partial_impl(node)
+                else:
+                    # Overloads need some special logic, since settable
+                    # properties are stored as overloads.
+                    for i, item in enumerate(node.items):
+                        # Setter and/or deleter can technically be empty.
+                        allow_empty = not node.is_property or i > 0
+                        assert isinstance(item, Decorator)
+                        # Although the actual bodies of overload items are empty, we
+                        # still need to execute some logic that doesn't affect signature.
+                        with self.tscope.function_scope(item.func):
+                            self.check_func_item(
+                                item.func, name=node.name, allow_empty=allow_empty
+                            )
+                    if node.impl is not None:
+                        # Handle the implementation as a regular function.
+                        with self.enter_overload_impl(node.impl):
+                            self.check_partial_impl(node.impl)
+
+    def check_partial_impl(self, impl: FuncDef | Decorator) -> None:
+        """Check only the body (not the signature) of a non-overloaded function."""
+        if isinstance(impl, FuncDef):
+            self.visit_func_def_impl(impl)
+        else:
+            with self.tscope.function_scope(impl.func):
+                self.check_func_item(impl.func, name=impl.func.name)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
-        self.recurse_into_functions = False
         with self.enter_partial_types():
             with self.binder.top_frame_context():
                 for d in node.defs:
@@ -774,7 +861,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # it may be not safe to optimize them away completely.
                     if not self.can_skip_diagnostics:
                         self.check_default_params(fdef.func)
-                    self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
+                    if self.recurse_into_functions or fdef.func.def_or_infer_vars:
+                        with (
+                            self.tscope.function_scope(fdef.func),
+                            self.set_recurse_into_functions(),
+                        ):
+                            self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             else:
                 # Perform full check for real overloads to infer type of all decorated
                 # overload variants.
@@ -1208,6 +1300,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.check_func_def_override(defn, new_type)
         if not self.recurse_into_functions and not defn.def_or_infer_vars:
             return
+        self.visit_func_def_impl(defn)
+
+    def visit_func_def_impl(self, defn: FuncDef) -> None:
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self.check_func_item(defn, name=defn.name)
             if not self.can_skip_diagnostics:
@@ -1219,6 +1314,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # checked when the decorator is.
                         found_method_base_classes = self.check_method_override(defn)
                         self.check_explicit_override_decorator(defn, found_method_base_classes)
+                    # TODO: we should use decorated signature for this check.
                     self.check_inplace_operator_method(defn)
 
     def check_func_item(
@@ -1563,6 +1659,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 and self.is_reverse_op_method(name)
                 and defn not in self.overload_impl_stack
             ):
+                # TODO: we should use decorated signature for this check.
                 self.check_reverse_op_method(item, typ, name, defn)
             elif name in ("__getattr__", "__getattribute__"):
                 self.check_getattr_method(typ, defn, name)

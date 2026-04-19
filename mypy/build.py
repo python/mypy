@@ -3292,12 +3292,19 @@ class State:
         assert len(self.type_checker()._type_maps) == 1
         return self.type_checker()._type_maps[0]
 
-    def type_check_second_pass(self, todo: Sequence[DeferredNode] | None = None) -> bool:
+    def type_check_second_pass(
+        self,
+        todo: Sequence[DeferredNode] | None = None,
+        recurse_into_functions: bool = True,
+        impl_only: bool = False,
+    ) -> bool:
         if self.options.semantic_analysis_only:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            result = self.type_checker().check_second_pass(todo=todo)
+            result = self.type_checker().check_second_pass(
+                todo=todo, recurse_into_functions=recurse_into_functions, impl_only=impl_only
+            )
         self.time_spent_us += time_spent_us(t0)
         return result
 
@@ -4744,7 +4751,7 @@ def process_stale_scc_interface(
         for id in stale:
             if id not in unfinished_modules:
                 continue
-            if not graph[id].type_check_second_pass():
+            if not graph[id].type_check_second_pass(recurse_into_functions=False):
                 unfinished_modules.discard(id)
 
     t4 = time.time()
@@ -4802,7 +4809,7 @@ def process_stale_scc_implementation(
         for _, node, info in tree.local_definitions(impl_only=True):
             assert isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator))
             todo.append(DeferredNode(node.node, info))
-        graph[id].type_check_second_pass(todo=todo)
+        graph[id].type_check_second_pass(todo=todo, impl_only=True)
         if not checker.deferred_nodes:
             unfinished_modules.discard(id)
             graph[id].detect_possibly_undefined_vars()
@@ -4811,7 +4818,7 @@ def process_stale_scc_implementation(
         for id in stale:
             if id not in unfinished_modules:
                 continue
-            if not graph[id].type_check_second_pass():
+            if not graph[id].type_check_second_pass(impl_only=True):
                 unfinished_modules.discard(id)
                 graph[id].detect_possibly_undefined_vars()
                 graph[id].finish_passes()
