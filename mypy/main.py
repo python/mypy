@@ -936,9 +936,9 @@ def define_options(
     )
 
     add_invertible_flag(
-        "--strict-bytes",
-        default=False,
-        strict_flag=True,
+        "--no-strict-bytes",
+        default=True,
+        dest="strict_bytes",
         help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
@@ -1266,7 +1266,13 @@ def define_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
+    add_invertible_flag(
+        "--no-local-partial-types",
+        inverse="--local-partial-types",
+        default=True,
+        dest="local_partial_types",
+        help=argparse.SUPPRESS,
+    )
     # --native-parser enables the native parser (experimental)
     add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but

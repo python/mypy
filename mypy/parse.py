@@ -18,14 +18,15 @@ def parse(
     errors: Errors,
     options: Options,
     file_exists: bool,
-    imports_only: bool = False,
-) -> tuple[MypyFile, list[ParseError]]:
+    eager: bool = False,
+) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
-    Return the parse tree. If errors is not provided, raise ParseError
-    on failure. Otherwise, use the errors object to report parse errors.
-
+    Return the parse tree, use the errors object to report parse errors.
     The python_version (major, minor) option determines the Python syntax variant.
+
+    New parser returns empty tree with serialized data. To get the full tree and
+    the parse errors, use eager=True.
     """
     if options.native_parser:
         # Native parser only works with actual files on disk
@@ -36,45 +37,43 @@ def parse(
             ignore_errors = options.ignore_errors or fnam in errors.ignored_files
             # If errors are ignored, we can drop many function bodies to speed up type checking.
             strip_function_bodies = ignore_errors and not options.preserve_asts
-            tree, parse_errors, type_ignores = mypy.nativeparse.native_parse(
-                fnam,
-                options,
-                skip_function_bodies=strip_function_bodies,
-                imports_only=imports_only,
+            tree, _, _ = mypy.nativeparse.native_parse(
+                fnam, options, skip_function_bodies=strip_function_bodies
             )
-            # Convert type ignores list to dict
-            tree.ignored_lines = dict(type_ignores)
             # Set is_stub based on file extension
             tree.is_stub = fnam.endswith(".pyi")
-            # Note: tree.imports is populated directly by native_parse with deserialized
+            # Note: tree.imports is populated directly by load_from_raw() with deserialized
             # import metadata, so we don't need to collect imports via AST traversal
-            return tree, parse_errors
+            if eager and tree.raw_data is not None:
+                tree = load_from_raw(fnam, module, tree.raw_data, errors, options)
+            return tree
         # Fall through to fastparse for non-existent files
 
-    assert not imports_only
     if options.transform_source is not None:
         source = options.transform_source(source)
     import mypy.fastparse
 
-    tree = mypy.fastparse.parse(source, fnam=fnam, module=module, errors=errors, options=options)
-    return tree, []
+    return mypy.fastparse.parse(source, fnam=fnam, module=module, errors=errors, options=options)
 
 
 def load_from_raw(
-    fnam: str, module: str | None, raw_data: FileRawData, errors: Errors, options: Options
+    fnam: str,
+    module: str | None,
+    raw_data: FileRawData,
+    errors: Errors,
+    options: Options,
+    imports_only: bool = False,
 ) -> MypyFile:
-    """Load AST from parsed binary data.
-
-    This essentially replicates parse() above but expects FileRawData instead of actually
-    parsing the source code in the file.
-    """
+    """Load AST from parsed binary data and report stored errors."""
     from mypy.nativeparse import State, deserialize_imports, read_statements
 
-    # This part mimics the logic in native_parse().
-    data = ReadBuffer(raw_data.defs)
-    n = read_int(data)
     state = State(options)
-    defs = read_statements(state, data, n)
+    if imports_only:
+        defs = []
+    else:
+        data = ReadBuffer(raw_data.defs)
+        n = read_int(data)
+        defs = read_statements(state, data, n)
     imports = deserialize_imports(raw_data.imports)
 
     tree = MypyFile(defs, imports)
@@ -83,6 +82,8 @@ def load_from_raw(
     tree.is_partial_stub_package = raw_data.is_partial_stub_package
     tree.uses_template_strings = raw_data.uses_template_strings
     tree.is_stub = fnam.endswith(".pyi")
+    if module is not None:
+        tree._fullname = module
 
     # Report parse errors, this replicates the logic in parse().
     all_errors = raw_data.raw_errors + state.errors
@@ -90,6 +91,10 @@ def load_from_raw(
     for error in all_errors:
         # Note we never raise in this function, so it should not be called in coordinator.
         report_parse_error(error, errors)
+    if imports_only:
+        # Preserve raw data when only de-serializing imports, it will be sent to
+        # the parallel workers.
+        tree.raw_data = raw_data
     return tree
 
 

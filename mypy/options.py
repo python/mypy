@@ -245,7 +245,7 @@ class Options:
         self.strict_equality_for_none = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes
-        self.strict_bytes = False
+        self.strict_bytes = True
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
@@ -381,7 +381,7 @@ class Options:
         self.dump_deps = False
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
-        self.local_partial_types = False
+        self.local_partial_types = True
         # If True, use the native parser (experimental)
         self.native_parser = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
@@ -423,8 +423,8 @@ class Options:
         # Set to False when running stubtest.
         self.pos_only_special_methods = True
 
-        self.disable_bytearray_promotion = False
-        self.disable_memoryview_promotion = False
+        self.disable_bytearray_promotion = True
+        self.disable_memoryview_promotion = True
 
         # Sets custom output format
         self.output: str | None = None
@@ -487,9 +487,9 @@ class Options:
             # backwards compatibility
             self.disable_bytearray_promotion = True
             self.disable_memoryview_promotion = True
-        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
-            # forwards compatibility
-            self.strict_bytes = True
+        else:
+            self.disable_bytearray_promotion = False
+            self.disable_memoryview_promotion = False
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.

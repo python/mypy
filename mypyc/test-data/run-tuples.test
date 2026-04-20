@@ -339,7 +339,7 @@ def test_final_tuple_not_in() -> None:
 
     assert 'x' not in TUP0
 
-log = []
+log: list[str] = []
 
 def f_a() -> str:
     log.append('f_a')

@@ -239,14 +239,23 @@ def load_states(
     mod_data: dict[str, tuple[bytes, FileRawData | None]],
 ) -> None:
     """Re-create full state of an SCC as it would have been in coordinator."""
+    needs_parse = []
     for id in scc.mod_ids:
         state = graph[id]
         # Re-clone options since we don't send them, it is usually faster than deserializing.
         state.options = state.options.clone_for_module(state.id)
         suppressed_deps_opts, raw_data = mod_data[id]
-        state.parse_file(raw_data=raw_data)
+        if raw_data is not None:
+            state.parse_file(raw_data=raw_data)
+        else:
+            needs_parse.append(state)
         # Set data that is needed to be written to cache meta.
         state.known_suppressed_deps_opts = suppressed_deps_opts
+    # Perform actual parsing in parallel (but we don't need to compute dependencies).
+    if needs_parse:
+        manager.parse_all(needs_parse, post_parse=False)
+    for id in scc.mod_ids:
+        state = graph[id]
         assert state.tree is not None
         import_lines = {imp.line for imp in state.tree.imports}
         state.imports_ignored = {

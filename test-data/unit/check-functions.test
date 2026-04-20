@@ -2642,7 +2642,7 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainInferredNone]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
@@ -2655,7 +2655,7 @@ xx: Optional[int] = X(x_in)
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
-x_in = None
+x_in = X(None)
 def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)

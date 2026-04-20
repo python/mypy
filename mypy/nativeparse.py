@@ -190,11 +190,14 @@ class State:
 
 
 def native_parse(
-    filename: str, options: Options, skip_function_bodies: bool = False, imports_only: bool = False
+    filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[MypyFile, list[ParseError], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
     Return (MypyFile, errors, type_ignores).
+
+    The returned tree is empty with actual serialized data stored in `raw_data`
+    attribute. Use read_statements() and/or deserialize_imports() to de-serialize.
 
     The caller should set these additional attributes on the returned MypyFile:
       - ignored_lines: dict of type ignore comments (from the TypeIgnores return value)
@@ -210,26 +213,12 @@ def native_parse(
     b, errors, ignores, import_bytes, is_partial_package, uses_template_strings = (
         parse_to_binary_ast(filename, options, skip_function_bodies)
     )
-    data = ReadBuffer(b)
-    n = read_int(data)
-    state = State(options)
-    if imports_only:
-        defs = []
-    else:
-        defs = read_statements(state, data, n)
-
-    imports = deserialize_imports(import_bytes)
-
-    node = MypyFile(defs, imports)
+    node = MypyFile([], [])
     node.path = filename
-    node.is_partial_stub_package = is_partial_package
-    if imports_only:
-        node.raw_data = FileRawData(
-            b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
-        )
-    node.uses_template_strings = uses_template_strings
-    all_errors = errors + state.errors
-    return node, all_errors, ignores
+    node.raw_data = FileRawData(
+        b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
+    )
+    return node, errors, ignores
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
