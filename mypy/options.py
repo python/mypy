@@ -244,7 +244,8 @@ class Options:
         # Extend the logic of `strict_equality` to comparisons with `None`.
         self.strict_equality_for_none = False
 
-        # Disable treating bytearray and memoryview as subtypes of bytes
+        # If False, switch to pre-mypy-2.0 legacy behavior where bytearray and memoryview are
+        # treated as subtypes of bytes
         self.strict_bytes = True
 
         # Deprecated, use extra_checks instead.
