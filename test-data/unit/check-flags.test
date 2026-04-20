@@ -2701,7 +2701,7 @@ reveal_type(fx)  # N: Revealed type is "def [Ts] (int, *args: *tuple[*Ts, int]) 
 [builtins fixtures/tuple.pyi]
 
 [case testOnlyOneRedefinitionModeAllowed]
-# flags: --allow-redefinition --allow-redefinition-old --local-partial-types
+# flags: --allow-redefinition --allow-redefinition-old
 x = 1
 [out]
 main:1: error: --allow-redefinition-old and --allow-redefinition should not be used together

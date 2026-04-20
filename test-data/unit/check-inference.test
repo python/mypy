@@ -4351,7 +4351,7 @@ def g() -> None:
     reveal_type(x)  # N: Revealed type is "builtins.int | None"
 
 [case testGlobalVariableNoneInitMultipleFuncsRedefine]
-# flags: --allow-redefinition --local-partial-types
+# flags: --allow-redefinition
 
 # Widening this is intentionally prohibited (for now).
 x = None
