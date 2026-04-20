@@ -1542,14 +1542,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         }
     }
 
-    if (CPyImport_SetModuleFile(modobj, module_name, shared_lib_file, ext_suffix,
-                                 is_package) < 0) {
-        goto fail;
-    }
-    if (is_package && CPyImport_SetModulePath(modobj) < 0) {
-        goto fail;
-    }
-    if (CPyImport_SetModuleSpec(modobj, module_name, is_package) < 0) {
+    if (CPyImport_SetDunderAttrs(modobj, module_name, shared_lib_file, ext_suffix, is_package) < 0) {
         goto fail;
     }
 
@@ -1579,6 +1572,25 @@ fail:
     Py_XDECREF(child_name);
     Py_DECREF(modobj);
     return NULL;
+}
+
+int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
+                             PyObject *ext_suffix, Py_ssize_t is_package)
+{
+    int res = CPyImport_SetModuleFile(module, module_name, shared_lib_file, ext_suffix,
+                                      is_package);
+    if (res < 0) {
+        return res;
+    }
+
+    if (is_package) {
+        res = CPyImport_SetModulePath(module);
+        if (res < 0) {
+            return res;
+        }
+    }
+
+    return CPyImport_SetModuleSpec(module, module_name, is_package);
 }
 
 #if CPY_3_14_FEATURES
