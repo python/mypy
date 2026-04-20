@@ -30,8 +30,8 @@ called deferring, some notes on it:
   change this in future by adding a special kind of Any that signifies not ready type.
 
 Second important aspect of architecture is two-phase checking. Currently, it is only
-used in parallel type-checking mode, but at some point it will the default in sequential
-mode as well.
+used in parallel type-checking mode, but at some point it will be the default in
+sequential mode as well.
 
 In first phase (called interface phase) we type-check only module top-levels, function
 signatures, and bodies of functions/methods that were found during semantic analysis as
