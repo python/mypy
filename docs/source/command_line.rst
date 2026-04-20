@@ -658,9 +658,9 @@ of the above sections.
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
 
-    We have no plans to remove this flag, but we expect that
+    We have no plans to remove this flag, but
     :option:`--allow-redefinition <mypy --allow-redefinition>`
-    will replace this flag for new use cases eventually.
+    is recommended for new use cases.
 
     Example where this can be useful:
 
