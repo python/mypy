@@ -159,56 +159,49 @@ L5:
     b = r1
     return 1
 def test3():
-    r0, r1, r2 :: str
-    r3, r4, r5 :: object
-    r6, tmp_dict :: dict
-    r7 :: set
-    r8 :: short_int
-    r9 :: native_int
-    r10 :: object
-    r11 :: tuple[bool, short_int, object]
-    r12 :: short_int
-    r13 :: bool
-    r14 :: object
-    r15, x, r16 :: int
-    r17 :: object
-    r18 :: i32
-    r19, r20, r21 :: bit
+    r0, r1, tmp_dict :: dict
+    r2 :: set
+    r3 :: short_int
+    r4 :: native_int
+    r5 :: object
+    r6 :: tuple[bool, short_int, object]
+    r7 :: short_int
+    r8 :: bool
+    r9 :: object
+    r10, x, r11 :: int
+    r12 :: object
+    r13 :: i32
+    r14, r15, r16 :: bit
     c :: set
 L0:
-    r0 = '1'
-    r1 = '3'
-    r2 = '5'
-    r3 = object 1
-    r4 = object 3
-    r5 = object 5
-    r6 = CPyDict_Build(3, r3, r0, r4, r1, r5, r2)
-    tmp_dict = r6
-    r7 = PySet_New(0)
-    r8 = 0
-    r9 = PyDict_Size(tmp_dict)
-    r10 = CPyDict_GetKeysIter(tmp_dict)
+    r0 = {1: '1', 3: '3', 5: '5'}
+    r1 = PyDict_Copy(r0)
+    tmp_dict = r1
+    r2 = PySet_New(0)
+    r3 = 0
+    r4 = PyDict_Size(tmp_dict)
+    r5 = CPyDict_GetKeysIter(tmp_dict)
 L1:
-    r11 = CPyDict_NextKey(r10, r8)
-    r12 = r11[1]
-    r8 = r12
-    r13 = r11[0]
-    if r13 goto L2 else goto L4 :: bool
+    r6 = CPyDict_NextKey(r5, r3)
+    r7 = r6[1]
+    r3 = r7
+    r8 = r6[0]
+    if r8 goto L2 else goto L4 :: bool
 L2:
-    r14 = r11[2]
-    r15 = unbox(int, r14)
-    x = r15
-    r16 = f(x)
-    r17 = box(int, r16)
-    r18 = PySet_Add(r7, r17)
-    r19 = r18 >= 0 :: signed
+    r9 = r6[2]
+    r10 = unbox(int, r9)
+    x = r10
+    r11 = f(x)
+    r12 = box(int, r11)
+    r13 = PySet_Add(r2, r12)
+    r14 = r13 >= 0 :: signed
 L3:
-    r20 = CPyDict_CheckSize(tmp_dict, r9)
+    r15 = CPyDict_CheckSize(tmp_dict, r4)
     goto L1
 L4:
-    r21 = CPy_NoErrOccurred()
+    r16 = CPy_NoErrOccurred()
 L5:
-    c = r7
+    c = r2
     return 1
 def test4():
     r0 :: set

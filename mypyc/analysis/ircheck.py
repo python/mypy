@@ -318,6 +318,16 @@ class OpChecker(OpVisitor[None]):
             else:
                 self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
 
+    def check_dict_items_valid_literals(self, op: LoadLiteral, d: dict[object, object]) -> None:
+        valid_types = (str, bytes, bool, int, float, complex)
+        for k, v in d.items():
+            # Acceptable key types: str, bytes, bool, int, float, complex
+            if not isinstance(k, valid_types):
+                self.fail(op, f"Invalid type for key of dict literal: {type(k)})")
+            # Acceptable value types: str, bytes, bool, int, float, complex
+            if not isinstance(v, valid_types):
+                self.fail(op, f"Invalid type for value of dict literal: {type(v)})")
+
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
         if op.value is None:
@@ -340,6 +350,9 @@ class OpChecker(OpVisitor[None]):
             # it's a set (when it's really a frozenset).
             expected_type = "builtins.set"
             self.check_frozenset_items_valid_literals(op, op.value)
+        elif isinstance(op.value, dict):
+            expected_type = "builtins.dict"
+            self.check_dict_items_valid_literals(op, op.value)
 
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 
