@@ -251,7 +251,7 @@ def load_states(
             needs_parse.append(state)
         # Set data that is needed to be written to cache meta.
         state.known_suppressed_deps_opts = suppressed_deps_opts
-    # Performa actual parsing in parallel (but we don't need to compute dependencies).
+    # Perform actual parsing in parallel (but we don't need to compute dependencies).
     if needs_parse:
         manager.parse_all(needs_parse, post_parse=False)
     for id in scc.mod_ids:

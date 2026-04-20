@@ -1040,7 +1040,10 @@ class BuildManager:
         parallelized efficiently.
         """
         futures = []
+        # Use both list and a set to have more predictable order of errors,
+        # while also not sacrificing performance.
         parallel_parsed_states = []
+        parallel_parsed_states_set = set()
         # Use at least --num-workers if specified by user.
         available_threads = max(get_available_threads(), self.options.num_workers)
         # Overhead from trying to parallelize (small) blocking portion of
@@ -1059,6 +1062,7 @@ class BuildManager:
                         self.errors.ignored_files.add(state.xpath)
                     futures.append(executor.submit(state.parse_file_inner, state.source or ""))
                     parallel_parsed_states.append(state)
+                    parallel_parsed_states_set.add(state)
                 else:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
                     state.tree, state.early_errors = self.ast_cache[state.id]
@@ -1088,7 +1092,7 @@ class BuildManager:
 
         for state in parallel_states:
             assert state.tree is not None
-            if state in parallel_parsed_states:
+            if state in parallel_parsed_states_set:
                 state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                 state.semantic_analysis_pass1()
                 self.ast_cache[state.id] = (state.tree, state.early_errors)
