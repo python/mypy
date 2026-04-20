@@ -764,11 +764,11 @@ of the above sections.
     Note that :option:`--strict-equality-for-none <mypy --strict-equality-for-none>`
     only works in combination with :option:`--strict-equality <mypy --strict-equality>`.
 
-.. option:: --strict-bytes
+.. option:: --no-strict-bytes
 
-    By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
-    is not true at runtime. Use this flag to disable this behavior. ``--strict-bytes`` will
-    be enabled by default in *mypy 2.0*.
+    Treat ``bytearray`` and ``memoryview`` as subtypes of ``bytes``. This is not true
+    at runtime and can lead to unexpected behavior. This was the default behavior prior
+    to mypy 2.0.
 
     .. code-block:: python
 
@@ -777,10 +777,12 @@ of the above sections.
            with open("binary_file", "wb") as fp:
                fp.write(buf)
 
-       f(bytearray(b""))  # error: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
-       f(memoryview(b""))  # error: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+       # Using --no-strict-bytes disables the following errors
+       f(bytearray(b""))  # Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+       f(memoryview(b""))  # Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
 
-       # If `f` accepts any object that implements the buffer protocol, consider using:
+       # If `f` accepts any object that implements the buffer protocol,
+       # consider using Buffer instead:
        from collections.abc import Buffer  # "from typing_extensions" in Python 3.11 and earlier
 
        def f(buf: Buffer) -> None:

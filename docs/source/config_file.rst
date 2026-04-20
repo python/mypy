@@ -867,10 +867,10 @@ section of the command line docs.
 .. confval:: strict_bytes
 
    :type: boolean
-   :default: False
+   :default: True
 
-   Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
-   This will be enabled by default in *mypy 2.0*.
+   If disabled, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
+   This has been enabled by default since mypy 2.0.
 
 .. confval:: strict
 
