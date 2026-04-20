@@ -706,14 +706,14 @@ class SemanticAnalyzer(
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
-        if self.options.allow_redefinition_new and not self.options.local_partial_types:
+        if self.options.allow_redefinition and not self.options.local_partial_types:
             n = TempNode(AnyType(TypeOfAny.special_form))
             n.line = 1
             n.column = 0
             n.end_line = 1
             n.end_column = 0
             self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
-        if self.options.allow_redefinition_new and self.options.allow_redefinition_old:
+        if self.options.allow_redefinition and self.options.allow_redefinition_old:
             n = TempNode(AnyType(TypeOfAny.special_form))
             n.line = 1
             n.column = 0
@@ -4493,7 +4493,7 @@ class SemanticAnalyzer(
                 else:
                     lvalue.fullname = lvalue.name
                 if self.is_func_scope():
-                    if unmangle(name) == "_" and not self.options.allow_redefinition_new:
+                    if unmangle(name) == "_" and not self.options.allow_redefinition:
                         # Special case for assignment to local named '_': always infer 'Any'.
                         # This isn't needed with --allow-redefinition-new, since arbitrary
                         # types can be assigned to '_' anyway.

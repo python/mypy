@@ -103,14 +103,14 @@ def main(
         if options.cache_dir == os.devnull:
             fail("error: cache must be enabled in parallel mode", stderr, options)
 
-    if options.allow_redefinition_new and not options.local_partial_types:
+    if options.allow_redefinition and not options.local_partial_types:
         fail(
             "error: --local-partial-types must be enabled if using --allow-redefinition-new",
             stderr,
             options,
         )
 
-    if options.allow_redefinition_new and options.allow_redefinition_old:
+    if options.allow_redefinition and options.allow_redefinition_old:
         fail(
             "--allow-redefinition-old and --allow-redefinition-new should not be used together",
             stderr,
