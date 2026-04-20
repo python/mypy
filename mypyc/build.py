@@ -216,7 +216,7 @@ def get_mypy_config(
 
     if compiler_options.separate:
         mypyc_sources = [
-            src for src in mypyc_sources if src.path and not src.path.endswith("__init__.py")
+            src for src in mypyc_sources if src.path
         ]
 
     if not mypyc_sources:
