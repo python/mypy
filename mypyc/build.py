@@ -215,9 +215,7 @@ def get_mypy_config(
         mypyc_sources = all_sources
 
     if compiler_options.separate:
-        mypyc_sources = [
-            src for src in mypyc_sources if src.path
-        ]
+        mypyc_sources = [src for src in mypyc_sources if src.path]
 
     if not mypyc_sources:
         return mypyc_sources, all_sources, options

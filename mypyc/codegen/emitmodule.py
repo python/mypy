@@ -1293,18 +1293,26 @@ class GroupGenerator:
         if self.group_name:
             shared_lib_mod_name = shared_lib_name(self.group_name)
             emitter.emit_line("PyObject *mod_dict = PyImport_GetModuleDict();")
-            emitter.emit_line(f'PyObject *shared_lib = PyDict_GetItemString(mod_dict, "{shared_lib_mod_name}");')
+            emitter.emit_line(
+                f'PyObject *shared_lib = PyDict_GetItemString(mod_dict, "{shared_lib_mod_name}");'
+            )
             emitter.emit_line("if (shared_lib == NULL) goto fail;")
-            emitter.emit_line('PyObject *shared_lib_file = PyObject_GetAttrString(shared_lib, "__file__");')
+            emitter.emit_line(
+                'PyObject *shared_lib_file = PyObject_GetAttrString(shared_lib, "__file__");'
+            )
             emitter.emit_line("if (shared_lib_file == NULL) goto fail;")
         else:
-            emitter.emit_line(f'PyObject *shared_lib_file = PyUnicode_FromString("{module_name + EXT_SUFFIX}");')
+            emitter.emit_line(
+                f'PyObject *shared_lib_file = PyUnicode_FromString("{module_name + EXT_SUFFIX}");'
+            )
         emitter.emit_line(f'PyObject *ext_suffix = PyUnicode_FromString("{EXT_SUFFIX}");')
         emitter.emit_line("if (ext_suffix == NULL) CPyError_OutOfMemory();")
         is_pkg = int(self.source_paths[module_name].endswith("__init__.py"))
         emitter.emit_line(f"Py_ssize_t is_pkg = {is_pkg};")
 
-        emitter.emit_line(f"int rv = CPyImport_SetDunderAttrs({module_static}, modname, shared_lib_file, ext_suffix, is_pkg);")
+        emitter.emit_line(
+            f"int rv = CPyImport_SetDunderAttrs({module_static}, modname, shared_lib_file, ext_suffix, is_pkg);"
+        )
         emitter.emit_line("Py_DECREF(ext_suffix);")
         emitter.emit_line("Py_DECREF(shared_lib_file);")
         emitter.emit_line("if (rv < 0) goto fail;")
