@@ -7116,9 +7116,9 @@ from .lib import NT
 [out2]
 
 [case testNewRedefineAffectsCache]
-# flags: --local-partial-types --allow-redefinition-new
+# flags: --local-partial-types --allow-redefinition
 # flags2: --local-partial-types
-# flags3: --local-partial-types --allow-redefinition-new
+# flags3: --local-partial-types --allow-redefinition
 x = 0
 if int():
     x = ""

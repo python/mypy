@@ -2979,7 +2979,7 @@ def match_stmt_error5(x: Optional[str]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSubjectRedefinition]
-# flags: --allow-redefinition --strict-equality --warn-unreachable
+# flags: --allow-redefinition-old --strict-equality --warn-unreachable
 def transform1(a: str) -> int:
     ...
 
@@ -3510,7 +3510,7 @@ class Two: ...
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineMatchBasics]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
+# flags: --allow-redefinition --local-partial-types --strict-equality --warn-unreachable
 
 def f1(x: int | str | list[bytes]) -> None:
     match x:
@@ -3523,7 +3523,7 @@ def f1(x: int | str | list[bytes]) -> None:
     reveal_type(y) # N: Revealed type is "builtins.str | builtins.bytes"
 
 [case testNewRedefineLoopWithMatch]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
+# flags: --allow-redefinition --local-partial-types --strict-equality --warn-unreachable
 
 def f1() -> None:
     while True:

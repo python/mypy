@@ -385,7 +385,7 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 from typing import Final
 
 x: Final = 1
@@ -412,7 +412,7 @@ z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleVar2]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 from typing import Final
 
 x: Final = 1
@@ -429,7 +429,7 @@ y
 y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
-# flags: --disallow-redefinition
+# flags: --disallow-redefinition-old
 from typing import Final
 
 x: Final = 1
