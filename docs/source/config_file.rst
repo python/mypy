@@ -720,9 +720,9 @@ section of the command line docs.
 
     By default, mypy won't allow a variable to be redefined with an
     unrelated type. This flag enables the redefinition of unannotated
-    variables with an arbitrary type. You will also need to enable
-    :confval:`local_partial_types`.
-    Example:
+    variables with an arbitrary type. This also requires
+    :confval:`local_partial_types`, which is enabled by default starting
+    from mypy 2.0. Example:
 
     .. code-block:: python
 
@@ -761,7 +761,7 @@ section of the command line docs.
             reveal_type(values)  # Revealed type is list[float]
 
     Note: We are planning to turn this flag on by default in a future mypy
-    release, along with :confval:`local_partial_types`.
+    release.
 
 .. confval:: allow_redefinition_old
 
@@ -800,11 +800,11 @@ section of the command line docs.
 .. confval:: local_partial_types
 
     :type: boolean
-    :default: False
+    :default: True
 
-    Disallows inferring variable type for ``None`` from two assignments in different scopes.
-    This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
-    This will be enabled by default in mypy v2.0 release.
+    This prevents inferring a variable type from an empty container (such as a list or
+    a dictionary) created at module top level or class body and updated in
+    a function. This must be enabled when using the :ref:`mypy daemon <mypy_daemon>`.
 
 .. confval:: disable_error_code
 
