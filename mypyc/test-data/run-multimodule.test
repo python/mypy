@@ -489,6 +489,22 @@ class Cache:
 [file driver.py]
 import other
 
+[case testRelativeImportInPackageFile]
+# Relative imports from a compiled package __init__ depend on package metadata being
+# available while the package module body is executing.
+[file other/__init__.py]
+assert __package__ == "other"
+from .other_cache import Cache
+
+x = 1
+[file other/other_cache.py]
+class Cache:
+    pass
+
+[file driver.py]
+import other
+assert other.Cache.__name__ == "Cache"
+
 [case testMultiModuleSameNames]
 # Use same names in both modules
 import other
