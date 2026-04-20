@@ -507,9 +507,9 @@ def parse_section(
         # Here we use `key` for original config section key, and `options_key` for
         # the corresponding Options attribute.
         options_key = key
-        # Match aliasing for command line flag.
-        if key.endswith("allow_redefinition"):
-            options_key += "_old"
+        # Match aliasing for deprecated config option name.
+        if options_key == "allow_redefinition_new":
+            options_key = "allow_redefinition"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:

@@ -4607,7 +4607,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if isinstance(init_type, NoneType) and (
             isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition
         ):
-            # When using --allow-redefinition-new, None types aren't special
+            # When using --allow-redefinition, None types aren't special
             # when inferring simple variable types.
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
@@ -4855,7 +4855,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 get_proper_type(lvalue_type), AnyType
             )
 
-            # If redefinitions are allowed (i.e. we have --allow-redefinition-new
+            # If redefinitions are allowed (i.e. we have --allow-redefinition
             # and a variable without annotation) or if a variable has union type we
             # try inferring r.h.s. twice with a fallback type context. The only exception
             # is TypedDicts, they are often useless without context.
@@ -5025,7 +5025,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.binder.version += 1
         del partial_types[var]
         if self.options.allow_redefinition:
-            # When using --allow-redefinition-new, binder tracks all types of
+            # When using --allow-redefinition, binder tracks all types of
             # simple variables.
             n = NameExpr(var.name)
             n.node = var

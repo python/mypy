@@ -712,7 +712,7 @@ class SemanticAnalyzer(
             n.column = 0
             n.end_line = 1
             n.end_column = 0
-            self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
+            self.fail("--local-partial-types must be enabled if using --allow-redefinition", n)
         if self.options.allow_redefinition and self.options.allow_redefinition_old:
             n = TempNode(AnyType(TypeOfAny.special_form))
             n.line = 1
@@ -720,8 +720,7 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail(
-                "--allow-redefinition-old and --allow-redefinition-new"
-                " should not be used together",
+                "--allow-redefinition-old and --allow-redefinition should not be used together",
                 n,
             )
         self.recurse_into_functions = False
@@ -4495,7 +4494,7 @@ class SemanticAnalyzer(
                 if self.is_func_scope():
                     if unmangle(name) == "_" and not self.options.allow_redefinition:
                         # Special case for assignment to local named '_': always infer 'Any'.
-                        # This isn't needed with --allow-redefinition-new, since arbitrary
+                        # This isn't needed with --allow-redefinition, since arbitrary
                         # types can be assigned to '_' anyway.
                         typ = AnyType(TypeOfAny.special_form)
                         self.store_declared_types(lvalue, typ)

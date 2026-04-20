@@ -105,14 +105,14 @@ def main(
 
     if options.allow_redefinition and not options.local_partial_types:
         fail(
-            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            "error: --local-partial-types must be enabled if using --allow-redefinition",
             stderr,
             options,
         )
 
     if options.allow_redefinition and options.allow_redefinition_old:
         fail(
-            "--allow-redefinition-old and --allow-redefinition-new should not be used together",
+            "--allow-redefinition-old and --allow-redefinition should not be used together",
             stderr,
             options,
         )
@@ -888,9 +888,8 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        help="Allow flexible variable redefinition with a new type",
         group=strictness_group,
-        dest="allow_redefinition_old",
     )
 
     add_invertible_flag(
@@ -905,8 +904,9 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics",
+        help="Deprecated alias for --allow-redefinition",
         group=strictness_group,
+        dest="allow_redefinition",
     )
 
     add_invertible_flag(

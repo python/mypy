@@ -199,7 +199,7 @@ class ConditionalTypeBinder:
 
         # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
         # is added to the binder. This allows more precise narrowing and more
-        # flexible inference of variable types (--allow-redefinition-new).
+        # flexible inference of variable types (--allow-redefinition).
         self.bind_all = options.allow_redefinition
 
         # This tracks any externally visible changes in binder to invalidate
@@ -339,7 +339,7 @@ class ConditionalTypeBinder:
                 continue
 
             # Remove exact duplicates to save pointless work later, this is
-            # a micro-optimization for --allow-redefinition-new.
+            # a micro-optimization for --allow-redefinition.
             seen_types = set()
             resulting_types = []
             for rv in resulting_values:
