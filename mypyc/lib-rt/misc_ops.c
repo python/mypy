@@ -1578,7 +1578,7 @@ fail:
     PyErr_Restore(exc_type, exc_val, exc_tb);
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
-    Py_DECREF(modobj);
+    Py_CLEAR(*module_static);
     return NULL;
 }
 
