@@ -720,8 +720,7 @@ class SemanticAnalyzer(
             n.end_line = 1
             n.end_column = 0
             self.fail(
-                "--allow-redefinition-old and --allow-redefinition should not be used together",
-                n,
+                "--allow-redefinition-old and --allow-redefinition should not be used together", n
             )
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
