@@ -65,10 +65,7 @@ def resolve_stub_packages_from_lock(locked: Mapping[str, str | None]) -> list[st
     for dist_name in locked:
         if dist_name.startswith("types-"):
             continue
-        candidates = {
-            dist_name,
-            dist_name.replace("-", "_"),
-        }
+        candidates = {dist_name, dist_name.replace("-", "_")}
         for module_name in candidates:
             stub = stub_distribution_name(module_name)
             if stub:

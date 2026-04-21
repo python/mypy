@@ -14,8 +14,7 @@ from mypy.installtypes import (
 
 class TestInstallTypesFromPylock(unittest.TestCase):
     def test_read_locked_packages(self) -> None:
-        content = textwrap.dedent(
-            """
+        content = textwrap.dedent("""
             [[package]]
             name = "requests"
             version = "2.32.3"
@@ -27,8 +26,7 @@ class TestInstallTypesFromPylock(unittest.TestCase):
             [[package]]
             name = "types-requests"
             version = "2.32.0"
-            """
-        )
+            """)
         with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name
@@ -42,20 +40,12 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         assert locked["types-requests"] == "2.32.0"
 
     def test_resolve_stub_packages_from_lock(self) -> None:
-        locked = {
-            "requests": "2.32.3",
-            "python-dateutil": "2.9.0",
-            "types-requests": "2.32.0",
-        }
+        locked = {"requests": "2.32.3", "python-dateutil": "2.9.0", "types-requests": "2.32.0"}
         stubs = resolve_stub_packages_from_lock(locked)
         assert "types-requests" in stubs
         assert "types-python-dateutil" in stubs
 
     def test_make_runtime_constraints(self) -> None:
-        locked = {
-            "requests": "2.32.3",
-            "python-dateutil": "2.9.0",
-            "no-version": None,
-        }
+        locked = {"requests": "2.32.3", "python-dateutil": "2.9.0", "no-version": None}
         constraints = make_runtime_constraints(locked)
         assert constraints == ["python-dateutil==2.9.0", "requests==2.32.3"]
