@@ -424,6 +424,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     # Short names of Var nodes whose previous inferred type has been widened via assignment.
     # NOTE: The names might not be unique, they are only for debugging purposes.
     widened_vars: list[str]
+    # Global variables widened inside a function body, to be propagated to
+    # the module-level binder after the function is type checked.
+    _globals_widened_in_func: list[tuple[NameExpr, Type]]
     globals: SymbolTable
     modules: dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -496,6 +499,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.var_decl_frames = {}
         self.deferred_nodes = []
         self.widened_vars = []
+        self._globals_widened_in_func = []
         self._type_maps = [{}]
         self.module_refs = set()
         self.pass_num = 0
@@ -1615,6 +1619,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
             self.return_types.pop()
+
+            # Propagate any global variable widenings to the outer binder.
+            if self._globals_widened_in_func:
+                for lvalue, widened_type in self._globals_widened_in_func:
+                    old_binder.put(lvalue, widened_type)
+                    lit = literal_hash(lvalue)
+                    if lit is not None:
+                        old_binder.declarations[lit] = widened_type
+                self._globals_widened_in_func = []
 
             self.binder = old_binder
 
@@ -4904,6 +4917,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # Skip index variables as they are reset on each loop.
                         self.widened_vars.append(inferred.name)
                     self.set_inferred_type(inferred, lvalue, lvalue_type)
+                    if (
+                        lvalue.kind == GDEF
+                        and self.scope.top_level_function() is not None
+                    ):
+                        # Widening a global inside a function -- record for
+                        # propagation to the module-level binder afterwards.
+                        self._globals_widened_in_func.append((lvalue, lvalue_type))
                     self.binder.put(lvalue, rvalue_type)
                     # TODO: A bit hacky, maybe add a binder method that does put and
                     #       updates declaration?
@@ -4932,7 +4952,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if name.kind == LDEF:
             # TODO: Consider reference to outer function as a different scope?
             return False
-        elif self.scope.top_level_function() is not None:
+        elif self.scope.top_level_function() is not None and name.kind != GDEF:
             # A non-local reference from within a function must refer to a different scope
             return True
         elif name.kind == GDEF and name.fullname.rpartition(".")[0] != self.tree.fullname:
@@ -8337,7 +8357,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return None
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
-        return None
+        if self.options.allow_redefinition:
+            for name in o.names:
+                sym = self.globals.get(name)
+                if sym and isinstance(sym.node, Var) and sym.node.type is not None:
+                    n = NameExpr(name)
+                    n.node = sym.node
+                    n.kind = GDEF
+                    n.fullname = sym.node.fullname
+                    self.binder.assign_type(n, sym.node.type, sym.node.type)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
