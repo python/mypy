@@ -2470,7 +2470,7 @@ def f3(x: object) -> None:
 
 def f4(x: int | Any) -> None:
     if x == IE.X:
-        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | Any"
+        reveal_type(x)  # N: Revealed type is "builtins.int | Any"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | Any"
 
@@ -2513,9 +2513,9 @@ class E(Enum):
 
 def f1(x: IE | MyDecimal) -> None:
      if x == IE.X:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | __main__.MyDecimal"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
      else:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | __main__.MyDecimal"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y] | __main__.MyDecimal"
 
 def f2(x: E | bytes) -> None:
      if x == E.X:
@@ -2525,9 +2525,9 @@ def f2(x: E | bytes) -> None:
 
 def f3(x: IE | IE2) -> None:
      if x == IE.X:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | __main__.IE2"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X] | __main__.IE2"
      else:
-         reveal_type(x)  # N: Revealed type is "__main__.IE | __main__.IE2"
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y] | __main__.IE2"
 
 def f4(x: IE | E) -> None:
      if x == IE.X:
@@ -2596,6 +2596,39 @@ def f4(x: SE) -> None:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.A]"
      else:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.B]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithBytesEnum]
+# flags: --strict-equality --warn-unreachable
+from enum import Enum
+
+class BE(bytes, Enum):
+    A = b'a'
+    B = b'b'
+
+def f1(x: object) -> None:
+    if x == BE.A:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.BE.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f2(x: BE) -> None:
+    if x == BE.A:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.BE.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.BE.B]"
+
+def f3(x: bytearray | BE) -> None:
+    if x == BE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.bytearray | Literal[__main__.BE.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.bytearray | Literal[__main__.BE.B]"
+
+def f4(x: memoryview | BE) -> None:
+    if x == BE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.memoryview | Literal[__main__.BE.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.memoryview | Literal[__main__.BE.B]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithEnumStrSubclass]
@@ -3731,14 +3764,13 @@ from typing import TypeVar, Any, Type
 
 TargetType = TypeVar("TargetType", int, float, str)
 
-# TODO: this behaviour is incorrect, it will be fixed by improving reachability
 def convert_type(target_type: Type[TargetType]) -> TargetType:
     if target_type == str:
         return str()
     if target_type == int:
         return int()
     if target_type == float:
-        return float()  # E: Incompatible return value type (got "float", expected "int")
+        return float()
     raise
 
 
@@ -3762,7 +3794,7 @@ def f2(number: float, five: Literal[5]):
 
 def f3(number: float | int, five: Literal[5]):
     if number == five:
-        reveal_type(number)  # N: Revealed type is "builtins.float | Literal[5]"
+        reveal_type(number)  # N: Revealed type is "Literal[5] | builtins.float"
         reveal_type(five)  # N: Revealed type is "Literal[5]"
 
 def f8(number: float | Literal[5], five: Literal[5]):
@@ -3829,6 +3861,7 @@ def f(x: bytes | None):
 [case testNarrowingBytesLikeWithPromotion]
 # flags: --strict-equality --warn-unreachable --strict-bytes
 from __future__ import annotations
+from typing import Any
 
 def check_test(x: bytes) -> None: ...
 check_test(bytearray(b"asdf"))  # E: Argument 1 to "check_test" has incompatible type "bytearray"; expected "bytes"
@@ -3838,6 +3871,8 @@ def main(
     v_bytearray: bytearray,
     v_memoryview: memoryview,
     v_all: bytes | bytearray | memoryview,
+    v_object: object,
+    v_any: Any,
 ) -> None:
     if v_bytes == v_bytearray:
         reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
@@ -3850,7 +3885,7 @@ def main(
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
 
     if v_all == v_bytes:
-        reveal_type(v_all)  # N: Revealed type is "builtins.bytes"
+        reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
     if v_all == v_bytearray:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
@@ -3858,11 +3893,21 @@ def main(
     if v_all == v_memoryview:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+
+    if v_object == v_bytes:
+        reveal_type(v_object)  # N: Revealed type is "builtins.bytes"
+    if v_object == b"asdf":
+        reveal_type(v_object)  # N: Revealed type is "Literal[b'asdf']?"
+    if v_any == v_bytes:
+        reveal_type(v_any)  # N: Revealed type is "Any"
+    if v_any == b"asdf":
+        reveal_type(v_any)  # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBytesLikeNoPromotion]
 # flags: --strict-equality --warn-unreachable --no-strict-bytes
 from __future__ import annotations
+from typing import Any
 
 def check_test(x: bytes) -> None: ...
 check_test(bytearray(b"asdf"))
@@ -3872,6 +3917,8 @@ def main(
     v_bytearray: bytearray,
     v_memoryview: memoryview,
     v_all: bytes | bytearray | memoryview,
+    v_object: object,
+    v_any: Any,
 ) -> None:
     if v_bytes == v_bytearray:
         reveal_type(v_bytes)  # N: Revealed type is "builtins.bytes"
@@ -3892,6 +3939,15 @@ def main(
     if v_all == v_memoryview:
         reveal_type(v_all)  # N: Revealed type is "builtins.bytes | builtins.bytearray | builtins.memoryview"
         reveal_type(v_memoryview)  # N: Revealed type is "builtins.memoryview"
+
+    if v_object == v_bytes:
+        reveal_type(v_object)  # N: Revealed type is "builtins.bytes"
+    if v_object == b"asdf":
+        reveal_type(v_object)  # N: Revealed type is "Literal[b'asdf']?"
+    if v_any == v_bytes:
+        reveal_type(v_any)  # N: Revealed type is "Any"
+    if v_any == b"asdf":
+        reveal_type(v_any)  # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]
 
 
