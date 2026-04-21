@@ -7,6 +7,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from collections.abc import Sequence
@@ -29,6 +30,7 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
+from mypy.installtypes import make_runtime_constraints, read_locked_packages, resolve_stub_packages_from_lock
 from mypy.modulefinder import (
     BuildSource,
     FindModuleCache,
@@ -124,6 +126,22 @@ def main(
     if options.non_interactive and not options.install_types:
         fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
+    if options.install_types_from_pylock is not None and not options.install_types:
+        fail(
+            "error: --install-types-from-pylock is only supported with --install-types",
+            stderr,
+            options,
+        )
+
+    if options.install_types_from_pylock is not None and not os.path.isfile(
+        options.install_types_from_pylock
+    ):
+        fail(
+            f"error: Can't find lock file '{options.install_types_from_pylock}'",
+            stderr,
+            options,
+        )
+
     if options.install_types and not options.incremental:
         fail(
             "error: --install-types not supported with incremental mode disabled", stderr, options
@@ -137,8 +155,21 @@ def main(
         )
 
     if options.install_types and not sources:
-        install_types(formatter, options, non_interactive=options.non_interactive)
+        install_types(
+            formatter,
+            options,
+            non_interactive=options.non_interactive,
+            pylock_path=options.install_types_from_pylock,
+        )
         return
+
+    if options.install_types and options.install_types_from_pylock:
+        install_types(
+            formatter,
+            options,
+            non_interactive=options.non_interactive,
+            pylock_path=options.install_types_from_pylock,
+        )
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
 
@@ -1205,6 +1236,15 @@ def define_options(
         help="Print out all usages of a class member (experimental)",
     )
     misc_group.add_argument(
+        "--install-types-from-pylock",
+        metavar="FILE",
+        dest="install_types_from_pylock",
+        help=(
+            "With --install-types, read packages from a pylock TOML file and "
+            "install matching known stub packages"
+        ),
+    )
+    misc_group.add_argument(
         "--scripts-are-modules",
         action="store_true",
         help="Script x becomes module x instead of __main__",
@@ -1705,9 +1745,17 @@ def install_types(
     *,
     after_run: bool = False,
     non_interactive: bool = False,
+    pylock_path: str | None = None,
 ) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
-    packages = read_types_packages_to_install(options.cache_dir, after_run)
+    constraints: list[str] = []
+    if pylock_path is None:
+        packages = read_types_packages_to_install(options.cache_dir, after_run)
+    else:
+        locked = read_locked_packages(pylock_path)
+        packages = resolve_stub_packages_from_lock(locked)
+        constraints = make_runtime_constraints(locked)
+
     if not packages:
         # If there are no missing stubs, generate no output.
         return False
@@ -1715,14 +1763,30 @@ def install_types(
         print()
     print("Installing missing stub packages:")
     assert options.python_executable, "Python executable required to install types"
-    cmd = [options.python_executable, "-m", "pip", "install"] + packages
+    cmd = [options.python_executable, "-m", "pip", "install"]
+    constraints_file = None
+    if pylock_path is not None:
+        cmd.append("--no-deps")
+    if pylock_path is not None and constraints:
+        constraints_file = tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8")
+        with constraints_file as f:
+            f.write("\n".join(constraints))
+            f.write("\n")
+        cmd += ["--constraint", constraints_file.name]
+    cmd += packages
     print(formatter.style(" ".join(cmd), "none", bold=True))
     print()
     if not non_interactive:
         x = input("Install? [yN] ")
         if not x.strip() or not x.lower().startswith("y"):
             print(formatter.style("mypy: Skipping installation", "red", bold=True))
+            if constraints_file is not None:
+                os.unlink(constraints_file.name)
             sys.exit(2)
         print()
-    subprocess.run(cmd)
+    try:
+        subprocess.run(cmd)
+    finally:
+        if constraints_file is not None:
+            os.unlink(constraints_file.name)
     return True
