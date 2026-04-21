@@ -4767,8 +4767,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # binder.accumulate_type_assignments() and assign the types inferred for type
         # context that is ultimately used. This is however tricky with redefinitions.
         # For now we simply disable second accept in cases known to cause problems,
-        # see e.g. testAssignToOptionalTupleWalrus.
-        has_walrus = self._has_assignment_expr(rvalue)
+        # see e.g. testAssignToOptionalTupleWalrus. We only need to scan for walrus
+        # when union fallback is otherwise applicable.
+        union_fallback_possible = (
+            preferred_context is not None and isinstance(get_proper_type(lvalue_type), UnionType)
+        )
+        has_walrus = union_fallback_possible and self._has_assignment_expr(rvalue)
 
         fallback_context_used = False
         with (
@@ -4795,11 +4799,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Try re-inferring r.h.s. in empty context for union with explicit annotation,
         # and use it results in a narrower type. This helps with various practical
         # examples, see e.g. testOptionalTypeNarrowedByGenericCall.
-        union_fallback = (
-            preferred_context is not None
-            and isinstance(get_proper_type(lvalue_type), UnionType)
-            and not has_walrus
-        )
+        union_fallback = union_fallback_possible and not has_walrus
 
         # Skip literal types, as they have special logic (for better errors).
         try_fallback = redefinition_fallback or union_fallback or argument_redefinition_fallback

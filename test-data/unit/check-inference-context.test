@@ -1514,6 +1514,19 @@ i = i if isinstance(i, int) else b
 reveal_type(i)  # N: Revealed type is "Any | builtins.int"
 [builtins fixtures/isinstance.pyi]
 
+[case testTypeNarrowingByReassignmentGeneratorTernary]
+from typing import Iterable, Union
+
+def foo(args: Union[Iterable[Union[str, int]], str, int]) -> Iterable[str]:
+    if isinstance(args, (str, int)):
+        args = (args,)
+    args = (
+        arg if isinstance(arg, str) else str(arg)
+        for arg in args
+    )
+    return args
+[builtins fixtures/isinstance.pyi]
+
 [case testLambdaInferenceUsesNarrowedTypes]
 from typing import Optional, Callable
 
