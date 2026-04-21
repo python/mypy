@@ -8369,7 +8369,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return None
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
-        if self.options.allow_redefinition:
+        if self.options.allow_redefinition_new:
             for name in o.names:
                 sym = self.globals.get(name)
                 if sym and isinstance(sym.node, Var) and sym.node.type is not None:
