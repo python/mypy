@@ -379,6 +379,17 @@ class LocalTypeMap:
         return False
 
 
+class _AssignmentExprSeeker(TraverserVisitor):
+    """Check if an expression tree contains a walrus operator (:=)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.found = False
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        self.found = True
+
+
 class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     """Mypy type checker.
 
@@ -4757,7 +4768,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # context that is ultimately used. This is however tricky with redefinitions.
         # For now we simply disable second accept in cases known to cause problems,
         # see e.g. testAssignToOptionalTupleWalrus.
-        binder_version = self.binder.version
+        has_walrus = self._has_assignment_expr(rvalue)
 
         fallback_context_used = False
         with (
@@ -4787,7 +4798,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         union_fallback = (
             preferred_context is not None
             and isinstance(get_proper_type(lvalue_type), UnionType)
-            and binder_version == self.binder.version
+            and not has_walrus
         )
 
         # Skip literal types, as they have special logic (for better errors).
@@ -5090,6 +5101,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         """Type check a return statement."""
         self.check_return_stmt(s)
         self.binder.unreachable()
+
+    @staticmethod
+    def _has_assignment_expr(expr: Expression) -> bool:
+        """Check if an expression tree contains a walrus operator (:=)."""
+        seeker = _AssignmentExprSeeker()
+        expr.accept(seeker)
+        return seeker.found
 
     def infer_context_dependent(
         self, expr: Expression, type_ctx: Type, allow_none_func_call: bool
