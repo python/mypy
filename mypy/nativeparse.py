@@ -1,4 +1,3 @@
-# mypy: allow-redefinition, local-partial-types
 """Python parser that directly constructs a native AST (when compiled).
 
 Use a Rust extension to generate a serialized AST, and deserialize the AST directly
