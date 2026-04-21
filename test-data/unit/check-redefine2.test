@@ -216,6 +216,19 @@ class C:
 
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
+[case testNewRedefineGlobalVariableNoneInit4]
+# flags: --allow-redefinition-new --local-partial-types
+x = None
+
+def f() -> None:
+    def nested() -> None:
+        global x
+        x = 1
+
+    nested()
+
+reveal_type(x) # N: Revealed type is "None | builtins.int"
+
 [case testNewRedefineGlobalVariableWithUnsupportedType]
 # flags: --allow-redefinition-new --local-partial-types
 x = 1
