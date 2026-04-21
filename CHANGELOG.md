@@ -2,10 +2,44 @@
 
 ## Next Release
 
+### Enabling `--local-partial-types` by default
+
+This flag affects the inference of types based on assignments in other scopes.
+For now, explicitly disabling this continues to be supported, but this support will be removed
+in the future as the legacy behaviour is hard to support with other current and future features
+in mypy, like the daemon or the new implementation of flexible redefinitions.
+
+Contributed by Ivan Levkivskyi, Jukka Lehtosalo, Shantanu in [PR 21163](https://github.com/python/mypy/pull/21163)
+
+### Enabling `--strict-bytes` by default
+
+Per [PEP 688](https://peps.python.org/pep-0688), mypy no longer treats `bytearray` and `memoryview`
+values as assignable to the `bytes` type.
+
+Contributed by Shantanu in [PR 18371](https://github.com/python/mypy/pull/18371)
+
 ### Drop Support for Targeting Python 3.9
 
 Mypy no longer supports type checking code with `--python-version 3.9`.
 Use `--python-version 3.10` or newer.
+
+Contributed by Shantanu, Marc Mueller in [PR 21243](https://github.com/python/mypy/pull/21243)
+
+### Remove special casing of legacy bundled stubs
+
+Mypy used to bundle stubs for a few packages in versions 0.812 and earlier. To navigate the
+transition, mypy used to report missing types for these packages even if `--ignore-missing-imports`
+was set. Mypy now consistently respects `--ignore-missing-imports` for all packages.
+
+Contributed by Shantanu in [PR 18372](https://github.com/python/mypy/pull/18372)
+
+### Prevent assignment to None for non-Optional class variables with type comments
+
+Mypy used to allow assignment to None for class variables when using type comments. This was a
+common idiom in Python 3.5 and earlier, prior to the introduction of variable annotations.
+However, this was a soundness hole and has now been removed.
+
+Contributed by Shantanu in [PR 20054](https://github.com/python/mypy/pull/20054)
 
 ## Mypy 1.20
 
