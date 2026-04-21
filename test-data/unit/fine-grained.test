@@ -11736,3 +11736,29 @@ def bar() -> str: return "a"
 main:2: note: Revealed type is "None | builtins.int"
 ==
 main:2: note: Revealed type is "None | builtins.str"
+
+[case testGlobalNoneWidenedInFuncWithRedefinition3]
+import m
+reveal_type(m.x)
+
+[file m.py]
+# mypy: allow-redefinition-new
+import m2
+
+x = None
+
+def foo() -> None:
+    def nested(self) -> None:
+        global x
+        x = m2.bar()
+
+[file m2.py]
+def bar() -> int: return 0
+
+[file m2.py.2]
+def bar() -> str: return "a"
+
+[out]
+main:2: note: Revealed type is "None | builtins.int"
+==
+main:2: note: Revealed type is "None | builtins.str"

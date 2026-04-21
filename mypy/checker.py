@@ -425,7 +425,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     # NOTE: The names might not be unique, they are only for debugging purposes.
     widened_vars: list[str]
     # Global variables widened inside a function body, to be propagated to
-    # the module-level binder after the function is type checked.
+    # the module-level binder after the function is type checked (with --allow-redefinition-new).
     _globals_widened_in_func: list[tuple[NameExpr, Type]]
     globals: SymbolTable
     modules: dict[str, MypyFile]
@@ -4964,7 +4964,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         """Can a variable type be widened via assignment in the current scope?
 
         Globals can only be widened from within a function if the original type
-        is None (backward compat with partial type handling of ``x = None``).
+        is None (backward compat with partial type handling of `x = None`).
         """
         if (
             name.kind == GDEF
@@ -8372,6 +8372,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
         if self.options.allow_redefinition_new:
+            # Add names to binder, since their types could be widened
             for name in o.names:
                 sym = self.globals.get(name)
                 if sym and isinstance(sym.node, Var) and sym.node.type is not None:
