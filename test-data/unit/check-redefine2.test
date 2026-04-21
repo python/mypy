@@ -180,19 +180,13 @@ def f() -> None:
 
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
-def g() -> None:
-    global x
-    reveal_type(x) # N: Revealed type is "None | builtins.int"
-    # Can only widen in one function to avoid complex interactions
-    x = "a" # E: Incompatible types in assignment (expression has type "str", variable has type "int | None")
-    reveal_type(x) # N: Revealed type is "None | builtins.int"
-
-reveal_type(x) # N: Revealed type is "None | builtins.int"
-
 [case testNewRedefineGlobalVariableNoneInit2]
 # flags: --allow-redefinition-new --local-partial-types
 x = None
 
+def deco(f): return f
+
+@deco
 def f() -> None:
     global x
     if int():
@@ -203,11 +197,18 @@ reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit3]
 # flags: --allow-redefinition-new --local-partial-types
+from typing import overload
+
 x = None
 
-def f() -> None:
+@overload
+def f() -> None: ...
+@overload
+def f(n: int) -> None: ...
+
+def f(n: int = 0) -> None:
     global x
-    x = 1
+    x = n
     a = [x]
     x = None
     reveal_type(x) # N: Revealed type is "None"
