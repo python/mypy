@@ -491,6 +491,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
+        self.globals_binder = self.binder
         self.globals = tree.names
         self.return_types = []
         self.dynamic_funcs = []
@@ -1620,13 +1621,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
             self.return_types.pop()
 
-            # Propagate any global variable widenings to the outer binder.
+            # Propagate any global variable widenings directly to the
+            # module-level binder (skipping any intermediate class binders).
             if self._globals_widened_in_func:
                 for lvalue, widened_type in self._globals_widened_in_func:
-                    old_binder.put(lvalue, widened_type)
+                    self.globals_binder.put(lvalue, widened_type)
                     lit = literal_hash(lvalue)
                     if lit is not None:
-                        old_binder.declarations[lit] = widened_type
+                        self.globals_binder.declarations[lit] = widened_type
                 self._globals_widened_in_func = []
 
             self.binder = old_binder

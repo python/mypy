@@ -201,17 +201,18 @@ from typing import overload
 
 x = None
 
-@overload
-def f() -> None: ...
-@overload
-def f(n: int) -> None: ...
+class C:
+    @overload
+    def f(self) -> None: ...
+    @overload
+    def f(self, n: int) -> None: ...
 
-def f(n: int = 0) -> None:
-    global x
-    x = n
-    a = [x]
-    x = None
-    reveal_type(x) # N: Revealed type is "None"
+    def f(self, n: int = 0) -> None:
+        global x
+        x = n
+        a = [x]
+        x = None
+        reveal_type(x) # N: Revealed type is "None"
 
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
