@@ -190,7 +190,7 @@ def g() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit2]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-new --local-partial-types
 x = None
 
 def f() -> None:
@@ -202,7 +202,7 @@ def f() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit3]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-new --local-partial-types
 x = None
 
 def f() -> None:
@@ -215,7 +215,7 @@ def f() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableWithUnsupportedType]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-new --local-partial-types
 x = 1
 
 def f() -> None:
@@ -685,6 +685,7 @@ def f5() -> None:
             continue
         x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
+
 [case testNewRedefineWhileLoopSimple]
 # flags: --allow-redefinition-new --local-partial-types
 def f() -> None:
