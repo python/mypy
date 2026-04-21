@@ -728,6 +728,14 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
     parent_dir = os.path.dirname(dir)
     if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
+        git_info_exclude = os.path.join(dir, ".git", "info", "exclude")
+        if os.path.isfile(git_info_exclude):
+            with open(git_info_exclude) as f:
+                exclude_lines = f.readlines()
+            try:
+                parent_gitignores = [(dir, PathSpec.from_lines("gitignore", exclude_lines))]
+            except GitIgnorePatternError:
+                print(f"error: could not parse {git_info_exclude}", file=sys.stderr)
     else:
         parent_gitignores = find_gitignores(parent_dir)
 
