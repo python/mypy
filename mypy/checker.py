@@ -4769,8 +4769,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # For now we simply disable second accept in cases known to cause problems,
         # see e.g. testAssignToOptionalTupleWalrus. We only need to scan for walrus
         # when union fallback is otherwise applicable.
-        union_fallback_possible = (
-            preferred_context is not None and isinstance(get_proper_type(lvalue_type), UnionType)
+        union_fallback_possible = preferred_context is not None and isinstance(
+            get_proper_type(lvalue_type), UnionType
         )
         has_walrus = union_fallback_possible and self._has_assignment_expr(rvalue)
 
