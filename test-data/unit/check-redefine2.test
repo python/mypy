@@ -180,6 +180,15 @@ def f() -> None:
 
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
+def g() -> None:
+    global x
+    reveal_type(x) # N: Revealed type is "None | builtins.int"
+    # Can only widen in one function to avoid complex interactions
+    x = "a" # E: Incompatible types in assignment (expression has type "str", variable has type "int | None")
+    reveal_type(x) # N: Revealed type is "None | builtins.int"
+
+reveal_type(x) # N: Revealed type is "None | builtins.int"
+
 [case testNewRedefineGlobalVariableNoneInit2]
 # flags: --allow-redefinition
 x = None
@@ -204,6 +213,16 @@ def f() -> None:
     reveal_type(x) # N: Revealed type is "None"
 
 reveal_type(x) # N: Revealed type is "None | builtins.int"
+
+[case testNewRedefineGlobalVariableWithUnsupportedType]
+# flags: --allow-redefinition
+x = 1
+
+def f() -> None:
+    global x
+    x = "a"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+reveal_type(x) # N: Revealed type is "builtins.int"
 
 [case testNewRedefineParameterTypes]
 # flags: --allow-redefinition-new --local-partial-types

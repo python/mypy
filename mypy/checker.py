@@ -4910,6 +4910,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     not self.refers_to_different_scope(lvalue)
                     and not isinstance(inferred.type, PartialType)
                     and not is_proper_subtype(new_inferred, inferred.type)
+                    and self.can_widen_in_scope(lvalue, inferred.type)
                 ):
                     lvalue_type = make_simplified_union([inferred.type, new_inferred])
                     # Widen the type to the union of original and new type.
@@ -4917,10 +4918,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # Skip index variables as they are reset on each loop.
                         self.widened_vars.append(inferred.name)
                     self.set_inferred_type(inferred, lvalue, lvalue_type)
-                    if (
-                        lvalue.kind == GDEF
-                        and self.scope.top_level_function() is not None
-                    ):
+                    if lvalue.kind == GDEF and self.scope.top_level_function() is not None:
                         # Widening a global inside a function -- record for
                         # propagation to the module-level binder afterwards.
                         self._globals_widened_in_func.append((lvalue, lvalue_type))
@@ -4959,6 +4957,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # Reference to global definition from another module
             return True
         return False
+
+    def can_widen_in_scope(self, name: NameExpr, orig_type: Type) -> bool:
+        """Can a variable type be widened via assignment in the current scope?
+
+        Globals can only be widened from within a function if the original type
+        is None (backward compat with partial type handling of ``x = None``).
+        """
+        if (
+            name.kind == GDEF
+            and self.scope.top_level_function() is not None
+            and not isinstance(get_proper_type(orig_type), NoneType)
+        ):
+            return False
+        return True
 
     def check_member_assignment(
         self,
