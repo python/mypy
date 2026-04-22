@@ -923,6 +923,25 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True  # Fast path
             if not left.names_are_wider_than(right):
                 return False
+
+            # Perform fast key-based checks before recursing into value types
+            for name in right.items:
+                l_required = name in left.required_keys
+                r_required = name in right.required_keys
+                l_mutable = name not in left.readonly_keys
+                r_mutable = name not in right.readonly_keys
+
+                # Required keys must remain required
+                if r_required and not l_required:
+                    return False
+                # Mutable keys must remain mutable
+                if r_mutable and not l_mutable:
+                    return False
+                # Mutable optional keys must also remain optional,
+                # to retain the ability to delete them
+                if r_mutable and not r_required and l_required:
+                    return False
+
             for name, l, r in left.zip(right):
                 # TODO: should we pass on the full subtype_context here and below?
                 right_readonly = name in right.readonly_keys
@@ -940,26 +959,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # Read-only items behave covariantly
                     check = self._is_subtype(l, r)
                 if not check:
-                    return False
-                # Non-required key is not compatible with a required key since
-                # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-read-only non-required
-                # key since the prior doesn't support 'del' but the latter should
-                # support it.
-                # Required key is compatible with a read-only non-required key.
-                required_differ = (name in left.required_keys) != (name in right.required_keys)
-                if not right_readonly and required_differ:
-                    return False
-                # Readonly fields check:
-                #
-                # A = TypedDict('A', {'x': ReadOnly[int]})
-                # B = TypedDict('B', {'x': int})
-                # def reset_x(b: B) -> None:
-                #     b['x'] = 0
-                #
-                # So, `A` cannot be a subtype of `B`, while `B` can be a subtype of `A`,
-                # because you can use `B` everywhere you use `A`, but not the other way around.
-                if name in left.readonly_keys and name not in right.readonly_keys:
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True

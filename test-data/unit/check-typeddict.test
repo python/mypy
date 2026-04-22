@@ -4278,6 +4278,20 @@ def f(b: B):
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictNotRequiredInconsistentWithRequiredReadOnly]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+
+class A(TypedDict):
+    x: Required[ReadOnly[str]]
+
+class B(TypedDict):
+    x: NotRequired[str]
+
+def f(b: B):
+    a: A = b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlyCall]
 from typing import ReadOnly, TypedDict
 
