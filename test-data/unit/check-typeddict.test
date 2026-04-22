@@ -4361,6 +4361,119 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': bui
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMeetOfTypedDictsWithIncompatibleReadOnlyCommonKeysIsUninhabitedUnlessNotRequired]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+A = TypedDict('A', {'x': ReadOnly[int]})
+B = TypedDict('B', {'x': ReadOnly[str]})
+C = TypedDict('C', {'x': ReadOnly[int]}, total=False)
+D = TypedDict('D', {'x': ReadOnly[str]}, total=False)
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+def fAB(x: A, y: B) -> None: pass
+def fAD(x: A, y: D) -> None: pass
+def fCB(x: C, y: B) -> None: pass
+def fCD(x: C, y: D) -> None: pass
+if int():
+    reveal_type(meet(fAB))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fAD))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fCB))  # N: Revealed type is "Never"
+reveal_type(meet(fCD))  # N: Revealed type is "TypedDict({'x'?=: Never})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithCompatibleReadOnlyAndMutableCommonKeys]
+from typing import TypedDict, TypeVar, Callable, NotRequired, ReadOnly, Union
+A = TypedDict('A', {'x': int, 'y': ReadOnly[Union[int, str]]})
+B = TypedDict('B', {'x': ReadOnly[float], 'y': str})
+C = TypedDict('C', {'x': ReadOnly[NotRequired[float]], 'y': str})
+D = TypedDict('D', {'x': NotRequired[int], 'y': ReadOnly[Union[int, str]]})
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+def fAB(x: A, y: B) -> None: pass
+def fBA(x: B, y: A) -> None: pass
+def fAC(x: A, y: C) -> None: pass
+def fCA(x: C, y: A) -> None: pass
+def fCD(x: C, y: D) -> None: pass
+def fDC(x: D, y: C) -> None: pass
+reveal_type(meet(fAB))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.str})"
+reveal_type(meet(fBA))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.str})"
+reveal_type(meet(fAC))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.str})"
+reveal_type(meet(fCA))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.str})"
+reveal_type(meet(fCD))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y': builtins.str})"
+reveal_type(meet(fDC))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithIncompatibleReadOnlyAndMutableCommonKeysIsUninhabited]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+XYa = TypedDict('XYa', {'x': int, 'y': ReadOnly[int]})
+YbZ = TypedDict('YbZ', {'y': str, 'z': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XYa, y: YbZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Never"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithCompatibleReadOnlyCommonKeys]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+A = TypedDict('A', {'a': int})
+B = TypedDict('B', {'b': int})
+Xa = TypedDict('Xa', {'x': ReadOnly[A]})
+Xb = TypedDict('Xb', {'x': ReadOnly[B]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: Xa, y: Xb) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: TypedDict({'a': builtins.int, 'b': builtins.int})})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfReadOnlyTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+X = TypedDict('X', {'x': ReadOnly[int]})
+Z = TypedDict('Z', {'z': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: X, y: Z) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfReadOnlyTypedDictsWithNonTotal]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+XY = TypedDict('XY', {'x': ReadOnly[int], 'y': ReadOnly[int]}, total=False)
+YZ = TypedDict('YZ', {'y': ReadOnly[int], 'z': ReadOnly[int]}, total=False)
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'?=: builtins.int, 'z'?=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfReadOnlyTypedDictsWithNonOverlappingNonTotalAndTotal]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+XY = TypedDict('XY', {'x': ReadOnly[int]}, total=False)
+YZ = TypedDict('YZ', {'y': ReadOnly[int], 'z': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'=: builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfReadOnlyTypedDictsWithOverlappingNonTotalAndTotal]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+XY = TypedDict('XY', {'x': ReadOnly[int], 'y': ReadOnly[int]}, total=False)
+YZ = TypedDict('YZ', {'y': ReadOnly[int], 'z': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g)) # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'=: builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlyUnpack]
 from typing import TypedDict
 from typing_extensions import Unpack, ReadOnly

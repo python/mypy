@@ -1100,30 +1100,78 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return t
         return self.default(self.s)
 
+    def resolve_typeddict_item_type(
+        self,
+        name: str,
+        s: TypedDictType,
+        s_item_type: Type | None,
+        t: TypedDictType,
+        t_item_type: Type | None,
+    ) -> tuple[Type | None, bool]:
+        """Return the type and readonlyness of a meet item.
+
+        If the parent constraints are mutually incompatible, the
+        returned type will be None; the overall meet type should
+        be UninhabitedType.
+        """
+        # A missing key is implicitly ReadOnly[NotRequired[object]]
+        l_mutable = s_item_type is not None and name not in s.readonly_keys
+        r_mutable = t_item_type is not None and name not in t.readonly_keys
+        l_required = name in s.required_keys
+        r_required = name in t.required_keys
+
+        is_readonly = not l_mutable and not r_mutable
+
+        if t_item_type is None:
+            assert s_item_type is not None
+            meet_type = s_item_type
+        elif s_item_type is None:
+            meet_type = t_item_type
+        elif l_mutable and r_mutable:
+            if is_equivalent(s_item_type, t_item_type) and r_required == l_required:
+                meet_type = s_item_type
+            else:
+                meet_type = None
+        elif l_mutable:
+            if is_subtype(s_item_type, t_item_type) and not (r_required and not l_required):
+                meet_type = s_item_type
+            else:
+                meet_type = None
+        elif r_mutable:
+            if is_subtype(t_item_type, s_item_type) and not (l_required and not r_required):
+                meet_type = t_item_type
+            else:
+                meet_type = None
+        else:
+            m = meet_types(s_item_type, t_item_type)
+            if not isinstance(m, UninhabitedType):
+                meet_type = m
+            elif not l_required and not r_required:
+                # A non-required key can be Never
+                meet_type = m
+            else:
+                meet_type = None
+
+        return (meet_type, is_readonly)
+
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            for name, l, r in self.s.zip(t):
-                if not is_equivalent(l, r) or (name in t.required_keys) != (
-                    name in self.s.required_keys
-                ):
-                    return self.default(self.s)
-            item_list: list[tuple[str, Type]] = []
+            items: dict[str, Type] = {}
             readonly_keys: set[str] = set()
-            for item_name, s_item_type, t_item_type in self.s.zipall(t):
-                # Missing keys are implicitly ReadOnly[NotRequired[object]]
-                s_readonly = item_name in self.s.readonly_keys or s_item_type is None
-                t_readonly = item_name in t.readonly_keys or t_item_type is None
-                if s_readonly and t_readonly:
-                    readonly_keys.add(item_name)
-                if s_item_type is not None:
-                    item_list.append((item_name, s_item_type))
-                else:
-                    # at least one of s_item_type and t_item_type is not None
-                    assert t_item_type is not None
-                    item_list.append((item_name, t_item_type))
-            items = dict(item_list)
+            for name, s_item_type, t_item_type in self.s.zipall(t):
+                meet_type, is_readonly = self.resolve_typeddict_item_type(
+                    name, self.s, s_item_type, t, t_item_type
+                )
+
+                if meet_type is None:
+                    return self.default(self.s)
+
+                items[name] = meet_type
+                if is_readonly:
+                    readonly_keys.add(name)
+
             fallback = self.s.create_anonymous_fallback()
-            required_keys = t.required_keys | self.s.required_keys
+            required_keys = self.s.required_keys | t.required_keys
             return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
