@@ -1076,11 +1076,25 @@ class BuildManager:
                 # New parser returns serialized trees that need to be de-serialized.
                 with state.wrap_context():
                     assert state.tree is not None
-                    if state.tree.raw_data:
+                    raw_data = state.tree.raw_data
+                    if raw_data is not None:
+                        # Apply inline mypy config before deserialization, since
+                        # some options (e.g. implicit_optional) affect how the
+                        # AST is built during deserialization.
+                        state.source_hash = raw_data.source_hash
+                        if raw_data.mypy_comments:
+                            changes, config_errors = parse_mypy_comments(
+                                raw_data.mypy_comments, state.options
+                            )
+                            state.options = state.options.apply_changes(changes)
+                            self.errors.set_file(state.xpath, state.id, state.options)
+                            for lineno, error in config_errors:
+                                self.error(lineno, error)
+                        state.check_for_invalid_options()
                         state.tree = load_from_raw(
                             state.xpath,
                             state.id,
-                            state.tree.raw_data,
+                            raw_data,
                             self.errors,
                             state.options,
                             imports_only=bool(self.workers),
@@ -1092,21 +1106,11 @@ class BuildManager:
         for state in parallel_states:
             assert state.tree is not None
             if state in parallel_parsed_states_set:
-                # Extract source_hash and mypy_comments from raw_data produced by
-                # the native parser, avoiding a separate sequential get_source() call.
-                raw_data = state.tree.raw_data
-                if raw_data is not None:
-                    state.source_hash = raw_data.source_hash
-                    if raw_data.mypy_comments:
-                        changes, config_errors = parse_mypy_comments(
-                            raw_data.mypy_comments, state.options
-                        )
-                        state.options = state.options.apply_changes(changes)
-                        self.errors.set_file(state.xpath, state.id, state.options)
-                        for lineno, error in config_errors:
-                            self.error(lineno, error)
-                    state.check_for_invalid_options()
-                else:
+                if state.tree.raw_data is not None:
+                    # source_hash was already extracted above, but raw_data
+                    # may have been preserved for workers (imports_only=True).
+                    pass
+                elif state.source_hash is None:
                     # Fallback for non-native parser path (shouldn't normally happen
                     # in the parallel path, but be safe).
                     state.get_source()
