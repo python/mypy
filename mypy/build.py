@@ -1081,15 +1081,7 @@ class BuildManager:
                         # some options (e.g. implicit_optional) affect how the
                         # AST is built during deserialization.
                         state.source_hash = raw_data.source_hash
-                        if raw_data.mypy_comments:
-                            changes, config_errors = parse_mypy_comments(
-                                raw_data.mypy_comments, state.options
-                            )
-                            state.options = state.options.apply_changes(changes)
-                            self.errors.set_file(state.xpath, state.id, state.options)
-                            for lineno, error in config_errors:
-                                self.error(lineno, error)
-                        state.check_for_invalid_options()
+                        state.apply_inline_configuration(raw_data.mypy_comments)
                         state.tree = load_from_raw(
                             state.xpath,
                             state.id,
@@ -3111,7 +3103,6 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.check_for_invalid_options()
 
             self.size_hint = len(source)
         self.time_spent_us += time_spent_us(t0)
@@ -3136,7 +3127,10 @@ class State:
             # The file was already parsed.
             return
 
-        source = self.get_source()
+        if raw_data is None:
+            source = self.get_source()
+        else:
+            source = ""
         manager = self.manager
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         if self.id not in manager.ast_cache:
@@ -3146,6 +3140,12 @@ class State:
                 self.manager.errors.ignored_files.add(self.xpath)
             with self.wrap_context():
                 manager.errors.set_file(self.xpath, self.id, options=self.options)
+                if raw_data is not None:
+                    # Apply inline mypy config before deserialization, since
+                    # some options (e.g. implicit_optional) affect how the
+                    # AST is built during deserialization.
+                    self.source_hash = raw_data.source_hash
+                    self.apply_inline_configuration(raw_data.mypy_comments)
                 self.parse_file_inner(source, raw_data)
                 assert self.tree is not None
                 # New parser returns serialized trees that need to be de-serialized.
@@ -3191,12 +3191,17 @@ class State:
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
+        self.apply_inline_configuration(flags)
+
+    def apply_inline_configuration(self, flags: list[tuple[int, str]] | None) -> None:
+        """Apply inline mypy configuration comments and check for invalid options."""
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
                 self.manager.error(lineno, error)
+        self.check_for_invalid_options()
 
     def check_for_invalid_options(self) -> None:
         if self.options.mypyc and not self.options.strict_bytes:
