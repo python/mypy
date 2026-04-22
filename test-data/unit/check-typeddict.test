@@ -4339,7 +4339,7 @@ x["two"] = "a"  # E: ReadOnly TypedDict key "two" TypedDict is mutated
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMeetOfTypedDictsWithReadOnly]
+[case testMeetOfTypedDictsWithNonOverlappingReadOnlyKeys]
 from typing import TypeVar, Callable, TypedDict, ReadOnly
 XY = TypedDict('XY', {'x': ReadOnly[int], 'y': int})
 YZ = TypedDict('YZ', {'y': int, 'z': ReadOnly[int]})
@@ -4347,6 +4347,17 @@ T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: builtins.int, 'y': builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithOverlappingReadOnlyAndMutableKeys]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+XY = TypedDict('XY', {'x': int, 'y': int})
+YZ = TypedDict('YZ', {'y': ReadOnly[int], 'z': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.int, 'z': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

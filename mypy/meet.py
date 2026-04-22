@@ -1108,7 +1108,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 ):
                     return self.default(self.s)
             item_list: list[tuple[str, Type]] = []
+            readonly_keys: set[str] = set()
             for item_name, s_item_type, t_item_type in self.s.zipall(t):
+                # Missing keys are implicitly ReadOnly[NotRequired[object]]
+                s_readonly = item_name in self.s.readonly_keys or s_item_type is None
+                t_readonly = item_name in t.readonly_keys or t_item_type is None
+                if s_readonly and t_readonly:
+                    readonly_keys.add(item_name)
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
                 else:
@@ -1118,7 +1124,6 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             items = dict(item_list)
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
-            readonly_keys = t.readonly_keys | self.s.readonly_keys
             return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
