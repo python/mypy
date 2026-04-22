@@ -1616,3 +1616,16 @@ async def outer(c: Cls[T]) -> Optional[T]:
     return await inner(c)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testContextFallbackNarrowingTernaryRValue]
+from typing import Iterable, Union
+
+def foo(args: Union[Iterable[Union[str, int]], str, int]) -> Iterable[str]:
+    if isinstance(args, (str, int)):
+        args = (args,)
+    args = (
+        arg if isinstance(arg, str) else str()
+        for arg in args
+    )
+    return args
+[builtins fixtures/isinstancelist.pyi]

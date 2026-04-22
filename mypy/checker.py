@@ -547,6 +547,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self._unique_id = 0
         self._variance_dummy_type = None
 
+        # Assignment expression is the only *expression* that can have externally
+        # visible effects via binder. We bump this whenever this happens to handle
+        # situations when some expressions are accepted multiple times.
+        self.assignment_expression_effect = 0
+
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
         return self._expr_checker
@@ -4772,7 +4777,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # context that is ultimately used. This is however tricky with redefinitions.
         # For now we simply disable second accept in cases known to cause problems,
         # see e.g. testAssignToOptionalTupleWalrus.
-        binder_version = self.binder.version
+        assignment_expression_effect = self.assignment_expression_effect
 
         fallback_context_used = False
         with (
@@ -4802,7 +4807,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         union_fallback = (
             preferred_context is not None
             and isinstance(get_proper_type(lvalue_type), UnionType)
-            and binder_version == self.binder.version
+            and assignment_expression_effect == self.assignment_expression_effect
         )
 
         # Skip literal types, as they have special logic (for better errors).
