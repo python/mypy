@@ -215,9 +215,7 @@ def get_mypy_config(
         mypyc_sources = all_sources
 
     if compiler_options.separate:
-        mypyc_sources = [
-            src for src in mypyc_sources if src.path and not src.path.endswith("__init__.py")
-        ]
+        mypyc_sources = [src for src in mypyc_sources if src.path]
 
     if not mypyc_sources:
         return mypyc_sources, all_sources, options
@@ -241,6 +239,10 @@ def get_mypy_config(
         options.per_module_options.setdefault(source.module, {})["mypyc"] = True
 
     return mypyc_sources, all_sources, options
+
+
+def is_package_source(source: BuildSource) -> bool:
+    return source.path is not None and os.path.split(source.path)[1] == "__init__.py"
 
 
 def generate_c_extension_shim(
@@ -388,7 +390,7 @@ def build_using_shared_lib(
         # since this seems to be needed for it to end up in the right place.
         full_module_name = source.module
         assert source.path
-        if os.path.split(source.path)[1] == "__init__.py":
+        if is_package_source(source):
             full_module_name += ".__init__"
         extensions.append(
             get_extension()(
@@ -534,6 +536,7 @@ def mypyc_build(
     use_shared_lib = (
         len(mypyc_sources) > 1
         or any("." in x.module for x in mypyc_sources)
+        or any(is_package_source(x) for x in mypyc_sources)
         or always_use_shared_lib
     )
 

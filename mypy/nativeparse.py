@@ -210,13 +210,27 @@ def native_parse(
         node.path = filename
         return node, [], []
 
-    b, errors, ignores, import_bytes, is_partial_package, uses_template_strings = (
-        parse_to_binary_ast(filename, options, skip_function_bodies)
-    )
+    (
+        b,
+        errors,
+        ignores,
+        import_bytes,
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
+    ) = parse_to_binary_ast(filename, options, skip_function_bodies)
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
-        b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
+        b,
+        import_bytes,
+        errors,
+        dict(ignores),
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
     )
     return node, errors, ignores
 
@@ -243,7 +257,7 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool]:
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
     t0 = time.time()
@@ -267,6 +281,8 @@ def parse_to_binary_ast(
         import_bytes,
         ast_data["is_partial_package"],
         ast_data["uses_template_strings"],
+        ast_data["source_hash"],
+        ast_data["mypy_comments"],
     )
 
 

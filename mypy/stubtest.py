@@ -968,7 +968,21 @@ class Signature(Generic[T]):
             elif stub_arg.kind == nodes.ARG_STAR:
                 stub_sig.varpos = stub_arg
             elif stub_arg.kind == nodes.ARG_STAR2:
-                stub_sig.varkw = stub_arg
+                if stub_arg.variable.type is not None and isinstance(
+                    (typed_dict_arg := mypy.types.get_proper_type(stub_arg.variable.type)),
+                    mypy.types.TypedDictType,
+                ):
+                    for key_name, key_type in typed_dict_arg.items.items():
+                        optional = key_name not in typed_dict_arg.required_keys
+                        stub_sig.kwonly[key_name] = nodes.Argument(
+                            nodes.Var(key_name, key_type),
+                            type_annotation=key_type,
+                            initializer=nodes.EllipsisExpr() if optional else None,
+                            kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
+                            pos_only=False,
+                        )
+                else:
+                    stub_sig.varkw = stub_arg
             else:
                 raise AssertionError
         return stub_sig

@@ -989,6 +989,17 @@ b
 [out]
 b/bpkg.py:1: error: "int" not callable
 
+[case testCmdlineExcludeGitignoreWithGitInfoExclude]
+# cmd: mypy --exclude-gitignore .
+[file .git/info/exclude]
+abc
+[file abc/apkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
 [case testCmdlineCfgExclude]
 # cmd: mypy .
 [file mypy.ini]

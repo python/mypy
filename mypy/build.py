@@ -170,7 +170,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
+from mypy.stubinfo import stub_distribution_name
 from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
@@ -955,7 +955,7 @@ class BuildManager:
         # until all the files have been added. This means that a
         # new file can be processed O(n**2) times. This cache
         # avoids most of this redundant work.
-        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
+        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo], str | None]] = {}
         # Number of times we used GC optimization hack for fresh SCCs.
         self.gc_freeze_cycles = 0
         # Mapping from SCC id to corresponding SCC instance. This is populated
@@ -1043,11 +1043,68 @@ class BuildManager:
         as an optimization to parallelize only those parts of the code that can be
         parallelized efficiently.
         """
+        parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
+            sequential_states, parallel_states
+        )
+
+        for state in parallel_parsed_states:
+            # New parser returns serialized ASTs. Deserialize full trees only if not using
+            # parallel workers.
+            with state.wrap_context():
+                assert state.tree is not None
+                raw_data = state.tree.raw_data
+                if raw_data is not None:
+                    # Apply inline mypy config before deserialization, since
+                    # some options (e.g. implicit_optional) affect deserialization
+                    state.source_hash = raw_data.source_hash
+                    state.apply_inline_configuration(raw_data.mypy_comments)
+                    state.tree = load_from_raw(
+                        state.xpath,
+                        state.id,
+                        raw_data,
+                        self.errors,
+                        state.options,
+                        imports_only=bool(self.workers),
+                    )
+                if self.errors.is_blockers():
+                    self.log("Bailing due to parse errors")
+                    self.errors.raise_error()
+
+        for state in parallel_states:
+            assert state.tree is not None
+            if state in parallel_parsed_states_set:
+                if state.tree.raw_data is not None:
+                    # source_hash was already extracted above, but raw_data
+                    # may have been preserved for workers (imports_only=True).
+                    pass
+                elif state.source_hash is None:
+                    # At least namespace packages may not have source.
+                    state.get_source()
+                state.size_hint = os.path.getsize(state.xpath)
+                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                state.semantic_analysis_pass1()
+                self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
+            self.modules[state.id] = state.tree
+            if state.tree.raw_data is not None:
+                state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
+            state.check_blockers()
+            state.setup_errors()
+
+    def parse_files_threaded_raw(
+        self, sequential_states: list[State], parallel_states: list[State]
+    ) -> tuple[list[State], set[State]]:
+        """Parse files using a thread pool.
+
+        Also parse sequential states while waiting for the parallel results.
+        Trees from the new parser are left in raw (serialized) form.
+
+        Return (list, set) of states that were actually parsed (not cached).
+        """
         futures = []
         # Use both list and a set to have more predictable order of errors,
         # while also not sacrificing performance.
-        parallel_parsed_states = []
-        parallel_parsed_states_set = set()
+        parallel_parsed_states: list[State] = []
+        parallel_parsed_states_set: set[State] = set()
         # Use at least --num-workers if specified by user.
         available_threads = max(get_available_threads(), self.options.num_workers)
         # Overhead from trying to parallelize (small) blocking portion of
@@ -1056,20 +1113,18 @@ class BuildManager:
         with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
             for state in parallel_states:
                 state.needs_parse = False
-                # New parser reads source from file directly, we do this only for
-                # the side effect of parsing inline mypy configurations.
-                state.get_source()
                 if state.id not in self.ast_cache:
                     self.log(f"Parsing {state.xpath} ({state.id})")
                     ignore_errors = state.ignore_all or state.options.ignore_errors
                     if ignore_errors:
                         self.errors.ignored_files.add(state.xpath)
-                    futures.append(executor.submit(state.parse_file_inner, state.source or ""))
+                    futures.append(executor.submit(state.parse_file_inner, ""))
                     parallel_parsed_states.append(state)
                     parallel_parsed_states_set.add(state)
                 else:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
-                    state.tree, state.early_errors = self.ast_cache[state.id]
+                    state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
+                    state.source_hash = source_hash
 
             # Parse sequential before waiting on parallel.
             for state in sequential_states:
@@ -1077,35 +1132,8 @@ class BuildManager:
 
             for fut in wait(futures).done:
                 fut.result()
-            for state in parallel_parsed_states:
-                # New parser returns serialized trees that need to be de-serialized.
-                with state.wrap_context():
-                    assert state.tree is not None
-                    if state.tree.raw_data:
-                        state.tree = load_from_raw(
-                            state.xpath,
-                            state.id,
-                            state.tree.raw_data,
-                            self.errors,
-                            state.options,
-                            imports_only=bool(self.workers),
-                        )
-                    if self.errors.is_blockers():
-                        self.log("Bailing due to parse errors")
-                        self.errors.raise_error()
 
-        for state in parallel_states:
-            assert state.tree is not None
-            if state in parallel_parsed_states_set:
-                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
-                state.semantic_analysis_pass1()
-                self.ast_cache[state.id] = (state.tree, state.early_errors)
-            self.modules[state.id] = state.tree
-            assert state.tree is not None
-            if state.tree.raw_data is not None:
-                state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
-            state.check_blockers()
-            state.setup_errors()
+        return parallel_parsed_states, parallel_parsed_states_set
 
     def post_parse_all(self, states: list[State]) -> None:
         for state in states:
@@ -3134,7 +3162,6 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.check_for_invalid_options()
 
             self.size_hint = len(source) + MIN_SIZE_HINT
         self.time_spent_us += time_spent_us(t0)
@@ -3159,7 +3186,10 @@ class State:
             # The file was already parsed.
             return
 
-        source = self.get_source()
+        if raw_data is None:
+            source = self.get_source()
+        else:
+            source = ""
         manager = self.manager
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         if self.id not in manager.ast_cache:
@@ -3169,6 +3199,12 @@ class State:
                 self.manager.errors.ignored_files.add(self.xpath)
             with self.wrap_context():
                 manager.errors.set_file(self.xpath, self.id, options=self.options)
+                if raw_data is not None:
+                    # Apply inline mypy config before deserialization, since
+                    # some options (e.g. implicit_optional) affect how the
+                    # AST is built during deserialization.
+                    self.source_hash = raw_data.source_hash
+                    self.apply_inline_configuration(raw_data.mypy_comments)
                 self.parse_file_inner(source, raw_data)
                 assert self.tree is not None
                 # New parser returns serialized trees that need to be de-serialized.
@@ -3193,14 +3229,15 @@ class State:
         else:
             # Reuse a cached AST
             manager.log(f"Using cached AST for {self.xpath} ({self.id})")
-            self.tree, self.early_errors = manager.ast_cache[self.id]
+            self.tree, self.early_errors, source_hash = manager.ast_cache[self.id]
+            self.source_hash = source_hash
 
         assert self.tree is not None
         if not temporary:
             manager.modules[self.id] = self.tree
             self.check_blockers()
 
-        manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        manager.ast_cache[self.id] = (self.tree, self.early_errors, self.source_hash)
         assert self.tree is not None
         if self.tree.raw_data is not None:
             # Size of serialized tree is a better proxy for file complexity than
@@ -3221,12 +3258,17 @@ class State:
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
+        self.apply_inline_configuration(flags)
+
+    def apply_inline_configuration(self, flags: list[tuple[int, str]] | None) -> None:
+        """Apply inline mypy configuration comments and check for invalid options."""
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
                 self.manager.error(lineno, error)
+        self.check_for_invalid_options()
 
     def check_for_invalid_options(self) -> None:
         if self.options.mypyc and not self.options.strict_bytes:
@@ -3713,19 +3755,6 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-
-        # Don't honor a global (not per-module) ignore_missing_imports
-        # setting for modules that used to have bundled stubs, as
-        # otherwise updating mypy can silently result in new false
-        # negatives. (Unless there are stubs, but they are incomplete.)
-        global_ignore_missing_imports = manager.options.ignore_missing_imports
-        if (
-            is_module_from_legacy_bundled_package(id)
-            and global_ignore_missing_imports
-            and not options.ignore_missing_imports_per_module
-            and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        ):
-            ignore_missing_imports = False
 
         if skip_diagnose:
             raise ModuleNotFound

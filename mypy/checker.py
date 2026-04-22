@@ -424,6 +424,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     # Short names of Var nodes whose previous inferred type has been widened via assignment.
     # NOTE: The names might not be unique, they are only for debugging purposes.
     widened_vars: list[str]
+    # Global variables widened inside a function body, to be propagated to
+    # the module-level binder after the function is type checked (with --allow-redefinition-new).
+    _globals_widened_in_func: list[tuple[NameExpr, Type]]
     globals: SymbolTable
     modules: dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -488,6 +491,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
+        self.globals_binder = self.binder
         self.globals = tree.names
         self.return_types = []
         self.dynamic_funcs = []
@@ -496,6 +500,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.var_decl_frames = {}
         self.deferred_nodes = []
         self.widened_vars = []
+        self._globals_widened_in_func = []
         self._type_maps = [{}]
         self.module_refs = set()
         self.pass_num = 0
@@ -1615,6 +1620,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
             self.return_types.pop()
+
+            # Propagate any global variable widenings directly to the
+            # module-level binder (skipping any intermediate class binders).
+            if self._globals_widened_in_func:
+                for lvalue, widened_type in self._globals_widened_in_func:
+                    self.globals_binder.put(lvalue, widened_type)
+                    lit = literal_hash(lvalue)
+                    if lit is not None:
+                        self.globals_binder.declarations[lit] = widened_type
+                self._globals_widened_in_func = []
 
             self.binder = old_binder
 
@@ -3283,7 +3298,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # as X | Y.
         if not (s.is_alias_def and self.is_stub):
             with self.enter_final_context(s.is_final_def):
-                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None)
 
         if s.is_alias_def:
             self.check_type_alias_rvalue(s)
@@ -3331,11 +3346,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(
-        self,
-        lvalue: Lvalue,
-        rvalue: Expression,
-        infer_lvalue_type: bool = True,
-        new_syntax: bool = False,
+        self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True
     ) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, (TupleExpr, ListExpr)):
@@ -3413,15 +3424,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             # We are replacing partial<None> now, so the variable type
                             # should remain optional.
                             self.set_inferred_type(var, lvalue, make_optional_type(fallback))
-                elif (
-                    is_literal_none(rvalue)
-                    and isinstance(lvalue, NameExpr)
-                    and isinstance(lvalue.node, Var)
-                    and lvalue.node.is_initialized_in_class
-                    and not new_syntax
-                ):
-                    # Allow None's to be assigned to class variables with non-Optional types.
-                    rvalue_type = lvalue_type
                 elif (
                     isinstance(lvalue, MemberExpr) and lvalue.kind is None
                 ):  # Ignore member access to modules
@@ -4910,6 +4912,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     not self.refers_to_different_scope(lvalue)
                     and not isinstance(inferred.type, PartialType)
                     and not is_proper_subtype(new_inferred, inferred.type)
+                    and self.can_widen_in_scope(lvalue, inferred.type)
                 ):
                     lvalue_type = make_simplified_union([inferred.type, new_inferred])
                     # Widen the type to the union of original and new type.
@@ -4917,6 +4920,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # Skip index variables as they are reset on each loop.
                         self.widened_vars.append(inferred.name)
                     self.set_inferred_type(inferred, lvalue, lvalue_type)
+                    if lvalue.kind == GDEF and self.scope.top_level_function() is not None:
+                        # Widening a global inside a function -- record for
+                        # propagation to the module-level binder afterwards.
+                        self._globals_widened_in_func.append((lvalue, lvalue_type))
                     self.binder.put(lvalue, rvalue_type)
                     # TODO: A bit hacky, maybe add a binder method that does put and
                     #       updates declaration?
@@ -4945,13 +4952,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if name.kind == LDEF:
             # TODO: Consider reference to outer function as a different scope?
             return False
-        elif self.scope.top_level_function() is not None:
+        elif self.scope.top_level_function() is not None and name.kind != GDEF:
             # A non-local reference from within a function must refer to a different scope
             return True
         elif name.kind == GDEF and name.fullname.rpartition(".")[0] != self.tree.fullname:
             # Reference to global definition from another module
             return True
         return False
+
+    def can_widen_in_scope(self, name: NameExpr, orig_type: Type) -> bool:
+        """Can a variable type be widened via assignment in the current scope?
+
+        Globals can only be widened from within a function if the original type
+        is None (backward compat with partial type handling of `x = None`).
+
+        See test cases testNewRedefineGlobalVariableNoneInit[1-4], for example.
+        """
+        if (
+            name.kind == GDEF
+            and self.scope.top_level_function() is not None
+            and not isinstance(get_proper_type(orig_type), NoneType)
+        ):
+            return False
+        return True
 
     def check_member_assignment(
         self,
@@ -5303,9 +5326,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # There is no __ifoo__, treat as x = x <foo> y
             expr = OpExpr(s.op, s.lvalue, s.rvalue)
             expr.set_line(s)
-            self.check_assignment(
-                lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True, new_syntax=False
-            )
+            self.check_assignment(lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True)
         self.check_final(s)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
@@ -8352,7 +8373,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return None
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
-        return None
+        if self.options.allow_redefinition_new:
+            # Add names to binder, since their types could be widened
+            for name in o.names:
+                sym = self.globals.get(name)
+                if sym and isinstance(sym.node, Var) and sym.node.type is not None:
+                    n = NameExpr(name)
+                    n.node = sym.node
+                    n.kind = GDEF
+                    n.fullname = sym.node.fullname
+                    self.binder.assign_type(n, sym.node.type, sym.node.type)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
@@ -8518,12 +8548,12 @@ def conditional_types(
     proposed_type: Type
     remaining_type: Type
 
-    proper_type = get_proper_type(current_type)
+    p_current_type = get_proper_type(current_type)
     # factorize over union types: isinstance(A|B, C) -> yes = A_yes | B_yes
-    if isinstance(proper_type, UnionType):
+    if isinstance(p_current_type, UnionType):
         yes_items: list[Type] = []
         no_items: list[Type] = []
-        for union_item in proper_type.items:
+        for union_item in p_current_type.items:
             yes_type, no_type = conditional_types(
                 union_item,
                 proposed_type_ranges,
@@ -8549,7 +8579,7 @@ def conditional_types(
         items[i] = item
     proposed_type = get_proper_type(UnionType.make_union(items))
 
-    if isinstance(proper_type, AnyType):
+    if isinstance(p_current_type, AnyType):
         return proposed_type, current_type
     if isinstance(proposed_type, AnyType):
         # We don't really know much about the proposed type, so we shouldn't
@@ -8600,6 +8630,11 @@ def conditional_types(
         proposed_precise_type,
         consider_runtime_isinstance=consider_runtime_isinstance,
     )
+
+    # Avoid widening the type
+    if is_proper_subtype(p_current_type, proposed_type, ignore_promotions=True):
+        proposed_type = default if default is not None else current_type
+
     return proposed_type, remaining_type
 
 

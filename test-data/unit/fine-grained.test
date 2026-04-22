@@ -6743,7 +6743,7 @@ class D:
 class D:
     y: int
 [out]
-b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2" (diff)
+b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2"
 b1.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
 
 [case testProtocolsInvalidateByRemovingBase]
@@ -11682,3 +11682,83 @@ def f() -> str: ...
 [out]
 ==
 main:4: error: Incompatible return value type (got "str | None", expected "int | None")
+
+[case testGlobalNoneWidenedInFuncWithRedefinition1]
+import m
+reveal_type(m.x)
+
+[file m.py]
+# mypy: allow-redefinition-new
+import m2
+
+x = None
+
+def foo() -> None:
+    global x
+    x = m2.bar()
+
+[file m2.py]
+def bar() -> int: return 0
+
+[file m2.py.2]
+def bar() -> str: return "a"
+
+[out]
+main:2: note: Revealed type is "None | builtins.int"
+==
+main:2: note: Revealed type is "None | builtins.str"
+
+[case testGlobalNoneWidenedInFuncWithRedefinition2]
+import m
+reveal_type(m.x)
+
+[file m.py]
+# mypy: allow-redefinition-new
+import m2
+
+x = None
+
+def deco(f): return f
+
+class C:
+    @deco
+    def foo(self) -> None:
+        global x
+        x = m2.bar()
+
+[file m2.py]
+def bar() -> int: return 0
+
+[file m2.py.2]
+def bar() -> str: return "a"
+
+[out]
+main:2: note: Revealed type is "None | builtins.int"
+==
+main:2: note: Revealed type is "None | builtins.str"
+
+[case testGlobalNoneWidenedInFuncWithRedefinition3]
+import m
+reveal_type(m.x)
+
+[file m.py]
+# mypy: allow-redefinition-new
+import m2
+
+x = None
+
+def foo() -> None:
+    def nested(self) -> None:
+        global x
+        x = m2.bar()
+
+[file m2.py]
+def bar() -> int: return 0
+
+[file m2.py.2]
+def bar() -> str: return "a"
+
+[out]
+main:2: note: Revealed type is "None | builtins.int"
+==
+main:2: note: Revealed type is "None | builtins.str"

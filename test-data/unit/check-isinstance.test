@@ -1583,6 +1583,61 @@ def f(x: Union[int, str], typ: type) -> None:
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIsInstanceWithUnknownTypeMultipleNarrowing]
+# flags: --strict-equality --warn-unreachable --python-version 3.10
+from __future__ import annotations
+from typing import Iterable
+from typing_extensions import TypeAlias
+import types
+
+# Regression test for https://github.com/python/mypy/issues/21181
+# We don't have the same type context as with the real stubs, so sort of fake it
+_ClassInfoLike: TypeAlias = "type | tuple[_ClassInfoLike, ...]"
+
+class A: ...
+class B(A): ...
+
+def fake_type_context(ts: list[type[A]]) -> _ClassInfoLike:
+    return tuple(ts)  # E: Too many arguments for "tuple"
+
+
+def f1(x: A | None) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, object):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f2(x: A | None, ts: list[type[A]]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, fake_type_context(ts)):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f3(x: A | None, t: type | type[A]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f4(x: A | None, t: type) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f5(x: object | None, ta: type[A], tb: type[B]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        if isinstance(x, ta):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+            if isinstance(x, tb):
+                reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsInstanceWithBoundedType]
 # flags: --warn-unreachable
 from typing import Union, Type
