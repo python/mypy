@@ -4563,6 +4563,19 @@ c: C = d  # E: Incompatible types in assignment (expression has type "D", variab
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictJoinWithReadOnly]
+from typing import ReadOnly, TypedDict, TypeVar
+A = TypedDict('A', {'x': ReadOnly[int]})
+B = TypedDict('B', {'x': int})
+T = TypeVar('T')
+def j(x: T, y: T) -> T: return x
+a: A
+b: B
+reveal_type(j(a, b)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
+reveal_type(j(b, a)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar
