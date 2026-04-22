@@ -407,12 +407,6 @@ class FileRawData:
             write_str_list(data, codes)
         write_bool(data, self.is_partial_stub_package)
         write_bool(data, self.uses_template_strings)
-        write_str(data, self.source_hash)
-        write_tag(data, LIST_GEN)
-        write_int_bare(data, len(self.mypy_comments))
-        for line, text in self.mypy_comments:
-            write_int(data, line)
-            write_str(data, text)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> FileRawData:
@@ -422,20 +416,13 @@ class FileRawData:
         raw_errors = [read_parse_error(data) for _ in range(read_int_bare(data))]
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
-        is_partial_stub_package = read_bool(data)
-        uses_template_strings = read_bool(data)
-        source_hash = read_str(data)
-        assert read_tag(data) == LIST_GEN
-        mypy_comments = [(read_int(data), read_str(data)) for _ in range(read_int_bare(data))]
         return FileRawData(
             defs,
             imports,
             raw_errors,
             ignored_lines,
-            is_partial_stub_package,
-            uses_template_strings,
-            source_hash,
-            mypy_comments,
+            read_bool(data),
+            read_bool(data),
         )
 
 
