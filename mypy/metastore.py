@@ -200,17 +200,15 @@ class SqliteMetadataStore(MetadataStore):
                     connect_db(os_path_join(cache_dir_prefix, f"cache.{i}.db"), set_journal_mode)
                 )
 
-    def _db_for(self, name: str) -> sqlite3.Connection:
-        if not self.dbs:
-            raise FileNotFoundError()
-        if self.num_shards <= 1:
-            return self.dbs[0]
-        return self.dbs[hash_path_stem(name) % self.num_shards]
-
     def _shard_index(self, name: str) -> int:
         if self.num_shards <= 1:
             return 0
         return hash_path_stem(name) % self.num_shards
+
+    def _db_for(self, name: str) -> sqlite3.Connection:
+        if not self.dbs:
+            raise FileNotFoundError()
+        return self.dbs[self._shard_index(name)]
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
