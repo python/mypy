@@ -973,15 +973,12 @@ class Signature(Generic[T]):
                     mypy.types.TypedDictType,
                 ):
                     for key_name, key_type in typed_dict_arg.items.items():
+                        optional = key_name not in typed_dict_arg.required_keys
                         stub_sig.kwonly[key_name] = nodes.Argument(
                             nodes.Var(key_name, key_type),
                             type_annotation=key_type,
-                            initializer=(
-                                nodes.EllipsisExpr()
-                                if key_name not in typed_dict_arg.required_keys
-                                else None
-                            ),
-                            kind=nodes.ARG_NAMED,
+                            initializer=nodes.EllipsisExpr() if optional else None,
+                            kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
                             pos_only=False,
                         )
                 else:

@@ -771,8 +771,9 @@ class StubtestUnit(unittest.TestCase):
     def test_kwargs_unpack_typeddict(self) -> Iterator[Case]:
         yield Case(
             stub="""
-            from typing import TypedDict, Unpack
+            from typing import TypedDict, Unpack, type_check_only
 
+            @type_check_only
             class _Args(TypedDict):
                 a: int
                 b: int
@@ -786,6 +787,21 @@ class StubtestUnit(unittest.TestCase):
             stub="def f2(**kwargs: Unpack[_Args]) -> None: ...",
             runtime="def f2(*, a, c): pass",
             error="f2",
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class _OptionalArgs(TypedDict, total=False):
+                a: int
+
+            def f3(**kwargs: Unpack[_OptionalArgs]) -> None: ...
+            def f4(**kwargs: Unpack[_OptionalArgs]) -> None: ...
+            """,
+            runtime="""
+            def f3(*, a): pass
+            def f4(*, a=0): pass
+            """,
+            error="f3",
         )
 
     @collect_cases
