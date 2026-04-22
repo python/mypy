@@ -262,11 +262,10 @@ class SqliteMetadataStore(MetadataStore):
         self.dirty_shards.clear()
 
     def commit_path(self, name: str) -> None:
-        with record_time("sqlite.commit_path"):
-            i = self._shard_index(name)
-            if i in self.dirty_shards:
-                self.dbs[i].commit()
-                self.dirty_shards.discard(i)
+        i = self._shard_index(name)
+        if i in self.dirty_shards:
+            self.dbs[i].commit()
+            self.dirty_shards.discard(i)
 
     def list_all(self) -> Iterable[str]:
         for db in self.dbs:
