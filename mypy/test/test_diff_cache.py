@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 
+from mypy.defaults import SQLITE_NUM_SHARDS
 from mypy.test.config import PREFIX
 
 _MISC_DIR = os.path.join(PREFIX, "misc")
@@ -150,7 +151,7 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             from mypy.metastore import SqliteMetadataStore
 
             def read_all(cache_dir: str) -> dict[str, bytes]:
-                store = SqliteMetadataStore(cache_dir)
+                store = SqliteMetadataStore(cache_dir, num_shards=SQLITE_NUM_SHARDS)
                 result = {name: store.read(name) for name in store.list_all()}
                 store.close()
                 return result
