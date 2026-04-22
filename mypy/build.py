@@ -953,7 +953,7 @@ class BuildManager:
         # until all the files have been added. This means that a
         # new file can be processed O(n**2) times. This cache
         # avoids most of this redundant work.
-        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
+        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo], str | None]] = {}
         # Number of times we used GC optimization hack for fresh SCCs.
         self.gc_freeze_cycles = 0
         # Mapping from SCC id to corresponding SCC instance. This is populated
@@ -1062,7 +1062,9 @@ class BuildManager:
                     parallel_parsed_states_set.add(state)
                 else:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
-                    state.tree, state.early_errors = self.ast_cache[state.id]
+                    state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
+                    if state.source_hash is None:
+                        state.source_hash = source_hash
 
             # Parse sequential before waiting on parallel.
             for state in sequential_states:
@@ -1111,7 +1113,7 @@ class BuildManager:
                 state.size_hint = os.path.getsize(state.xpath)
                 state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                 state.semantic_analysis_pass1()
-                self.ast_cache[state.id] = (state.tree, state.early_errors)
+                self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
             self.modules[state.id] = state.tree
             state.check_blockers()
             state.setup_errors()
@@ -3165,14 +3167,16 @@ class State:
         else:
             # Reuse a cached AST
             manager.log(f"Using cached AST for {self.xpath} ({self.id})")
-            self.tree, self.early_errors = manager.ast_cache[self.id]
+            self.tree, self.early_errors, source_hash = manager.ast_cache[self.id]
+            if self.source_hash is None:
+                self.source_hash = source_hash
 
         assert self.tree is not None
         if not temporary:
             manager.modules[self.id] = self.tree
             self.check_blockers()
 
-        manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        manager.ast_cache[self.id] = (self.tree, self.early_errors, self.source_hash)
         self.setup_errors()
 
     def setup_errors(self) -> None:

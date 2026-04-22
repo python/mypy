@@ -417,12 +417,7 @@ class FileRawData:
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
         return FileRawData(
-            defs,
-            imports,
-            raw_errors,
-            ignored_lines,
-            read_bool(data),
-            read_bool(data),
+            defs, imports, raw_errors, ignored_lines, read_bool(data), read_bool(data)
         )
 
 
