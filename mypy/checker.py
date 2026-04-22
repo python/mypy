@@ -4965,6 +4965,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         Globals can only be widened from within a function if the original type
         is None (backward compat with partial type handling of `x = None`).
+
+        See test cases testNewRedefineGlobalVariableNoneInit[1-4], for example.
         """
         if (
             name.kind == GDEF
