@@ -1063,8 +1063,7 @@ class BuildManager:
                 else:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
                     state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
-                    if state.source_hash is None:
-                        state.source_hash = source_hash
+                    state.source_hash = source_hash
 
             # Parse sequential before waiting on parallel.
             for state in sequential_states:
@@ -3172,8 +3171,7 @@ class State:
             # Reuse a cached AST
             manager.log(f"Using cached AST for {self.xpath} ({self.id})")
             self.tree, self.early_errors, source_hash = manager.ast_cache[self.id]
-            if self.source_hash is None:
-                self.source_hash = source_hash
+            self.source_hash = source_hash
 
         assert self.tree is not None
         if not temporary:
