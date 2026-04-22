@@ -2108,7 +2108,7 @@ def fix_instance(
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
     if not t.type.has_type_var_tuple_type:
-        with state.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(True):
             fixed = expand_type(t, env)
         assert isinstance(fixed, Instance)
         t.args = fixed.args

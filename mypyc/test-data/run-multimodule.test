@@ -473,6 +473,38 @@ globals()['A'] = None
 [file driver.py]
 import other_main
 
+[case testNonNativeImportInPackageFile]
+# The import is really non-native only in separate compilation mode where __init__.py and
+# other_cache.py are in different libraries and the import uses the standard Python procedure.
+# Python imports are resolved using __path__ and __spec__ from the package file so this checks
+# that they are set up correctly.
+[file other/__init__.py]
+from other.other_cache import Cache
+
+x = 1
+[file other/other_cache.py]
+class Cache:
+    pass
+
+[file driver.py]
+import other
+
+[case testRelativeImportInPackageFile]
+# Relative imports from a compiled package __init__ depend on package metadata being
+# available while the package module body is executing.
+[file other/__init__.py]
+assert __package__ == "other"
+from .other_cache import Cache
+
+x = 1
+[file other/other_cache.py]
+class Cache:
+    pass
+
+[file driver.py]
+import other
+assert other.Cache.__name__ == "Cache"
+
 [case testMultiModuleSameNames]
 # Use same names in both modules
 import other

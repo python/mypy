@@ -1225,6 +1225,47 @@ static int CPyImport_InitSpecClasses(void) {
     return 0;
 }
 
+// Set __package__ before executing the module body so it is available
+// during module initialization. For a package, __package__ is the module
+// name itself. For a non-package submodule "a.b.c", it is "a.b". For a
+// top-level non-package module, it is "".
+static int CPyImport_SetModulePackage(PyObject *modobj, PyObject *module_name,
+                                      Py_ssize_t is_package) {
+    PyObject *pkg = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__package__", &pkg);
+    if (rc < 0) {
+        return -1;
+    }
+    if (pkg != NULL && pkg != Py_None) {
+        Py_DECREF(pkg);
+        return 0;
+    }
+    Py_XDECREF(pkg);
+
+    PyObject *package_name = NULL;
+    if (is_package) {
+        package_name = module_name;
+        Py_INCREF(package_name);
+    } else {
+        Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+        if (name_len < 0) {
+            return -1;
+        }
+        Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+        if (dot >= 0) {
+            package_name = PyUnicode_Substring(module_name, 0, dot);
+        } else {
+            package_name = PyUnicode_FromString("");
+        }
+    }
+    if (package_name == NULL) {
+        return -1;
+    }
+    rc = PyObject_SetAttrString(modobj, "__package__", package_name);
+    Py_DECREF(package_name);
+    return rc;
+}
+
 // Derive and set __file__ on modobj from the shared library path, module name,
 // and extension suffix. Returns 0 on success, -1 on error.
 static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
@@ -1509,47 +1550,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
-    // Set __package__ before executing the module body so it is available
-    // during module initialization. For a package, __package__ is the module
-    // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
-    // top-level non-package module, it is "".
-    {
-        PyObject *pkg = NULL;
-        if (PyObject_GetOptionalAttrString(modobj, "__package__", &pkg) < 0) {
-            goto fail;
-        }
-        if (pkg == NULL || pkg == Py_None) {
-            Py_XDECREF(pkg);
-            PyObject *package_name;
-            if (is_package) {
-                package_name = module_name;
-                Py_INCREF(package_name);
-            } else if (dot >= 0) {
-                package_name = PyUnicode_Substring(module_name, 0, dot);
-            } else {
-                package_name = PyUnicode_FromString("");
-                if (package_name == NULL) {
-                    CPyError_OutOfMemory();
-                }
-            }
-            if (PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
-                Py_DECREF(package_name);
-                goto fail;
-            }
-            Py_DECREF(package_name);
-        } else {
-            Py_DECREF(pkg);
-        }
-    }
-
-    if (CPyImport_SetModuleFile(modobj, module_name, shared_lib_file, ext_suffix,
-                                 is_package) < 0) {
-        goto fail;
-    }
-    if (is_package && CPyImport_SetModulePath(modobj) < 0) {
-        goto fail;
-    }
-    if (CPyImport_SetModuleSpec(modobj, module_name, is_package) < 0) {
+    if (CPyImport_SetDunderAttrs(modobj, module_name, shared_lib_file, ext_suffix, is_package) < 0) {
         goto fail;
     }
 
@@ -1577,8 +1578,32 @@ fail:
     PyErr_Restore(exc_type, exc_val, exc_tb);
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
-    Py_DECREF(modobj);
+    Py_CLEAR(*module_static);
     return NULL;
+}
+
+int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
+                             PyObject *ext_suffix, Py_ssize_t is_package)
+{
+    int res = CPyImport_SetModulePackage(module, module_name, is_package);
+    if (res < 0) {
+        return res;
+    }
+
+    res = CPyImport_SetModuleFile(module, module_name, shared_lib_file, ext_suffix,
+                                  is_package);
+    if (res < 0) {
+        return res;
+    }
+
+    if (is_package) {
+        res = CPyImport_SetModulePath(module);
+        if (res < 0) {
+            return res;
+        }
+    }
+
+    return CPyImport_SetModuleSpec(module, module_name, is_package);
 }
 
 #if CPY_3_14_FEATURES
