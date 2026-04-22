@@ -1080,7 +1080,7 @@ def define_options(
     incremental_group.add_argument(
         "--sqlite-num-shards",
         type=int,
-        default=16,
+        default=defaults.SQLITE_NUM_SHARDS,
         dest="sqlite_num_shards",
         help=argparse.SUPPRESS,
     )
