@@ -472,7 +472,7 @@ def f(a: A) -> None: pass
 l = [a, b]  # Join generates an anonymous TypedDict
 f(l) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x': int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x': int, 'z': str})]"; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x': int, 'z': str, 'a'=: object})]"; expected "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -540,16 +540,28 @@ reveal_type(joined_points)  # N: Revealed type is "TypedDict({'x': builtins.int,
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testJoinOfTypedDictRemovesNonequivalentKeys]
-from typing import TypedDict
+[case testJoinOfTypedDictJoinsNonequivalentKeys]
+from typing import TypedDict, NotRequired
 CellWithInt = TypedDict('CellWithInt', {'value': object, 'meta': int})
-CellWithObject = TypedDict('CellWithObject', {'value': object, 'meta': object})
+CellWithString = TypedDict('CellWithString', {'value': object, 'meta': str})
+CellWithNonRequiredInt = TypedDict('CellWithNonRequiredInt', {'value': object, 'meta': NotRequired[int]})
+CellWithNonRequiredString = TypedDict('CellWithNonRequiredString', {'value': object, 'meta': NotRequired[str]})
 c1 = CellWithInt(value=1, meta=42)
-c2 = CellWithObject(value=2, meta='turtle doves')
-joined_cells = [c1, c2]
-reveal_type(c1)             # N: Revealed type is "TypedDict('__main__.CellWithInt', {'value': builtins.object, 'meta': builtins.int})"
-reveal_type(c2)             # N: Revealed type is "TypedDict('__main__.CellWithObject', {'value': builtins.object, 'meta': builtins.object})"
-reveal_type(joined_cells)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object})]"
+c2 = CellWithString(value=2, meta='turtle doves')
+c3 = CellWithNonRequiredInt(value=1)
+c4 = CellWithNonRequiredString(value=2)
+j12 = [c1, c2]
+j14 = [c1, c4]
+j32 = [c3, c2]
+j34 = [c3, c4]
+reveal_type(c1)    # N: Revealed type is "TypedDict('__main__.CellWithInt', {'value': builtins.object, 'meta': builtins.int})"
+reveal_type(c2)    # N: Revealed type is "TypedDict('__main__.CellWithString', {'value': builtins.object, 'meta': builtins.str})"
+reveal_type(c3)    # N: Revealed type is "TypedDict('__main__.CellWithNonRequiredInt', {'value': builtins.object, 'meta'?: builtins.int})"
+reveal_type(c4)    # N: Revealed type is "TypedDict('__main__.CellWithNonRequiredString', {'value': builtins.object, 'meta'?: builtins.str})"
+reveal_type(j12)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object, 'meta'=: builtins.object})]"
+reveal_type(j14)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object, 'meta'?=: builtins.object})]"
+reveal_type(j32)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object, 'meta'?=: builtins.object})]"
+reveal_type(j34)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object, 'meta'?=: builtins.object})]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -751,8 +763,8 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x='', y=1, z=''), B(x='', z=1))
 ac = join(A(x='', y=1, z=''), C(x='', y=0, z=1))
-ab['y']  # E: "y" is not a valid TypedDict key; expected one of ("x")
-ac['a']  # E: "a" is not a valid TypedDict key; expected one of ("x", "y")
+ab['y']  # E: "y" is not a valid TypedDict key; expected one of ("x", "z")
+ac['a']  # E: "a" is not a valid TypedDict key; expected one of ("x", "y", "z")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -973,10 +985,10 @@ p4: Point = {'x': 1, 'y': 2}
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems]
 from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int, 'y': int})
-B = TypedDict('B', {'x': int, 'y': str})
+B = TypedDict('B', {'x': int})
 T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
-ab = join(A(x=1, y=1), B(x=1, y=''))
+ab = join(A(x=1, y=1), B(x=1))
 if int():
     ab = {'x': 1, 'z': 1} # E: Expected TypedDict key "x" but found keys ("x", "z")
 [builtins fixtures/dict.pyi]
@@ -990,7 +1002,7 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
 if int():
-    ab = {} # E: Expected TypedDict keys ("x", "y") but found no keys
+    ab = {} # E: Expected TypedDict keys ("x", "y", "z") but found no keys
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1411,7 +1423,7 @@ a: A
 b: B
 c: C
 reveal_type(j(a, b)) \
-    # N: Revealed type is "TypedDict({})"
+    # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 reveal_type(j(b, b)) \
     # N: Revealed type is "TypedDict({'x'?: builtins.int})"
 reveal_type(j(c, c)) \
@@ -1473,7 +1485,7 @@ def f(a: A) -> None: pass
 l = [a, b]  # Join generates an anonymous TypedDict
 f(l) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x'?: int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x'?: int, 'z'?: str, 'a'?=: object})]"; expected "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4566,13 +4578,23 @@ c: C = d  # E: Incompatible types in assignment (expression has type "D", variab
 [case testTypedDictJoinWithReadOnly]
 from typing import ReadOnly, TypedDict, TypeVar
 A = TypedDict('A', {'x': ReadOnly[int]})
-B = TypedDict('B', {'x': int})
+B = TypedDict('B', {'x': ReadOnly[int]}, total=False)
+C = TypedDict('C', {'x': int})
+D = TypedDict('D', {'x': int}, total=False)
 T = TypeVar('T')
 def j(x: T, y: T) -> T: return x
 a: A
 b: B
-reveal_type(j(a, b)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
-reveal_type(j(b, a)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
+c: C
+d: D
+reveal_type(j(a, b)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+reveal_type(j(b, a)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+reveal_type(j(a, c)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
+reveal_type(j(c, a)) # N: Revealed type is "TypedDict({'x'=: builtins.int})"
+reveal_type(j(a, d)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+reveal_type(j(b, c)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+reveal_type(j(c, b)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

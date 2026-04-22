@@ -612,21 +612,32 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            items = {
-                item_name: s_item_type
-                for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if (
-                    is_equivalent(s_item_type, t_item_type)
-                    and (item_name in t.required_keys) == (item_name in self.s.required_keys)
-                )
-            }
+            items = {}
+            readonly_keys = set()
+            for item_name, s_item_type, t_item_type in self.s.zip(t):
+                if is_equivalent(s_item_type, t_item_type):
+                    items[item_name] = s_item_type
+                    s_required = item_name in self.s.required_keys
+                    t_required = item_name in t.required_keys
+                    s_readonly = item_name in self.s.readonly_keys
+                    t_readonly = item_name in t.readonly_keys
+                    if s_readonly or t_readonly:
+                        # If either type has no setitem overload for this key,
+                        # then the join supertype must also omit it
+                        readonly_keys.add(item_name)
+                    elif s_required != t_required:
+                        # As one of the input types marks the key as not required,
+                        # it must be not required in the join supertype. The other
+                        # input type does not have a delitem overload for the key,
+                        # so it must be omitted in the join supertype too, by marking
+                        # the key as readonly.
+                        readonly_keys.add(item_name)
+                else:
+                    items[item_name] = join_types(s_item_type, t_item_type)
+                    readonly_keys.add(item_name)
+
             fallback = self.s.create_anonymous_fallback()
-            all_keys = set(items.keys())
-            # We need to filter by items.keys() since some required keys present in both t and
-            # self.s might be missing from the join if the types are incompatible.
-            required_keys = all_keys & t.required_keys & self.s.required_keys
-            # If one type has a key as readonly, we mark it as readonly for both:
-            readonly_keys = (self.s.readonly_keys | t.readonly_keys) & all_keys
+            required_keys = t.required_keys & self.s.required_keys
             return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
