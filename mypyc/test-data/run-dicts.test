@@ -368,3 +368,31 @@ class subc(dict[Any, Any]):
 [file userdefineddict.py]
 class dict:
     pass
+
+[case testDunderDictAccessAfterDel]
+class NormDict(dict[str, str]):
+    def __init__(self, attr: int = 42) -> None:
+        super().__init__()
+        self.attr = attr
+
+def test_dict_access() -> None:
+    n = NormDict(1)
+    d = n.__dict__
+    assert d["attr"] == 1
+    del n
+    assert d["attr"] == 1
+
+[file driver.py]
+from native import NormDict, test_dict_access
+
+def test_dict_access_interpreted() -> None:
+    n = NormDict()
+    d = n.__dict__
+    assert d["attr"] == 42
+    del n
+    assert d["attr"] == 42
+
+test_dict_access()
+test_dict_access_interpreted()
+
+[fixture fixtures/typing-full.pyi]
