@@ -8,8 +8,8 @@ def f() -> None:
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
 
-[case testNewRedefineConditionalLocalWithDifferentType]
-# flags: --allow-redefinition
+[case testNewRedefineConditionalLocalWithDifferentTypeAndFlagAlias]
+# flags: --allow-redefinition-new
 def f() -> None:
     if int():
         x = 0
