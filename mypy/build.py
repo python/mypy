@@ -1101,8 +1101,7 @@ class BuildManager:
                     # may have been preserved for workers (imports_only=True).
                     pass
                 elif state.source_hash is None:
-                    # Fallback for non-native parser path (shouldn't normally happen
-                    # in the parallel path, but be safe).
+                    # At least namespace packages may not have source.
                     state.get_source()
                 state.size_hint = os.path.getsize(state.xpath)
                 state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
