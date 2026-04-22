@@ -32,7 +32,6 @@ from librt.internal import ReadBuffer, read_tag
 from mypy import util
 from mypy.build import (
     GRAPH_MESSAGE,
-    SCC,
     SCC_REQUEST_MESSAGE,
     SCCS_DATA_MESSAGE,
     SOURCES_DATA_MESSAGE,
@@ -48,7 +47,7 @@ from mypy.build import (
     process_stale_scc_implementation,
     process_stale_scc_interface,
 )
-from mypy.cache import Tag, read_int_opt
+from mypy.cache import Tag, read_int_list
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
@@ -127,7 +126,7 @@ def should_shutdown(buf: ReadBuffer, expected_tag: Tag) -> bool:
     """Check if the message is a shutdown request."""
     tag = read_tag(buf)
     if tag == SCC_REQUEST_MESSAGE:
-        assert read_int_opt(buf) is None
+        assert not read_int_list(buf)
         return True
     assert tag == expected_tag, f"Unexpected tag: {tag}"
     return False
@@ -181,8 +180,8 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         assert read_tag(buf) == SCC_REQUEST_MESSAGE
         scc_message = SccRequestMessage.read(buf)
         manager.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
-        scc_id = scc_message.scc_id
-        if scc_id is None:
+        scc_ids = scc_message.scc_ids
+        if not scc_ids:
             # This indicates a shutdown request. Add GC stats before exiting.
             gc_stats = gc.get_stats()
             manager.add_stats(
@@ -191,17 +190,23 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             )
             manager.dump_stats()
             break
-        scc = manager.scc_by_id[scc_id]
+        sccs = [manager.scc_by_id[scc_id] for scc_id in scc_ids]
+        mod_ids: list[str] = []
+        for scc in sccs:
+            mod_ids.extend(scc.mod_ids)
         t0 = time.time()
         try:
-            load_states(scc, graph, manager, scc_message.import_errors, scc_message.mod_data)
-            result = process_stale_scc_interface(
-                graph, scc, manager, from_cache=graph_data.from_cache
-            )
-            # We must commit after each SCC, otherwise we break --sqlite-cache.
-            manager.commit()
+            load_states(mod_ids, graph, manager, scc_message.import_errors, scc_message.mod_data)
+            result = []
+            for scc in sccs:
+                scc_result = process_stale_scc_interface(
+                    graph, scc, manager, from_cache=graph_data.from_cache
+                )
+                result.extend(scc_result)
+                # We must commit after each SCC, otherwise we break --sqlite-cache.
+                manager.commit()
         except CompileError as blocker:
-            message = SccResponseMessage(scc_id=scc_id, is_interface=True, blocker=blocker)
+            message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, blocker=blocker)
             timed_send(manager, server, message)
         else:
             mod_results = {}
@@ -211,16 +216,17 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 stale.append(id)
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
-            message = SccResponseMessage(scc_id=scc_id, is_interface=True, result=mod_results)
+            message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, result=mod_results)
             timed_send(manager, server, message)
             try:
+                # We process implementations from all SCCs in the batch together.
                 result = process_stale_scc_implementation(graph, stale, manager, meta_files)
                 # Both phases write cache, so we should commit here as well.
                 manager.commit()
             except CompileError as blocker:
-                message = SccResponseMessage(scc_id=scc_id, is_interface=False, blocker=blocker)
+                message = SccResponseMessage(scc_ids=scc_ids, is_interface=False, blocker=blocker)
             else:
-                message = SccResponseMessage(scc_id=scc_id, is_interface=False, result=result)
+                message = SccResponseMessage(scc_ids=scc_ids, is_interface=False, result=result)
             timed_send(manager, server, message)
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
@@ -232,7 +238,7 @@ def timed_send(manager: BuildManager, server: IPCServer, message: SccResponseMes
 
 
 def load_states(
-    scc: SCC,
+    mod_ids: list[str],
     graph: Graph,
     manager: BuildManager,
     import_errors: dict[str, list[ErrorInfo]],
@@ -240,7 +246,7 @@ def load_states(
 ) -> None:
     """Re-create full state of an SCC as it would have been in coordinator."""
     needs_parse = []
-    for id in scc.mod_ids:
+    for id in mod_ids:
         state = graph[id]
         # Re-clone options since we don't send them, it is usually faster than deserializing.
         state.options = state.options.clone_for_module(state.id)
@@ -254,7 +260,7 @@ def load_states(
     # Perform actual parsing in parallel (but we don't need to compute dependencies).
     if needs_parse:
         manager.parse_all(needs_parse, post_parse=False)
-    for id in scc.mod_ids:
+    for id in mod_ids:
         state = graph[id]
         assert state.tree is not None
         import_lines = {imp.line for imp in state.tree.imports}
