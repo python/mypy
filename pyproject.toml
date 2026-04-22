@@ -65,7 +65,7 @@ mypyc = ["setuptools>=50"]
 reports = ["lxml"]
 install-types = ["pip"]
 faster-cache = ["orjson"]
-native-parser = ["ast-serialize>=0.1.2,<1.0.0"]
+native-parser = ["ast-serialize>=0.2.0,<1.0.0"]
 
 [project.urls]
 Homepage = "https://www.mypy-lang.org/"
