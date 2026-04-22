@@ -185,6 +185,7 @@ class SqliteMetadataStore(MetadataStore):
         # passed here.
         self.dbs: list[sqlite3.Connection] = []
         self.num_shards = num_shards
+        self.dirty_shards: set[int] = set()
         if cache_dir_prefix.startswith(os.devnull):
             return
 
@@ -198,8 +199,6 @@ class SqliteMetadataStore(MetadataStore):
                 self.dbs.append(
                     connect_db(os_path_join(cache_dir_prefix, f"cache.{i}.db"), set_journal_mode)
                 )
-        # Track which shards have been written to since last commit.
-        self.dirty_shards: set[int] = set()
 
     def _db_for(self, name: str) -> sqlite3.Connection:
         if not self.dbs:
