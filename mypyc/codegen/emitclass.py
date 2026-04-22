@@ -942,7 +942,9 @@ def generate_dealloc_for_class(
         # is responsible for tearing down base-owned storage and freeing memory.
         emitter.emit_line(f"{clear_func_name}(self);")
         emitter.emit_line("Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);")
-        emitter.emit_line("goto done;")
+        emitter.emit_line("done: ;")
+        emitter.emit_line("}")
+        return
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:

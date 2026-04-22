@@ -424,22 +424,6 @@ def prepare_class_def(
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
 
-    free_list_len = attrs.get("free_list_len")
-    if free_list_len is not None:
-        line = attrs_lines["free_list_len"]
-        if ir.is_trait:
-            errors.error('"free_list_len" can\'t be used with traits', path, line)
-        if ir.allow_interpreted_subclasses:
-            errors.error(
-                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
-                path,
-                line,
-            )
-        if free_list_len == 1:
-            ir.reuse_freed_instance = True
-        else:
-            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
-
     # Check for subclassing from builtin types
     for cls in info.mro:
         # Special case exceptions and dicts
@@ -467,6 +451,28 @@ def prepare_class_def(
                     path,
                     cdef.line,
                 )
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if ir.builtin_base:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that inherits from a built-in type',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
