@@ -3359,8 +3359,6 @@ expected_events.append("deleting Item")
 
 assert events == expected_events, events
 
-[out]
-
 [case testDel]
 class A:
     def __del__(self):
