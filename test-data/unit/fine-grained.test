@@ -11688,7 +11688,7 @@ import m
 reveal_type(m.x)
 
 [file m.py]
-# mypy: allow-redefinition-new
+# mypy: allow-redefinition
 import m2
 
 x = None
@@ -11713,7 +11713,7 @@ import m
 reveal_type(m.x)
 
 [file m.py]
-# mypy: allow-redefinition-new
+# mypy: allow-redefinition
 import m2
 
 x = None
@@ -11742,7 +11742,7 @@ import m
 reveal_type(m.x)
 
 [file m.py]
-# mypy: allow-redefinition-new
+# mypy: allow-redefinition
 import m2
 
 x = None

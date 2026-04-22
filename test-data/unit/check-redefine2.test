@@ -181,7 +181,7 @@ def f() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit2]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition
 x = None
 
 def deco(f): return f
@@ -196,7 +196,7 @@ def f() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit3]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition
 from typing import overload
 
 x = None
@@ -217,7 +217,7 @@ class C:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableNoneInit4]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition
 x = None
 
 def f() -> None:
@@ -230,7 +230,7 @@ def f() -> None:
 reveal_type(x) # N: Revealed type is "None | builtins.int"
 
 [case testNewRedefineGlobalVariableWithUnsupportedType]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition
 x = 1
 
 def f() -> None:
