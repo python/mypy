@@ -139,6 +139,7 @@ VecGenericAlias_traverse(VecGenericAlias *self, visitproc visit, void *arg)
 static void
 VecGenericAlias_dealloc(VecGenericAlias *self)
 {
+    PyObject_GC_UnTrack(self);
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
         self->item_type = 0;
