@@ -8373,7 +8373,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return None
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
-        if self.options.allow_redefinition_new:
+        if self.options.allow_redefinition:
             # Add names to binder, since their types could be widened
             for name in o.names:
                 sym = self.globals.get(name)
