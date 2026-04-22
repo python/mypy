@@ -4772,7 +4772,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # context that is ultimately used. This is however tricky with redefinitions.
         # For now we simply disable second accept in cases known to cause problems,
         # see e.g. testAssignToOptionalTupleWalrus.
-        binder_version = self.binder.version
+        has_assignment_expr = self._expr_has_assignment_expr(rvalue)
 
         fallback_context_used = False
         with (
@@ -4802,7 +4802,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         union_fallback = (
             preferred_context is not None
             and isinstance(get_proper_type(lvalue_type), UnionType)
-            and binder_version == self.binder.version
+            and not has_assignment_expr
         )
 
         # Skip literal types, as they have special logic (for better errors).
@@ -4835,6 +4835,67 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.msg.add_errors(local_errors.filtered_errors())
             self.store_types(type_map)
         return rvalue_type
+
+    @staticmethod
+    def _expr_has_assignment_expr(expr: Expression) -> bool:
+        """Check whether an expression tree contains a walrus (AssignmentExpr) operator."""
+        if isinstance(expr, nodes.AssignmentExpr):
+            return True
+        # Recursively check child expressions based on node type.
+        # We only need to check fields that can contain sub-expressions.
+        children: list[Expression] = []
+        if isinstance(expr, nodes.ConditionalExpr):
+            children = [expr.cond, expr.if_expr, expr.else_expr]
+        elif isinstance(expr, nodes.CallExpr):
+            children = [expr.callee] + expr.args  # type: ignore[arg-type]
+            if expr.analyzed:
+                children.append(expr.analyzed)
+        elif isinstance(expr, nodes.OpExpr):
+            children = [expr.left, expr.right]
+        elif isinstance(expr, nodes.ComparisonExpr):
+            children = expr.operands  # type: ignore[arg-type]
+        elif isinstance(expr, nodes.IndexExpr):
+            children = [expr.base, expr.index]
+        elif isinstance(expr, nodes.MemberExpr):
+            children = [expr.expr]
+        elif isinstance(expr, nodes.UnaryExpr):
+            children = [expr.expr]
+        elif isinstance(expr, nodes.SliceExpr):
+            result: list[Expression] = []
+            if expr.begin_index is not None:
+                result.append(expr.begin_index)
+            if expr.end_index is not None:
+                result.append(expr.end_index)
+            if expr.stride is not None:
+                result.append(expr.stride)
+            children = result
+        elif isinstance(expr, nodes.TupleExpr) or isinstance(expr, nodes.ListExpr):
+            children = expr.items  # type: ignore[arg-type]
+        elif isinstance(expr, nodes.GeneratorExpr):
+            children.append(expr.left_expr)
+            for seq in expr.sequences:
+                children.append(seq)
+            for cond_list in expr.condlists:
+                for cond in cond_list:
+                    children.append(cond)
+        elif isinstance(expr, nodes.DictExpr):
+            for item in expr.items:
+                children.append(item.key)
+                children.append(item.value)
+        elif isinstance(expr, nodes.YieldExpr) or isinstance(expr, nodes.YieldFromExpr):
+            children.append(expr.expr)
+        elif isinstance(expr, nodes.StarExpr):
+            children.append(expr.expr)
+        elif isinstance(expr, nodes.AwaitExpr):
+            children.append(expr.expr)
+        elif isinstance(expr, nodes.CastExpr):
+            children.append(expr.expr)
+        elif isinstance(expr, nodes.AssignmentExpr):
+            return True  # Already checked above, but keep for completeness
+        for child in children:
+            if TypeChecker._expr_has_assignment_expr(child):
+                return True
+        return False
 
     def check_simple_assignment(
         self,
