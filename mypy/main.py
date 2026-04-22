@@ -1078,6 +1078,13 @@ def define_options(
         group=incremental_group,
     )
     incremental_group.add_argument(
+        "--sqlite-num-shards",
+        type=int,
+        default=16,
+        dest="sqlite_num_shards",
+        help=argparse.SUPPRESS,
+    )
+    incremental_group.add_argument(
         "--cache-fine-grained",
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
