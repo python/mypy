@@ -460,6 +460,21 @@ def test_cap_with_initializer() -> None:
     assert v[0] == 'a'
     assert v[1] == 'b'
 
+def test_cap_from_comprehension_and_iterable() -> None:
+    v = vec[str]([str(i) for i in range(2)], capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'x'
+    assert old[0] == 'x'
+    assert v == vec[str](['x', '1', '2'])
+
+    v = vec[str]((str(i) for i in range(2)), capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'y'
+    assert old[0] == 'y'
+    assert v == vec[str](['y', '1', '2'])
+
 def test_cap_variable(n: i64 = 3) -> None:
     v = vec[str](capacity=n)
     assert len(v) == 0
