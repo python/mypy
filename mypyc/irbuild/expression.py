@@ -365,9 +365,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
             item_type = builder.type_to_rtype(analyzed.types[0])
             vec_type = RVec(item_type)
             cap = _get_vec_cap(builder, expr)
-            if len(expr.args) == 0 or (
-                len(expr.args) == 1 and expr.arg_kinds == [ARG_NAMED]
-            ):
+            if len(expr.args) == 0 or (len(expr.args) == 1 and expr.arg_kinds == [ARG_NAMED]):
                 # vec[T]() or vec[T](cap=N)
                 return vec_create(builder.builder, vec_type, 0, expr.line, cap=cap)
             elif (
@@ -377,9 +375,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
                 and expr.arg_kinds == [ARG_POS, ARG_NAMED]
             ):
                 # vec[T](items) or vec[T](items, cap=N)
-                return translate_vec_create_from_iterable(
-                    builder, vec_type, expr.args[0], cap=cap
-                )
+                return translate_vec_create_from_iterable(builder, vec_type, expr.args[0], cap=cap)
         callee = analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
@@ -574,9 +570,9 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
 
 
 def _get_vec_cap(builder: IRBuilder, expr: CallExpr) -> Value | None:
-    """Extract the 'cap' keyword argument value from a vec() call, or None."""
+    """Extract the 'capacity' keyword argument value from a vec() call, or None."""
     for i, (kind, name) in enumerate(zip(expr.arg_kinds, expr.arg_names)):
-        if kind == ARG_NAMED and name == "cap":
+        if kind == ARG_NAMED and name == "capacity":
             return builder.accept(expr.args[i])
     return None
 

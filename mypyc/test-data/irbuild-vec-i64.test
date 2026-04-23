@@ -826,13 +826,13 @@ from librt.vecs import vec
 from mypy_extensions import i64
 
 def cap_only() -> vec[i64]:
-    return vec[i64](cap=5)
+    return vec[i64](capacity=5)
 
 def cap_zero() -> vec[i64]:
-    return vec[i64](cap=0)
+    return vec[i64](capacity=0)
 
 def cap_variable(n: i64) -> vec[i64]:
-    return vec[i64](cap=n)
+    return vec[i64](capacity=n)
 [out]
 def cap_only():
     r0 :: vec[i64]
@@ -856,7 +856,7 @@ from librt.vecs import vec
 from mypy_extensions import i64
 
 def list_with_cap() -> vec[i64]:
-    return vec[i64]([1, 2], cap=5)
+    return vec[i64]([1, 2], capacity=5)
 [out]
 def list_with_cap():
     r0 :: vec[i64]

@@ -96,14 +96,14 @@ typedef struct {
 
 static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject *kw)
 {
-    static char *kwlist[] = {"", "cap", NULL};
+    static char *kwlist[] = {"", "capacity", NULL};
     PyObject *init = NULL;
     int64_t cap = 0;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|OL:vec", kwlist, &init, &cap)) {
         return NULL;
     }
     if (cap < 0) {
-        PyErr_SetString(PyExc_ValueError, "cap must not be negative");
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
         return NULL;
     }
     VecGenericAlias *p = (VecGenericAlias *)self;

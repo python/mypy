@@ -135,14 +135,14 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
 }
 
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
-    static char *kwlist[] = {"", "cap", NULL};
+    static char *kwlist[] = {"", "capacity", NULL};
     PyObject *init = NULL;
     int64_t cap = 0;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|OL:vec", kwlist, &init, &cap)) {
         return NULL;
     }
     if (cap < 0) {
-        PyErr_SetString(PyExc_ValueError, "cap must not be negative");
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
         return NULL;
     }
     if (init == NULL) {

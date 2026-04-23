@@ -419,32 +419,32 @@ def test_pop_index() -> None:
     assert v == vec[i64]()
 
 def test_cap_empty() -> None:
-    v = vec[i64](cap=3)
+    v = vec[i64](capacity=3)
     assert len(v) == 0
     assert v == vec[i64]()
 
 def test_cap_with_initializer() -> None:
-    v = vec[i64]([10, 20], cap=3)
+    v = vec[i64]([10, 20], capacity=3)
     assert len(v) == 2
     assert v[0] == 10
     assert v[1] == 20
     assert v == vec[i64]([10, 20])
 
 def test_cap_zero() -> None:
-    v = vec[i64](cap=0)
+    v = vec[i64](capacity=0)
     assert len(v) == 0
-    v = vec[i64]([5], cap=0)
+    v = vec[i64]([5], capacity=0)
     assert v == vec[i64]([5])
 
 def test_cap_negative() -> None:
     with assertRaises(ValueError):
-        vec[i64](cap=-1)
+        vec[i64](capacity=-1)
     with assertRaises(ValueError):
-        vec[i64]([1], cap=-1)
+        vec[i64]([1], capacity=-1)
 
 def test_cap_buffer_reuse_empty() -> None:
-    # cap=3, append 3 items -> all fit, buffer reused (no reallocation)
-    v = vec[i64](cap=3)
+    # capacity=3, append 3 items -> all fit, buffer reused (no reallocation)
+    v = vec[i64](capacity=3)
     old = v
     v = append(v, 1)
     v = append(v, 2)
@@ -455,8 +455,8 @@ def test_cap_buffer_reuse_empty() -> None:
     assert v[0] == 99
 
 def test_cap_buffer_reuse_with_initializer() -> None:
-    # 2 items with cap=3 -> one more append fits without reallocation
-    v = vec[i64]([10, 20], cap=3)
+    # 2 items with capacity=3 -> one more append fits without reallocation
+    v = vec[i64]([10, 20], capacity=3)
     old = v
     v = append(v, 30)
     assert len(v) == 3
@@ -465,8 +465,8 @@ def test_cap_buffer_reuse_with_initializer() -> None:
     assert old[0] == 99
 
 def test_cap_buffer_reuse_at_capacity() -> None:
-    # cap=2, fill with 2 items -> at capacity, next append must reallocate
-    v = vec[i64]([10, 20], cap=2)
+    # capacity=2, fill with 2 items -> at capacity, next append must reallocate
+    v = vec[i64]([10, 20], capacity=2)
     old = v
     v = append(v, 30)
     # v now has a new buffer; appending to old should NOT affect v
@@ -475,7 +475,7 @@ def test_cap_buffer_reuse_at_capacity() -> None:
 
 def test_cap_read_old_after_realloc() -> None:
     # After reallocation, old alias must still have valid items
-    v = vec[i64]([10, 20, 30], cap=3)
+    v = vec[i64]([10, 20, 30], capacity=3)
     old = v
     v = append(v, 40)
     v[0] = 99
@@ -484,8 +484,8 @@ def test_cap_read_old_after_realloc() -> None:
     assert old[2] == 30
 
 def test_cap_exceeded() -> None:
-    # cap=2, fill to capacity, then one more append triggers reallocation
-    v = vec[i64](cap=2)
+    # capacity=2, fill to capacity, then one more append triggers reallocation
+    v = vec[i64](capacity=2)
     v = append(v, 10)
     v = append(v, 20)
     old = v
@@ -494,7 +494,7 @@ def test_cap_exceeded() -> None:
     assert v[0] == 10
 
 def test_cap_initializer_longer_than_cap() -> None:
-    v = vec[i64]([10, 20, 30], cap=1)
+    v = vec[i64]([10, 20, 30], capacity=1)
     assert len(v) == 3
     assert v[0] == 10
     assert v[1] == 20

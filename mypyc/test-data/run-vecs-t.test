@@ -450,24 +450,24 @@ def test_append_with_alias() -> None:
     assert len(v) == 4
 
 def test_cap_empty() -> None:
-    v = vec[str](cap=3)
+    v = vec[str](capacity=3)
     assert len(v) == 0
     assert v == vec[str]()
 
 def test_cap_with_initializer() -> None:
-    v = vec[str](['a', 'b'], cap=3)
+    v = vec[str](['a', 'b'], capacity=3)
     assert len(v) == 2
     assert v[0] == 'a'
     assert v[1] == 'b'
 
 def test_cap_variable(n: i64 = 3) -> None:
-    v = vec[str](cap=n)
+    v = vec[str](capacity=n)
     assert len(v) == 0
     v = append(v, 'x')
     assert v[0] == 'x'
 
 def test_cap_buffer_reuse() -> None:
-    v = vec[str](['a', 'b'], cap=3)
+    v = vec[str](['a', 'b'], capacity=3)
     old = v
     v = append(v, 'c')
     v[0] = 'z'

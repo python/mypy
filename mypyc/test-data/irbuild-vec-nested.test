@@ -315,13 +315,13 @@ from librt.vecs import vec
 from mypy_extensions import i64
 
 def cap_str() -> vec[vec[str]]:
-    return vec[vec[str]](cap=5)
+    return vec[vec[str]](capacity=5)
 
 def cap_i64() -> vec[vec[i64]]:
-    return vec[vec[i64]](cap=5)
+    return vec[vec[i64]](capacity=5)
 
 def cap_variable(n: i64) -> vec[vec[str]]:
-    return vec[vec[str]](cap=n)
+    return vec[vec[str]](capacity=n)
 [out]
 def cap_str():
     r0 :: object
