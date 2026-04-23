@@ -370,6 +370,9 @@ class dict:
     pass
 
 [case testDunderDictAccessAfterDel]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
 class NormDict(dict[str, str]):
     def __init__(self, attr: int = 42) -> None:
         super().__init__()
@@ -396,6 +399,10 @@ def test_subclass_dict_access() -> None:
 [file driver.py]
 from native import NormDict, SubNormDict, test_dict_access, test_subclass_dict_access
 
+
+class InterpretedNormDict(NormDict):
+    pass
+
 def test_dict_access_interpreted() -> None:
     n = NormDict()
     d = n.__dict__
@@ -410,19 +417,29 @@ def test_subclass_dict_access_interpreted() -> None:
     del s
     assert d["attr"] == 43
 
+def test_allow_interpreted_subclass_dict_access() -> None:
+    s = InterpretedNormDict()
+    d = s.__dict__
+    assert d["attr"] == 42
+    del s
+    assert d["attr"] == 42
+
 test_dict_access()
 test_dict_access_interpreted()
 
 test_subclass_dict_access()
 test_subclass_dict_access_interpreted()
+test_allow_interpreted_subclass_dict_access()
 
 [fixture fixtures/typing-full.pyi]
 
 [case testCycleInDictSubclass]
 import gc
+from mypy_extensions import mypyc_attr
 
 events: list[str] = []
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class CyclicDict(dict):
     def __init__(self) -> None:
         self["self"] = self
@@ -461,6 +478,11 @@ import gc
 import native
 from native import CyclicDict, SubCyclicDict, test_cyclic_dict_cleanup, test_sub_cyclic_dict_cleanup
 
+
+class InterpretedCyclicDict(CyclicDict):
+    def __del__(self) -> None:
+        native.events.append("interpreted deleted")
+
 def test_cyclic_dict_cleanup_interpreted() -> None:
     native.events = []
 
@@ -477,8 +499,17 @@ def test_sub_cyclic_dict_cleanup_interpreted() -> None:
     gc.collect()
     assert native.events == ["sub deleted"], events
 
+def test_allow_interpreted_subclass_cyclic_dict_cleanup() -> None:
+    native.events = []
+
+    c = InterpretedCyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["interpreted deleted"], events
+
 test_cyclic_dict_cleanup()
 test_sub_cyclic_dict_cleanup()
 
 test_cyclic_dict_cleanup_interpreted()
 test_sub_cyclic_dict_cleanup_interpreted()
+test_allow_interpreted_subclass_cyclic_dict_cleanup()
