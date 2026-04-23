@@ -445,10 +445,10 @@ def build(
     finally:
         # In case of an early crash it is better to wait for workers to become ready, and
         # shut them down cleanly. Otherwise, they will linger until connection timeout.
-        if options_data is not None:
-            os.unlink(options_data)
         for thread in connect_threads:
             thread.join()
+        if options_data is not None:
+            os.unlink(options_data)
         for worker in workers:
             if not worker.connected:
                 continue
