@@ -375,6 +375,10 @@ class NormDict(dict[str, str]):
         super().__init__()
         self.attr = attr
 
+class SubNormDict(NormDict):
+    def __init__(self, attr: int = 43) -> None:
+        super().__init__(attr)
+
 def test_dict_access() -> None:
     n = NormDict(1)
     d = n.__dict__
@@ -382,8 +386,15 @@ def test_dict_access() -> None:
     del n
     assert d["attr"] == 1
 
+def test_subclass_dict_access() -> None:
+    s = SubNormDict(1)
+    d = s.__dict__
+    assert d["attr"] == 1
+    del s
+    assert d["attr"] == 1
+
 [file driver.py]
-from native import NormDict, test_dict_access
+from native import NormDict, SubNormDict, test_dict_access, test_subclass_dict_access
 
 def test_dict_access_interpreted() -> None:
     n = NormDict()
@@ -392,7 +403,82 @@ def test_dict_access_interpreted() -> None:
     del n
     assert d["attr"] == 42
 
+def test_subclass_dict_access_interpreted() -> None:
+    s = SubNormDict()
+    d = s.__dict__
+    assert d["attr"] == 43
+    del s
+    assert d["attr"] == 43
+
 test_dict_access()
 test_dict_access_interpreted()
 
+test_subclass_dict_access()
+test_subclass_dict_access_interpreted()
+
 [fixture fixtures/typing-full.pyi]
+
+[case testCycleInDictSubclass]
+import gc
+
+events: list[str] = []
+
+class CyclicDict(dict):
+    def __init__(self) -> None:
+        self["self"] = self
+
+    def __del__(self) -> None:
+        events.append("deleted")
+
+class SubCyclicDict(CyclicDict):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def __del__(self) -> None:
+        events.append("sub deleted")
+
+def test_cyclic_dict_cleanup() -> None:
+    global events
+    events = []
+
+    c = CyclicDict()
+    del c
+    gc.collect()
+    assert events == ["deleted"], events
+
+def test_sub_cyclic_dict_cleanup() -> None:
+    global events
+    events = []
+
+    c = SubCyclicDict()
+    del c
+    gc.collect()
+    assert events == ["sub deleted"], events
+
+[file driver.py]
+import gc
+
+import native
+from native import CyclicDict, SubCyclicDict, test_cyclic_dict_cleanup, test_sub_cyclic_dict_cleanup
+
+def test_cyclic_dict_cleanup_interpreted() -> None:
+    native.events = []
+
+    c = CyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["deleted"], events
+
+def test_sub_cyclic_dict_cleanup_interpreted() -> None:
+    native.events = []
+
+    c = SubCyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["sub deleted"], events
+
+test_cyclic_dict_cleanup()
+test_sub_cyclic_dict_cleanup()
+
+test_cyclic_dict_cleanup_interpreted()
+test_sub_cyclic_dict_cleanup_interpreted()

@@ -870,9 +870,12 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self, visit, arg"
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_traverse", base_args)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("int rv = PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
-        emitter.emit_line("if (rv < 0) return rv;")
+        emitter.emit_line(f"int rv = PyObject_VisitManagedDict({base_args});")
+        emitter.emit_line("if (rv != 0) return rv;")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -894,8 +897,11 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self"
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_clear", base_args)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -941,7 +947,7 @@ def generate_dealloc_for_class(
         # For native subclasses of builtins such as dict, the base deallocator
         # is responsible for tearing down base-owned storage and freeing memory.
         emitter.emit_line(f"{clear_func_name}(self);")
-        emitter.emit_line("Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);")
+        emitter.emit_base_tp_function_call(cl, "tp_dealloc", "(PyObject *)self")
         emitter.emit_line("done: ;")
         emitter.emit_line("}")
         return
