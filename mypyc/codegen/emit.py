@@ -1398,9 +1398,11 @@ class Emitter:
         self.emit_line(error_stmt)
         return wrapper_name
 
-    def emit_base_tp_function_call(self, derived_cl: ClassIR, tp_func: str, args: str) -> None:
+    def emit_base_tp_function_call(
+        self, derived_cl: ClassIR, tp_func: str, args: str, *, prefix: str = ""
+    ) -> None:
         type_obj = self.type_struct_name(derived_cl)
-        self.emit_line(f"{type_obj}->tp_base->{tp_func}({args});")
+        self.emit_line(f"{prefix}{type_obj}->tp_base->{tp_func}({args});")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
