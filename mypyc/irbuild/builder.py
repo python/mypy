@@ -932,7 +932,8 @@ class IRBuilder:
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
 
         # Read values before the first starred value
-        values = []
+        left_values = []
+        right_values = []
         for litem in target.items[:split_idx]:
             ritem = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
@@ -948,11 +949,7 @@ class IRBuilder:
 
             self.activate_block(ok_block)
 
-            values.append(ritem)
-
-        # Assign read values to target lvalues
-        for litem, ritem in zip(target.items[:split_idx], values):
-            self.assign(litem, ritem, line)
+            left_values.append(ritem)
 
         # Read the starred value and all values after it
         if target.star_idx is not None:
@@ -975,13 +972,15 @@ class IRBuilder:
 
             self.activate_block(ok_block)
 
-            values = []
             for litem in reversed(post_star_vals):
                 ritem = self.primitive_op(list_pop_last, [iter_list], line)
-                values.append(ritem)
+                right_values.append(ritem)
 
-            # Assign the read values to target lvalues
-            for litem, ritem in zip(reversed(post_star_vals), values):
+            # Assign read values to target lvalues
+            for litem, ritem in zip(target.items[:split_idx], left_values):
+                self.assign(litem, ritem, line)
+
+            for litem, ritem in zip(reversed(post_star_vals), right_values):
                 self.assign(litem, ritem, line)
 
             # Assign the starred value
@@ -1003,6 +1002,10 @@ class IRBuilder:
             self.add(Unreachable())
 
             self.activate_block(ok_block)
+            
+            # Assign read values to target lvalues
+            for litem, ritem in zip(target.items[:split_idx], left_values):
+                self.assign(litem, ritem, line)
 
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
         self.nonlocal_control.append(
