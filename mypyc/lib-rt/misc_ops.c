@@ -829,14 +829,14 @@ static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
     // check if the imported module has an attribute by that name
     PyObject *x = PyObject_GetAttr(module, import_name);
     if (x == NULL) {
-        // if not, attempt to import a submodule with that name
+        // Attribute lookup failed. The name may still be a submodule that's
+        // been imported already; look it up directly in sys.modules.
         PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", package_name, import_name);
         if (fullmodname == NULL) {
             goto fail;
         }
-
-        // The following code is a simplification of cpython/import.c/PyImport_GetModule()
-        x = PyObject_GetItem(module, fullmodname);
+        PyErr_Clear();
+        x = PyImport_GetModule(fullmodname);
         Py_DECREF(fullmodname);
         if (x == NULL) {
             goto fail;
