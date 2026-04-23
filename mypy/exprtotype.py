@@ -277,7 +277,7 @@ def expr_to_unanalyzed_type(
                 value, options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
             )
         result = TypedDictType(
-            items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+            items, set(), set(), False, Instance(MISSING_FALLBACK, ()), expr.line, expr.column
         )
         result.extra_items_from = extra_items_from
         return result

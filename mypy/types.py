@@ -2947,6 +2947,7 @@ class TypedDictType(ProperType):
         "items",
         "required_keys",
         "readonly_keys",
+        "is_closed",
         "fallback",
         "extra_items_from",
         "to_be_mutated",
@@ -2967,6 +2968,7 @@ class TypedDictType(ProperType):
         items: dict[str, Type],
         required_keys: set[str],
         readonly_keys: set[str],
+        is_closed: bool,
         fallback: Instance,
         line: int = -1,
         column: int = -1,
@@ -2975,6 +2977,7 @@ class TypedDictType(ProperType):
         self.items = items
         self.required_keys = required_keys
         self.readonly_keys = readonly_keys
+        self.is_closed = is_closed
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
@@ -2992,6 +2995,7 @@ class TypedDictType(ProperType):
                 self.fallback,
                 frozenset(self.required_keys),
                 frozenset(self.readonly_keys),
+                self.is_closed,
             )
         )
 
@@ -3009,6 +3013,7 @@ class TypedDictType(ProperType):
             and self.fallback == other.fallback
             and self.required_keys == other.required_keys
             and self.readonly_keys == other.readonly_keys
+            and self.is_closed == other.is_closed
         )
 
     def serialize(self) -> JsonDict:
@@ -3023,10 +3028,12 @@ class TypedDictType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> TypedDictType:
         assert data[".class"] == "TypedDictType"
+        # TODO: round-trip is_closed
         return TypedDictType(
             {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             set(data["readonly_keys"]),
+            False,
             Instance.deserialize(data["fallback"]),
         )
 
@@ -3042,8 +3049,13 @@ class TypedDictType(ProperType):
     def read(cls, data: ReadBuffer) -> TypedDictType:
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
+        # TODO: round-trip is_closed
         ret = TypedDictType(
-            read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
+            read_type_map(data),
+            set(read_str_list(data)),
+            set(read_str_list(data)),
+            False,
+            fallback,
         )
         assert read_tag(data) == END_TAG
         return ret
@@ -3069,6 +3081,7 @@ class TypedDictType(ProperType):
         item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
         readonly_keys: set[str] | None = None,
+        is_closed: bool | None = None,
     ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
@@ -3080,10 +3093,14 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         if readonly_keys is None:
             readonly_keys = self.readonly_keys
+        if is_closed is None:
+            is_closed = self.is_closed
         if item_names is not None:
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
-        return TypedDictType(items, required_keys, readonly_keys, fallback, self.line, self.column)
+        return TypedDictType(
+            items, required_keys, readonly_keys, is_closed, fallback, self.line, self.column
+        )
 
     def names_are_wider_than(self, other: TypedDictType) -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -3943,6 +3960,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             + ", ".join(item_str(name, typ.accept(self)) for name, typ in t.items.items())
             + "}"
         )
+        if t.is_closed:
+            s += ", closed=True"
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:

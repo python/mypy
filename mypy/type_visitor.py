@@ -278,6 +278,7 @@ class TypeTranslator(TypeVisitor[Type]):
             items,
             t.required_keys,
             t.readonly_keys,
+            t.is_closed,
             # TODO: This appears to be unsafe.
             cast(Any, t.fallback.accept(self)),
             t.line,

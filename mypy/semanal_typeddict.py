@@ -108,6 +108,12 @@ class TypedDictAnalyzer:
         if isinstance(defn.analyzed, TypedDictExpr):
             existing_info = defn.analyzed.info
 
+        is_closed: bool = False
+        if "closed" in defn.keywords:
+            is_closed = require_bool_literal_argument(
+                self.api, defn.keywords["closed"], "closed", False
+            )
+
         if (
             len(defn.base_type_exprs) == 1
             and isinstance(defn.base_type_exprs[0], RefExpr)
@@ -123,7 +129,13 @@ class TypedDictAnalyzer:
             required_keys = {key for (key, source) in field_sources.items() if source.is_required}
             readonly_keys = {key for (key, source) in field_sources.items() if source.is_readonly}
             info = self.build_typeddict_typeinfo(
-                defn.name, field_types, required_keys, readonly_keys, defn.line, existing_info
+                defn.name,
+                field_types,
+                required_keys,
+                readonly_keys,
+                is_closed,
+                defn.line,
+                existing_info,
             )
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
@@ -169,6 +181,7 @@ class TypedDictAnalyzer:
         new_field_sources, new_statements = self.analyze_typeddict_classdef_fields(defn)
         if new_field_sources is None:
             return True, None  # Defer
+        # TODO: Implement closure analysis
         field_types, required_keys, readonly_keys, any_placeholders = (
             self.resolve_field_inheritance(bases_info, new_field_sources, defn)
         )
@@ -177,6 +190,7 @@ class TypedDictAnalyzer:
             field_types,
             required_keys,
             readonly_keys,
+            is_closed,
             defn.line,
             existing_info,
             analysis_incomplete=any_placeholders,
@@ -459,6 +473,8 @@ class TypedDictAnalyzer:
                     self.api, defn.keywords["total"], "total", True
                 )
                 continue
+            elif key == "closed":
+                continue
             for_function = ' for "__init_subclass__" of "TypedDict"'
             self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
 
@@ -577,7 +593,7 @@ class TypedDictAnalyzer:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
             return True, None, []
-        name, items, wrapped_types, total, tvar_defs, ok = res
+        name, items, wrapped_types, total, closed, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
             if var_name:
@@ -586,7 +602,7 @@ class TypedDictAnalyzer:
                     name += "@" + str(call.line)
             else:
                 name = var_name = "TypedDict@" + str(call.line)
-            info = self.build_typeddict_typeinfo(name, {}, set(), set(), call.line, None)
+            info = self.build_typeddict_typeinfo(name, {}, set(), set(), False, call.line, None)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
@@ -630,6 +646,7 @@ class TypedDictAnalyzer:
                 dict(zip(items, types)),
                 required_keys,
                 readonly_keys,
+                closed,
                 call.line,
                 existing_info,
             )
@@ -645,25 +662,33 @@ class TypedDictAnalyzer:
 
     def parse_typeddict_args(
         self, call: CallExpr
-    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool] | None:
+    ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
-        Return names, types, totality, was there an error during parsing.
+        Return names, types, totality, open/closed, was there an error during parsing.
         If some type is not ready, return None.
         """
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
-        if len(args) > 3:
+        if len(args) > 4:
             return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
-        # TODO: Support keyword arguments
-        if call.arg_kinds not in ([ARG_POS, ARG_POS], [ARG_POS, ARG_POS, ARG_NAMED]):
+        if call.arg_kinds[:2] != [ARG_POS, ARG_POS] or any(
+            arg_kind != ARG_NAMED for arg_kind in call.arg_kinds[2:]
+        ):
             return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
-        if len(args) == 3 and call.arg_names[2] != "total":
-            return self.fail_typeddict_arg(
-                f'Unexpected keyword argument "{call.arg_names[2]}" for "TypedDict"', call
-            )
+        seen_arg_names = set()
+        for arg_name in call.arg_names[2:]:
+            if arg_name not in ("total", "closed"):
+                return self.fail_typeddict_arg(
+                    f'Unexpected keyword argument "{arg_name}" for "TypedDict"', call
+                )
+            if arg_name in seen_arg_names:
+                return self.fail_typeddict_arg(
+                    f'Repeated keyword argument "{arg_name}" for "TypedDict"', call
+                )
+            seen_arg_names.add(arg_name)
         if not isinstance(args[0], StrExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call
@@ -673,10 +698,16 @@ class TypedDictAnalyzer:
                 "TypedDict() expects a dictionary literal as the second argument", call
             )
         total: bool | None = True
-        if len(args) == 3:
-            total = require_bool_literal_argument(self.api, call.args[2], "total")
-            if total is None:
-                return "", [], [], True, [], False
+        closed: bool = False
+        for arg_name, arg in zip(call.arg_names[2:], call.args[2:]):
+            assert arg_name
+            value = require_bool_literal_argument(self.api, arg, arg_name)
+            if value is None:
+                return "", [], [], True, False, [], False
+            if arg_name == "closed":
+                closed = value
+            else:
+                total = value
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items)
@@ -685,7 +716,7 @@ class TypedDictAnalyzer:
             return None
         items, types, ok = res
         assert total is not None
-        return args[0].value, items, types, total, tvar_defs, ok
+        return args[0].value, items, types, total, closed, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
         self, dict_items: list[tuple[Expression | None, Expression]]
@@ -729,9 +760,9 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(
         self, message: str, context: Context
-    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool]:
+    ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool]:
         self.fail(message, context)
-        return "", [], [], True, [], False
+        return "", [], [], True, False, [], False
 
     def build_typeddict_typeinfo(
         self,
@@ -739,6 +770,7 @@ class TypedDictAnalyzer:
         item_types: dict[str, Type],
         required_keys: set[str],
         readonly_keys: set[str],
+        is_closed: bool,
         line: int,
         existing_info: TypeInfo | None,
         analysis_incomplete: bool = False,
@@ -751,7 +783,9 @@ class TypedDictAnalyzer:
         )
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
-        typeddict_type = TypedDictType(item_types, required_keys, readonly_keys, fallback)
+        typeddict_type = TypedDictType(
+            item_types, required_keys, readonly_keys, is_closed, fallback
+        )
         if has_placeholder(typeddict_type) or analysis_incomplete:
             typeddict_type.analysis_incomplete = True
             self.api.process_placeholder(

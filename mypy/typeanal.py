@@ -1363,7 +1363,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             readonly_keys = t.readonly_keys
             required_keys = t.required_keys
             fallback = t.fallback
-        return TypedDictType(items, required_keys, readonly_keys, fallback, t.line, t.column)
+        # TODO: Implement closure analysis
+        return TypedDictType(
+            items, required_keys, readonly_keys, False, fallback, t.line, t.column
+        )
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals

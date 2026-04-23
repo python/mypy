@@ -1420,6 +1420,7 @@ A = TypedDict('A', {'x': int}, total=0) # E: "total" argument must be a True or 
 B = TypedDict('B', {'x': int}, total=bool) # E: "total" argument must be a True or False literal
 C = TypedDict('C', {'x': int}, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
 D = TypedDict('D', {'x': int}, False) # E: Unexpected arguments to TypedDict()
+E = TypedDict('E', {'x': int}, total=False, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -5061,6 +5062,69 @@ reveal_type(j(a, d)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 reveal_type(j(b, c)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 reveal_type(j(c, b)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+
+# Closed
+# See https://peps.python.org/pep-0728/
+
+[case testTypedDictWithClosedFalse]
+from typing import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, closed=False)
+d: D
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int, 'y': builtins.str})"
+class E(TypedDict, closed=False):
+    x: int
+    y: str
+e: E
+reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.int, 'y': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithClosedTrue]
+from typing import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, closed=True)
+d: D
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int, 'y': builtins.str}, closed=True)"
+class E(TypedDict, closed=True):
+    x: int
+    y: str
+e: E
+reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.int, 'y': builtins.str}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithInvalidClosedArgument]
+from typing import TypedDict
+A = TypedDict('A', {'x': int}, closed=0) # E: "closed" argument must be a True or False literal
+B = TypedDict('B', {'x': int}, closed=bool) # E: "closed" argument must be a True or False literal
+class C(TypedDict, closed=0): # E: "closed" argument must be a True or False literal
+    x: int
+class D(TypedDict, closed=bool): # E: "closed" argument must be a True or False literal
+    x: int
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithClosedAndTotal]
+from typing import TypedDict
+A = TypedDict('A', {'x': int, 'y': str}, total=False, closed=True)
+B = TypedDict('B', {'x': int, 'y': str}, closed=True, total=False)
+C = TypedDict('C', {'x': int, 'y': str}, total=True, closed=False)
+a: A
+b: B
+c: C
+reveal_type(a) # N: Revealed type is "TypedDict('__main__.A', {'x'?: builtins.int, 'y'?: builtins.str}, closed=True)"
+reveal_type(b) # N: Revealed type is "TypedDict('__main__.B', {'x'?: builtins.int, 'y'?: builtins.str}, closed=True)"
+reveal_type(c) # N: Revealed type is "TypedDict('__main__.C', {'x': builtins.int, 'y': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithDuplicateKeywordArguments_no_parallel]
+from typing import TypedDict
+A = TypedDict('A', {'x': int}, closed=True, closed=False)  # E: Repeated keyword argument "closed" for "TypedDict"
+B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Repeated keyword argument "total" for "TypedDict"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

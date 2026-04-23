@@ -357,7 +357,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if not kwargs:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
         # TODO: when PEP 728 is implemented, pass extra_items below.
-        return TypedDictType(kwargs, required_names, set(), fallback=dict_type)
+        # TODO: implement closure analysis
+        return TypedDictType(kwargs, required_names, set(), False, fallback=dict_type)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
