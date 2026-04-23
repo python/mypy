@@ -515,3 +515,38 @@ def test_extend_vec_empty_src() -> None:
 def test_extend_vec_empty_dst() -> None:
     v = extend_vec(vec[str](), vec[str](['x', 'y']))
     assert v == vec[str](['x', 'y'])
+
+def test_extend_vec_fits_in_capacity() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    v = append(v, 'b')
+    # cap=3, len=2, extending by 1 fits without realloc
+    v = extend_vec(v, vec[str](['c']))
+    assert v == vec[str](['a', 'b', 'c'])
+
+def test_extend_vec_exceeds_capacity() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    v = append(v, 'b')
+    # cap=3, len=2, extending by 3 requires realloc
+    v = extend_vec(v, vec[str](['c', 'd', 'e']))
+    assert v == vec[str](['a', 'b', 'c', 'd', 'e'])
+
+def test_extend_vec_multiple_doublings() -> None:
+    v = vec[str]()
+    v = append(v, 'x')
+    # cap=1, extending by 20 items requires multiple doublings
+    src = vec[str]()
+    for i in range(20):
+        src = append(src, str(i))
+    v = extend_vec(v, src)
+    assert len(v) == 21
+    assert v[0] == 'x'
+    assert v[20] == '19'
+
+def test_extend_vec_self() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    v = append(v, 'b')
+    v = extend_vec(v, v)
+    assert v == vec[str](['a', 'b', 'a', 'b'])
