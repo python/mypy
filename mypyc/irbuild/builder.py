@@ -1002,7 +1002,7 @@ class IRBuilder:
             self.add(Unreachable())
 
             self.activate_block(ok_block)
-            
+
             # Assign read values to target lvalues
             for litem, ritem in zip(target.items[:split_idx], left_values):
                 self.assign(litem, ritem, line)
