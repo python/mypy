@@ -500,6 +500,16 @@ def test_cap_with_initializer() -> None:
     assert v[0] == 1
     assert v[1] == 2
 
+def test_cap_from_range() -> None:
+    v = vec[i64](range(7), capacity=10)
+    old = v
+    v = append(v, 7)
+    v = append(v, 8)
+    v = append(v, 9)
+    v[0] = 99
+    assert old[0] == 99
+    assert v == vec[i64]([99, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
 def test_cap_variable(n: i64 = 3) -> None:
     v = vec[i64](capacity=n)
     assert len(v) == 0
