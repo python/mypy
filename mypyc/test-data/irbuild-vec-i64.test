@@ -872,4 +872,3 @@ L0:
     r4 = r3 + 8
     keep_alive r0
     return r0
-

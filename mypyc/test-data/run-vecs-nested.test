@@ -542,3 +542,16 @@ def test_cap_buffer_reuse() -> None:
     v = append(v, vec[i64]([3]))
     v[0] = vec[i64]([99])
     assert old[0] == vec[i64]([99])  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[vec[i64]]([vec[i64]([10]), vec[i64]([20]), vec[i64]([30])], capacity=1)
+    assert len(v) == 3
+    assert v[0] == vec[i64]([10])
+    assert v[1] == vec[i64]([20])
+    assert v[2] == vec[i64]([30])
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[vec[i64]](capacity=-1)
+    with assertRaises(ValueError):
+        vec[vec[i64]]([vec[i64]([1])], capacity=-1)

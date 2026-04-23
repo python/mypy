@@ -472,3 +472,16 @@ def test_cap_buffer_reuse() -> None:
     v = append(v, 'c')
     v[0] = 'z'
     assert old[0] == 'z'  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[str](['a', 'b', 'c'], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+    assert v[2] == 'c'
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[str](capacity=-1)
+    with assertRaises(ValueError):
+        vec[str](['x'], capacity=-1)

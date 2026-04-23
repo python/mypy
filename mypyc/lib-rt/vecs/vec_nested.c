@@ -65,6 +65,10 @@ VecNested VecNested_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecNested vec = vec_alloc(cap, item_type, depth);

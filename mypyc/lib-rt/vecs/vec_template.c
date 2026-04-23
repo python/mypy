@@ -84,8 +84,12 @@ VEC FUNC(ConvertFromNested)(VecNestedBufItem item) {
 }
 
 VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
-        size = cap;
+        cap = size;
     VEC vec = vec_alloc(cap);
     if (VEC_IS_ERROR(vec))
         return vec;
