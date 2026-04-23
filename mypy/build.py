@@ -18,7 +18,6 @@ import contextlib
 import gc
 import json
 import os
-import pickle
 import platform
 import re
 import stat
@@ -44,7 +43,6 @@ from typing import (
     final,
 )
 
-from librt.base64 import b64encode
 from librt.internal import (
     cache_version,
     read_bool,
@@ -281,7 +279,7 @@ class WorkerClient:
             "-m",
             "mypy.build_worker",
             f"--status-file={status_file}",
-            f'--options-data="{options_data}"',
+            f"--options-data={options_data}",
         ]
         # Return early without waiting, caller must call connect() before using the client.
         self.proc = subprocess.Popen(command, env=env)
@@ -389,10 +387,11 @@ def build(
     connect_threads = []
     # A quasi-unique ID for this specific mypy invocation.
     build_id = os.urandom(4).hex()
+    options_data = None
     if options.num_workers > 0:
-        # TODO: switch to something more efficient than pickle (also in the daemon).
-        pickled_options = pickle.dumps(options.snapshot())
-        options_data = b64encode(pickled_options).decode()
+        options_data = f".mypy_worker_options.{build_id}.data"
+        with open(options_data, "wb") as f:
+            f.write(options.to_bytes())
         workers = [
             WorkerClient(
                 f".mypy_worker.{build_id}.{idx}.json", options_data, worker_env or os.environ
@@ -446,6 +445,8 @@ def build(
     finally:
         # In case of an early crash it is better to wait for workers to become ready, and
         # shut them down cleanly. Otherwise, they will linger until connection timeout.
+        if options_data is not None:
+            os.unlink(options_data)
         for thread in connect_threads:
             thread.join()
         for worker in workers:
@@ -560,10 +561,11 @@ def build_inner(
 def warn_unused_configs(
     options: Options, flush_errors: Callable[[str | None, list[str], bool], None]
 ) -> None:
-    if options.warn_unused_configs and options.unused_configs and not options.non_interactive:
+    unused_configs = options.get_unused_configs()
+    if options.warn_unused_configs and unused_configs and not options.non_interactive:
         unused = get_config_module_names(
             options.config_file,
-            [glob for glob in options.per_module_options.keys() if glob in options.unused_configs],
+            [glob for glob in options.per_module_options.keys() if glob in unused_configs],
         )
         flush_errors(
             None, ["{}: note: unused section(s): {}".format(options.config_file, unused)], False

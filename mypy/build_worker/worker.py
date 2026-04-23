@@ -11,7 +11,7 @@ The protocol of communication with the coordinator is as following:
 * In a loop:
   - Receive an SCC id from coordinator, and start processing it.
   - SCC is processed in two phases: interface and implementation, send a response after each.
-  - When prompted by coordinator (with a scc_id=None message), cleanup and shutdown.
+  - When prompted by coordinator (with a scc_ids=[] message), cleanup and shutdown.
 """
 
 from __future__ import annotations
@@ -20,13 +20,11 @@ import argparse
 import gc
 import json
 import os
-import pickle
 import platform
 import sys
 import time
 from typing import NamedTuple
 
-from librt.base64 import b64decode
 from librt.internal import ReadBuffer, read_tag
 
 from mypy import util
@@ -47,7 +45,7 @@ from mypy.build import (
     process_stale_scc_implementation,
     process_stale_scc_interface,
 )
-from mypy.cache import Tag, read_int_list
+from mypy.cache import Tag, read_int_list, read_json
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
@@ -60,7 +58,7 @@ from mypy.version import __version__
 
 parser = argparse.ArgumentParser(prog="mypy_worker", description="Mypy build worker")
 parser.add_argument("--status-file", help="status file to communicate worker details")
-parser.add_argument("--options-data", help="serialized mypy options")
+parser.add_argument("--options-data", help="file with serialized mypy options")
 
 CONNECTION_NAME = "build_worker"
 
@@ -84,11 +82,12 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    options_dict = pickle.loads(b64decode(args.options_data))
-    options_obj = Options()
+    with open(args.options_data, "rb") as f:
+        buf = ReadBuffer(f.read())
+    options_dict = read_json(buf)
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
-    options = options_obj.apply_changes(options_dict)
+    options = Options().apply_changes(options_dict)
 
     status_file = args.status_file
     server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
