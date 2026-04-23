@@ -310,7 +310,7 @@ L5:
     keep_alive v
     return r10
 
-[case testVecNestedCreateWithCap]
+[case testVecNestedCreateWithCap_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 

@@ -360,7 +360,7 @@ main:5: error: Invalid item type for "vec"
 main:6: error: Invalid item type for "vec"
 main:7: error: Invalid item type for "vec"
 
-[case testVecTCreateWithCap]
+[case testVecTCreateWithCap_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -390,7 +390,7 @@ L0:
     r2 = VecTApi.alloc(0, n, r1)
     return r2
 
-[case testVecTCreateFromListWithCap]
+[case testVecTCreateFromListWithCap_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
