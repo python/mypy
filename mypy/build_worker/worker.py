@@ -39,6 +39,7 @@ from mypy.build import (
     BuildManager,
     Graph,
     GraphMessage,
+    ModuleResult,
     SccRequestMessage,
     SccResponseMessage,
     SccsDataMessage,
@@ -152,6 +153,12 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     buf = receive(server)
     if should_shutdown(buf, GRAPH_MESSAGE):
         return
+
+    # Disable GC before loading graph and SCC structure, these create a bunch
+    # of small objects that will stay around until the end of the build.
+    if platform.python_implementation() == "CPython":
+        gc.disable()
+
     graph_data = GraphMessage.read(buf, manager)
     # Update some manager data in-place as it has been passed to semantic analyzer.
     manager.missing_modules |= graph_data.missing_modules
@@ -170,6 +177,10 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     manager.scc_by_id = {scc.id: scc for scc in sccs}
     manager.top_order = [scc.id for scc in sccs]
 
+    if platform.python_implementation() == "CPython":
+        gc.freeze()
+        gc.enable()
+
     # Notify coordinator we are ready to start processing SCCs.
     send(server, AckMessage())
     while True:
@@ -187,6 +198,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             manager.add_stats(
                 gc_collections_gen0=gc_stats[0]["collections"],
                 gc_collections_gen1=gc_stats[1]["collections"],
+                gc_collections_gen2=gc_stats[2]["collections"],
             )
             manager.dump_stats()
             break
@@ -197,12 +209,12 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         t0 = time.time()
         try:
             load_states(mod_ids, graph, manager, scc_message.import_errors, scc_message.mod_data)
-            result = []
+            results = []
             for scc in sccs:
                 scc_result = process_stale_scc_interface(
                     graph, scc, manager, from_cache=graph_data.from_cache
                 )
-                result.extend(scc_result)
+                results.extend(scc_result)
                 # We must commit after each SCC, otherwise we break --sqlite-cache.
                 manager.commit()
         except CompileError as blocker:
@@ -212,15 +224,17 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             mod_results = {}
             stale = []
             meta_files = []
-            for id, mod_result, meta_file in result:
+            for id, mod_result, meta_file in results:
                 stale.append(id)
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
             message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, result=mod_results)
             timed_send(manager, server, message)
             try:
-                # We process implementations from all SCCs in the batch together.
-                result = process_stale_scc_implementation(graph, stale, manager, meta_files)
+                # Process implementations one by one, so that we can free memory a bit earlier.
+                result: dict[str, ModuleResult] = {}
+                for id, meta_file in zip(stale, meta_files):
+                    result |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
                 # Both phases write cache, so we should commit here as well.
                 manager.commit()
             except CompileError as blocker:
@@ -245,6 +259,12 @@ def load_states(
     mod_data: dict[str, tuple[bytes, FileRawData | None]],
 ) -> None:
     """Re-create full state of an SCC as it would have been in coordinator."""
+    if platform.python_implementation() == "CPython":
+        # Run full collection after previous SCC batch, everything that survives
+        # will be put into permanent generation below, since we don't free anything
+        # after SCC processing is done.
+        gc.collect()
+        gc.disable()
     needs_parse = []
     for id in mod_ids:
         state = graph[id]
@@ -272,6 +292,9 @@ def load_states(
             manager.errors.set_file(state.xpath, id, state.options)
             for err_info in import_errors[id]:
                 manager.errors.add_error_info(err_info)
+    if platform.python_implementation() == "CPython":
+        gc.freeze()
+        gc.enable()
 
 
 def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:
