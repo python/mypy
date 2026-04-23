@@ -26,8 +26,8 @@ from typing import Final, cast
 try:
     import ast_serialize  # type: ignore[import-not-found, unused-ignore]
 except ImportError:
-    print("error: native parser not installed")
-    print("note: to install run `pip install mypy[native-parser]`")
+    print("error: ast-serialize package not installed")
+    print("note: to install run `pip install ast-serialize`")
     sys.exit(2)
 
 from librt.internal import (

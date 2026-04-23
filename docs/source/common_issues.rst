@@ -232,8 +232,7 @@ improved performance. You can ensure the presence of orjson using the ``faster-c
 
     python3 -m pip install -U mypy[faster-cache]
 
-Mypy may depend on orjson by default in the future. To use faster, native parser, use the
-``native-parse`` extra. Native parser will be default in near future.
+Mypy may depend on orjson by default in the future.
 
 Types of empty collections
 --------------------------
