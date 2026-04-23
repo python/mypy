@@ -965,10 +965,10 @@ class GroupGenerator:
             )
             if self.context.group_deps:
                 emitter.emit_line(
-                    'static PyObject *_mypyc_fromlist = NULL; '
-                    'if (!_mypyc_fromlist) { '
+                    "static PyObject *_mypyc_fromlist = NULL; "
+                    "if (!_mypyc_fromlist) { "
                     '_mypyc_fromlist = Py_BuildValue("(s)", "*"); '
-                    'if (!_mypyc_fromlist) return -1; }'
+                    "if (!_mypyc_fromlist) return -1; }"
                 )
                 emitter.emit_line("PyObject *tmp;")
                 emitter.emit_line("PyObject *caps;")
@@ -986,7 +986,7 @@ class GroupGenerator:
                     'caps = PyObject_GetAttrString(tmp, "exports");',
                     "Py_DECREF(tmp);",
                     "if (!caps) return -1;",
-                    'struct export_table_{g} *pexports_{g} = '
+                    "struct export_table_{g} *pexports_{g} = "
                     '(struct export_table_{g} *)PyCapsule_GetPointer(caps, "{lib}.exports");'.format(
                         g=egroup, lib=shared_lib_name(group)
                     ),

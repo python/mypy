@@ -705,9 +705,7 @@ def generate_set_del_item_wrapper_inner(
     native_args = ", ".join(f"arg_{arg.name}" for arg in args)
     emitter.emit_line(
         "{}val = {}({});".format(
-            emitter.ctype_spaced(fn.ret_type),
-            emitter.native_function_call(fn.decl),
-            native_args,
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl), native_args
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "goto fail;")
@@ -945,9 +943,7 @@ class WrapperGenerator:
         else:
             if not_implemented_handler and not isinstance(ret_type, RInstance):
                 # The return value type may overlap with NotImplemented.
-                emitter.emit_line(
-                    f"PyObject *retbox = {self.target_native_call}({native_args});"
-                )
+                emitter.emit_line(f"PyObject *retbox = {self.target_native_call}({native_args});")
                 emitter.emit_lines(
                     "if (retbox == Py_NotImplemented) {",
                     not_implemented_handler,

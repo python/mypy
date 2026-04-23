@@ -1641,4 +1641,3 @@ class Base:
 from native import make_child
 assert make_child(7) == "child(7)"
 assert make_child(-1) == "child(-1)"
-
