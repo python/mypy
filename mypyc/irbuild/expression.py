@@ -929,9 +929,7 @@ def _codepoint_kind(builder: IRBuilder, expr: Expression, expr_type: RType) -> s
     return None
 
 
-def _emit_codepoint_value(
-    builder: IRBuilder, expr: Expression, kind: str
-) -> tuple[Value, RType]:
+def _emit_codepoint_value(builder: IRBuilder, expr: Expression, kind: str) -> tuple[Value, RType]:
     """Emit the codepoint read. ``kind`` must come from _codepoint_kind."""
     if kind == "char":
         return builder.accept(expr), char_rprimitive

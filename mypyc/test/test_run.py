@@ -50,7 +50,6 @@ files = [
     "run-i32.test",
     "run-i16.test",
     "run-u8.test",
-    "run-char.test",
     "run-floats.test",
     "run-math.test",
     "run-bools.test",
@@ -96,6 +95,17 @@ files = [
 
 if sys.version_info >= (3, 12):
     files.append("run-python312.test")
+
+# `run-char.test` exercises the experimental `char` native type. Its runtime
+# support lives in a patched `mypy_extensions` that isn't published on PyPI
+# yet, so skip the suite when the installed package is the stock one.
+try:
+    from mypy_extensions import char as _char
+
+    files.append("run-char.test")
+    del _char
+except ImportError:
+    pass
 
 setup_format = """\
 from setuptools import setup

@@ -14,9 +14,7 @@ from mypyc.ir.ops import Branch, CallC, DecRef, Goto, IncRef, Op, Unbox, Value
 from mypyc.ir.rtypes import is_char_rprimitive
 from mypyc.options import CompilerOptions
 
-STR_INDEXERS = {
-    "CPyStr_GetItem": "CPyStr_GetCharAt",
-}
+STR_INDEXERS = {"CPyStr_GetItem": "CPyStr_GetCharAt"}
 
 
 def do_char_str_index_fold(fn: FuncIR, options: CompilerOptions) -> None:
