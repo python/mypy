@@ -323,6 +323,7 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
     if (src.len == 0)
         return dst;
     Py_ssize_t new_len = dst.len + src.len;
+    // VecNested buf is never NULL (even for empty vecs), so no NULL guard needed
     Py_ssize_t cap = VEC_CAP(dst);
     if (new_len <= cap) {
         // Fast path: enough capacity
