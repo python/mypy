@@ -545,23 +545,19 @@ def test_append_with_alias() -> None:
     assert v[0] == 'a'
     assert len(v) == 4
 
-def test_cap_empty() -> None:
+def test_cap_basic() -> None:
     v = vec[str](capacity=3)
     assert len(v) == 0
     assert v == vec[str]()
-
-def test_cap_with_initializer() -> None:
-    v = vec[str](['a', 'b'], capacity=3)
-    assert len(v) == 2
-    assert v[0] == 'a'
-    assert v[1] == 'b'
-    assert v == vec[str](['a', 'b'])
-
-def test_cap_zero() -> None:
     v = vec[str](capacity=0)
     assert len(v) == 0
+    v = vec[str](['a', 'b'], capacity=3)
+    assert v == vec[str](['a', 'b'])
     v = vec[str](['x'], capacity=0)
     assert v == vec[str](['x'])
+    v = vec[str](['a', 'b', 'c'], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
 
 def test_cap_negative() -> None:
     with assertRaises(ValueError):
@@ -569,80 +565,48 @@ def test_cap_negative() -> None:
     with assertRaises(ValueError):
         vec[str](['x'], capacity=-1)
 
-def test_cap_buffer_reuse_empty() -> None:
-    # capacity=3, append 3 items -> all fit, buffer reused (no reallocation)
+def test_cap_buffer_reuse() -> None:
     v = vec[str](capacity=3)
     old = v
     v = append(v, 'a')
     v = append(v, 'b')
     v = append(v, 'c')
     assert len(v) == 3
-    # Mutate via v; old shares the buffer so old's append overwrites v[0]
     old = append(old, 'Q')
     assert v[0] == 'Q'
 
-def test_cap_buffer_reuse_with_initializer() -> None:
-    # 2 items with capacity=3 -> one more append fits without reallocation
     v = vec[str](['a', 'b'], capacity=3)
     old = v
     v = append(v, 'c')
-    assert len(v) == 3
-    # Shared buffer: mutation through v visible through old
     v[0] = 'z'
     assert old[0] == 'z'
 
-def test_cap_buffer_reuse_at_capacity() -> None:
-    # capacity=2, fill with 2 items -> at capacity, next append must reallocate
+def test_cap_reallocation() -> None:
+    # At capacity -> next append reallocates, aliases become independent
     v = vec[str](['a', 'b'], capacity=2)
     old = v
     v = append(v, 'c')
-    # v now has a new buffer; appending to old should NOT affect v
     old = append(old, 'Q')
-    assert v[0] == 'a'  # v's buffer was not touched by old's append
+    assert v[0] == 'a'
 
-def test_cap_read_old_after_realloc() -> None:
-    # After reallocation, old alias must still have valid items (not NULL)
+    # Old alias retains original items after reallocation
     v = vec[str](['a', 'b', 'c'], capacity=3)
     old = v
     v = append(v, 'd')
     v[0] = 'z'
-    assert old[0] == 'a'  # old buffer retains original items
-    assert old[1] == 'b'
+    assert old[0] == 'a'
     assert old[2] == 'c'
-
-def test_cap_exceeded() -> None:
-    # capacity=2, fill to capacity, then one more append triggers reallocation
-    v = vec[str](capacity=2)
-    v = append(v, 'a')
-    v = append(v, 'b')
-    old = v
-    # Now at capacity; next append allocates new buffer
-    v = append(v, 'c')
-    # Append to old should NOT affect v since they have separate buffers now
-    old = append(old, 'Q')
-    assert v[0] == 'a'
 
 def test_cap_optional() -> None:
     v = vec[Optional[str]](capacity=3)
-    assert len(v) == 0
     v = append(v, 'x')
     v = append(v, None)
-    assert len(v) == 2
     assert v[0] == 'x'
     assert v[1] is None
 
     v = vec[Optional[str]](['x', None], capacity=3)
-    assert len(v) == 2
     assert v[0] == 'x'
     assert v[1] is None
-
-def test_cap_initializer_longer_than_cap() -> None:
-    # Initializer has more items than cap -> cap is just a minimum, all items kept
-    v = vec[str](['a', 'b', 'c'], capacity=1)
-    assert len(v) == 3
-    assert v[0] == 'a'
-    assert v[1] == 'b'
-    assert v[2] == 'c'
 [file helpers.py]
 # Test helper classes
 

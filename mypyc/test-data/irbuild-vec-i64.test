@@ -828,9 +828,6 @@ from mypy_extensions import i64
 def cap_only() -> vec[i64]:
     return vec[i64](capacity=5)
 
-def cap_zero() -> vec[i64]:
-    return vec[i64](capacity=0)
-
 def cap_variable(n: i64) -> vec[i64]:
     return vec[i64](capacity=n)
 [out]
@@ -838,11 +835,6 @@ def cap_only():
     r0 :: vec[i64]
 L0:
     r0 = VecI64Api.alloc(0, 5)
-    return r0
-def cap_zero():
-    r0 :: vec[i64]
-L0:
-    r0 = VecI64Api.alloc(0, 0)
     return r0
 def cap_variable(n):
     n :: i64

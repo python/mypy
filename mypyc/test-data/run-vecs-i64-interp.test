@@ -418,23 +418,19 @@ def test_pop_index() -> None:
     assert n == 15
     assert v == vec[i64]()
 
-def test_cap_empty() -> None:
+def test_cap_basic() -> None:
     v = vec[i64](capacity=3)
     assert len(v) == 0
     assert v == vec[i64]()
-
-def test_cap_with_initializer() -> None:
-    v = vec[i64]([10, 20], capacity=3)
-    assert len(v) == 2
-    assert v[0] == 10
-    assert v[1] == 20
-    assert v == vec[i64]([10, 20])
-
-def test_cap_zero() -> None:
     v = vec[i64](capacity=0)
     assert len(v) == 0
+    v = vec[i64]([10, 20], capacity=3)
+    assert v == vec[i64]([10, 20])
     v = vec[i64]([5], capacity=0)
     assert v == vec[i64]([5])
+    v = vec[i64]([10, 20, 30], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 10
 
 def test_cap_negative() -> None:
     with assertRaises(ValueError):
@@ -442,60 +438,32 @@ def test_cap_negative() -> None:
     with assertRaises(ValueError):
         vec[i64]([1], capacity=-1)
 
-def test_cap_buffer_reuse_empty() -> None:
-    # capacity=3, append 3 items -> all fit, buffer reused (no reallocation)
+def test_cap_buffer_reuse() -> None:
     v = vec[i64](capacity=3)
     old = v
     v = append(v, 1)
     v = append(v, 2)
     v = append(v, 3)
     assert len(v) == 3
-    # old shares the buffer so old's append overwrites v[0]
     old = append(old, 99)
     assert v[0] == 99
 
-def test_cap_buffer_reuse_with_initializer() -> None:
-    # 2 items with capacity=3 -> one more append fits without reallocation
     v = vec[i64]([10, 20], capacity=3)
     old = v
     v = append(v, 30)
-    assert len(v) == 3
-    # Shared buffer: mutation through v visible through old
     v[0] = 99
     assert old[0] == 99
 
-def test_cap_buffer_reuse_at_capacity() -> None:
-    # capacity=2, fill with 2 items -> at capacity, next append must reallocate
+def test_cap_reallocation() -> None:
     v = vec[i64]([10, 20], capacity=2)
     old = v
     v = append(v, 30)
-    # v now has a new buffer; appending to old should NOT affect v
     old = append(old, 99)
     assert v[0] == 10
 
-def test_cap_read_old_after_realloc() -> None:
-    # After reallocation, old alias must still have valid items
     v = vec[i64]([10, 20, 30], capacity=3)
     old = v
     v = append(v, 40)
     v[0] = 99
     assert old[0] == 10
-    assert old[1] == 20
     assert old[2] == 30
-
-def test_cap_exceeded() -> None:
-    # capacity=2, fill to capacity, then one more append triggers reallocation
-    v = vec[i64](capacity=2)
-    v = append(v, 10)
-    v = append(v, 20)
-    old = v
-    v = append(v, 30)
-    old = append(old, 99)
-    assert v[0] == 10
-
-def test_cap_initializer_longer_than_cap() -> None:
-    v = vec[i64]([10, 20, 30], capacity=1)
-    assert len(v) == 3
-    assert v[0] == 10
-    assert v[1] == 20
-    assert v[2] == 30

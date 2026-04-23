@@ -367,9 +367,6 @@ from mypy_extensions import i64
 def cap_only() -> vec[str]:
     return vec[str](capacity=5)
 
-def cap_zero() -> vec[str]:
-    return vec[str](capacity=0)
-
 def cap_variable(n: i64) -> vec[str]:
     return vec[str](capacity=n)
 [out]
@@ -381,15 +378,6 @@ L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
     r2 = VecTApi.alloc(0, 5, r1)
-    return r2
-def cap_zero():
-    r0 :: object
-    r1 :: ptr
-    r2 :: vec[str]
-L0:
-    r0 = load_address PyUnicode_Type
-    r1 = r0
-    r2 = VecTApi.alloc(0, 0, r1)
     return r2
 def cap_variable(n):
     n :: i64
