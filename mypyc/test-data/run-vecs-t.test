@@ -550,3 +550,15 @@ def test_extend_vec_self() -> None:
     v = append(v, 'b')
     v = extend_vec(v, v)
     assert v == vec[str](['a', 'b', 'a', 'b'])
+
+def test_extend_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[str]()
+    v0 = append(v0, 'a')
+    v0 = append(v0, 'b')
+    v0 = append(v0, 'c')
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer; v1.len=2, v0.len=3
+    v = extend_vec(v1, v0)
+    assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
+    # src (v0) must not be corrupted
+    assert v0 == vec[str](['a', 'b', 'c'])

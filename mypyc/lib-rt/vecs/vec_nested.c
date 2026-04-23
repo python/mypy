@@ -325,8 +325,8 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
     Py_ssize_t new_len = dst.len + src.len;
     // VecNested buf is never NULL (even for empty vecs), so no NULL guard needed
     Py_ssize_t cap = VEC_CAP(dst);
-    if (new_len <= cap) {
-        // Fast path: enough capacity
+    if (new_len <= cap && dst.buf != src.buf) {
+        // Fast path: enough capacity and no aliasing
         for (Py_ssize_t i = 0; i < src.len; i++) {
             VecNestedBufItem item = src.buf->items[i];
             Py_XINCREF(item.buf);
@@ -337,18 +337,28 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
         dst.len = new_len;
         return dst;
     }
-    // Need to reallocate
+    // Need to reallocate (or dst and src share a buffer)
     Py_ssize_t new_cap = cap;
     while (new_cap < new_len)
         new_cap = 2 * new_cap + 1;
+    int aliased = dst.buf == src.buf;
     VecNested new = vec_alloc(new_cap, dst.buf->item_type, dst.buf->depth);
     if (VEC_IS_ERROR(new)) {
         VEC_DECREF(dst);
         return new;
     }
-    // Copy existing items (move refs, zero old slots)
-    memcpy(new.buf->items, dst.buf->items, sizeof(VecNestedBufItem) * dst.len);
-    memset(dst.buf->items, 0, sizeof(VecNestedBufItem) * dst.len);
+    if (aliased) {
+        // dst and src share a buffer -- incref all items instead of
+        // moving refs, to avoid mutating the shared buffer
+        for (Py_ssize_t i = 0; i < dst.len; i++) {
+            Py_XINCREF(dst.buf->items[i].buf);
+            new.buf->items[i] = dst.buf->items[i];
+        }
+    } else {
+        // Move refs from dst to new buf, zero old slots
+        memcpy(new.buf->items, dst.buf->items, sizeof(VecNestedBufItem) * dst.len);
+        memset(dst.buf->items, 0, sizeof(VecNestedBufItem) * dst.len);
+    }
     // Copy src items (incref each buf)
     for (Py_ssize_t i = 0; i < src.len; i++) {
         VecNestedBufItem item = src.buf->items[i];

@@ -370,13 +370,13 @@ VEC FUNC(ExtendVec)(VEC dst, VEC src) {
         return dst;
     Py_ssize_t new_len = dst.len + src.len;
     Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
-    if (new_len <= cap) {
-        // Fast path: enough capacity
+    if (new_len <= cap && dst.buf != src.buf) {
+        // Fast path: enough capacity and no aliasing
         memcpy(dst.buf->items + dst.len, src.buf->items, sizeof(ITEM_C_TYPE) * src.len);
         dst.len = new_len;
         return dst;
     }
-    // Need to reallocate
+    // Need to reallocate (or dst and src share a buffer)
     Py_ssize_t new_cap = cap;
     while (new_cap < new_len)
         new_cap = 2 * new_cap + 1;
