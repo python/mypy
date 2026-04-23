@@ -945,16 +945,20 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
+    if not cl.is_acyclic:
+        emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.builtin_base:
+        emitter.emit_line(f"{clear_func_name}(self);")
         # For native subclasses of builtins such as dict, the base deallocator
         # is responsible for tearing down base-owned storage and freeing memory.
-        emitter.emit_line(f"{clear_func_name}(self);")
-        emitter.emit_base_tp_function_call(cl, "tp_dealloc", "(PyObject *)self")
+        # Re-track self if base is GC-aware to match cpython's subtype_dealloc.
+        base = f"{emitter.type_struct_name(cl)}->tp_base"
+        base_arg = "(PyObject *)self"
+        emitter.emit_line(f"if (PyType_IS_GC({base})) PyObject_GC_Track({base_arg});")
+        emitter.emit_base_tp_function_call(cl, "tp_dealloc", base_arg)
         emitter.emit_line("done: ;")
         emitter.emit_line("}")
         return
-    if not cl.is_acyclic:
-        emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
