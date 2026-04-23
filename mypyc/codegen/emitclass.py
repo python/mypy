@@ -228,9 +228,11 @@ def generate_class_reuse(
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
-    context.declarations[name] = HeaderDeclaration(
-        f"CPyThreadLocal {struct_name} *{name};", needs_export=True
-    )
+    # Not exported: the free-instance slot is only read/written by the class's
+    # own setup/dealloc code, which lives in the defining group. Exporting it
+    # also trips a C diagnostic under `Py_GIL_DISABLED`, where `CPyThreadLocal`
+    # expands to `__thread` and can't legally appear inside the exports struct.
+    context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};")
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
