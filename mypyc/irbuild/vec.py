@@ -80,22 +80,22 @@ def vec_create(
     length: int | Value,
     line: int,
     *,
-    cap: Value | None = None,
+    capacity: Value | None = None,
 ) -> Value:
     if isinstance(length, int):
         length = Integer(length, c_pyssize_t_rprimitive)
     length = as_platform_int(builder, length, line)
-    if cap is not None:
-        cap = as_platform_int(builder, cap, line)
+    if capacity is not None:
+        capacity = as_platform_int(builder, capacity, line)
     else:
-        cap = length
+        capacity = length
 
     item_type = vtype.item_type
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         call = CallC(
             f"{api_name}.alloc",
-            [length, cap],
+            [length, capacity],
             vtype,
             False,
             False,
@@ -121,7 +121,7 @@ def vec_create(
         if depth == 0:
             call = CallC(
                 "VecTApi.alloc",
-                [length, cap, typeval],
+                [length, capacity, typeval],
                 vtype,
                 False,
                 False,
@@ -132,7 +132,7 @@ def vec_create(
         else:
             call = CallC(
                 "VecNestedApi.alloc",
-                [length, cap, typeval, Integer(depth, int32_rprimitive)],
+                [length, capacity, typeval, Integer(depth, int32_rprimitive)],
                 vtype,
                 False,
                 False,
@@ -151,7 +151,7 @@ def vec_create_initialized(
     init: Value,
     line: int,
     *,
-    cap: Value | None = None,
+    capacity: Value | None = None,
 ) -> Value:
     """Create vec with items initialized to the given value."""
     if isinstance(length, int):
@@ -160,7 +160,7 @@ def vec_create_initialized(
 
     item_type = vtype.item_type
     init = builder.coerce(init, item_type, line)
-    vec = vec_create(builder, vtype, length, line, cap=cap)
+    vec = vec_create(builder, vtype, length, line, capacity=capacity)
 
     items_start = vec_items(builder, vec)
     step = step_size(item_type)
@@ -182,9 +182,9 @@ def vec_create_from_values(
     values: list[Value],
     line: int,
     *,
-    cap: Value | None = None,
+    capacity: Value | None = None,
 ) -> Value:
-    vec = vec_create(builder, vtype, len(values), line, cap=cap)
+    vec = vec_create(builder, vtype, len(values), line, capacity=capacity)
     ptr = vec_items(builder, vec)
     item_type = vtype.item_type
     step = step_size(item_type)
