@@ -15,7 +15,7 @@ import sys
 from enum import Enum, unique
 from typing import Final, TypeAlias as _TypeAlias
 
-from pathspec import PathSpec
+from pathspec import GitIgnoreSpec
 from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from mypy import pyinfo
@@ -724,7 +724,7 @@ def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> 
 
 
 @functools.lru_cache
-def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
+def find_gitignores(dir: str) -> list[tuple[str, GitIgnoreSpec]]:
     parent_dir = os.path.dirname(dir)
     if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
@@ -733,7 +733,7 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
             with open(git_info_exclude) as f:
                 exclude_lines = f.readlines()
             try:
-                parent_gitignores = [(dir, PathSpec.from_lines("gitignore", exclude_lines))]
+                parent_gitignores = [(dir, GitIgnoreSpec.from_lines("gitignore", exclude_lines))]
             except GitIgnorePatternError:
                 print(f"error: could not parse {git_info_exclude}", file=sys.stderr)
     else:
@@ -744,7 +744,7 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
         with open(gitignore) as f:
             lines = f.readlines()
         try:
-            return parent_gitignores + [(dir, PathSpec.from_lines("gitignore", lines))]
+            return parent_gitignores + [(dir, GitIgnoreSpec.from_lines("gitignore", lines))]
         except GitIgnorePatternError:
             print(f"error: could not parse {gitignore}", file=sys.stderr)
             return parent_gitignores
