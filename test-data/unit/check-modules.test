@@ -333,14 +333,11 @@ def xab(): pass  # E: Name "xab" already defined (possibly by an import)
 [case testAccessingUnknownModuleFromOtherModule]
 import x
 x.nonexistent.foo
-x.z
+x.z  # E: Module has no attribute "z"
 [file x.py]
-import nonexistent
+import nonexistent  # E: Cannot find implementation or library stub for module named "nonexistent" \
+                    # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [builtins fixtures/module.pyi]
-[out]
-tmp/x.py:1: error: Cannot find implementation or library stub for module named "nonexistent"
-tmp/x.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:3: error: Module has no attribute "z"
 
 [case testUnknownModuleImportedWithinFunction]
 def f():
