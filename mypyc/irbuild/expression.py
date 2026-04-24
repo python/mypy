@@ -368,11 +368,8 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
             if len(expr.args) == 0 or (len(expr.args) == 1 and expr.arg_kinds == [ARG_NAMED]):
                 # vec[T]() or vec[T](capacity=N)
                 return vec_create(builder.builder, vec_type, 0, expr.line, capacity=capacity)
-            elif (
-                len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]
-                or len(expr.args) == 2
-                and expr.arg_kinds == [ARG_POS, ARG_NAMED]
+            elif (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]) or (
+                len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_NAMED]
             ):
                 # vec[T](items) or vec[T](items, capacity=N)
                 return translate_vec_create_from_iterable(

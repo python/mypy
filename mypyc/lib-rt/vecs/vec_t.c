@@ -562,7 +562,7 @@ PyTypeObject VecTType = {
 };
 
 PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
-    VecT v = vec_alloc(cap > 0 ? cap : 0, item_type);
+    VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
     if (cap > 0) {

@@ -587,7 +587,8 @@ def test_cap_reallocation() -> None:
     old = v
     v = append(v, 'c')
     old = append(old, 'Q')
-    assert v[0] == 'a'
+    assert v[2] == 'c'
+    assert old[2] == 'Q'
 
     # Old alias retains original items after reallocation
     v = vec[str](['a', 'b', 'c'], capacity=3)

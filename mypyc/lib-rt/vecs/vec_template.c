@@ -101,7 +101,7 @@ VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
 }
 
 PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
-    VEC v = vec_alloc(cap > 0 ? cap : 0);
+    VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
         return NULL;
     if (cap > 0) {
