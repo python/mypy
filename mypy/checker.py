@@ -493,6 +493,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.binder = ConditionalTypeBinder(options)
         self.globals_binder = self.binder
         self.globals = tree.names
+        self.globals_unreachable: set[int] = set()
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -577,6 +578,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.partial_types = []
         self.inferred_attribute_types = None
         self.scope = CheckerScope(self.tree)
+        self.globals_unreachable.clear()
+
+    def mark_unreachable(self, block: list[Statement], after: Statement) -> None:
+        """Marks all statements in block after a given one (inclusive) as unreachable."""
+        last_line = (last := block[-1]).end_line or last.line
+        self.globals_unreachable.update(range(after.line, last_line + 1))
 
     def check_first_pass(self, recurse_into_functions: bool = True) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -595,8 +602,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             )
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
+                    marked_unreachable = False
                     for d in self.tree.defs:
                         if self.binder.is_unreachable():
+                            if not marked_unreachable:
+                                self.mark_unreachable(self.tree.defs, after=d)
+                                marked_unreachable = True
                             if not self.should_report_unreachable_issues():
                                 break
                             if not self.is_noop_for_reachability(d):
@@ -675,6 +686,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # TODO: use impl_only in the daemon as well.
                 if not impl_only:
                     self.accept(node)
+                    return
+                if node.line in self.globals_unreachable:
                     return
                 if isinstance(node, (FuncDef, Decorator)):
                     self.check_partial_impl(node)
@@ -3244,8 +3257,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
+        marked_unreachable = False
         for s in b.body:
             if self.binder.is_unreachable():
+                if self.scope.top_level_function() is None and not marked_unreachable:
+                    self.mark_unreachable(b.body, after=s)
+                    marked_unreachable = True
                 if not self.should_report_unreachable_issues():
                     break
                 if not self.is_noop_for_reachability(s):
