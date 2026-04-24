@@ -42,7 +42,7 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
         // Move from embedded buffer to heap-allocated buffer
         new_buf = PyMem_Malloc(size);
         if (new_buf != NULL) {
-            memcpy(new_buf, data->data, WRITER_EMBEDDED_BUF_LEN);
+            memcpy(new_buf, data->data, data->len);
         }
     } else {
         new_buf = PyMem_Realloc(data->buf, size);
