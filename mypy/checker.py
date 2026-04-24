@@ -9655,22 +9655,16 @@ CLOSED_VALUE_EQUALITY_DOMAINS: Final = {
 VALUE_EQUALITY_DOMAINS: Final = {**OPEN_VALUE_EQUALITY_DOMAINS, **CLOSED_VALUE_EQUALITY_DOMAINS}
 
 
-class EqualityDomainInfo(NamedTuple):
-    type_names: set[str]
-    enum_type_names: set[str]
+class EqualityDomainInfo:
+    def __init__(self, type_names: set[str], enum_type_names: set[str]) -> None:
+        self.type_names = type_names
+        self.enum_type_names = enum_type_names
 
 
-class EqualityValueInfo(NamedTuple):
-    domains: dict[str, EqualityDomainInfo]
-    is_top: bool
-
-
-def closed_equality_domain_type_names(info: EqualityValueInfo) -> list[str]:
-    return [
-        fullname
-        for fullname, domain in CLOSED_VALUE_EQUALITY_DOMAINS.items()
-        if domain in info.domains
-    ]
+class EqualityValueInfo:
+    def __init__(self, domains: dict[str, EqualityDomainInfo], is_top: bool) -> None:
+        self.domains = domains
+        self.is_top = is_top
 
 
 def partition_equality_ambiguous_types(
