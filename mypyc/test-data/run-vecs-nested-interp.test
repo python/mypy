@@ -534,3 +534,14 @@ def test_extend_with_empty_iterable() -> None:
     v = vec[vec[str]]([vec[str](['x'])])
     v = extend(v, [])
     assert v == vec[vec[str]]([vec[str](['x'])])
+
+def test_extend_shared_buffer_after_pop() -> None:
+    v0 = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer
+    v = extend(v1, [vec[str](['d']), vec[str](['e']), vec[str](['f'])])
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[4] == vec[str](['f'])
+    # v0 must not be corrupted
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])

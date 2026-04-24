@@ -378,9 +378,13 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
             new.buf->items[i] = dst.buf->items[i];
         }
     } else {
-        // Move refs from dst to new buf, zero old slots
         memcpy(new.buf->items, dst.buf->items, sizeof(PyObject *) * dst.len);
-        memset(dst.buf->items, 0, sizeof(PyObject *) * dst.len);
+        if (Py_REFCNT(dst.buf) > 1) {
+            for (Py_ssize_t i = 0; i < dst.len; i++)
+                Py_XINCREF(new.buf->items[i]);
+        } else {
+            memset(dst.buf->items, 0, sizeof(PyObject *) * dst.len);
+        }
     }
     // Copy src items (incref each)
     for (Py_ssize_t i = 0; i < src.len; i++) {

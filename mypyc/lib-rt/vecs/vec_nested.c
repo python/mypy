@@ -355,9 +355,13 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
             new.buf->items[i] = dst.buf->items[i];
         }
     } else {
-        // Move refs from dst to new buf, zero old slots
         memcpy(new.buf->items, dst.buf->items, sizeof(VecNestedBufItem) * dst.len);
-        memset(dst.buf->items, 0, sizeof(VecNestedBufItem) * dst.len);
+        if (Py_REFCNT(dst.buf) > 1) {
+            for (Py_ssize_t i = 0; i < dst.len; i++)
+                Py_XINCREF(new.buf->items[i].buf);
+        } else {
+            memset(dst.buf->items, 0, sizeof(VecNestedBufItem) * dst.len);
+        }
     }
     // Copy src items (incref each buf)
     for (Py_ssize_t i = 0; i < src.len; i++) {
