@@ -97,7 +97,7 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
-    options.num_workers = 2
+    options.num_workers = 1
     if options.cache_dir == os.devnull:
         options.cache_dir = defaults.CACHE_DIR
 
