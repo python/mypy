@@ -1007,9 +1007,12 @@ class MessageBuilder:
                     matching_type_args.append(callee_arg_name)
                 else:
                     not_matching_type_args.append(callee_arg_name)
-        matches = best_matches(name, matching_type_args, n=3)
-        if not matches:
-            matches = best_matches(name, not_matching_type_args, n=3)
+        if not self.prefer_simple_messages():
+            matches = best_matches(name, matching_type_args, n=3)
+            if not matches:
+                matches = best_matches(name, not_matching_type_args, n=3)
+        else:
+            matches = []
         self.unexpected_keyword_argument_for_function(
             for_function(callee), name, context, matches=matches
         )
@@ -1128,9 +1131,12 @@ class MessageBuilder:
                     if item_has_type_match:
                         has_matching_variant = True
 
-                matches = best_matches(kwarg_name, matching_type_args, n=3)
-                if not matches:
-                    matches = best_matches(kwarg_name, not_matching_type_args, n=3)
+                if not self.prefer_simple_messages():
+                    matches = best_matches(kwarg_name, matching_type_args, n=3)
+                    if not matches:
+                        matches = best_matches(kwarg_name, not_matching_type_args, n=3)
+                else:
+                    matches = []
 
                 if matches:
                     kwargs_with_suggestions.append((kwarg_name, matches))

@@ -24,24 +24,34 @@ static PyTypeObject BytesWriterType;
 
 static bool
 _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
-    Py_ssize_t target = data->len + n;
-    Py_ssize_t size = data->capacity;
-    do {
-        size *= 2;
-    } while (target >= size);
-    if (data->buf == data->data) {
-        // Move from embedded buffer to heap-allocated buffer
-        data->buf = PyMem_Malloc(size);
-        if (data->buf != NULL) {
-            memcpy(data->buf, data->data, WRITER_EMBEDDED_BUF_LEN);
-        }
-    } else {
-        data->buf = PyMem_Realloc(data->buf, size);
-    }
-    if (unlikely(data->buf == NULL)) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
         PyErr_NoMemory();
         return false;
     }
+    Py_ssize_t target = data->len + n;
+    Py_ssize_t size = data->capacity;
+    do {
+        if (unlikely(size > PY_SSIZE_T_MAX / 2)) {
+            PyErr_NoMemory();
+            return false;
+        }
+        size *= 2;
+    } while (target >= size);
+    char *new_buf;
+    if (data->buf == data->data) {
+        // Move from embedded buffer to heap-allocated buffer
+        new_buf = PyMem_Malloc(size);
+        if (new_buf != NULL) {
+            memcpy(new_buf, data->data, data->len);
+        }
+    } else {
+        new_buf = PyMem_Realloc(data->buf, size);
+    }
+    if (unlikely(new_buf == NULL)) {
+        PyErr_NoMemory();
+        return false;
+    }
+    data->buf = new_buf;
     data->capacity = size;
     return true;
 }
@@ -71,9 +81,8 @@ BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     BytesWriterObject *self = (BytesWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         BytesWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -99,6 +108,9 @@ BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
     BytesWriter_init_internal(self);
     return 0;
 }
@@ -396,8 +408,21 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     char old_kind = self->kind;
     Py_ssize_t new_capacity = self->capacity;
 
+    // Limit so that (new_capacity * 2) * new_kind stays within Py_ssize_t.
+    // new_kind is always 1, 2, or 4, so use a shift instead of division.
+    int shift = (new_kind == 4) ? 3 : (new_kind == 2 ? 2 : 1);
+    Py_ssize_t cap_limit = PY_SSIZE_T_MAX >> shift;
     while (target_capacity >= new_capacity) {
+        if (unlikely(new_capacity > cap_limit)) {
+            PyErr_NoMemory();
+            return false;
+        }
         new_capacity *= 2;
+    }
+
+    if (unlikely(new_capacity > cap_limit * 2)) {
+        PyErr_NoMemory();
+        return false;
     }
 
     Py_ssize_t size_bytes = new_capacity * new_kind;
@@ -433,6 +458,10 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
 }
 
 static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
+        PyErr_NoMemory();
+        return false;
+    }
     return grow_string_buffer_helper(data, data->len + n, data->kind);
 }
 
@@ -464,9 +493,8 @@ StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     StringWriterObject *self = (StringWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         StringWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -492,6 +520,9 @@ StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
     StringWriter_init_internal(self);
     return 0;
 }
@@ -707,6 +738,13 @@ static void convert_string_data_in_place(char *buf, Py_ssize_t len,
 }
 
 static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, char new_kind) {
+    // new_kind is always 2 or 4, so the max representable len is PY_SSIZE_T_MAX >> {1,2}.
+    // Use a shift instead of a division for cheap overflow check.
+    Py_ssize_t max_len = PY_SSIZE_T_MAX >> (new_kind == 4 ? 2 : 1);
+    if (unlikely(self->len > max_len)) {
+        PyErr_NoMemory();
+        return CPY_NONE_ERROR;
+    }
     // Current buffer size in bytes
     Py_ssize_t current_buf_size = (self->buf == self->data) ? WRITER_EMBEDDED_BUF_LEN : (self->capacity * old_kind);
     // Needed buffer size in bytes for new kind
@@ -748,7 +786,7 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
 static char string_append_slow_path(StringWriterObject *self, int32_t value) {
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
-            // Kind stays the same
+            // Fast path - kind 2 stays the same
             if (!ensure_string_writer_size(self, 1))
                 return CPY_NONE_ERROR;
             // Copy 2-byte character to buffer
@@ -757,28 +795,35 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
             self->len++;
             return CPY_NONE;
         }
+        // Always validate code point range before promotion (but after fast path).
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     } else if (self->kind == 1) {
         // Check precondition -- this must only be used on slow path
         assert((uint32_t)value > 0xff);
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
-    if ((uint32_t)value <= 0x10FFFF) {
-        if (!ensure_string_writer_size(self, 1))
-            return CPY_NONE_ERROR;
-        // Copy 4-byte character to buffer
-        uint32_t val32 = (uint32_t)value;
-        memcpy(self->buf + self->len * 4, &val32, 4);
-        self->len++;
-        return CPY_NONE;
-    }
-    // Code point is out of valid Unicode range
-    PyErr_Format(PyExc_ValueError, "code point %d is outside valid Unicode range (0-1114111)", value);
+    if (unlikely((uint32_t)value > 0x10FFFF))
+        goto fail_range;
+    if (!ensure_string_writer_size(self, 1))
+        return CPY_NONE_ERROR;
+    // Copy 4-byte character to buffer
+    uint32_t val32 = (uint32_t)value;
+    memcpy(self->buf + self->len * 4, &val32, 4);
+    self->len++;
+    return CPY_NONE;
+
+fail_range:
+    PyErr_Format(PyExc_ValueError,
+                "code point %d is outside valid Unicode range (0-1114111)", value);
     return CPY_NONE_ERROR;
 }
 

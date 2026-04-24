@@ -3135,7 +3135,9 @@ class SemanticAnalyzer(
                     f'Module "{import_id}" does not explicitly export attribute "{source_id}"'
                 )
             elif not (
-                self.options.ignore_errors or self.cur_mod_node.path in self.errors.ignored_files
+                self.options.ignore_errors
+                or self.cur_mod_node.path in self.errors.ignored_files
+                or self.errors.prefer_simple_messages()
             ):
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives, n=3)
