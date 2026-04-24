@@ -777,16 +777,9 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
 
 // Handle all append cases except for append that stays within kind 1
 static char string_append_slow_path(StringWriterObject *self, int32_t value) {
-    // Validate code point range up front, before any kind promotion, so that
-    // an invalid value doesn't leave the writer permanently promoted.
-    if (unlikely((uint32_t)value > 0x10FFFF)) {
-        PyErr_Format(PyExc_ValueError,
-                     "code point %d is outside valid Unicode range (0-1114111)", value);
-        return CPY_NONE_ERROR;
-    }
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
-            // Kind stays the same
+            // Fast path - kind 2 stays the same
             if (!ensure_string_writer_size(self, 1))
                 return CPY_NONE_ERROR;
             // Copy 2-byte character to buffer
@@ -795,17 +788,24 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
             self->len++;
             return CPY_NONE;
         }
+        // Always validate code point range before promotion (but after fast path).
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     } else if (self->kind == 1) {
         // Check precondition -- this must only be used on slow path
         assert((uint32_t)value > 0xff);
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
+    if (unlikely((uint32_t)value > 0x10FFFF))
+        goto fail_range;
     if (!ensure_string_writer_size(self, 1))
         return CPY_NONE_ERROR;
     // Copy 4-byte character to buffer
@@ -813,6 +813,11 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
     memcpy(self->buf + self->len * 4, &val32, 4);
     self->len++;
     return CPY_NONE;
+
+fail_range:
+    PyErr_Format(PyExc_ValueError,
+                "code point %d is outside valid Unicode range (0-1114111)", value);
+    return CPY_NONE_ERROR;
 }
 
 static inline char
