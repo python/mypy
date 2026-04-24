@@ -24,6 +24,10 @@ static PyTypeObject BytesWriterType;
 
 static bool
 _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
+        PyErr_NoMemory();
+        return false;
+    }
     Py_ssize_t target = data->len + n;
     Py_ssize_t size = data->capacity;
     do {
@@ -403,8 +407,10 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     char old_kind = self->kind;
     Py_ssize_t new_capacity = self->capacity;
 
-    // Limit so that (new_capacity * 2) * new_kind stays within Py_ssize_t
-    Py_ssize_t cap_limit = PY_SSIZE_T_MAX / (2 * new_kind);
+    // Limit so that (new_capacity * 2) * new_kind stays within Py_ssize_t.
+    // new_kind is always 1, 2, or 4, so use a shift instead of division.
+    int shift = (new_kind == 4) ? 3 : (new_kind == 2 ? 2 : 1);
+    Py_ssize_t cap_limit = PY_SSIZE_T_MAX >> shift;
     while (target_capacity >= new_capacity) {
         if (unlikely(new_capacity > cap_limit)) {
             PyErr_NoMemory();
@@ -446,6 +452,10 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
 }
 
 static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
+        PyErr_NoMemory();
+        return false;
+    }
     return grow_string_buffer_helper(data, data->len + n, data->kind);
 }
 
@@ -721,6 +731,13 @@ static void convert_string_data_in_place(char *buf, Py_ssize_t len,
 }
 
 static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, char new_kind) {
+    // new_kind is always 2 or 4, so the max representable len is PY_SSIZE_T_MAX >> {1,2}.
+    // Use a shift instead of a division for cheap overflow check.
+    Py_ssize_t max_len = PY_SSIZE_T_MAX >> (new_kind == 4 ? 2 : 1);
+    if (unlikely(self->len > max_len)) {
+        PyErr_NoMemory();
+        return CPY_NONE_ERROR;
+    }
     // Current buffer size in bytes
     Py_ssize_t current_buf_size = (self->buf == self->data) ? WRITER_EMBEDDED_BUF_LEN : (self->capacity * old_kind);
     // Needed buffer size in bytes for new kind
