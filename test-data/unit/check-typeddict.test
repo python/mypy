@@ -5128,6 +5128,94 @@ B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Repeated keyword a
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictSubclassingClosed]
+from typing import TypedDict
+class D(TypedDict, closed=True):
+    x: int
+    y: float
+d: D
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+
+class D1(D): pass
+d1: D1
+reveal_type(d1)  # N: Revealed type is "TypedDict('__main__.D1', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+
+class D2(D, closed=True): pass
+d2: D2
+reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+
+class D3(D, closed=False): pass  # E: Open TypedDict class cannot subclass closed TypedDict class "D"
+d3: D3
+reveal_type(d3)  # N: Revealed type is "TypedDict('__main__.D3', {'x': builtins.int, 'y': builtins.float})"
+
+class D4(D):
+    z: int  # E: Cannot extend closed base class "D" with new field "z"
+d4: D4
+reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'x': builtins.int, 'y': builtins.float, 'z': builtins.int}, closed=True)"
+
+class D5(D):
+    x: int
+d5: D5
+reveal_type(d5)  # N: Revealed type is "TypedDict('__main__.D5', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+
+class D6(D):
+    x: float  # E: Definition of field "x" incompatible with base class "D"
+    y: int    # E: Definition of field "y" incompatible with base class "D"
+d6: D6
+reveal_type(d6)  # N: Revealed type is "TypedDict('__main__.D6', {'x': builtins.float, 'y': builtins.int}, closed=True)"
+
+class D7(TypedDict, closed=True):
+    x: int
+    z: float
+class D8(D7, D):  # E: Cannot extend closed base class "D7" with field "y" from base class "D" \
+                  # E: Cannot extend closed base class "D" with field "z" from base class "D7"
+    pass
+d8: D8
+reveal_type(d8)  # N: Revealed type is "TypedDict('__main__.D8', {'x': builtins.int, 'y': builtins.float, 'z': builtins.float}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSubclassingOpenAndClosed]
+from typing import TypedDict
+class B1(TypedDict, closed=True):
+    x: int
+    y: float
+class B2(TypedDict):
+    x: int
+class D1(B1, B2): pass
+class D2(B2, B1): pass
+d1: D1
+d2: D2
+reveal_type(d1)  # N: Revealed type is "TypedDict('__main__.D1', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'x': builtins.int, 'y': builtins.float}, closed=True)"
+class B3(TypedDict):
+    z: int
+class D3(B1, B3): pass  # E: Cannot extend closed base class "B1" with field "z" from base class "B3"
+class D4(B3, B1): pass  # E: Cannot extend closed base class "B1" with field "z" from base class "B3"
+d3: D3
+d4: D4
+reveal_type(d3)  # N: Revealed type is "TypedDict('__main__.D3', {'z': builtins.int, 'x': builtins.int, 'y': builtins.float}, closed=True)"
+reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'x': builtins.int, 'y': builtins.float, 'z': builtins.int}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCanSubclassClosedTypedDictWithForwardDeclarations]
+from typing import TypedDict, final
+
+class D1(TypedDict, closed=True):
+    forward_declared: "ForwardDeclared"
+
+class D2(D1):
+    pass
+
+class ForwardDeclared: pass
+
+d2: D2
+reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'forward_declared': __main__.ForwardDeclared}, closed=True)"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testTypedDictSubtypingClosedMustRemainClosed]
 from typing import TypedDict
 A = TypedDict('A', {'x': int}, closed=True)

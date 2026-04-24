@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes, message_registry
@@ -108,7 +109,7 @@ class TypedDictAnalyzer:
         if isinstance(defn.analyzed, TypedDictExpr):
             existing_info = defn.analyzed.info
 
-        is_closed: bool = False
+        is_closed: bool | None = None
         if "closed" in defn.keywords:
             is_closed = require_bool_literal_argument(
                 self.api, defn.keywords["closed"], "closed", False
@@ -133,7 +134,7 @@ class TypedDictAnalyzer:
                 field_types,
                 required_keys,
                 readonly_keys,
-                is_closed,
+                is_closed or False,
                 defn.line,
                 existing_info,
             )
@@ -181,9 +182,8 @@ class TypedDictAnalyzer:
         new_field_sources, new_statements = self.analyze_typeddict_classdef_fields(defn)
         if new_field_sources is None:
             return True, None  # Defer
-        # TODO: Implement closure analysis
-        field_types, required_keys, readonly_keys, any_placeholders = (
-            self.resolve_field_inheritance(bases_info, new_field_sources, defn)
+        field_types, required_keys, readonly_keys, is_closed, any_placeholders = (
+            self.resolve_field_inheritance(bases_info, new_field_sources, is_closed, defn)
         )
         info = self.build_typeddict_typeinfo(
             defn.name,
@@ -326,13 +326,36 @@ class TypedDictAnalyzer:
                     ctx,
                 )
 
+    def verify_field_against_closed_bases(
+        self,
+        field_name: str,
+        closed_bases: Collection[tuple[TypeInfo, Collection[str]]],
+        primary_source_base_name: str | None,
+        ctx: Context,
+    ) -> None:
+        for closed_base_type, closed_base_fields in closed_bases:
+            if field_name in closed_base_fields:
+                continue
+
+            if primary_source_base_name:
+                self.fail(
+                    f'Cannot extend closed base class "{closed_base_type.name}" with field "{field_name}" from base class "{primary_source_base_name}"',
+                    ctx,
+                )
+            else:
+                self.fail(
+                    f'Cannot extend closed base class "{closed_base_type.name}" with new field "{field_name}"',
+                    ctx,
+                )
+
     def resolve_field_inheritance(
         self,
         bases: list[tuple[TypeInfo, dict[str, Type]]],
         child_field_sources: dict[str, FieldSource],
+        child_is_closed: bool | None,
         ctx: Context,
-    ) -> tuple[dict[str, Type], set[str], set[str], bool]:
-        """Determine field types, requiredness, and readonlyness.
+    ) -> tuple[dict[str, Type], set[str], set[str], bool, bool]:
+        """Determine field types, requiredness, readonlyness, and closedness.
 
         Additionally returns if any placeholders were seen, as they will prevent full
         analysis, but may not result in placeholders in the final type.
@@ -342,6 +365,18 @@ class TypedDictAnalyzer:
         required_keys: set[str] = set()
         readonly_keys: set[str] = set()
         any_placeholders = False
+        closed_bases = [
+            (base_info, base_fields.keys())
+            for (base_info, base_fields) in bases
+            if base_info.typeddict_type and base_info.typeddict_type.is_closed
+        ]
+
+        if child_is_closed is False and closed_bases:
+            for base_info, _ in closed_bases:
+                self.fail(
+                    f'Open TypedDict class cannot subclass closed TypedDict class "{base_info.name}"',
+                    ctx,
+                )
 
         for field_name, sources in field_sources.items():
             primary_source = self.primary_source(sources)
@@ -379,8 +414,15 @@ class TypedDictAnalyzer:
                         primary_source.base_name,
                         primary_source.child_field_ctx or ctx,
                     )
+            self.verify_field_against_closed_bases(
+                field_name,
+                closed_bases,
+                primary_source.base_name,
+                primary_source.child_field_ctx or ctx,
+            )
 
-        return field_types, required_keys, readonly_keys, any_placeholders
+        is_closed = bool(closed_bases) if child_is_closed is None else child_is_closed
+        return field_types, required_keys, readonly_keys, is_closed, any_placeholders
 
     def _parse_typeddict_base(self, base: Expression, ctx: Context) -> TypeInfo:
         if isinstance(base, RefExpr):
