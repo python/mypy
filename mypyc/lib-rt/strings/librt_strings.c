@@ -105,7 +105,8 @@ BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    BytesWriter_init_internal(self);
+    // tp_new already initialized the object; don't re-init here, as that
+    // would orphan any heap buffer and leak memory.
     return 0;
 }
 
@@ -504,7 +505,8 @@ StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    StringWriter_init_internal(self);
+    // tp_new already initialized the object; don't re-init here, as that
+    // would orphan any heap buffer and leak memory.
     return 0;
 }
 
