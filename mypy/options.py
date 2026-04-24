@@ -479,8 +479,13 @@ class Options:
         if invalid_code_names_here:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
-        self.disabled_error_codes |= {error_codes[code] for code in disabled_code_names}
-        self.enabled_error_codes |= {error_codes[code] for code in enabled_code_names}
+        # Ignore invalid error codes.
+        self.disabled_error_codes |= {
+            error_codes[code] for code in disabled_code_names if code in error_codes
+        }
+        self.enabled_error_codes |= {
+            error_codes[code] for code in enabled_code_names if code in error_codes
+        }
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
