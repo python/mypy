@@ -27,6 +27,10 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     Py_ssize_t target = data->len + n;
     Py_ssize_t size = data->capacity;
     do {
+        if (unlikely(size > PY_SSIZE_T_MAX / 2)) {
+            PyErr_NoMemory();
+            return false;
+        }
         size *= 2;
     } while (target >= size);
     char *new_buf;
@@ -398,7 +402,13 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     char old_kind = self->kind;
     Py_ssize_t new_capacity = self->capacity;
 
+    // Limit so that (new_capacity * 2) * new_kind stays within Py_ssize_t
+    Py_ssize_t cap_limit = PY_SSIZE_T_MAX / (2 * new_kind);
     while (target_capacity >= new_capacity) {
+        if (unlikely(new_capacity > cap_limit)) {
+            PyErr_NoMemory();
+            return false;
+        }
         new_capacity *= 2;
     }
 
