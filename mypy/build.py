@@ -3923,6 +3923,7 @@ def module_not_found(
         if (
             reason == ModuleNotFoundReason.NOT_FOUND
             and not errors.prefer_simple_messages()
+            and errors.is_error_code_enabled(code)
             and line not in errors.ignored_lines.get(caller_state.xpath, {})
         ):
             top_level_target = target.split(".")[0]

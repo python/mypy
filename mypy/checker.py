@@ -7578,7 +7578,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if isinstance(msg, str):
             msg = ErrorMessage(msg, code=code)
 
-        if self.msg.prefer_simple_messages():
+        if (
+            self.msg.prefer_simple_messages()
+            or code is not None
+            and not self.errors.is_error_code_enabled(code)
+        ):
             self.fail(msg, context)  # Fast path -- skip all fancy logic
             return False
 
