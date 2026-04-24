@@ -18,8 +18,6 @@
        ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
 
-#ifdef MYPYC_EXPERIMENTAL
-
 static PyTypeObject BytesWriterType;
 
 static bool
@@ -1110,10 +1108,7 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
-#endif
-
 static PyMethodDef librt_strings_module_methods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
      PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
     },
@@ -1174,11 +1169,8 @@ static PyMethodDef librt_strings_module_methods[] = {
     {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
     },
-#endif
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 strings_abi_version(void) {
@@ -1190,12 +1182,9 @@ strings_api_version(void) {
     return LIBRT_STRINGS_API_VERSION;
 }
 
-#endif
-
 static int
 librt_strings_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
@@ -1230,7 +1219,6 @@ librt_strings_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 

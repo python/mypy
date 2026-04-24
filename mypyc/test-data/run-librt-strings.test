@@ -1,4 +1,4 @@
-[case testLibrtStrings_librt_experimental]
+[case testLibrtStrings_librt]
 from typing import Any
 import base64
 import binascii
@@ -1393,10 +1393,3 @@ def test_string_writer_wrapper_functions() -> None:
         s[6]
     with assertRaises(IndexError):
         s[-7]
-
-[case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
-# This also ensures librt.strings can be built without experimental features
-import librt.strings
-
-def test_bytes_writer_not_available() -> None:
-    assert not hasattr(librt.strings, "BytesWriter")

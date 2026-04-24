@@ -1,8 +1,6 @@
 #ifndef STRINGWRITER_EXTRA_OPS_H
 #define STRINGWRITER_EXTRA_OPS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <Python.h>
@@ -73,7 +71,5 @@ static inline int32_t CPyStringWriter_GetItem(PyObject *obj, int64_t index) {
         return (int32_t)val;
     }
 }
-
-#endif // MYPYC_EXPERIMENTAL
 
 #endif

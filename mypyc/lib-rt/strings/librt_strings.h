@@ -1,8 +1,6 @@
 #ifndef LIBRT_STRINGS_H
 #define LIBRT_STRINGS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
 #include <stdbool.h>
 #include <Python.h>
 #include "librt_strings_common.h"
@@ -29,7 +27,5 @@ typedef struct {
     Py_ssize_t capacity;  // Total capacity of the buffer (number of code points)
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } StringWriterObject;
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_STRINGS_H
