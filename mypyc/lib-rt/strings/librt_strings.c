@@ -81,9 +81,8 @@ BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     BytesWriterObject *self = (BytesWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         BytesWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -109,8 +108,10 @@ BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    // tp_new already initialized the object; don't re-init here, as that
-    // would orphan any heap buffer and leak memory.
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
+    BytesWriter_init_internal(self);
     return 0;
 }
 
@@ -492,9 +493,8 @@ StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     StringWriterObject *self = (StringWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         StringWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -520,8 +520,10 @@ StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    // tp_new already initialized the object; don't re-init here, as that
-    // would orphan any heap buffer and leak memory.
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
+    StringWriter_init_internal(self);
     return 0;
 }
 
