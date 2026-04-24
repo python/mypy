@@ -760,6 +760,13 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
 
 // Handle all append cases except for append that stays within kind 1
 static char string_append_slow_path(StringWriterObject *self, int32_t value) {
+    // Validate code point range up front, before any kind promotion, so that
+    // an invalid value doesn't leave the writer permanently promoted.
+    if (unlikely((uint32_t)value > 0x10FFFF)) {
+        PyErr_Format(PyExc_ValueError,
+                     "code point %d is outside valid Unicode range (0-1114111)", value);
+        return CPY_NONE_ERROR;
+    }
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
             // Kind stays the same
@@ -782,18 +789,13 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
         return string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
-    if ((uint32_t)value <= 0x10FFFF) {
-        if (!ensure_string_writer_size(self, 1))
-            return CPY_NONE_ERROR;
-        // Copy 4-byte character to buffer
-        uint32_t val32 = (uint32_t)value;
-        memcpy(self->buf + self->len * 4, &val32, 4);
-        self->len++;
-        return CPY_NONE;
-    }
-    // Code point is out of valid Unicode range
-    PyErr_Format(PyExc_ValueError, "code point %d is outside valid Unicode range (0-1114111)", value);
-    return CPY_NONE_ERROR;
+    if (!ensure_string_writer_size(self, 1))
+        return CPY_NONE_ERROR;
+    // Copy 4-byte character to buffer
+    uint32_t val32 = (uint32_t)value;
+    memcpy(self->buf + self->len * 4, &val32, 4);
+    self->len++;
+    return CPY_NONE;
 }
 
 static inline char
