@@ -389,7 +389,8 @@ def build(
     build_id = os.urandom(4).hex()
     options_data = None
     if options.num_workers > 0:
-        options_data = f".mypy_worker_options.{build_id}.data"
+        os.makedirs(options.cache_dir, exist_ok=True)
+        options_data = os_path_join(options.cache_dir, f".worker_options.{build_id}.data")
         with open(options_data, "wb") as f:
             f.write(options.to_bytes())
         workers = [
