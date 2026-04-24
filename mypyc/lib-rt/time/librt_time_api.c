@@ -1,16 +1,5 @@
 #include "librt_time_api.h"
 
-#ifndef MYPYC_EXPERIMENTAL
-
-int
-import_librt_time(void)
-{
-    // All librt.time features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
-
 void *LibRTTime_API[LIBRT_TIME_API_LEN] = {0};
 
 int
@@ -45,5 +34,3 @@ import_librt_time(void)
     }
     return 0;
 }
-
-#endif // MYPYC_EXPERIMENTAL
