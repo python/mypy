@@ -1025,7 +1025,7 @@ class BuildManager:
             if state.tree is not None:
                 # The file was already parsed.
                 continue
-            if not self.fscache.exists(state.xpath):
+            if not self.fscache.exists(state.xpath, real_only=True):
                 # New parser only supports parsing on-disk files.
                 sequential_states.append(state)
                 continue
@@ -1083,7 +1083,6 @@ class BuildManager:
                 elif state.source_hash is None:
                     # At least namespace packages may not have source.
                     state.get_source()
-                state.size_hint = os.path.getsize(state.xpath)
                 state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                 state.semantic_analysis_pass1()
                 self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
@@ -1271,7 +1270,7 @@ class BuildManager:
 
         Raise CompileError if there is a parse error.
         """
-        file_exists = self.fscache.exists(path)
+        file_exists = self.fscache.exists(path, real_only=True)
         t0 = time.time()
         if raw_data:
             # If possible, deserialize from known binary data instead of parsing from scratch.
