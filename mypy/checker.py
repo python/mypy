@@ -701,6 +701,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if isinstance(impl, FuncDef):
             self.visit_func_def_impl(impl)
         else:
+            if any(refers_to_fullname(d, "typing.no_type_check") for d in impl.decorators):
+                return
             with self.tscope.function_scope(impl.func):
                 self.check_func_item(impl.func, name=impl.func.name)
 
@@ -5689,12 +5691,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
-        for d in e.decorators:
-            if isinstance(d, RefExpr):
-                if d.fullname == "typing.no_type_check":
-                    e.var.type = AnyType(TypeOfAny.special_form)
-                    e.var.is_ready = True
-                    return
+        if any(refers_to_fullname(d, "typing.no_type_check") for d in e.decorators):
+            e.var.type = AnyType(TypeOfAny.special_form)
+            e.var.is_ready = True
+            return
         self.visit_decorator_inner(e)
 
     def visit_decorator_inner(
