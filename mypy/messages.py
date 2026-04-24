@@ -1293,6 +1293,9 @@ class MessageBuilder:
             )
         else:
             self.note(override_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, parent_error=error)
+            self.note(
+                "This violates the Liskov substitution principle", context, parent_error=error
+            )
 
     def pretty_callable_or_overload(
         self,

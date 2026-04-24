@@ -9412,3 +9412,11 @@ from typ import NT
 def f() -> NT:
     return NT(x='')
 [builtins fixtures/tuple.pyi]
+
+[case testLSPOverrideNote]
+class A:
+    def f(self, x: object) -> object: ...
+class B(A):
+    def f(self, x: int) -> int: ...  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "object" \
+                                     # N: This violates the Liskov substitution principle \
+                                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
