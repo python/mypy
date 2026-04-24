@@ -48,6 +48,7 @@ from mypy.build import (
 )
 from mypy.cache import Tag, read_int_list, read_json
 from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
+from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
 from mypy.ipc import IPCException, IPCServer, ready_to_read, receive, send
@@ -330,7 +331,7 @@ def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> Buil
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=ctx.errors,
-        error_formatter=None,
+        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=ctx.fscache,
         stdout=sys.stdout,
