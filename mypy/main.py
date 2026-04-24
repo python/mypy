@@ -1168,7 +1168,7 @@ def define_options(
 
     # Experimental parallel type-checking support.
     internals_group.add_argument(
-        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+        "-n", "--num-workers", type=int, default=2, help=argparse.SUPPRESS
     )
 
     report_group = parser.add_argument_group(
