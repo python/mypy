@@ -29,19 +29,21 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     do {
         size *= 2;
     } while (target >= size);
+    char *new_buf;
     if (data->buf == data->data) {
         // Move from embedded buffer to heap-allocated buffer
-        data->buf = PyMem_Malloc(size);
-        if (data->buf != NULL) {
-            memcpy(data->buf, data->data, WRITER_EMBEDDED_BUF_LEN);
+        new_buf = PyMem_Malloc(size);
+        if (new_buf != NULL) {
+            memcpy(new_buf, data->data, WRITER_EMBEDDED_BUF_LEN);
         }
     } else {
-        data->buf = PyMem_Realloc(data->buf, size);
+        new_buf = PyMem_Realloc(data->buf, size);
     }
-    if (unlikely(data->buf == NULL)) {
+    if (unlikely(new_buf == NULL)) {
         PyErr_NoMemory();
         return false;
     }
+    data->buf = new_buf;
     data->capacity = size;
     return true;
 }
