@@ -591,6 +591,14 @@ import d
 import b.c
 import d
 
+[case testPackageRootMultipleParallel]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py --num-workers=2
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
 [case testCacheMap]
 -- This just checks that a valid --cache-map triple is accepted.
 -- (Errors are too verbose to check.)
