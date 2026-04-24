@@ -8173,7 +8173,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
             # we indicate this by setting is_upper_bound flag
             is_upper_bound = True
-            item = get_proper_type(typ.item)
+            item = typ.item
             if isinstance(item, TypeVarType) and item.id.is_self():
                 is_upper_bound = False
             elif isinstance(item, NoneType):
