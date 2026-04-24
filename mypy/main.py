@@ -97,6 +97,10 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
+    options.num_workers = 2
+    if options.cache_dir == os.devnull:
+        options.cache_dir = defaults.CACHE_DIR
+
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
@@ -1168,7 +1172,7 @@ def define_options(
 
     # Experimental parallel type-checking support.
     internals_group.add_argument(
-        "-n", "--num-workers", type=int, default=2, help=argparse.SUPPRESS
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
     )
 
     report_group = parser.add_argument_group(
