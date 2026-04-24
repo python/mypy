@@ -103,6 +103,7 @@ def main(argv: list[str]) -> None:
         raise
 
     fscache = FileSystemCache()
+    fscache.set_package_root(options.package_root)
     cached_read = fscache.read
     errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
 
