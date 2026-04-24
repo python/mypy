@@ -1701,3 +1701,30 @@ def main(contents: Any, commit: str | None) -> None:
 
 main({"commit": None}, None)
 [builtins fixtures/tuple.pyi]
+
+[case testUnreachableFunctionAfterTopLevelAssert]
+def foo() -> int:
+    ...
+
+raise Exception
+
+x = foo()
+
+def test() -> None:
+    # It is questionable to allow this, this test exists to check 1:1
+    # behavior match of parallel checking with sequential checking.
+    x + "hm..."
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFunctionAfterClassLevelAssert]
+def foo() -> int:
+    ...
+
+class C:
+    x = foo()
+    raise Exception
+    def test(self) -> None:
+        # It is questionable to allow this, this test exists to check 1:1
+        # behavior match of parallel checking with sequential checking.
+        C.x + "hm..."
+[builtins fixtures/exception.pyi]
