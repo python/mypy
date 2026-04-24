@@ -3358,9 +3358,15 @@ class State:
         self.priorities = {}  # id -> priority
         self.dep_line_map = {}  # id -> line
         self.dep_hashes = {}
+        copied_imports = False
+        if not self.tree.defs and self.tree.raw_data is not None:
+            self.tree.defs = list(self.tree.imports)
+            copied_imports = True
         dep_entries = manager.all_imported_modules_in_file(
             self.tree
         ) + self.manager.plugin.get_additional_deps(self.tree)
+        if copied_imports:
+            self.tree.defs = []
         for pri, id, line in dep_entries:
             self.priorities[id] = min(pri, self.priorities.get(id, PRI_ALL))
             if id == self.id:
