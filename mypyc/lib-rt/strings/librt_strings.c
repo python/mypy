@@ -419,6 +419,11 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
         new_capacity *= 2;
     }
 
+    if (unlikely(new_capacity > cap_limit * 2)) {
+        PyErr_NoMemory();
+        return false;
+    }
+
     Py_ssize_t size_bytes = new_capacity * new_kind;
     char *new_buf;
     bool from_embedded = (self->buf == self->data);
