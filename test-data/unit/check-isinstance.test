@@ -102,6 +102,20 @@ def f6(x: tuple[A, A] | tuple[B, B]):
         reveal_type(x)  # N: Revealed type is "tuple[__main__.A, __main__.A]"
     else:
         reveal_type(x)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
+
+class AA(A): ...
+
+def f7(x: list[A] | list[AA]):
+    if isinstance(x[0], AA):
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.A] | builtins.list[__main__.AA]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.A] | builtins.list[__main__.AA]"
+
+def f8(x: list[str] | list[str | None]):
+    if x[0] is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.str | None]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str | None]"
 [builtins fixtures/tuple.pyi]
 
 [case testClassAttributeInitialization]
