@@ -1276,3 +1276,11 @@ pass
 [out]
 error: cache must be enabled in parallel mode
 == Return code: 2
+
+[case testFooBar]
+# cmd: mypy foo-stubs --num-workers=4
+[file foo-stubs/__init__.pyi]
+[file foo-stubs/api/__init__.pyi]
+from foo.api import bar as bar
+[file foo-stubs/api/bar.pyi]
+[out]

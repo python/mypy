@@ -1257,6 +1257,14 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
+        if id in self.modules:
+            # Micro-optimization, if already found it, it is definitely a module.
+            return True
+        if id in self.source_set.source_modules:
+            # Special case: if a module is passed on command line, we accept it even
+            # if we would not resolve it using regular mechanisms. This makes behavior
+            # consistent in cases like `mypy foo-stubs`, where stubs are not installed.
+            return True
         return find_module_simple(id, self) is not None
 
     def parse_file(
