@@ -23,7 +23,7 @@ import os
 import platform
 import sys
 import time
-from typing import NamedTuple
+from typing import Final
 
 from librt.internal import ReadBuffer, read_tag
 
@@ -65,12 +65,20 @@ parser.add_argument("--options-data", help="file with serialized mypy options")
 CONNECTION_NAME = "build_worker"
 
 
-class ServerContext(NamedTuple):
-    options: Options
-    disable_error_code: list[str]
-    enable_error_code: list[str]
-    errors: Errors
-    fscache: FileSystemCache
+class ServerContext:
+    def __init__(
+        self,
+        options: Options,
+        disable_error_code: list[str],
+        enable_error_code: list[str],
+        errors: Errors,
+        fscache: FileSystemCache,
+    ) -> None:
+        self.options: Final = options
+        self.disable_error_code: Final = disable_error_code
+        self.enable_error_code: Final = enable_error_code
+        self.errors: Final = errors
+        self.fscache: Final = fscache
 
 
 def main(argv: list[str]) -> None:

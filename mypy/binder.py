@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Literal, NamedTuple, TypeAlias as _TypeAlias
+from typing import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
@@ -42,9 +42,10 @@ from mypy.typevars import fill_typevars_with_any
 BindableExpression: _TypeAlias = IndexExpr | MemberExpr | NameExpr
 
 
-class CurrentType(NamedTuple):
-    type: Type
-    from_assignment: bool
+class CurrentType:
+    def __init__(self, type: Type, from_assignment: bool) -> None:
+        self.type: Final = type
+        self.from_assignment: Final = from_assignment
 
 
 class Frame:
