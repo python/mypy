@@ -617,15 +617,17 @@ def f() -> Tuple[C, C]:
     return a, b
 [out]
 def f():
-    r0, a, r1, b :: __main__.C
-    r2 :: tuple[__main__.C, __main__.C]
+    r0, a, r1, b, r2, r3 :: __main__.C
+    r4 :: tuple[__main__.C, __main__.C]
 L0:
     r0 = C()
     a = r0
     r1 = C()
     b = r1
-    r2 = (a, b)
-    return r2
+    r2 = a
+    r3 = b
+    r4 = (r2, r3)
+    return r4
 
 [case testDecomposeTuple]
 from typing import Tuple
@@ -1931,3 +1933,131 @@ L0:
     r10 = unborrow r8
     x = r10
     return x
+
+[case testPropertySetterCallWithRefcountedObject]
+class Foo:
+    def __init__(self) -> None:
+        self.attr = "unmodified"
+
+class A:
+    def __init__(self) -> None:
+        self._foo = Foo()
+
+    @property
+    def foo(self) -> Foo:
+        return self._foo
+
+    @foo.setter
+    def foo(self, val : Foo) -> None:
+        self._foo = val
+
+def f(a: A):
+    a.foo = Foo()
+[out]
+def Foo.__init__(self):
+    self :: __main__.Foo
+    r0 :: str
+L0:
+    r0 = 'unmodified'
+    inc_ref r0
+    self.attr = r0
+    return 1
+def A.__init__(self):
+    self :: __main__.A
+    r0 :: __main__.Foo
+L0:
+    r0 = Foo()
+    self._foo = r0
+    return 1
+def A.foo(self):
+    self :: __main__.A
+    r0 :: __main__.Foo
+L0:
+    r0 = self._foo
+    return r0
+def A.__mypyc_setter__foo(self, val):
+    self :: __main__.A
+    val :: __main__.Foo
+    r0 :: bool
+L0:
+    inc_ref val
+    self._foo = val; r0 = is_error
+    return 1
+def f(a):
+    a :: __main__.A
+    r0 :: __main__.Foo
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = Foo()
+    a.foo = r0; r1 = is_error
+    dec_ref r0
+    r2 = box(None, 1)
+    inc_ref r2
+    return r2
+
+[case testPropertySetterCallWithNonRefcountedObject_64bit]
+from mypy_extensions import i64
+
+class A:
+    def __init__(self) -> None:
+        self._foo = i64(0)
+
+    @property
+    def foo(self) -> i64:
+        return self._foo
+
+    @foo.setter
+    def foo(self, val : i64) -> None:
+        self._foo = val
+
+def f(a: A, i: int):
+    a.foo = i64(i)
+[out]
+def A.__init__(self):
+    self :: __main__.A
+L0:
+    self._foo = 0
+    return 1
+def A.foo(self):
+    self :: __main__.A
+    r0 :: i64
+L0:
+    r0 = self._foo
+    return r0
+def A.__mypyc_setter__foo(self, val):
+    self :: __main__.A
+    val :: i64
+    r0 :: bool
+L0:
+    self._foo = val; r0 = is_error
+    return 1
+def f(a, i):
+    a :: __main__.A
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6 :: i64
+    r7 :: bool
+    r8 :: object
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+L3:
+    a.foo = r3; r7 = is_error
+    r8 = box(None, 1)
+    inc_ref r8
+    return r8

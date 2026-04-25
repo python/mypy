@@ -13,6 +13,7 @@ import enum
 import functools
 import importlib
 import inspect
+import keyword
 import os
 import pkgutil
 import re
@@ -144,6 +145,11 @@ class Error:
         """Whether or not the error is related to @disjoint_base."""
         # TODO: This is hacky, use error codes or something more resilient
         return "@disjoint_base" in self.message
+
+    def is_private_type_check_only_related(self) -> bool:
+        """Whether or not the error is related to @type_check_only on private types."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return self.message.endswith('Maybe mark it as "@type_check_only"?')
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -365,11 +371,7 @@ def verify_mypyfile(
         runtime_all_as_set = None
 
     # Check things in the stub
-    to_check = {
-        m
-        for m, o in stub.names.items()
-        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    }
+    to_check = {m for m, o in stub.names.items() if not o.module_hidden}
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         """Heuristics to determine whether a name originates from another module."""
@@ -439,6 +441,15 @@ def verify_mypyfile(
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
+        if (
+            is_probably_private(entry)
+            and not hasattr(runtime, entry)
+            and not isinstance(stub_entry, Missing)
+            and not _is_decoratable(stub_entry)
+        ):
+            # Skip private names that don't exist at runtime and which cannot
+            # be marked with @type_check_only.
+            continue
         try:
             runtime_entry = getattr(runtime, entry, MISSING)
         except Exception:
@@ -446,6 +457,19 @@ def verify_mypyfile(
             # from __getattr__ or similar.
             continue
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
+
+
+def _is_decoratable(stub: nodes.SymbolNode) -> bool:
+    if not isinstance(stub, nodes.TypeInfo):
+        return False
+    if stub.is_newtype:
+        return False
+    if stub.typeddict_type is not None:
+        return all(
+            name.isidentifier() and not keyword.iskeyword(name)
+            for name in stub.typeddict_type.items.keys()
+        )
+    return True
 
 
 def _verify_final(
@@ -639,7 +663,10 @@ def verify_typeinfo(
         return
 
     if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        msg = "is not present at runtime"
+        if is_probably_private(stub.name):
+            msg += '. Maybe mark it as "@type_check_only"?'
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
         # Yes, some runtime objects can be not types, no way to tell mypy about that.
@@ -941,7 +968,21 @@ class Signature(Generic[T]):
             elif stub_arg.kind == nodes.ARG_STAR:
                 stub_sig.varpos = stub_arg
             elif stub_arg.kind == nodes.ARG_STAR2:
-                stub_sig.varkw = stub_arg
+                if stub_arg.variable.type is not None and isinstance(
+                    (typed_dict_arg := mypy.types.get_proper_type(stub_arg.variable.type)),
+                    mypy.types.TypedDictType,
+                ):
+                    for key_name, key_type in typed_dict_arg.items.items():
+                        optional = key_name not in typed_dict_arg.required_keys
+                        stub_sig.kwonly[key_name] = nodes.Argument(
+                            nodes.Var(key_name, key_type),
+                            type_annotation=key_type,
+                            initializer=nodes.EllipsisExpr() if optional else None,
+                            kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
+                            pos_only=False,
+                        )
+                else:
+                    stub_sig.varkw = stub_arg
             else:
                 raise AssertionError
         return stub_sig
@@ -1689,9 +1730,7 @@ def verify_typealias(
         return
     if isinstance(stub_target, mypy.types.UnionType):
         # complain if runtime is not a Union or UnionType
-        if runtime_origin is not Union and (
-            not (sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType))
-        ):
+        if runtime_origin is not Union and not isinstance(runtime, types.UnionType):
             yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
         # could check Union contents here...
         return
@@ -1826,7 +1865,7 @@ def is_probably_a_function(runtime: Any) -> bool:
 
 
 def is_read_only_property(runtime: object) -> bool:
-    return isinstance(runtime, property) and runtime.fset is None
+    return isinstance(runtime, property) and runtime.fset is None and runtime.fdel is None
 
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
@@ -2070,20 +2109,11 @@ def get_mypy_type_of_runtime_value(
                 skip_type_object_type = True
 
     if isinstance(runtime, type) and not skip_type_object_type:
-
-        def _named_type(name: str) -> mypy.types.Instance:
-            parts = name.rsplit(".", maxsplit=1)
-            node = get_mypy_node_for_name(parts[0], parts[1])
-            assert isinstance(node, nodes.TypeInfo)
-            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
-            return mypy.types.Instance(node, [any_type] * len(node.defn.type_vars))
-
         # Try and look up a stub for the runtime object itself
         # The logic here is similar to ExpressionChecker.analyze_ref_expr
         type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
         if isinstance(type_info, nodes.TypeInfo):
-            result: mypy.types.Type | None = None
-            result = mypy.typeops.type_object_type(type_info, _named_type)
+            result = mypy.typeops.type_object_type(type_info)
             if mypy.checkexpr.is_type_type_context(type_context):
                 # This is the type in a type[] expression, so substitute type
                 # variables with Any.
@@ -2308,6 +2338,7 @@ class _Arguments:
     ignore_missing_stub: bool
     ignore_positional_only: bool
     ignore_disjoint_bases: bool
+    strict_type_check_only: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2404,6 +2435,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 continue
             if args.ignore_disjoint_bases and error.is_disjoint_base_related():
                 continue
+            if not args.strict_type_check_only and error.is_private_type_check_only_related():
+                continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
                 continue
@@ -2499,6 +2532,11 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-disjoint-bases",
         action="store_true",
         help="Disable checks for PEP 800 @disjoint_base classes",
+    )
+    parser.add_argument(
+        "--strict-type-check-only",
+        action="store_true",
+        help="Require @type_check_only on private types that are not present at runtime",
     )
     parser.add_argument(
         "--allowlist",

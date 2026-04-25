@@ -274,6 +274,7 @@ char CPyDict_Clear(PyObject *dict) {
         if (res == NULL) {
             return 0;
         }
+        Py_DECREF(res);
     }
     return 1;
 }
@@ -407,6 +408,7 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
         if (item == NULL || !PyTuple_Check(item) || PyTuple_GET_SIZE(item) != 2) {
             if (item != NULL) {
                 PyErr_SetString(PyExc_TypeError, "a tuple of length 2 expected");
+                Py_DECREF(item);
             }
             ret.f0 = 0;
             ret.f2 = Py_None;
@@ -415,7 +417,10 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             ret.f0 = 1;
             ret.f2 = PyTuple_GET_ITEM(item, 0);
             ret.f3 = PyTuple_GET_ITEM(item, 1);
+            Py_INCREF(ret.f2);
+            Py_INCREF(ret.f3);
             Py_DECREF(item);
+            return ret;
         }
     }
     // PyDict_Next() returns borrowed references.

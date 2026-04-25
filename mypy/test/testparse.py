@@ -59,14 +59,18 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     options = options.apply_changes(changes)
 
     try:
+        errors = Errors(options)
         n = parse(
             bytes(source, "ascii"),
             fnam="main",
             module="__main__",
-            errors=Errors(options),
+            errors=errors,
             options=options,
-            raise_on_error=True,
+            file_exists=False,
+            eager=True,
         )
+        if errors.is_errors():
+            errors.raise_error()
         a = n.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
@@ -92,17 +96,23 @@ class ParseErrorSuite(DataSuite):
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         options = parse_options("\n".join(testcase.input), testcase, 0)
+        if options.python_version < defaults.PYTHON3_VERSION:
+            options.python_version = defaults.PYTHON3_VERSION
         if options.python_version != sys.version_info[:2]:
             skip()
         # Compile temporary file. The test file contains non-ASCII characters.
+        errors = Errors(options)
         parse(
             bytes("\n".join(testcase.input), "utf-8"),
             INPUT_FILE_NAME,
             "__main__",
-            errors=Errors(options),
+            errors=errors,
             options=options,
-            raise_on_error=True,
+            file_exists=False,
+            eager=True,
         )
+        if errors.is_errors():
+            errors.raise_error()
         raise AssertionError("No errors reported")
     except CompileError as e:
         if e.module_with_blocker is not None:

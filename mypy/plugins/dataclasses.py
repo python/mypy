@@ -249,7 +249,6 @@ class DataclassTransformer:
             "slots": self._get_bool_arg("slots", False),
             "match_args": self._get_bool_arg("match_args", True),
         }
-        py_version = self._api.options.python_version
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -368,16 +367,12 @@ class DataclassTransformer:
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
-            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+            self.add_slots(info, attributes)
 
         self.reset_init_only_vars(info, attributes)
 
-        if (
-            decorator_arguments["match_args"]
-            and (
-                "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
-            )
-            and py_version >= (3, 10)
+        if decorator_arguments["match_args"] and (
+            "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
         ):
             str_type = self._api.named_type("builtins.str")
             literals: list[Type] = [
@@ -445,18 +440,7 @@ class DataclassTransformer:
             return_type=NoneType(),
         )
 
-    def add_slots(
-        self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
-    ) -> None:
-        if not correct_version:
-            # This means that version is lower than `3.10`,
-            # it is just a non-existent argument for `dataclass` function.
-            self._api.fail(
-                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
-                self._reason,
-            )
-            return
-
+    def add_slots(self, info: TypeInfo, attributes: list[DataclassAttribute]) -> None:
         existing_slots = info.names.get("__slots__")
         slots_defined_by_plugin = existing_slots is not None and existing_slots.plugin_generated
         if existing_slots is not None and not slots_defined_by_plugin:

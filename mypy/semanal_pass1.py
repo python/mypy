@@ -46,13 +46,13 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
       import sys
 
       def do_stuff() -> None:
-          if sys.version_info >= (3, 10):
-              import xyz  # Only available in Python 3.10+
+          if sys.version_info >= (3, 11):
+              import xyz  # Only available in Python 3.11+
               xyz.whatever()
           ...
 
-    The block containing 'import xyz' is unreachable in Python 3 mode. The import
-    shouldn't be processed in Python 3 mode, even if the module happens to exist.
+    The block containing 'import xyz' is unreachable in Python 3.10 mode. The import
+    shouldn't be processed in Python 3.10 mode, even if the module happens to exist.
     """
 
     def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:

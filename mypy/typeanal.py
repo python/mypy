@@ -233,11 +233,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
-        # Should we allow new type syntax when targeting older Python versions
-        # like 'list[int]' or 'X | Y' (allowed in stubs and with `__future__` import)?
-        self.always_allow_new_syntax = self.api.is_stub_file or self.api.is_future_flag_set(
-            "annotations"
-        )
         # Should we accept unbound type variables? This is currently used for class bases,
         # and alias right hand sides (before they are analyzed as type aliases).
         self.allow_unbound_tvars = allow_unbound_tvars
@@ -1412,13 +1407,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
-        if (
-            t.uses_pep604_syntax is True
-            and t.is_evaluated is True
-            and not self.always_allow_new_syntax
-            and not self.options.python_version >= (3, 10)
-        ):
-            self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
         return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
@@ -2120,7 +2108,7 @@ def fix_instance(
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
     if not t.type.has_type_var_tuple_type:
-        with state.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(True):
             fixed = expand_type(t, env)
         assert isinstance(fixed, Instance)
         t.args = fixed.args
@@ -2159,6 +2147,15 @@ def instantiate_type_alias(
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
         return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
+
+    if (
+        no_args
+        and isinstance(node.target, ProperType)
+        and isinstance(node.target, Instance)
+        and node.target.type.fullname == "builtins.tuple"
+        and len(args)
+    ):
+        no_args = False
 
     max_tv_count = len(node.alias_tvars)
     act_len = len(args)
@@ -2342,16 +2339,9 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
     """See docstring of detect_diverging_alias() for details."""
 
     # TODO: this doesn't really need to be a translator, but we don't have a trivial visitor.
-    def __init__(
-        self,
-        seen_nodes: set[TypeAlias],
-        lookup: Callable[[str, Context], SymbolTableNode | None],
-        scope: TypeVarLikeScope,
-    ) -> None:
+    def __init__(self, seen_nodes: set[TypeAlias]) -> None:
         super().__init__()
         self.seen_nodes = seen_nodes
-        self.lookup = lookup
-        self.scope = scope
         self.diverging = False
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
@@ -2368,19 +2358,14 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             # All clear for this expansion chain.
             return t
         new_nodes = self.seen_nodes | {t.alias}
-        visitor = DivergingAliasDetector(new_nodes, self.lookup, self.scope)
+        visitor = DivergingAliasDetector(new_nodes)
         _ = get_proper_type(t).accept(visitor)
         if visitor.diverging:
             self.diverging = True
         return t
 
 
-def detect_diverging_alias(
-    node: TypeAlias,
-    target: Type,
-    lookup: Callable[[str, Context], SymbolTableNode | None],
-    scope: TypeVarLikeScope,
-) -> bool:
+def detect_diverging_alias(node: TypeAlias, target: Type) -> bool:
     """This detects type aliases that will diverge during type checking.
 
     For example F = Something[..., F[List[T]]]. At each expansion step this will produce
@@ -2392,7 +2377,7 @@ def detect_diverging_alias(
     They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
     Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
     """
-    visitor = DivergingAliasDetector({node}, lookup, scope)
+    visitor = DivergingAliasDetector({node})
     _ = target.accept(visitor)
     return visitor.diverging
 
@@ -2480,13 +2465,14 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
+def validate_instance(t: Instance, fail: MsgCallback, indexed: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
         # This type is not ready to be validated, because of unknown total count.
         # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
+    empty_tuple_index = indexed and not t.args
     if t.type.has_type_var_tuple_type:
         min_tv_count = sum(
             not tv.has_default() and not isinstance(tv, TypeVarTupleType)

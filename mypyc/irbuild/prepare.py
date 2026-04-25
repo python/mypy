@@ -26,6 +26,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    IndexExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
@@ -117,6 +118,12 @@ def build_type_map(
                 prepare_non_ext_class_def(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
+
+    # Validate cross-class properties after all ClassIR flags are populated.
+    for module, cdef in classes:
+        with catch_errors(module.path, cdef.line):
+            if mapper.type_to_ir[cdef.info].is_ext_class:
+                validate_acyclic_class_bases(module.path, cdef, errors, mapper)
 
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
@@ -345,6 +352,51 @@ def can_subclass_builtin(builtin_base: str) -> bool:
     )
 
 
+def get_removed_base_fullname(expr: Expression) -> str | None:
+    if isinstance(expr, IndexExpr):
+        expr = expr.base
+    if isinstance(expr, RefExpr):
+        return expr.fullname
+    return None
+
+
+def find_non_acyclic_base(cdef: ClassDef, mapper: Mapper) -> str | None:
+    if cdef.type_args:
+        return "typing.Generic"
+
+    for expr in cdef.removed_base_type_exprs:
+        if fullname := get_removed_base_fullname(expr):
+            return fullname
+        return "a removed base class"
+
+    for base in cdef.info.mro[1:]:
+        if base.fullname == "builtins.object":
+            continue
+
+        base_ir = mapper.type_to_ir.get(base)
+        if base_ir is not None and base_ir.is_acyclic:
+            continue
+
+        return base.fullname
+
+    return None
+
+
+def validate_acyclic_class_bases(
+    path: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    if not ir.is_acyclic:
+        return
+
+    if fullname := find_non_acyclic_base(cdef, mapper):
+        errors.error(
+            f'"acyclic" can\'t be used in a class that inherits from non-acyclic type "{fullname}"',
+            path,
+            cdef.line,
+        )
+
+
 def prepare_class_def(
     path: str,
     module_name: str,
@@ -371,22 +423,6 @@ def prepare_class_def(
 
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
-
-    free_list_len = attrs.get("free_list_len")
-    if free_list_len is not None:
-        line = attrs_lines["free_list_len"]
-        if ir.is_trait:
-            errors.error('"free_list_len" can\'t be used with traits', path, line)
-        if ir.allow_interpreted_subclasses:
-            errors.error(
-                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
-                path,
-                line,
-            )
-        if free_list_len == 1:
-            ir.reuse_freed_instance = True
-        else:
-            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -415,6 +451,28 @@ def prepare_class_def(
                     path,
                     cdef.line,
                 )
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if ir.builtin_base:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that inherits from a built-in type',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]

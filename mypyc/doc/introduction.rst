@@ -126,7 +126,10 @@ Mypyc uses several techniques to produce fast code:
   Value types only need to be checked in the boundaries between
   dynamic and static typing.
 
-* Compiled code uses optimized, type-specific primitives.
+* Compiled code uses optimized, type-specific primitives for many
+  Python standard library features. The :ref:`librt <librt>` package
+  also provides optimized alternatives for certain standard library
+  features.
 
 * Mypyc uses *early binding* to resolve called functions and name
   references at compile time. Mypyc avoids many dynamic namespace

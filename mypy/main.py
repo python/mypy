@@ -97,16 +97,22 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
-    if options.allow_redefinition_new and not options.local_partial_types:
+    if options.num_workers:
+        # Supporting both parsers would be really tricky, so just support the new one.
+        options.native_parser = True
+        if options.cache_dir == os.devnull:
+            fail("error: cache must be enabled in parallel mode", stderr, options)
+
+    if options.allow_redefinition and not options.local_partial_types:
         fail(
-            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            "error: --local-partial-types must be enabled if using --allow-redefinition",
             stderr,
             options,
         )
 
-    if options.allow_redefinition_new and options.allow_redefinition_old:
+    if options.allow_redefinition and options.allow_redefinition_old:
         fail(
-            "--allow-redefinition-old and --allow-redefinition-new should not be used together",
+            "--allow-redefinition-old and --allow-redefinition should not be used together",
             stderr,
             options,
         )
@@ -185,6 +191,12 @@ def main(
     list([res])  # noqa: C410
 
 
+class BuildResultThunk:
+    # We pass this around so that we avoid freeing memory, which is slow
+    def __init__(self, build_result: build.BuildResult | None) -> None:
+        self._result = build_result
+
+
 def run_build(
     sources: list[BuildSource],
     options: Options,
@@ -192,7 +204,7 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> tuple[build.BuildResult | None, list[str], bool]:
+) -> tuple[BuildResultThunk | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
@@ -223,8 +235,12 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
+
+    if res:
+        res.manager.metastore.close()
+
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
-    return res, messages, blockers
+    return BuildResultThunk(res), messages, blockers
 
 
 def show_messages(
@@ -595,7 +611,6 @@ def define_options(
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
-        strict_flag=True,
         help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )
@@ -873,9 +888,8 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Alias to --allow-redefinition-old; will point to --allow-redefinition-new in v2.0",
+        help="Allow flexible variable redefinition with a new type",
         group=strictness_group,
-        dest="allow_redefinition_old",
     )
 
     add_invertible_flag(
@@ -890,8 +904,9 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics",
+        help="Deprecated alias for --allow-redefinition",
         group=strictness_group,
+        dest="allow_redefinition",
     )
 
     add_invertible_flag(
@@ -921,10 +936,10 @@ def define_options(
     )
 
     add_invertible_flag(
-        "--strict-bytes",
-        default=False,
-        strict_flag=True,
-        help="Disable treating bytearray and memoryview as subtypes of bytes",
+        "--no-strict-bytes",
+        default=True,
+        dest="strict_bytes",
+        help="Treat bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
 
@@ -1061,6 +1076,13 @@ def define_options(
         default=False,
         help="Use a sqlite database to store the cache",
         group=incremental_group,
+    )
+    incremental_group.add_argument(
+        "--sqlite-num-shards",
+        type=int,
+        default=defaults.SQLITE_NUM_SHARDS,
+        dest="sqlite_num_shards",
+        help=argparse.SUPPRESS,
     )
     incremental_group.add_argument(
         "--cache-fine-grained",
@@ -1251,7 +1273,13 @@ def define_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
+    add_invertible_flag(
+        "--no-local-partial-types",
+        inverse="--local-partial-types",
+        default=True,
+        dest="local_partial_types",
+        help=argparse.SUPPRESS,
+    )
     # --native-parser enables the native parser (experimental)
     add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but

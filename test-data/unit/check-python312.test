@@ -280,6 +280,9 @@ class Covariant[T]:
 
 class Invariant[T]:
     def f(self) -> None:
+        # We add this to force processing this method as part of the interface in parallel checking,
+        # otherwise, it will be processed at a later stage, not testing the no ready behavior below
+        self.y = int()
         c = Invariant(1)
         # We need to know that T is invariant here, and for this we need the type
         # of self.x, which won't be available on the first type checking pass,
@@ -306,6 +309,7 @@ if int():
 [case testPEP695InferVarianceNotReadyForJoin]
 class Invariant[T]:
     def f(self) -> None:
+        self.y = int()
         # Assume covariance if variance us not ready
         reveal_type([Invariant(1), Invariant(object())]) \
             # N: Revealed type is "builtins.list[__main__.Invariant[builtins.object]]"
@@ -326,6 +330,7 @@ def a2(x: Invariant[object]) -> None: pass
 
 class Invariant[T]:
     def f(self) -> None:
+        self.y = int()
         reveal_type(c(a1, a2))  # N: Revealed type is "__main__.Invariant[builtins.int]"
 
     def __init__(self, x: T) -> None:

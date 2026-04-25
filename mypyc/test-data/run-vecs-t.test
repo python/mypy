@@ -352,6 +352,15 @@ def test_pop_optional() -> None:
     v, s = pop(v, -1)
     assert s is None
 
+def test_iter_and_next() -> None:
+    v = vec[str](["s1" + str(), "s2" + str(), "s3" + str()])
+    it = iter(v)
+    assert next(it) == "s1"
+    assert next(it) == "s2"
+    assert next(it) == "s3"
+    with assertRaises(StopIteration):
+        next(it)
+
 def f(x: vec[str]) -> None:
     pass
 
@@ -427,3 +436,67 @@ def test_union_of_vecs() -> None:
     with assertRaises(TypeError):
         a4: Any = vec[Foo]()
         len_union(a4)
+
+def test_append_with_alias() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    alias = v
+    v = append(v, 'b')
+    v = append(v, 'c')
+    v = append(v, 'd')
+    assert alias[0] == 'a'
+    assert len(alias) == 1
+    assert v[0] == 'a'
+    assert len(v) == 4
+
+def test_cap_empty() -> None:
+    v = vec[str](capacity=3)
+    assert len(v) == 0
+    assert v == vec[str]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+
+def test_cap_from_comprehension_and_iterable() -> None:
+    v = vec[str]([str(i) for i in range(2)], capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'x'
+    assert old[0] == 'x'
+    assert v == vec[str](['x', '1', '2'])
+
+    v = vec[str]((str(i) for i in range(2)), capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'y'
+    assert old[0] == 'y'
+    assert v == vec[str](['y', '1', '2'])
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[str](capacity=n)
+    assert len(v) == 0
+    v = append(v, 'x')
+    assert v[0] == 'x'
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    old = v
+    v = append(v, 'c')
+    v[0] = 'z'
+    assert old[0] == 'z'  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[str](['a', 'b', 'c'], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+    assert v[2] == 'c'
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[str](capacity=-1)
+    with assertRaises(ValueError):
+        vec[str](['x'], capacity=-1)

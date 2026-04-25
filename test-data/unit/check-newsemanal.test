@@ -231,25 +231,20 @@ import a
 class T1(TypedDict):
     x: A
 class A: pass
-reveal_type(T1(x=A())) # E
+reveal_type(T1(x=A()))  # N: Revealed type is "TypedDict('__main__.T1', {'x': __main__.A})"
 
 [file a.py]
 from typing import TypedDict
 from b import TD1 as TD2, TD3
 class T2(TD3):
     x: int
-reveal_type(T2(x=2)) # E
+reveal_type(T2(x=2))  # N: Revealed type is "TypedDict('a.T2', {'x': builtins.int})"
 
 [file b.py]
 from a import TypedDict as TD1
 from a import TD2 as TD3
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
-
-[out]
-tmp/a.py:5: note: Revealed type is "TypedDict('a.T2', {'x': builtins.int})"
-main:6: note: Revealed type is "TypedDict('__main__.T1', {'x': __main__.A})"
-
 
 [case testNewAnalyzerTypedDictClassInheritance]
 from typing import TypedDict
@@ -2783,13 +2778,13 @@ t = typing.typevar('t') # E: Module has no attribute "typevar"
 
 [case testNewAnalyzerImportFromTopLevelFunction]
 import a.b  # This works at runtime
-reveal_type(a.b)  # N
+reveal_type(a.b)  # N: Revealed type is "def ()"
 [file a/__init__.py]
 from .b import B
 from . import b as c
 def b() -> None: pass
-reveal_type(b)  # N
-reveal_type(c.B())  # N
+reveal_type(b)  # N: Revealed type is "def ()"
+reveal_type(c.B())  # N: Revealed type is "a.b.B"
 x: Forward
 class Forward:
     ...
@@ -2798,21 +2793,16 @@ class Forward:
 class B: ...
 [builtins fixtures/module.pyi]
 
-[out]
-tmp/a/__init__.py:4: note: Revealed type is "def ()"
-tmp/a/__init__.py:5: note: Revealed type is "a.b.B"
-main:2: note: Revealed type is "def ()"
-
 [case testNewAnalyzerImportFromTopLevelAlias]
 import a.b  # This works at runtime
-reveal_type(a.b)  # N
+reveal_type(a.b)  # N: Revealed type is "def () -> builtins.int"
 [file a/__init__.py]
 from .b import B
 from . import b as c
 b = int
 y: b
-reveal_type(y)  # N
-reveal_type(c.B)  # N
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(c.B)  # N: Revealed type is "def () -> a.b.B"
 x: Forward
 class Forward:
     ...
@@ -2821,21 +2811,16 @@ class Forward:
 class B: ...
 [builtins fixtures/module.pyi]
 
-[out]
-tmp/a/__init__.py:5: note: Revealed type is "builtins.int"
-tmp/a/__init__.py:6: note: Revealed type is "def () -> a.b.B"
-main:2: note: Revealed type is "def () -> builtins.int"
-
 [case testNewAnalyzerImportAmbiguousWithTopLevelFunction]
 import a.b  # This works at runtime
-x: a.b.B  # E
-reveal_type(a.b)  # N
+x: a.b.B  # E: Name "a.b.B" is not defined
+reveal_type(a.b)  # N: Revealed type is "def ()"
 [file a/__init__.py]
 import a.b
 import a.b as c
 def b() -> None: pass
-reveal_type(b)  # N
-reveal_type(c.B())  # N
+reveal_type(b)  # N: Revealed type is "def ()"
+reveal_type(c.B())  # N: Revealed type is "a.b.B"
 x: Forward
 class Forward:
     ...
@@ -2843,12 +2828,6 @@ class Forward:
 [file a/b.py]
 class B: ...
 [builtins fixtures/module.pyi]
-
-[out]
-tmp/a/__init__.py:4: note: Revealed type is "def ()"
-tmp/a/__init__.py:5: note: Revealed type is "a.b.B"
-main:2: error: Name "a.b.B" is not defined
-main:3: note: Revealed type is "def ()"
 
 [case testNewAnalyzerConfusingImportConflictingNames]
 # flags: --follow-imports=skip --ignore-missing-imports

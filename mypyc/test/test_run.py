@@ -14,6 +14,8 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+import pytest
+
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -34,6 +36,7 @@ from mypyc.test.testutil import (
     MypycDataSuite,
     assert_test_output,
     fudge_dir_mtimes,
+    has_test_name_tag,
     show_c,
     use_custom_builtins,
 )
@@ -99,7 +102,7 @@ from mypyc.build import mypycify
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
                            multi_file={}, opt_level='{}', install_librt={},
-                           experimental_features={}),
+                           experimental_features={}, depends_on_librt_internal={}),
 )
 """
 
@@ -162,13 +165,15 @@ class TestRun(MypycDataSuite):
     strict_dunder_typing = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        # setup.py wants to be run from the root directory of the package, which we accommodate
-        # by chdiring into tmp/
-        with (
-            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
-            chdir_manager("tmp"),
-        ):
-            self.run_case_inner(testcase)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.delenv("CFLAGS", raising=False)
+            # setup.py wants to be run from the root directory of the package, which we accommodate
+            # by chdiring into tmp/
+            with (
+                use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+                chdir_manager("tmp"),
+            ):
+                self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
         if not os.path.isdir(WORKDIR):  # (one test puts something in build...)
@@ -206,7 +211,10 @@ class TestRun(MypycDataSuite):
             self.run_case_step(testcase, step)
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
-        bench = testcase.config.getoption("--bench", False) and "Benchmark" in testcase.name
+        benchmark_build = has_test_name_tag(testcase.name, "benchmark")
+        bench = testcase.config.getoption("--bench", False) and (
+            benchmark_build or "Benchmark" in testcase.name
+        )
 
         options = Options()
         options.use_builtins_fixtures = True
@@ -244,6 +252,14 @@ class TestRun(MypycDataSuite):
                 module_paths.append(fn)
 
                 shutil.copyfile(fn, os.path.join(os.path.dirname(fn), name + "_interpreted.py"))
+            elif fn.endswith("__init__.py"):
+                pkg_dir = os.path.dirname(fn)
+                if os.path.basename(pkg_dir).startswith("other"):
+                    name = pkg_dir.replace(os.sep, ".")
+                    module_names.append(name)
+                    sources.append(build.BuildSource(fn, name, None))
+                    to_delete.append(fn)
+                    module_paths.append(fn)
 
         for source in sources:
             options.per_module_options.setdefault(source.module, {})["mypyc"] = True
@@ -258,10 +274,11 @@ class TestRun(MypycDataSuite):
 
         # Use _librt_internal to test mypy-specific parts of librt (they have
         # some special-casing in mypyc), for everything else use _librt suffix.
-        librt_internal = testcase.name.endswith("_librt_internal")
-        librt = testcase.name.endswith("_librt") or "_librt_" in testcase.name
+        librt_internal = has_test_name_tag(testcase.name, "librt_internal")
+        librt = has_test_name_tag(testcase.name, "librt")
         # Enable experimental features (local librt build also includes experimental features)
-        experimental_features = testcase.name.endswith("_experimental")
+        experimental_features = has_test_name_tag(testcase.name, "experimental")
+        result = None
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
@@ -282,7 +299,13 @@ class TestRun(MypycDataSuite):
             ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
-            deps = sorted(dep.path for dep in collect_source_dependencies(ir))
+            deps = sorted(
+                (
+                    (dep.path, dep.include_dirs, dep.internal)
+                    for dep in collect_source_dependencies(ir)
+                ),
+                key=lambda tup: tup[0],
+            )
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"
@@ -290,13 +313,16 @@ class TestRun(MypycDataSuite):
             for line in e.messages:
                 print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, "Compile error"
+        finally:
+            if result is not None:
+                result.manager.metastore.close()
 
         # Check that serialization works on this IR. (Only on the first
         # step because the returned ir only includes updated code.)
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 
-        opt_level = int(os.environ.get("MYPYC_OPT_LEVEL", 0))
+        opt_level = 3 if benchmark_build else int(os.environ.get("MYPYC_OPT_LEVEL", 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, "setup.py"))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -311,12 +337,13 @@ class TestRun(MypycDataSuite):
                     opt_level,
                     False,  # install_librt - use cached version instead
                     experimental_features,
+                    librt_internal,
                 )
             )
 
         if librt:
             # Use cached pre-built librt instead of rebuilding for each test
-            cached_librt = get_librt_path(experimental_features)
+            cached_librt = get_librt_path(experimental_features, opt_level=str(opt_level))
             shutil.copytree(os.path.join(cached_librt, "librt"), "librt")
 
         if not run_setup(setup_file, ["build_ext", "--inplace"]):

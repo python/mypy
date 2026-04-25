@@ -569,8 +569,7 @@ class NamedTupleAnalyzer:
         add_field(Var("_source", strtype), is_initialized_in_class=True)
         add_field(Var("__annotations__", ordereddictype), is_initialized_in_class=True)
         add_field(Var("__doc__", strtype), is_initialized_in_class=True)
-        if self.options.python_version >= (3, 10):
-            add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
+        add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
 
         assert info.tuple_type is not None  # Set by update_tuple_type() above.
         shared_self_type = TypeVarType(

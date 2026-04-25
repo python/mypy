@@ -1,4 +1,4 @@
-[case testTimeBasic_librt_experimental]
+[case testTimeBasic_librt]
 import time as stdlib_time
 from librt.time import time
 
@@ -28,14 +28,7 @@ def test_time_comparable_to_stdlib() -> None:
     # but keep it relatively high to avoid test flakiness in CI)
     assert abs(our_time - std_time) < 0.25
 
-[case testTimeNotAvailableInNonExperimentalBuild_librt_time]
-# This also ensures librt.time can be built without experimental features
-import librt.time
-
-def test_time_not_available() -> None:
-    assert not hasattr(librt.time, "time")
-
-[case testTimeUsedAtTopLevelOnly_librt_experimental]
+[case testTimeUsedAtTopLevelOnly_librt]
 from librt.time import time
 
 # The only reference to time() is at module top level

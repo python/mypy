@@ -199,6 +199,7 @@ EnumLiteralAlias3 = Literal[SomeEnum.AVALUE] | None
 [typing fixtures/typing-full.pyi]
 
 [case testPEP695GenericTypeAlias]
+import sys
 from typing import Callable
 from types import GenericAlias
 
@@ -208,24 +209,36 @@ type A[T] = list[T]
 
 def test_generic_alias() -> None:
     assert type(A[str]) is GenericAlias
-    assert str(A[str]) == "A[str]"
+    if sys.version_info >= (3, 15):  # type: ignore[operator]
+        assert str(A[str]) == "_frozen_importlib.A[str]"
+    else:
+        assert str(A[str]) == "A[str]"
     assert str(getattr(A, "__value__")) == "list[T]"
 
 type B[T, S] = dict[S, T]
 
 def test_generic_alias_with_two_args() -> None:
-    assert str(B[str, int]) == "B[str, int]"
+    if sys.version_info >= (3, 15):   # type: ignore[operator]
+        assert str(B[str, int]) == "_frozen_importlib.B[str, int]"
+    else:
+        assert str(B[str, int]) == "B[str, int]"
     assert str(getattr(B, "__value__")) == "dict[S, T]"
 
 type C[*Ts] = tuple[*Ts]
 
 def test_type_var_tuple_type_alias() -> None:
-    assert str(C[int, str]) == "C[int, str]"
+    if sys.version_info >= (3, 15):   # type: ignore[operator]
+        assert str(C[int, str]) == "_frozen_importlib.C[int, str]"
+    else:
+        assert str(C[int, str]) == "C[int, str]"
     assert str(getattr(C, "__value__")) == "tuple[typing.Unpack[Ts]]"
 
 type D[**P] = Callable[P, int]
 
 def test_param_spec_type_alias() -> None:
-    assert str(D[[int, str]]) == "D[[int, str]]"
+    if sys.version_info >= (3, 15):   # type: ignore[operator]
+        assert str(D[[int, str]]) == "_frozen_importlib.D[[int, str]]"
+    else:
+        assert str(D[[int, str]]) == "D[[int, str]]"
     assert str(getattr(D, "__value__")) == "typing.Callable[P, int]"
 [typing fixtures/typing-full.pyi]

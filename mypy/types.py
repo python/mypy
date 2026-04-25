@@ -1043,6 +1043,7 @@ class UnboundType(ProperType):
         self,
         name: str,
         args: Sequence[Type] | None = None,
+        *,
         line: int = -1,
         column: int = -1,
         optional: bool = False,
@@ -4238,6 +4239,16 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
         and typ.fallback.type.fullname == fallback_fullname
         and typ.value == value
     )
+
+
+def is_unannotated_any(t: Type) -> bool:
+    """Check if type represents an implicit (unannotated) Any.
+
+    This is used to check for functions with unspecified/not fully specified types.
+    """
+    if not isinstance(t, ProperType):
+        return False
+    return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
 
 
 names: Final = globals().copy()

@@ -66,11 +66,6 @@ you need to define to implement each protocol.
 .. note::
     ``typing`` also contains deprecated aliases to protocols and ABCs defined in
     :py:mod:`collections.abc`, such as :py:class:`Iterable[T] <typing.Iterable>`.
-    These are only necessary in Python 3.8 and earlier, since the protocols in
-    ``collections.abc`` didn't yet support subscripting (``[]``) in Python 3.8,
-    but the aliases in ``typing`` have always supported
-    subscripting. In Python 3.9 and later, the aliases in ``typing`` don't provide
-    any extra functionality.
 
 Simple user-defined protocols
 *****************************

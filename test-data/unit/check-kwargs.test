@@ -469,16 +469,13 @@ A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
 
 [case testUnexpectedMethodKwargFromOtherModule]
 import m
-m.A(x=1)
+m.A(x=1)  # E: Unexpected keyword argument "x" for "A" \
+          # N: "A" defined in "m"
 [file m.py]
-1+'asdf'
+1+'asdf'  # E: Unsupported operand types for + ("int" and "str")
 class A:
     def __init__(self) -> None:
         pass
-[out]
-tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
-main:2: error: Unexpected keyword argument "x" for "A"
-main:2: note: "A" defined in "m"
 
 [case testMissingNamedArgumentFromOtherModule]
 import m

@@ -1478,6 +1478,26 @@ def f(x: Any):
     x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowingAny]
+# flags: --warn-unreachable
+from typing import Any
+
+class A: pass
+class B(A): pass
+
+def f1(x: Any) -> None:
+    if x and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if isinstance(x, A) and x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+
+def f2(x: Any) -> None:
+    if isinstance(x, A) and not isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if not isinstance(x, B) and isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceOfGenericClassRetainsParameters]
 # flags: --warn-unreachable
 from typing import List, Union
@@ -1561,6 +1581,61 @@ def f(x: Union[int, str], typ: type) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithUnknownTypeMultipleNarrowing]
+# flags: --strict-equality --warn-unreachable --python-version 3.10
+from __future__ import annotations
+from typing import Iterable
+from typing_extensions import TypeAlias
+import types
+
+# Regression test for https://github.com/python/mypy/issues/21181
+# We don't have the same type context as with the real stubs, so sort of fake it
+_ClassInfoLike: TypeAlias = "type | tuple[_ClassInfoLike, ...]"
+
+class A: ...
+class B(A): ...
+
+def fake_type_context(ts: list[type[A]]) -> _ClassInfoLike:
+    return tuple(ts)  # E: Too many arguments for "tuple"
+
+
+def f1(x: A | None) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, object):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f2(x: A | None, ts: list[type[A]]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, fake_type_context(ts)):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f3(x: A | None, t: type | type[A]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f4(x: A | None, t: type) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f5(x: object | None, ta: type[A], tb: type[B]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        if isinstance(x, ta):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+            if isinstance(x, tb):
+                reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithBoundedType]
@@ -2134,27 +2209,22 @@ else:
 # flags: --warn-unreachable
 from typing import List, Optional
 
-x: List[str]
-y: Optional[int]
-
-if y in x:
-    reveal_type(y)  # E: Statement is unreachable
-else:
-    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+def f(x: List[str], y: Optional[int]) -> None:
+    if y in x:
+        reveal_type(y)  # E: Statement is unreachable
+    else:
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 
 [case testNarrowTypeAfterInListNested]
 # flags: --warn-unreachable
 from typing import List, Optional, Any
 
-x: Optional[int]
-lst: Optional[List[int]]
-nested_any: List[List[Any]]
-
-if lst in nested_any:
-    reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
-if x in nested_any:
-    reveal_type(x) # E: Statement is unreachable
+def f(x: Optional[int], lst: Optional[List[int]], nested_any: List[List[Any]]) -> None:
+    if lst in nested_any:
+        reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
+    if x in nested_any:
+        reveal_type(x) # E: Statement is unreachable
 [builtins fixtures/list.pyi]
 
 [case testNarrowTypeAfterInTuple]
@@ -2302,6 +2372,17 @@ x: Union[A, B]
 reveal_type(x)  # N: Revealed type is "__main__.A | Any"
 assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNarrowsAfterNoneCheckWithAnyUnion]
+# flags: --warn-unreachable
+from typing import Any, Union
+
+def f(val: Union[Any, str]) -> None:
+    if val is None or isinstance(val, str):
+        reveal_type(val)  # N: Revealed type is "None | builtins.str"
+        return
+    reveal_type(val)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceIgnoredImport]
@@ -3055,7 +3136,7 @@ if hasattr(mod, "y"):
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testMultipleHasAttr-xfail]
+[case testMultipleHasAttr]
 # flags: --warn-unreachable
 # https://github.com/python/mypy/issues/20596
 from __future__ import annotations

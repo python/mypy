@@ -14,6 +14,8 @@ from collections.abc import Callable, Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
 from typing import IO, Any, Final, Literal, TypeVar
 
+from mypy_extensions import i64
+
 orjson: Any
 try:
     import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
@@ -27,6 +29,13 @@ try:
     CURSES_ENABLED = True
 except ImportError:
     CURSES_ENABLED = False
+
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
 
 T = TypeVar("T")
 
@@ -959,3 +968,79 @@ def json_loads(data: bytes) -> Any:
     if orjson is not None:
         return orjson.loads(data)
     return json.loads(data)
+
+
+_AVAILABLE_THREADS: int | None = None
+
+
+def get_available_threads() -> int:
+    """Determine number of physical cores that current process can use (best effort)."""
+    global _AVAILABLE_THREADS
+    if _AVAILABLE_THREADS is not None:
+        return _AVAILABLE_THREADS
+
+    # This takes into account -X cpu_count and/or PYTHON_CPU_COUNT, but always
+    # counts virtual cores (which is not what we want for CPU bound tasks).
+    os_cpu_count = os.cpu_count()
+    if PSUTIL_AVAILABLE:
+        # Unlike os, psutil can determine number of physical cores.
+        psutil_cpu_count = psutil.cpu_count(logical=False)
+    else:
+        psutil_cpu_count = None
+
+    if psutil_cpu_count and os_cpu_count:
+        cpu_count = min(psutil_cpu_count, os_cpu_count)
+    elif psutil_cpu_count or os_cpu_count:
+        cpu_count = psutil_cpu_count or os_cpu_count
+    else:
+        # A conservative fallback in case we cannot determine CPU count in any way.
+        cpu_count = 4
+
+    affinity: set[int] | list[int] | None = None
+    # Not available on old Python versions on some platforms.
+    if sys.platform == "linux":
+        affinity = os.sched_getaffinity(0)
+    if PSUTIL_AVAILABLE and sys.platform != "darwin":
+        # Currently not supported on macOS.
+        affinity = psutil.Process().cpu_affinity()
+
+    assert cpu_count is not None
+    if affinity:
+        available_threads = min(cpu_count, len(affinity))
+    else:
+        available_threads = cpu_count
+    _AVAILABLE_THREADS = available_threads
+    return available_threads
+
+
+def hash_path_stem(s: str) -> int:
+    """Hash the stem of a cache file path (everything before the first dot in the basename).
+
+    This is a combined stem-extraction + hash function optimized for mypyc compilation.
+    Uses only integer arithmetic, avoiding intermediate string allocations.
+    """
+    # First find end of stem (scanning backwards, stop at first dot after last separator)
+    i = len(s) - 1
+    end: i64 = i
+    while i >= 0:
+        c: i64 = ord(s[i])
+        if c == ord("/") or c == ord("\\"):
+            break
+        if c == ord("."):
+            end = i
+        i -= 1
+    # Calculate hash
+    hv: i64 = 123
+    i = end
+    while i >= 0:
+        c = i64(ord(s[i]))
+        hv = (hv * 33) ^ c
+        i -= 1
+    # Murmur3 finalizer for better bit avalanche (improves shard uniformity)
+    hv = (hv ^ (hv >> 32)) & 0xFFFFFFFF
+    hv ^= hv >> 16
+    hv = (hv * 0x85EBCA6B) & 0xFFFFFFFF
+    hv ^= hv >> 13
+    hv = (hv * 0xC2B2AE35) & 0xFFFFFFFF
+    hv ^= hv >> 16
+    return int(hv)

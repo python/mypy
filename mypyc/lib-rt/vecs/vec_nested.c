@@ -65,6 +65,10 @@ VecNested VecNested_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecNested vec = vec_alloc(cap, item_type, depth);
@@ -178,6 +182,24 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+static int vec_contains(PyObject *self, PyObject *value) {
+    VecNested v = ((VecNestedObject *)self)->vec;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        PyObject *item = box_vec_item_by_index(v, i);
+        if (item == NULL)
+            return -1;
+        if (item == value) {
+            Py_DECREF(item);
+            return 1;
+        }
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0)
+            return cmp;  // 1 if equal, -1 on error
+    }
+    return 0;
+}
+
 static PyObject *compare_vec_eq(VecNested x, VecNested y, int op) {
     int cmp = 1;
     PyObject *res;
@@ -247,8 +269,15 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
         memcpy(new.buf->items, vec.buf->items, sizeof(VecNestedBufItem) * vec.len);
         // TODO: How to safely represent deleted items?
         memset(new.buf->items + vec.len, 0, sizeof(VecNestedBufItem) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i].buf);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
@@ -414,10 +443,94 @@ static PyMappingMethods VecNestedMapping = {
 static PySequenceMethods VecNestedSequence = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
+    .sq_contains = vec_contains,
 };
 
 static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
+};
+
+// Iterator type for nested vecs
+
+typedef struct {
+    PyObject_HEAD
+    VecNested vec;             // Unboxed vec (keeps buffer alive via buf reference)
+    Py_ssize_t index;          // Current iteration index
+} VecNestedIterObject;
+
+PyTypeObject VecNestedIterType;
+
+static PyObject *VecNested_iter(PyObject *self) {
+    VecNestedIterObject *it = PyObject_GC_New(VecNestedIterObject, &VecNestedIterType);
+    if (it == NULL)
+        return NULL;
+    it->vec = ((VecNestedObject *)self)->vec;
+    Py_INCREF(it->vec.buf);
+    it->index = 0;
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static int
+VecNestedIter_traverse(VecNestedIterObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->vec.buf);
+    return 0;
+}
+
+static int
+VecNestedIter_clear(VecNestedIterObject *self)
+{
+    Py_CLEAR(self->vec.buf);
+    return 0;
+}
+
+static void VecNestedIter_dealloc(VecNestedIterObject *self) {
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->vec.buf);
+    PyObject_GC_Del(self);
+}
+
+static PyObject *VecNestedIter_next(VecNestedIterObject *self) {
+    if (self->vec.buf == NULL)
+        return NULL;
+    if (self->index < self->vec.len) {
+        PyObject *item = box_vec_item_by_index(self->vec, self->index);
+        if (item == NULL)
+            return NULL;
+        self->index++;
+        return item;
+    }
+    Py_CLEAR(self->vec.buf);
+    return NULL;  // StopIteration
+}
+
+static PyObject *VecNestedIter_len(VecNestedIterObject *self, PyObject *Py_UNUSED(ignored)) {
+    if (self->vec.buf == NULL)
+        return PyLong_FromSsize_t(0);
+    Py_ssize_t remaining = self->vec.len - self->index;
+    if (remaining < 0)
+        remaining = 0;
+    return PyLong_FromSsize_t(remaining);
+}
+
+static PyMethodDef VecNestedIter_methods[] = {
+    {"__length_hint__", (PyCFunction)VecNestedIter_len, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+PyTypeObject VecNestedIterType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec_nested_iterator",
+    .tp_basicsize = sizeof(VecNestedIterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecNestedIter_traverse,
+    .tp_clear = (inquiry)VecNestedIter_clear,
+    .tp_dealloc = (destructor)VecNestedIter_dealloc,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)VecNestedIter_next,
+    .tp_methods = VecNestedIter_methods,
 };
 
 PyTypeObject VecNestedBufType = {
@@ -447,6 +560,7 @@ PyTypeObject VecNestedType = {
     .tp_dealloc = (destructor)VecNested_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
+    .tp_iter = VecNested_iter,
     .tp_as_sequence = &VecNestedSequence,
     .tp_as_mapping = &VecNestedMapping,
     .tp_richcompare = vec_richcompare,
@@ -454,10 +568,16 @@ PyTypeObject VecNestedType = {
     // TODO: free
 };
 
-PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
-    VecNested v = vec_alloc(0, item_type, depth);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable, int64_t cap) {
+    VecNested v = vec_alloc(cap, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++) {
+            v.buf->items[i].len = -1;
+            v.buf->items[i].buf = NULL;
+        }
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);

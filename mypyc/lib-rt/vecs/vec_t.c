@@ -81,6 +81,10 @@ VecT VecT_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecT vec = vec_alloc(cap, item_type);
@@ -210,6 +214,22 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+static int vec_contains(PyObject *self, PyObject *value) {
+    VecT v = ((VecTObject *)self)->vec;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        PyObject *item = v.buf->items[i];
+        if (item == value) {
+            return 1;
+        }
+        Py_INCREF(item);
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0)
+            return cmp;  // 1 if equal, -1 on error
+    }
+    return 0;
+}
+
 static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
@@ -263,8 +283,15 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         // Copy items to new vec.
         memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
         memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i]);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
@@ -410,10 +437,93 @@ static PyMappingMethods VecTMapping = {
 static PySequenceMethods VecTSequence = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
+    .sq_contains = vec_contains,
 };
 
 static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
+};
+
+// Iterator type for vec[T] (reference types)
+
+typedef struct {
+    PyObject_HEAD
+    VecT vec;             // Unboxed vec (keeps buffer alive via buf reference)
+    Py_ssize_t index;     // Current iteration index
+} VecTIterObject;
+
+PyTypeObject VecTIterType;
+
+static PyObject *VecT_iter(PyObject *self) {
+    VecTIterObject *it = PyObject_GC_New(VecTIterObject, &VecTIterType);
+    if (it == NULL)
+        return NULL;
+    it->vec = ((VecTObject *)self)->vec;
+    Py_INCREF(it->vec.buf);
+    it->index = 0;
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static int
+VecTIter_traverse(VecTIterObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->vec.buf);
+    return 0;
+}
+
+static int
+VecTIter_clear(VecTIterObject *self)
+{
+    Py_CLEAR(self->vec.buf);
+    return 0;
+}
+
+static void VecTIter_dealloc(VecTIterObject *self) {
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->vec.buf);
+    PyObject_GC_Del(self);
+}
+
+static PyObject *VecTIter_next(VecTIterObject *self) {
+    if (self->vec.buf == NULL)
+        return NULL;
+    if (self->index < self->vec.len) {
+        PyObject *item = self->vec.buf->items[self->index];
+        self->index++;
+        Py_INCREF(item);
+        return item;
+    }
+    Py_CLEAR(self->vec.buf);
+    return NULL;  // StopIteration
+}
+
+static PyObject *VecTIter_len(VecTIterObject *self, PyObject *Py_UNUSED(ignored)) {
+    if (self->vec.buf == NULL)
+        return PyLong_FromSsize_t(0);
+    Py_ssize_t remaining = self->vec.len - self->index;
+    if (remaining < 0)
+        remaining = 0;
+    return PyLong_FromSsize_t(remaining);
+}
+
+static PyMethodDef VecTIter_methods[] = {
+    {"__length_hint__", (PyCFunction)VecTIter_len, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+PyTypeObject VecTIterType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec_iterator",
+    .tp_basicsize = sizeof(VecTIterObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecTIter_traverse,
+    .tp_clear = (inquiry)VecTIter_clear,
+    .tp_dealloc = (destructor)VecTIter_dealloc,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)VecTIter_next,
+    .tp_methods = VecTIter_methods,
 };
 
 PyTypeObject VecTBufType = {
@@ -443,6 +553,7 @@ PyTypeObject VecTType = {
     .tp_dealloc = (destructor)VecT_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
+    .tp_iter = VecT_iter,
     .tp_as_sequence = &VecTSequence,
     .tp_as_mapping = &VecTMapping,
     .tp_richcompare = vec_richcompare,
@@ -450,10 +561,14 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
-    VecT v = vec_alloc(0, item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++)
+            v.buf->items[i] = NULL;
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);

@@ -418,6 +418,18 @@ def test_doubly_nested_vec_i64_operations() -> None:
 
     # TODO: box/unbox
 
+def test_iter_and_next() -> None:
+    a = vec[str](["s1" + str()])
+    b = vec[str](["s2" + str()])
+    c = vec[str](["s3" + str()])
+    v = vec[vec[str]]([a, b, c])
+    it = iter(v)
+    assert next(it) == a
+    assert next(it) == b
+    assert next(it) == c
+    with assertRaises(StopIteration):
+        next(it)
+
 def f(x: vec[vec[str]]) -> None:
     pass
 
@@ -494,3 +506,52 @@ def test_union_of_nested_vecs() -> None:
     with assertRaises(TypeError):
         a5: Any = vec[vec[vec[i64]]]()
         len_union(a5)
+
+def test_append_with_alias() -> None:
+    v = vec[vec[i64]]()
+    v = append(v, vec[i64]([1, 2, 3]))
+    alias = v
+    v = append(v, vec[i64]([4, 5]))
+    v = append(v, vec[i64]([6]))
+    v = append(v, vec[i64]([7]))
+    assert alias[0] == vec[i64]([1, 2, 3])
+    assert len(alias) == 1
+    assert v[0] == vec[i64]([1, 2, 3])
+    assert len(v) == 4
+
+def test_cap_empty() -> None:
+    v = vec[vec[i64]](capacity=3)
+    assert len(v) == 0
+    assert v == vec[vec[i64]]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[vec[i64]]([vec[i64]([1]), vec[i64]([2])], capacity=3)
+    assert len(v) == 2
+    assert v[0] == vec[i64]([1])
+    assert v[1] == vec[i64]([2])
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[vec[str]](capacity=n)
+    assert len(v) == 0
+    v = append(v, vec[str](["x"]))
+    assert v[0] == vec[str](["x"])
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[vec[i64]]([vec[i64]([1]), vec[i64]([2])], capacity=3)
+    old = v
+    v = append(v, vec[i64]([3]))
+    v[0] = vec[i64]([99])
+    assert old[0] == vec[i64]([99])  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[vec[i64]]([vec[i64]([10]), vec[i64]([20]), vec[i64]([30])], capacity=1)
+    assert len(v) == 3
+    assert v[0] == vec[i64]([10])
+    assert v[1] == vec[i64]([20])
+    assert v[2] == vec[i64]([30])
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[vec[i64]](capacity=-1)
+    with assertRaises(ValueError):
+        vec[vec[i64]]([vec[i64]([1])], capacity=-1)

@@ -104,13 +104,13 @@ def build_ir_for_single_file2(
 
     # By default generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 9))
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 10))
     options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 9)
+    options.python_version = compiler_options.python_version or (3, 10)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -123,6 +123,7 @@ def build_ir_for_single_file2(
     # Construct input as a single single.
     # Parse and type check the input program.
     result = build.build(sources=[source], options=options, alt_lib_path=test_temp_dir)
+    result.manager.metastore.close()
     if result.errors:
         raise CompileError(result.errors)
 
@@ -265,8 +266,8 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
           Run test case only on 64-bit platforms
       *_32bit*:
           Run test caseonly on 32-bit platforms
-      *_python3_8* (or for any Python version):
-          Use Python 3.8+ C API features (default: lowest supported version)
+      *_python3_10* (or for any Python version):
+          Use Python 3.10+ C API features (default: lowest supported version)
       *StripAssert*:
           Don't generate code for assert statements
     """
@@ -276,15 +277,26 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
     options = CompilerOptions(
-        strip_asserts="StripAssert" in name, capi_version=(3, 9), strict_traceback_checks=True
+        strip_asserts="StripAssert" in name, capi_version=(3, 10), strict_traceback_checks=True
     )
-    # A suffix like _python3_9 is used to set the target C API version.
-    m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
+    # A suffix like _python3_10 is used to set the target C API version.
+    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
     if m:
-        options.capi_version = (int(m.group(1)), int(m.group(2)))
+        version = (int(m.group(1)), int(m.group(2)))
+        assert version >= (3, 10), f"Unsupported _python* suffix: {name}"
+        options.capi_version = version
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
-    if re.search("_experimental(_|$)", name):
+    if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
+
+
+def has_test_name_tag(name: str, tag: str) -> bool:
+    """Check if a test case name contains a tag token like ``_experimental``.
+
+    A tag matches if it appears as a full underscore-delimited token:
+    ``foo_tag_bar`` or ``foo_tag``.
+    """
+    return re.search(rf"(?:^|_){re.escape(tag)}(?:_|$)", name) is not None

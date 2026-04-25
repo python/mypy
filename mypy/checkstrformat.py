@@ -39,7 +39,6 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
-    Node,
     StarExpr,
     StrExpr,
     TempNode,
@@ -582,8 +581,14 @@ class StringFormatterChecker:
 
         temp_errors = Errors(self.chk.options)
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
-        temp_ast: Node = parse(
-            dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
+        temp_ast = parse(
+            dummy,
+            fnam="<format>",
+            module=None,
+            options=self.chk.options,
+            errors=temp_errors,
+            file_exists=False,
+            eager=True,
         )
         if temp_errors.is_errors():
             self.msg.fail(

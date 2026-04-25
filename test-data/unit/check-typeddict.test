@@ -142,7 +142,7 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testCanCreateTypedDictWithClassOldVersion]
+[case testCanCreateTypedDictWithClassFunctionBases]
 # Test that we can use class-syntax to merge function-based TypedDicts
 from typing import TypedDict
 
@@ -2515,6 +2515,17 @@ class ForwardDeclared: pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictCannotBeDisjointBase]
+from typing import TypedDict
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
+class A(TypedDict):
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict
 
@@ -3849,7 +3860,7 @@ def f(self, **kwargs: Unpack[TD]) -> None:
 def g(self, *, x: float) -> None: ...
 @overload
 def g(self, *, y: str) -> None: ...
-def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     z  # E: Name "z" is not defined
 
 class A:

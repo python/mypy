@@ -1,6 +1,7 @@
 # Builtins stub used in tuple-related test cases.
 
 import _typeshed
+import types
 from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type, Self
 
 _T = TypeVar("_T")

@@ -11,7 +11,8 @@ import os
 import tempfile
 import unittest
 from collections.abc import Iterator
-from typing import Any
+
+from librt.internal import ReadBuffer
 
 from mypy import defaults, nodes
 from mypy.cache import (
@@ -22,10 +23,11 @@ from mypy.cache import (
     LITERAL_NONE,
     LITERAL_STR,
     LOCATION,
+    read_int,
 )
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile
+from mypy.nodes import MypyFile, ParseError
 from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
@@ -34,7 +36,13 @@ from mypy.util import get_mypy_comments
 # If the experimental ast_serialize module isn't installed, the following import will fail
 # and we won't run any native parser tests.
 try:
-    from mypy.nativeparse import native_parse, parse_to_binary_ast
+    from mypy.nativeparse import (
+        State,
+        deserialize_imports,
+        native_parse,
+        parse_to_binary_ast,
+        read_statements,
+    )
 
     has_nativeparse = True
 except ImportError:
@@ -91,6 +99,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
+            errors += load_tree(node, options)
             node.path = "main"
             a = node.str_with_options(options).split("\n")
             a = [format_error(err) for err in errors] + a
@@ -102,7 +111,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     )
 
 
-def format_error(err: dict[str, Any]) -> str:
+def format_error(err: ParseError) -> str:
     return f"{err['line']}:{err['column']}: error: {err['message']}"
 
 
@@ -112,6 +121,18 @@ def format_ignore(ignore: tuple[int, list[str]]) -> str:
         return f"ignore: {line}"
     else:
         return f"ignore: {line} [{', '.join(codes)}]"
+
+
+def load_tree(node: MypyFile, options: Options) -> list[ParseError]:
+    """Deserialize full AST from serialized raw data."""
+    assert node.raw_data is not None
+    state = State(options)
+    data = ReadBuffer(node.raw_data.defs)
+    n = read_int(data)
+    node.defs = read_statements(state, data, n)
+    node.imports = deserialize_imports(node.raw_data.imports)
+    node.raw_data = None
+    return state.errors
 
 
 def test_parser_imports(testcase: DataDrivenTestCase) -> None:
@@ -129,7 +150,7 @@ def test_parser_imports(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             node, errors, type_ignores = native_parse(fnam, options)
-
+            errors += load_tree(node, options)
             # Extract and format reachable imports
             a = format_reachable_imports(node)
             a = [format_error(err) for err in errors] + a
@@ -230,7 +251,7 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
             ]
 
         with temp_source("print('hello')") as fnam:
-            b, _, _, _, _ = parse_to_binary_ast(fnam, Options())
+            b, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
             assert list(b) == (
                 [LITERAL_INT, 22, nodes.EXPR_STMT, nodes.CALL_EXPR]
                 + [nodes.NAME_EXPR, LITERAL_STR]
