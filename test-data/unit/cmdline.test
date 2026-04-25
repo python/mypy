@@ -1277,7 +1277,7 @@ pass
 error: cache must be enabled in parallel mode
 == Return code: 2
 
-[case testFooBar]
+[case testCheckingStubPackagesWorksInParallelMode]
 # cmd: mypy foo-stubs --num-workers=4
 [file foo-stubs/__init__.pyi]
 [file foo-stubs/api/__init__.pyi]
