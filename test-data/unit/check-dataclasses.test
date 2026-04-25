@@ -2698,3 +2698,30 @@ class ClassB(ClassA):
     def value(self) -> int:
         return 0
 [builtins fixtures/dict.pyi]
+
+[case testDataclassAllowsFinalField]
+# flags: --python-version=3.13
+from dataclasses import InitVar, dataclass
+from typing import Final, ClassVar
+
+@dataclass
+class C:
+    x: int
+    y: Final[int]
+    z: ClassVar[Final[int]] = 4
+
+c = C(1, 2)
+c.y = 3  # E: Cannot assign to final attribute "y"
+
+@dataclass
+class D(C):
+    x: Final[int]  # E: Cannot override writable attribute "x" with a final one
+
+@dataclass
+class Bad1:
+    x: Final[InitVar[int]]  # E: InitVar cannot be final
+
+@dataclass
+class Bad2:
+    x: InitVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
+[builtins fixtures/dict.pyi]
