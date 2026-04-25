@@ -1258,7 +1258,7 @@ class BuildManager:
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
         if id in self.modules:
-            # Micro-optimization, if already found it, it is definitely a module.
+            # Micro-optimization, if we already found it, it is definitely a module.
             return True
         if id in self.source_set.source_modules:
             # Special case: if a module is passed on command line, we accept it even
