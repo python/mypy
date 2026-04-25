@@ -258,7 +258,7 @@ class FileSystemCache:
         if st is None:
             return False
         if real_only:
-            dirname, _ = os.path.split(path)
+            dirname = os.path.dirname(path)
             return dirname not in self.fake_package_cache
         return True
 
