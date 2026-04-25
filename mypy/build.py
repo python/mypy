@@ -3358,6 +3358,8 @@ class State:
         self.priorities = {}  # id -> priority
         self.dep_line_map = {}  # id -> line
         self.dep_hashes = {}
+        # We copy imports as defs to (partially) support some legacy mypy plugins,
+        # most notably old NumPy plugin that does some imports patching, see #21323.
         copied_imports = False
         if not self.tree.defs and self.tree.raw_data is not None:
             self.tree.defs = list(self.tree.imports)
