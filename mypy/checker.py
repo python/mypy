@@ -7143,14 +7143,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if int_literals is not None:
 
                         def replay_lookup(new_parent_type: ProperType) -> Type | None:
-                            if not isinstance(new_parent_type, TupleType):
-                                return None
-                            try:
-                                assert int_literals is not None
-                                member_types = [new_parent_type.items[key] for key in int_literals]
-                            except IndexError:
-                                return None
-                            return make_simplified_union(member_types)
+                            if isinstance(new_parent_type, TupleType):
+                                try:
+                                    assert int_literals is not None
+                                    member_types = [
+                                        new_parent_type.items[key] for key in int_literals
+                                    ]
+                                except IndexError:
+                                    return None
+                                return make_simplified_union(member_types)
+                            if (
+                                isinstance(new_parent_type, Instance)
+                                and new_parent_type.type.fullname
+                                in ("builtins.list", "builtins.tuple")
+                                and new_parent_type.args
+                            ):
+                                return new_parent_type.args[0]
+                            return None
 
                     else:
                         return output
