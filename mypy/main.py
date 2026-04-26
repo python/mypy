@@ -1577,7 +1577,8 @@ def process_options(
                 reason = cache.find_module(p)
                 if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     fail(
-                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker.\n"
+                        "See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
                         stderr,
                         options,
                     )
@@ -1698,7 +1699,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         if not after_run:
             sys.stderr.write(
                 "error: Can't determine which types to install with no files to check "
-                + "(and no cache from previous mypy run)\n"
+                "(and no cache from previous mypy run)\n"
             )
         else:
             sys.stderr.write(
