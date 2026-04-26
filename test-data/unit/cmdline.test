@@ -1065,8 +1065,8 @@ except ValueError:
 from typing import *
 sys.path = path
 [out]
-mypy: error: "typing.py" shadows library module "typing"
-note: A user-defined top-level module with name "typing" is not supported
+typing.py: error: This file shadows library module "typing"
+typing.py: note: A user-defined top-level module with name "typing" is not supported
 == Return code: 2
 
 [case testCustomTypeshedDirWithRelativePathDoesNotCrash]

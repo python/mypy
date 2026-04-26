@@ -921,12 +921,12 @@ class BuildManager:
             ):
                 continue
 
-            raise CompileError(
-                [
-                    f'mypy: error: "{os.path.relpath(path)}" shadows library module "{module}"',
-                    f'note: A user-defined top-level module with name "{module}" is not supported',
-                ]
+            self.errors.set_file(path, module, options)
+            self.error(None, f'This file shadows library module "{module}"', blocker=True)
+            self.note(
+                None, f'A user-defined top-level module with name "{module}" is not supported'
             )
+            self.errors.raise_error()
 
         if metastore is None:
             metastore = create_metastore(options, parallel_worker=parallel_worker)
