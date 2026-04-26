@@ -9,28 +9,35 @@ import_librt_internal(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    void *capsule = PyCapsule_Import("librt.internal._C_API", 0);
+    void **capsule = (void **)PyCapsule_Import("librt.internal._C_API", 0);
     if (capsule == NULL)
         return -1;
-    memcpy(NativeInternal_API, capsule, sizeof(NativeInternal_API));
-    if (NativeInternal_ABI_Version() != LIBRT_INTERNAL_ABI_VERSION) {
+
+    // Each librt capsule gives at least 20 entries. Validate version before copying the table.
+    int (*abi_version)(void) = (int (*)(void))capsule[13];
+    if (abi_version() != LIBRT_INTERNAL_ABI_VERSION) {
         char err[128];
         snprintf(err, sizeof(err), "ABI version conflict for librt.internal, expected %d, found %d",
             LIBRT_INTERNAL_ABI_VERSION,
-            NativeInternal_ABI_Version()
+            abi_version()
         );
         PyErr_SetString(PyExc_ValueError, err);
         return -1;
     }
-    if (NativeInternal_API_Version() < LIBRT_INTERNAL_API_VERSION) {
+    int (*api_version)(void) = (int (*)(void))capsule[19];
+    if (api_version() < LIBRT_INTERNAL_API_VERSION) {
         char err[128];
         snprintf(err, sizeof(err),
                  "API version conflict for librt.internal, expected %d or newer, found %d (hint: upgrade librt)",
             LIBRT_INTERNAL_API_VERSION,
-            NativeInternal_API_Version()
+            api_version()
         );
         PyErr_SetString(PyExc_ValueError, err);
         return -1;
     }
+    // Provider API version is >= our expected version, which (by the API
+    // compatibility contract) means it has at least LIBRT_INTERNAL_API_LEN
+    // entries, so this copy is safe.
+    memcpy(NativeInternal_API, capsule, sizeof(NativeInternal_API));
     return 0;
 }

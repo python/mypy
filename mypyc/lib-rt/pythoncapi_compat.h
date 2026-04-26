@@ -922,7 +922,8 @@ PyObject_VisitManagedDict(PyObject *obj, visitproc visit, void *arg)
 {
     PyObject **dict = _PyObject_GetDictPtr(obj);
     if (dict == NULL || *dict == NULL) {
-        return -1;
+        // Nothing to do.
+        return 0;
     }
     Py_VISIT(*dict);
     return 0;

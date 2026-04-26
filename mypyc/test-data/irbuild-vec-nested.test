@@ -309,3 +309,41 @@ L5:
     r10 = load_mem r9 :: vec[vec[str]]*
     keep_alive v
     return r10
+
+[case testVecNestedCreateWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def cap_str() -> vec[vec[str]]:
+    return vec[vec[str]](capacity=5)
+
+def cap_i64() -> vec[vec[i64]]:
+    return vec[vec[i64]](capacity=5)
+
+def cap_variable(n: i64) -> vec[vec[str]]:
+    return vec[vec[str]](capacity=n)
+[out]
+def cap_str():
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecNestedApi.alloc(0, 5, r1, 1)
+    return r2
+def cap_i64():
+    r0 :: vec[vec[i64]]
+L0:
+    r0 = VecNestedApi.alloc(0, 5, 2, 1)
+    return r0
+def cap_variable(n):
+    n :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecNestedApi.alloc(0, n, r1, 1)
+    return r2

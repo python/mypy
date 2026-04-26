@@ -453,6 +453,58 @@ def test_iterator_protocol() -> None:
     with assertRaises(StopIteration):
         next(it)
 
+def test_cap_empty() -> None:
+    for t in ITEM_TYPES:
+        v = vec[t](capacity=3)
+        assert len(v) == 0
+        assert v == vec[t]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[float]([1.5, 2.5], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 1.5
+    assert v[1] == 2.5
+
+    v = vec[u8]([10, 20], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 10
+
+    v = vec[i16]([-100, 100], capacity=3)
+    assert len(v) == 2
+
+    v = vec[i32]([1000, 2000], capacity=3)
+    assert len(v) == 2
+
+    v = vec[bool]([True, False], capacity=3)
+    assert len(v) == 2
+    assert v[0] is True
+    assert v[1] is False
+
+def test_cap_negative() -> None:
+    for t in ITEM_TYPES:
+        with assertRaises(ValueError):
+            vec[t](capacity=-1)
+
+def test_cap_buffer_reuse() -> None:
+    # Verify buffer reuse within cap for each type
+    v = vec[float]([1.5], capacity=3)
+    old = v
+    v = append(v, 2.5)
+    v[0] = 9.5
+    assert old[0] == 9.5  # shared buffer
+
+    v = vec[u8]([10], capacity=3)
+    old = v
+    v = append(v, 20)
+    v[0] = 99
+    assert old[0] == 99
+
+    v = vec[bool]([True], capacity=3)
+    old = v
+    v = append(v, False)
+    v[0] = False
+    assert old[0] is False
+
 [case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.vecs can be built without experimental features
 import librt.vecs

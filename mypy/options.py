@@ -11,6 +11,7 @@ from typing import Any, Final
 from librt.internal import WriteBuffer, write_bool, write_str
 
 from mypy import defaults
+from mypy.cache import write_json
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
 
@@ -24,7 +25,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition_old",
-    "allow_redefinition_new",
+    "allow_redefinition",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -235,7 +236,7 @@ class Options:
 
         # Allow flexible variable redefinition with an arbitrary type, in different
         # blocks and at different nesting levels
-        self.allow_redefinition_new = False
+        self.allow_redefinition = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
@@ -302,6 +303,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = True
+        self.sqlite_num_shards = defaults.SQLITE_NUM_SHARDS
         self.fixed_format_cache = True
         self.debug_cache = False
         self.skip_version_check = False
@@ -342,7 +344,7 @@ class Options:
         # Per-module options (raw)
         self.per_module_options: dict[str, dict[str, object]] = {}
         self._glob_options: list[tuple[str, Pattern[str]]] = []
-        self.unused_configs: set[str] = set()
+        self._unused_configs: set[str] = set()
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -450,6 +452,17 @@ class Options:
         d = {k: v for k, v in d.items() if not k.startswith("_")}
         return d
 
+    def to_bytes(self) -> bytes:
+        """Serialize this options object to binary data."""
+        assert self.transform_source is None, "Source transform cannot be serialized"
+        snapshot = self.snapshot()
+        # Caller will need to use process_error_codes() to re-compute these.
+        del snapshot["disabled_error_codes"]
+        del snapshot["enabled_error_codes"]
+        buf = WriteBuffer()
+        write_json(buf, snapshot)
+        return buf.getvalue()
+
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
@@ -466,8 +479,13 @@ class Options:
         if invalid_code_names_here:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_code_names_here))}")
 
-        self.disabled_error_codes |= {error_codes[code] for code in disabled_code_names}
-        self.enabled_error_codes |= {error_codes[code] for code in enabled_code_names}
+        # Ignore invalid error codes.
+        self.disabled_error_codes |= {
+            error_codes[code] for code in disabled_code_names if code in error_codes
+        }
+        self.enabled_error_codes |= {
+            error_codes[code] for code in enabled_code_names if code in error_codes
+        }
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
@@ -559,7 +577,7 @@ class Options:
         # sections as used if any real modules use them or if any
         # concrete config sections use them. This means we need to
         # track which get used while constructing.
-        self.unused_configs = set(unstructured_glob_keys)
+        self._unused_configs = set(unstructured_glob_keys)
 
         for key in wildcards + concrete:
             # Find what the options for this key would be, just based
@@ -570,7 +588,7 @@ class Options:
 
         # Add the more structured sections into unused configs, since
         # they only count as used if actually used by a real module.
-        self.unused_configs.update(structured_keys)
+        self._unused_configs.update(structured_keys)
 
     def clone_for_module(self, module: str) -> Options:
         """Create an Options object that incorporates per-module options.
@@ -584,7 +602,7 @@ class Options:
 
         # If the module just directly has a config entry, use it.
         if module in self._per_module_cache:
-            self.unused_configs.discard(module)
+            self._unused_configs.discard(module)
             return self._per_module_cache[module]
 
         # If not, search for glob paths at all the parents. So if we are looking for
@@ -597,7 +615,7 @@ class Options:
         for i in range(len(path), 0, -1):
             key = ".".join(path[:i] + ["*"])
             if key in self._per_module_cache:
-                self.unused_configs.discard(key)
+                self._unused_configs.discard(key)
                 options = self._per_module_cache[key]
                 break
 
@@ -606,7 +624,7 @@ class Options:
         if not module.endswith(".*"):
             for key, pattern in self._glob_options:
                 if pattern.match(module):
-                    self.unused_configs.discard(key)
+                    self._unused_configs.discard(key)
                     options = options.apply_changes(self.per_module_options[key])
 
         # We could update the cache to directly point to modules once
@@ -614,6 +632,9 @@ class Options:
         # slower and not faster, so we don't bother.
 
         return options
+
+    def get_unused_configs(self) -> set[str]:
+        return self._unused_configs.copy()
 
     def compile_glob(self, s: str) -> Pattern[str]:
         # Compile one of the glob patterns to a regex so that '.*' can

@@ -488,3 +488,50 @@ def test_tuple() -> None:
     assert b == t[1]
     with assertRaises(RuntimeError):
         ftuple(True)
+
+def test_cap_empty() -> None:
+    v = vec[i64](capacity=3)
+    assert len(v) == 0
+    assert v == vec[i64]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 1
+    assert v[1] == 2
+
+def test_cap_from_range() -> None:
+    v = vec[i64](range(7), capacity=10)
+    old = v
+    v = append(v, 7)
+    v = append(v, 8)
+    v = append(v, 9)
+    v[0] = 99
+    assert old[0] == 99
+    assert v == vec[i64]([99, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[i64](capacity=n)
+    assert len(v) == 0
+    v = append(v, 5)
+    assert v[0] == 5
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    old = v
+    v = append(v, 3)
+    v[0] = 99
+    assert old[0] == 99  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[i64]([10, 20, 30], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 10
+    assert v[1] == 20
+    assert v[2] == 30
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[i64](capacity=-1)
+    with assertRaises(ValueError):
+        vec[i64]([1], capacity=-1)

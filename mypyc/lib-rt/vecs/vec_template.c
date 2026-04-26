@@ -84,8 +84,12 @@ VEC FUNC(ConvertFromNested)(VecNestedBufItem item) {
 }
 
 VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
-        size = cap;
+        cap = size;
     VEC vec = vec_alloc(cap);
     if (VEC_IS_ERROR(vec))
         return vec;
@@ -96,10 +100,13 @@ VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
-PyObject *FUNC(FromIterable)(PyObject *iterable) {
-    VEC v = vec_alloc(0);
+PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+    VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        memset(v.buf->items, 0, sizeof(ITEM_C_TYPE) * cap);
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);
@@ -132,15 +139,20 @@ PyObject *FUNC(FromIterable)(PyObject *iterable) {
 }
 
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
-    static char *kwlist[] = {"", NULL};
+    static char *kwlist[] = {"", "capacity", NULL};
     PyObject *init = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
+    int64_t cap = 0;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|OL:vec", kwlist, &init, &cap)) {
+        return NULL;
+    }
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
         return NULL;
     }
     if (init == NULL) {
-        return FUNC(Box)(FUNC(New)(0, 0));
+        return FUNC(Box)(FUNC(New)(0, cap));
     } else {
-        return (PyObject *)FUNC(FromIterable)(init);
+        return (PyObject *)FUNC(FromIterable)(init, cap);
     }
 }
 

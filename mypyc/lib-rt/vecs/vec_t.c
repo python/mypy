@@ -81,6 +81,10 @@ VecT VecT_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecT vec = vec_alloc(cap, item_type);
@@ -279,8 +283,15 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         // Copy items to new vec.
         memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
         memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i]);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
@@ -550,10 +561,14 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
-    VecT v = vec_alloc(0, item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++)
+            v.buf->items[i] = NULL;
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);

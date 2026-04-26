@@ -74,17 +74,28 @@ def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
     return builder.coerce(v, c_pyssize_t_rprimitive, line)
 
 
-def vec_create(builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, line: int) -> Value:
+def vec_create(
+    builder: LowLevelIRBuilder,
+    vtype: RVec,
+    length: int | Value,
+    line: int,
+    *,
+    capacity: Value | None = None,
+) -> Value:
     if isinstance(length, int):
         length = Integer(length, c_pyssize_t_rprimitive)
     length = as_platform_int(builder, length, line)
+    if capacity is not None:
+        capacity = as_platform_int(builder, capacity, line)
+    else:
+        capacity = length
 
     item_type = vtype.item_type
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         call = CallC(
             f"{api_name}.alloc",
-            [length, length],
+            [length, capacity],
             vtype,
             False,
             False,
@@ -110,7 +121,7 @@ def vec_create(builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, lin
         if depth == 0:
             call = CallC(
                 "VecTApi.alloc",
-                [length, length, typeval],
+                [length, capacity, typeval],
                 vtype,
                 False,
                 False,
@@ -121,7 +132,7 @@ def vec_create(builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, lin
         else:
             call = CallC(
                 "VecNestedApi.alloc",
-                [length, length, typeval, Integer(depth, int32_rprimitive)],
+                [length, capacity, typeval, Integer(depth, int32_rprimitive)],
                 vtype,
                 False,
                 False,
@@ -134,7 +145,13 @@ def vec_create(builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, lin
 
 
 def vec_create_initialized(
-    builder: LowLevelIRBuilder, vtype: RVec, length: int | Value, init: Value, line: int
+    builder: LowLevelIRBuilder,
+    vtype: RVec,
+    length: int | Value,
+    init: Value,
+    line: int,
+    *,
+    capacity: Value | None = None,
 ) -> Value:
     """Create vec with items initialized to the given value."""
     if isinstance(length, int):
@@ -143,7 +160,7 @@ def vec_create_initialized(
 
     item_type = vtype.item_type
     init = builder.coerce(init, item_type, line)
-    vec = vec_create(builder, vtype, length, line)
+    vec = vec_create(builder, vtype, length, line, capacity=capacity)
 
     items_start = vec_items(builder, vec)
     step = step_size(item_type)
@@ -160,9 +177,14 @@ def vec_create_initialized(
 
 
 def vec_create_from_values(
-    builder: LowLevelIRBuilder, vtype: RVec, values: list[Value], line: int
+    builder: LowLevelIRBuilder,
+    vtype: RVec,
+    values: list[Value],
+    line: int,
+    *,
+    capacity: Value | None = None,
 ) -> Value:
-    vec = vec_create(builder, vtype, len(values), line)
+    vec = vec_create(builder, vtype, len(values), line, capacity=capacity)
     ptr = vec_items(builder, vec)
     item_type = vtype.item_type
     step = step_size(item_type)

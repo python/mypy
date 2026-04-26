@@ -96,29 +96,34 @@ typedef struct {
 
 static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject *kw)
 {
-    static char *kwlist[] = {"", NULL};
+    static char *kwlist[] = {"", "capacity", NULL};
     PyObject *init = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
+    int64_t cap = 0;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|OL:vec", kwlist, &init, &cap)) {
+        return NULL;
+    }
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
         return NULL;
     }
     VecGenericAlias *p = (VecGenericAlias *)self;
     if (p->depth == 0) {
         if (init == NULL) {
-            VecT vec = VecT_New(0, 0, p->item_type);
+            VecT vec = VecT_New(0, cap, p->item_type);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return VecT_Box(vec, p->item_type);
         } else {
-            return VecT_FromIterable(p->item_type, init);
+            return VecT_FromIterable(p->item_type, init, cap);
         }
     } else {
         if (init == NULL) {
-            VecNested vec = VecNested_New(0, 0, p->item_type, p->depth);
+            VecNested vec = VecNested_New(0, cap, p->item_type, p->depth);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return VecNested_Box(vec);
         } else {
-            return VecNested_FromIterable(p->item_type, p->depth, init);
+            return VecNested_FromIterable(p->item_type, p->depth, init, cap);
         }
     }
 }

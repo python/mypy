@@ -262,7 +262,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.builtin_base:
         fields["tp_new"] = new_name
 
-    if generate_full:
+    managed_dict = has_managed_dict(cl, emitter)
+    if generate_full or managed_dict:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         if not cl.is_acyclic:
             fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
@@ -335,6 +336,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     else:
         fields["tp_basicsize"] = base_size
 
+    if generate_full or managed_dict:
+        if not cl.is_acyclic:
+            generate_traverse_for_class(cl, traverse_name, emitter)
+            emit_line()
+        generate_clear_for_class(cl, clear_name, emitter)
+        emit_line()
+        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
+        emit_line()
     if generate_full:
         assert cl.setup is not None
         emitter.emit_line(native_function_header(cl.setup, emitter) + ";")
@@ -344,13 +353,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         init_fn = cl.get_method("__init__")
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
-        emit_line()
-        if not cl.is_acyclic:
-            generate_traverse_for_class(cl, traverse_name, emitter)
-            emit_line()
-        generate_clear_for_class(cl, clear_name, emitter)
-        emit_line()
-        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
         emit_line()
 
         if cl.allow_interpreted_subclasses:
@@ -380,7 +382,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if generate_full and not cl.is_acyclic:
+    if (generate_full or managed_dict) and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -391,7 +393,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # This is just a placeholder to please CPython. It will be
             # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
-    if has_managed_dict(cl, emitter):
+    if managed_dict:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
 
@@ -868,8 +870,14 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self, visit, arg"
+    emitter.emit_line("int rv = 0;")
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_traverse", base_args, prefix="rv = ")
+        emitter.emit_line("if (rv != 0) return rv;")
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line(f"rv = PyObject_VisitManagedDict({base_args});")
+        emitter.emit_line("if (rv != 0) return rv;")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -880,7 +888,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
             f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
-    emitter.emit_line("return 0;")
+    emitter.emit_line("return rv;")
     emitter.emit_line("}")
 
 
@@ -891,8 +899,11 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self"
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_clear", base_args)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -936,6 +947,18 @@ def generate_dealloc_for_class(
         emitter.emit_line("}")
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if cl.builtin_base:
+        emitter.emit_line(f"{clear_func_name}(self);")
+        # For native subclasses of builtins such as dict, the base deallocator
+        # is responsible for tearing down base-owned storage and freeing memory.
+        # Re-track self if base is GC-aware to match cpython's subtype_dealloc.
+        base = f"{emitter.type_struct_name(cl)}->tp_base"
+        base_arg = "(PyObject *)self"
+        emitter.emit_line(f"if (PyType_IS_GC({base})) PyObject_GC_Track({base_arg});")
+        emitter.emit_base_tp_function_call(cl, "tp_dealloc", base_arg)
+        emitter.emit_line("done: ;")
+        emitter.emit_line("}")
+        return
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations

@@ -359,3 +359,62 @@ def f() -> None:
 main:5: error: Invalid item type for "vec"
 main:6: error: Invalid item type for "vec"
 main:7: error: Invalid item type for "vec"
+
+[case testVecTCreateWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def cap_only() -> vec[str]:
+    return vec[str](capacity=5)
+
+def cap_variable(n: i64) -> vec[str]:
+    return vec[str](capacity=n)
+[out]
+def cap_only():
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.alloc(0, 5, r1)
+    return r2
+def cap_variable(n):
+    n :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.alloc(0, n, r1)
+    return r2
+
+[case testVecTCreateFromListWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def list_with_cap() -> vec[str]:
+    return vec[str](['a', 'b'], capacity=5)
+[out]
+def list_with_cap():
+    r0, r1 :: str
+    r2 :: object
+    r3 :: ptr
+    r4 :: vec[str]
+    r5 :: object
+    r6, r7, r8 :: ptr
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = load_address PyUnicode_Type
+    r3 = r2
+    r4 = VecTApi.alloc(2, 5, r3)
+    r5 = r4.buf
+    r6 = get_element_ptr r5 items :: VecTBufObject
+    set_mem r6, r0 :: builtins.str*
+    r7 = r6 + 8
+    set_mem r7, r1 :: builtins.str*
+    r8 = r7 + 8
+    keep_alive r4
+    return r4

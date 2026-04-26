@@ -820,3 +820,82 @@ L1:
     r2 = r1.len
 L2:
     return 1
+
+[case testVecI64CreateWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def cap_only() -> vec[i64]:
+    return vec[i64](capacity=5)
+
+def cap_variable(n: i64) -> vec[i64]:
+    return vec[i64](capacity=n)
+[out]
+def cap_only():
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.alloc(0, 5)
+    return r0
+def cap_variable(n):
+    n :: i64
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.alloc(0, n)
+    return r0
+
+[case testVecI64CreateFromListWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def list_with_cap() -> vec[i64]:
+    return vec[i64]([1, 2], capacity=5)
+[out]
+def list_with_cap():
+    r0 :: vec[i64]
+    r1 :: object
+    r2, r3, r4 :: ptr
+L0:
+    r0 = VecI64Api.alloc(2, 5)
+    r1 = r0.buf
+    r2 = get_element_ptr r1 items :: VecI64BufObject
+    set_mem r2, 1 :: i64*
+    r3 = r2 + 8
+    set_mem r3, 2 :: i64*
+    r4 = r3 + 8
+    keep_alive r0
+    return r0
+
+[case testVecI64CreateFromListMultiplyWithCap_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def repeated_with_cap(n: i64) -> vec[i64]:
+    return vec[i64]([3] * n, capacity=10)
+[out]
+def repeated_with_cap(n):
+    n :: i64
+    r0 :: vec[i64]
+    r1 :: object
+    r2 :: ptr
+    r3 :: i64
+    r4, r5 :: ptr
+    r6 :: bit
+    r7 :: ptr
+L0:
+    r0 = VecI64Api.alloc(n, 10)
+    r1 = r0.buf
+    r2 = get_element_ptr r1 items :: VecI64BufObject
+    r3 = n * 8
+    r4 = r2 + r3
+    r5 = r2
+L1:
+    r6 = r5 < r4 :: unsigned
+    if r6 goto L2 else goto L3 :: bool
+L2:
+    set_mem r5, 3 :: i64*
+    r7 = r5 + 8
+    r5 = r7
+    goto L1
+L3:
+    keep_alive r0
+    return r0

@@ -578,6 +578,18 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=f8f07
 - Allow dangerous identity comparisons to `Any` typed variables (Shantanu, PR [21142](https://github.com/python/mypy/pull/21142))
 - `--warn-unused-config` should not be a strict flag (Ivan Levkivskyi, PR [21139](https://github.com/python/mypy/pull/21139))
 
+### Mypy 1.20.2
+
+- Use WAL with SQLite cache and fix close (Shantanu, PR [21154](https://github.com/python/mypy/pull/21154))
+- Adjust SQLite journal mode (Ivan Levkivskyi, PR [21217](https://github.com/python/mypy/pull/21217))
+- Correctly aggregate narrowing information on parent expressions (Shantanu, PR [21206](https://github.com/python/mypy/pull/21206))
+- Fix regression related to generic callables (Shantanu, PR [21208](https://github.com/python/mypy/pull/21208))
+- Fix regression by avoiding widening types in some contexts (Shantanu, PR [21242](https://github.com/python/mypy/pull/21242))
+- Fix slicing in non-strict optional mode (Shantanu, PR [21282](https://github.com/python/mypy/pull/21282))
+- mypyc: Fix match statement semantics for "or" pattern (Shantanu, PR [21156](https://github.com/python/mypy/pull/21156))
+- mypyc: Fix issue with module dunder attributes (Piotr Sawicki, PR [21275](https://github.com/python/mypy/pull/21275))
+- Initial support for Python 3.15.0a8 (Marc Mueller, PR [21255](https://github.com/python/mypy/pull/21255))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:

@@ -65,6 +65,10 @@ VecNested VecNested_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecNested vec = vec_alloc(cap, item_type, depth);
@@ -265,8 +269,15 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
         memcpy(new.buf->items, vec.buf->items, sizeof(VecNestedBufItem) * vec.len);
         // TODO: How to safely represent deleted items?
         memset(new.buf->items + vec.len, 0, sizeof(VecNestedBufItem) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i].buf);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
@@ -557,10 +568,16 @@ PyTypeObject VecNestedType = {
     // TODO: free
 };
 
-PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
-    VecNested v = vec_alloc(0, item_type, depth);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable, int64_t cap) {
+    VecNested v = vec_alloc(cap, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++) {
+            v.buf->items[i].len = -1;
+            v.buf->items[i].buf = NULL;
+        }
+    }
     v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);

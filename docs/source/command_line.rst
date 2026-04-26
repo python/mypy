@@ -595,7 +595,7 @@ of the above sections.
     This flag causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-.. option:: --allow-redefinition-new
+.. option:: --allow-redefinition
 
     By default, mypy won't allow a variable to be redefined with an
     unrelated type. This flag enables the redefinition of *unannotated*
@@ -613,7 +613,7 @@ of the above sections.
             # Type of "x" is "int | str" here.
             return x
 
-    Without the new flag, mypy only supports inferring optional types
+    Without this flag, mypy only supports inferring optional types
     (``X | None``) from multiple assignments. With this option enabled,
     mypy can infer arbitrary union types.
 
@@ -646,24 +646,21 @@ of the above sections.
     Note: We are planning to turn this flag on by default in a future mypy
     release.
 
-.. option:: --allow-redefinition
+.. option:: --allow-redefinition-new
 
-    This is an alias to :option:`--allow-redefinition-old <mypy --allow-redefinition-old>`.
-    In mypy v2.0 this will point to
-    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`, and will
-    eventually became the default.
+    Deprecated alias for :option:`--allow-redefinition <mypy --allow-redefinition>`.
 
 .. option:: --allow-redefinition-old
 
-    This is an older variant of
-    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`.
+    This is an older, more limited variant of
+    :option:`--allow-redefinition <mypy --allow-redefinition>`.
     This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
 
-    We have no plans to remove this flag, but we expect that
-    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`
-    will replace this flag for new use cases eventually.
+    We have no plans to remove this flag, but
+    :option:`--allow-redefinition <mypy --allow-redefinition>`
+    is recommended for new use cases.
 
     Example where this can be useful:
 

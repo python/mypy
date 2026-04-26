@@ -2138,6 +2138,10 @@ class NonNative:
 class InterpSub:
     pass
 
+@mypyc_attr(free_list_len=1)  # E: "free_list_len" can't be used in a class that inherits from a built-in type
+class InheritsBuiltIn(dict):
+    pass
+
 [case testAcyclicClassRequiresAcyclicBases]
 from typing import Generic, TypeVar
 from mypy_extensions import mypyc_attr, trait

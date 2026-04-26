@@ -14,6 +14,7 @@ PYTHON3_VERSION: Final = (3, 10)
 PYTHON3_VERSION_MIN: Final = (3, 10)  # Keep in sync with supported target versions
 
 CACHE_DIR: Final = ".mypy_cache"
+SQLITE_NUM_SHARDS: Final = 16
 
 CONFIG_NAMES: Final = ["mypy.ini", ".mypy.ini"]
 SHARED_CONFIG_NAMES: Final = ["pyproject.toml", "setup.cfg"]

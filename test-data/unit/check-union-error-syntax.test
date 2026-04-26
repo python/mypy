@@ -26,7 +26,7 @@ x = 3 # E: Incompatible types in assignment (expression has type "Literal[3]", v
 [builtins fixtures/tuple.pyi]
 
 [case testOrSyntaxRecombined]
-# flags: --allow-redefinition-new --local-partial-types
+# flags: --allow-redefinition --local-partial-types
 # The following revealed type is recombined because the finally body is visited twice.
 try:
     x = 1

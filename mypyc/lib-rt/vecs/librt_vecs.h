@@ -713,7 +713,7 @@ static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap);
 PyObject *VecT_Box(VecT vec, size_t item_type);
 VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
 VecT VecT_Remove(VecT vec, PyObject *x);
@@ -726,7 +726,7 @@ static inline int VecNested_Check(PyObject *o) {
 }
 
 VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
-PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
+PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *iterable, int64_t cap);
 PyObject *VecNested_Box(VecNested);
 VecNested VecNested_Append(VecNested vec, VecNestedBufItem x);
 VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
