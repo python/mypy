@@ -12,6 +12,9 @@ from mypy_extensions import i64, i32, i16, u8
 from librt.vecs import vec, append, extend, remove, pop
 from testutil import assertRaises
 
+def vec_u8_from_any(x: Any) -> vec[u8]:
+    return vec[u8](x)
+
 def test_create_empty() -> None:
     assert str(vec[i32]()) == "vec[i32]([])"
     assert str(vec[i16]()) == "vec[i16]([])"
@@ -355,6 +358,11 @@ def test_construct_from_bytes() -> None:
 
     with assertRaises(ValueError):
         vec[u8](b'\x01', capacity=-1)
+
+    memoryview_ = eval('memoryview')
+    view_2d = memoryview_(bytearray(b'\x01\x02\x03\x04')).cast('B', shape=(2, 2))
+    with assertRaises(NotImplementedError):
+        vec_u8_from_any(view_2d)
 
 def test_construct_from_array_type_mismatch() -> None:
     import array

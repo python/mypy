@@ -126,7 +126,9 @@ VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
 #ifdef BUFFER_FORMAT_CHAR_OK
     Py_buffer view;
     if (PyObject_GetBuffer(iterable, &view, PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) == 0) {
-        if (view.itemsize == sizeof(ITEM_C_TYPE) && buffer_format_matches(view.format)) {
+        if (view.ndim == 1
+            && view.itemsize == sizeof(ITEM_C_TYPE)
+            && buffer_format_matches(view.format)) {
             Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
             Py_ssize_t alloc_size = n > cap ? n : cap;
             VEC v = vec_alloc(alloc_size);
