@@ -353,10 +353,11 @@ TypeMap: _TypeAlias = dict[Expression, Type]
 # Keeps track of partial types in a single scope. In fine-grained incremental
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
-class PartialTypeScope(NamedTuple):
-    map: dict[Var, Context]
-    is_function: bool
-    is_local: bool
+class PartialTypeScope:
+    def __init__(self, map: dict[Var, Context], is_function: bool, is_local: bool) -> None:
+        self.map: Final = map
+        self.is_function: Final = is_function
+        self.is_local: Final = is_local
 
 
 class LocalTypeMap:
@@ -1617,14 +1618,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             else:
                                 msg = message_registry.MISSING_RETURN_STATEMENT
                             if body_is_trivial:
-                                msg = msg._replace(code=codes.EMPTY_BODY)
+                                msg = ErrorMessage(msg.value, code=codes.EMPTY_BODY)
                             self.fail(msg, defn)
                             if may_be_abstract:
                                 self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
                     else:
                         msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
                         if body_is_trivial:
-                            msg = msg._replace(code=codes.EMPTY_BODY)
+                            msg = ErrorMessage(msg.value, code=codes.EMPTY_BODY)
                         # similar to code in check_return_stmt
                         if (
                             not self.check_subtype(
@@ -7208,14 +7209,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if int_literals is not None:
 
                         def replay_lookup(new_parent_type: ProperType) -> Type | None:
-                            if not isinstance(new_parent_type, TupleType):
-                                return None
-                            try:
-                                assert int_literals is not None
-                                member_types = [new_parent_type.items[key] for key in int_literals]
-                            except IndexError:
-                                return None
-                            return make_simplified_union(member_types)
+                            if isinstance(new_parent_type, TupleType):
+                                try:
+                                    assert int_literals is not None
+                                    member_types = [
+                                        new_parent_type.items[key] for key in int_literals
+                                    ]
+                                except IndexError:
+                                    return None
+                                return make_simplified_union(member_types)
+                            if (
+                                isinstance(new_parent_type, Instance)
+                                and new_parent_type.type.fullname
+                                in ("builtins.list", "builtins.tuple")
+                                and new_parent_type.args
+                            ):
+                                return new_parent_type.args[0]
+                            return None
 
                     else:
                         return output
@@ -7874,7 +7884,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.options.check_untyped_defs and self.dynamic_funcs and self.dynamic_funcs[-1]
         )
 
-        partial_types, _, _ = self.partial_types.pop()
+        partial_types = self.partial_types.pop().map
         if not self.current_node_deferred:
             for var, context in partial_types.items():
                 if isinstance(var.type, PartialType) and var.type.type is None and not permissive:

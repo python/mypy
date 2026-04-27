@@ -1518,8 +1518,8 @@ async def foo() -> None:
 x = 0
 1 + ''
 [out]
-mypy: "tmp/typing.py" shadows library module "typing"
-note: A user-defined top-level module with name "typing" is not supported
+typing.py: error: This file shadows library module "typing"
+typing.py: note: A user-defined top-level module with name "typing" is not supported
 
 
 [case testNoPython3StubAvailable]
