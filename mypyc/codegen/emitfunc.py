@@ -600,9 +600,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         obj_args = (
             []
             if method_decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"]
-            if method_decl.kind == FUNC_CLASSMETHOD
-            else [obj]
+            else [f"(PyObject *)Py_TYPE({obj})"] if method_decl.kind == FUNC_CLASSMETHOD else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type_from_decl(method_decl, self.emitter)
@@ -944,9 +942,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
         assert op.traceback_entry is not None
         if self.emitter.context.strict_traceback_checks:
-            assert op.traceback_entry[1] >= 0, (
-                "AttributeError traceback cannot have a negative line number"
-            )
+            assert (
+                op.traceback_entry[1] >= 0
+            ), "AttributeError traceback cannot have a negative line number"
         globals_static = self.emitter.static_name("globals", self.module_name)
         self.emit_line(
             'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
