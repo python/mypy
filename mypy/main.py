@@ -97,6 +97,10 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
+    options.num_workers = 2
+    if options.cache_dir == os.devnull:
+        options.cache_dir = defaults.CACHE_DIR
+
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
