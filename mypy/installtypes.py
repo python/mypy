@@ -21,6 +21,12 @@ _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 def normalize_distribution_name(name: str) -> str:
     return _DIST_NORMALIZE_RE.sub("-", name).lower()
 
+DIST_TO_MODULE_NAME: dict[str, str] = { #FIX
+    "python-dateutil": "dateutil",
+    "pyyaml": "yaml",
+    "python-xlib": "Xlib",
+}
+
 
 def read_locked_packages(path: str) -> dict[str, str | None]:
     """Read package name/version pairs from a pylock-like TOML file.
@@ -62,17 +68,41 @@ def resolve_stub_packages_from_lock(locked: Mapping[str, str | None]) -> list[st
         known_stubs.update(namespace_packages.values())
 
     stubs: set[str] = set()
+    # FIX
+    # for dist_name in locked:
+    #     if dist_name.startswith("types-"):
+    #         continue
+    #     candidates = {
+    #         dist_name,
+    #         dist_name.replace("-", "_"),
+    #     }
+    
+    #     for module_name in candidates:
+    #         stub = stub_distribution_name(module_name)
+    #         if stub:
+    #             stubs.add(stub)
+    #     typeshed_name = f"types-{dist_name}"
+    #     if typeshed_name in known_stubs:
+    #         stubs.add(typeshed_name)
+    # return sorted(stubs)
     for dist_name in locked:
         if dist_name.startswith("types-"):
             continue
+
         candidates = {
             dist_name,
             dist_name.replace("-", "_"),
         }
+
+        mapped_module = DIST_TO_MODULE_NAME.get(dist_name)
+        if mapped_module is not None:
+            candidates.add(mapped_module)
+
         for module_name in candidates:
             stub = stub_distribution_name(module_name)
             if stub:
                 stubs.add(stub)
+
         typeshed_name = f"types-{dist_name}"
         if typeshed_name in known_stubs:
             stubs.add(typeshed_name)

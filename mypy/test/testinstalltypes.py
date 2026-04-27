@@ -4,12 +4,15 @@ import os
 import tempfile
 import textwrap
 import unittest
+from types import SimpleNamespace #ADDED
+from unittest.mock import patch #ADDED
 
 from mypy.installtypes import (
     make_runtime_constraints,
     read_locked_packages,
     resolve_stub_packages_from_lock,
 )
+from mypy.main import install_types #ADDED
 
 
 class TestInstallTypesFromPylock(unittest.TestCase):
@@ -48,7 +51,20 @@ class TestInstallTypesFromPylock(unittest.TestCase):
             "types-requests": "2.32.0",
         }
         stubs = resolve_stub_packages_from_lock(locked)
+        # requests already worked before fix because distribution name == module name.
         assert "types-requests" in stubs
+
+        # FIX: Before my fix, this failed because the lock file used the distribution name
+        # "python-dateutil" but stubinfo.py knows the module/import name "dateutil".
+        # After adding the explicit distribution->module mapping, it should resolve.
+        assert "types-python-dateutil" in stubs #FIX
+
+    #TEST: checks explicit distribution->module mapping
+    def test_resolve_stub_packages_from_lock_handles_distribution_module_mismatch(self) -> None:
+        locked = {
+            "python-dateutil": "2.9.0",
+        }
+        stubs = resolve_stub_packages_from_lock(locked)
         assert "types-python-dateutil" in stubs
 
     def test_make_runtime_constraints(self) -> None:
@@ -59,3 +75,108 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         }
         constraints = make_runtime_constraints(locked)
         assert constraints == ["python-dateutil==2.9.0", "requests==2.32.3"]
+
+#FIX: stub/mock object that pretends to be a formatter so tests don’t crash.
+class DummyFormatter:
+    def style(self, text: str, *args: object, **kwargs: object) -> str:
+        return text
+
+#TEST: integrations tests
+class TestInstallTypesFromPylockIntegration(unittest.TestCase):
+    def make_options(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            python_executable="python",
+            cache_dir="unused",
+        )
+
+    @patch("mypy.main.subprocess.run")
+    def test_install_types_builds_correct_pip_command(self, mock_run) -> None:
+        content = textwrap.dedent(
+            """
+            [[package]]
+            name = "requests"
+            version = "2.32.3"
+
+            [[package]]
+            name = "python-dateutil"
+            version = "2.9.0"
+            """
+        )
+
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".toml", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(content)
+            path = f.name
+
+        try:
+            options = self.make_options()
+            formatter = DummyFormatter() #FIX
+
+            result = install_types(
+                # formatter=None,
+                formatter=formatter, # FIX
+                options=options,
+                non_interactive=True,
+                pylock_path=path,
+            )
+
+            self.assertTrue(result)
+            mock_run.assert_called_once()
+
+            cmd = mock_run.call_args[0][0]
+
+            # Check pip command structure
+            self.assertEqual(cmd[:4], ["python", "-m", "pip", "install"])
+
+            # Critical behavior
+            self.assertIn("--no-deps", cmd)
+            self.assertIn("--constraint", cmd)
+
+            # Stub packages should be installed
+            # requests already resolved before the fix.
+            self.assertIn("types-requests", cmd)
+
+            # FIX: Before the fix, this was missing from the pip command because
+            # resolve_stub_packages_from_lock only tried "python-dateutil" and
+            # "python_dateutil", but stubinfo.py maps "dateutil" -> "types-python-dateutil".
+            # After adding the explicit distribution->module mapping, install_types()
+            # should include the correct stub package in the pip command.
+            self.assertIn("types-python-dateutil", cmd)
+
+        finally:
+            os.unlink(path)
+
+    @patch("mypy.main.subprocess.run")
+    def test_no_stubs_found_skips_install(self, mock_run) -> None:
+        content = textwrap.dedent(
+            """
+            [[package]]
+            name = "unknown-lib"
+            version = "1.0.0"
+            """
+        )
+
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".toml", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(content)
+            path = f.name
+
+        try:
+            options = self.make_options()
+            formatter = DummyFormatter() #FIX
+
+            result = install_types(
+                # formatter=None,
+                formatter=formatter, #FIX
+                options=options,
+                non_interactive=True,
+                pylock_path=path,
+            )
+
+            self.assertFalse(result)
+            mock_run.assert_not_called()
+
+        finally:
+            os.unlink(path)
