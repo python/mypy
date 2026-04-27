@@ -627,3 +627,23 @@ def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
     v = extend_iterable(v1, it)
     assert v == vec[i64]([10, 20, 10, 20, 30])
     assert v0 == vec[i64]([10, 20, 30])
+
+def test_extend_from_array() -> None:
+    import array
+    v = extend_iterable(vec[i64]([1, 2]), array.array('q', [3, 4, 5]))
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_from_array_empty_src() -> None:
+    import array
+    v = extend_iterable(vec[i64]([1, 2]), array.array('q', []))
+    assert v == vec[i64]([1, 2])
+
+def test_extend_from_array_empty_dst() -> None:
+    import array
+    v = extend_iterable(vec[i64](), array.array('q', [10, 20]))
+    assert v == vec[i64]([10, 20])
+
+def test_extend_from_bytes() -> None:
+    v = vec[i64]([1])
+    v = extend_iterable(v, b'\x02\x03')
+    assert v == vec[i64]([1, 2, 3])
