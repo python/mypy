@@ -887,42 +887,66 @@ static PyObject *vec_extend(PyObject *self, PyObject *args)
     if (VecI64_Check(vec)) {
         VecI64 v = ((VecI64Object *)vec)->vec;
         VEC_INCREF(v);
-        v = VecI64_Extend(v, iterable);
+        if (VecI64_Check(iterable)) {
+            v = VecI64_ExtendVec(v, ((VecI64Object *)iterable)->vec);
+        } else {
+            v = VecI64_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI64_Box(v);
     } else if (VecU8_Check(vec)) {
         VecU8 v = ((VecU8Object *)vec)->vec;
         VEC_INCREF(v);
-        v = VecU8_Extend(v, iterable);
+        if (VecU8_Check(iterable)) {
+            v = VecU8_ExtendVec(v, ((VecU8Object *)iterable)->vec);
+        } else {
+            v = VecU8_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecU8_Box(v);
     } else if (VecFloat_Check(vec)) {
         VecFloat v = ((VecFloatObject *)vec)->vec;
         VEC_INCREF(v);
-        v = VecFloat_Extend(v, iterable);
+        if (VecFloat_Check(iterable)) {
+            v = VecFloat_ExtendVec(v, ((VecFloatObject *)iterable)->vec);
+        } else {
+            v = VecFloat_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecFloat_Box(v);
     } else if (VecI32_Check(vec)) {
         VecI32 v = ((VecI32Object *)vec)->vec;
         VEC_INCREF(v);
-        v = VecI32_Extend(v, iterable);
+        if (VecI32_Check(iterable)) {
+            v = VecI32_ExtendVec(v, ((VecI32Object *)iterable)->vec);
+        } else {
+            v = VecI32_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI32_Box(v);
     } else if (VecI16_Check(vec)) {
         VecI16 v = ((VecI16Object *)vec)->vec;
         VEC_INCREF(v);
-        v = VecI16_Extend(v, iterable);
+        if (VecI16_Check(iterable)) {
+            v = VecI16_ExtendVec(v, ((VecI16Object *)iterable)->vec);
+        } else {
+            v = VecI16_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI16_Box(v);
     } else if (VecBool_Check(vec)) {
         VecBool v = ((VecBoolObject *)vec)->vec;
         VEC_INCREF(v);
-        v = VecBool_Extend(v, iterable);
+        if (VecBool_Check(iterable)) {
+            v = VecBool_ExtendVec(v, ((VecBoolObject *)iterable)->vec);
+        } else {
+            v = VecBool_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecBool_Box(v);
@@ -930,14 +954,32 @@ static PyObject *vec_extend(PyObject *self, PyObject *args)
         VecT v = ((VecTObject *)vec)->vec;
         size_t item_type = v.buf->item_type;
         VEC_INCREF(v);
-        v = VecT_Extend(v, iterable, item_type);
+        if (VecT_Check(iterable)) {
+            VecT src = ((VecTObject *)iterable)->vec;
+            if (src.buf != NULL && src.buf->item_type == item_type) {
+                v = VecT_ExtendVec(v, src, item_type);
+            } else {
+                v = VecT_Extend(v, iterable, item_type);
+            }
+        } else {
+            v = VecT_Extend(v, iterable, item_type);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecT_Box(v, item_type);
     } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VEC_INCREF(v);
-        v = VecNested_Extend(v, iterable);
+        if (VecNested_Check(iterable)) {
+            VecNested src = ((VecNestedObject *)iterable)->vec;
+            if (src.buf->item_type == v.buf->item_type && src.buf->depth == v.buf->depth) {
+                v = VecNested_ExtendVec(v, src);
+            } else {
+                v = VecNested_Extend(v, iterable);
+            }
+        } else {
+            v = VecNested_Extend(v, iterable);
+        }
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecNested_Box(v);
