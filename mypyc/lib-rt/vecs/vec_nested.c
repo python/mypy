@@ -288,6 +288,13 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
 // Extend 'vec' with items from 'iterable', stealing 'vec'.
 // Return extended 'vec', or error vec on failure.
 VecNested VecNested_Extend(VecNested vec, PyObject *iterable) {
+    if (VecNested_Check(iterable)) {
+        VecNested src = ((VecNestedObject *)iterable)->vec;
+        if (src.buf->item_type == vec.buf->item_type && src.buf->depth == vec.buf->depth) {
+            return VecNested_ExtendVec(vec, src);
+        }
+    }
+
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(vec);

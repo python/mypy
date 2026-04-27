@@ -335,6 +335,10 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
 // Extend 'vec' with items from 'iterable', stealing 'vec'.
 // Return extended 'vec', or error vec on failure.
 VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
+    if (Py_TYPE(iterable) == &VEC_TYPE) {
+        return FUNC(ExtendVec)(vec, ((VEC_OBJECT *)iterable)->vec);
+    }
+
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(vec);

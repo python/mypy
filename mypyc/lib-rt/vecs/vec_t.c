@@ -302,6 +302,13 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
 // Extend 'vec' with items from 'iterable', stealing 'vec'.
 // Return extended 'vec', or error vec on failure.
 VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
+    if (VecT_Check(iterable)) {
+        VecT src = ((VecTObject *)iterable)->vec;
+        if (src.buf != NULL && src.buf->item_type == item_type) {
+            return VecT_ExtendVec(vec, src, item_type);
+        }
+    }
+
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(vec);

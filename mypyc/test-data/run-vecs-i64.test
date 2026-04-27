@@ -612,3 +612,15 @@ def test_extend_vec_shared_buffer_after_pop() -> None:
     assert v == vec[i64]([10, 20, 10, 20, 30])
     # src (v0) must not be corrupted
     assert v0 == vec[i64]([10, 20, 30])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[i64]()
+    v0 = append(v0, 10)
+    v0 = append(v0, 20)
+    v0 = append(v0, 30)
+    v1, _ = pop(v0)
+    # Statically this uses VecI64Api.extend, but at runtime the iterable is a vec.
+    it: Iterable[i64] = v0
+    v = extend_iterable(v1, it)
+    assert v == vec[i64]([10, 20, 10, 20, 30])
+    assert v0 == vec[i64]([10, 20, 30])

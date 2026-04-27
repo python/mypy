@@ -504,6 +504,9 @@ def test_cap_negative() -> None:
 def extend_vec(v: vec[str], v2: vec[str]) -> vec[str]:
     return extend(v, v2)
 
+def extend_iterable(v: vec[str], it: Iterable[str]) -> vec[str]:
+    return extend(v, it)
+
 def test_extend_vec() -> None:
     v = extend_vec(vec[str](['a', 'b']), vec[str](['c', 'd']))
     assert v == vec[str](['a', 'b', 'c', 'd'])
@@ -561,4 +564,16 @@ def test_extend_vec_shared_buffer_after_pop() -> None:
     v = extend_vec(v1, v0)
     assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
     # src (v0) must not be corrupted
+    assert v0 == vec[str](['a', 'b', 'c'])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[str]()
+    v0 = append(v0, 'a')
+    v0 = append(v0, 'b')
+    v0 = append(v0, 'c')
+    v1, _ = pop(v0)
+    # Statically this uses VecTApi.extend, but at runtime the iterable is a vec.
+    it: Iterable[str] = v0
+    v = extend_iterable(v1, it)
+    assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
     assert v0 == vec[str](['a', 'b', 'c'])

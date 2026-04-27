@@ -559,6 +559,9 @@ def test_cap_negative() -> None:
 def extend_nested(v: vec[vec[str]], v2: vec[vec[str]]) -> vec[vec[str]]:
     return extend(v, v2)
 
+def extend_nested_iterable(v: vec[vec[str]], it: Iterable[vec[str]]) -> vec[vec[str]]:
+    return extend(v, it)
+
 def test_extend_vec() -> None:
     v1 = vec[str](['a'])
     v2 = vec[str](['b'])
@@ -633,4 +636,20 @@ def test_extend_vec_shared_buffer_after_pop() -> None:
     assert v[2] == vec[str](['a'])
     assert v[4] == vec[str](['c'])
     # src (v0) must not be corrupted
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0: vec[vec[str]] = vec[vec[str]]()
+    v0 = append(v0, vec[str](['a']))
+    v0 = append(v0, vec[str](['b']))
+    v0 = append(v0, vec[str](['c']))
+    v1, _ = pop(v0)
+    # Statically this uses VecNestedApi.extend, but at runtime the iterable is a vec.
+    it: Iterable[vec[str]] = v0
+    v = extend_nested_iterable(v1, it)
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[1] == vec[str](['b'])
+    assert v[2] == vec[str](['a'])
+    assert v[4] == vec[str](['c'])
     assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
