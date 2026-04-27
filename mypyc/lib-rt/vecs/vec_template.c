@@ -398,9 +398,11 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
 }
 
 // Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
-// Caller guarantees n > 0 and that 'items' remains valid for the call
-// (if aliased with dst's buffer, caller must hold an extra reference).
-inline static VEC vec_extend_items(VEC dst, const ITEM_C_TYPE *items, Py_ssize_t n) {
+// Caller guarantees n > 0 and that 'items' remains valid for the call.
+// If force_alloc is true, always allocate a new buffer even when dst has capacity.
+inline static VEC vec_extend_items(
+    VEC dst, const ITEM_C_TYPE *items, Py_ssize_t n, int force_alloc
+) {
     if (unlikely(n > PY_SSIZE_T_MAX - dst.len)) {
         PyErr_NoMemory();
         VEC_DECREF(dst);
@@ -408,7 +410,7 @@ inline static VEC vec_extend_items(VEC dst, const ITEM_C_TYPE *items, Py_ssize_t
     }
     Py_ssize_t new_len = dst.len + n;
     Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
-    if (new_len <= cap) {
+    if (!force_alloc && new_len <= cap) {
         memcpy(dst.buf->items + dst.len, items, sizeof(ITEM_C_TYPE) * n);
         dst.len = new_len;
         return dst;
@@ -451,7 +453,7 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
     if (buf_ok) {
         Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
         if (n > 0)
-            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n);
+            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n, 0);
         PyBuffer_Release(&view);
         return vec;
     }
@@ -490,15 +492,7 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
 VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     if (src.len == 0)
         return dst;
-    int aliased = dst.buf == src.buf;
-    if (aliased) {
-        Py_INCREF(src.buf);
-    }
-    VEC result = vec_extend_items(dst, src.buf->items, src.len);
-    if (aliased) {
-        Py_DECREF(src.buf);
-    }
-    return result;
+    return vec_extend_items(dst, src.buf->items, src.len, dst.buf == src.buf);
 }
 
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.

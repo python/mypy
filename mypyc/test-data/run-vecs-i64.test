@@ -616,6 +616,14 @@ def test_extend_vec_shared_buffer_after_pop() -> None:
     # src (v0) must not be corrupted
     assert v0 == vec[i64]([10, 20, 30])
 
+def test_extend_vec_shared_buffer_spare_capacity_after_pop() -> None:
+    v0 = vec[i64]([10, 20, 30], capacity=8)
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer with enough spare capacity for an in-place extend.
+    v = extend_vec(v1, v0)
+    assert v == vec[i64]([10, 20, 10, 20, 30])
+    assert v0 == vec[i64]([10, 20, 30])
+
 def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
     v0 = vec[i64]()
     v0 = append(v0, 10)
