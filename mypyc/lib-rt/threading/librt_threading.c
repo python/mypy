@@ -5,16 +5,27 @@
 #include "librt_threading.h"
 #include "mypyc_util.h"
 
-// Select lock backend:
-//   LOCK_BACKEND_SRWLOCK - Windows Slim Reader/Writer Lock
-//   LOCK_BACKEND_PTHREAD - POSIX (macOS, Linux, and other Unix-like systems)
-#if defined(_WIN32)
+#if CPY_3_14_FEATURES
+
+// Python 3.14+: Use PyMutex (1-byte atomic lock with parking lot)
+#ifndef Py_BUILD_CORE
+#define Py_BUILD_CORE
+#endif
+#include "internal/pycore_lock.h"
+
+#elif defined(_WIN32)
+
+// Python <3.14 on Windows: Use Slim Reader/Writer Lock
 #define LOCK_BACKEND_SRWLOCK
 #include <windows.h>
+
 #else
+
+// Python <3.14 on POSIX: Use pthread mutex
 #define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
 #include <stdatomic.h>
+
 #endif
 
 //
@@ -22,18 +33,29 @@
 //
 // A fast mutex lock for use from mypyc-compiled code.
 //
-// On Windows, this uses SRWLOCK (Slim Reader/Writer Lock), a lightweight
-// kernel primitive. A separate volatile flag tracks the locked state.
+// On Python 3.14+, this uses CPython's PyMutex, a 1-byte atomic lock
+// backed by a parking lot for contended waits. PyMutex automatically
+// releases the GIL when blocking.
 //
-// On POSIX systems (macOS, Linux, etc.), this uses pthread_mutex with
-// a separate atomic flag for locked() and release-unlocked-lock detection.
+// On older Python with Windows, this uses SRWLOCK (Slim Reader/Writer Lock),
+// a lightweight kernel primitive. A separate volatile flag tracks the locked state.
+//
+// On older Python with POSIX systems (macOS, Linux, etc.), this uses pthread_mutex
+// with a separate atomic flag for locked() and release-unlocked-lock detection.
 //
 
 #ifdef MYPYC_EXPERIMENTAL
 
 // ---------- Platform-specific lock state ----------
 
-#ifdef LOCK_BACKEND_SRWLOCK
+#if CPY_3_14_FEATURES
+
+typedef struct {
+    PyObject_HEAD
+    PyMutex mutex;
+} LockObject;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
 
 typedef struct {
     PyObject_HEAD
@@ -56,7 +78,9 @@ typedef struct {
 static inline void
 Lock_init_internal(LockObject *self)
 {
-#ifdef LOCK_BACKEND_SRWLOCK
+#if CPY_3_14_FEATURES
+    self->mutex = (PyMutex){0};
+#elif defined(LOCK_BACKEND_SRWLOCK)
     InitializeSRWLock(&self->lock);
     self->locked = 0;
 #else
@@ -70,7 +94,17 @@ Lock_init_internal(LockObject *self)
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
-#ifdef LOCK_BACKEND_SRWLOCK
+#if CPY_3_14_FEATURES
+    if (!blocking) {
+        return PyMutex_LockFast(&self->mutex);
+    }
+    if (PyMutex_LockFast(&self->mutex)) {
+        return 1;
+    }
+    _PyMutex_LockTimed(&self->mutex, -1, _PY_LOCK_DETACH);
+    return 1;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
     if (!blocking) {
         if (TryAcquireSRWLockExclusive(&self->lock)) {
             InterlockedExchange(&self->locked, 1);
@@ -120,7 +154,14 @@ Lock_acquire_impl(LockObject *self, int blocking)
 static int
 Lock_release_impl(LockObject *self)
 {
-#ifdef LOCK_BACKEND_SRWLOCK
+#if CPY_3_14_FEATURES
+    if (!PyMutex_IsLocked(&self->mutex)) {
+        return -1;
+    }
+    PyMutex_Unlock(&self->mutex);
+    return 0;
+
+#elif defined(LOCK_BACKEND_SRWLOCK)
     if (!InterlockedExchange(&self->locked, 0)) {
         return -1;
     }
@@ -139,7 +180,9 @@ Lock_release_impl(LockObject *self)
 static inline int
 Lock_is_locked(LockObject *self)
 {
-#ifdef LOCK_BACKEND_SRWLOCK
+#if CPY_3_14_FEATURES
+    return PyMutex_IsLocked(&self->mutex);
+#elif defined(LOCK_BACKEND_SRWLOCK)
     return InterlockedCompareExchange(&self->locked, 0, 0) != 0;
 #else
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
