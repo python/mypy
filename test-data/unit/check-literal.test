@@ -562,6 +562,20 @@ reveal_type(b)                          # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testLiteralAliasToAnyAllowed]
+# Aliases to Any (e.g. typeshed's `Incomplete: TypeAlias = Any`) must not
+# trigger the Literal[...] cannot-be-Any error, matching the behavior of
+# unfollowed-import aliases.
+from typing import Any, Literal
+from typing_extensions import TypeAlias
+
+Incomplete: TypeAlias = Any
+
+a: Literal[Incomplete]
+reveal_type(a)                          # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testLiteralDisallowActualTypes]
 from typing import Literal
 

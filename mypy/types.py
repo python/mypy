@@ -237,6 +237,10 @@ class TypeOfAny:
     # used to ignore Anys inserted by the suggestion engine when
     # generating constraints.
     suggestion_engine: Final = 9
+    # Does this Any come from a type alias whose target is Any (e.g.
+    # `Incomplete: TypeAlias = Any`)? It is a real Any (unlike special_form),
+    # but tagged separately so use sites don't trigger --disallow-any-explicit.
+    from_alias_target: Final = 10
 
 
 def deserialize_type(data: JsonDict | str) -> Type:

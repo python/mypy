@@ -8269,7 +8269,7 @@ def make_any_non_explicit(t: Type) -> Type:
 class MakeAnyNonExplicit(TrivialSyntheticTypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
         if t.type_of_any == TypeOfAny.explicit:
-            return t.copy_modified(TypeOfAny.special_form)
+            return t.copy_modified(TypeOfAny.from_alias_target)
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:

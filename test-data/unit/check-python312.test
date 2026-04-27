@@ -2242,3 +2242,20 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695AliasToAnyOverloadAmbiguity]
+# A PEP 695 `type Incomplete = Any` alias used as an overload arg should
+# engage the overload-ambiguity fallback, just like a bare Any value.
+from typing import Any, overload
+
+type Incomplete = Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): ...
+
+a: Incomplete
+reveal_type(f(a))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

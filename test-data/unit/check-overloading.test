@@ -6856,3 +6856,145 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadAliasToAnyArgWithNoneDefault]
+# An alias `Incomplete = Any` used as an overload arg must not silently match
+# the `default: None = None` overload. It should be treated as Any like a bare
+# Any value, triggering the overload-ambiguity fallback.
+from typing import Any, TypeVar, overload
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+Incomplete: TypeAlias = Any
+
+class M:
+    @overload
+    def get(self, key: str, default: None = None) -> str | None: ...
+    @overload
+    def get(self, key: str, default: str) -> str: ...
+    @overload
+    def get(self, key: str, default: T) -> str | T: ...
+    def get(self, key, default=None): ...
+
+a: Incomplete
+b: Any
+reveal_type(M().get("k", a))  # N: Revealed type is "Any"
+reveal_type(M().get("k", b))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadAliasToAnyArgEquivalentToBareAny]
+# Alias-to-Any and bare Any should produce the same overload results.
+from typing import Any, overload
+from typing_extensions import TypeAlias
+
+Incomplete: TypeAlias = Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): ...
+
+a: Incomplete
+b: Any
+reveal_type(f(a))  # N: Revealed type is "Any"
+reveal_type(f(b))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadAliasToAnyArgChainedAlias]
+# A chained alias `Outer = Inner` where `Inner = Any` should still behave
+# like Any, both at the inner and outer level.
+from typing import Any, overload
+from typing_extensions import TypeAlias
+
+Inner: TypeAlias = Any
+Outer: TypeAlias = Inner
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): ...
+
+inner: Inner
+outer: Outer
+reveal_type(f(inner))  # N: Revealed type is "Any"
+reveal_type(f(outer))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadAliasToAnyArgImplicitAlias]
+# `MyAlias = Any` without an explicit TypeAlias annotation also gets the
+# alias-Any treatment and must engage the overload-ambiguity check.
+from typing import Any, overload
+
+MyAlias = Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): ...
+
+a: MyAlias
+reveal_type(f(a))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadAliasToAnyArgImported]
+# Alias-to-Any imported from another module must behave the same way.
+from typing import overload
+from other import Incomplete
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): ...
+
+a: Incomplete
+reveal_type(f(a))  # N: Revealed type is "Any"
+
+[file other.py]
+from typing import Any
+from typing_extensions import TypeAlias
+Incomplete: TypeAlias = Any
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadAliasToAnyArgUnambiguous]
+# When overloads are unambiguous, alias-to-Any should pick that overload's
+# return type just like bare Any does (no false ambiguity).
+from typing import Any, overload
+from typing_extensions import TypeAlias
+
+Incomplete: TypeAlias = Any
+
+@overload
+def f(x: int, y: int, z: str) -> int: ...
+@overload
+def f(x: object, y: int, z: str) -> object: ...
+def f(x, y, z): ...
+
+a: Incomplete
+b: Any
+# Ambiguous on x: returns Any
+reveal_type(f(a, 1, ''))  # N: Revealed type is "Any"
+reveal_type(f(b, 1, ''))  # N: Revealed type is "Any"
+# Unambiguous: x is concrete, only y/z are Any
+reveal_type(f(1, a, ''))  # N: Revealed type is "builtins.int"
+reveal_type(f(1, b, ''))  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testAliasToAnyDoesNotTriggerDisallowAnyExplicitAtUseSite]
+# --disallow-any-explicit must NOT fire at use sites of an `Alias = Any`
+# (the original purpose of make_any_non_explicit).
+# flags: --disallow-any-explicit --show-error-codes
+from typing import Any
+from typing_extensions import TypeAlias
+
+Incomplete: TypeAlias = Any  # E: Explicit "Any" is not allowed  [explicit-any]
+
+def f(x: Incomplete) -> Incomplete:  # no error
+    return x
+
+a: Incomplete = 1  # no error
+[builtins fixtures/tuple.pyi]
+
