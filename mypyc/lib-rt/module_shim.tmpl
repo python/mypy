@@ -20,11 +20,11 @@ PyInit_{modname}(void)
     // the per-module real init. Deferring this out of the shared lib's own
     // PyInit keeps separate-mode compiled modules from recursively triggering
     // sibling-package __init__.py mid-bootstrap.
-    PyObject *deps_capsule;
-    if (PyObject_GetOptionalAttrString(tmp, "ensure_deps", &deps_capsule) < 0) {{
-        Py_DECREF(tmp);
-        return NULL;
-    }}
+    // PyObject_GetOptionalAttrString would be cleaner, but it's 3.13+ and the
+    // shim deliberately #includes only <Python.h>, so we can't pull in the
+    // pythoncapi_compat.h shim from lib-rt here. AttributeError + PyErr_Clear
+    // is the portable form.
+    PyObject *deps_capsule = PyObject_GetAttrString(tmp, "ensure_deps");
     if (deps_capsule != NULL) {{
         int (*deps_func)(void) = (int (*)(void))PyCapsule_GetPointer(
             deps_capsule, "{libname}.ensure_deps");
@@ -37,6 +37,8 @@ PyInit_{modname}(void)
             Py_DECREF(tmp);
             return NULL;
         }}
+    }} else {{
+        PyErr_Clear();
     }}
     PyObject *capsule = PyObject_GetAttrString(tmp, "init_{full_modname}");
     Py_DECREF(tmp);
