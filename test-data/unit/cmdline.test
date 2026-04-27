@@ -1282,7 +1282,7 @@ a.py:1: error: Simple statements must be separated by newlines or semicolons
 [file a.py]
 pass
 [out]
-error: cache must be enabled in parallel mode
+error: Cache must be enabled in parallel mode
 == Return code: 2
 
 [case testCheckingStubPackagesWorksInParallelMode]
