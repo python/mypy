@@ -397,6 +397,42 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
     }
 }
 
+// Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
+// Caller guarantees 'items' does not alias dst's buffer and n > 0.
+inline static VEC vec_extend_items(VEC dst, const ITEM_C_TYPE *items, Py_ssize_t n) {
+    if (unlikely(n > PY_SSIZE_T_MAX - dst.len)) {
+        PyErr_NoMemory();
+        VEC_DECREF(dst);
+        return vec_error();
+    }
+    Py_ssize_t new_len = dst.len + n;
+    Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
+    if (new_len <= cap) {
+        memcpy(dst.buf->items + dst.len, items, sizeof(ITEM_C_TYPE) * n);
+        dst.len = new_len;
+        return dst;
+    }
+    Py_ssize_t new_cap = cap;
+    while (new_cap < new_len) {
+        if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
+            new_cap = new_len;
+            break;
+        }
+        new_cap = 2 * new_cap + 1;
+    }
+    VEC new = vec_alloc(new_cap);
+    if (VEC_IS_ERROR(new)) {
+        VEC_DECREF(dst);
+        return vec_error();
+    }
+    if (dst.len > 0)
+        memcpy(new.buf->items, dst.buf->items, sizeof(ITEM_C_TYPE) * dst.len);
+    memcpy(new.buf->items + dst.len, items, sizeof(ITEM_C_TYPE) * n);
+    new.len = new_len;
+    Py_XDECREF(dst.buf);
+    return new;
+}
+
 // Extend 'vec' with items from 'iterable', stealing 'vec'.
 // Return extended 'vec', or error vec on failure.
 VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
@@ -413,41 +449,8 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
     }
     if (buf_ok) {
         Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
-        if (n > 0) {
-            if (unlikely(n > PY_SSIZE_T_MAX - vec.len)) {
-                PyErr_NoMemory();
-                PyBuffer_Release(&view);
-                VEC_DECREF(vec);
-                return vec_error();
-            }
-            Py_ssize_t new_len = vec.len + n;
-            Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
-            if (new_len <= cap) {
-                memcpy(vec.buf->items + vec.len, view.buf, sizeof(ITEM_C_TYPE) * n);
-                vec.len = new_len;
-            } else {
-                Py_ssize_t new_cap = cap;
-                while (new_cap < new_len) {
-                    if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
-                        new_cap = new_len;
-                        break;
-                    }
-                    new_cap = 2 * new_cap + 1;
-                }
-                VEC new = vec_alloc(new_cap);
-                if (VEC_IS_ERROR(new)) {
-                    PyBuffer_Release(&view);
-                    VEC_DECREF(vec);
-                    return vec_error();
-                }
-                if (vec.len > 0)
-                    memcpy(new.buf->items, vec.buf->items, sizeof(ITEM_C_TYPE) * vec.len);
-                memcpy(new.buf->items + vec.len, view.buf, sizeof(ITEM_C_TYPE) * n);
-                new.len = new_len;
-                Py_XDECREF(vec.buf);
-                vec = new;
-            }
-        }
+        if (n > 0)
+            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n);
         PyBuffer_Release(&view);
         return vec;
     }
@@ -486,21 +489,16 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
 VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     if (src.len == 0)
         return dst;
+    if (dst.buf != src.buf)
+        return vec_extend_items(dst, src.buf->items, src.len);
+    // Self-extend: dst and src share a buffer, must realloc first
     if (unlikely(src.len > PY_SSIZE_T_MAX - dst.len)) {
         PyErr_NoMemory();
         VEC_DECREF(dst);
         return vec_error();
     }
     Py_ssize_t new_len = dst.len + src.len;
-    Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
-    if (new_len <= cap && dst.buf != src.buf) {
-        // Fast path: enough capacity and no aliasing
-        memcpy(dst.buf->items + dst.len, src.buf->items, sizeof(ITEM_C_TYPE) * src.len);
-        dst.len = new_len;
-        return dst;
-    }
-    // Need to reallocate (or dst and src share a buffer)
-    Py_ssize_t new_cap = cap;
+    Py_ssize_t new_cap = dst.buf ? VEC_CAP(dst) : 0;
     while (new_cap < new_len) {
         if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
             new_cap = new_len;
@@ -515,7 +513,7 @@ VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     }
     if (dst.len > 0)
         memcpy(new.buf->items, dst.buf->items, sizeof(ITEM_C_TYPE) * dst.len);
-    memcpy(new.buf->items + dst.len, src.buf->items, sizeof(ITEM_C_TYPE) * src.len);
+    memcpy(new.buf->items + dst.len, dst.buf->items, sizeof(ITEM_C_TYPE) * src.len);
     new.len = new_len;
     Py_XDECREF(dst.buf);
     return new;
