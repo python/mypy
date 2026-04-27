@@ -466,9 +466,7 @@ def vec_extend(builder: LowLevelIRBuilder, vec: Value, iterable: Value, line: in
     )
 
 
-def _vec_extend_vec(
-    builder: LowLevelIRBuilder, vec: Value, src: Value, line: int
-) -> Value:
+def _vec_extend_vec(builder: LowLevelIRBuilder, vec: Value, src: Value, line: int) -> Value:
     """Extend vec with another vec of the same type (fast path, no boxing)."""
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
