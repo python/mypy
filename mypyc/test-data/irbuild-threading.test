@@ -56,6 +56,19 @@ L0:
     r2 = LibRTThreading_Lock_release_internal(lk)
     return 1
 
+[case testLockAcquireBlocking_experimental]
+from librt.threading import Lock
+
+def lock_acquire_blocking(lk: Lock, b: bool) -> bool:
+    return lk.acquire(b)
+[out]
+def lock_acquire_blocking(lk, b):
+    lk :: librt.threading.Lock
+    b, r0 :: bool
+L0:
+    r0 = LibRTThreading_Lock_acquire_blocking_internal(lk, b)
+    return r0
+
 [case testLockWith_experimental]
 from librt.threading import Lock
 

@@ -25,6 +25,17 @@ lock_acquire_op = method_op(
     dependencies=[LIBRT_THREADING],
 )
 
+# Lock.acquire(blocking) -- acquire with explicit blocking argument
+method_op(
+    name="acquire",
+    arg_types=[lock_rprimitive, bool_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTThreading_Lock_acquire_blocking_internal",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_THREADING],
+)
+
 # Lock.release()
 lock_release_op = method_op(
     name="release",

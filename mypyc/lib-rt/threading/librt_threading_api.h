@@ -17,6 +17,7 @@ extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 #define LibRTThreading_Lock_acquire_internal (*(char (*)(PyObject *self)) LibRTThreading_API[4])
 #define LibRTThreading_Lock_release_internal (*(char (*)(PyObject *self)) LibRTThreading_API[5])
 #define LibRTThreading_Lock_locked_internal (*(char (*)(PyObject *self)) LibRTThreading_API[6])
+#define LibRTThreading_Lock_acquire_blocking_internal (*(char (*)(PyObject *self, char blocking)) LibRTThreading_API[7])
 
 #endif  // MYPYC_EXPERIMENTAL
 

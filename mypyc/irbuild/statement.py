@@ -128,6 +128,7 @@ from mypyc.primitives.misc_ops import (
     type_op,
     yield_from_except_op,
 )
+from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 
 from .match import MatchVisitor
 
@@ -1193,8 +1194,6 @@ def transform_with_lock(
     Lock.__exit__ never suppresses exceptions, so we don't need the
     full PEP 343 try/except/finally machinery.
     """
-    from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
-
     # __enter__: acquire the lock
     value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
 

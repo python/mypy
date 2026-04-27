@@ -7,7 +7,9 @@
 
 #if CPY_3_14_FEATURES
 
-// Python 3.14+: Use PyMutex (1-byte atomic lock with parking lot)
+// Python 3.14+: Use PyMutex (1-byte atomic lock with parking lot).
+// PyMutex_LockFast, _PyMutex_LockTimed, and _PY_LOCK_DETACH are internal
+// CPython APIs that might change across minor releases.
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
@@ -155,6 +157,8 @@ static int
 Lock_release_impl(LockObject *self)
 {
 #if CPY_3_14_FEATURES
+    // Note: check-then-unlock is not atomic, but this matches CPython's
+    // threading.Lock semantics. Only the owning thread should call release().
     if (!PyMutex_IsLocked(&self->mutex)) {
         return -1;
     }
@@ -346,6 +350,14 @@ Lock_acquire_internal(PyObject *self) {
     return (char)result;
 }
 
+// Acquire the lock with explicit blocking arg, for use from compiled code.
+// Returns true if acquired, false otherwise.
+static char
+Lock_acquire_blocking_internal(PyObject *self, char blocking) {
+    int result = Lock_acquire_impl((LockObject *)self, blocking);
+    return (char)result;
+}
+
 // Release the lock, for use from compiled code.
 // Returns 0 (None) on success, sets error and returns 2 (ERR_MAGIC) on failure.
 static char
@@ -403,6 +415,7 @@ librt_threading_module_exec(PyObject *m)
         (void *)Lock_acquire_internal,
         (void *)Lock_release_internal,
         (void *)Lock_locked_internal,
+        (void *)Lock_acquire_blocking_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)threading_api, "librt.threading._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
