@@ -6997,4 +6997,3 @@ def f(x: Incomplete) -> Incomplete:  # no error
 
 a: Incomplete = 1  # no error
 [builtins fixtures/tuple.pyi]
-
