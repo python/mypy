@@ -372,6 +372,11 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
 VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     if (src.len == 0)
         return dst;
+    if (unlikely(src.len > PY_SSIZE_T_MAX - dst.len)) {
+        PyErr_NoMemory();
+        VEC_DECREF(dst);
+        return vec_error();
+    }
     Py_ssize_t new_len = dst.len + src.len;
     Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
     if (new_len <= cap && dst.buf != src.buf) {
@@ -382,8 +387,13 @@ VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     }
     // Need to reallocate (or dst and src share a buffer)
     Py_ssize_t new_cap = cap;
-    while (new_cap < new_len)
+    while (new_cap < new_len) {
+        if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
+            new_cap = new_len;
+            break;
+        }
         new_cap = 2 * new_cap + 1;
+    }
     VEC new = vec_alloc(new_cap);
     if (VEC_IS_ERROR(new)) {
         VEC_DECREF(dst);

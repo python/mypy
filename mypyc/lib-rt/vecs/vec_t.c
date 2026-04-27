@@ -342,6 +342,11 @@ VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
 VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     if (src.len == 0)
         return dst;
+    if (src.len > PY_SSIZE_T_MAX - dst.len) {
+        PyErr_NoMemory();
+        VEC_DECREF(dst);
+        return vec_error();
+    }
     Py_ssize_t new_len = dst.len + src.len;
     if (dst.buf == NULL) {
         // dst is empty, allocate new buf
@@ -369,8 +374,13 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     }
     // Need to reallocate (or dst and src share a buffer)
     Py_ssize_t new_cap = cap;
-    while (new_cap < new_len)
+    while (new_cap < new_len) {
+        if (new_cap > (PY_SSIZE_T_MAX - 1) / 2) {
+            new_cap = new_len;
+            break;
+        }
         new_cap = 2 * new_cap + 1;
+    }
     int aliased = dst.buf == src.buf;
     VecT new = vec_alloc(new_cap, dst.buf->item_type);
     if (VEC_IS_ERROR(new)) {
