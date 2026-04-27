@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=test-requirements.txt --strip-extras test-requirements.in
 #
-ast-serialize==0.2.0
+ast-serialize==0.2.1
     # via -r test-requirements.in
 attrs==25.4.0
     # via -r test-requirements.in
