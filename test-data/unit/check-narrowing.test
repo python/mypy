@@ -4113,3 +4113,25 @@ def stringify(value: A | B | C) -> str:
         return value.name
     return ""
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVariableBoundNarrowingSymmetric]
+from typing import TypeVar
+
+class B: ...
+class C(B):
+    x: int
+
+H = TypeVar('H', bound=B)
+
+def func(y: H) -> H:
+    x: C
+    assert x == y
+    reveal_type(x)  # N: Revealed type is "H`-1"
+    reveal_type(y)  # N: Revealed type is "H`-1"
+    reveal_type(x.x)  # N: Revealed type is "builtins.int"
+    reveal_type(y.x)  # N: Revealed type is "builtins.int"
+    if bool():
+        return x
+    else:
+        return y
+[builtins fixtures/primitives.pyi]
