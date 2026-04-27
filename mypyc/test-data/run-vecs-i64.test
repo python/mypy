@@ -563,28 +563,17 @@ def test_extend_iterable() -> None:
     assert v == vec[i64]([1, 2, 3])
 
 def test_extend_vec_fits_in_capacity() -> None:
-    # Build vec with spare capacity via appends: cap grows 0->1->3, len=2
-    v = vec[i64]()
-    v = append(v, 1)
-    v = append(v, 2)
-    # cap=3, len=2, so extending by 1 fits without realloc
+    v = vec[i64]([1, 2], capacity=3)
     v = extend_vec(v, vec[i64]([3]))
     assert v == vec[i64]([1, 2, 3])
 
 def test_extend_vec_exceeds_capacity() -> None:
-    # cap=3, len=2 after two appends
-    v = vec[i64]()
-    v = append(v, 1)
-    v = append(v, 2)
-    # Extending by 3 items requires new_len=5 > cap=3, forcing realloc
+    v = vec[i64]([1, 2], capacity=3)
     v = extend_vec(v, vec[i64]([3, 4, 5]))
     assert v == vec[i64]([1, 2, 3, 4, 5])
 
 def test_extend_vec_multiple_doublings() -> None:
-    # Start with cap=1 after one append
-    v = vec[i64]()
-    v = append(v, 1)
-    # Extending by 20 items requires multiple doublings: 1->3->7->15->31
+    v = vec[i64]([1], capacity=1)
     src = vec[i64]()
     for i in range(2, 22):
         src = append(src, i)

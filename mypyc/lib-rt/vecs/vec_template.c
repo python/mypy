@@ -356,7 +356,7 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
         vec = FUNC(Append)(vec, x);
         if (VEC_IS_ERROR(vec)) {
             Py_DECREF(iter);
-            return vec;
+            return vec_error();
         }
     }
     Py_DECREF(iter);

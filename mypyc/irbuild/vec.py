@@ -439,47 +439,21 @@ def vec_extend(builder: LowLevelIRBuilder, vec: Value, iterable: Value, line: in
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
     item_type = vec_type.item_type
-    # Fast path: extend vec with another vec of the same type (no boxing needed)
     if isinstance(iterable.type, RVec) and iterable.type == vec_type:
-        return _vec_extend_vec(builder, vec, iterable, line)
-    # Slow path: extend with generic iterable
-    coerced_iterable = builder.coerce(iterable, object_rprimitive, line)
+        suffix = "_vec"
+        src = iterable
+    else:
+        suffix = ""
+        src = builder.coerce(iterable, object_rprimitive, line)
     item_type_arg: list[Value] = []
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
-        name = f"{api_name}.extend"
+        name = f"{api_name}.extend{suffix}"
     elif vec_type.depth() == 0:
-        name = "VecTApi.extend"
+        name = f"VecTApi.extend{suffix}"
         item_type_arg = [vec_item_type(builder, item_type, line)]
     else:
-        name = "VecNestedApi.extend"
-    return builder.add(
-        CallC(
-            name,
-            [vec, coerced_iterable] + item_type_arg,
-            vec_type,
-            steals=[True, False] + ([False] if item_type_arg else []),
-            is_borrowed=False,
-            error_kind=ERR_MAGIC,
-            line=line,
-        )
-    )
-
-
-def _vec_extend_vec(builder: LowLevelIRBuilder, vec: Value, src: Value, line: int) -> Value:
-    """Extend vec with another vec of the same type (fast path, no boxing)."""
-    vec_type = vec.type
-    assert isinstance(vec_type, RVec)
-    item_type = vec_type.item_type
-    item_type_arg: list[Value] = []
-    api_name = vec_api_by_item_type.get(item_type)
-    if api_name is not None:
-        name = f"{api_name}.extend_vec"
-    elif vec_type.depth() == 0:
-        name = "VecTApi.extend_vec"
-        item_type_arg = [vec_item_type(builder, item_type, line)]
-    else:
-        name = "VecNestedApi.extend_vec"
+        name = f"VecNestedApi.extend{suffix}"
     return builder.add(
         CallC(
             name,

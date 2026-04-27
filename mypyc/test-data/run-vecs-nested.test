@@ -577,33 +577,22 @@ def test_extend_vec_empty_dst() -> None:
     assert v == vec[vec[str]]([vec[str](['y'])])
 
 def test_extend_vec_fits_in_capacity() -> None:
-    v: vec[vec[str]] = vec[vec[str]]()
-    v = append(v, vec[str](['a']))
-    v = append(v, vec[str](['b']))
-    # cap=3, len=2, extending by 1 fits without realloc
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
     v = extend_nested(v, vec[vec[str]]([vec[str](['c'])]))
     assert len(v) == 3
     assert v[0] == vec[str](['a'])
     assert v[2] == vec[str](['c'])
 
 def test_extend_vec_exceeds_capacity() -> None:
-    v: vec[vec[str]] = vec[vec[str]]()
-    v = append(v, vec[str](['a']))
-    v = append(v, vec[str](['b']))
-    # cap=3, len=2, extending by 3 requires realloc
-    src: vec[vec[str]] = vec[vec[str]]()
-    src = append(src, vec[str](['c']))
-    src = append(src, vec[str](['d']))
-    src = append(src, vec[str](['e']))
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
+    src: vec[vec[str]] = vec[vec[str]]([vec[str](['c']), vec[str](['d']), vec[str](['e'])])
     v = extend_nested(v, src)
     assert len(v) == 5
     assert v[0] == vec[str](['a'])
     assert v[4] == vec[str](['e'])
 
 def test_extend_vec_multiple_doublings() -> None:
-    v: vec[vec[str]] = vec[vec[str]]()
-    v = append(v, vec[str](['x']))
-    # cap=1, extending by 10 items requires multiple doublings
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['x'])], capacity=1)
     src: vec[vec[str]] = vec[vec[str]]()
     for i in range(10):
         src = append(src, vec[str]([str(i)]))

@@ -313,7 +313,7 @@ VecNested VecNested_Extend(VecNested vec, PyObject *iterable) {
         Py_DECREF(item);
         if (VEC_IS_ERROR(vec)) {
             Py_DECREF(iter);
-            return vec;
+            return vec_error();
         }
     }
     Py_DECREF(iter);

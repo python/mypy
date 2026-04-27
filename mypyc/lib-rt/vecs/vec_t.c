@@ -326,7 +326,7 @@ VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
         Py_DECREF(item);
         if (VEC_IS_ERROR(vec)) {
             Py_DECREF(iter);
-            return vec;
+            return vec_error();
         }
     }
     Py_DECREF(iter);
@@ -351,8 +351,10 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     if (dst.buf == NULL) {
         // dst is empty, allocate new buf
         VecT new = vec_alloc(new_len, item_type);
-        if (VEC_IS_ERROR(new))
+        if (VEC_IS_ERROR(new)) {
+            VEC_DECREF(dst);
             return new;
+        }
         for (Py_ssize_t i = 0; i < src.len; i++) {
             Py_INCREF(src.buf->items[i]);
             new.buf->items[i] = src.buf->items[i];
