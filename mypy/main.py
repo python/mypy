@@ -101,9 +101,14 @@ def main(
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
         if options.cache_dir == os.devnull:
-            fail("error: cache must be enabled in parallel mode", stderr, options)
+            fail("error: Cache must be enabled in parallel mode", stderr, options)
         if options.report_dirs:
-            fail("error: reports are not supported in parallel mode yet", stderr, options)
+            fail(
+                "error: Reports are not supported in parallel mode yet\n"
+                "note: Use -n0 to disable parallel checking",
+                stderr,
+                options,
+            )
 
     if options.allow_redefinition and not options.local_partial_types:
         fail(
