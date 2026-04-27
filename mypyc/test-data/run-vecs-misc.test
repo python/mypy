@@ -345,3 +345,27 @@ def test_construct_from_bytes() -> None:
     assert len(v3) == 2
     assert v3[0] == 1
     assert v3[1] == 2
+
+def test_construct_from_array_type_mismatch() -> None:
+    import array
+
+    # Mismatched itemsize: falls back to element-wise iteration with
+    # value conversion. These all have compatible int types, just
+    # different widths.
+    v_i16 = vec[i16](array.array('i', [1, 2, -3]))
+    assert list(v_i16) == [1, 2, -3]
+
+    v_i32 = vec[i32](array.array('h', [10, -20]))
+    assert list(v_i32) == [10, -20]
+
+    v_u8 = vec[u8](array.array('h', [0, 127, 255]))
+    assert list(v_u8) == [0, 127, 255]
+
+    v_i64 = vec[i64](array.array('i', [5, 6, 7]))
+    assert list(v_i64) == [5, 6, 7]
+
+    # 32-bit float array -> vec[float] (64-bit double): itemsize
+    # mismatch, falls back to iter with float->double conversion
+    v_float = vec[float](array.array('f', [1.5, -2.5]))
+    assert v_float[0] == array.array('f', [1.5])[0]
+    assert v_float[1] == array.array('f', [-2.5])[0]
