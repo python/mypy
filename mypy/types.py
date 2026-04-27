@@ -3102,9 +3102,6 @@ class TypedDictType(ProperType):
             items, required_keys, readonly_keys, is_closed, fallback, self.line, self.column
         )
 
-    def names_are_wider_than(self, other: TypedDictType) -> bool:
-        return len(other.items.keys() - self.items.keys()) == 0
-
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
         left = self
         for item_name, left_item_type in left.items.items():

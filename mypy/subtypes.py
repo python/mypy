@@ -921,16 +921,25 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypedDictType):
             if left == right:
                 return True  # Fast path
-            if not left.names_are_wider_than(right):
+
+            # A closed type must remain closed
+            if right.is_closed and not left.is_closed:
                 return False
 
             # Perform fast key-based checks before recursing into value types
-            for name in right.items:
+            for name, l_type, r_type in left.zipall(right):
                 l_required = name in left.required_keys
                 r_required = name in right.required_keys
-                l_mutable = name not in left.readonly_keys
-                r_mutable = name not in right.readonly_keys
+                l_mutable = l_type is not None and name not in left.readonly_keys
+                r_mutable = r_type is not None and name not in right.readonly_keys
 
+                # New keys cannot be added to a closed supertype
+                if r_type is None and right.is_closed:
+                    return False
+                # Keys cannot be dropped in an open subtype
+                # as this would implicitly widen the type constraint
+                if l_type is None and not left.is_closed:
+                    return False
                 # Required keys must remain required
                 if r_required and not l_required:
                     return False

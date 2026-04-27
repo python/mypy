@@ -5128,6 +5128,73 @@ B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Repeated keyword a
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictSubtypingClosedMustRemainClosed]
+from typing import TypedDict
+A = TypedDict('A', {'x': int}, closed=True)
+B = TypedDict('B', {'x': int}, closed=True)
+C = TypedDict('C', {'x': int}, closed=False)
+D = TypedDict('D', {'x': int}, closed=False)
+def f(x: A) -> None: pass
+def g(x: C) -> None: pass
+a: A
+b: B
+c: C
+d: D
+f(b)
+f(d)  # E: Argument 1 to "f" has incompatible type "D"; expected "A"
+g(d)
+g(b)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSubtypingCannotAddKeysToAClosedSupertype]
+from typing import TypedDict
+A = TypedDict('A', {'x': int}, closed=True)
+B = TypedDict('B', {'x': int, 'y': int}, closed=True)
+C = TypedDict('C', {'x': int})
+D = TypedDict('D', {'x': int, 'y': int})
+def f(x: A) -> None: pass
+def g(x: C) -> None: pass
+b: B
+d: D
+f(b)  # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+g(d)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSubtypingCanDropOptionalReadonlyKeysInAClosedSubtype]
+from typing import ReadOnly, TypedDict
+# Optional, readonly, closed: permitted
+A = TypedDict('A', {'x': int, 'y': ReadOnly[int]}, total=False, closed=True)
+B = TypedDict('B', {'x': int}, total=False, closed=True)
+b: B
+def f_a(x: A) -> None: pass
+f_a(b)
+
+# Optional, readonly, open: not permitted
+C = TypedDict('C', {'x': int, 'y': ReadOnly[int]}, total=False)
+D = TypedDict('D', {'x': int}, total=False)
+d: D
+def f_c(x: C) -> None: pass
+f_c(d)  # E: Argument 1 to "f_c" has incompatible type "D"; expected "C"
+
+# Optional, mutable, closed: not permitted
+E = TypedDict('E', {'x': int, 'y': int}, total=False, closed=True)
+F = TypedDict('F', {'x': int}, total=False, closed=True)
+f: F
+def f_e(x: E) -> None: pass
+f_e(f)  # E: Argument 1 to "f_e" has incompatible type "F"; expected "E"
+
+# Required, readonly, closed: not permitted
+G = TypedDict('G', {'x': int, 'y': ReadOnly[int]}, closed=True)
+H = TypedDict('H', {'x': int}, closed=True)
+h: H
+def f_g(x: G) -> None: pass
+f_g(h)  # E: Argument 1 to "f_g" has incompatible type "H"; expected "G"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar
