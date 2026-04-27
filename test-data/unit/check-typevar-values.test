@@ -744,3 +744,32 @@ def fn(w: W) -> W:
         reveal_type(w)  # N: Revealed type is "builtins.int"
     return w
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarRedeclarationEquivalent]
+# Redeclaring a TypeVar with the same definition is allowed (e.g. the
+# try/except ImportError fallback used for typing.AnyStr in 3.18+).
+from typing import TypeVar
+T = TypeVar('T', int, str)
+T = TypeVar('T', int, str)
+
+def f(x: T) -> T:
+    return x
+
+[case testTypeVarRedeclarationDifferentStillErrors]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+T = TypeVar('T', int, float)  # E: Cannot redefine "T" as a type variable \
+                              # E: Invalid assignment target
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeVarRedeclarationFromImportEquivalent]
+from typing import TypeVar
+from a import T
+T = TypeVar('T', int, str)
+
+def f(x: T) -> T:
+    return x
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)

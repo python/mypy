@@ -4775,6 +4775,27 @@ class SemanticAnalyzer(
             # Also give error for another type variable with the same name.
             (isinstance(existing.node, TypeVarExpr) and existing.node is call.analyzed)
         ):
+            # Allow re-declaring an existing TypeVar with an equivalent
+            # definition. This supports the try/except ImportError fallback
+            # pattern used for names like ``typing.AnyStr`` (deprecated in
+            # 3.13, removed in 3.18). Skip when any type still contains a
+            # placeholder, since placeholders compare equal regardless of
+            # the underlying name.
+            if (
+                isinstance(existing.node, TypeVarExpr)
+                and not any(has_placeholder(v) for v in values)
+                and not has_placeholder(upper_bound)
+                and not has_placeholder(default)
+                and not any(has_placeholder(v) for v in existing.node.values)
+                and not has_placeholder(existing.node.upper_bound)
+                and not has_placeholder(existing.node.default)
+                and existing.node.values == values
+                and existing.node.upper_bound == upper_bound
+                and existing.node.default == default
+                and existing.node.variance == variance
+            ):
+                call.analyzed = existing.node
+                return True
             self.fail(f'Cannot redefine "{name}" as a type variable', s)
             return False
 
