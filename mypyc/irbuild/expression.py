@@ -89,6 +89,8 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_bytes_rprimitive,
+    is_bytearray_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     object_rprimitive,
@@ -627,11 +629,15 @@ def vec_from_iterable(
     item_type = vec_type.item_type
     api_name = vec_api_by_item_type.get(item_type)
     iterable_rtype = builder.node_type(iterable)
-    if api_name is not None and is_object_rprimitive(iterable_rtype):
-        # For generic iterables (typed as object), call the C-level
-        # from_iterable which can use the buffer protocol fast path.
-        # For concrete types like range, list, vec, etc., the for-loop
-        # desugaring below produces better IR.
+    if api_name is not None and (
+        is_object_rprimitive(iterable_rtype)
+        or is_bytes_rprimitive(iterable_rtype)
+        or is_bytearray_rprimitive(iterable_rtype)
+    ):
+        # For generic iterables (typed as object) and bytes/bytearray
+        # (which support the buffer protocol for fast memcpy), call the
+        # C-level from_iterable. For concrete types like range, list,
+        # vec, etc., the for-loop desugaring below produces better IR.
         iterable_val = builder.accept(iterable)
         cap = capacity if capacity is not None else Integer(0, int64_rprimitive)
         call = CallC(
