@@ -398,7 +398,8 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
 }
 
 // Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
-// Caller guarantees 'items' does not alias dst's buffer and n > 0.
+// Caller guarantees n > 0 and that 'items' remains valid for the call
+// (if aliased with dst's buffer, caller must hold an extra reference).
 inline static VEC vec_extend_items(VEC dst, const ITEM_C_TYPE *items, Py_ssize_t n) {
     if (unlikely(n > PY_SSIZE_T_MAX - dst.len)) {
         PyErr_NoMemory();
@@ -489,34 +490,15 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
 VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     if (src.len == 0)
         return dst;
-    if (dst.buf != src.buf)
-        return vec_extend_items(dst, src.buf->items, src.len);
-    // Self-extend: dst and src share a buffer, must realloc first
-    if (unlikely(src.len > PY_SSIZE_T_MAX - dst.len)) {
-        PyErr_NoMemory();
-        VEC_DECREF(dst);
-        return vec_error();
+    int aliased = dst.buf == src.buf;
+    if (aliased) {
+        Py_INCREF(src.buf);
     }
-    Py_ssize_t new_len = dst.len + src.len;
-    Py_ssize_t new_cap = dst.buf ? VEC_CAP(dst) : 0;
-    while (new_cap < new_len) {
-        if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
-            new_cap = new_len;
-            break;
-        }
-        new_cap = 2 * new_cap + 1;
+    VEC result = vec_extend_items(dst, src.buf->items, src.len);
+    if (aliased) {
+        Py_DECREF(src.buf);
     }
-    VEC new = vec_alloc(new_cap);
-    if (VEC_IS_ERROR(new)) {
-        VEC_DECREF(dst);
-        return vec_error();
-    }
-    if (dst.len > 0)
-        memcpy(new.buf->items, dst.buf->items, sizeof(ITEM_C_TYPE) * dst.len);
-    memcpy(new.buf->items + dst.len, dst.buf->items, sizeof(ITEM_C_TYPE) * src.len);
-    new.len = new_len;
-    Py_XDECREF(dst.buf);
-    return new;
+    return result;
 }
 
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
