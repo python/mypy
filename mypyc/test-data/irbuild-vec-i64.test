@@ -928,3 +928,18 @@ L2:
 L3:
     keep_alive r0
     return r0
+
+[case testVecI64ConstructFromIterable]
+from typing import Iterable
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(x: Iterable[i64]) -> vec[i64]:
+    return vec[i64](x)
+[out]
+def f(x):
+    x :: object
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.from_iterable(x, 0)
+    return r0

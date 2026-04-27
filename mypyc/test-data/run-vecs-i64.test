@@ -271,6 +271,20 @@ def test_construct_from_iterable() -> None:
         for j in range(i):
             assert v[j] == j * j
 
+def test_construct_from_array() -> None:
+    import array
+    a = array.array('q', [1, 2, 3, 100, -50])
+    v = vec[i64](a)
+    assert len(v) == 5
+    assert v[0] == 1
+    assert v[1] == 2
+    assert v[2] == 3
+    assert v[3] == 100
+    assert v[4] == -50
+    a2 = array.array('q')
+    v2 = vec[i64](a2)
+    assert len(v2) == 0
+
 def test_equality() -> None:
     v0 = vec[i64]()
     v0b = vec[i64]()

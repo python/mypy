@@ -117,7 +117,7 @@ inline static int buffer_format_matches(const char *fmt) {
 }
 #endif
 
-PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
 #ifdef BUFFER_FORMAT_CHAR_OK
     Py_buffer view;
     if (PyObject_GetBuffer(iterable, &view, PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) == 0) {
@@ -127,14 +127,14 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
             VEC v = vec_alloc(alloc_size);
             if (VEC_IS_ERROR(v)) {
                 PyBuffer_Release(&view);
-                return NULL;
+                return vec_error();
             }
             if (n > 0) {
                 memcpy(v.buf->items, view.buf, n * sizeof(ITEM_C_TYPE));
             }
             v.len = n;
             PyBuffer_Release(&view);
-            return FUNC(Box)(v);
+            return v;
         }
         PyBuffer_Release(&view);
     } else {
@@ -144,7 +144,7 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
 
     VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
-        return NULL;
+        return vec_error();
     if (cap > 0) {
         memset(v.buf->items, 0, sizeof(ITEM_C_TYPE) * cap);
     }
@@ -153,7 +153,7 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
@@ -162,21 +162,21 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
         if (IS_UNBOX_ERROR(x)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
-            return NULL;
+            return vec_error();
         }
         v = FUNC(Append)(v, x);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
-            return NULL;
+            return vec_error();
         }
     }
     Py_DECREF(iter);
     if (PyErr_Occurred()) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
-    return FUNC(Box)(v);
+    return v;
 }
 
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
@@ -193,7 +193,10 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     if (init == NULL) {
         return FUNC(Box)(FUNC(New)(0, cap));
     } else {
-        return (PyObject *)FUNC(FromIterable)(init, cap);
+        VEC v = FUNC(FromIterable)(init, cap);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return FUNC(Box)(v);
     }
 }
 
@@ -616,6 +619,7 @@ NAME(API) FEATURES = {
     FUNC(Pop),
     FUNC(Remove),
     FUNC(Slice),
+    FUNC(FromIterable),
     FUNC(Extend),
     FUNC(ExtendVec),
 };

@@ -278,6 +278,7 @@ typedef struct _VecI64API {
     VecI64 (*remove)(VecI64, int64_t);
     // TODO: Py_ssize_t
     VecI64 (*slice)(VecI64, int64_t, int64_t);
+    VecI64 (*from_iterable)(PyObject *, int64_t);
     VecI64 (*extend)(VecI64, PyObject *);
     VecI64 (*extend_vec)(VecI64, VecI64);
 } VecI64API;
@@ -295,6 +296,7 @@ typedef struct _VecI32API {
     VecI32 (*remove)(VecI32, int32_t);
     // TODO: Py_ssize_t
     VecI32 (*slice)(VecI32, int64_t, int64_t);
+    VecI32 (*from_iterable)(PyObject *, int64_t);
     VecI32 (*extend)(VecI32, PyObject *);
     VecI32 (*extend_vec)(VecI32, VecI32);
 } VecI32API;
@@ -312,6 +314,7 @@ typedef struct _VecI16API {
     VecI16 (*remove)(VecI16, int16_t);
     // TODO: Py_ssize_t
     VecI16 (*slice)(VecI16, int64_t, int64_t);
+    VecI16 (*from_iterable)(PyObject *, int64_t);
     VecI16 (*extend)(VecI16, PyObject *);
     VecI16 (*extend_vec)(VecI16, VecI16);
 } VecI16API;
@@ -329,6 +332,7 @@ typedef struct _VecU8API {
     VecU8 (*remove)(VecU8, uint8_t);
     // TODO: Py_ssize_t
     VecU8 (*slice)(VecU8, int64_t, int64_t);
+    VecU8 (*from_iterable)(PyObject *, int64_t);
     VecU8 (*extend)(VecU8, PyObject *);
     VecU8 (*extend_vec)(VecU8, VecU8);
 } VecU8API;
@@ -346,6 +350,7 @@ typedef struct _VecFloatAPI {
     VecFloat (*remove)(VecFloat, double);
     // TODO: Py_ssize_t
     VecFloat (*slice)(VecFloat, int64_t, int64_t);
+    VecFloat (*from_iterable)(PyObject *, int64_t);
     VecFloat (*extend)(VecFloat, PyObject *);
     VecFloat (*extend_vec)(VecFloat, VecFloat);
 } VecFloatAPI;
@@ -363,6 +368,7 @@ typedef struct _VecBoolAPI {
     VecBool (*remove)(VecBool, char);
     // TODO: Py_ssize_t
     VecBool (*slice)(VecBool, int64_t, int64_t);
+    VecBool (*from_iterable)(PyObject *, int64_t);
     VecBool (*extend)(VecBool, PyObject *);
     VecBool (*extend_vec)(VecBool, VecBool);
 } VecBoolAPI;
