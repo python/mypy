@@ -270,3 +270,78 @@ def extend_float(v: vec[float], v2: vec[float]) -> vec[float]:
 def test_extend_vec_float() -> None:
     v = extend_float(vec[float]([1.0]), vec[float]([2.5, 3.5]))
     assert v == vec[float]([1.0, 2.5, 3.5])
+
+def test_construct_from_array() -> None:
+    import array
+
+    # vec[i32]
+    a_i32 = array.array('i', [10, -20, 30])
+    v_i32 = vec[i32](a_i32)
+    assert len(v_i32) == 3
+    assert v_i32[0] == 10
+    assert v_i32[1] == -20
+    assert v_i32[2] == 30
+
+    # vec[i16]
+    a_i16 = array.array('h', [100, -200, 300])
+    v_i16 = vec[i16](a_i16)
+    assert len(v_i16) == 3
+    assert v_i16[0] == 100
+    assert v_i16[1] == -200
+    assert v_i16[2] == 300
+
+    # vec[u8]
+    a_u8 = array.array('B', [0, 127, 255])
+    v_u8 = vec[u8](a_u8)
+    assert len(v_u8) == 3
+    assert v_u8[0] == 0
+    assert v_u8[1] == 127
+    assert v_u8[2] == 255
+
+    # vec[float]
+    a_f = array.array('d', [1.5, -2.5, 3.0])
+    v_f = vec[float](a_f)
+    assert len(v_f) == 3
+    assert v_f[0] == 1.5
+    assert v_f[1] == -2.5
+    assert v_f[2] == 3.0
+
+    # Empty arrays
+    assert len(vec[i32](array.array('i'))) == 0
+    assert len(vec[i16](array.array('h'))) == 0
+    assert len(vec[u8](array.array('B'))) == 0
+    assert len(vec[float](array.array('d'))) == 0
+
+    # With capacity
+    v_cap = vec[i32](array.array('i', [1, 2]), capacity=100)
+    assert len(v_cap) == 2
+    assert v_cap[0] == 1
+    assert v_cap[1] == 2
+
+def test_construct_from_bytes() -> None:
+    # vec[u8] from bytes
+    v = vec[u8](b'\x00\x01\x7f\xff')
+    assert len(v) == 4
+    assert v[0] == 0
+    assert v[1] == 1
+    assert v[2] == 127
+    assert v[3] == 255
+
+    # vec[u8] from empty bytes
+    assert len(vec[u8](b'')) == 0
+
+    # vec[u8] from bytearray
+    v2 = vec[u8](bytearray(b'\x05\x0a\x0f'))
+    assert len(v2) == 3
+    assert v2[0] == 5
+    assert v2[1] == 10
+    assert v2[2] == 15
+
+    # vec[u8] from empty bytearray
+    assert len(vec[u8](bytearray())) == 0
+
+    # With capacity
+    v3 = vec[u8](b'\x01\x02', capacity=50)
+    assert len(v3) == 2
+    assert v3[0] == 1
+    assert v3[1] == 2
