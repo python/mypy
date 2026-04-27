@@ -14,6 +14,7 @@
 #define BOX_ITEM VecI16_BoxItem
 #define UNBOX_ITEM VecI16_UnboxItem
 #define IS_UNBOX_ERROR VecI16_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'h')
 
 #include "vec_template.c"
 

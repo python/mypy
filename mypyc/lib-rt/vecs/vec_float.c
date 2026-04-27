@@ -14,6 +14,7 @@
 #define BOX_ITEM VecFloat_BoxItem
 #define UNBOX_ITEM VecFloat_UnboxItem
 #define IS_UNBOX_ERROR VecFloat_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'd')
 
 #include "vec_template.c"
 

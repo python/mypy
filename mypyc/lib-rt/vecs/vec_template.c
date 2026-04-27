@@ -100,7 +100,48 @@ VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
+#ifdef BUFFER_FORMAT_CHAR_OK
+inline static int buffer_format_matches(const char *fmt) {
+    char c = *fmt;
+    if (c == '@' || c == '=') {
+        c = fmt[1];
+    }
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    else if (c == '<') { c = fmt[1]; }
+    else if (c == '>' || c == '!') { return 0; }
+#else
+    else if (c == '>') { c = fmt[1]; }
+    else if (c == '<' || c == '!') { return 0; }
+#endif
+    return c != '\0' && BUFFER_FORMAT_CHAR_OK(c);
+}
+#endif
+
 PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+#ifdef BUFFER_FORMAT_CHAR_OK
+    Py_buffer view;
+    if (PyObject_GetBuffer(iterable, &view, PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) == 0) {
+        if (view.itemsize == sizeof(ITEM_C_TYPE) && buffer_format_matches(view.format)) {
+            Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
+            Py_ssize_t alloc_size = n > cap ? n : cap;
+            VEC v = vec_alloc(alloc_size);
+            if (VEC_IS_ERROR(v)) {
+                PyBuffer_Release(&view);
+                return NULL;
+            }
+            if (n > 0) {
+                memcpy(v.buf->items, view.buf, n * sizeof(ITEM_C_TYPE));
+            }
+            v.len = n;
+            PyBuffer_Release(&view);
+            return FUNC(Box)(v);
+        }
+        PyBuffer_Release(&view);
+    } else {
+        PyErr_Clear();
+    }
+#endif
+
     VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
         return NULL;

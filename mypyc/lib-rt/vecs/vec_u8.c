@@ -14,6 +14,7 @@
 #define BOX_ITEM VecU8_BoxItem
 #define UNBOX_ITEM VecU8_UnboxItem
 #define IS_UNBOX_ERROR VecU8_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'B' || (c) == 'c')
 
 #include "vec_template.c"
 
