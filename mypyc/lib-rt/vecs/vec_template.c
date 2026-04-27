@@ -118,6 +118,11 @@ inline static int buffer_format_matches(const char *fmt) {
 #endif
 
 VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
+
 #ifdef BUFFER_FORMAT_CHAR_OK
     Py_buffer view;
     if (PyObject_GetBuffer(iterable, &view, PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) == 0) {

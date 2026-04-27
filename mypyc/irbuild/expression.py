@@ -122,6 +122,7 @@ from mypyc.irbuild.specialize import (
     translate_object_setattr,
 )
 from mypyc.irbuild.vec import (
+    as_platform_int,
     vec_append,
     vec_create,
     vec_create_from_values,
@@ -639,7 +640,11 @@ def vec_from_iterable(
         # C-level from_iterable. For concrete types like range, list,
         # vec, etc., the for-loop desugaring below produces better IR.
         iterable_val = builder.accept(iterable)
-        cap = capacity if capacity is not None else Integer(0, int64_rprimitive)
+        cap = (
+            as_platform_int(builder.builder, capacity, line)
+            if capacity is not None
+            else Integer(0, int64_rprimitive)
+        )
         call = CallC(
             f"{api_name}.from_iterable",
             [iterable_val, cap],

@@ -346,6 +346,16 @@ def test_construct_from_bytes() -> None:
     assert v3[0] == 1
     assert v3[1] == 2
 
+    # Capacity is exact: appending at capacity reallocates.
+    v4 = vec[u8](b'\x01\x02', capacity=2)
+    old = v4
+    v4 = append(v4, 3)
+    v4[0] = 99
+    assert old[0] == 1
+
+    with assertRaises(ValueError):
+        vec[u8](b'\x01', capacity=-1)
+
 def test_construct_from_array_type_mismatch() -> None:
     import array
 
