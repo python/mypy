@@ -964,14 +964,15 @@ class GroupGenerator:
                 "if (done) return 0;",
             )
             if self.context.group_deps:
-                emitter.emit_line(
-                    "static PyObject *_mypyc_fromlist = NULL; "
-                    "if (!_mypyc_fromlist) { "
-                    '_mypyc_fromlist = Py_BuildValue("(s)", "*"); '
-                    "if (!_mypyc_fromlist) return -1; }"
+                emitter.emit_lines(
+                    "static PyObject *_mypyc_fromlist = NULL;",
+                    "if (!_mypyc_fromlist) {",
+                    '_mypyc_fromlist = Py_BuildValue("(s)", "*");',
+                    "if (!_mypyc_fromlist) return -1;",
+                    "}",
+                    "PyObject *tmp;",
+                    "PyObject *caps;",
                 )
-                emitter.emit_line("PyObject *tmp;")
-                emitter.emit_line("PyObject *caps;")
             for group in sorted(self.context.group_deps):
                 egroup = exported_name(group)
                 # ImportModuleLevel with fromlist returns the leaf via

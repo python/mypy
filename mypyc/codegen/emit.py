@@ -376,7 +376,7 @@ class Emitter:
         exports-table indirection (e.g. `exports_other.CPyDef_foo`). Same as
         `native_function_name()` for in-group calls.
         """
-        return f"{self.get_group_prefix(fn)}{NATIVE_PREFIX}{fn.cname(self.names)}"
+        return f"{self.get_group_prefix(fn)}{self.native_function_name(fn)}"
 
     def wrapper_function_call(self, fn: FuncDecl) -> str:
         """Return the C expression for a call to `fn`'s Python-wrapper (CPyPy_) entry.

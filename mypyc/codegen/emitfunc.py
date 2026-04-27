@@ -388,8 +388,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
-            # Properties are essentially methods, so use vtable access for them.
-            if cl.is_method_final(op.attr):
+            # Properties are essentially methods, so use vtable access for them
+            # (except for non-ext classes, which have no vtable — see emit_method_call).
+            if not cl.is_ext_class or cl.is_method_final(op.attr):
                 self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
             else:
                 version = "_TRAIT" if cl.is_trait else ""
@@ -589,15 +590,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # (the symbol resolves through that group's exports table).
         method_decl = rtype.class_ir.method_decl(name)
 
-        # Can we call the method directly, bypassing vtable?
-        is_direct = class_ir.is_method_final(name)
+        # Can we call the method directly, bypassing vtable? Non-extension classes
+        # don't have a vtable (compute_vtable is skipped for them), so the only
+        # way to dispatch is a direct C call.
+        is_direct = not class_ir.is_ext_class or class_ir.is_method_final(name)
 
         # The first argument gets omitted for static methods and
         # turned into the class for class methods
         obj_args = (
             []
             if method_decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"] if method_decl.kind == FUNC_CLASSMETHOD else [obj]
+            else [f"(PyObject *)Py_TYPE({obj})"]
+            if method_decl.kind == FUNC_CLASSMETHOD
+            else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type_from_decl(method_decl, self.emitter)
@@ -939,9 +944,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
         assert op.traceback_entry is not None
         if self.emitter.context.strict_traceback_checks:
-            assert (
-                op.traceback_entry[1] >= 0
-            ), "AttributeError traceback cannot have a negative line number"
+            assert op.traceback_entry[1] >= 0, (
+                "AttributeError traceback cannot have a negative line number"
+            )
         globals_static = self.emitter.static_name("globals", self.module_name)
         self.emit_line(
             'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'

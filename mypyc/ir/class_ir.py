@@ -284,12 +284,6 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
-        if not self.is_ext_class:
-            # Non-extension classes don't use vtable dispatch; their mypyc-compiled
-            # "fast" methods are always called directly by C name. Treating them as
-            # final here keeps codegen from trying to index into a vtable that was
-            # never computed (non-ext classes skip compute_vtable).
-            return True
         subs = self.subclasses()
         if subs is None:
             return self.is_final_class

@@ -19,7 +19,11 @@ static int {modname}_exec(PyObject *module)
     // the per-module real init. Deferring this out of the shared lib's own
     // PyInit keeps separate-mode compiled modules from recursively triggering
     // sibling-package __init__.py mid-bootstrap.
-    PyObject *deps_capsule = PyObject_GetAttrString(tmp, "ensure_deps");
+    PyObject *deps_capsule;
+    if (PyObject_GetOptionalAttrString(tmp, "ensure_deps", &deps_capsule) < 0) {{
+        Py_DECREF(tmp);
+        return -1;
+    }}
     if (deps_capsule != NULL) {{
         int (*deps_func)(void) = (int (*)(void))PyCapsule_GetPointer(
             deps_capsule, "{libname}.ensure_deps");
@@ -32,8 +36,6 @@ static int {modname}_exec(PyObject *module)
             Py_DECREF(tmp);
             return -1;
         }}
-    }} else {{
-        PyErr_Clear();
     }}
     PyObject *capsule = PyObject_GetAttrString(tmp, "exec_{full_modname}");
     Py_DECREF(tmp);
