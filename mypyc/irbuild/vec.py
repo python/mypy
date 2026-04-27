@@ -442,7 +442,7 @@ def vec_extend(builder: LowLevelIRBuilder, vec: Value, iterable: Value, line: in
     # Fast path: extend vec with another vec of the same type (no boxing needed)
     if isinstance(iterable.type, RVec) and iterable.type == vec_type:
         return _vec_extend_vec(builder, vec, iterable, line)
-    # Slow path: extend with generic iterable (requires boxing)
+    # Slow path: extend with generic iterable
     coerced_iterable = builder.coerce(iterable, object_rprimitive, line)
     item_type_arg: list[Value] = []
     api_name = vec_api_by_item_type.get(item_type)
