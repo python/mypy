@@ -85,12 +85,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         super().visit_type_alias_type(t)
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         if t.is_recursive:
             if t.alias in self.seen_aliases:
                 # Avoid infinite recursion on recursive type aliases.
                 return
             self.seen_aliases.add(t.alias)
-        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         is_error, is_invalid = self.validate_args(
             t.alias.name, tuple(t.args), t.alias.alias_tvars, t
         )

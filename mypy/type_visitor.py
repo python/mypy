@@ -456,6 +456,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         # Skip type aliases already visited to avoid infinite recursion.
         # We track by the TypeAlias node so that recursive aliases with varying
         # type arguments are still caught.
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t.alias in self.seen_aliases:
@@ -600,6 +601,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         # Skip type aliases already visited to avoid infinite recursion.
         # We track by the TypeAlias node so that recursive aliases with varying
         # type arguments are still caught.
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t.alias in self.seen_aliases:
