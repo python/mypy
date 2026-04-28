@@ -63,6 +63,17 @@ def test_construct_from_initializer_nested() -> None:
     with assertRaises(TypeError):
         vec[str]([vec[bytes]()])
 
+def test_construct_from_tuple_nested() -> None:
+    v = vec[vec[str]](())
+    assert len(v) == 0
+    v = vec[vec[str]]((vec[str](['a']), vec[str](['b', 'c'])))
+    assert len(v) == 2
+    assert v[0][0] == 'a'
+    assert v[1][0] == 'b'
+    assert v[1][1] == 'c'
+    with assertRaises(TypeError):
+        vec[vec[str]]((vec[str](), 'x'))
+
 def test_isinstance() -> None:
     assert isinstance(vec[vec[str]](), vec)
     assert isinstance(vec[vec[Optional[str]]](), vec)

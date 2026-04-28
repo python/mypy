@@ -85,6 +85,32 @@ def test_construct_from_initializer() -> None:
     with assertRaises(TypeError):
         vec[str]([None])
 
+def test_construct_from_tuple() -> None:
+    v = vec[str](())
+    assert len(v) == 0
+    v = vec[str](('a', 'bb', 'ccc'))
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] == 'bb'
+    assert v[2] == 'ccc'
+    with assertRaises(TypeError):
+        vec[str]((1,))
+    with assertRaises(TypeError):
+        vec[str]((None,))
+    with assertRaises(TypeError):
+        vec[str](('a', 1, 'b'))
+
+def test_construct_from_tuple_optional() -> None:
+    v = vec[Optional[str]]((None, 'xyz'))
+    assert len(v) == 2
+    assert v[0] is None
+    assert v[1] == 'xyz'
+    v = vec[Optional[str]](('a', None, 'b'))
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] is None
+    assert v[2] == 'b'
+
 def test_construct_from_initializer_optional() -> None:
     v = vec[Optional[str]]([None, 'xyz'])
     assert len(v) == 2
