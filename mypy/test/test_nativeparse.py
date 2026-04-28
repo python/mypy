@@ -98,7 +98,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         with temp_source(source) as fnam:
-            node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
+            node, errors, type_ignores = native_parse(fnam, options, None, skip_function_bodies)
             errors += load_tree(node, options)
             node.path = "main"
             a = node.str_with_options(options).split("\n")
