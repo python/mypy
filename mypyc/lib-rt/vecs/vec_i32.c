@@ -15,6 +15,7 @@
 #define UNBOX_ITEM VecI32_UnboxItem
 #define IS_UNBOX_ERROR VecI32_IsUnboxError
 #define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'i' || ((c) == 'l' && sizeof(long) == 4))
+#define BUFFER_FORMAT "i"
 
 #include "vec_template.c"
 

@@ -566,6 +566,46 @@ static PyMappingMethods vec_mapping_methods = {
     .mp_subscript = vec_subscript,
 };
 
+#ifdef BUFFER_FORMAT
+static int vec_getbuffer(VEC_OBJECT *self, Py_buffer *view, int flags) {
+    if (view == NULL) {
+        PyErr_SetString(PyExc_BufferError,
+            "vec_getbuffer: view==NULL argument is obsolete");
+        return -1;
+    }
+    if ((flags & PyBUF_WRITABLE) == PyBUF_WRITABLE) {
+        PyErr_SetString(PyExc_BufferError, "Object is not writable");
+        view->obj = NULL;
+        return -1;
+    }
+
+    view->obj = (PyObject *)self;
+    Py_INCREF(self);
+    view->buf = (self->vec.buf != NULL) ? (void *)self->vec.buf->items : NULL;
+    view->len = self->vec.len * (Py_ssize_t)sizeof(ITEM_C_TYPE);
+    view->readonly = 1;
+    view->itemsize = sizeof(ITEM_C_TYPE);
+    view->format = NULL;
+    if ((flags & PyBUF_FORMAT) == PyBUF_FORMAT)
+        view->format = BUFFER_FORMAT;
+    view->ndim = 1;
+    view->shape = NULL;
+    if ((flags & PyBUF_ND) == PyBUF_ND)
+        view->shape = &self->vec.len;
+    view->strides = NULL;
+    if ((flags & PyBUF_STRIDES) == PyBUF_STRIDES)
+        view->strides = &view->itemsize;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+
+    return 0;
+}
+
+static PyBufferProcs vec_buffer_procs = {
+    .bf_getbuffer = (getbufferproc)vec_getbuffer,
+};
+#endif
+
 static PySequenceMethods vec_sequence_methods = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
@@ -667,6 +707,9 @@ PyTypeObject VEC_TYPE = {
     .tp_iter = vec_iter,
     .tp_as_sequence = &vec_sequence_methods,
     .tp_as_mapping = &vec_mapping_methods,
+#ifdef BUFFER_FORMAT
+    .tp_as_buffer = &vec_buffer_procs,
+#endif
     .tp_richcompare = vec_richcompare,
     .tp_methods = vec_methods,
 };

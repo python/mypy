@@ -15,6 +15,7 @@
 #define UNBOX_ITEM VecI64_UnboxItem
 #define IS_UNBOX_ERROR VecI64_IsUnboxError
 #define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'q' || ((c) == 'l' && sizeof(long) == 8))
+#define BUFFER_FORMAT "q"
 
 #include "vec_template.c"
 
