@@ -155,9 +155,9 @@ z: NestedGen[Any]
 [outfile report/types-of-anys.txt]
  Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
 -----------------------------------------------------------------------------------------------------------------
-    n             0          2            0                  8       0              0                         0
+    n             0          3            0                 14       0              0                         0
 -----------------------------------------------------------------------------------------------------------------
-Total             0          2            0                  8       0              0                         0
+Total             0          3            0                 14       0              0                         0
 
 [case testTypeVarTreatedAsEmptyLine]
 # cmd: mypy --html-report report n.py
