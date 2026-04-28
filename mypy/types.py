@@ -238,8 +238,9 @@ class TypeOfAny:
     # generating constraints.
     suggestion_engine: Final = 9
     # Does this Any come from a type alias whose target is Any (e.g.
-    # `Incomplete: TypeAlias = Any`)? It is a real Any (unlike special_form),
-    # but tagged separately so use sites don't trigger --disallow-any-explicit.
+    # `Incomplete: TypeAlias = Any`)? This is treated as a real Any for overload
+    # ambiguity when it appears as an actual argument, but is otherwise ignored like
+    # special_form to avoid triggering use-site explicit-Any errors.
     from_alias_target: Final = 10
 
 

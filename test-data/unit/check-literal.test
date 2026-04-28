@@ -563,9 +563,6 @@ reveal_type(b)                          # N: Revealed type is "Any"
 [out]
 
 [case testLiteralAliasToAnyAllowed]
-# Aliases to Any (e.g. typeshed's `Incomplete: TypeAlias = Any`) must not
-# trigger the Literal[...] cannot-be-Any error, matching the behavior of
-# unfollowed-import aliases.
 from typing import Any, Literal
 from typing_extensions import TypeAlias
 
