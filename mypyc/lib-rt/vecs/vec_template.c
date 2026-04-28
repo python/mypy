@@ -141,6 +141,18 @@ VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
         return vec_error();
     }
 
+    if (ITEM_TYPE_MAGIC == VEC_ITEM_TYPE_U8 && PyBytes_CheckExact(iterable)) {
+        Py_ssize_t n = PyBytes_GET_SIZE(iterable);
+        Py_ssize_t alloc_size = n > cap ? n : cap;
+        VEC v = vec_alloc(alloc_size);
+        if (VEC_IS_ERROR(v))
+            return vec_error();
+        if (n > 0)
+            memcpy(v.buf->items, PyBytes_AS_STRING(iterable), n);
+        v.len = n;
+        return v;
+    }
+
 #ifdef BUFFER_FORMAT_CHAR_OK
     Py_buffer view;
     int buf_ok = vec_get_buffer(iterable, &view);
@@ -441,6 +453,13 @@ inline static VEC vec_extend_items(
 VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
     if (Py_TYPE(iterable) == &VEC_TYPE) {
         return FUNC(ExtendVec)(vec, ((VEC_OBJECT *)iterable)->vec);
+    }
+
+    if (ITEM_TYPE_MAGIC == VEC_ITEM_TYPE_U8 && PyBytes_CheckExact(iterable)) {
+        Py_ssize_t n = PyBytes_GET_SIZE(iterable);
+        if (n > 0)
+            return vec_extend_items(vec, (const ITEM_C_TYPE *)PyBytes_AS_STRING(iterable), n, 0);
+        return vec;
     }
 
 #ifdef BUFFER_FORMAT_CHAR_OK
