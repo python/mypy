@@ -424,3 +424,8 @@ def test_construct_from_array_type_mismatch() -> None:
     v_float = vec[float](array.array('f', [1.5, -2.5]))
     assert v_float[0] == array.array('f', [1.5])[0]
     assert v_float[1] == array.array('f', [-2.5])[0]
+
+def test_vec_u8_to_bytes() -> None:
+    assert bytes(vec[u8]([72, 101, 108, 108, 111])) == b"Hello"
+    assert bytes(vec[u8]()) == b""
+    assert bytes(vec[u8]([0, 255, 1])) == b"\x00\xff\x01"
