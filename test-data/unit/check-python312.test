@@ -2280,3 +2280,14 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695RecursiveTypeAliasParamSpecConcatenate]
+from typing import Callable
+from typing_extensions import Concatenate
+
+type A[**P] = Callable[[Callable[P, None]], A[Concatenate[int, P]]]
+
+def foo[**P](x: A[P]) -> None:
+    reveal_type(x)  # N: Revealed type is "def (def (*P.args, **P.kwargs)) -> ..."
+[builtins fixtures/type.pyi]
+[typing fixtures/typing-full.pyi]
