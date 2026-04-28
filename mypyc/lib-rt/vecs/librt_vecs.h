@@ -10,6 +10,16 @@
 #include <stdint.h>
 #include "mypyc_util.h"
 
+// ABI version -- only an exact match is compatible. This will only be changed in
+// very exceptional cases (likely never) due to strict backward compatibility
+// requirements.
+#define LIBRT_VECS_ABI_VERSION 1
+
+// API version -- more recent versions must maintain backward compatibility, i.e.
+// we can add new features but not remove or change existing features (unless
+// ABI version is changed, but see the comment above).
+#define LIBRT_VECS_API_VERSION 1
+
 #ifdef MYPYC_EXPERIMENTAL
 
 // Magic (native) integer return value on exception. Caller must also
@@ -500,6 +510,8 @@ typedef struct _VecNestedAPI {
 } VecNestedAPI;
 
 typedef struct {
+    int (*abi_version)(void);
+    int (*api_version)(void);
     VecTAPI *t;
     VecNestedAPI *nested;
     VecI64API *i64;

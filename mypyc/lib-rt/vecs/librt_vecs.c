@@ -958,7 +958,19 @@ static PyTypeObject *get_vec_type(void) {
     return &VecType;
 }
 
+static int
+vecs_abi_version(void) {
+    return LIBRT_VECS_ABI_VERSION;
+}
+
+static int
+vecs_api_version(void) {
+    return LIBRT_VECS_API_VERSION;
+}
+
 static VecCapsule Capsule = {
+    vecs_abi_version,
+    vecs_api_version,
     &Vec_TAPI,
     &Vec_NestedAPI,
     &Vec_I64API,
