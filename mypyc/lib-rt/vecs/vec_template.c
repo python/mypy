@@ -409,6 +409,12 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
     }
 }
 
+inline static int vec_memory_overlaps(const void *p1, Py_ssize_t len1,
+                                      const void *p2, Py_ssize_t len2) {
+    const char *a = (const char *)p1, *b = (const char *)p2;
+    return a < b + len2 && b < a + len1;
+}
+
 // Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
 // Caller guarantees n > 0 and that 'items' remains valid for the call.
 // If force_alloc is true, always allocate a new buffer even when dst has capacity.
@@ -471,8 +477,14 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
     }
     if (buf_ok) {
         Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
-        if (n > 0)
-            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n, 0);
+        if (n > 0) {
+            Py_ssize_t dst_bytes = n * (Py_ssize_t)sizeof(ITEM_C_TYPE);
+            int force_alloc = vec.buf != NULL
+                && vec.len + n <= VEC_CAP(vec)
+                && vec_memory_overlaps(view.buf, view.len,
+                                       vec.buf->items + vec.len, dst_bytes);
+            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n, force_alloc);
+        }
         PyBuffer_Release(&view);
         return vec;
     }

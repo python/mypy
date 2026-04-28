@@ -541,6 +541,8 @@ import mypy_extensions
 from testutil import assertRaises
 
 vec: Any = librt.vecs.vec
+append: Any = librt.vecs.append
+extend: Any = librt.vecs.extend
 i64: Any = mypy_extensions.i64
 i32: Any = mypy_extensions.i32
 i16: Any = mypy_extensions.i16
@@ -623,6 +625,13 @@ def test_buffer_tobytes() -> None:
     b = mv.tobytes()
     values = struct.unpack("ii", b)
     assert values == (1, 2)
+
+def test_buffer_extend_from_shared_buffer() -> None:
+    old = vec[u8]([1, 2], capacity=5)
+    new = append(old, 3)
+    v = extend(old, memoryview_(new))
+    assert v == vec[u8]([1, 2, 1, 2, 3])
+    assert new == vec[u8]([1, 2, 3])
 
 [case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.vecs can be built without experimental features
