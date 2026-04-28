@@ -411,8 +411,12 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
 
 inline static int vec_memory_overlaps(const void *p1, Py_ssize_t len1,
                                       const void *p2, Py_ssize_t len2) {
-    const char *a = (const char *)p1, *b = (const char *)p2;
-    return a < b + len2 && b < a + len1;
+    if (len1 <= 0 || len2 <= 0)
+        return 0;
+    uintptr_t a = (uintptr_t)p1, b = (uintptr_t)p2;
+    if (a <= b)
+        return b - a < (uintptr_t)len1;
+    return a - b < (uintptr_t)len2;
 }
 
 // Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
@@ -480,7 +484,7 @@ VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
         if (n > 0) {
             Py_ssize_t dst_bytes = n * (Py_ssize_t)sizeof(ITEM_C_TYPE);
             int force_alloc = vec.buf != NULL
-                && vec.len + n <= VEC_CAP(vec)
+                && n <= VEC_CAP(vec) - vec.len
                 && vec_memory_overlaps(view.buf, view.len,
                                        vec.buf->items + vec.len, dst_bytes);
             vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n, force_alloc);
