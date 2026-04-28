@@ -671,29 +671,34 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
-    if (PyList_CheckExact(iterable)) {
-        Py_ssize_t n = PyList_GET_SIZE(iterable);
-        Py_ssize_t alloc_size = n > cap ? n : cap;
-        VecT v = vec_alloc(alloc_size, item_type);
-        if (VEC_IS_ERROR(v))
+static inline PyObject *VecT_FromSequence(
+        size_t item_type, PyObject *seq, int64_t cap, const int is_list) {
+    Py_ssize_t n = is_list ? PyList_GET_SIZE(seq) : PyTuple_GET_SIZE(seq);
+    Py_ssize_t alloc_size = n > cap ? n : cap;
+    VecT v = vec_alloc(alloc_size, item_type);
+    if (VEC_IS_ERROR(v))
+        return NULL;
+    Py_ssize_t i;
+    for (i = 0; i < n; i++) {
+        PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
+        if (!VecT_ItemCheck(v, item, item_type)) {
+            for (Py_ssize_t j = i; j < alloc_size; j++)
+                v.buf->items[j] = NULL;
+            VEC_DECREF(v);
             return NULL;
-        Py_ssize_t i;
-        for (i = 0; i < n; i++) {
-            PyObject *item = PyList_GET_ITEM(iterable, i);
-            if (!VecT_ItemCheck(v, item, item_type)) {
-                for (Py_ssize_t j = i; j < alloc_size; j++)
-                    v.buf->items[j] = NULL;
-                VEC_DECREF(v);
-                return NULL;
-            }
-            Py_INCREF(item);
-            v.buf->items[i] = item;
         }
-        for (Py_ssize_t j = n; j < alloc_size; j++)
-            v.buf->items[j] = NULL;
-        v.len = n;
-        return VecT_Box(v, item_type);
+        Py_INCREF(item);
+        v.buf->items[i] = item;
+    }
+    for (Py_ssize_t j = n; j < alloc_size; j++)
+        v.buf->items[j] = NULL;
+    v.len = n;
+    return VecT_Box(v, item_type);
+}
+
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    if (PyList_CheckExact(iterable) || PyTuple_CheckExact(iterable)) {
+        return VecT_FromSequence(item_type, iterable, cap, PyList_CheckExact(iterable));
     }
 
     VecT v = vec_alloc(cap, item_type);
