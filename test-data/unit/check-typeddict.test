@@ -5283,6 +5283,27 @@ f_g(h)  # E: Argument 1 to "f_g" has incompatible type "H"; expected "G"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testJoinOfClosedTypedDict]
+from typing import TypedDict, TypeVar
+A = TypedDict('A', {'x': int}, closed=True)
+B = TypedDict('B', {'y': int})
+C = TypedDict('C', {'y': int}, closed=True)
+D = TypedDict('D', {'x': int, 'y': int}, closed=True)
+T = TypeVar('T')
+def j(x: T, y: T) -> T: return x
+a: A
+b: B
+c: C
+d: D
+reveal_type(j(a, b)) # N: Revealed type is "TypedDict({'y'?=: builtins.int})"
+reveal_type(j(b, a)) # N: Revealed type is "TypedDict({'y'?=: builtins.int})"
+reveal_type(j(a, c)) # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'?=: builtins.int}, closed=True)"
+reveal_type(j(c, a)) # N: Revealed type is "TypedDict({'y'?=: builtins.int, 'x'?=: builtins.int}, closed=True)"
+reveal_type(j(a, d)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
+reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar

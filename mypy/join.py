@@ -610,36 +610,78 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         else:
             return join_types(self.s, mypy.typeops.tuple_fallback(t))
 
+    def resolve_typeddict_item(
+        self,
+        item_name: str,
+        s: TypedDictType,
+        s_item_type: Type | None,
+        t: TypedDictType,
+        t_item_type: Type | None,
+    ) -> tuple[Type | None, bool, bool]:
+        """Return the type, requiredness, and readonlyness of a join item.
+
+        If the type is None, the item should be omitted from the join keys.
+        """
+        if s_item_type is None or t_item_type is None:
+            is_required = False
+            if (s_item_type is None and not s.is_closed) or (
+                t_item_type is None and not t.is_closed
+            ):
+                # Key is implicitly NotRequired[ReadOnly[object]] in one type and
+                # (object join T) == object. Omitting it in the join leaves it implicitly
+                # of object type.
+                join_type = None
+            else:
+                # Key is implicitly NotRequired[Never] in one type and (Never join T) == T
+                join_type = s_item_type if t_item_type is None else t_item_type
+            # One type is missing the setitem overload for this key, so the join supertype
+            # must also omit it
+            is_readonly = True
+        else:
+            s_required = item_name in s.required_keys
+            t_required = item_name in t.required_keys
+            is_required = s_required and t_required
+
+            if not is_equivalent(s_item_type, t_item_type):
+                join_type = join_types(s_item_type, t_item_type)
+                is_readonly = True
+            else:
+                join_type = s_item_type
+                s_readonly = item_name in s.readonly_keys
+                t_readonly = item_name in t.readonly_keys
+                if s_required != t_required:
+                    # As one of the input types marks the key as not required, it must
+                    # be not required in the join supertype. However, as the other input
+                    # type does not have a delitem overload for the key, the delitem
+                    # overload must be omitted in the join supertype too. This can only
+                    # be done by marking the key as readonly.
+                    is_readonly = True
+                else:
+                    # If either type has no setitem overload for this key,
+                    # then the join supertype must also omit it
+                    is_readonly = s_readonly or t_readonly
+
+        return join_type, is_required, is_readonly
+
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
             items = {}
+            required_keys = set()
             readonly_keys = set()
-            for item_name, s_item_type, t_item_type in self.s.zip(t):
-                if is_equivalent(s_item_type, t_item_type):
-                    items[item_name] = s_item_type
-                    s_required = item_name in self.s.required_keys
-                    t_required = item_name in t.required_keys
-                    s_readonly = item_name in self.s.readonly_keys
-                    t_readonly = item_name in t.readonly_keys
-                    if s_readonly or t_readonly:
-                        # If either type has no setitem overload for this key,
-                        # then the join supertype must also omit it
+            for item_name, s_item_type, t_item_type in self.s.zipall(t):
+                item_type, is_required, is_readonly = self.resolve_typeddict_item(
+                    item_name, self.s, s_item_type, t, t_item_type
+                )
+                if item_type is not None:
+                    items[item_name] = item_type
+                    if is_required:
+                        required_keys.add(item_name)
+                    if is_readonly:
                         readonly_keys.add(item_name)
-                    elif s_required != t_required:
-                        # As one of the input types marks the key as not required,
-                        # it must be not required in the join supertype. The other
-                        # input type does not have a delitem overload for the key,
-                        # so it must be omitted in the join supertype too, by marking
-                        # the key as readonly.
-                        readonly_keys.add(item_name)
-                else:
-                    items[item_name] = join_types(s_item_type, t_item_type)
-                    readonly_keys.add(item_name)
 
             fallback = self.s.create_anonymous_fallback()
-            required_keys = t.required_keys & self.s.required_keys
-            # TODO: Implement closure analysis
-            return TypedDictType(items, required_keys, readonly_keys, False, fallback)
+            is_closed = self.s.is_closed and t.is_closed
+            return TypedDictType(items, required_keys, readonly_keys, is_closed, fallback)
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
         else:
