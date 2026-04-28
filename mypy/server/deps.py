@@ -957,9 +957,7 @@ def get_type_triggers(
 
 
 class TypeTriggersVisitor(TypeVisitor[list[str]]):
-    def __init__(
-        self, use_logical_deps: bool, seen_aliases: set[TypeAlias] | None = None
-    ) -> None:
+    def __init__(self, use_logical_deps: bool, seen_aliases: set[TypeAlias] | None = None) -> None:
         self.deps: list[str] = []
         self.seen_aliases: set[TypeAlias] = seen_aliases or set()
         self.use_logical_deps = use_logical_deps
