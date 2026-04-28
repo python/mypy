@@ -122,6 +122,7 @@ from mypy.nodes import (
     StarExpr,
     SuperExpr,
     TupleExpr,
+    TypeAlias,
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
@@ -949,7 +950,7 @@ class DependencyVisitor(TraverserVisitor):
 
 
 def get_type_triggers(
-    typ: Type, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
+    typ: Type, use_logical_deps: bool, seen_aliases: set[TypeAlias] | None = None
 ) -> list[str]:
     """Return all triggers that correspond to a type becoming stale."""
     return typ.accept(TypeTriggersVisitor(use_logical_deps, seen_aliases))
@@ -957,10 +958,10 @@ def get_type_triggers(
 
 class TypeTriggersVisitor(TypeVisitor[list[str]]):
     def __init__(
-        self, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
+        self, use_logical_deps: bool, seen_aliases: set[TypeAlias] | None = None
     ) -> None:
         self.deps: list[str] = []
-        self.seen_aliases: set[TypeAliasType] = seen_aliases or set()
+        self.seen_aliases: set[TypeAlias] = seen_aliases or set()
         self.use_logical_deps = use_logical_deps
 
     def get_type_triggers(self, typ: Type) -> list[str]:
@@ -979,9 +980,9 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         return triggers
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> list[str]:
-        if typ in self.seen_aliases:
+        if typ.alias in self.seen_aliases:
             return []
-        self.seen_aliases.add(typ)
+        self.seen_aliases.add(typ.alias)
         assert typ.alias is not None
         trigger = make_trigger(typ.alias.fullname)
         triggers = [trigger]
