@@ -270,7 +270,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         vec.len++;
         return vec;
     } else {
-        Py_ssize_t new_size = 2 * cap + 1;
+        Py_ssize_t new_size = Vec_GrowCapacity(cap);
         // TODO: Avoid initializing to zero here
         VecT new = vec_alloc(new_size, vec.buf->item_type);
         if (VEC_IS_ERROR(new)) {
@@ -375,14 +375,7 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
         return dst;
     }
     // Need to reallocate (or dst and src share a buffer)
-    Py_ssize_t new_cap = cap;
-    while (new_cap < new_len) {
-        if (new_cap > (PY_SSIZE_T_MAX - 1) / 2) {
-            new_cap = new_len;
-            break;
-        }
-        new_cap = 2 * new_cap + 1;
-    }
+    Py_ssize_t new_cap = Vec_GrowCapacityTo(cap, new_len);
     int aliased = dst.buf == src.buf;
     VecT new = vec_alloc(new_cap, dst.buf->item_type);
     if (VEC_IS_ERROR(new)) {

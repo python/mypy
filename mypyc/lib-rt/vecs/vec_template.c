@@ -392,7 +392,7 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
         return vec;
     } else {
         Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
-        Py_ssize_t new_size = 2 * cap + 1;
+        Py_ssize_t new_size = Vec_GrowCapacity(cap);
         VEC new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new)) {
             // The input v is being consumed/stolen by this function, so on error
@@ -437,14 +437,7 @@ inline static VEC vec_extend_items(
         dst.len = new_len;
         return dst;
     }
-    Py_ssize_t new_cap = cap;
-    while (new_cap < new_len) {
-        if (unlikely(new_cap > (PY_SSIZE_T_MAX - 1) / 2)) {
-            new_cap = new_len;
-            break;
-        }
-        new_cap = 2 * new_cap + 1;
-    }
+    Py_ssize_t new_cap = Vec_GrowCapacityTo(cap, new_len);
     VEC new = vec_alloc(new_cap);
     if (VEC_IS_ERROR(new)) {
         VEC_DECREF(dst);

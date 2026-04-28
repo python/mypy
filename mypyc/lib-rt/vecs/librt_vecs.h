@@ -832,6 +832,27 @@ static inline PyObject *VecNested_BoxItem(VecNested v, VecNestedBufItem item) {
     }
 }
 
+// Growth helpers
+
+static inline Py_ssize_t Vec_GrowCapacity(Py_ssize_t cap) {
+    if (cap > (PY_SSIZE_T_MAX - 1) / 2) {
+        // Allocation will fail at this size, but avoid overflow
+        return PY_SSIZE_T_MAX;
+    }
+    return 2 * cap + 1;
+}
+
+static inline Py_ssize_t Vec_GrowCapacityTo(Py_ssize_t cap, Py_ssize_t min_cap) {
+    while (cap < min_cap) {
+        if (cap > (PY_SSIZE_T_MAX - 1) / 2) {
+            cap = min_cap;
+            break;
+        }
+        cap = 2 * cap + 1;
+    }
+    return cap;
+}
+
 // Misc helpers
 
 PyObject *Vec_TypeToStr(size_t item_type, size_t depth);
