@@ -15,7 +15,10 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import Any, Final, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Final, Generic, TypeVar, cast
+
+if TYPE_CHECKING:
+    from mypy.nodes import TypeAlias
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -356,9 +359,12 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     """
 
     def __init__(self) -> None:
-        # Keep track of the type aliases already visited. This is needed to avoid
-        # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: set[TypeAliasType] | None = None
+        # Keep track of the type alias definitions already visited. This is needed
+        # to avoid infinite recursion on recursive type aliases. We track by the
+        # underlying TypeAlias node (not TypeAliasType) so that recursive aliases
+        # with varying type arguments (e.g. A[P] -> A[Concatenate[int, P]]) are
+        # still caught.
+        self.seen_aliases: set[TypeAlias] | None = None
         # By default, we eagerly expand type aliases, and query also types in the
         # alias target. In most cases this is a desired behavior, but we may want
         # to skip targets in some cases (e.g. when collecting type variables).
@@ -447,13 +453,14 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_type_alias_type(self, t: TypeAliasType, /) -> T:
         if self.skip_alias_target:
             return self.query_types(t.args)
-        # Skip type aliases already visited types to avoid infinite recursion
-        # (also use this as a simple-minded cache).
+        # Skip type aliases already visited to avoid infinite recursion.
+        # We track by the TypeAlias node so that recursive aliases with varying
+        # type arguments are still caught.
         if self.seen_aliases is None:
             self.seen_aliases = set()
-        elif t in self.seen_aliases:
-            return self.strategy([])
-        self.seen_aliases.add(t)
+        elif t.alias in self.seen_aliases:
+            return self.query_types(t.args)
+        self.seen_aliases.add(t.alias)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
@@ -487,10 +494,12 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         else:
             assert strategy == ALL_STRATEGY
             self.default = True
-        # Keep track of the type aliases already visited. This is needed to avoid
-        # infinite recursion on types like A = Union[int, List[A]]. An empty set is
-        # represented as None as a micro-optimization.
-        self.seen_aliases: set[TypeAliasType] | None = None
+        # Keep track of the type alias definitions already visited. This is needed
+        # to avoid infinite recursion on recursive type aliases. We track by the
+        # underlying TypeAlias node (not TypeAliasType) so that recursive aliases
+        # with varying type arguments (e.g. A[P] -> A[Concatenate[int, P]]) are
+        # still caught. An empty set is represented as None as a micro-optimization.
+        self.seen_aliases: set[TypeAlias] | None = None
         # By default, we eagerly expand type aliases, and query also types in the
         # alias target. In most cases this is a desired behavior, but we may want
         # to skip targets in some cases (e.g. when collecting type variables).
@@ -588,13 +597,14 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def visit_type_alias_type(self, t: TypeAliasType, /) -> bool:
         if self.skip_alias_target:
             return self.query_types(t.args)
-        # Skip type aliases already visited types to avoid infinite recursion
-        # (also use this as a simple-minded cache).
+        # Skip type aliases already visited to avoid infinite recursion.
+        # We track by the TypeAlias node so that recursive aliases with varying
+        # type arguments are still caught.
         if self.seen_aliases is None:
             self.seen_aliases = set()
-        elif t in self.seen_aliases:
-            return self.default
-        self.seen_aliases.add(t)
+        elif t.alias in self.seen_aliases:
+            return self.query_types(t.args)
+        self.seen_aliases.add(t.alias)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:

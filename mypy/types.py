@@ -3705,7 +3705,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
         self.id_mapper = id_mapper
         self.options = options
-        self.dotted_aliases: set[TypeAliasType] | None = None
+        self.dotted_aliases: set[mypy.nodes.TypeAlias] | None = None
 
     def visit_unbound_type(self, t: UnboundType, /) -> str:
         s = t.name + "?"
@@ -3989,11 +3989,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return get_proper_type(t).accept(self)
         if self.dotted_aliases is None:
             self.dotted_aliases = set()
-        elif t in self.dotted_aliases:
+        elif t.alias in self.dotted_aliases:
             return "..."
-        self.dotted_aliases.add(t)
+        self.dotted_aliases.add(t.alias)
         type_str = get_proper_type(t).accept(self)
-        self.dotted_aliases.discard(t)
+        self.dotted_aliases.discard(t.alias)
         return type_str
 
     def visit_unpack_type(self, t: UnpackType, /) -> str:
