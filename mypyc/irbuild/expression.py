@@ -93,6 +93,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_tuple_rprimitive,
     object_rprimitive,
     set_rprimitive,
     vec_api_by_item_type,
@@ -632,6 +633,8 @@ def vec_from_iterable(
     iterable_rtype = builder.node_type(iterable)
     if api_name is not None and (
         is_object_rprimitive(iterable_rtype)
+        or is_list_rprimitive(iterable_rtype)
+        or is_tuple_rprimitive(iterable_rtype)
         or is_bytes_rprimitive(iterable_rtype)
         or is_bytearray_rprimitive(iterable_rtype)
     ):
