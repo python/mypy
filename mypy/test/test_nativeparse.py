@@ -285,6 +285,10 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
         b, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), b"print('hello')")
         self._assert_trivial_binary_data(b)
 
+    def test_invalid_bytes_raises(self) -> None:
+        with self.assertRaises(UnicodeDecodeError):
+            parse_to_binary_ast("", Options(), b"\xff")
+
 
 @contextlib.contextmanager
 def temp_source(text: str) -> Iterator[str]:
