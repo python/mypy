@@ -6616,10 +6616,7 @@ class HasAnyType(types.BoolTypeQuery):
         self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.type_of_any not in (
-            TypeOfAny.special_form,
-            TypeOfAny.from_alias_target,
-        )
+        return t.type_of_any not in (TypeOfAny.special_form, TypeOfAny.from_alias_target)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
