@@ -672,6 +672,30 @@ PyTypeObject VecTType = {
 };
 
 PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    if (PyList_CheckExact(iterable)) {
+        Py_ssize_t n = PyList_GET_SIZE(iterable);
+        Py_ssize_t alloc_size = n > cap ? n : cap;
+        VecT v = vec_alloc(alloc_size, item_type);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        Py_ssize_t i;
+        for (i = 0; i < n; i++) {
+            PyObject *item = PyList_GET_ITEM(iterable, i);
+            if (!VecT_ItemCheck(v, item, item_type)) {
+                for (Py_ssize_t j = i; j < alloc_size; j++)
+                    v.buf->items[j] = NULL;
+                VEC_DECREF(v);
+                return NULL;
+            }
+            Py_INCREF(item);
+            v.buf->items[i] = item;
+        }
+        for (Py_ssize_t j = n; j < alloc_size; j++)
+            v.buf->items[j] = NULL;
+        v.len = n;
+        return VecT_Box(v, item_type);
+    }
+
     VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;

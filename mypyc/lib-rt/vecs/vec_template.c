@@ -175,6 +175,25 @@ VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
     }
 #endif
 
+    if (PyList_CheckExact(iterable)) {
+        Py_ssize_t n = PyList_GET_SIZE(iterable);
+        Py_ssize_t alloc_size = n > cap ? n : cap;
+        VEC v = vec_alloc(alloc_size);
+        if (VEC_IS_ERROR(v))
+            return vec_error();
+        for (Py_ssize_t i = 0; i < n; i++) {
+            PyObject *item = PyList_GET_ITEM(iterable, i);
+            ITEM_C_TYPE x = UNBOX_ITEM(item);
+            if (IS_UNBOX_ERROR(x)) {
+                VEC_DECREF(v);
+                return vec_error();
+            }
+            v.buf->items[i] = x;
+        }
+        v.len = n;
+        return v;
+    }
+
     VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
         return vec_error();
