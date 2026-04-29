@@ -15,6 +15,11 @@ Construction
 * ``repr(x: int)``
 * ``repr(x: object)``
 
+.. note::
+
+    :ref:`librt.strings.StringWriter <librt-string-writer>` can be used to efficiently
+    construct strings in compiled code.
+
 Operators
 ---------
 

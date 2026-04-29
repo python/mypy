@@ -50,6 +50,8 @@ BytesWriter
 
       Set a byte at a specific index. The index can be negative.
 
+.. _librt-string-writer:
+
 StringWriter
 ^^^^^^^^^^^^
 
