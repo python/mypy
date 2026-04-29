@@ -2705,3 +2705,15 @@ reveal_type(fx)  # N: Revealed type is "def [Ts] (int, *args: *tuple[*Ts, int]) 
 x = 1
 [out]
 main:1: error: --allow-redefinition-old and --allow-redefinition should not be used together
+
+[case testRedundantExpressionMultiline]
+# mypy: enable-error-code="redundant-expr"
+x: int
+y: int
+z: int
+if (
+    x is None  # E: Left operand of "or" is always false
+    or y is None  # E: Left operand of "or" is always false
+    or z is None
+):
+    pass
