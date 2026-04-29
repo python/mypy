@@ -706,6 +706,7 @@ static inline VecT vec_from_sequence(
     }
     for (Py_ssize_t j = n; j < alloc_size; j++)
         v.buf->items[j] = NULL;
+    vec_track_buffer(&v);
     v.len = n;
     return v;
 }
