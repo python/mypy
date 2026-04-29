@@ -4,15 +4,18 @@ import os
 import tempfile
 import textwrap
 import unittest
-from types import SimpleNamespace #ADDED
-from unittest.mock import patch #ADDED
+import sys 
+from unittest.mock import MagicMock, patch  
+from mypy.options import Options  
+from mypy.util import FancyFormatter 
+
 
 from mypy.installtypes import (
     make_runtime_constraints,
     read_locked_packages,
     resolve_stub_packages_from_lock,
 )
-from mypy.main import install_types #ADDED
+from mypy.main import install_types 
 
 
 class TestInstallTypesFromPylock(unittest.TestCase):
@@ -94,13 +97,8 @@ class TestInstallTypesFromPylock(unittest.TestCase):
             "types-requests": "2.32.0",
         }
         stubs = resolve_stub_packages_from_lock(locked)
-        # requests already worked before fix because distribution name == module name.
         assert "types-requests" in stubs
-
-        # FIX: Before my fix, this failed because the lock file used the distribution name
-        # "python-dateutil" but stubinfo.py knows the module/import name "dateutil".
-        # After adding the explicit distribution->module mapping, it should resolve.
-        assert "types-python-dateutil" in stubs #FIX
+        assert "types-python-dateutil" in stubs 
 
     #TEST: checks explicit distribution->module mapping
     def test_resolve_stub_packages_from_lock_handles_distribution_module_mismatch(self) -> None:
@@ -148,7 +146,7 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         assert "python-dateutil==2.9.0" in constraints
 
     def test_make_runtime_constraints_empty(self) -> None:
-        locked = {}
+        locked: dict[str, str | None] = {}
         assert make_runtime_constraints(locked) == []
 
     def test_make_runtime_constraints_is_sorted(self) -> None:
@@ -156,21 +154,18 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         constraints = make_runtime_constraints(locked)
         assert constraints == sorted(constraints)
 
-#FIX: stub/mock object that pretends to be a formatter so tests don’t crash.
-class DummyFormatter:
-    def style(self, text: str, *args: object, **kwargs: object) -> str:
-        return text
-
 #TEST: integrations tests
 class TestInstallTypesFromPylockIntegration(unittest.TestCase):
-    def make_options(self) -> SimpleNamespace:
-        return SimpleNamespace(
-            python_executable="python",
-            cache_dir="unused",
-        )
+    def make_options(self) -> Options:
+        options = Options()
+        options.python_executable = "python"
+        options.cache_dir = "unused"
+        return options
+    def make_formatter(self) -> FancyFormatter:
+        return FancyFormatter(sys.stdout, sys.stderr, False)
 
     @patch("mypy.main.subprocess.run")
-    def test_install_types_builds_correct_pip_command(self, mock_run) -> None:
+    def test_install_types_builds_correct_pip_command(self, mock_run: MagicMock) -> None:
         content = textwrap.dedent(
             """
             [[package]]
@@ -191,11 +186,10 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
 
         try:
             options = self.make_options()
-            formatter = DummyFormatter() #FIX
+            formatter = self.make_formatter() 
 
             result = install_types(
-                # formatter=None,
-                formatter=formatter, # FIX
+                formatter=formatter, 
                 options=options,
                 non_interactive=True,
                 pylock_path=path,
@@ -214,21 +208,14 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
             self.assertIn("--constraint", cmd)
 
             # Stub packages should be installed
-            # requests already resolved before the fix.
             self.assertIn("types-requests", cmd)
-
-            # FIX: Before the fix, this was missing from the pip command because
-            # resolve_stub_packages_from_lock only tried "python-dateutil" and
-            # "python_dateutil", but stubinfo.py maps "dateutil" -> "types-python-dateutil".
-            # After adding the explicit distribution->module mapping, install_types()
-            # should include the correct stub package in the pip command.
             self.assertIn("types-python-dateutil", cmd)
 
         finally:
             os.unlink(path)
 
     @patch("mypy.main.subprocess.run")
-    def test_no_stubs_found_skips_install(self, mock_run) -> None:
+    def test_no_stubs_found_skips_install(self, mock_run: MagicMock) -> None: 
         content = textwrap.dedent(
             """
             [[package]]
@@ -245,11 +232,10 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
 
         try:
             options = self.make_options()
-            formatter = DummyFormatter() #FIX
+            formatter = self.make_formatter() 
 
             result = install_types(
-                # formatter=None,
-                formatter=formatter, #FIX
+                formatter=formatter,
                 options=options,
                 non_interactive=True,
                 pylock_path=path,
@@ -262,7 +248,7 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
             os.unlink(path)
 
     @patch("mypy.main.subprocess.run")
-    def test_constraint_file_cleaned_up_after_success(self, mock_run) -> None:
+    def test_constraint_file_cleaned_up_after_success(self, mock_run: MagicMock) -> None:
         content = textwrap.dedent(
             """
             [[package]]
@@ -284,7 +270,7 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
 
         try:
             install_types(
-                formatter=DummyFormatter(),
+                formatter=self.make_formatter(),
                 options=self.make_options(),
                 non_interactive=True,
                 pylock_path=path,
@@ -299,7 +285,7 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
         )
 
     @patch("mypy.main.subprocess.run")
-    def test_constraint_file_cleaned_up_even_if_subprocess_fails(self, mock_run) -> None:
+    def test_constraint_file_cleaned_up_even_if_subprocess_fails(self, mock_run: MagicMock) -> None:
         content = textwrap.dedent(
             """
             [[package]]
@@ -323,7 +309,7 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
         try:
             with self.assertRaises(RuntimeError):
                 install_types(
-                    formatter=DummyFormatter(),
+                    formatter=self.make_formatter(),
                     options=self.make_options(),
                     non_interactive=True,
                     pylock_path=path,
