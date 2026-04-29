@@ -5304,6 +5304,107 @@ reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMeetOfClosedTypedDictsWithMatchingRequiredKeysIsNotAnonymous]
+from typing import TypedDict, TypeVar, Callable
+X = TypedDict('X', {'x': int, 'y': int}, closed=True)
+Y = TypedDict('Y', {'x': int, 'y': int}, closed=True)
+Z = TypedDict('Z', {'x': int, 'y': int})
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+def fXY(x: X, y: Y) -> None: pass
+def fYX(x: Y, y: X) -> None: pass
+def fXZ(x: X, y: Z) -> None: pass
+def fZX(x: Z, y: X) -> None: pass
+reveal_type(meet(fXY))  # N: Revealed type is "TypedDict('__main__.X', {'x': builtins.int, 'y': builtins.int}, closed=True)"
+reveal_type(meet(fYX))  # N: Revealed type is "TypedDict('__main__.Y', {'x': builtins.int, 'y': builtins.int}, closed=True)"
+reveal_type(meet(fXZ))  # N: Revealed type is "TypedDict('__main__.X', {'x': builtins.int, 'y': builtins.int}, closed=True)"
+reveal_type(meet(fZX))  # N: Revealed type is "TypedDict('__main__.X', {'x': builtins.int, 'y': builtins.int}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfClosedTypedDictsWithDifferentKeys]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+A = TypedDict('A', {'a': int}, closed=True)
+B = TypedDict('B', {'b': int}, closed=True)
+def fAB(x: A, y: B) -> None: pass
+if int():
+    reveal_type(meet(fAB))  # N: Revealed type is "Never"
+C = TypedDict('C', {'c': int}, closed=True, total=False)
+D = TypedDict('D', {'d': int}, closed=True, total=False)
+def fCD(x: C, y: D) -> None: pass
+if int():
+    reveal_type(meet(fCD))  # N: Revealed type is "Never"
+E = TypedDict('E', {'e': ReadOnly[int]}, closed=True)
+F = TypedDict('F', {'f': ReadOnly[int]}, closed=True)
+def fEF(x: E, y: F) -> None: pass
+if int():
+    reveal_type(meet(fEF))  # N: Revealed type is "Never"
+G = TypedDict('G', {'g': ReadOnly[int]}, closed=True, total=False)
+H = TypedDict('H', {'h': ReadOnly[int]}, closed=True, total=False)
+def fAH(x: A, y: H) -> None: pass
+if int():
+    reveal_type(meet(fAH))  # N: Revealed type is "Never"
+def fCH(x: C, y: H) -> None: pass
+if int():
+    reveal_type(meet(fCH))  # N: Revealed type is "Never"
+def fEH(x: E, y: H) -> None: pass
+if int():
+    reveal_type(meet(fEH))  # N: Revealed type is "Never"
+def fGH(x: G, y: H) -> None: pass
+if int():
+    reveal_type(meet(fGH))  # N: Revealed type is "TypedDict({}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfOpenAndClosedTypedDictsExtraKeyInClosed]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+Ax = TypedDict('Ax', {'a': ReadOnly[float]})
+AyB = TypedDict('AyB', {'a': ReadOnly[int], 'b': int}, closed=True)
+def fAxAyB(x: Ax, y: AyB) -> None: pass
+def fAyBAx(x: AyB, y: Ax) -> None: pass
+reveal_type(meet(fAxAyB))  # N: Revealed type is "TypedDict({'a'=: builtins.int, 'b': builtins.int}, closed=True)"
+reveal_type(meet(fAyBAx))  # N: Revealed type is "TypedDict({'a'=: builtins.int, 'b': builtins.int}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfOpenAndClosedTypedDictsExtraKeyInOpen]
+from typing import TypedDict, TypeVar, Callable, ReadOnly
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+C = TypedDict('C', {'a': ReadOnly[float]}, closed=True)
+D1 = TypedDict('D1', {'a': ReadOnly[int], 'b': int})
+D2 = TypedDict('D2', {'a': ReadOnly[int], 'b': ReadOnly[int]})
+D3 = TypedDict('D3', {'a': ReadOnly[int], 'b': int}, total=False)
+D4 = TypedDict('D4', {'a': ReadOnly[int], 'b': ReadOnly[int]}, total=False)
+def fCD1(x: C, y: D1) -> None: pass
+def fD1C(x: D1, y: C) -> None: pass
+def fCD2(x: C, y: D2) -> None: pass
+def fD2C(x: D2, y: C) -> None: pass
+def fCD3(x: C, y: D3) -> None: pass
+def fD3C(x: D3, y: C) -> None: pass
+def fCD4(x: C, y: D4) -> None: pass
+def fD4C(x: D4, y: C) -> None: pass
+if int():
+    reveal_type(meet(fCD1))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fD1C))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fCD2))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fD2C))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fCD3))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fD3C))  # N: Revealed type is "Never"
+reveal_type(meet(fCD4))  # N: Revealed type is "TypedDict({'a'=: builtins.int}, closed=True)"
+reveal_type(meet(fD4C))  # N: Revealed type is "TypedDict({'a'=: builtins.int}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar

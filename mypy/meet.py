@@ -1114,13 +1114,21 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         returned type will be None; the overall meet type should
         be UninhabitedType.
         """
-        # A missing key is implicitly ReadOnly[NotRequired[object]]
+        # A missing key is implicitly ReadOnly[NotRequired[...]]
         l_mutable = s_item_type is not None and name not in s.readonly_keys
         r_mutable = t_item_type is not None and name not in t.readonly_keys
         l_required = name in s.required_keys
         r_required = name in t.required_keys
 
         is_readonly = not l_mutable and not r_mutable
+
+        # Simplify the logic by using Never instead of None for missing keys
+        # in closed TypedDicts. Ideally we'd use builtins.object instead of
+        # None in open TypedDicts, but that is hard to get.
+        if s_item_type is None and s.is_closed:
+            s_item_type = UninhabitedType()
+        if t_item_type is None and t.is_closed:
+            t_item_type = UninhabitedType()
 
         if t_item_type is None:
             assert s_item_type is not None
@@ -1156,6 +1164,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
+            is_closed = self.s.is_closed or t.is_closed
             items: dict[str, Type] = {}
             readonly_keys: set[str] = set()
             for name, s_item_type, t_item_type in self.s.zipall(t):
@@ -1166,14 +1175,22 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if meet_type is None:
                     return self.default(self.s)
 
+                if (
+                    is_closed
+                    and is_readonly
+                    and isinstance(get_proper_type(meet_type), UninhabitedType)
+                ):
+                    # Simplify emitted type by omitting redundant ReadOnly[Never] keys
+                    # from closed TypedDicts
+                    continue
+
                 items[name] = meet_type
                 if is_readonly:
                     readonly_keys.add(name)
 
             fallback = self.s.create_anonymous_fallback()
             required_keys = self.s.required_keys | t.required_keys
-            # TODO: implement closure analysis
-            return TypedDictType(items, required_keys, readonly_keys, False, fallback)
+            return TypedDictType(items, required_keys, readonly_keys, is_closed, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:
