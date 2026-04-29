@@ -1737,7 +1737,7 @@ def test_outer() -> None:
 [builtins fixtures/exception.pyi]
 
 [case testIgnoreInPlatformSpecificCodeUsed]
-# flags: --warn-unused-ignores
+# flags: --warn-unused-ignores --platform unknown
 
 import sys
 assert sys.platform == "win32"
