@@ -3284,6 +3284,29 @@ def f2(x: Any) -> None:
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testNarrowAnyUnion]
+from typing import Any
+
+class A: ...
+
+def f1(x: A | int, y: Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+
+def f2(x: A | int, y: Any | None):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+
+class AA(A): ...
+
+def f3(x: A | int, y: AA | Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.AA | Any"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowChainedContainment]
 # flags: --strict-equality --warn-unreachable
 

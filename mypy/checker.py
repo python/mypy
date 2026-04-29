@@ -7038,7 +7038,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i], if_type, else_type
                     )
-                    or_if_maps.append(if_map)
+                    if not isinstance(get_proper_type(expr_type), AnyType):
+                        or_if_maps.append(if_map)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         or_else_maps.append(else_map)
 
