@@ -89,3 +89,6 @@ Functions
 
 * ``len(s: str)``
 * ``ord(s: str)``
+
+  * Calls with a literal argument are treated as compile-time integer constants (e.g.
+    ``ord("A")`` is equivalent to 65).
