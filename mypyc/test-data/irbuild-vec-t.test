@@ -14,6 +14,19 @@ L0:
     r0 = VecTApi.to_list(v)
     return r0
 
+[case testVecTConvertToTuple]
+from librt.vecs import vec
+
+def to_tuple(v: vec[str]) -> tuple[str, ...]:
+    return tuple(v)
+[out]
+def to_tuple(v):
+    v :: vec[str]
+    r0 :: tuple
+L0:
+    r0 = VecTApi.to_tuple(v)
+    return r0
+
 [case testVecTCreateEmpty]
 from librt.vecs import vec, append
 

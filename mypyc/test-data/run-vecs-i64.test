@@ -678,3 +678,26 @@ def test_to_list_does_not_consume() -> None:
     l1 = to_list(v)
     l2 = to_list(v)
     assert l1 == l2 == [1, 2, 3]
+
+def to_tuple(v: vec[i64]) -> Tuple[i64, ...]:
+    return tuple(v)
+
+def test_to_tuple_empty() -> None:
+    assert to_tuple(vec[i64]()) == ()
+
+def test_to_tuple_single() -> None:
+    assert to_tuple(vec[i64]([5])) == (5,)
+
+def test_to_tuple_multiple() -> None:
+    assert to_tuple(vec[i64]([1, 2, 3])) == (1, 2, 3)
+
+def test_to_tuple_large_values() -> None:
+    v = vec[i64]([-(2**63), 0, 2**63 - 1])
+    result = to_tuple(v)
+    assert result == (-(2**63), 0, 2**63 - 1)
+
+def test_to_tuple_does_not_consume() -> None:
+    v = vec[i64]([1, 2, 3])
+    t1 = to_tuple(v)
+    t2 = to_tuple(v)
+    assert t1 == t2 == (1, 2, 3)

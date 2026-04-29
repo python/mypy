@@ -48,6 +48,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     list_rprimitive,
     object_rprimitive,
+    tuple_rprimitive,
     optional_value_type,
     pointer_rprimitive,
     vec_api_by_item_type,
@@ -598,21 +599,35 @@ def vec_slice(
 
 
 def vec_to_list(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | None:
+    return _vec_to_sequence(builder, vec, line, "to_list", list_rprimitive)
+
+
+def vec_to_tuple(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | None:
+    return _vec_to_sequence(builder, vec, line, "to_tuple", tuple_rprimitive)
+
+
+def _vec_to_sequence(
+    builder: LowLevelIRBuilder,
+    vec: Value,
+    line: int,
+    method: str,
+    result_type: RType,
+) -> Value | None:
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
     item_type = vec_type.item_type
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
-        name = f"{api_name}.to_list"
+        name = f"{api_name}.{method}"
     elif vec_type.depth() == 0:
-        name = "VecTApi.to_list"
+        name = f"VecTApi.{method}"
     else:
         return None
     return builder.add(
         CallC(
             name,
             [vec],
-            list_rprimitive,
+            result_type,
             steals=[True],
             is_borrowed=False,
             error_kind=ERR_MAGIC,

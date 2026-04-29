@@ -16,6 +16,22 @@ L0:
     r1 = PySequence_List(r0)
     return r1
 
+[case testVecNestedConvertToTuple]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def to_tuple(v: vec[vec[i64]]) -> tuple[vec[i64], ...]:
+    return tuple(v)
+[out]
+def to_tuple(v):
+    v :: vec[vec[i64]]
+    r0 :: object
+    r1 :: tuple
+L0:
+    r0 = box(vec[vec[i64]], v)
+    r1 = PySequence_Tuple(r0)
+    return r1
+
 [case testVecNestedCreateEmpty]
 from librt.vecs import vec, append
 from mypy_extensions import i64

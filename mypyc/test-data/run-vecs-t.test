@@ -627,3 +627,37 @@ def test_to_list_shared_buffer() -> None:
     assert result == ['a', 'b']
     # v0 must still be valid
     assert v0 == vec[str](['a', 'b', 'c'])
+
+def to_tuple(v: vec[str]) -> Tuple[str, ...]:
+    return tuple(v)
+
+def to_tuple_optional(v: vec[Optional[str]]) -> Tuple[Optional[str], ...]:
+    return tuple(v)
+
+def test_to_tuple_empty() -> None:
+    assert to_tuple(vec[str]()) == ()
+
+def test_to_tuple_single() -> None:
+    assert to_tuple(vec[str](['hello'])) == ('hello',)
+
+def test_to_tuple_multiple() -> None:
+    assert to_tuple(vec[str](['a', 'b', 'c'])) == ('a', 'b', 'c')
+
+def test_to_tuple_optional() -> None:
+    assert to_tuple_optional(vec[Optional[str]](['x', None, 'y'])) == ('x', None, 'y')
+
+def test_to_tuple_does_not_consume() -> None:
+    v = vec[str](['a', 'b'])
+    t1 = to_tuple(v)
+    t2 = to_tuple(v)
+    assert t1 == t2 == ('a', 'b')
+
+def test_to_tuple_shared_buffer() -> None:
+    v0 = vec[str](['a', 'b', 'c'])
+    v1, item = pop(v0)
+    assert item == 'c'
+    # v0 and v1 share a buffer (v0.len=3, v1.len=2)
+    result = to_tuple(v1)
+    assert result == ('a', 'b')
+    # v0 must still be valid
+    assert v0 == vec[str](['a', 'b', 'c'])

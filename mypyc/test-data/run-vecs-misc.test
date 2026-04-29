@@ -429,3 +429,17 @@ def test_vec_u8_to_bytes() -> None:
     assert bytes(vec[u8]([72, 101, 108, 108, 111])) == b"Hello"
     assert bytes(vec[u8]()) == b""
     assert bytes(vec[u8]([0, 255, 1])) == b"\x00\xff\x01"
+
+def u8_to_list(v: vec[u8]) -> list[u8]:
+    return list(v)
+
+def u8_to_tuple(v: vec[u8]) -> tuple[u8, ...]:
+    return tuple(v)
+
+def test_vec_u8_to_list() -> None:
+    assert u8_to_list(vec[u8]()) == []
+    assert u8_to_list(vec[u8]([0, 128, 255])) == [0, 128, 255]
+
+def test_vec_u8_to_tuple() -> None:
+    assert u8_to_tuple(vec[u8]()) == ()
+    assert u8_to_tuple(vec[u8]([0, 128, 255])) == (0, 128, 255)

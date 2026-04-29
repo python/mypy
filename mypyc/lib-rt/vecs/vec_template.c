@@ -569,6 +569,27 @@ PyObject *FUNC(ToList)(VEC v) {
     return list;
 }
 
+// Convert vec to tuple, stealing 'v'.
+PyObject *FUNC(ToTuple)(VEC v) {
+    Py_ssize_t n = v.len;
+    PyObject *tuple = PyTuple_New(n);
+    if (tuple == NULL) {
+        VEC_DECREF(v);
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = BOX_ITEM(v.buf->items[i]);
+        if (item == NULL) {
+            Py_DECREF(tuple);
+            VEC_DECREF(v);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(tuple, i, item);
+    }
+    VEC_DECREF(v);
+    return tuple;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
@@ -784,6 +805,7 @@ NAME(API) FEATURES = {
     FUNC(Extend),
     FUNC(ExtendVec),
     FUNC(ToList),
+    FUNC(ToTuple),
 };
 
 #endif  // MYPYC_EXPERIMENTAL
