@@ -423,16 +423,27 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     return new;
 }
 
+// Convert vec to list, stealing 'v'.
 PyObject *VecT_ToList(VecT v) {
     Py_ssize_t n = v.len;
     PyObject *list = PyList_New(n);
-    if (list == NULL)
+    if (list == NULL) {
+        VEC_DECREF(v);
         return NULL;
-    for (Py_ssize_t i = 0; i < n; i++) {
-        PyObject *item = v.buf->items[i];
-        Py_INCREF(item);
-        PyList_SET_ITEM(list, i, item);
     }
+    if (n > 0 && Py_REFCNT(v.buf) == 1) {
+        for (Py_ssize_t i = 0; i < n; i++) {
+            PyList_SET_ITEM(list, i, v.buf->items[i]);
+            v.buf->items[i] = NULL;
+        }
+    } else {
+        for (Py_ssize_t i = 0; i < n; i++) {
+            PyObject *item = v.buf->items[i];
+            Py_INCREF(item);
+            PyList_SET_ITEM(list, i, item);
+        }
+    }
+    VEC_DECREF(v);
     return list;
 }
 

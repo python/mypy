@@ -617,3 +617,13 @@ def test_to_list_does_not_consume() -> None:
     l1 = to_list(v)
     l2 = to_list(v)
     assert l1 == l2 == ['a', 'b']
+
+def test_to_list_shared_buffer() -> None:
+    v0 = vec[str](['a', 'b', 'c'])
+    v1, item = pop(v0)
+    assert item == 'c'
+    # v0 and v1 share a buffer (v0.len=3, v1.len=2)
+    result = to_list(v1)
+    assert result == ['a', 'b']
+    # v0 must still be valid
+    assert v0 == vec[str](['a', 'b', 'c'])

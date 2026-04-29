@@ -613,7 +613,7 @@ def vec_to_list(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | No
             name,
             [vec],
             list_rprimitive,
-            steals=[False],
+            steals=[True],
             is_borrowed=False,
             error_kind=ERR_MAGIC,
             line=line,

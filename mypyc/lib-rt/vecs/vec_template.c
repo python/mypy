@@ -548,19 +548,24 @@ VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     return vec_extend_items(dst, src.buf->items, src.len, dst.buf == src.buf);
 }
 
+// Convert vec to list, stealing 'v'.
 PyObject *FUNC(ToList)(VEC v) {
     Py_ssize_t n = v.len;
     PyObject *list = PyList_New(n);
-    if (list == NULL)
+    if (list == NULL) {
+        VEC_DECREF(v);
         return NULL;
+    }
     for (Py_ssize_t i = 0; i < n; i++) {
         PyObject *item = BOX_ITEM(v.buf->items[i]);
         if (item == NULL) {
             Py_DECREF(list);
+            VEC_DECREF(v);
             return NULL;
         }
         PyList_SET_ITEM(list, i, item);
     }
+    VEC_DECREF(v);
     return list;
 }
 
