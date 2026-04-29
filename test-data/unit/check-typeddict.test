@@ -4011,6 +4011,43 @@ x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated  [typ
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictFunctionalSyntaxWithMultipleSpecialForms]
+from typing import ReadOnly, Required, NotRequired, TypedDict
+from typing_extensions import Annotated
+D1 = TypedDict("D1", {"x": int, "y": ReadOnly[Required[int]]}, total=False)
+D2 = TypedDict("D2", {"x": int, "y": Required[ReadOnly[int]]}, total=False)
+D3 = TypedDict("D3", {"x": int, "y": ReadOnly[NotRequired[int]]})
+D4 = TypedDict("D4", {"x": int, "y": NotRequired[ReadOnly[int]]})
+D5 = TypedDict("D5", {"x": int, "y": Annotated[ReadOnly[int], "some annotation text"]})
+D6 = TypedDict("D6", {"x": int, "y": ReadOnly[Annotated[int, "some annotation text"]]})
+D7 = TypedDict("D7", {"x": int, "y": Annotated[ReadOnly[NotRequired[int]], "some annotation text"]})
+D8 = TypedDict("D8", {"x": int, "y": NotRequired[ReadOnly[Annotated[int, "some annotation text"]]]})
+d1: D1
+d2: D2
+d3: D3
+d4: D4
+d5: D5
+d6: D6
+d7: D7
+d8: D8
+reveal_type(d1)  # N: Revealed type is "TypedDict('__main__.D1', {'x'?: builtins.int, 'y'=: builtins.int})"
+reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'x'?: builtins.int, 'y'=: builtins.int})"
+reveal_type(d3)  # N: Revealed type is "TypedDict('__main__.D3', {'x': builtins.int, 'y'?=: builtins.int})"
+reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'x': builtins.int, 'y'?=: builtins.int})"
+reveal_type(d5)  # N: Revealed type is "TypedDict('__main__.D5', {'x': builtins.int, 'y'=: builtins.int})"
+reveal_type(d6)  # N: Revealed type is "TypedDict('__main__.D6', {'x': builtins.int, 'y'=: builtins.int})"
+reveal_type(d7)  # N: Revealed type is "TypedDict('__main__.D7', {'x': builtins.int, 'y'?=: builtins.int})"
+reveal_type(d8)  # N: Revealed type is "TypedDict('__main__.D8', {'x': builtins.int, 'y'?=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFunctionalSyntaxWithContradictorySpecialForms]
+from typing import Required, NotRequired, TypedDict
+D1 = TypedDict("D1", {"x": NotRequired[Required[int]]})  # E: "Required[]" type cannot be nested
+D2 = TypedDict("D2", {"x": Required[NotRequired[int]]})  # E: "NotRequired[]" type cannot be nested
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlyCreation]
 from typing import ReadOnly, TypedDict
 

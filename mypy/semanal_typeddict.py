@@ -433,7 +433,7 @@ class TypedDictAnalyzer:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
             return True, None, []
-        name, items, types, total, tvar_defs, ok = res
+        name, items, wrapped_types, total, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
             if var_name:
@@ -455,18 +455,18 @@ class TypedDictAnalyzer:
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += "@" + str(call.line)
-            required_keys = {
-                field
-                for (field, t) in zip(items, types)
-                if (total or (isinstance(t, RequiredType) and t.required))
-                and not (isinstance(t, RequiredType) and not t.required)
-            }
-            readonly_keys = {
-                field for (field, t) in zip(items, types) if isinstance(t, ReadOnlyType)
-            }
-            types = [  # unwrap Required[T] or ReadOnly[T] to just T
-                t.item if isinstance(t, (RequiredType, ReadOnlyType)) else t for t in types
-            ]
+
+            # Unwrap special forms (Required/NotRequired/ReadOnly)
+            types: list[Type] = []
+            required_keys: set[str] = set()
+            readonly_keys: set[str] = set()
+            for field, t in zip(items, wrapped_types):
+                unwrapped_type, is_required, is_readonly = self.extract_meta_info(t, node)
+                types.append(unwrapped_type)
+                if is_required is True or (is_required is None and total):
+                    required_keys.add(field)
+                if is_readonly:
+                    readonly_keys.add(field)
 
             # Perform various validations after unwrapping.
             for t in types:
