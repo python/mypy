@@ -30,11 +30,7 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.installtypes import (
-    make_runtime_constraints,
-    read_locked_packages,
-    resolve_stub_packages_from_lock,
-)
+from mypy.installtypes import make_runtime_constraints, read_locked_packages, resolve_stub_packages_from_lock
 from mypy.modulefinder import (
     BuildSource,
     FindModuleCache,
@@ -140,7 +136,11 @@ def main(
     if options.install_types_from_pylock is not None and not os.path.isfile(
         options.install_types_from_pylock
     ):
-        fail(f"error: Can't find lock file '{options.install_types_from_pylock}'", stderr, options)
+        fail(
+            f"error: Can't find lock file '{options.install_types_from_pylock}'",
+            stderr,
+            options,
+        )
 
     if options.install_types and not options.incremental:
         fail(
@@ -967,10 +967,10 @@ def define_options(
     )
 
     add_invertible_flag(
-        "--no-strict-bytes",
-        default=True,
-        dest="strict_bytes",
-        help="Treat bytearray and memoryview as subtypes of bytes",
+        "--strict-bytes",
+        default=False,
+        strict_flag=True,
+        help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
 
@@ -1306,13 +1306,7 @@ def define_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    add_invertible_flag(
-        "--no-local-partial-types",
-        inverse="--local-partial-types",
-        default=True,
-        dest="local_partial_types",
-        help=argparse.SUPPRESS,
-    )
+    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
     # --native-parser enables the native parser (experimental)
     add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
