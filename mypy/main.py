@@ -1125,6 +1125,9 @@ def define_options(
         group=internals_group,
     )
     internals_group.add_argument(
+        "--tb", dest="show_traceback", action="store_true", help=argparse.SUPPRESS
+    )
+    internals_group.add_argument(
         "--raise-exceptions", action="store_true", help="Raise exception on fatal error"
     )
     internals_group.add_argument(
