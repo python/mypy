@@ -56,7 +56,7 @@ dependencies = [
   "pathspec>=1.0.0",
   "tomli>=1.1.0; python_version<'3.11'",
   "librt>=0.9.0; platform_python_implementation != 'PyPy'",
-  "ast-serialize>=0.2.1,<1.0.0",
+  "ast-serialize>=0.2.2,<1.0.0",
 ]
 dynamic = ["version"]
 
