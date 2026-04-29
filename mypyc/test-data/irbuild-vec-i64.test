@@ -173,6 +173,35 @@ L0:
     r0 = VecI64Api.append(v, i)
     return r0
 
+[case testVecI64Extend]
+from librt.vecs import vec, extend
+from mypy_extensions import i64
+from typing import Iterable
+
+def f(v: vec[i64], it: Iterable[i64]) -> vec[i64]:
+    return extend(v, it)
+[out]
+def f(v, it):
+    v :: vec[i64]
+    it :: object
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.extend(v, it)
+    return r0
+
+[case testVecI64ExtendVec]
+from librt.vecs import vec, extend
+from mypy_extensions import i64
+
+def f(v: vec[i64], v2: vec[i64]) -> vec[i64]:
+    return extend(v, v2)
+[out]
+def f(v, v2):
+    v, v2, r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.extend_vec(v, v2)
+    return r0
+
 [case testVecI64SetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
@@ -898,4 +927,19 @@ L2:
     goto L1
 L3:
     keep_alive r0
+    return r0
+
+[case testVecI64ConstructFromIterable]
+from typing import Iterable
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(x: Iterable[i64]) -> vec[i64]:
+    return vec[i64](x)
+[out]
+def f(x):
+    x :: object
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.from_iterable(x, 0)
     return r0

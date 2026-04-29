@@ -913,20 +913,20 @@ class BuildManager:
                 continue
             path = self.find_module_cache.find_module(module, fast_path=True)
             if not isinstance(path, str):
-                raise CompileError(
-                    [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
+                build_error(
+                    f'Failed to find builtin module "{module}", perhaps typeshed is broken?'
                 )
             if is_typeshed_file(options.abs_custom_typeshed_dir, path) or is_stub_package_file(
                 path
             ):
                 continue
 
-            raise CompileError(
-                [
-                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
-                    f'note: A user-defined top-level module with name "{module}" is not supported',
-                ]
+            self.errors.set_file(path, module, options)
+            self.error(None, f'This file shadows library module "{module}"', blocker=True)
+            self.note(
+                None, f'A user-defined top-level module with name "{module}" is not supported'
             )
+            self.errors.raise_error()
 
         if metastore is None:
             metastore = create_metastore(options, parallel_worker=parallel_worker)
@@ -1255,7 +1255,19 @@ class BuildManager:
         return res
 
     def is_module(self, id: str) -> bool:
-        """Is there a file in the file system corresponding to module id?"""
+        """Does the given fullname refer to a module?
+
+        Note: this does not always verify that the module exists and relies on
+        previously executed logic in find_module_and_diagnose().
+        """
+        if id in self.modules:
+            # Micro-optimization, if we already found it, it is definitely a module.
+            return True
+        if id in self.source_set.source_modules:
+            # Special case: if a module is passed on command line, we accept it even
+            # if we would not resolve it using regular mechanisms. This makes behavior
+            # consistent in cases like `mypy foo-stubs`, where stubs are not installed.
+            return True
         return find_module_simple(id, self) is not None
 
     def parse_file(
@@ -3149,7 +3161,7 @@ class State:
                     assert ioerr.errno is not None
                     raise CompileError(
                         [
-                            "mypy: error: cannot read file '{}': {}".format(
+                            "mypy: error: Cannot read file '{}': {}".format(
                                 self.path.replace(os.getcwd() + os.sep, ""),
                                 os.strerror(ioerr.errno),
                             )
@@ -3158,9 +3170,9 @@ class State:
                     ) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith(".pyd"):
-                        err = f"{self.path}: error: stubgen does not support .pyd files"
+                        err = f"{self.path}: error: Stubgen does not support .pyd files"
                     else:
-                        err = f"{self.path}: error: cannot decode file: {str(decodeerr)}"
+                        err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
             elif self.path and self.manager.fscache.isdir(self.path):
                 source = ""
@@ -3782,7 +3794,7 @@ def find_module_and_diagnose(
             # If we can't find a root source it's always fatal.
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
-            raise CompileError([f"mypy: can't find module '{id}'"])
+            raise CompileError([f'mypy: error: Cannot find module "{id}"'])
         else:
             raise ModuleNotFound
 
@@ -3911,7 +3923,7 @@ def module_not_found(
     )
     if target == "builtins":
         manager.error(
-            line, "Cannot find 'builtins' module. Typeshed appears broken!", blocker=True
+            line, 'Cannot find "builtins" module. Typeshed appears broken!', blocker=True
         )
         errors.raise_error()
     else:

@@ -50,6 +50,41 @@ L0:
     r3 = VecTApi.append(v, r0, r2)
     return r3
 
+[case testVecTExtend]
+from librt.vecs import vec, extend
+from typing import Iterable
+
+def f(v: vec[str], it: Iterable[str]) -> vec[str]:
+    return extend(v, it)
+[out]
+def f(v, it):
+    v :: vec[str]
+    it, r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.extend(v, it, r1)
+    return r2
+
+[case testVecTExtendVec]
+from librt.vecs import vec, extend
+
+def f(v: vec[str], v2: vec[str]) -> vec[str]:
+    return extend(v, v2)
+[out]
+def f(v, v2):
+    v, v2 :: vec[str]
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.extend_vec(v, v2, r1)
+    return r2
+
 [case testVecTOptionalCreateEmpty]
 from librt.vecs import vec, append
 from typing import Optional

@@ -14,6 +14,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 
@@ -516,3 +517,31 @@ def test_cap_reallocation() -> None:
     v[0] = vec[str](['z'])
     assert old[0] == vec[str](['a'])
     assert old[2] == vec[str](['c'])
+
+def test_extend_from_list() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v = vec[vec[str]]([v1])
+    v = extend(v, [v2])
+    assert v == vec[vec[str]]([v1, v2])
+
+def test_extend_empty_vec() -> None:
+    v = vec[vec[i64]]()
+    v = extend(v, [vec[i64]([1, 2])])
+    assert v == vec[vec[i64]]([vec[i64]([1, 2])])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[vec[str]]([vec[str](['x'])])
+    v = extend(v, [])
+    assert v == vec[vec[str]]([vec[str](['x'])])
+
+def test_extend_shared_buffer_after_pop() -> None:
+    v0 = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer
+    v = extend(v1, vec[vec[str]]([vec[str](['d']), vec[str](['e']), vec[str](['f'])]))
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[4] == vec[str](['f'])
+    # v0 must not be corrupted
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])

@@ -100,10 +100,84 @@ VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
-PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+#ifdef BUFFER_FORMAT_CHAR_OK
+inline static int buffer_format_matches(const char *fmt) {
+    char c = *fmt;
+    if (c == '@' || c == '=') {
+        c = fmt[1];
+    }
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    else if (c == '<') { c = fmt[1]; }
+    else if (c == '>' || c == '!') { return 0; }
+#else
+    else if (c == '>') { c = fmt[1]; }
+    else if (c == '<' || c == '!') { return 0; }
+#endif
+    return c != '\0' && BUFFER_FORMAT_CHAR_OK(c);
+}
+
+// Try to get a compatible buffer view from 'obj'. Return 1 if successful
+// (view is filled and caller must call PyBuffer_Release), 0 if the object
+// doesn't support buffer protocol or the format doesn't match (no cleanup
+// needed), or -1 on error.
+inline static int vec_get_buffer(PyObject *obj, Py_buffer *view) {
+    if (PyObject_GetBuffer(obj, view, PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) != 0) {
+        PyErr_Clear();
+        return 0;
+    }
+    if (view->ndim == 1
+        && view->itemsize == sizeof(ITEM_C_TYPE)
+        && buffer_format_matches(view->format)) {
+        return 1;
+    }
+    PyBuffer_Release(view);
+    return 0;
+}
+#endif
+
+VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
+
+    if (ITEM_TYPE_MAGIC == VEC_ITEM_TYPE_U8 && PyBytes_CheckExact(iterable)) {
+        Py_ssize_t n = PyBytes_GET_SIZE(iterable);
+        Py_ssize_t alloc_size = n > cap ? n : cap;
+        VEC v = vec_alloc(alloc_size);
+        if (VEC_IS_ERROR(v))
+            return vec_error();
+        if (n > 0)
+            memcpy(v.buf->items, PyBytes_AS_STRING(iterable), n);
+        v.len = n;
+        return v;
+    }
+
+#ifdef BUFFER_FORMAT_CHAR_OK
+    Py_buffer view;
+    int buf_ok = vec_get_buffer(iterable, &view);
+    if (buf_ok < 0)
+        return vec_error();
+    if (buf_ok) {
+        Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
+        Py_ssize_t alloc_size = n > cap ? n : cap;
+        VEC v = vec_alloc(alloc_size);
+        if (VEC_IS_ERROR(v)) {
+            PyBuffer_Release(&view);
+            return vec_error();
+        }
+        if (n > 0) {
+            memcpy(v.buf->items, view.buf, n * sizeof(ITEM_C_TYPE));
+        }
+        v.len = n;
+        PyBuffer_Release(&view);
+        return v;
+    }
+#endif
+
     VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))
-        return NULL;
+        return vec_error();
     if (cap > 0) {
         memset(v.buf->items, 0, sizeof(ITEM_C_TYPE) * cap);
     }
@@ -112,7 +186,7 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
@@ -121,21 +195,21 @@ PyObject *FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
         if (IS_UNBOX_ERROR(x)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
-            return NULL;
+            return vec_error();
         }
         v = FUNC(Append)(v, x);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
-            return NULL;
+            return vec_error();
         }
     }
     Py_DECREF(iter);
     if (PyErr_Occurred()) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
-    return FUNC(Box)(v);
+    return v;
 }
 
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
@@ -152,7 +226,10 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     if (init == NULL) {
         return FUNC(Box)(FUNC(New)(0, cap));
     } else {
-        return (PyObject *)FUNC(FromIterable)(init, cap);
+        VEC v = FUNC(FromIterable)(init, cap);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return FUNC(Box)(v);
     }
 }
 
@@ -315,7 +392,7 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
         return vec;
     } else {
         Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
-        Py_ssize_t new_size = 2 * cap + 1;
+        Py_ssize_t new_size = Vec_GrowCapacity(cap);
         VEC new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new)) {
             // The input v is being consumed/stolen by this function, so on error
@@ -330,6 +407,120 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
         Py_XDECREF(vec.buf);
         return new;
     }
+}
+
+inline static int vec_memory_overlaps(const void *p1, Py_ssize_t len1,
+                                      const void *p2, Py_ssize_t len2) {
+    if (len1 <= 0 || len2 <= 0)
+        return 0;
+    uintptr_t a = (uintptr_t)p1, b = (uintptr_t)p2;
+    if (a <= b)
+        return b - a < (uintptr_t)len1;
+    return a - b < (uintptr_t)len2;
+}
+
+// Extend 'dst' by appending 'n' items from 'items', stealing 'dst'.
+// Caller guarantees n > 0 and that 'items' remains valid for the call.
+// If force_alloc is true, always allocate a new buffer even when dst has capacity.
+inline static VEC vec_extend_items(
+    VEC dst, const ITEM_C_TYPE *items, Py_ssize_t n, int force_alloc
+) {
+    if (unlikely(n > PY_SSIZE_T_MAX - dst.len)) {
+        PyErr_NoMemory();
+        VEC_DECREF(dst);
+        return vec_error();
+    }
+    Py_ssize_t new_len = dst.len + n;
+    Py_ssize_t cap = dst.buf ? VEC_CAP(dst) : 0;
+    if (!force_alloc && new_len <= cap) {
+        memcpy(dst.buf->items + dst.len, items, sizeof(ITEM_C_TYPE) * n);
+        dst.len = new_len;
+        return dst;
+    }
+    Py_ssize_t new_cap = Vec_GrowCapacityTo(cap, new_len);
+    VEC new = vec_alloc(new_cap);
+    if (VEC_IS_ERROR(new)) {
+        VEC_DECREF(dst);
+        return vec_error();
+    }
+    if (dst.len > 0)
+        memcpy(new.buf->items, dst.buf->items, sizeof(ITEM_C_TYPE) * dst.len);
+    memcpy(new.buf->items + dst.len, items, sizeof(ITEM_C_TYPE) * n);
+    new.len = new_len;
+    Py_XDECREF(dst.buf);
+    return new;
+}
+
+// Extend 'vec' with items from 'iterable', stealing 'vec'.
+// Return extended 'vec', or error vec on failure.
+VEC FUNC(Extend)(VEC vec, PyObject *iterable) {
+    if (Py_TYPE(iterable) == &VEC_TYPE) {
+        return FUNC(ExtendVec)(vec, ((VEC_OBJECT *)iterable)->vec);
+    }
+
+    if (ITEM_TYPE_MAGIC == VEC_ITEM_TYPE_U8 && PyBytes_CheckExact(iterable)) {
+        Py_ssize_t n = PyBytes_GET_SIZE(iterable);
+        if (n > 0)
+            return vec_extend_items(vec, (const ITEM_C_TYPE *)PyBytes_AS_STRING(iterable), n, 0);
+        return vec;
+    }
+
+#ifdef BUFFER_FORMAT_CHAR_OK
+    Py_buffer view;
+    int buf_ok = vec_get_buffer(iterable, &view);
+    if (buf_ok < 0) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    if (buf_ok) {
+        Py_ssize_t n = view.len / (Py_ssize_t)sizeof(ITEM_C_TYPE);
+        if (n > 0) {
+            Py_ssize_t dst_bytes = n * (Py_ssize_t)sizeof(ITEM_C_TYPE);
+            int force_alloc = vec.buf != NULL
+                && n <= VEC_CAP(vec) - vec.len
+                && vec_memory_overlaps(view.buf, view.len,
+                                       vec.buf->items + vec.len, dst_bytes);
+            vec = vec_extend_items(vec, (const ITEM_C_TYPE *)view.buf, n, force_alloc);
+        }
+        PyBuffer_Release(&view);
+        return vec;
+    }
+#endif
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        ITEM_C_TYPE x = UNBOX_ITEM(item);
+        Py_DECREF(item);
+        if (IS_UNBOX_ERROR(x)) {
+            Py_DECREF(iter);
+            VEC_DECREF(vec);
+            return vec_error();
+        }
+        vec = FUNC(Append)(vec, x);
+        if (VEC_IS_ERROR(vec)) {
+            Py_DECREF(iter);
+            return vec_error();
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    return vec;
+}
+
+// Extend 'dst' with items from 'src' vec, stealing 'dst', borrowing 'src'.
+// Return extended vec, or error vec on failure.
+VEC FUNC(ExtendVec)(VEC dst, VEC src) {
+    if (src.len == 0)
+        return dst;
+    return vec_extend_items(dst, src.buf->items, src.len, dst.buf == src.buf);
 }
 
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
@@ -383,6 +574,46 @@ static PyMappingMethods vec_mapping_methods = {
     .mp_length = vec_length,
     .mp_subscript = vec_subscript,
 };
+
+#ifdef BUFFER_FORMAT
+static int vec_getbuffer(VEC_OBJECT *self, Py_buffer *view, int flags) {
+    if (view == NULL) {
+        PyErr_SetString(PyExc_BufferError,
+            "vec_getbuffer: view==NULL argument is obsolete");
+        return -1;
+    }
+    if ((flags & PyBUF_WRITABLE) == PyBUF_WRITABLE) {
+        PyErr_SetString(PyExc_BufferError, "Object is not writable");
+        view->obj = NULL;
+        return -1;
+    }
+
+    view->obj = (PyObject *)self;
+    Py_INCREF(self);
+    view->buf = (self->vec.buf != NULL) ? (void *)self->vec.buf->items : NULL;
+    view->len = self->vec.len * (Py_ssize_t)sizeof(ITEM_C_TYPE);
+    view->readonly = 1;
+    view->itemsize = sizeof(ITEM_C_TYPE);
+    view->format = NULL;
+    if ((flags & PyBUF_FORMAT) == PyBUF_FORMAT)
+        view->format = BUFFER_FORMAT;
+    view->ndim = 1;
+    view->shape = NULL;
+    if ((flags & PyBUF_ND) == PyBUF_ND)
+        view->shape = &self->vec.len;
+    view->strides = NULL;
+    if ((flags & PyBUF_STRIDES) == PyBUF_STRIDES)
+        view->strides = &view->itemsize;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+
+    return 0;
+}
+
+static PyBufferProcs vec_buffer_procs = {
+    .bf_getbuffer = (getbufferproc)vec_getbuffer,
+};
+#endif
 
 static PySequenceMethods vec_sequence_methods = {
     .sq_item = vec_get_item,
@@ -485,6 +716,9 @@ PyTypeObject VEC_TYPE = {
     .tp_iter = vec_iter,
     .tp_as_sequence = &vec_sequence_methods,
     .tp_as_mapping = &vec_mapping_methods,
+#ifdef BUFFER_FORMAT
+    .tp_as_buffer = &vec_buffer_procs,
+#endif
     .tp_richcompare = vec_richcompare,
     .tp_methods = vec_methods,
 };
@@ -500,6 +734,9 @@ NAME(API) FEATURES = {
     FUNC(Pop),
     FUNC(Remove),
     FUNC(Slice),
+    FUNC(FromIterable),
+    FUNC(Extend),
+    FUNC(ExtendVec),
 };
 
 #endif  // MYPYC_EXPERIMENTAL

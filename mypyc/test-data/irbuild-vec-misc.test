@@ -344,3 +344,17 @@ L0:
     r10 = unborrow r8
     x = r10
     return x
+
+[case testVecU8ToBytes_experimental]
+from librt.vecs import vec
+from mypy_extensions import u8
+
+def to_bytes(v: vec[u8]) -> bytes:
+    return bytes(v)
+[out]
+def to_bytes(v):
+    v :: vec[u8]
+    r0 :: bytes
+L0:
+    r0 = CPyVecU8_ToBytes(v)
+    return r0

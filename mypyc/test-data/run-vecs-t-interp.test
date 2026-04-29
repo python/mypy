@@ -14,6 +14,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 version_info: Any = sys.version_info
@@ -608,6 +609,42 @@ def test_cap_optional() -> None:
     v = vec[Optional[str]](['x', None], capacity=3)
     assert v[0] == 'x'
     assert v[1] is None
+
+def test_extend_from_list() -> None:
+    v = vec[str](['a', 'b'])
+    v = extend(v, ['c', 'd'])
+    assert v == vec[str](['a', 'b', 'c', 'd'])
+
+def test_extend_empty_vec() -> None:
+    v = vec[str]()
+    v = extend(v, ['x', 'y'])
+    assert v == vec[str](['x', 'y'])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[str](['a'])
+    v = extend(v, [])
+    assert v == vec[str](['a'])
+
+def test_extend_from_vec() -> None:
+    v = vec[str](['a'])
+    v = extend(v, vec[str](['b', 'c']))
+    assert v == vec[str](['a', 'b', 'c'])
+
+def test_extend_type_error() -> None:
+    v = vec[str](['a'])
+    n: Any = 123
+    with assertRaises(TypeError):
+        extend(v, [n])
+
+def test_extend_shared_buffer_after_pop() -> None:
+    v0 = vec[str](['a', 'b', 'c'])
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer
+    v = extend(v1, vec[str](['d', 'e', 'f', 'g']))
+    assert v == vec[str](['a', 'b', 'd', 'e', 'f', 'g'])
+    # v0 must not be corrupted
+    assert v0 == vec[str](['a', 'b', 'c'])
+
 [file helpers.py]
 # Test helper classes
 

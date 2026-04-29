@@ -1735,3 +1735,12 @@ class C:
 def test_outer() -> None:
     C.x + "no way"  # E: Unsupported left operand type for + ("int")
 [builtins fixtures/exception.pyi]
+
+[case testIgnoreInPlatformSpecificCodeUsed]
+# flags: --warn-unused-ignores --platform unknown
+
+import sys
+assert sys.platform == "win32"
+
+42 + "no way"  # type: ignore[operator]
+[builtins fixtures/isinstancelist.pyi]

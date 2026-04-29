@@ -3,7 +3,7 @@ from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 
 from mypy_extensions import i64, i32
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 
 from testutil import assertRaises
 
@@ -555,3 +555,90 @@ def test_cap_negative() -> None:
         vec[vec[i64]](capacity=-1)
     with assertRaises(ValueError):
         vec[vec[i64]]([vec[i64]([1])], capacity=-1)
+
+def extend_nested(v: vec[vec[str]], v2: vec[vec[str]]) -> vec[vec[str]]:
+    return extend(v, v2)
+
+def extend_nested_iterable(v: vec[vec[str]], it: Iterable[vec[str]]) -> vec[vec[str]]:
+    return extend(v, it)
+
+def test_extend_vec() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v = extend_nested(vec[vec[str]]([v1]), vec[vec[str]]([v2]))
+    assert v == vec[vec[str]]([v1, v2])
+
+def test_extend_vec_empty_src() -> None:
+    v = extend_nested(vec[vec[str]]([vec[str](['x'])]), vec[vec[str]]())
+    assert v == vec[vec[str]]([vec[str](['x'])])
+
+def test_extend_vec_empty_dst() -> None:
+    v = extend_nested(vec[vec[str]](), vec[vec[str]]([vec[str](['y'])]))
+    assert v == vec[vec[str]]([vec[str](['y'])])
+
+def test_extend_vec_fits_in_capacity() -> None:
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
+    v = extend_nested(v, vec[vec[str]]([vec[str](['c'])]))
+    assert len(v) == 3
+    assert v[0] == vec[str](['a'])
+    assert v[2] == vec[str](['c'])
+
+def test_extend_vec_exceeds_capacity() -> None:
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
+    src: vec[vec[str]] = vec[vec[str]]([vec[str](['c']), vec[str](['d']), vec[str](['e'])])
+    v = extend_nested(v, src)
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[4] == vec[str](['e'])
+
+def test_extend_vec_multiple_doublings() -> None:
+    v: vec[vec[str]] = vec[vec[str]]([vec[str](['x'])], capacity=1)
+    src: vec[vec[str]] = vec[vec[str]]()
+    for i in range(10):
+        src = append(src, vec[str]([str(i)]))
+    v = extend_nested(v, src)
+    assert len(v) == 11
+    assert v[0] == vec[str](['x'])
+    assert v[10] == vec[str](['9'])
+
+def test_extend_vec_self() -> None:
+    v: vec[vec[str]] = vec[vec[str]]()
+    v = append(v, vec[str](['a']))
+    v = append(v, vec[str](['b']))
+    v = extend_nested(v, v)
+    assert len(v) == 4
+    assert v[0] == vec[str](['a'])
+    assert v[2] == vec[str](['a'])
+    assert v[3] == vec[str](['b'])
+
+def test_extend_vec_shared_buffer_after_pop() -> None:
+    v0: vec[vec[str]] = vec[vec[str]]()
+    v0 = append(v0, vec[str](['a']))
+    v0 = append(v0, vec[str](['b']))
+    v0 = append(v0, vec[str](['c']))
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer; v1.len=2, v0.len=3
+    v = extend_nested(v1, v0)
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[1] == vec[str](['b'])
+    assert v[2] == vec[str](['a'])
+    assert v[4] == vec[str](['c'])
+    # src (v0) must not be corrupted
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0: vec[vec[str]] = vec[vec[str]]()
+    v0 = append(v0, vec[str](['a']))
+    v0 = append(v0, vec[str](['b']))
+    v0 = append(v0, vec[str](['c']))
+    v1, _ = pop(v0)
+    # Statically this uses VecNestedApi.extend, but at runtime the iterable is a vec.
+    it: Iterable[vec[str]] = v0
+    v = extend_nested_iterable(v1, it)
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[1] == vec[str](['b'])
+    assert v[2] == vec[str](['a'])
+    assert v[4] == vec[str](['c'])
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])

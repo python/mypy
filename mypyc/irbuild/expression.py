@@ -62,8 +62,10 @@ from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
+    ERR_MAGIC,
     Assign,
     BasicBlock,
+    CallC,
     ComparisonOp,
     Integer,
     LoadAddress,
@@ -80,8 +82,11 @@ from mypyc.ir.rtypes import (
     RTuple,
     RVec,
     bool_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bytearray_rprimitive,
+    is_bytes_rprimitive,
     is_fixed_width_rtype,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -90,6 +95,7 @@ from mypyc.ir.rtypes import (
     is_object_rprimitive,
     object_rprimitive,
     set_rprimitive,
+    vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
@@ -116,6 +122,7 @@ from mypyc.irbuild.specialize import (
     translate_object_setattr,
 )
 from mypyc.irbuild.vec import (
+    as_platform_int,
     vec_append,
     vec_create,
     vec_create_from_values,
@@ -620,9 +627,37 @@ def vec_from_iterable(
     capacity: Value | None = None,
 ) -> Value:
     """Construct a vec from an arbitrary iterable."""
-    # Translate it as a vec comprehension vec[t]([<name> for <name> in
-    # iterable]). This way we can use various special casing supported
-    # by for loops and comprehensions.
+    item_type = vec_type.item_type
+    api_name = vec_api_by_item_type.get(item_type)
+    iterable_rtype = builder.node_type(iterable)
+    if api_name is not None and (
+        is_object_rprimitive(iterable_rtype)
+        or is_bytes_rprimitive(iterable_rtype)
+        or is_bytearray_rprimitive(iterable_rtype)
+    ):
+        # For generic iterables (typed as object) and bytes/bytearray
+        # (which support the buffer protocol for fast memcpy), call the
+        # C-level from_iterable. For concrete types like range, list,
+        # vec, etc., the for-loop desugaring below produces better IR.
+        iterable_val = builder.accept(iterable)
+        cap = (
+            as_platform_int(builder.builder, capacity, line)
+            if capacity is not None
+            else Integer(0, int64_rprimitive)
+        )
+        call = CallC(
+            f"{api_name}.from_iterable",
+            [iterable_val, cap],
+            vec_type,
+            steals=[False, False],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
+        return builder.add(call)
+
+    # Use a for loop with vec_append. The comprehension helper
+    # special-cases range, list, vec, etc. for efficient iteration.
     vec = Register(vec_type)
     builder.assign(vec, vec_create(builder.builder, vec_type, 0, line, capacity=capacity), line)
     name = f"___tmp_{line}"
