@@ -24,7 +24,7 @@ static inline PyObject *box_vec_item_by_index(VecNested v, Py_ssize_t index) {
     return VecNested_BoxItem(v, v.buf->items[index]);
 }
 
-// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len, 
+// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len,
 // and buf->items. Caller *must* also call vec_track_buffer on the returned vec but only
 // after initializing the items.
 static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {

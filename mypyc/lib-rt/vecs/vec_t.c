@@ -33,7 +33,7 @@ static inline void vec_track_buffer(VecT *vec) {
     }
 }
 
-// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len, 
+// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len,
 // and buf->items. Caller *must* also call vec_track_buffer on the returned vec but only
 // after initializing the items.
 static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
