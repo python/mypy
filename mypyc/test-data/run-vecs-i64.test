@@ -655,3 +655,26 @@ def test_extend_from_bytes() -> None:
     v = vec[i64]([1])
     v = extend_iterable(v, b'\x02\x03')
     assert v == vec[i64]([1, 2, 3])
+
+def to_list(v: vec[i64]) -> list[i64]:
+    return list(v)
+
+def test_to_list_empty() -> None:
+    assert to_list(vec[i64]()) == []
+
+def test_to_list_single() -> None:
+    assert to_list(vec[i64]([5])) == [5]
+
+def test_to_list_multiple() -> None:
+    assert to_list(vec[i64]([1, 2, 3])) == [1, 2, 3]
+
+def test_to_list_large_values() -> None:
+    v = vec[i64]([-(2**63), 0, 2**63 - 1])
+    result = to_list(v)
+    assert result == [-(2**63), 0, 2**63 - 1]
+
+def test_to_list_does_not_consume() -> None:
+    v = vec[i64]([1, 2, 3])
+    l1 = to_list(v)
+    l2 = to_list(v)
+    assert l1 == l2 == [1, 2, 3]

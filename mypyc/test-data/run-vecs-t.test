@@ -593,3 +593,27 @@ def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
     v = extend_iterable(v1, it)
     assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
     assert v0 == vec[str](['a', 'b', 'c'])
+
+def to_list(v: vec[str]) -> list[str]:
+    return list(v)
+
+def to_list_optional(v: vec[Optional[str]]) -> list[Optional[str]]:
+    return list(v)
+
+def test_to_list_empty() -> None:
+    assert to_list(vec[str]()) == []
+
+def test_to_list_single() -> None:
+    assert to_list(vec[str](['hello'])) == ['hello']
+
+def test_to_list_multiple() -> None:
+    assert to_list(vec[str](['a', 'b', 'c'])) == ['a', 'b', 'c']
+
+def test_to_list_optional() -> None:
+    assert to_list_optional(vec[Optional[str]](['x', None, 'y'])) == ['x', None, 'y']
+
+def test_to_list_does_not_consume() -> None:
+    v = vec[str](['a', 'b'])
+    l1 = to_list(v)
+    l2 = to_list(v)
+    assert l1 == l2 == ['a', 'b']
