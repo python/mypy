@@ -114,7 +114,10 @@ static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject
                 return NULL;
             return VecT_Box(vec, p->item_type);
         } else {
-            return VecT_FromIterable(p->item_type, init, cap);
+            VecT vec = VecT_FromIterable(p->item_type, init, cap);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return VecT_Box(vec, p->item_type);
         }
     } else {
         if (init == NULL) {

@@ -453,3 +453,54 @@ L0:
     r8 = r7 + 8
     keep_alive r4
     return r4
+
+[case testVecTConstructFromIterable]
+from typing import Iterable
+from librt.vecs import vec
+
+def f(x: Iterable[str]) -> vec[str]:
+    return vec[str](x)
+[out]
+def f(x):
+    x, r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.from_iterable(r1, x, 0)
+    return r2
+
+[case testVecTCreateFromListObject]
+from librt.vecs import vec
+
+def from_list(a: list[str]) -> vec[str]:
+    return vec[str](a)
+[out]
+def from_list(a):
+    a :: list
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.from_iterable(r1, a, 0)
+    return r2
+
+[case testVecTCreateFromTupleObject]
+from librt.vecs import vec
+
+def from_tuple(a: tuple[str, ...]) -> vec[str]:
+    return vec[str](a)
+[out]
+def from_tuple(a):
+    a :: tuple
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.from_iterable(r1, a, 0)
+    return r2
