@@ -614,16 +614,19 @@ class GroupGenerator:
 
         base_emitter = Emitter(self.context)
         # Optionally just include the runtime library c files to
-        # reduce the number of compiler invocations needed
+        # reduce the number of compiler invocations needed.
+        # Use <> form (only -I paths) so a shim file with the same
+        # basename as a runtime file can't shadow it. Triggered by
+        # mypyc/lower/int_ops.py vs lib-rt/int_ops.c on mypy self-compile.
         if self.compiler_options.include_runtime_files:
             for name in RUNTIME_C_FILES:
-                base_emitter.emit_line(f'#include "{name}"')
+                base_emitter.emit_line(f"#include <{name}>")
             # Include conditional source files
             source_deps = collect_source_dependencies(self.modules)
             for source_dep in sorted(source_deps, key=lambda d: d.path):
-                base_emitter.emit_line(f'#include "{source_dep.path}"')
+                base_emitter.emit_line(f"#include <{source_dep.path}>")
             if self.compiler_options.depends_on_librt_internal:
-                base_emitter.emit_line('#include "internal/librt_internal_api.c"')
+                base_emitter.emit_line("#include <internal/librt_internal_api.c>")
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter

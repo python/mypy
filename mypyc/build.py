@@ -449,6 +449,52 @@ def write_file(path: str, contents: str) -> None:
         os.utime(path, times=(new_mtime, new_mtime))
 
 
+_setuptools_patch_applied = False
+
+
+def _patch_setuptools_copy_extensions_to_source() -> None:
+    """Skip redundant `.so` copies in --inplace builds.
+
+    setuptools' copy_extensions_to_source rewrites every `.so` in the
+    source tree on every build_ext, even when nothing changed. On macOS
+    this invalidates AMFI's signature cache (~100 ms re-verification per
+    `.so` on the next import), eating most of the separate=True
+    incremental speedup. We patch it to skip the copy when src and dst
+    already match. Idempotent; applied from mypycify().
+    """
+    global _setuptools_patch_applied
+    if _setuptools_patch_applied:
+        return
+    _setuptools_patch_applied = True
+
+    from setuptools.command.build_ext import build_ext as _build_ext
+
+    def _files_match(a: str, b: str) -> bool:
+        try:
+            sa = os.stat(a)
+            sb = os.stat(b)
+        except OSError:
+            return False
+        # Compare size + whole-second mtime. distutils' copy_file
+        # propagates the source mtime, but macOS drops sub-second
+        # precision on write so the float values never match verbatim.
+        return sa.st_size == sb.st_size and int(sa.st_mtime) == int(sb.st_mtime)
+
+    def patched(self: Any) -> None:
+        build_py = self.get_finalized_command("build_py")
+        for ext in self.extensions:
+            inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
+            if _files_match(regular_file, inplace_file):
+                continue
+            if os.path.exists(regular_file) or not ext.optional:
+                self.copy_file(regular_file, inplace_file, level=self.verbose)
+            if ext._needs_stub:
+                inplace_stub = self._get_equivalent_stub(ext, inplace_file)
+                self._write_stub_file(inplace_stub, ext, compile=True)
+
+    _build_ext.copy_extensions_to_source = patched  # type: ignore[method-assign]
+
+
 def construct_groups(
     sources: list[BuildSource],
     separate: bool | list[tuple[list[str], str | None]],
@@ -508,7 +554,7 @@ def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
     """
     headers: set[str] = set()
     for _, contents in cfiles:
-        headers.update(re.findall(r'#include "(.*)"', contents))
+        headers.update(re.findall(r'#include [<"]([^>"]+)[>"]', contents))
 
     return sorted(headers)
 
@@ -564,7 +610,7 @@ def mypyc_build(
     # Write out the generated C and collect the files for each group
     # Should this be here??
     group_cfilenames: list[tuple[list[str], list[str]]] = []
-    for cfiles in group_cfiles:
+    for (group_sources, group_name), cfiles in zip(groups, group_cfiles):
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
@@ -572,6 +618,20 @@ def mypyc_build(
                 write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
+
+        # Fully-cached SCC (e.g. pip's second setup.py invoke for the
+        # wheel phase): mypyc returns empty ctext but the previous run's
+        # .c file is still on disk. Reuse it so we don't link with
+        # sources=[].
+        if not cfilenames and group_name is not None:
+            from mypyc.codegen.emitmodule import group_dir as _group_dir
+
+            short_suffix = "_" + exported_name(group_name.split(".")[-1])
+            existing = os.path.join(
+                compiler_options.target_dir, _group_dir(group_name), f"__native{short_suffix}.c"
+            )
+            if os.path.exists(existing):
+                cfilenames.append(existing)
 
         deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
         group_cfilenames.append((cfilenames, deps))
@@ -746,6 +806,9 @@ def mypycify(
                                also needed if using experimental librt features). These
                                have no backward compatibility guarantees!
     """
+
+    # Skip redundant inplace .so copies on every build_ext invocation.
+    _patch_setuptools_copy_extensions_to_source()
 
     # Figure out our configuration
     compiler_options = CompilerOptions(
