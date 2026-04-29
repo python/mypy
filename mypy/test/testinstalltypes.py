@@ -1,27 +1,25 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 import textwrap
 import unittest
-import sys 
-from unittest.mock import MagicMock, patch  
-from mypy.options import Options  
-from mypy.util import FancyFormatter 
-
+from unittest.mock import MagicMock, patch
 
 from mypy.installtypes import (
     make_runtime_constraints,
     read_locked_packages,
     resolve_stub_packages_from_lock,
 )
-from mypy.main import install_types 
+from mypy.main import install_types
+from mypy.options import Options
+from mypy.util import FancyFormatter
 
 
 class TestInstallTypesFromPylock(unittest.TestCase):
     def test_read_locked_packages(self) -> None:
-        content = textwrap.dedent(
-            """
+        content = textwrap.dedent("""
             [[package]]
             name = "requests"
             version = "2.32.3"
@@ -33,8 +31,7 @@ class TestInstallTypesFromPylock(unittest.TestCase):
             [[package]]
             name = "types-requests"
             version = "2.32.0"
-            """
-        )
+            """)
         with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name
@@ -91,27 +88,19 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         assert locked == {}
 
     def test_resolve_stub_packages_from_lock(self) -> None:
-        locked = {
-            "requests": "2.32.3",
-            "python-dateutil": "2.9.0",
-            "types-requests": "2.32.0",
-        }
+        locked = {"requests": "2.32.3", "python-dateutil": "2.9.0", "types-requests": "2.32.0"}
         stubs = resolve_stub_packages_from_lock(locked)
         assert "types-requests" in stubs
-        assert "types-python-dateutil" in stubs 
+        assert "types-python-dateutil" in stubs
 
-    #TEST: checks explicit distribution->module mapping
+    # TEST: checks explicit distribution->module mapping
     def test_resolve_stub_packages_from_lock_handles_distribution_module_mismatch(self) -> None:
-        locked = {
-            "python-dateutil": "2.9.0",
-        }
+        locked = {"python-dateutil": "2.9.0"}
         stubs = resolve_stub_packages_from_lock(locked)
         assert "types-python-dateutil" in stubs
-    
+
     def test_resolve_stub_packages_skips_types_packages(self) -> None:
-        locked = {
-            "types-requests": "2.32.0",
-        }
+        locked = {"types-requests": "2.32.0"}
         stubs = resolve_stub_packages_from_lock(locked)
         # Should not produce "types-types-requests"
         assert "types-types-requests" not in stubs
@@ -131,11 +120,7 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         assert "types-PyYAML" in stubs
 
     def test_make_runtime_constraints(self) -> None:
-        locked = {
-            "requests": "2.32.3",
-            "python-dateutil": "2.9.0",
-            "no-version": None,
-        }
+        locked = {"requests": "2.32.3", "python-dateutil": "2.9.0", "no-version": None}
         constraints = make_runtime_constraints(locked)
         assert constraints == ["python-dateutil==2.9.0", "requests==2.32.3"]
 
@@ -154,20 +139,21 @@ class TestInstallTypesFromPylock(unittest.TestCase):
         constraints = make_runtime_constraints(locked)
         assert constraints == sorted(constraints)
 
-#TEST: integrations tests
+
+# TEST: integrations tests
 class TestInstallTypesFromPylockIntegration(unittest.TestCase):
     def make_options(self) -> Options:
         options = Options()
         options.python_executable = "python"
         options.cache_dir = "unused"
         return options
+
     def make_formatter(self) -> FancyFormatter:
         return FancyFormatter(sys.stdout, sys.stderr, False)
 
     @patch("mypy.main.subprocess.run")
     def test_install_types_builds_correct_pip_command(self, mock_run: MagicMock) -> None:
-        content = textwrap.dedent(
-            """
+        content = textwrap.dedent("""
             [[package]]
             name = "requests"
             version = "2.32.3"
@@ -175,24 +161,18 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
             [[package]]
             name = "python-dateutil"
             version = "2.9.0"
-            """
-        )
+            """)
 
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".toml", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name
 
         try:
             options = self.make_options()
-            formatter = self.make_formatter() 
+            formatter = self.make_formatter()
 
             result = install_types(
-                formatter=formatter, 
-                options=options,
-                non_interactive=True,
-                pylock_path=path,
+                formatter=formatter, options=options, non_interactive=True, pylock_path=path
             )
 
             self.assertTrue(result)
@@ -215,30 +195,23 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
             os.unlink(path)
 
     @patch("mypy.main.subprocess.run")
-    def test_no_stubs_found_skips_install(self, mock_run: MagicMock) -> None: 
-        content = textwrap.dedent(
-            """
+    def test_no_stubs_found_skips_install(self, mock_run: MagicMock) -> None:
+        content = textwrap.dedent("""
             [[package]]
             name = "unknown-lib"
             version = "1.0.0"
-            """
-        )
+            """)
 
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".toml", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name
 
         try:
             options = self.make_options()
-            formatter = self.make_formatter() 
+            formatter = self.make_formatter()
 
             result = install_types(
-                formatter=formatter,
-                options=options,
-                non_interactive=True,
-                pylock_path=path,
+                formatter=formatter, options=options, non_interactive=True, pylock_path=path
             )
 
             self.assertFalse(result)
@@ -249,13 +222,11 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
 
     @patch("mypy.main.subprocess.run")
     def test_constraint_file_cleaned_up_after_success(self, mock_run: MagicMock) -> None:
-        content = textwrap.dedent(
-            """
+        content = textwrap.dedent("""
             [[package]]
             name = "requests"
             version = "2.32.3"
-            """
-        )
+            """)
         with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name
@@ -285,14 +256,14 @@ class TestInstallTypesFromPylockIntegration(unittest.TestCase):
         )
 
     @patch("mypy.main.subprocess.run")
-    def test_constraint_file_cleaned_up_even_if_subprocess_fails(self, mock_run: MagicMock) -> None:
-        content = textwrap.dedent(
-            """
+    def test_constraint_file_cleaned_up_even_if_subprocess_fails(
+        self, mock_run: MagicMock
+    ) -> None:
+        content = textwrap.dedent("""
             [[package]]
             name = "requests"
             version = "2.32.3"
-            """
-        )
+            """)
         with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False, encoding="utf-8") as f:
             f.write(content)
             path = f.name

@@ -21,7 +21,8 @@ _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 def normalize_distribution_name(name: str) -> str:
     return _DIST_NORMALIZE_RE.sub("-", name).lower()
 
-DIST_TO_MODULE_NAME: dict[str, str] = { 
+
+DIST_TO_MODULE_NAME: dict[str, str] = {
     "python-dateutil": "dateutil",
     "pyyaml": "yaml",
     "python-xlib": "Xlib",
@@ -72,10 +73,7 @@ def resolve_stub_packages_from_lock(locked: Mapping[str, str | None]) -> list[st
         if dist_name.startswith("types-"):
             continue
 
-        candidates = {
-            dist_name,
-            dist_name.replace("-", "_"),
-        }
+        candidates = {dist_name, dist_name.replace("-", "_")}
 
         mapped_module = DIST_TO_MODULE_NAME.get(dist_name)
         if mapped_module is not None:

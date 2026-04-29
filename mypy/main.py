@@ -30,7 +30,11 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.installtypes import make_runtime_constraints, read_locked_packages, resolve_stub_packages_from_lock
+from mypy.installtypes import (
+    make_runtime_constraints,
+    read_locked_packages,
+    resolve_stub_packages_from_lock,
+)
 from mypy.modulefinder import (
     BuildSource,
     FindModuleCache,
@@ -136,11 +140,7 @@ def main(
     if options.install_types_from_pylock is not None and not os.path.isfile(
         options.install_types_from_pylock
     ):
-        fail(
-            f"error: Can't find lock file '{options.install_types_from_pylock}'",
-            stderr,
-            options,
-        )
+        fail(f"error: Can't find lock file '{options.install_types_from_pylock}'", stderr, options)
 
     if options.install_types and not options.incremental:
         fail(
