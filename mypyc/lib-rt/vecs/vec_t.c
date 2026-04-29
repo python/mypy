@@ -697,8 +697,10 @@ static inline PyObject *VecT_FromSequence(
 }
 
 PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
-    if (PyList_CheckExact(iterable) || PyTuple_CheckExact(iterable)) {
-        return VecT_FromSequence(item_type, iterable, cap, PyList_CheckExact(iterable));
+    if (PyList_CheckExact(iterable)) {
+        return VecT_FromSequence(item_type, iterable, cap, 1);
+    } else if (PyTuple_CheckExact(iterable)) {
+        return VecT_FromSequence(item_type, iterable, cap, 0);
     }
 
     VecT v = vec_alloc(cap, item_type);

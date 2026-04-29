@@ -194,8 +194,10 @@ VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
     }
 #endif
 
-    if (PyList_CheckExact(iterable) || PyTuple_CheckExact(iterable)) {
-        return vec_from_sequence(iterable, cap, PyList_CheckExact(iterable));
+    if (PyList_CheckExact(iterable)) {
+        return vec_from_sequence(iterable, cap, 1);
+    } else if (PyTuple_CheckExact(iterable)) {
+        return vec_from_sequence(iterable, cap, 0);
     }
 
     VEC v = vec_alloc(cap);
