@@ -46,6 +46,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
+    list_rprimitive,
     object_rprimitive,
     optional_value_type,
     pointer_rprimitive,
@@ -594,3 +595,27 @@ def vec_slice(
         line=line,
     )
     return builder.add(call)
+
+
+def vec_to_list(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | None:
+    vec_type = vec.type
+    assert isinstance(vec_type, RVec)
+    item_type = vec_type.item_type
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.to_list"
+    elif vec_type.depth() == 0:
+        name = "VecTApi.to_list"
+    else:
+        return None
+    return builder.add(
+        CallC(
+            name,
+            [vec],
+            list_rprimitive,
+            steals=[False],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
+    )

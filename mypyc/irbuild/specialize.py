@@ -99,7 +99,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.vec import vec_append, vec_extend, vec_pop, vec_remove
+from mypyc.irbuild.vec import vec_append, vec_extend, vec_pop, vec_remove, vec_to_list
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
@@ -327,6 +327,16 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
                 return builder.builtin_len(obj, expr.line, use_pyssize_t=True)
             else:
                 return builder.builtin_len(obj, expr.line)
+    return None
+
+
+@specialize_function("builtins.list")
+def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec):
+            vec = builder.accept(expr.args[0])
+            return vec_to_list(builder.builder, vec, expr.line)
     return None
 
 

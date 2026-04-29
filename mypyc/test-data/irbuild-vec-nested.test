@@ -1,5 +1,21 @@
 -- Test cases for nested vecs
 
+[case testVecNestedConvertToList]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def to_list(v: vec[vec[i64]]) -> list[vec[i64]]:
+    return list(v)
+[out]
+def to_list(v):
+    v :: vec[vec[i64]]
+    r0 :: object
+    r1 :: list
+L0:
+    r0 = box(vec[vec[i64]], v)
+    r1 = PySequence_List(r0)
+    return r1
+
 [case testVecNestedCreateEmpty]
 from librt.vecs import vec, append
 from mypy_extensions import i64

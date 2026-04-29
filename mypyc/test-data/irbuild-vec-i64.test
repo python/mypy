@@ -971,3 +971,17 @@ def from_tuple(a):
 L0:
     r0 = VecI64Api.from_iterable(a, 0)
     return r0
+
+[case testVecI64ConvertToList]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def to_list(v: vec[i64]) -> list[i64]:
+    return list(v)
+[out]
+def to_list(v):
+    v :: vec[i64]
+    r0 :: list
+L0:
+    r0 = VecI64Api.to_list(v)
+    return r0

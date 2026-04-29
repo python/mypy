@@ -1,6 +1,19 @@
 -- Test cases for vec[t] where t is a boxed, non-vec type (PyObject *).
 -- Also tests for vec[t | None], which uses the same representation.
 
+[case testVecTConvertToList]
+from librt.vecs import vec
+
+def to_list(v: vec[str]) -> list[str]:
+    return list(v)
+[out]
+def to_list(v):
+    v :: vec[str]
+    r0 :: list
+L0:
+    r0 = VecTApi.to_list(v)
+    return r0
+
 [case testVecTCreateEmpty]
 from librt.vecs import vec, append
 

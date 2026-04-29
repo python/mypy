@@ -548,6 +548,22 @@ VEC FUNC(ExtendVec)(VEC dst, VEC src) {
     return vec_extend_items(dst, src.buf->items, src.len, dst.buf == src.buf);
 }
 
+PyObject *FUNC(ToList)(VEC v) {
+    Py_ssize_t n = v.len;
+    PyObject *list = PyList_New(n);
+    if (list == NULL)
+        return NULL;
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = BOX_ITEM(v.buf->items[i]);
+        if (item == NULL) {
+            Py_DECREF(list);
+            return NULL;
+        }
+        PyList_SET_ITEM(list, i, item);
+    }
+    return list;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
@@ -762,6 +778,7 @@ NAME(API) FEATURES = {
     FUNC(FromIterable),
     FUNC(Extend),
     FUNC(ExtendVec),
+    FUNC(ToList),
 };
 
 #endif  // MYPYC_EXPERIMENTAL

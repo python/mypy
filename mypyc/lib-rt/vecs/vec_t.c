@@ -423,6 +423,19 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     return new;
 }
 
+PyObject *VecT_ToList(VecT v) {
+    Py_ssize_t n = v.len;
+    PyObject *list = PyList_New(n);
+    if (list == NULL)
+        return NULL;
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = v.buf->items[i];
+        Py_INCREF(item);
+        PyList_SET_ITEM(list, i, item);
+    }
+    return list;
+}
+
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecT VecT_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
@@ -770,6 +783,7 @@ VecTAPI Vec_TAPI = {
     VecT_FromIterable,
     VecT_Extend,
     VecT_ExtendVec,
+    VecT_ToList,
 };
 
 #endif  // MYPYC_EXPERIMENTAL
