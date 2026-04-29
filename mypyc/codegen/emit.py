@@ -369,6 +369,23 @@ class Emitter:
     def native_function_name(self, fn: FuncDecl) -> str:
         return f"{NATIVE_PREFIX}{fn.cname(self.names)}"
 
+    def native_function_call(self, fn: FuncDecl) -> str:
+        """Return the C expression for a call to `fn`'s native (CPyDef_) entry.
+
+        For cross-group references under `separate=True`, this prepends the
+        exports-table indirection (e.g. `exports_other.CPyDef_foo`). Same as
+        `native_function_name()` for in-group calls.
+        """
+        return f"{self.get_group_prefix(fn)}{self.native_function_name(fn)}"
+
+    def wrapper_function_call(self, fn: FuncDecl) -> str:
+        """Return the C expression for a call to `fn`'s Python-wrapper (CPyPy_) entry.
+
+        Like `native_function_call`, but for the PyObject-level wrapper that
+        boxes/unboxes arguments. Used from slot generators (tp_init, etc.).
+        """
+        return f"{self.get_group_prefix(fn)}{PREFIX}{fn.cname(self.names)}"
+
     def tuple_c_declaration(self, rtuple: RTuple) -> list[str]:
         result = [
             f"#ifndef MYPYC_DECLARED_{rtuple.struct_name}",
@@ -1397,6 +1414,12 @@ class Emitter:
         self.emit_line(f"if (unlikely(!{wrapper_name}))")
         self.emit_line(error_stmt)
         return wrapper_name
+
+    def emit_base_tp_function_call(
+        self, derived_cl: ClassIR, tp_func: str, args: str, *, prefix: str = ""
+    ) -> None:
+        type_obj = self.type_struct_name(derived_cl)
+        self.emit_line(f"{prefix}{type_obj}->tp_base->{tp_func}({args});")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:

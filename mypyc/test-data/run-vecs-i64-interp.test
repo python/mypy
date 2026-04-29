@@ -20,6 +20,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 
@@ -417,3 +418,84 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == 15
     assert v == vec[i64]()
+
+def test_cap_basic() -> None:
+    v = vec[i64](capacity=3)
+    assert len(v) == 0
+    assert v == vec[i64]()
+    v = vec[i64](capacity=0)
+    assert len(v) == 0
+    v = vec[i64]([10, 20], capacity=3)
+    assert v == vec[i64]([10, 20])
+    v = vec[i64]([5], capacity=0)
+    assert v == vec[i64]([5])
+    v = vec[i64]([10, 20, 30], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 10
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[i64](capacity=-1)
+    with assertRaises(ValueError):
+        vec[i64]([1], capacity=-1)
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[i64](capacity=3)
+    old = v
+    v = append(v, 1)
+    v = append(v, 2)
+    v = append(v, 3)
+    assert len(v) == 3
+    old = append(old, 99)
+    assert v[0] == 99
+
+    v = vec[i64]([10, 20], capacity=3)
+    old = v
+    v = append(v, 30)
+    v[0] = 99
+    assert old[0] == 99
+
+def test_cap_reallocation() -> None:
+    v = vec[i64]([10, 20], capacity=2)
+    old = v
+    v = append(v, 30)
+    old = append(old, 99)
+    assert v[0] == 10
+
+    v = vec[i64]([10, 20, 30], capacity=3)
+    old = v
+    v = append(v, 40)
+    v[0] = 99
+    assert old[0] == 10
+    assert old[2] == 30
+
+def test_extend_from_list() -> None:
+    v = vec[i64]([1, 2])
+    v = extend(v, [3, 4, 5])
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_empty_vec() -> None:
+    v = vec[i64]()
+    v = extend(v, [10, 20])
+    assert v == vec[i64]([10, 20])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[i64]([1, 2])
+    v = extend(v, [])
+    assert v == vec[i64]([1, 2])
+
+def test_extend_from_generator() -> None:
+    v = vec[i64]()
+    v = extend(v, (x * 2 for x in range(4)))
+    assert v == vec[i64]([0, 2, 4, 6])
+
+def test_extend_from_vec() -> None:
+    v = vec[i64]([1])
+    v = extend(v, vec[i64]([2, 3]))
+    assert v == vec[i64]([1, 2, 3])
+
+def test_extend_type_error() -> None:
+    v = vec[i64]([1])
+    s: Any = 'x'
+    with assertRaises(TypeError):
+        extend(v, [s])

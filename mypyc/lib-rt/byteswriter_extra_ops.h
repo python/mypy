@@ -1,8 +1,6 @@
 #ifndef BYTESWRITER_EXTRA_OPS_H
 #define BYTESWRITER_EXTRA_OPS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <Python.h>
@@ -285,7 +283,5 @@ CPyBytes_ReadF64BE(PyObject *bytes_obj, int64_t index) {
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadF64BEUnsafe(data + index);
 }
-
-#endif // MYPYC_EXPERIMENTAL
 
 #endif

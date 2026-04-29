@@ -14,6 +14,7 @@
 #define BOX_ITEM VecBool_BoxItem
 #define UNBOX_ITEM VecBool_UnboxItem
 #define IS_UNBOX_ERROR VecBool_IsUnboxError
+#define BUFFER_FORMAT "b"
 
 #include "vec_template.c"
 

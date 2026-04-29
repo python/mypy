@@ -1,4 +1,3 @@
-# mypy: allow-redefinition-new, local-partial-types
 """Python parser that directly constructs a native AST (when compiled).
 
 Use a Rust extension to generate a serialized AST, and deserialize the AST directly
@@ -27,8 +26,8 @@ from typing import Final, cast
 try:
     import ast_serialize  # type: ignore[import-not-found, unused-ignore]
 except ImportError:
-    print("error: native parser not installed")
-    print("note: to install run `pip install mypy[native-parser]`")
+    print("error: ast-serialize package not installed")
+    print("note: to install run `pip install ast-serialize`")
     sys.exit(2)
 
 from librt.internal import (
@@ -210,13 +209,27 @@ def native_parse(
         node.path = filename
         return node, [], []
 
-    b, errors, ignores, import_bytes, is_partial_package, uses_template_strings = (
-        parse_to_binary_ast(filename, options, skip_function_bodies)
-    )
+    (
+        b,
+        errors,
+        ignores,
+        import_bytes,
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
+    ) = parse_to_binary_ast(filename, options, skip_function_bodies)
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
-        b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
+        b,
+        import_bytes,
+        errors,
+        dict(ignores),
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
     )
     return node, errors, ignores
 
@@ -243,7 +256,7 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool]:
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
     t0 = time.time()
@@ -258,7 +271,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=1,
+        cache_version=2,
     )
     return (
         ast_bytes,
@@ -267,6 +280,8 @@ def parse_to_binary_ast(
         import_bytes,
         ast_data["is_partial_package"],
         ast_data["uses_template_strings"],
+        ast_data["source_hash"],
+        ast_data["mypy_comments"],
     )
 
 
@@ -924,6 +939,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.RAW_EXPRESSION_TYPE:
         type_name = read_str(data)
         value: types.LiteralValue | str | None
+        note: str | None = None
         if type_name == "builtins.bool":
             value = read_bool(data)
         elif type_name == "builtins.int":
@@ -938,9 +954,11 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             tag = read_tag(data)
             assert tag == LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
             value = None
+            # Read optional note (cache_version >= 2)
+            note = read_str_opt(data)
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
-        raw_type = RawExpressionType(value, type_name)
+        raw_type = RawExpressionType(value, type_name, note=note)
         read_loc(data, raw_type)
         expect_end_tag(data)
         return raw_type

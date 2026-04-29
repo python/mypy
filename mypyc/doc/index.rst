@@ -33,6 +33,8 @@ generate fast code.
 
    librt
    librt_base64
+   librt_strings
+   librt_time
 
 .. toctree::
    :maxdepth: 2

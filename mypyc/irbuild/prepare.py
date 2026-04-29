@@ -173,7 +173,13 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
                 and not node.node.is_named_tuple
                 and node.node.typeddict_type is None
             ):
-                ir = deser_ctx.classes[node.node.fullname]
+                # Some TypeInfo entries are mypy-synthetic (e.g. anonymous
+                # intersection classes like "<subclass of X and Y>") and have
+                # no corresponding mypyc ClassIR. Skip those rather than
+                # aborting the whole cache load.
+                ir = deser_ctx.classes.get(node.node.fullname)
+                if ir is None:
+                    continue
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
                 mapper.func_to_decl[node.node] = ir.ctor
@@ -424,22 +430,6 @@ def prepare_class_def(
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
 
-    free_list_len = attrs.get("free_list_len")
-    if free_list_len is not None:
-        line = attrs_lines["free_list_len"]
-        if ir.is_trait:
-            errors.error('"free_list_len" can\'t be used with traits', path, line)
-        if ir.allow_interpreted_subclasses:
-            errors.error(
-                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
-                path,
-                line,
-            )
-        if free_list_len == 1:
-            ir.reuse_freed_instance = True
-        else:
-            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
-
     # Check for subclassing from builtin types
     for cls in info.mro:
         # Special case exceptions and dicts
@@ -467,6 +457,28 @@ def prepare_class_def(
                     path,
                     cdef.line,
                 )
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if ir.builtin_base:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that inherits from a built-in type',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]

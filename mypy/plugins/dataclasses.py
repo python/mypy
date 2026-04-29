@@ -660,6 +660,14 @@ class DataclassTransformer:
                 else:
                     self._api.fail('"kw_only" argument must be a boolean literal', stmt.rvalue)
 
+            # Allow bare x: Final[int] in class body, since it will be set in the generated
+            # __init__() method (unless it is an InitVar), to match regular class semantics.
+            if node.is_final and not node.is_classvar and node.final_unset_in_class:
+                if is_init_var:
+                    self._api.fail("InitVar cannot be final", stmt.rvalue)
+                else:
+                    node.final_set_in_init = True
+
             if sym.type is None and node.is_final and node.is_inferred:
                 # This is a special case, assignment like x: Final = 42 is classified
                 # annotated above, but mypy strips the `Final` turning it into x = 42.

@@ -64,7 +64,11 @@ def load_from_raw(
     options: Options,
     imports_only: bool = False,
 ) -> MypyFile:
-    """Load AST from parsed binary data and report stored errors."""
+    """Load AST from parsed binary data and report stored errors.
+
+    If imports_only is true, only deserialize imports and return a mostly
+    empty AST.
+    """
     from mypy.nativeparse import State, deserialize_imports, read_statements
 
     state = State(options)

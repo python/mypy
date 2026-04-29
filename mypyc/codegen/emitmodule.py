@@ -317,6 +317,14 @@ def compile_modules_to_ir(
         else:
             scc_ir = compile_scc_to_ir(trees, result, mapper, compiler_options, errors)
             modules.update(scc_ir)
+            # A later SCC loaded from cache may reference classes/functions
+            # defined in this freshly-built SCC; populate deser_ctx so the
+            # cached IR deserializer can resolve those cross-SCC references.
+            for module_ir in scc_ir.values():
+                for cl in module_ir.classes:
+                    deser_ctx.classes.setdefault(cl.fullname, cl)
+                for fn in module_ir.functions:
+                    deser_ctx.functions.setdefault(fn.decl.id, fn)
 
     return modules
 
@@ -517,13 +525,16 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         f"{native_function_header(fn.decl, emitter)};", needs_export=True
     )
     if fn.name != TOP_LEVEL_NAME and not fn.internal:
+        # needs_export=True so Python-wrapper (CPyPy_) symbols are reachable from
+        # other groups via the export table — needed for cross-group inherited
+        # __init__ / __new__ slot dispatch under `separate=True`.
         if is_fastcall_supported(fn, emitter.capi_version):
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                f"{wrapper_function_header(fn, emitter.names)};"
+                f"{wrapper_function_header(fn, emitter.names)};", needs_export=True
             )
         else:
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                f"{legacy_wrapper_function_header(fn, emitter.names)};"
+                f"{legacy_wrapper_function_header(fn, emitter.names)};", needs_export=True
             )
 
 
@@ -886,6 +897,21 @@ class GroupGenerator:
                 "goto fail;",
                 "}",
                 "",
+                # Expose ensure_deps_<short> as a capsule so the shim can call
+                # it before invoking the per-module init.
+                f"extern int ensure_deps_{short_name}(void);",
+                'capsule = PyCapsule_New((void *)ensure_deps_{sh}, "{lib}.ensure_deps", NULL);'.format(
+                    sh=short_name, lib=shared_lib_name(self.group_name)
+                ),
+                "if (!capsule) {",
+                "goto fail;",
+                "}",
+                'res = PyObject_SetAttrString(module, "ensure_deps", capsule);',
+                "Py_DECREF(capsule);",
+                "if (res < 0) {",
+                "goto fail;",
+                "}",
+                "",
             )
 
         for mod in self.modules:
@@ -917,25 +943,59 @@ class GroupGenerator:
                 "",
             )
 
-        for group in sorted(self.context.group_deps):
-            egroup = exported_name(group)
-            emitter.emit_lines(
-                'tmp = PyImport_ImportModule("{}"); if (!tmp) goto fail; Py_DECREF(tmp);'.format(
-                    shared_lib_name(group)
-                ),
-                'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
-                    egroup, egroup, shared_lib_name(group)
-                ),
-                f"if (!pexports_{egroup}) {{",
-                "goto fail;",
-                "}",
-                "memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));".format(
-                    group=egroup
-                ),
-                "",
-            )
-
+        # End of exec_<short_name>: only sets up capsules/module attributes.
+        # Cross-group imports (populating `exports_<dep>` tables) are split
+        # out into ensure_deps_<short_name>() below and run later, from the
+        # shim's PyInit. See generate_shared_lib_init for details.
         emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
+
+        if self.compiler_options.separate:
+            # ensure_deps_<short>(): populates cross-group exports tables. Run
+            # once, lazily, from the shim's PyInit just before invoking the
+            # per-module init capsule. This defers cross-group imports out of
+            # the shared-lib PyInit so they can't transitively trigger a
+            # sibling package's __init__.py while another package __init__.py
+            # is still mid-flight.
+            emitter.emit_lines(
+                "",
+                f"int ensure_deps_{short_name}(void)",
+                "{",
+                "static int done = 0;",
+                "if (done) return 0;",
+            )
+            if self.context.group_deps:
+                emitter.emit_lines(
+                    "static PyObject *_mypyc_fromlist = NULL;",
+                    "if (!_mypyc_fromlist) {",
+                    '_mypyc_fromlist = Py_BuildValue("(s)", "*");',
+                    "if (!_mypyc_fromlist) return -1;",
+                    "}",
+                    "PyObject *tmp;",
+                    "PyObject *caps;",
+                )
+            for group in sorted(self.context.group_deps):
+                egroup = exported_name(group)
+                # ImportModuleLevel with fromlist returns the leaf via
+                # sys.modules (no dotted getattr walk), and fetching the
+                # `exports` capsule directly off that module bypasses
+                # PyCapsule_Import (which would redo the attribute walk).
+                emitter.emit_lines(
+                    'tmp = PyImport_ImportModuleLevel("{}", NULL, NULL, _mypyc_fromlist, 0);'.format(
+                        shared_lib_name(group)
+                    ),
+                    "if (!tmp) return -1;",
+                    'caps = PyObject_GetAttrString(tmp, "exports");',
+                    "Py_DECREF(tmp);",
+                    "if (!caps) return -1;",
+                    "struct export_table_{g} *pexports_{g} = "
+                    '(struct export_table_{g} *)PyCapsule_GetPointer(caps, "{lib}.exports");'.format(
+                        g=egroup, lib=shared_lib_name(group)
+                    ),
+                    "Py_DECREF(caps);",
+                    f"if (!pexports_{egroup}) return -1;",
+                    "memcpy(&exports_{g}, pexports_{g}, sizeof(exports_{g}));".format(g=egroup),
+                )
+            emitter.emit_lines("done = 1;", "return 0;", "}")
 
         if self.multi_phase_init:
             emitter.emit_lines(
@@ -980,6 +1040,7 @@ class GroupGenerator:
                 "}",
                 f"if (exec_{short_name}(module) < 0) {{",
                 "Py_DECREF(module);",
+                "module = NULL;",
                 "return NULL;",
                 "}",
                 "return module;",

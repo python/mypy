@@ -713,7 +713,7 @@ section of the command line docs.
     Causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-.. confval:: allow_redefinition_new
+.. confval:: allow_redefinition
 
     :type: boolean
     :default: False
@@ -763,6 +763,13 @@ section of the command line docs.
     Note: We are planning to turn this flag on by default in a future mypy
     release.
 
+.. confval:: allow_redefinition_new
+
+    :type: boolean
+    :default: False
+
+    Deprecated alias for :confval:`allow_redefinition`.
+
 .. confval:: allow_redefinition_old
 
     :type: boolean
@@ -788,14 +795,6 @@ section of the command line docs.
            print(items)
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
-
-.. confval:: allow_redefinition
-
-    :type: boolean
-    :default: False
-
-    An alias to :confval:`allow_redefinition_old`, in mypy v2.0 this will point to
-    :confval:`allow_redefinition_new`, and will eventually became the default.
 
 .. confval:: local_partial_types
 

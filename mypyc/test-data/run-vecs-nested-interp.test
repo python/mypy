@@ -14,6 +14,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 
@@ -455,3 +456,92 @@ def test_contains_deeply_nested() -> None:
     assert vec[vec[str]]([vec[str](['a'])]) in v
     assert vec[vec[str]]([vec[str](['b'])]) not in v
     assert vec[vec[str]]() not in v
+
+def test_append_with_alias() -> None:
+    v = vec[vec[i64]]()
+    v = append(v, vec[i64]([1, 2, 3]))
+    alias = v
+    v = append(v, vec[i64]([4, 5]))
+    v = append(v, vec[i64]([6]))
+    v = append(v, vec[i64]([7]))
+    assert alias[0] == vec[i64]([1, 2, 3])
+    assert len(alias) == 1
+    assert v[0] == vec[i64]([1, 2, 3])
+    assert len(v) == 4
+
+def test_cap_basic() -> None:
+    v = vec[vec[str]](capacity=3)
+    assert len(v) == 0
+    assert v == vec[vec[str]]()
+    v = vec[vec[str]](capacity=0)
+    assert len(v) == 0
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
+    assert v[0] == vec[str](['a'])
+    v = vec[vec[str]]([vec[str](['x'])], capacity=0)
+    assert v == vec[vec[str]]([vec[str](['x'])])
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])], capacity=1)
+    assert len(v) == 3
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[vec[str]](capacity=-1)
+    with assertRaises(ValueError):
+        vec[vec[str]]([vec[str]()], capacity=-1)
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[vec[str]](capacity=3)
+    old = v
+    v = append(v, vec[str](['a']))
+    v = append(v, vec[str](['b']))
+    v = append(v, vec[str](['c']))
+    assert len(v) == 3
+    old = append(old, vec[str](['Q']))
+    assert v[0] == vec[str](['Q'])
+
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=3)
+    old = v
+    v = append(v, vec[str](['c']))
+    v[0] = vec[str](['z'])
+    assert old[0] == vec[str](['z'])
+
+def test_cap_reallocation() -> None:
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b'])], capacity=2)
+    old = v
+    v = append(v, vec[str](['c']))
+    old = append(old, vec[str](['Q']))
+    assert v[0] == vec[str](['a'])
+
+    v = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])], capacity=3)
+    old = v
+    v = append(v, vec[str](['d']))
+    v[0] = vec[str](['z'])
+    assert old[0] == vec[str](['a'])
+    assert old[2] == vec[str](['c'])
+
+def test_extend_from_list() -> None:
+    v1 = vec[str](['a'])
+    v2 = vec[str](['b'])
+    v = vec[vec[str]]([v1])
+    v = extend(v, [v2])
+    assert v == vec[vec[str]]([v1, v2])
+
+def test_extend_empty_vec() -> None:
+    v = vec[vec[i64]]()
+    v = extend(v, [vec[i64]([1, 2])])
+    assert v == vec[vec[i64]]([vec[i64]([1, 2])])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[vec[str]]([vec[str](['x'])])
+    v = extend(v, [])
+    assert v == vec[vec[str]]([vec[str](['x'])])
+
+def test_extend_shared_buffer_after_pop() -> None:
+    v0 = vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer
+    v = extend(v1, vec[vec[str]]([vec[str](['d']), vec[str](['e']), vec[str](['f'])]))
+    assert len(v) == 5
+    assert v[0] == vec[str](['a'])
+    assert v[4] == vec[str](['f'])
+    # v0 must not be corrupted
+    assert v0 == vec[vec[str]]([vec[str](['a']), vec[str](['b']), vec[str](['c'])])

@@ -1356,3 +1356,9 @@ def f(x: object) -> None:
         with C():
             pass
 [builtins fixtures/tuple.pyi]
+
+[case testInferOptionalFromDefaultNoneInlineConfig]
+# mypy: implicit-optional
+def f(x: int = None) -> None:
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+f(None)

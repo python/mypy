@@ -173,6 +173,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared.copy_modified(
             upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
         )
+    elif (
+        isinstance(narrowed, TypeVarType)
+        and not has_type_vars(original_declared)
+        and is_subtype(original_declared, narrowed.upper_bound)
+    ):
+        # This branch is a mirror image of the above one.
+        return narrowed.copy_modified(
+            upper_bound=narrow_declared_type(original_declared, narrowed.upper_bound)
+        )
     elif not is_overlapping_types(declared, narrowed):
         if state.strict_optional:
             return UninhabitedType()

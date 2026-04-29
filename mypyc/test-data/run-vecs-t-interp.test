@@ -14,6 +14,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 version_info: Any = sys.version_info
@@ -532,6 +533,117 @@ def test_pop_index() -> None:
     v, item = pop(v, 0)
     assert item == '15'
     assert v == vec[str]()
+
+def test_append_with_alias() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    alias = v
+    v = append(v, 'b')
+    v = append(v, 'c')
+    v = append(v, 'd')
+    assert alias[0] == 'a'
+    assert len(alias) == 1
+    assert v[0] == 'a'
+    assert len(v) == 4
+
+def test_cap_basic() -> None:
+    v = vec[str](capacity=3)
+    assert len(v) == 0
+    assert v == vec[str]()
+    v = vec[str](capacity=0)
+    assert len(v) == 0
+    v = vec[str](['a', 'b'], capacity=3)
+    assert v == vec[str](['a', 'b'])
+    v = vec[str](['x'], capacity=0)
+    assert v == vec[str](['x'])
+    v = vec[str](['a', 'b', 'c'], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[str](capacity=-1)
+    with assertRaises(ValueError):
+        vec[str](['x'], capacity=-1)
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[str](capacity=3)
+    old = v
+    v = append(v, 'a')
+    v = append(v, 'b')
+    v = append(v, 'c')
+    assert len(v) == 3
+    old = append(old, 'Q')
+    assert v[0] == 'Q'
+
+    v = vec[str](['a', 'b'], capacity=3)
+    old = v
+    v = append(v, 'c')
+    v[0] = 'z'
+    assert old[0] == 'z'
+
+def test_cap_reallocation() -> None:
+    # At capacity -> next append reallocates, aliases become independent
+    v = vec[str](['a', 'b'], capacity=2)
+    old = v
+    v = append(v, 'c')
+    old = append(old, 'Q')
+    assert v[2] == 'c'
+    assert old[2] == 'Q'
+
+    # Old alias retains original items after reallocation
+    v = vec[str](['a', 'b', 'c'], capacity=3)
+    old = v
+    v = append(v, 'd')
+    v[0] = 'z'
+    assert old[0] == 'a'
+    assert old[2] == 'c'
+
+def test_cap_optional() -> None:
+    v = vec[Optional[str]](capacity=3)
+    v = append(v, 'x')
+    v = append(v, None)
+    assert v[0] == 'x'
+    assert v[1] is None
+
+    v = vec[Optional[str]](['x', None], capacity=3)
+    assert v[0] == 'x'
+    assert v[1] is None
+
+def test_extend_from_list() -> None:
+    v = vec[str](['a', 'b'])
+    v = extend(v, ['c', 'd'])
+    assert v == vec[str](['a', 'b', 'c', 'd'])
+
+def test_extend_empty_vec() -> None:
+    v = vec[str]()
+    v = extend(v, ['x', 'y'])
+    assert v == vec[str](['x', 'y'])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[str](['a'])
+    v = extend(v, [])
+    assert v == vec[str](['a'])
+
+def test_extend_from_vec() -> None:
+    v = vec[str](['a'])
+    v = extend(v, vec[str](['b', 'c']))
+    assert v == vec[str](['a', 'b', 'c'])
+
+def test_extend_type_error() -> None:
+    v = vec[str](['a'])
+    n: Any = 123
+    with assertRaises(TypeError):
+        extend(v, [n])
+
+def test_extend_shared_buffer_after_pop() -> None:
+    v0 = vec[str](['a', 'b', 'c'])
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer
+    v = extend(v1, vec[str](['d', 'e', 'f', 'g']))
+    assert v == vec[str](['a', 'b', 'd', 'e', 'f', 'g'])
+    # v0 must not be corrupted
+    assert v0 == vec[str](['a', 'b', 'c'])
 
 [file helpers.py]
 # Test helper classes

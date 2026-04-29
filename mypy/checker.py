@@ -108,7 +108,7 @@ from mypy.errors import (
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
+from mypy.meet import is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -353,10 +353,11 @@ TypeMap: _TypeAlias = dict[Expression, Type]
 # Keeps track of partial types in a single scope. In fine-grained incremental
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
-class PartialTypeScope(NamedTuple):
-    map: dict[Var, Context]
-    is_function: bool
-    is_local: bool
+class PartialTypeScope:
+    def __init__(self, map: dict[Var, Context], is_function: bool, is_local: bool) -> None:
+        self.map: Final = map
+        self.is_function: Final = is_function
+        self.is_local: Final = is_local
 
 
 class LocalTypeMap:
@@ -424,6 +425,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     # Short names of Var nodes whose previous inferred type has been widened via assignment.
     # NOTE: The names might not be unique, they are only for debugging purposes.
     widened_vars: list[str]
+    # Global variables widened inside a function body, to be propagated to
+    # the module-level binder after the function is type checked (with --allow-redefinition-new).
+    _globals_widened_in_func: list[tuple[NameExpr, Type]]
     globals: SymbolTable
     modules: dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -488,7 +492,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
+        self.globals_binder = self.binder
         self.globals = tree.names
+        self.globals_unreachable: set[int] = set()
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -496,6 +502,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.var_decl_frames = {}
         self.deferred_nodes = []
         self.widened_vars = []
+        self._globals_widened_in_func = []
         self._type_maps = [{}]
         self.module_refs = set()
         self.pass_num = 0
@@ -542,6 +549,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self._unique_id = 0
         self._variance_dummy_type = None
 
+        # Assignment expression is the only *expression* that can have externally
+        # visible effects via binder. We bump this whenever this happens to handle
+        # situations when some expressions are accepted multiple times.
+        self.assignment_expression_effect = 0
+
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
         return self._expr_checker
@@ -567,6 +579,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.partial_types = []
         self.inferred_attribute_types = None
         self.scope = CheckerScope(self.tree)
+        self.globals_unreachable.clear()
+
+    def mark_unreachable(self, block: list[Statement], after: Statement) -> None:
+        """Marks all statements in block after a given one (inclusive) as unreachable."""
+        last_line = (last := block[-1]).end_line or last.line
+        self.globals_unreachable.update(range(after.line, last_line + 1))
 
     def check_first_pass(self, recurse_into_functions: bool = True) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -585,8 +603,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             )
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
+                    marked_unreachable = False
                     for d in self.tree.defs:
                         if self.binder.is_unreachable():
+                            if not marked_unreachable:
+                                self.mark_unreachable(self.tree.defs, after=d)
+                                marked_unreachable = True
                             if not self.should_report_unreachable_issues():
                                 break
                             if not self.is_noop_for_reachability(d):
@@ -666,6 +688,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not impl_only:
                     self.accept(node)
                     return
+                if node.line in self.globals_unreachable:
+                    return
                 if isinstance(node, (FuncDef, Decorator)):
                     self.check_partial_impl(node)
                 else:
@@ -691,6 +715,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if isinstance(impl, FuncDef):
             self.visit_func_def_impl(impl)
         else:
+            if any(refers_to_fullname(d, "typing.no_type_check") for d in impl.decorators):
+                return
             with self.tscope.function_scope(impl.func):
                 self.check_func_item(impl.func, name=impl.func.name)
 
@@ -1490,7 +1516,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
 
-                if self.options.allow_redefinition_new and not self.is_stub:
+                if self.options.allow_redefinition and not self.is_stub:
                     # Add formal argument types to the binder.
                     for arg in defn.arguments:
                         # TODO: Add these directly using a fast path (possibly "put")
@@ -1592,14 +1618,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             else:
                                 msg = message_registry.MISSING_RETURN_STATEMENT
                             if body_is_trivial:
-                                msg = msg._replace(code=codes.EMPTY_BODY)
+                                msg = ErrorMessage(msg.value, code=codes.EMPTY_BODY)
                             self.fail(msg, defn)
                             if may_be_abstract:
                                 self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
                     else:
                         msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
                         if body_is_trivial:
-                            msg = msg._replace(code=codes.EMPTY_BODY)
+                            msg = ErrorMessage(msg.value, code=codes.EMPTY_BODY)
                         # similar to code in check_return_stmt
                         if (
                             not self.check_subtype(
@@ -1615,6 +1641,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
             self.return_types.pop()
+
+            # Propagate any global variable widenings directly to the
+            # module-level binder (skipping any intermediate class binders).
+            if self._globals_widened_in_func:
+                for lvalue, widened_type in self._globals_widened_in_func:
+                    self.globals_binder.put(lvalue, widened_type)
+                    lit = literal_hash(lvalue)
+                    if lit is not None:
+                        self.globals_binder.declarations[lit] = widened_type
+                self._globals_widened_in_func = []
 
             self.binder = old_binder
 
@@ -3224,8 +3260,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
+        marked_unreachable = False
         for s in b.body:
             if self.binder.is_unreachable():
+                if self.scope.top_level_function() is None and not marked_unreachable:
+                    self.mark_unreachable(b.body, after=s)
+                    marked_unreachable = True
                 if not self.should_report_unreachable_issues():
                     break
                 if not self.is_noop_for_reachability(s):
@@ -3424,7 +3464,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # unpleasant, and a generalization of this would
                     # be an improvement!
                     if (
-                        not self.options.allow_redefinition_new
+                        not self.options.allow_redefinition
                         and is_literal_none(rvalue)
                         and isinstance(lvalue, NameExpr)
                         and lvalue.kind == LDEF
@@ -3484,7 +3524,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
                 elif (
-                    self.options.allow_redefinition_new
+                    self.options.allow_redefinition
                     and lvalue_type is not None
                     and not isinstance(lvalue_type, PartialType)
                     # Note that `inferred is not None` is not a reliable check here, because
@@ -4467,7 +4507,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # When revisiting the initial assignment (for example in a loop),
         # treat is as regular if redefinitions are allowed.
         skip_definition = (
-            self.options.allow_redefinition_new
+            self.options.allow_redefinition
             and isinstance(lvalue, NameExpr)
             and isinstance(lvalue.node, Var)
             and lvalue.node.is_inferred
@@ -4498,7 +4538,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             if (
-                self.options.allow_redefinition_new
+                self.options.allow_redefinition
                 and isinstance(lvalue.node, Var)
                 # We allow redefinition for function arguments inside function body.
                 # Although we normally do this for variables without annotation, users
@@ -4586,15 +4626,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             init_type = strip_type(init_type)
 
             self.set_inferred_type(name, lvalue, init_type)
-            if self.options.allow_redefinition_new:
+            if self.options.allow_redefinition:
                 self.binder.assign_type(lvalue, init_type, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
         if isinstance(init_type, NoneType) and (
-            isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition_new
+            isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition
         ):
-            # When using --allow-redefinition-new, None types aren't special
+            # When using --allow-redefinition, None types aren't special
             # when inferring simple variable types.
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
@@ -4757,7 +4797,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # context that is ultimately used. This is however tricky with redefinitions.
         # For now we simply disable second accept in cases known to cause problems,
         # see e.g. testAssignToOptionalTupleWalrus.
-        binder_version = self.binder.version
+        assignment_expression_effect = self.assignment_expression_effect
 
         fallback_context_used = False
         with (
@@ -4787,7 +4827,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         union_fallback = (
             preferred_context is not None
             and isinstance(get_proper_type(lvalue_type), UnionType)
-            and binder_version == self.binder.version
+            and assignment_expression_effect == self.assignment_expression_effect
         )
 
         # Skip literal types, as they have special logic (for better errors).
@@ -4842,7 +4882,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 get_proper_type(lvalue_type), AnyType
             )
 
-            # If redefinitions are allowed (i.e. we have --allow-redefinition-new
+            # If redefinitions are allowed (i.e. we have --allow-redefinition
             # and a variable without annotation) or if a variable has union type we
             # try inferring r.h.s. twice with a fallback type context. The only exception
             # is TypedDicts, they are often useless without context.
@@ -4897,6 +4937,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     not self.refers_to_different_scope(lvalue)
                     and not isinstance(inferred.type, PartialType)
                     and not is_proper_subtype(new_inferred, inferred.type)
+                    and self.can_widen_in_scope(lvalue, inferred.type)
                 ):
                     lvalue_type = make_simplified_union([inferred.type, new_inferred])
                     # Widen the type to the union of original and new type.
@@ -4904,6 +4945,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # Skip index variables as they are reset on each loop.
                         self.widened_vars.append(inferred.name)
                     self.set_inferred_type(inferred, lvalue, lvalue_type)
+                    if lvalue.kind == GDEF and self.scope.top_level_function() is not None:
+                        # Widening a global inside a function -- record for
+                        # propagation to the module-level binder afterwards.
+                        self._globals_widened_in_func.append((lvalue, lvalue_type))
                     self.binder.put(lvalue, rvalue_type)
                     # TODO: A bit hacky, maybe add a binder method that does put and
                     #       updates declaration?
@@ -4932,13 +4977,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if name.kind == LDEF:
             # TODO: Consider reference to outer function as a different scope?
             return False
-        elif self.scope.top_level_function() is not None:
+        elif self.scope.top_level_function() is not None and name.kind != GDEF:
             # A non-local reference from within a function must refer to a different scope
             return True
         elif name.kind == GDEF and name.fullname.rpartition(".")[0] != self.tree.fullname:
             # Reference to global definition from another module
             return True
         return False
+
+    def can_widen_in_scope(self, name: NameExpr, orig_type: Type) -> bool:
+        """Can a variable type be widened via assignment in the current scope?
+
+        Globals can only be widened from within a function if the original type
+        is None (backward compat with partial type handling of `x = None`).
+
+        See test cases testNewRedefineGlobalVariableNoneInit[1-4], for example.
+        """
+        if (
+            name.kind == GDEF
+            and self.scope.top_level_function() is not None
+            and not isinstance(get_proper_type(orig_type), NoneType)
+        ):
+            return False
+        return True
 
     def check_member_assignment(
         self,
@@ -5011,8 +5072,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Updating a partial type should invalidate expression caches.
         self.binder.version += 1
         del partial_types[var]
-        if self.options.allow_redefinition_new:
-            # When using --allow-redefinition-new, binder tracks all types of
+        if self.options.allow_redefinition:
+            # When using --allow-redefinition, binder tracks all types of
             # simple variables.
             n = NameExpr(var.name)
             n.node = var
@@ -5427,10 +5488,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             if isinstance(var.node, Var):
                                 new_type = DeletedType(source=source)
                                 var.node.type = new_type
-                                if self.options.allow_redefinition_new:
+                                if self.options.allow_redefinition:
                                     # TODO: Should we use put() here?
                                     self.binder.assign_type(var, new_type, new_type)
-                            if not self.options.allow_redefinition_new:
+                            if not self.options.allow_redefinition:
                                 self.binder.cleanse(var)
             if s.else_body:
                 self.accept(s.else_body)
@@ -5648,12 +5709,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
-        for d in e.decorators:
-            if isinstance(d, RefExpr):
-                if d.fullname == "typing.no_type_check":
-                    e.var.type = AnyType(TypeOfAny.special_form)
-                    e.var.is_ready = True
-                    return
+        if any(refers_to_fullname(d, "typing.no_type_check") for d in e.decorators):
+            e.var.type = AnyType(TypeOfAny.special_form)
+            e.var.is_ready = True
+            return
         self.visit_decorator_inner(e)
 
     def visit_decorator_inner(
@@ -6720,22 +6779,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             narrowable_indices={0},
                         )
 
-                        # TODO: This remove_optional code should no longer be needed. The only
-                        # thing it does is paper over a pre-existing deficiency in equality
-                        # narrowing w.r.t to enums.
-                        # We only try and narrow away 'None' for now
-                        if (
-                            not is_unreachable_map(if_map)
-                            and is_overlapping_none(item_type)
-                            and not is_overlapping_none(collection_item_type)
-                            and not (
-                                isinstance(collection_item_type, Instance)
-                                and collection_item_type.type.fullname == "builtins.object"
-                            )
-                            and is_overlapping_erased_types(item_type, collection_item_type)
-                        ):
-                            if_map[operands[left_index]] = remove_optional(item_type)
-
                 if right_index in narrowable_operand_index_to_hash:
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
@@ -6820,17 +6863,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # have to be more careful about what narrowing we can conclude from a successful comparison
         custom_eq_indices: set[int]
 
-        # enum_comparison_is_ambiguous:
-        # `if x is Fruits.APPLE` we know `x` is `Fruits.APPLE`, but `if x == Fruits.APPLE: ...`
-        # it could e.g. be an int or str if Fruits is an IntEnum or StrEnum.
-        # See ambiguous_enum_equality_keys for more details
-        enum_comparison_is_ambiguous: bool
+        # Equality can use value semantics, so `if x == Fruits.APPLE: ...` may also
+        # match non-enum values for IntEnum/StrEnum-like enums. Identity checks don't
+        # have this ambiguity.
+        is_identity_comparison = operator in {"is", "is not"}
 
-        if operator in {"is", "is not"}:
+        if is_identity_comparison:
             is_target_for_value_narrowing = is_singleton_identity_type
             should_coerce_literals = True
             custom_eq_indices = set()
-            enum_comparison_is_ambiguous = False
 
         elif operator in {"==", "!="}:
             is_target_for_value_narrowing = is_singleton_equality_type
@@ -6843,7 +6884,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     break
 
             custom_eq_indices = {i for i in expr_indices if has_custom_eq_checks(operand_types[i])}
-            enum_comparison_is_ambiguous = True
         else:
             raise AssertionError
 
@@ -6859,8 +6899,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 continue
 
             expr_type = operand_types[i]
-            expr_enum_keys = ambiguous_enum_equality_keys(expr_type)
-            expr_type = try_expanding_sum_type_to_union(coerce_to_literal(expr_type), None)
             for j in expr_indices:
                 if i == j:
                     continue
@@ -6872,18 +6910,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if should_coerce_literals:
                     target_type = coerce_to_literal(target_type)
 
-                if (
-                    # See comments in ambiguous_enum_equality_keys
-                    enum_comparison_is_ambiguous
-                    and len(expr_enum_keys | ambiguous_enum_equality_keys(target_type)) > 1
-                ):
-                    continue
-
-                target = TypeRange(target_type, is_upper_bound=False)
-
-                if_map, else_map = conditional_types_to_typemaps(
-                    operands[i], *conditional_types(expr_type, [target], from_equality=True)
+                narrowable_expr_type, ambiguous_expr_type = partition_equality_ambiguous_types(
+                    expr_type, target_type, is_identity=is_identity_comparison
                 )
+
+                if narrowable_expr_type is None:
+                    if_type = else_type = ambiguous_expr_type
+                else:
+                    narrowable_expr_type = try_expanding_sum_type_to_union(
+                        coerce_to_literal(narrowable_expr_type), None
+                    )
+                    if_type, else_type = conditional_types(
+                        narrowable_expr_type,
+                        [TypeRange(target_type, is_upper_bound=False)],
+                        from_equality=True,
+                    )
+                    if ambiguous_expr_type is not None:
+                        if_type = make_simplified_union(
+                            [if_type or narrowable_expr_type, ambiguous_expr_type]
+                        )
+                        else_type = make_simplified_union(
+                            [else_type or narrowable_expr_type, ambiguous_expr_type]
+                        )
+
+                if_map, else_map = conditional_types_to_typemaps(operands[i], if_type, else_type)
                 if is_target_for_value_narrowing(get_proper_type(target_type)):
                     all_if_maps.append(if_map)
                     all_else_maps.append(else_map)
@@ -6964,13 +7014,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     target_type = operand_types[j]
                     if should_coerce_literals:
                         target_type = coerce_to_literal(target_type)
-                    target = TypeRange(target_type, is_upper_bound=False)
+
+                    narrowable_expr_type, ambiguous_expr_type = partition_equality_ambiguous_types(
+                        expr_type, target_type, is_identity=is_identity_comparison
+                    )
+
+                    if narrowable_expr_type is None:
+                        if_type = else_type = ambiguous_expr_type
+                    else:
+                        narrowable_expr_type = coerce_to_literal(
+                            try_expanding_sum_type_to_union(narrowable_expr_type, None)
+                        )
+                        if_type, else_type = conditional_types(
+                            narrowable_expr_type,
+                            [TypeRange(target_type, is_upper_bound=False)],
+                            default=narrowable_expr_type,
+                            from_equality=True,
+                        )
+                        if ambiguous_expr_type is not None:
+                            if_type = make_simplified_union([if_type, ambiguous_expr_type])
+                            else_type = make_simplified_union([else_type, ambiguous_expr_type])
 
                     if_map, else_map = conditional_types_to_typemaps(
-                        operands[i],
-                        *conditional_types(
-                            expr_type, [target], default=expr_type, from_equality=True
-                        ),
+                        operands[i], if_type, else_type
                     )
                     or_if_maps.append(if_map)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
@@ -7143,14 +7209,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if int_literals is not None:
 
                         def replay_lookup(new_parent_type: ProperType) -> Type | None:
-                            if not isinstance(new_parent_type, TupleType):
-                                return None
-                            try:
-                                assert int_literals is not None
-                                member_types = [new_parent_type.items[key] for key in int_literals]
-                            except IndexError:
-                                return None
-                            return make_simplified_union(member_types)
+                            if isinstance(new_parent_type, TupleType):
+                                try:
+                                    assert int_literals is not None
+                                    member_types = [
+                                        new_parent_type.items[key] for key in int_literals
+                                    ]
+                                except IndexError:
+                                    return None
+                                return make_simplified_union(member_types)
+                            if (
+                                isinstance(new_parent_type, Instance)
+                                and new_parent_type.type.fullname
+                                in ("builtins.list", "builtins.tuple")
+                                and new_parent_type.args
+                            ):
+                                return new_parent_type.args[0]
+                            return None
 
                     else:
                         return output
@@ -7537,7 +7612,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if isinstance(msg, str):
             msg = ErrorMessage(msg, code=code)
 
-        if self.msg.prefer_simple_messages():
+        if (
+            self.msg.prefer_simple_messages()
+            or code is not None
+            and not self.errors.is_error_code_enabled(code)
+        ):
             self.fail(msg, context)  # Fast path -- skip all fancy logic
             return False
 
@@ -7805,7 +7884,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.options.check_untyped_defs and self.dynamic_funcs and self.dynamic_funcs[-1]
         )
 
-        partial_types, _, _ = self.partial_types.pop()
+        partial_types = self.partial_types.pop().map
         if not self.current_node_deferred:
             for var, context in partial_types.items():
                 if isinstance(var.type, PartialType) and var.type.type is None and not permissive:
@@ -8337,7 +8416,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return None
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
-        return None
+        if self.options.allow_redefinition:
+            # Add names to binder, since their types could be widened
+            for name in o.names:
+                sym = self.globals.get(name)
+                if sym and isinstance(sym.node, Var) and sym.node.type is not None:
+                    n = NameExpr(name)
+                    n.node = sym.node
+                    n.kind = GDEF
+                    n.fullname = sym.node.fullname
+                    self.binder.assign_type(n, sym.node.type, sym.node.type)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
@@ -8564,17 +8652,10 @@ def conditional_types(
         # We erase generic args because values with different generic types can compare equal
         # For instance, cast(list[str], []) and cast(list[int], [])
         proposed_type = shallow_erase_type_for_equality(proposed_type)
-        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=False):
-            # Equality narrowing is one of the places at runtime where subtyping with promotion
-            # does happen to match runtime semantics
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
-        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            return default, default
-    else:
-        if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
+
+    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        # Expression is never of any type in proposed_type_ranges
+        return UninhabitedType(), default
 
     # we can only restrict when the type is precise, not bounded
     proposed_precise_type = UnionType.make_union(
@@ -8843,27 +8924,9 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.bytearray",
-    "builtins.memoryview",
-    "builtins.frozenset",
-    "_collections_abc.dict_keys",
-    "_collections_abc.dict_items",
-}
-
-
 def has_custom_eq_checks(t: Type) -> bool:
-    return (
-        custom_special_method(t, "__eq__", check_all=False)
-        or custom_special_method(t, "__ne__", check_all=False)
-        # custom_special_method has special casing for builtins.* and typing.* that make the
-        # above always return False. So here we return True if the a value of a builtin type
-        # will ever compare equal to value of another type, e.g. a bytes value can compare equal
-        # to a bytearray value.
-        or (
-            isinstance(pt := get_proper_type(t), Instance)
-            and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS
-        )
+    return custom_special_method(t, "__eq__", check_all=False) or custom_special_method(
+        t, "__ne__", check_all=False
     )
 
 
@@ -9154,7 +9217,7 @@ def is_valid_inferred_type(
         # type could either be NoneType or an Optional type, depending on
         # the context. This resolution happens in leave_partial_types when
         # we pop a partial types scope.
-        return is_lvalue_final or (not is_lvalue_member and options.allow_redefinition_new)
+        return is_lvalue_final or (not is_lvalue_member and options.allow_redefinition)
     elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(InvalidInferredTypes())
@@ -9637,45 +9700,154 @@ class VarAssignVisitor(TraverserVisitor):
             self.lvalue = False
 
 
-def ambiguous_enum_equality_keys(t: Type) -> set[str]:
-    """
-    Used when narrowing types based on equality.
+# Open domains also block cross-type narrowing for known domain members, but they
+# don't provide an exhaustive union to narrow top types to.
+OPEN_VALUE_EQUALITY_DOMAINS: Final = {
+    "builtins.str": "builtins.str",
+    "builtins.bool": "builtins.numeric",
+    "builtins.int": "builtins.numeric",
+    "builtins.float": "builtins.numeric",
+    "builtins.complex": "builtins.numeric",
+}
+OPEN_VALUE_EQUALITY_DOMAIN_NAMES: Final = frozenset(OPEN_VALUE_EQUALITY_DOMAINS.values())
 
-    Certain kinds of enums can compare equal to values of other types, so doing type math
-    the way `conditional_types` does will be misleading if you expect it to correspond to
-    conditions based on equality comparisons.
+# Closed domains also block ordinary cross-type narrowing within the domain.
+CLOSED_VALUE_EQUALITY_DOMAINS: Final = {
+    "builtins.bytes": "builtins.bytes",
+    "builtins.bytearray": "builtins.bytes",
+    "builtins.memoryview": "builtins.bytes",
+    "typing.Mapping": "typing.Mapping",
+    "typing.AbstractSet": "typing.AbstractSet",
+}
 
-    For example, StrEnum classes can compare equal to str values. So if we see
-    `val: StrEnum; if val == "foo": ...` we currently avoid narrowing.
-    Note that we do wish to continue narrowing for `if val == StrEnum.MEMBER: ...`
+VALUE_EQUALITY_DOMAINS: Final = {**OPEN_VALUE_EQUALITY_DOMAINS, **CLOSED_VALUE_EQUALITY_DOMAINS}
+
+
+class EqualityDomainInfo:
+    def __init__(self, type_names: set[str], enum_type_names: set[str]) -> None:
+        self.type_names = type_names
+        self.enum_type_names = enum_type_names
+
+
+class EqualityValueInfo:
+    def __init__(self, domains: dict[str, EqualityDomainInfo], is_top: bool) -> None:
+        self.domains = domains
+        self.is_top = is_top
+
+
+def partition_equality_ambiguous_types(
+    current_type: Type, target_type: Type, *, is_identity: bool
+) -> tuple[Type | None, Type | None]:
+    """Split current_type into ordinary-narrowable and equality-ambiguous pieces.
+
+    Some values compare equal through a value domain broader than their nominal type. For
+    example, an IntEnum member can compare equal to an int, and a StrEnum member can compare
+    equal to a str. When narrowing `x: MyStrEnum | str` against `MyStrEnum.MEMBER`, we can
+    still narrow the enum portion of the union, but we must keep the str portion in both
+    branches.
     """
-    # We need these things for this to be ambiguous:
-    #  (1) an IntEnum or StrEnum type or enum subclass of int or str
-    #  (2) either a different IntEnum/StrEnum type or a non-enum type ("<other>")
-    result = set()
+    if is_identity:
+        return current_type, None
+
+    typ = get_proper_type(current_type)
+    items = typ.relevant_items() if isinstance(typ, UnionType) else [current_type]
+    narrowable_items = []
+    ambiguous_items = []
+    for item in items:
+        if is_equality_ambiguous_for_narrowing(item, target_type):
+            ambiguous_items.append(item)
+        else:
+            narrowable_items.append(item)
+    return (
+        UnionType.make_union(narrowable_items) if narrowable_items else None,
+        UnionType.make_union(ambiguous_items) if ambiguous_items else None,
+    )
+
+
+def is_equality_ambiguous_for_narrowing(left: Type, right: Type) -> bool:
+    """Can left compare equal to right through a value domain outside nominal overlap?"""
+    left_info = equality_value_info(left)
+    right_info = equality_value_info(right)
+
+    if left_info.is_top or right_info.is_top:
+        # Only open-domain enum values can make a top-like type ambiguous.
+        # Closed domains can be narrowed to their complete known set instead.
+        other_info = right_info if left_info.is_top else left_info
+        return any(
+            domain in OPEN_VALUE_EQUALITY_DOMAIN_NAMES and domain_info.enum_type_names
+            for domain, domain_info in other_info.domains.items()
+        )
+
+    shared_domains = left_info.domains.keys() & right_info.domains.keys()
+    if not shared_domains:
+        return False
+
+    for domain in shared_domains:
+        left_domain = left_info.domains[domain]
+        right_domain = right_info.domains[domain]
+        # Equality between two values from the same enum can still narrow by literal member.
+        if (
+            left_domain.enum_type_names
+            and left_domain.enum_type_names == right_domain.enum_type_names
+            and left_domain.type_names == left_domain.enum_type_names
+            and right_domain.type_names == right_domain.enum_type_names
+        ):
+            continue
+        # Different domain-member types may compare equal, but nominal narrowing would
+        # otherwise treat them as disjoint.
+        if left_domain.type_names != right_domain.type_names:
+            return True
+        # Same domain-member types are only ambiguous if an enum value may compare equal to
+        # its underlying value type.
+        if left_domain.enum_type_names or right_domain.enum_type_names:
+            return True
+
+    return False
+
+
+def equality_value_info(t: Type) -> EqualityValueInfo:
     t = get_proper_type(t)
     if isinstance(t, UnionType):
-        for item in t.items:
-            result.update(ambiguous_enum_equality_keys(item))
-    elif isinstance(t, Instance):
-        if t.last_known_value:
-            result.update(ambiguous_enum_equality_keys(t.last_known_value))
-        elif t.type.is_enum and any(
-            base.fullname in ("enum.IntEnum", "enum.StrEnum", "builtins.str", "builtins.int")
-            for base in t.type.mro
-        ):
-            result.add(t.type.fullname)
-        elif not t.type.is_enum:
-            # These might compare equal to IntEnum/StrEnum types (e.g. Decimal), so
-            # let's be conservative
-            result.add("<other>")
-    elif isinstance(t, LiteralType):
-        result.update(ambiguous_enum_equality_keys(t.fallback))
-    elif isinstance(t, NoneType):
-        pass
-    else:
-        result.add("<other>")
-    return result
+        return combine_equality_value_info(equality_value_info(item) for item in t.items)
+    if isinstance(t, TypeVarType):
+        if t.values:
+            return combine_equality_value_info(equality_value_info(item) for item in t.values)
+        return equality_value_info(t.upper_bound)
+    if isinstance(t, Instance) and t.last_known_value is not None:
+        return equality_value_info(t.last_known_value)
+    if isinstance(t, LiteralType):
+        return equality_value_info(t.fallback)
+    if isinstance(t, Instance):
+        if t.type.fullname == "builtins.object":
+            return EqualityValueInfo({}, is_top=True)
+
+        enum_type_names = {t.type.fullname} if t.type.is_enum else set()
+        domains = {}
+        for base in t.type.mro:
+            if domain := VALUE_EQUALITY_DOMAINS.get(base.fullname):
+                domains[domain] = EqualityDomainInfo({t.type.fullname}, enum_type_names)
+
+        return EqualityValueInfo(domains, is_top=False)
+    if isinstance(t, AnyType):
+        return EqualityValueInfo({}, is_top=True)
+    return EqualityValueInfo({}, is_top=False)
+
+
+def combine_equality_value_info(infos: Iterable[EqualityValueInfo]) -> EqualityValueInfo:
+    domains: dict[str, EqualityDomainInfo] = {}
+    is_top = False
+    for info in infos:
+        for domain, domain_info in info.domains.items():
+            existing_domain_info = domains.get(domain)
+            if existing_domain_info is None:
+                domains[domain] = EqualityDomainInfo(
+                    set(domain_info.type_names), set(domain_info.enum_type_names)
+                )
+            else:
+                existing_domain_info.type_names.update(domain_info.type_names)
+                existing_domain_info.enum_type_names.update(domain_info.enum_type_names)
+        is_top = is_top or info.is_top
+    return EqualityValueInfo(domains, is_top)
 
 
 def is_typeddict_type_context(lvalue_type: Type) -> bool:

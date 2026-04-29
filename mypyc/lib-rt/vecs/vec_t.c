@@ -24,12 +24,18 @@ static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
         return NULL;
     buf->item_type = item_type;
     Py_INCREF(VEC_BUF_ITEM_TYPE(buf));
-    PyObject_GC_Track(buf);
     return buf;
 }
 
-// Alloc a partially initialized vec. Caller *must* immediately initialize len, and buf->items
-// if size > 0.
+static inline void vec_track_buffer(VecT *vec) {
+    if (vec->buf != NULL) {
+        PyObject_GC_Track(vec->buf);
+    }
+}
+
+// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len,
+// and buf->items. Caller *must* also call vec_track_buffer on the returned vec but only
+// after initializing the items.
 static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     VecTBufObject *buf;
 
@@ -51,6 +57,7 @@ PyObject *VecT_Box(VecT vec, size_t item_type) {
         vec.buf = alloc_buf(0, item_type);
         if (vec.buf == NULL)
             return NULL;
+        vec_track_buffer(&vec);
     }
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
     if (obj == NULL) {
@@ -81,6 +88,10 @@ VecT VecT_ConvertFromNested(VecNestedBufItem item) {
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
+    if (cap < 0) {
+        PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
+        return vec_error();
+    }
     if (cap < size)
         cap = size;
     VecT vec = vec_alloc(cap, item_type);
@@ -89,6 +100,7 @@ VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
     for (Py_ssize_t i = 0; i < cap; i++) {
         vec.buf->items[i] = NULL;
     }
+    vec_track_buffer(&vec);
     vec.len = size;
     return vec;
 }
@@ -139,6 +151,7 @@ VecT VecT_Slice(VecT vec, int64_t start, int64_t end) {
         Py_INCREF(item);
         res.buf->items[i] = item;
     }
+    vec_track_buffer(&res);
     return res;
 }
 
@@ -176,6 +189,7 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
+        vec_track_buffer(&res);
         PyObject *result = VecT_Box(res, vec.buf->item_type);
         if (result == NULL) {
             VEC_DECREF(res);
@@ -256,6 +270,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         Py_INCREF(x);
         new.len = 1;
         new.buf->items[0] = x;
+        vec_track_buffer(&new);
         return new;
     }
     Py_ssize_t cap = VEC_CAP(vec);
@@ -266,7 +281,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         vec.len++;
         return vec;
     } else {
-        Py_ssize_t new_size = 2 * cap + 1;
+        Py_ssize_t new_size = Vec_GrowCapacity(cap);
         // TODO: Avoid initializing to zero here
         VecT new = vec_alloc(new_size, vec.buf->item_type);
         if (VEC_IS_ERROR(new)) {
@@ -279,13 +294,133 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         // Copy items to new vec.
         memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
         memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        if (Py_REFCNT(vec.buf) > 1) {
+            // Other references to old buffer exist; INCREF items in new buffer
+            // so old buffer keeps valid references for aliases.
+            for (Py_ssize_t i = 0; i < vec.len; i++)
+                Py_XINCREF(new.buf->items[i]);
+        } else {
+            // No aliases; transfer ownership by clearing old buffer items.
+            memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
+        vec_track_buffer(&new);
         VEC_DECREF(vec);
         return new;
     }
+}
+
+// Extend 'vec' with items from 'iterable', stealing 'vec'.
+// Return extended 'vec', or error vec on failure.
+VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type) {
+    if (VecT_Check(iterable)) {
+        VecT src = ((VecTObject *)iterable)->vec;
+        if (src.buf != NULL && src.buf->item_type == item_type) {
+            return VecT_ExtendVec(vec, src, item_type);
+        }
+    }
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (!VecT_ItemCheck(vec, item, item_type)) {
+            Py_DECREF(iter);
+            VEC_DECREF(vec);
+            Py_DECREF(item);
+            return vec_error();
+        }
+        vec = VecT_Append(vec, item, item_type);
+        Py_DECREF(item);
+        if (VEC_IS_ERROR(vec)) {
+            Py_DECREF(iter);
+            return vec_error();
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        VEC_DECREF(vec);
+        return vec_error();
+    }
+    return vec;
+}
+
+// Extend 'dst' with items from 'src' vec, stealing 'dst', borrowing 'src'.
+// Return extended vec, or error vec on failure.
+VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
+    if (src.len == 0)
+        return dst;
+    if (src.len > PY_SSIZE_T_MAX - dst.len) {
+        PyErr_NoMemory();
+        VEC_DECREF(dst);
+        return vec_error();
+    }
+    Py_ssize_t new_len = dst.len + src.len;
+    if (dst.buf == NULL) {
+        // dst is empty, allocate new buf
+        VecT new = vec_alloc(new_len, item_type);
+        if (VEC_IS_ERROR(new)) {
+            VEC_DECREF(dst);
+            return new;
+        }
+        for (Py_ssize_t i = 0; i < src.len; i++) {
+            Py_INCREF(src.buf->items[i]);
+            new.buf->items[i] = src.buf->items[i];
+        }
+        memset(new.buf->items + src.len, 0, sizeof(PyObject *) * (new_len - src.len));
+        new.len = new_len;
+        vec_track_buffer(&new);
+        return new;
+    }
+    Py_ssize_t cap = VEC_CAP(dst);
+    if (new_len <= cap && dst.buf != src.buf) {
+        // Fast path: enough capacity and no aliasing
+        for (Py_ssize_t i = 0; i < src.len; i++) {
+            Py_INCREF(src.buf->items[i]);
+            // Slot may have duplicate ref from prior remove/pop
+            Py_XSETREF(dst.buf->items[dst.len + i], src.buf->items[i]);
+        }
+        dst.len = new_len;
+        return dst;
+    }
+    // Need to reallocate (or dst and src share a buffer)
+    Py_ssize_t new_cap = Vec_GrowCapacityTo(cap, new_len);
+    int aliased = dst.buf == src.buf;
+    VecT new = vec_alloc(new_cap, dst.buf->item_type);
+    if (VEC_IS_ERROR(new)) {
+        VEC_DECREF(dst);
+        return new;
+    }
+    if (aliased) {
+        // dst and src share a buffer -- incref all items instead of
+        // moving refs, to avoid mutating the shared buffer
+        for (Py_ssize_t i = 0; i < dst.len; i++) {
+            Py_INCREF(dst.buf->items[i]);
+            new.buf->items[i] = dst.buf->items[i];
+        }
+    } else {
+        memcpy(new.buf->items, dst.buf->items, sizeof(PyObject *) * dst.len);
+        if (Py_REFCNT(dst.buf) > 1) {
+            for (Py_ssize_t i = 0; i < dst.len; i++)
+                Py_XINCREF(new.buf->items[i]);
+        } else {
+            memset(dst.buf->items, 0, sizeof(PyObject *) * dst.len);
+        }
+    }
+    // Copy src items (incref each)
+    for (Py_ssize_t i = 0; i < src.len; i++) {
+        Py_INCREF(src.buf->items[i]);
+        new.buf->items[dst.len + i] = src.buf->items[i];
+    }
+    memset(new.buf->items + new_len, 0, sizeof(PyObject *) * (new_cap - new_len));
+    new.len = new_len;
+    vec_track_buffer(&new);
+    VEC_DECREF(dst);
+    return new;
 }
 
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
@@ -550,11 +685,16 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
-    VecT v = vec_alloc(0, item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
+    if (cap > 0) {
+        for (int64_t i = 0; i < cap; i++)
+            v.buf->items[i] = NULL;
+    }
     v.len = 0;
+    vec_track_buffer(&v);
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
@@ -596,6 +736,8 @@ VecTAPI Vec_TAPI = {
     VecT_Pop,
     VecT_Remove,
     VecT_Slice,
+    VecT_Extend,
+    VecT_ExtendVec,
 };
 
 #endif  // MYPYC_EXPERIMENTAL

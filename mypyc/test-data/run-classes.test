@@ -3325,20 +3325,39 @@ def test_function():
     assert(isinstance(d.fitem, ForwardDefinedClass))
     assert(isinstance(d.fitems, ForwardDefinedClass))
 
-[case testDelForDictSubclass-xfail]
-# The crash in issue mypy#19175 is fixed.
-# But, for classes that derive from built-in Python classes, user-defined __del__ method is not
-# being invoked.
+[case testDelForDictSubclass]
+events: list[str] = []
+
+class Item:
+    def __del__(self) -> None:
+        events.append("deleting Item")
+
 class DictSubclass(dict):
-    def __del__(self):
-        print("deleting DictSubclass...")
+    def __del__(self) -> None:
+        events.append("deleting DictSubclass")
+
+def test_dict_subclass_dealloc() -> None:
+    d = DictSubclass()
+    d["item"] = Item()
+    del d
 
 [file driver.py]
-import native
-native.DictSubclass()
+import sys
 
-[out]
-deleting DictSubclass...
+from native import events, test_dict_subclass_dealloc
+
+test_dict_subclass_dealloc()
+
+expected_events: list[str] = []
+
+# TODO: Fix when compiling for older python.
+# The user-defined __del__ method is currently only invoked when __dict__ is a managed dict
+# because calling __del__ in tp_clear on older python crashes.
+if sys.version_info >= (3, 12):
+    expected_events.append("deleting DictSubclass")
+expected_events.append("deleting Item")
+
+assert events == expected_events, events
 
 [case testDel]
 class A:

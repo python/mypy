@@ -5,7 +5,7 @@
 from typing import Final, Any, Iterable, Optional, Tuple
 
 from mypy_extensions import i64
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 
 from testutil import assertRaises
 
@@ -436,3 +436,136 @@ def test_union_of_vecs() -> None:
     with assertRaises(TypeError):
         a4: Any = vec[Foo]()
         len_union(a4)
+
+def test_append_with_alias() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    alias = v
+    v = append(v, 'b')
+    v = append(v, 'c')
+    v = append(v, 'd')
+    assert alias[0] == 'a'
+    assert len(alias) == 1
+    assert v[0] == 'a'
+    assert len(v) == 4
+
+def test_cap_empty() -> None:
+    v = vec[str](capacity=3)
+    assert len(v) == 0
+    assert v == vec[str]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+
+def test_cap_from_comprehension_and_iterable() -> None:
+    v = vec[str]([str(i) for i in range(2)], capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'x'
+    assert old[0] == 'x'
+    assert v == vec[str](['x', '1', '2'])
+
+    v = vec[str]((str(i) for i in range(2)), capacity=3)
+    old = v
+    v = append(v, '2')
+    v[0] = 'y'
+    assert old[0] == 'y'
+    assert v == vec[str](['y', '1', '2'])
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[str](capacity=n)
+    assert len(v) == 0
+    v = append(v, 'x')
+    assert v[0] == 'x'
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    old = v
+    v = append(v, 'c')
+    v[0] = 'z'
+    assert old[0] == 'z'  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[str](['a', 'b', 'c'], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 'a'
+    assert v[1] == 'b'
+    assert v[2] == 'c'
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[str](capacity=-1)
+    with assertRaises(ValueError):
+        vec[str](['x'], capacity=-1)
+
+def extend_vec(v: vec[str], v2: vec[str]) -> vec[str]:
+    return extend(v, v2)
+
+def extend_iterable(v: vec[str], it: Iterable[str]) -> vec[str]:
+    return extend(v, it)
+
+def test_extend_vec() -> None:
+    v = extend_vec(vec[str](['a', 'b']), vec[str](['c', 'd']))
+    assert v == vec[str](['a', 'b', 'c', 'd'])
+
+def test_extend_vec_empty_src() -> None:
+    v = extend_vec(vec[str](['a']), vec[str]())
+    assert v == vec[str](['a'])
+
+def test_extend_vec_empty_dst() -> None:
+    v = extend_vec(vec[str](), vec[str](['x', 'y']))
+    assert v == vec[str](['x', 'y'])
+
+def test_extend_vec_fits_in_capacity() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    v = extend_vec(v, vec[str](['c']))
+    assert v == vec[str](['a', 'b', 'c'])
+
+def test_extend_vec_exceeds_capacity() -> None:
+    v = vec[str](['a', 'b'], capacity=3)
+    v = extend_vec(v, vec[str](['c', 'd', 'e']))
+    assert v == vec[str](['a', 'b', 'c', 'd', 'e'])
+
+def test_extend_vec_multiple_doublings() -> None:
+    v = vec[str](['x'], capacity=1)
+    src = vec[str]()
+    for i in range(20):
+        src = append(src, str(i))
+    v = extend_vec(v, src)
+    assert len(v) == 21
+    assert v[0] == 'x'
+    assert v[20] == '19'
+
+def test_extend_vec_self() -> None:
+    v = vec[str]()
+    v = append(v, 'a')
+    v = append(v, 'b')
+    v = extend_vec(v, v)
+    assert v == vec[str](['a', 'b', 'a', 'b'])
+
+def test_extend_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[str]()
+    v0 = append(v0, 'a')
+    v0 = append(v0, 'b')
+    v0 = append(v0, 'c')
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer; v1.len=2, v0.len=3
+    v = extend_vec(v1, v0)
+    assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
+    # src (v0) must not be corrupted
+    assert v0 == vec[str](['a', 'b', 'c'])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[str]()
+    v0 = append(v0, 'a')
+    v0 = append(v0, 'b')
+    v0 = append(v0, 'c')
+    v1, _ = pop(v0)
+    # Statically this uses VecTApi.extend, but at runtime the iterable is a vec.
+    it: Iterable[str] = v0
+    v = extend_iterable(v1, it)
+    assert v == vec[str](['a', 'b', 'a', 'b', 'c'])
+    assert v0 == vec[str](['a', 'b', 'c'])

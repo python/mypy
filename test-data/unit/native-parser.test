@@ -3275,3 +3275,14 @@ MypyFile:1(
     TypeParam(
       *Ts)
     PassStmt:4()))
+
+[case testTypeCommentLastLine]
+d = [
+   # Placeholder for items
+]  # type: list[int]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(d)
+    ListExpr:1()
+    list?[int?]))

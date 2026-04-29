@@ -4461,7 +4461,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_assignment_expr(self, e: AssignmentExpr) -> Type:
         value = self.accept(e.value)
+        binder_version = self.chk.binder.version
         self.chk.check_assignment(e.target, e.value)
+        if self.chk.binder.version != binder_version:
+            self.chk.assignment_expression_effect += 1
         self.chk.check_final(e)
         if not has_uninhabited_component(value):
             # TODO: can we get rid of this extra store_type()?

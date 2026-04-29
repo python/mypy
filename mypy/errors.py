@@ -876,12 +876,8 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        if self.options:
-            current_mod_disabled = self.options.disabled_error_codes
-            current_mod_enabled = self.options.enabled_error_codes
-        else:
-            current_mod_disabled = set()
-            current_mod_enabled = set()
+        current_mod_disabled = self.options.disabled_error_codes
+        current_mod_enabled = self.options.enabled_error_codes
 
         if error_code in current_mod_disabled:
             return False

@@ -3,8 +3,6 @@
 
 #include "byteswriter_extra_ops.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     const char *data;
@@ -41,5 +39,3 @@ void CPyBytes_ReadError(int64_t index, Py_ssize_t size) {
                      (long long)index, size);
     }
 }
-
-#endif // MYPYC_EXPERIMENTAL
