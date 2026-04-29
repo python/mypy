@@ -121,11 +121,13 @@ This example writes two binary values and reads them afterwards::
 
 .. function:: read_i16_le(b: bytes, index: i64, /) -> i16
 
-   Read a 16-bit integer value starting at the given index as a little-endian binary value.
+   Read a 16-bit integer value starting at the given index as a little-endian binary value
+   (2 bytes).
 
 .. function:: read_i16_be(b: bytes, index: i64, /) -> i16
 
-   Read a 16-bit integer value starting at the given index as a big-endian binary value.
+   Read a 16-bit integer value starting at the given index as a big-endian binary value
+   (2 bytes).
 
 .. function:: write_i32_le(b: BytesWriter, n: i32, /) -> None
 
@@ -137,11 +139,13 @@ This example writes two binary values and reads them afterwards::
 
 .. function:: read_i32_le(b: bytes, index: i64, /) -> i32
 
-   Read a 32-bit integer value starting at the given index as a little-endian binary value.
+   Read a 32-bit integer value starting at the given index as a little-endian binary value
+   (4 bytes).
 
 .. function:: read_i32_be(b: bytes, index: i64, /) -> i32
 
-   Read a 32-bit integer value starting at the given index as a big-endian binary value.
+   Read a 32-bit integer value starting at the given index as a big-endian binary value
+   (4 bytes).
 
 .. function:: write_i64_le(b: BytesWriter, n: i64, /) -> None
 
@@ -153,11 +157,13 @@ This example writes two binary values and reads them afterwards::
 
 .. function:: read_i64_le(b: bytes, index: i64, /) -> i64
 
-   Read a 64-bit integer value starting at the given index as a little-endian binary value.
+   Read a 64-bit integer value starting at the given index as a little-endian binary value
+   (8 bytes).
 
 .. function:: read_i64_be(b: bytes, index: i64, /) -> i64
 
-   Read a 64-bit integer value starting at the given index as a big-endian binary value.
+   Read a 64-bit integer value starting at the given index as a big-endian binary value
+   (8 bytes).
 
 .. function:: write_f32_le(b: BytesWriter, n: float, /) -> None
 
@@ -169,11 +175,13 @@ This example writes two binary values and reads them afterwards::
 
 .. function:: read_f32_le(b: bytes, index: i64, /) -> float
 
-   Read a 32-bit floating-point value starting at the given index as a little-endian binary value.
+   Read a 32-bit floating-point value starting at the given index as a little-endian binary value
+   (4 bytes).
 
 .. function:: read_f32_be(b: bytes, index: i64, /) -> float
 
-   Read a 32-bit floating-point value starting at the given index as a big-endian binary value.
+   Read a 32-bit floating-point value starting at the given index as a big-endian binary value
+   (4 bytes).
 
 .. function:: write_f64_le(b: BytesWriter, n: float, /) -> None
 
@@ -185,8 +193,10 @@ This example writes two binary values and reads them afterwards::
 
 .. function:: read_f64_le(b: bytes, index: i64, /) -> float
 
-   Read a 64-bit floating-point value starting at the given index as a little-endian binary value.
+   Read a 64-bit floating-point value starting at the given index as a little-endian binary value
+   (8 bytes).
 
 .. function:: read_f64_be(b: bytes, index: i64, /) -> float
 
-   Read a 64-bit floating-point value starting at the given index as a big-endian binary value.
+   Read a 64-bit floating-point value starting at the given index as a big-endian binary value
+   (8 bytes).

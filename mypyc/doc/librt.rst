@@ -3,7 +3,7 @@
 Librt overview
 ==============
 
-The `librt <https://pypi.org/project/librt/>`_ package defines fast
+The `librt <https://pypi.org/project/librt/>`__ package defines fast
 primitive operations that are optimized for code compiled
 using mypyc. It has carefully selected efficient alternatives for
 certain Python standard library features.
