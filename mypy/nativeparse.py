@@ -715,14 +715,14 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         keywords.append((key, value))
 
     metaclass = dict(keywords).get("metaclass") if keywords else None
-    filtered_keywords = [(k, v) for k, v in keywords if k != "metaclass"] if keywords else None
 
     class_def = ClassDef(
         name,
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
-        keywords=filtered_keywords,
+        # Note we keep metaclass in keywords as well, to match the old parser.
+        keywords=keywords if keywords else None,
         type_args=type_params,
     )
     class_def.decorators = decorators
@@ -1329,15 +1329,16 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         op = bool_ops[read_int(data)]
         values = read_expression_list(state, data)
         # Convert list of values to nested OpExpr nodes
-        # E.g., [a, b, c] with "and" becomes OpExpr("and", OpExpr("and", a, b), c)
+        # E.g., [a, b, c] with "and" becomes OpExpr("and", a, OpExpr("and", b, c))
+        # This matches the old parser behavior, on which we may implicitly rely.
         assert len(values) >= 2
-        result = values[0]
-        for val in values[1:]:
-            result = OpExpr(op, result, val)
-            result.line = values[0].line
-            result.column = values[0].column
-            result.end_line = val.end_line
-            result.end_column = val.end_column
+        result = last = values[-1]
+        for val in values[-2::-1]:
+            result = OpExpr(op, val, result)
+            result.line = val.line
+            result.column = val.column
+            result.end_line = last.end_line
+            result.end_column = last.end_column
         read_loc(data, result)
         expect_end_tag(data)
         return result
