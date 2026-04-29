@@ -638,11 +638,11 @@ else:
 [case testEveryKindOfTypeExpressionIsAssignableToATypeFormVariable]
 # NOTE: Importing Callable from collections.abc also works OK
 from typing import (
-    Any, Callable, Dict, List, Literal, LiteralString, NoReturn,
+    Any, Callable, Dict, List, Literal, NoReturn,
     Optional, ParamSpec, Self, Type, TypeGuard, TypeVar, Union,
 )
 from typing_extensions import (
-    Annotated, Concatenate, Never, TypeAlias, TypeForm, TypeIs,
+    Annotated, Concatenate, LiteralString, Never, TypeAlias, TypeForm, TypeIs,
     TypeVarTuple, Unpack,
 )
 #
