@@ -4367,6 +4367,23 @@ accepts_B(b)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictReadOnlyTypeVarBoundSubtyping]
+from typing import ReadOnly, TypedDict, TypeVar
+A = TypedDict('A', {'x': ReadOnly[int]})
+B = TypedDict('B', {'x': int})
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+def fA(t: TA) -> TA: return t
+def fB(t: TB) -> TB: return t
+a: A
+b: B
+fA(a)
+fA(b)
+fB(a)  # E: Value of type variable "TB" of "fB" cannot be "A"
+fB(b)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlySubclassing]
 from typing import ReadOnly, TypedDict
 

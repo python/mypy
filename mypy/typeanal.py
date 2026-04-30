@@ -1360,6 +1360,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if sub_item_name in p_analyzed.readonly_keys:
                         readonly_keys.add(sub_item_name)
         else:
+            readonly_keys = t.readonly_keys
             required_keys = t.required_keys
             fallback = t.fallback
         return TypedDictType(items, required_keys, readonly_keys, fallback, t.line, t.column)
