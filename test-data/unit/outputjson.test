@@ -45,7 +45,7 @@ bar('42')
 
 [case testOutputJsonSyntaxError]
 # flags: --output=json
-def foo<
+klass foo
 [out]
-{"file": "main", "line": 2, "column": 8, "end_line": 2, "end_column": 9, "message": "Expected '('", "hint": null, "code": "syntax", "severity": "error"}
+{"file": "main", "line": 2, "column": 7, "end_line": 2, "end_column": 8, "message": "Invalid syntax", "hint": null, "code": "syntax", "severity": "error"}
 !!! Mypy crashed !!!
