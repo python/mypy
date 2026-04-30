@@ -2409,6 +2409,26 @@ v = {bad2: 2}  # E: Missing key "num" for TypedDict "Value" \
 
 [case testOperatorContainsNarrowsTypedDicts_unionWithList]
 from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+
+class D(TypedDict):
+    foo: int
+
+
+d_or_list: D | list[str]
+
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D, list[str]])
+elif 'bar' in d_or_list:
+    assert_type(d_or_list, list[str])
+else:
+    assert_type(d_or_list, list[str])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_unionWithList_final]
+from __future__ import annotations
 from typing import assert_type, final, TypedDict, Union
 
 @final
@@ -2428,19 +2448,20 @@ else:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testOperatorContainsNarrowsTypedDicts_total]
+[case testOperatorContainsNarrowsTypedDicts_total_never]
 from __future__ import annotations
 from typing import assert_type, final, Literal, TypedDict, TypeVar, Union
+from typing_extensions import Never, NotRequired
 
-@final
 class D1(TypedDict):
     foo: int
+    bar: NotRequired[Never]
+    invalid: NotRequired[Never]
 
-
-@final
 class D2(TypedDict):
+    foo: NotRequired[Never]
     bar: int
-
+    invalid: NotRequired[Never]
 
 d: D1 | D2
 
@@ -2473,7 +2494,95 @@ def f(arg: TD) -> None:
         assert_type(arg['foo'], int)
     else:
         assert_type(arg['bar'], int)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
+[case testOperatorContainsNarrowsTypedDicts_total_final]
+from __future__ import annotations
+from typing import assert_type, final, Literal, TypedDict, TypeVar, Union
+
+@final
+class D1(TypedDict):
+    foo: int
+
+@final
+class D2(TypedDict):
+    bar: int
+
+d: D1 | D2
+
+if 'foo' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+foo_or_bar: Literal['foo', 'bar']
+if foo_or_bar in d:
+    assert_type(d, Union[D1, D2])
+else:
+    assert_type(d, Union[D1, D2])
+
+foo_or_invalid: Literal['foo', 'invalid']
+if foo_or_invalid in d:
+    assert_type(d, D1)
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+else:
+    assert_type(d, Union[D1, D2])
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+
+TD = TypeVar('TD', D1, D2)
+
+def f(arg: TD) -> None:
+    value: int
+    if 'foo' in arg:
+        assert_type(arg['foo'], int)
+    else:
+        assert_type(arg['bar'], int)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_never]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import Never, NotRequired
+
+class DFooNotBar(TypedDict):
+    foo: int
+    bar: NotRequired[Never]
+
+
+class DBar(TypedDict):
+    bar: int
+
+
+d_bar: DBar
+
+if 'bar' in d_bar:
+    assert_type(d_bar, DBar)
+else:
+    spam = 'ham'  # E: Statement is unreachable
+
+if 'spam' in d_bar:
+    assert_type(d_bar, DBar)
+else:
+    assert_type(d_bar, DBar)
+
+d_foo_not_bar: DFooNotBar
+
+if 'spam' in d_foo_not_bar:
+    spam = 'ham'
+else:
+    assert_type(d_foo_not_bar, DFooNotBar)
+
+d_union: DFooNotBar | DBar
+
+if 'foo' in d_union:
+    assert_type(d_union, Union[DFooNotBar, DBar])
+else:
+    assert_type(d_union, DBar)
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
@@ -2521,19 +2630,18 @@ else:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse_never]
 from __future__ import annotations
-from typing import assert_type, final, Literal, TypedDict, Union
+from typing import assert_type, Literal, TypedDict, Union
+from typing_extensions import Never, NotRequired
 
-@final
 class DTotal(TypedDict):
     required_key: int
+    optional_key: NotRequired[Never]
 
-
-@final
 class DNotTotal(TypedDict, total=False):
+    required_key: Never
     optional_key: int
-
 
 d: DTotal | DNotTotal
 
@@ -2556,7 +2664,69 @@ else:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse_final]
+from __future__ import annotations
+from typing import assert_type, final, Literal, TypedDict, Union
+
+@final
+class DTotal(TypedDict):
+    required_key: int
+
+@final
+class DNotTotal(TypedDict, total=False):
+    optional_key: int
+
+d: DTotal | DNotTotal
+
+if 'required_key' in d:
+    assert_type(d, DTotal)
+else:
+    assert_type(d, DNotTotal)
+
+if 'optional_key' in d:
+    assert_type(d, DNotTotal)
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+key: Literal['optional_key', 'required_key']
+if key in d:
+    assert_type(d, Union[DTotal, DNotTotal])
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired_never]
+from __future__ import annotations
+from typing import assert_type, final, TypedDict, Union
+from typing_extensions import Never, Required, NotRequired
+
+class D1(TypedDict):
+    required_key: Required[int]
+    optional_key: NotRequired[int]
+
+class D2(TypedDict):
+    abc: int
+    xyz: int
+    required_key: NotRequired[Never]
+    optional_key: NotRequired[Never]
+
+d: D1 | D2
+
+if 'required_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+if 'optional_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, Union[D1, D2])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired_final]
 from __future__ import annotations
 from typing import assert_type, final, TypedDict, Union
 from typing_extensions import Required, NotRequired
@@ -2566,12 +2736,10 @@ class D1(TypedDict):
     required_key: Required[int]
     optional_key: NotRequired[int]
 
-
 @final
 class D2(TypedDict):
     abc: int
     xyz: int
-
 
 d: D1 | D2
 

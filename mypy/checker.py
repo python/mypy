@@ -6410,7 +6410,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if key in possible_iterable_type.required_keys:
                         if_types.append(possible_iterable_type)
                     elif (
-                        key in possible_iterable_type.items or not possible_iterable_type.is_final
+                        key in possible_iterable_type.items
+                        and not isinstance(
+                            get_proper_type(possible_iterable_type.items[key]), UninhabitedType
+                        )
+                    ) or (
+                        key not in possible_iterable_type.items
+                        and not possible_iterable_type.is_final
                     ):
                         if_types.append(possible_iterable_type)
                         else_types.append(possible_iterable_type)
