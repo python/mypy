@@ -14,7 +14,7 @@ static inline PyObject *CPyVecU8_ToBytes(VecU8 v) {
     if (v.len == 0) {
         return PyBytes_FromStringAndSize(NULL, 0);
     }
-    return PyBytes_FromStringAndSize((const char *)v.buf->items, v.len);
+    return PyBytes_FromStringAndSize((const char *)v.items, v.len);
 }
 
 #endif // MYPYC_EXPERIMENTAL
