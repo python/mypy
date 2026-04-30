@@ -97,47 +97,62 @@ typedef struct _VecNestedBufObject {
 
 
 // Unboxed vec objects
+//
+// The items pointer points to the first element of the items array in the
+// corresponding buffer object. Use VEC_*_BUF() to recover the buffer object
+// from the items pointer (only needed on cold paths like grow/refcount).
+// Items pointer is NULL for empty/uninitialized vecs.
 
 
 typedef struct _VecI64 {
     Py_ssize_t len;
-    VecI64BufObject *buf;
+    int64_t *items;
 } VecI64;
 
 typedef struct _VecI32 {
     Py_ssize_t len;
-    VecI32BufObject *buf;
+    int32_t *items;
 } VecI32;
 
 typedef struct _VecI16 {
     Py_ssize_t len;
-    VecI16BufObject *buf;
+    int16_t *items;
 } VecI16;
 
 typedef struct _VecU8 {
     Py_ssize_t len;
-    VecU8BufObject *buf;
+    uint8_t *items;
 } VecU8;
 
 typedef struct _VecFloat {
     Py_ssize_t len;
-    VecFloatBufObject *buf;
+    double *items;
 } VecFloat;
 
 typedef struct _VecBool {
     Py_ssize_t len;
-    VecBoolBufObject *buf;
+    char *items;
 } VecBool;
 
 typedef struct _VecT {
     Py_ssize_t len;
-    VecTBufObject *buf;
+    PyObject **items;
 } VecT;
 
 typedef struct _VecNested {
     Py_ssize_t len;
-    VecNestedBufObject *buf;
+    VecNestedBufItem *items;
 } VecNested;
+
+// Recover buffer object from items pointer. Only valid when items != NULL.
+#define VEC_I64_BUF(v) ((VecI64BufObject *)((char *)(v).items - offsetof(VecI64BufObject, items)))
+#define VEC_I32_BUF(v) ((VecI32BufObject *)((char *)(v).items - offsetof(VecI32BufObject, items)))
+#define VEC_I16_BUF(v) ((VecI16BufObject *)((char *)(v).items - offsetof(VecI16BufObject, items)))
+#define VEC_U8_BUF(v) ((VecU8BufObject *)((char *)(v).items - offsetof(VecU8BufObject, items)))
+#define VEC_FLOAT_BUF(v) ((VecFloatBufObject *)((char *)(v).items - offsetof(VecFloatBufObject, items)))
+#define VEC_BOOL_BUF(v) ((VecBoolBufObject *)((char *)(v).items - offsetof(VecBoolBufObject, items)))
+#define VEC_T_BUF(v) ((VecTBufObject *)((char *)(v).items - offsetof(VecTBufObject, items)))
+#define VEC_NESTED_BUF(v) ((VecNestedBufObject *)((char *)(v).items - offsetof(VecNestedBufObject, items)))
 
 
 // Boxed vec objects
