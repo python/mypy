@@ -6,6 +6,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "mypyc_util.h"
 
