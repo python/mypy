@@ -692,8 +692,7 @@ static inline VecT vec_from_sequence(
     VecT v = vec_alloc(alloc_size, item_type);
     if (VEC_IS_ERROR(v))
         return vec_error();
-    Py_ssize_t i;
-    for (i = 0; i < n; i++) {
+    for (Py_ssize_t i = 0; i < n; i++) {
         PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
         if (!VecT_ItemCheck(v, item, item_type)) {
             for (Py_ssize_t j = i; j < alloc_size; j++)
