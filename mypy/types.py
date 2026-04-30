@@ -3023,17 +3023,17 @@ class TypedDictType(ProperType):
             "required_keys": sorted(self.required_keys),
             "readonly_keys": sorted(self.readonly_keys),
             "fallback": self.fallback.serialize(),
+            "is_closed": self.is_closed,
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> TypedDictType:
         assert data[".class"] == "TypedDictType"
-        # TODO: round-trip is_closed
         return TypedDictType(
             {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             set(data["readonly_keys"]),
-            False,
+            bool(data["is_closed"]),
             Instance.deserialize(data["fallback"]),
         )
 
@@ -3043,18 +3043,18 @@ class TypedDictType(ProperType):
         write_type_map(data, self.items)
         write_str_list(data, sorted(self.required_keys))
         write_str_list(data, sorted(self.readonly_keys))
+        write_bool(data, self.is_closed)
         write_tag(data, END_TAG)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> TypedDictType:
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
-        # TODO: round-trip is_closed
         ret = TypedDictType(
             read_type_map(data),
             set(read_str_list(data)),
             set(read_str_list(data)),
-            False,
+            read_bool(data),
             fallback,
         )
         assert read_tag(data) == END_TAG
