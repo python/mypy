@@ -633,26 +633,71 @@ def mypyc_build(
     # Write out the generated C and collect the files for each group
     # Should this be here??
     group_cfilenames: list[tuple[list[str], list[str]]] = []
-    for cfiles in group_cfiles:
+    # Per-group list of (full_cfile_path, raw_include_targets). Resolution is
+    # deferred until every group has written its files (sibling groups' headers
+    # may not exist while we're iterating a different group), and is done
+    # per-includer so we can apply the C preprocessor's actual search order.
+    pending: list[list[tuple[str, list[str]]]] = []
+    for (group_sources, group_name), cfiles in zip(groups, group_cfiles):
         cfilenames = []
+        per_cfile_deps: list[tuple[str, list[str]]] = []
         for cfile, ctext in cfiles:
-            cfile = os.path.join(compiler_options.target_dir, cfile)
-            # Empty contents marks a file the previous run already wrote
-            # (fully-cached group): skip the rewrite and just reuse it.
-            if ctext and not options.mypyc_skip_c_generation:
-                write_file(cfile, ctext)
-            if os.path.splitext(cfile)[1] == ".c":
-                cfilenames.append(cfile)
+            cfile_full = os.path.join(compiler_options.target_dir, cfile)
+            if not options.mypyc_skip_c_generation:
+                write_file(cfile_full, ctext)
+            if os.path.splitext(cfile_full)[1] == ".c":
+                cfilenames.append(cfile_full)
+            per_cfile_deps.append((cfile_full, get_header_deps([(cfile, ctext)])))
 
-        # The header regex matches both quote styles, so the result can
-        # include system headers like `<Python.h>` that don't live under
-        # target_dir. Joining those produces non-existent paths which
-        # would force a full rebuild on every run via Extension.depends.
-        candidate_deps = (
-            os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)
-        )
-        deps = [d for d in candidate_deps if os.path.exists(d)]
-        group_cfilenames.append((cfilenames, deps))
+        # Fully-cached mypy build (typical of pip's second setup.py invocation
+        # for the wheel-build phase): mypyc returns an empty ctext for the
+        # group, but the .c file from the previous run is still on disk.
+        # Reuse it so the resulting Extension isn't built with sources=[].
+        # Mirrors the path that GroupGenerator.generate_c_for_modules emits.
+        if not cfilenames and group_name is not None:
+            from mypyc.codegen.emitmodule import group_dir as _group_dir
+
+            short_suffix = "_" + exported_name(group_name.split(".")[-1])
+            existing = os.path.join(
+                compiler_options.target_dir,
+                _group_dir(group_name),
+                f"__native{short_suffix}.c",
+            )
+            if os.path.exists(existing):
+                cfilenames.append(existing)
+
+        pending.append(per_cfile_deps)
+        group_cfilenames.append((cfilenames, []))
+
+    # Resolve deps in a second pass, after every group's files are on disk.
+    #
+    # The C preprocessor resolves `#include "foo"` relative to the includer's
+    # directory first, then via -I, while `#include <foo>` only uses -I.
+    # mypyc's previous logic blindly prepended target_dir to every regex-matched
+    # include, producing two failure modes:
+    #   1. `"__native_athena.h"` from `build/sqlglot/parsers/__native_athena.c`
+    #      became `build/__native_athena.h` (nonexistent). setuptools' newer_group
+    #      with missing="newer" then forced a rebuild on every incremental build.
+    #   2. lib-rt headers like `<CPy.h>` became `build/CPy.h` (also nonexistent),
+    #      same forced-rebuild behavior.
+    # Try resolving each include first against the .c file's directory, then
+    # against target_dir; keep every candidate that exists. This both stops the
+    # spurious "missing -> newer" rebuilds *and* preserves real cross-module
+    # struct-layout dependencies (per-module headers under target_dir).
+    # lib-rt headers don't change between builds, so dropping them from depends
+    # is safe; if they ever do, that's a clean-rebuild scenario.
+    for i, per_cfile in enumerate(pending):
+        deps_set: set[str] = set()
+        for cfile_full, dep_names in per_cfile:
+            cfile_dir = os.path.dirname(cfile_full)
+            for dep in dep_names:
+                for base in (cfile_dir, compiler_options.target_dir):
+                    candidate = os.path.join(base, dep)
+                    if os.path.exists(candidate):
+                        deps_set.add(candidate)
+                        break
+        cfilenames, _ = group_cfilenames[i]
+        group_cfilenames[i] = (cfilenames, sorted(deps_set))
 
     return groups, group_cfilenames, source_deps
 
