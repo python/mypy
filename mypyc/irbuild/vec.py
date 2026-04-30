@@ -48,9 +48,9 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     list_rprimitive,
     object_rprimitive,
-    tuple_rprimitive,
     optional_value_type,
     pointer_rprimitive,
+    tuple_rprimitive,
     vec_api_by_item_type,
     vec_item_type_tags,
 )
@@ -607,11 +607,7 @@ def vec_to_tuple(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | N
 
 
 def _vec_to_sequence(
-    builder: LowLevelIRBuilder,
-    vec: Value,
-    line: int,
-    method: str,
-    result_type: RType,
+    builder: LowLevelIRBuilder, vec: Value, line: int, method: str, result_type: RType
 ) -> Value | None:
     vec_type = vec.type
     assert isinstance(vec_type, RVec)

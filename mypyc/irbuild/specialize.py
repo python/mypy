@@ -99,7 +99,14 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.vec import vec_append, vec_extend, vec_pop, vec_remove, vec_to_list, vec_to_tuple
+from mypyc.irbuild.vec import (
+    vec_append,
+    vec_extend,
+    vec_pop,
+    vec_remove,
+    vec_to_list,
+    vec_to_tuple,
+)
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
