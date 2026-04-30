@@ -1053,13 +1053,16 @@ enabled by default starting from mypy 2.0.
     of workers is not supported yet.
 
 Notes:
+
 * An import cycle is always processed as a whole by a worker process. Thus,
   avoiding large import cycles in your code will *significantly* improve
   type-checking speed.
+
 * Specifying a number of workers that is larger than the number of *physical*
   CPU cores is not beneficial, since mypy is usually CPU bound. Best way to
   tune the number of workers on a given machine is to start from 2-3 workers
   and increase the number while you see a performance improvement.
+
 * Parallel mode requires and automatically enables :option:`--native-parser`.
 
 
