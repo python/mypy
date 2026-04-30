@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     GetElement,
     GetElementPtr,
     Integer,
+    IncRef,
     IntOp,
     RaiseStandardError,
     Register,
@@ -47,6 +48,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_short_int_rprimitive,
     list_rprimitive,
+    object_non_refcounted_rprimitive,
     object_rprimitive,
     optional_value_type,
     pointer_rprimitive,
@@ -170,7 +172,7 @@ def vec_create_initialized(
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    builder.set_mem(for_loop.index, item_type, init)
+    vec_set_mem_item(builder, for_loop.index, item_type, init, line)
     for_loop.finish()
 
     builder.keep_alive([vec], line)
@@ -190,7 +192,7 @@ def vec_create_from_values(
     item_type = vtype.item_type
     step = step_size(item_type)
     for value in values:
-        builder.set_mem(ptr, item_type, value)
+        vec_set_mem_item(builder, ptr, item_type, value, line)
         ptr = builder.int_add(ptr, step)
     builder.keep_alive([vec], line)
     return vec
@@ -203,6 +205,13 @@ def step_size(item_type: RType) -> int:
         return PLATFORM_SIZE * 2
     else:
         return PLATFORM_SIZE
+
+
+def vec_storage_type(item_type: RType) -> RType:
+    """Return the actual memory type used for items in a vec buffer."""
+    if isinstance(item_type, RVec):
+        return VecNestedBufItem
+    return item_type
 
 
 VEC_TYPE_INFO_I64: Final = 2
@@ -254,14 +263,34 @@ def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
 def vec_buf(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
     """Recover the buffer object pointer from a vec's items pointer.
 
-    Emits: items_ptr - offsetof(BufType, items)
+    Emits NULL if items is NULL, otherwise:
+        (PyObject *)(items_ptr - offsetof(BufType, items))
     """
     vtype = vecobj.type
     assert isinstance(vtype, RVec)
+    line = vecobj.line
     items = builder.get_element(vecobj, "items")
+
+    result = Register(object_non_refcounted_rprimitive)
+    is_null = builder.add(
+        ComparisonOp(items, Integer(0, pointer_rprimitive, line), ComparisonOp.EQ, line)
+    )
+    null_block, non_null_block, done = BasicBlock(), BasicBlock(), BasicBlock()
+    builder.add(Branch(is_null, null_block, non_null_block, Branch.BOOL, line))
+
+    builder.activate_block(null_block)
+    builder.add(Assign(result, Integer(0, pointer_rprimitive, line), line))
+    builder.goto(done)
+
+    builder.activate_block(non_null_block)
     # offsetof(BufType, items) == GetElementPtr(0, buf_type, "items")
     offset = builder.add(GetElementPtr(Integer(0, pointer_rprimitive), vtype.buf_type, "items"))
-    return builder.int_sub(items, offset)
+    buf_ptr = builder.int_sub(items, offset)
+    builder.add(Assign(result, buf_ptr, line))
+    builder.goto(done)
+
+    builder.activate_block(done)
+    return result
 
 
 def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Value:
@@ -277,6 +306,36 @@ def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Val
         item_size = object_rprimitive.size
     delta = builder.int_mul(index, item_size)
     return builder.int_add(items_addr, delta)
+
+
+def vec_load_mem_item(
+    builder: LowLevelIRBuilder,
+    ptr: Value,
+    item_type: RType,
+    line: int,
+    *,
+    can_borrow: bool = False,
+) -> Value:
+    """Load a vec item from storage, converting nested vec slots to RVec values."""
+    if isinstance(item_type, RVec):
+        item = builder.load_mem(ptr, VecNestedBufItem, borrow=True)
+        result = convert_from_t_ext_item(builder, item, item_type, is_borrowed=can_borrow)
+        if not can_borrow:
+            # The storage item only holds a borrowed buffer reference.
+            # Make the returned RVec own a reference like a normal item load.
+            builder.add(IncRef(result, line))
+        return result
+    return builder.load_mem(ptr, item_type, borrow=can_borrow)
+
+
+def vec_set_mem_item(
+    builder: LowLevelIRBuilder, ptr: Value, item_type: RType, item: Value, line: int
+) -> None:
+    """Store a vec item, converting RVec values to nested storage items."""
+    if isinstance(item_type, RVec):
+        builder.add(IncRef(item, line))
+        item = convert_to_t_ext_item(builder, item)
+    builder.set_mem(ptr, vec_storage_type(item_type), item)
 
 
 def vec_check_and_adjust_index(
@@ -334,7 +393,7 @@ def vec_get_item_unsafe(
     index = as_platform_int(builder, index, line)
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
-    result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
+    result = vec_load_mem_item(builder, item_addr, vtype.item_type, line, can_borrow=can_borrow)
     builder.keep_alives.append(base)
     return result
 
@@ -353,9 +412,9 @@ def vec_set_item(
     if item_type.is_refcounted:
         # Read an unborrowed reference to cause a decref to be
         # generated for the old item.
-        old_item = builder.load_mem(item_addr, item_type, borrow=True)
+        old_item = vec_load_mem_item(builder, item_addr, item_type, line, can_borrow=True)
         builder.add(DecRef(old_item))
-    builder.set_mem(item_addr, item_type, item)
+    vec_set_mem_item(builder, item_addr, item_type, item, line)
     builder.keep_alive([base], line)
 
 
@@ -368,7 +427,7 @@ def vec_init_item_unsafe(
     item_addr = vec_item_ptr(builder, base, index)
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
-    builder.set_mem(item_addr, item_type, item)
+    vec_set_mem_item(builder, item_addr, item_type, item, line)
     builder.keep_alive([base], line)
 
 
@@ -379,7 +438,9 @@ def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     return builder.add(SetElement(temp, "buf", buf_ptr))
 
 
-def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:
+def convert_from_t_ext_item(
+    builder: LowLevelIRBuilder, item: Value, vec_type: RVec, *, is_borrowed: bool = False
+) -> Value:
     """Convert a value of type VecNestedBufItem to the corresponding RVec value."""
     api_name = vec_api_by_item_type.get(vec_type.item_type)
     if api_name is not None:
@@ -391,7 +452,13 @@ def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: R
 
     return builder.add(
         CallC(
-            name, [item], vec_type, steals=[True], is_borrowed=False, error_kind=ERR_NEVER, line=-1
+            name,
+            [item],
+            vec_type,
+            steals=[True],
+            is_borrowed=is_borrowed,
+            error_kind=ERR_NEVER,
+            line=-1,
         )
     )
 
@@ -561,7 +628,7 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = builder.load_mem(for_loop.index, item_type, borrow=True)
+    item = vec_load_mem_item(builder, for_loop.index, item_type, line, can_borrow=True)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))

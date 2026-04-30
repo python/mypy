@@ -273,7 +273,8 @@ def get_item_nested(v, i):
     r6 :: ptr
     r7 :: i64
     r8 :: ptr
-    r9 :: vec[i32]
+    r9 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r10 :: vec[i32]
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -294,9 +295,11 @@ L5:
     r6 = v.items
     r7 = r5 * 16
     r8 = r6 + r7
-    r9 = load_mem r8 :: vec[i32]*
+    r9 = load_mem r8 :: VecNestedBufItem*
+    r10 = VecI32Api.convert_from_nested(r9)
+    inc_ref r10
     keep_alive v
-    return r9
+    return r10
 
 [case testVecMiscNestedPop_64bit]
 from librt.vecs import vec, pop
