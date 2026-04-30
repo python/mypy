@@ -5596,6 +5596,61 @@ def func(t: T):
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictUnpackFromClosedMissingKey]
+# flags: --extra-checks
+from typing import TypedDict
+from typing_extensions import Never, NotRequired
+D1 = TypedDict("D1", {"a": int, "b": str}, closed=True)
+D2 = TypedDict("D2", {"a": int, "b": str, "c": int})
+D3 = TypedDict("D3", {"a": int, "b": str, "c": NotRequired[int]})
+d1: D1
+d2: D2 = {**d1}  # E: Missing key "c" for TypedDict "D2"
+d3: D3 = {**d1}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackIntoClosed]
+# flags: --extra-checks
+from typing import Any, Mapping, TypedDict, Union
+from typing_extensions import Never, NotRequired
+D1 = TypedDict("D1", {"a": int, "b": str}, closed=True)
+D2 = TypedDict("D2", {"a": int, "b": str})
+D3 = TypedDict("D3", {"c": int, "d": str}, closed=True)
+D4 = TypedDict("D4", {"c": int, "d": str})
+D5 = TypedDict("D5", {"a": int, "b": str, "c": int, "d": str}, closed=True)
+d1: D1
+d2: D2
+d3: D3
+d4: D4
+d5: D5
+m: Mapping[Any, Any]
+u34: Union[D3, D4]
+u35: Union[D3, D5]
+u5m: Union[D5, Mapping[Any, Any]]
+d5 = {**d1, **d3}
+d5 = {
+    **d1,
+    **d4,  # E: Cannot unpack item that may contain extra keys into a closed TypedDict
+}
+d5 = {
+    **d2,  # E: Cannot unpack item that may contain extra keys into a closed TypedDict
+    **d3,
+}
+d5 = {
+    **d1,
+    **u34,  # E: Cannot unpack item that may contain extra keys into a closed TypedDict
+}
+d5 = {**d1, **u35}
+d5 = {
+    **m,  # E: Cannot unpack item that may contain extra keys into a closed TypedDict
+    **d5,
+}
+d5 = {
+    **u5m,  # E: Cannot unpack item that may contain extra keys into a closed TypedDict
+}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar
