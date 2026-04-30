@@ -273,13 +273,13 @@ def vec_buf(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
 
     result = Register(object_non_refcounted_rprimitive)
     is_null = builder.add(
-        ComparisonOp(items, Integer(0, pointer_rprimitive, line), ComparisonOp.EQ, line)
+        ComparisonOp(items, Integer(0, c_size_t_rprimitive, line), ComparisonOp.EQ, line)
     )
     null_block, non_null_block, done = BasicBlock(), BasicBlock(), BasicBlock()
     builder.add(Branch(is_null, null_block, non_null_block, Branch.BOOL, line))
 
     builder.activate_block(null_block)
-    builder.add(Assign(result, Integer(0, pointer_rprimitive, line), line))
+    builder.add(Assign(result, Integer(0, object_non_refcounted_rprimitive, line), line))
     builder.goto(done)
 
     builder.activate_block(non_null_block)
@@ -455,7 +455,7 @@ def convert_from_t_ext_item(
             name,
             [item],
             vec_type,
-            steals=[True],
+            steals=[False],
             is_borrowed=is_borrowed,
             error_kind=ERR_NEVER,
             line=-1,
