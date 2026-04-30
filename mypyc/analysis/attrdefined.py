@@ -424,14 +424,26 @@ def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
     for base in cl.base_mro[1:]:
         detect_undefined_bitmap(base, seen)
 
+    # Compute a fresh list rather than appending to cl.bitmap_attrs in place.
+    # Under separate=True each SCC's analyze_always_defined_attrs recurses
+    # through shared base classes (the `seen` set above only dedupes within
+    # one call), so every subclass group would otherwise re-extend the base's
+    # bitmap_attrs with another copy of the contributions. The base's emitted
+    # struct size would then grow with each call, and later incremental builds
+    # would observe a different (smaller) count and emit a different layout
+    # for the same class — leaving any not-rebuilt subclass with a stale view
+    # of the base's struct, which segfaults on attribute access. Recomputing
+    # fresh makes the function naturally idempotent.
+    new_attrs: list[str] = []
     if len(cl.base_mro) > 1:
-        cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)
+        new_attrs.extend(cl.base_mro[1].bitmap_attrs)
     for n, t in cl.attributes.items():
         if t.error_overlap and not cl.is_always_defined(n):
-            cl.bitmap_attrs.append(n)
+            new_attrs.append(n)
 
     for base in cl.mro[1:]:
         if base.is_trait:
             for n, t in base.attributes.items():
-                if t.error_overlap and not cl.is_always_defined(n) and n not in cl.bitmap_attrs:
-                    cl.bitmap_attrs.append(n)
+                if t.error_overlap and not cl.is_always_defined(n) and n not in new_attrs:
+                    new_attrs.append(n)
+    cl.bitmap_attrs = new_attrs
