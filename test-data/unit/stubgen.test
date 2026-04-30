@@ -3822,16 +3822,26 @@ def f(x: str | None) -> None: ...
 
 [case testTypeddict]
 import typing, x
-X = typing.TypedDict('X', {'a': int, 'b': str})
-Y = typing.TypedDict('X', {'a': int, 'b': str}, total=False)
+D1 = typing.TypedDict('D1', {'a': int, 'b': str})
+D2 = typing.TypedDict('D2', {'a': int, 'b': str}, total=False)
+D3 = typing.TypedDict('D3', {'a': int, 'b': str}, closed=True)
+D4 = typing.TypedDict('D4', {'a': int, 'b': str}, closed=True, total=False)
 [out]
 from typing_extensions import TypedDict
 
-class X(TypedDict):
+class D1(TypedDict):
     a: int
     b: str
 
-class Y(TypedDict, total=False):
+class D2(TypedDict, total=False):
+    a: int
+    b: str
+
+class D3(TypedDict, closed=True):
+    a: int
+    b: str
+
+class D4(TypedDict, total=False, closed=True):
     a: int
     b: str
 
