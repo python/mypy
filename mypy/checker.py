@@ -6391,7 +6391,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     ) -> tuple[Type, Type]:
         """
         Narrows the type of `iterable_type` based on the type of `item_type`.
-        For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
+        For now, we only support narrowing unions of TypedDicts, and TypeVars with TypedDict
+        bounds, based on left operand being literal string(s).
         """
         if_types: list[Type] = []
         else_types: list[Type] = []
@@ -6405,20 +6406,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         item_str_literals = try_getting_str_literals_from_type(item_type)
 
         for possible_iterable_type in possible_iterable_types:
-            if item_str_literals and isinstance(possible_iterable_type, TypedDictType):
+            bound = (
+                get_proper_type(possible_iterable_type.upper_bound)
+                if isinstance(possible_iterable_type, TypeVarType)
+                else possible_iterable_type
+            )
+
+            if item_str_literals and isinstance(bound, TypedDictType):
                 for key in item_str_literals:
-                    if key in possible_iterable_type.required_keys:
+                    if key in bound.required_keys:
                         if_types.append(possible_iterable_type)
                     elif (
-                        key in possible_iterable_type.items
-                        and not isinstance(
-                            get_proper_type(possible_iterable_type.items[key]), UninhabitedType
-                        )
-                    ) or (
-                        key not in possible_iterable_type.items
-                        and not possible_iterable_type.is_closed
-                        and not possible_iterable_type.is_final
-                    ):
+                        key in bound.items
+                        and not isinstance(get_proper_type(bound.items[key]), UninhabitedType)
+                    ) or (key not in bound.items and not bound.is_closed and not bound.is_final):
                         if_types.append(possible_iterable_type)
                         else_types.append(possible_iterable_type)
                     else:
