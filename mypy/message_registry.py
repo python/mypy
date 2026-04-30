@@ -8,15 +8,16 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Final
 
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 
 
-class ErrorMessage(NamedTuple):
-    value: str
-    code: ErrorCode | None = None
+class ErrorMessage:
+    def __init__(self, value: str, code: ErrorCode | None = None) -> None:
+        self.value: Final = value
+        self.code: Final = code
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)

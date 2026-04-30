@@ -2786,17 +2786,16 @@ from typing import Literal
 # https://github.com/python/mypy/issues/18029
 
 class Foo(enum.StrEnum):
-    FOO = 'a'
+    A = 'a'
 
 def f1(a: Foo | Literal['foo']) -> Foo:
     if a == 'foo':
         # Ideally this is narrowed to just Literal['foo'] (if we learn to narrow based on enum value)
         reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
-        return Foo.FOO
+        return Foo.A
 
-    # Ideally this passes
-    reveal_type(a)  # N: Revealed type is "__main__.Foo | Literal['foo']"
-    return a  # E: Incompatible return value type (got "Foo | Literal['foo']", expected "Foo")
+    reveal_type(a)  # N: Revealed type is "__main__.Foo"
+    return a
 [builtins fixtures/primitives.pyi]
 
 [case testStrEnumEqualityAlias]
@@ -2891,22 +2890,24 @@ def f2(x: int | Custom | E):
 
 def f3_simple(x: str | SE):
     if x == SE.A:
-        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.SE"
+        # Note the union gets simplified
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
 
 def f3(x: int | str | SE):
-    # Ideally we filter out some of these ints
     if x == SE.A:
-        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
     else:
-        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
     if x in cast(list[SE], []):
-        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
 
     if x == str():
-        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | __main__.SE"
 
@@ -2928,12 +2929,12 @@ def f4(x: int | Custom | SE):
 
 def f5(x: str | Custom | SE):
     if x == SE.A:
-        reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.A] | __main__.Custom"
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
 
     if x in cast(list[SE], []):
-        reveal_type(x)  # N: Revealed type is "__main__.SE | __main__.Custom"
+        reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom | __main__.SE"
 
@@ -2942,4 +2943,42 @@ def f5(x: str | Custom | SE):
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | __main__.Custom | __main__.SE"
 
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingWithIntEnumAndStrEnumUnionAmbiguous]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from enum import IntEnum, StrEnum
+
+class IE(IntEnum):
+    X = 1
+    Y = 2
+
+class SE(StrEnum):
+    A = "a"
+    B = "b"
+
+def f(x: IE | SE) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y] | __main__.SE"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingWithStrEnumUnionNoneAmbiguous]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+from enum import StrEnum
+
+class SE(StrEnum):
+    A = "a"
+    B = "b"
+
+def f(x: SE | None) -> None:
+    if x == "a":
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.SE | None"
 [builtins fixtures/primitives.pyi]

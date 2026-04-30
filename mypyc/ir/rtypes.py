@@ -537,12 +537,12 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 KNOWN_NATIVE_TYPES: Final = {
-    name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
-    for name in [
-        "librt.internal.WriteBuffer",
-        "librt.internal.ReadBuffer",
-        "librt.strings.BytesWriter",
-        "librt.strings.StringWriter",
+    name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=deps)
+    for name, deps in [
+        ("librt.internal.WriteBuffer", ()),
+        ("librt.internal.ReadBuffer", ()),
+        ("librt.strings.BytesWriter", (LIBRT_STRINGS,)),
+        ("librt.strings.StringWriter", (LIBRT_STRINGS,)),
     ]
 }
 

@@ -1,4 +1,4 @@
-[case testLibrtStrings_experimental_64bit]
+[case testLibrtStrings_64bit]
 from librt.strings import BytesWriter
 from mypy_extensions import u8, i64
 
@@ -94,7 +94,7 @@ L2:
     CPyBytesWriter_SetItem(b, r0, x)
     return 1
 
-[case testLibrtStrings_write_i16_le_experimental_64bit]
+[case testLibrtStrings_write_i16_le_64bit]
 from librt.strings import BytesWriter, write_i16_le
 from mypy_extensions import i16
 
@@ -117,7 +117,7 @@ L0:
     r0 = CPyBytesWriter_WriteI16LE(b, 1234)
     return 1
 
-[case testLibrtStrings_read_i16_le_experimental_64bit]
+[case testLibrtStrings_read_i16_le_64bit]
 from librt.strings import read_i16_le
 from mypy_extensions import i16, i64
 
@@ -140,7 +140,7 @@ L0:
     r0 = CPyBytes_ReadI16LE(b, 0)
     return r0
 
-[case testLibrtStrings_i32_le_experimental_64bit]
+[case testLibrtStrings_i32_le_64bit]
 from librt.strings import BytesWriter, write_i32_le, read_i32_le
 from mypy_extensions import i32, i64
 
@@ -180,7 +180,7 @@ L0:
     r0 = CPyBytes_ReadI32LE(b, 0)
     return r0
 
-[case testLibrtStrings_i64_le_experimental_64bit]
+[case testLibrtStrings_i64_le_64bit]
 from librt.strings import BytesWriter, write_i64_le, read_i64_le
 from mypy_extensions import i64
 
@@ -219,7 +219,7 @@ L0:
     r0 = CPyBytes_ReadI64LE(b, 0)
     return r0
 
-[case testLibrtStrings_StringWriter_experimental_64bit]
+[case testLibrtStrings_StringWriter_64bit]
 from librt.strings import StringWriter
 from mypy_extensions import i32, i64
 

@@ -1,16 +1,5 @@
 #include "librt_strings_api.h"
 
-#ifndef MYPYC_EXPERIMENTAL
-
-int
-import_librt_strings(void)
-{
-    // All librt.strings features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
-
 void *LibRTStrings_API[LIBRT_STRINGS_API_LEN] = {0};
 
 int
@@ -52,5 +41,3 @@ import_librt_strings(void)
     memcpy(LibRTStrings_API, capsule, sizeof(LibRTStrings_API));
     return 0;
 }
-
-#endif // MYPYC_EXPERIMENTAL

@@ -228,9 +228,11 @@ def generate_class_reuse(
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
-    context.declarations[name] = HeaderDeclaration(
-        f"CPyThreadLocal {struct_name} *{name};", needs_export=True
-    )
+    # Not exported: the free-instance slot is only read/written by the class's
+    # own setup/dealloc code, which lives in the defining group. Exporting it
+    # also trips a C diagnostic under `Py_GIL_DISABLED`, where `CPyThreadLocal`
+    # expands to `__thread` and can't legally appear inside the exports struct.
+    context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};")
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -707,11 +709,15 @@ def emit_setup_or_dunder_new_call(
         emitter.emit_line(f"PyObject *self = {setup_name}({type_arg});")
         emit_null_check()
         return
-    prefix = emitter.get_group_prefix(new_fn.decl) + NATIVE_PREFIX if native_prefix else PREFIX
+    call = (
+        emitter.native_function_call(new_fn.decl)
+        if native_prefix
+        else emitter.wrapper_function_call(new_fn.decl)
+    )
     all_args = type_arg
     if new_args != "":
         all_args += ", " + new_args
-    emitter.emit_line(f"PyObject *self = {prefix}{new_fn.cname(emitter.names)}({all_args});")
+    emitter.emit_line(f"PyObject *self = {call}({all_args});")
     emit_null_check()
 
     # skip __init__ if __new__ returns some other type
@@ -745,17 +751,13 @@ def generate_constructor_for_class(
 
     args = ", ".join(["self"] + fn_args)
     if init_fn is not None:
-        prefix = PREFIX if use_wrapper else NATIVE_PREFIX
-        cast = "!= NULL ? 0 : -1" if use_wrapper else ""
-        emitter.emit_line(
-            "char res = {}{}{}({}){};".format(
-                emitter.get_group_prefix(init_fn.decl),
-                prefix,
-                init_fn.cname(emitter.names),
-                args,
-                cast,
-            )
+        call = (
+            emitter.wrapper_function_call(init_fn.decl)
+            if use_wrapper
+            else emitter.native_function_call(init_fn.decl)
         )
+        cast = "!= NULL ? 0 : -1" if use_wrapper else ""
+        emitter.emit_line(f"char res = {call}({args}){cast};")
         emitter.emit_line("if (res == 2) {")
         emitter.emit_line("Py_DECREF(self);")
         emitter.emit_line("return NULL;")
@@ -788,9 +790,8 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("{")
     if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
         emitter.emit_line(
-            "return {}{}(self, args, kwds) != NULL ? 0 : -1;".format(
-                PREFIX, init_fn.cname(emitter.names)
-            )
+            f"return {emitter.wrapper_function_call(init_fn.decl)}"
+            "(self, args, kwds) != NULL ? 0 : -1;"
         )
     else:
         emitter.emit_line("return 0;")
@@ -836,7 +837,7 @@ def generate_new_for_class(
         # can enforce that instances are always properly initialized. This
         # is needed to support always defined attributes.
         emitter.emit_line(
-            f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
+            f"PyObject *ret = {emitter.wrapper_function_call(init_fn.decl)}(self, args, kwds);"
         )
         emitter.emit_lines("if (ret == NULL) {", "    Py_DECREF(self);", "    return NULL;", "}")
         emitter.emit_line("Py_DECREF(ret);")

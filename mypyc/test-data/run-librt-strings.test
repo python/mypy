@@ -1,4 +1,4 @@
-[case testLibrtStrings_librt_experimental]
+[case testLibrtStrings_librt]
 from typing import Any
 import base64
 import binascii
@@ -1394,9 +1394,48 @@ def test_string_writer_wrapper_functions() -> None:
     with assertRaises(IndexError):
         s[-7]
 
-[case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
-# This also ensures librt.strings can be built without experimental features
-import librt.strings
+def test_explicit_init_resets_via_any() -> None:
+    # Calling __init__ explicitly on an already-initialized writer resets it.
+    # Any previously-allocated heap buffer must be freed to avoid leaks.
+    bw: Any = BytesWriter()
+    bw.write(b"hello")
+    bw.__init__()
+    assert bw.getvalue() == b""
+    bw.write(b"world")
+    assert bw.getvalue() == b"world"
 
-def test_bytes_writer_not_available() -> None:
-    assert not hasattr(librt.strings, "BytesWriter")
+    # Also trigger a heap-allocated buffer before the explicit __init__ call,
+    # to exercise the path that would otherwise leak memory.
+    bw2: Any = BytesWriter()
+    bw2.write(b"x" * 10000)
+    bw2.__init__()
+    assert bw2.getvalue() == b""
+    bw2.write(b"short")
+    assert bw2.getvalue() == b"short"
+
+    sw: Any = StringWriter()
+    sw.write("hello")
+    sw.__init__()
+    assert sw.getvalue() == ""
+    sw.write("world")
+    assert sw.getvalue() == "world"
+
+    sw2: Any = StringWriter()
+    sw2.write("y" * 10000)
+    sw2.__init__()
+    assert sw2.getvalue() == ""
+    sw2.write("short")
+    assert sw2.getvalue() == "short"
+
+def test_new_without_init_is_usable() -> None:
+    # BytesWriter.__new__(BytesWriter) must return a fully initialized object
+    # that does not require an explicit __init__ call to be usable.
+    bw: Any = BytesWriter.__new__(BytesWriter)
+    assert bw.getvalue() == b""
+    bw.write(b"hello")
+    assert bw.getvalue() == b"hello"
+
+    sw: Any = StringWriter.__new__(StringWriter)
+    assert sw.getvalue() == ""
+    sw.write("hello")
+    assert sw.getvalue() == "hello"

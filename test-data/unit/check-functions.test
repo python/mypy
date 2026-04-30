@@ -1022,6 +1022,14 @@ def foo(x: {1:2}) -> [1]:
     x = y
 [typing fixtures/typing-medium.pyi]
 
+[case testNoTypeCheckDecoratorNoUntypedDefs]
+# flags: --disallow-untyped-defs
+import typing
+
+@typing.no_type_check
+def foo(x: "foo") -> "bar":
+    x: "whatever"
+[typing fixtures/typing-medium.pyi]
 
 -- Forward references to decorated functions
 -- -----------------------------------------

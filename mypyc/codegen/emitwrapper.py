@@ -537,7 +537,7 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         )
     )
     emitter.emit_line("instance = instance ? instance : Py_None;")
-    emitter.emit_line(f"return {NATIVE_PREFIX}{fn.cname(emitter.names)}(self, instance, owner);")
+    emitter.emit_line(f"return {emitter.native_function_call(fn.decl)}(self, instance, owner);")
     emitter.emit_line("}")
 
     return name
@@ -600,8 +600,8 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static int {name}(PyObject *self) {{")
     emitter.emit_line(
-        "{}val = {}{}(self);".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
+        "{}val = {}(self);".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl)
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "return -1;")
@@ -704,8 +704,8 @@ def generate_set_del_item_wrapper_inner(
         generate_arg_check(arg.name, arg.type, emitter, GotoHandler("fail"))
     native_args = ", ".join(f"arg_{arg.name}" for arg in args)
     emitter.emit_line(
-        "{}val = {}{}({});".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names), native_args
+        "{}val = {}({});".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl), native_args
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "goto fail;")
@@ -722,8 +722,8 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line(f"static int {name}(PyObject *self, PyObject *obj_item) {{")
     generate_arg_check("item", fn.args[1].type, emitter, ReturnHandler("-1"))
     emitter.emit_line(
-        "{}val = {}{}(self, arg_item);".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
+        "{}val = {}(self, arg_item);".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl)
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "return -1;")
@@ -857,6 +857,9 @@ class WrapperGenerator:
         """
         self.target_name = fn.name
         self.target_cname = fn.cname(self.emitter.names)
+        # Cached native-call expression so cross-group targets go through the
+        # exports table; same as `NATIVE_PREFIX + cname` for in-group calls.
+        self.target_native_call = self.emitter.native_function_call(fn.decl)
         self.num_bitmap_args = fn.sig.num_bitmap_args
         if self.num_bitmap_args:
             self.args = fn.args[: -self.num_bitmap_args]
@@ -927,8 +930,8 @@ class WrapperGenerator:
             # TODO: The Py_RETURN macros return the correct PyObject * with reference count
             #       handling. Are they relevant?
             emitter.emit_line(
-                "{}retval = {}{}({});".format(
-                    emitter.ctype_spaced(ret_type), NATIVE_PREFIX, self.target_cname, native_args
+                "{}retval = {}({});".format(
+                    emitter.ctype_spaced(ret_type), self.target_native_call, native_args
                 )
             )
             emitter.emit_lines(*self.cleanups)
@@ -940,11 +943,7 @@ class WrapperGenerator:
         else:
             if not_implemented_handler and not isinstance(ret_type, RInstance):
                 # The return value type may overlap with NotImplemented.
-                emitter.emit_line(
-                    "PyObject *retbox = {}{}({});".format(
-                        NATIVE_PREFIX, self.target_cname, native_args
-                    )
-                )
+                emitter.emit_line(f"PyObject *retbox = {self.target_native_call}({native_args});")
                 emitter.emit_lines(
                     "if (retbox == Py_NotImplemented) {",
                     not_implemented_handler,
@@ -952,7 +951,7 @@ class WrapperGenerator:
                     "return retbox;",
                 )
             else:
-                emitter.emit_line(f"return {NATIVE_PREFIX}{self.target_cname}({native_args});")
+                emitter.emit_line(f"return {self.target_native_call}({native_args});")
             # TODO: Tracebacks?
 
     def error(self) -> ErrorHandler:
