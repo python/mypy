@@ -792,10 +792,11 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
     size_t depth = v_buf->depth;
     if (depth == 1) {
         if (item->ob_type == &VecTType) {
-            VecNestedObject *o = (VecNestedObject *)item;
-            if (VEC_NESTED_BUF(o->vec)->item_type == v_buf->item_type) {
+            // Boxed vec[t] always has items != NULL (buf is allocated on boxing)
+            VecTObject *o = (VecTObject *)item;
+            if (VEC_T_BUF(o->vec)->item_type == v_buf->item_type) {
                 unboxed->len = o->vec.len;
-                unboxed->buf = (PyObject *)VEC_NESTED_BUF(o->vec);
+                unboxed->buf = (PyObject *)VEC_T_BUF(o->vec);
                 return 0;
             }
         } else if (item->ob_type == &VecI64Type && v_buf->item_type == VEC_ITEM_TYPE_I64) {
