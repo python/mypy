@@ -215,11 +215,10 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: str
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: str
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -237,13 +236,12 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecTBufObject
-    r8 = r5 * 8
-    r9 = r7 + r8
-    r10 = load_mem r9 :: builtins.str*
+    r6 = v.items
+    r7 = r5 * 8
+    r8 = r6 + r7
+    r9 = load_mem r8 :: builtins.str*
     keep_alive v
-    return r10
+    return r9
 
 [case testVecTOptionalGetItem_64bit]
 from librt.vecs import vec
@@ -262,11 +260,10 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: union[str, None]
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: union[str, None]
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -284,13 +281,12 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecTBufObject
-    r8 = r5 * 8
-    r9 = r7 + r8
-    r10 = load_mem r9 :: union*
+    r6 = v.items
+    r7 = r5 * 8
+    r8 = r6 + r7
+    r9 = load_mem r8 :: union*
     keep_alive v
-    return r10
+    return r9
 
 [case testNewTPopLast]
 from typing import Tuple
@@ -463,20 +459,18 @@ def list_with_cap():
     r2 :: object
     r3 :: ptr
     r4 :: vec[str]
-    r5 :: object
-    r6, r7, r8 :: ptr
+    r5, r6, r7 :: ptr
 L0:
     r0 = 'a'
     r1 = 'b'
     r2 = load_address PyUnicode_Type
     r3 = r2
     r4 = VecTApi.alloc(2, 5, r3)
-    r5 = r4.buf
-    r6 = get_element_ptr r5 items :: VecTBufObject
-    set_mem r6, r0 :: builtins.str*
+    r5 = r4.items
+    set_mem r5, r0 :: builtins.str*
+    r6 = r5 + 8
+    set_mem r6, r1 :: builtins.str*
     r7 = r6 + 8
-    set_mem r7, r1 :: builtins.str*
-    r8 = r7 + 8
     keep_alive r4
     return r4
 

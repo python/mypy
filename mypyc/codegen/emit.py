@@ -83,6 +83,18 @@ PREFIX_MAP: Final = {
     NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
 }
 
+# Map from RVec._ctype to C macro prefix for VEC_*_INCREF/DECREF/BUF macros
+VEC_MACRO_PREFIX: Final = {
+    "VecI64": "VEC_I64",
+    "VecI32": "VEC_I32",
+    "VecI16": "VEC_I16",
+    "VecU8": "VEC_U8",
+    "VecFloat": "VEC_FLOAT",
+    "VecBool": "VEC_BOOL",
+    "VecT": "VEC_T",
+    "VecNested": "VEC_NESTED",
+}
+
 
 class HeaderDeclaration:
     """A representation of a declaration in C.
@@ -348,7 +360,7 @@ class Emitter:
     def set_undefined_value(self, target: str, rtype: RType) -> None:
         if isinstance(rtype, RVec):
             self.emit_line(f"{target}.len = -1;")
-            self.emit_line(f"{target}.buf = NULL;")
+            self.emit_line(f"{target}.items = NULL;")
         else:
             self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
 
@@ -574,8 +586,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            # TODO: Only use the X variant if buf can be NULL
-            self.emit_line(f"Py_XINCREF({dest}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"{prefix}_INCREF({dest});")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
@@ -605,11 +617,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
         elif isinstance(rtype, RVec):
-            # TODO: Only use the X variant if buf can be NULL
-            if rare:
-                self.emit_line(f"CPy_XDecRef({dest}.buf);")
-            else:
-                self.emit_line(f"CPy_XDECREF({dest}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"{prefix}_DECREF({dest});")
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
@@ -831,7 +840,7 @@ class Emitter:
                 item_type_c = self.vec_item_type_c(typ)
                 check = (
                     f"(Py_TYPE({src}) == VecTApi.boxed_type && "
-                    f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
+                    f"VEC_T_BUF(((VecTObject *){src})->vec)->item_type == {item_type_c})"
                 )
             else:
                 # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
@@ -842,8 +851,8 @@ class Emitter:
                     type_value = self.vec_item_type_c(typ)
                 check = (
                     f"(Py_TYPE({src}) == VecNestedApi.boxed_type && "
-                    f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
-                    f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
+                    f"VEC_NESTED_BUF(((VecNestedObject *){src})->vec)->item_type == {type_value} && "
+                    f"VEC_NESTED_BUF(((VecNestedObject *){src})->vec)->depth == {depth})"
                 )
             if likely:
                 check = f"(likely{check})"
@@ -1284,7 +1293,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            self.emit_line(f"Py_VISIT({target}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"if ({target}.items) {{ Py_VISIT({prefix}_BUF({target})); }}")
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1310,7 +1320,11 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            self.emit_line(f"Py_CLEAR({target}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"if ({target}.items) {{")
+            self.emit_line(f"    Py_DECREF({prefix}_BUF({target}));")
+            self.emit_line(f"    {target}.items = NULL;")
+            self.emit_line("}")
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")

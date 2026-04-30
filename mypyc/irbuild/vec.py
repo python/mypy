@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.ir.ops import (
@@ -244,14 +244,24 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
 
 
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
-    """Return pointer to first item in vec's buf.
+    """Return pointer to first item in vec.
 
-    Safe to call even when buf is NULL (empty vec), since GetElementPtr
-    uses offsetof-based arithmetic instead of &((T*)p)->field.
+    The items field points directly to the first element in the buffer.
     """
-    vtype = cast(RVec, vecobj.type)
-    buf = builder.get_element(vecobj, "buf")
-    return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
+    return builder.get_element(vecobj, "items")
+
+
+def vec_buf(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
+    """Recover the buffer object pointer from a vec's items pointer.
+
+    Emits: items_ptr - offsetof(BufType, items)
+    """
+    vtype = vecobj.type
+    assert isinstance(vtype, RVec)
+    items = builder.get_element(vecobj, "items")
+    # offsetof(BufType, items) == GetElementPtr(0, buf_type, "items")
+    offset = builder.add(GetElementPtr(Integer(0, pointer_rprimitive), vtype.buf_type, "items"))
+    return builder.int_sub(items, offset)
 
 
 def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Value:
@@ -364,9 +374,9 @@ def vec_init_item_unsafe(
 
 def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     vec_len = builder.add(GetElement(item, "len"))
-    vec_buf = builder.add(GetElement(item, "buf"))
+    buf_ptr = vec_buf(builder, item)
     temp = builder.add(SetElement(Undef(VecNestedBufItem), "len", vec_len))
-    return builder.add(SetElement(temp, "buf", vec_buf))
+    return builder.add(SetElement(temp, "buf", buf_ptr))
 
 
 def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:

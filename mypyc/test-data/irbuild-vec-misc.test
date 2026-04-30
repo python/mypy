@@ -60,16 +60,14 @@ def create_i32() -> vec[i32]:
 [out]
 def create_i32():
     r0 :: vec[i32]
-    r1 :: object
-    r2, r3, r4 :: ptr
+    r1, r2, r3 :: ptr
 L0:
     r0 = VecI32Api.alloc(2, 2)
-    r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecI32BufObject
-    set_mem r2, 1 :: i32*
+    r1 = r0.items
+    set_mem r1, 1 :: i32*
+    r2 = r1 + 4
+    set_mem r2, -5 :: i32*
     r3 = r2 + 4
-    set_mem r3, -5 :: i32*
-    r4 = r3 + 4
     keep_alive r0
     return r0
 
@@ -127,11 +125,10 @@ def get_item_bool(v, i):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: bool
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: bool
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -149,13 +146,12 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecBoolBufObject
-    r8 = r5 * 1
-    r9 = r7 + r8
-    r10 = load_mem r9 :: builtins.bool*
+    r6 = v.items
+    r7 = r5 * 1
+    r8 = r6 + r7
+    r9 = load_mem r8 :: builtins.bool*
     keep_alive v
-    return r10
+    return r9
 
 [case testVecMiscPop]
 from librt.vecs import vec, pop
@@ -229,12 +225,11 @@ def for_bool(v):
     s :: i16
     r0, r1 :: native_int
     r2 :: bit
-    r3 :: object
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: ptr
-    r7, x, r8 :: i16
-    r9 :: native_int
+    r3 :: ptr
+    r4 :: native_int
+    r5 :: ptr
+    r6, x, r7 :: i16
+    r8 :: native_int
 L0:
     s = 0
     r0 = 0
@@ -243,18 +238,17 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = v.buf
-    r4 = get_element_ptr r3 items :: VecI16BufObject
-    r5 = r0 * 2
-    r6 = r4 + r5
-    r7 = load_mem r6 :: i16*
-    x = r7
+    r3 = v.items
+    r4 = r0 * 2
+    r5 = r3 + r4
+    r6 = load_mem r5 :: i16*
+    x = r6
     keep_alive v
-    r8 = s + x
-    s = r8
+    r7 = s + x
+    s = r7
 L3:
-    r9 = r0 + 1
-    r0 = r9
+    r8 = r0 + 1
+    r0 = r8
     goto L1
 L4:
     return s
@@ -276,11 +270,10 @@ def get_item_nested(v, i):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: vec[i32]
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: vec[i32]
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -298,13 +291,12 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecNestedBufObject
-    r8 = r5 * 16
-    r9 = r7 + r8
-    r10 = load_mem r9 :: vec[i32]*
+    r6 = v.items
+    r7 = r5 * 16
+    r8 = r6 + r7
+    r9 = load_mem r8 :: vec[i32]*
     keep_alive v
-    return r10
+    return r9
 
 [case testVecMiscNestedPop_64bit]
 from librt.vecs import vec, pop
