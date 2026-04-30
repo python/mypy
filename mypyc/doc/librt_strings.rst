@@ -9,6 +9,14 @@ low-level string and bytes utilities.
 Classes
 -------
 
+Thread safety
+^^^^^^^^^^^^^
+
+``BytesWriter`` and ``StringWriter`` objects are unsafe to access from another
+thread if they are concurrently modified (on free-threaded Python builds). They are optimized
+for maximal performance, and they aren't fully synchronized. Read-only access from multiple
+threads is safe.
+
 BytesWriter
 ^^^^^^^^^^^
 
