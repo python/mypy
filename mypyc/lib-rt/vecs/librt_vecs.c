@@ -114,7 +114,10 @@ static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject
                 return NULL;
             return VecT_Box(vec, p->item_type);
         } else {
-            return VecT_FromIterable(p->item_type, init, cap);
+            VecT vec = VecT_FromIterable(p->item_type, init, cap);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return VecT_Box(vec, p->item_type);
         }
     } else {
         if (init == NULL) {
@@ -139,6 +142,7 @@ VecGenericAlias_traverse(VecGenericAlias *self, visitproc visit, void *arg)
 static void
 VecGenericAlias_dealloc(VecGenericAlias *self)
 {
+    PyObject_GC_UnTrack(self);
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
         self->item_type = 0;

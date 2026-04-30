@@ -944,11 +944,11 @@ from typing import Any
 def realistic(x: dict[str, Any]):
     val = x.get("hey")
     if val == 12:
-        reveal_type(val)  # N: Revealed type is "Any | Literal[12]?"
+        reveal_type(val)  # N: Revealed type is "Any"
 
 def f1(x: Any | None):
     if x == 12:
-        reveal_type(x)  # N: Revealed type is "Any | Literal[12]?"
+        reveal_type(x)  # N: Revealed type is "Any"
 
 class Custom:
     def __eq__(self, other: object) -> bool:
@@ -980,7 +980,7 @@ def f3(x: str | Custom, y: str | int):
 
 def f4(x: str | Any, y: str | int):
     if x == y:
-        reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any"
         reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | Any"
@@ -3284,6 +3284,38 @@ def f2(x: Any) -> None:
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testNarrowAnyUnion]
+from typing import Any
+
+class A: ...
+
+def f1(x: A | int, y: Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+
+def f2(x: A | int, y: Any | None):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any | None"
+
+class AA(A): ...
+
+def f3(x: A | int, y: AA | Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.AA | Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.AA | Any"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowChainedContainment]
 # flags: --strict-equality --warn-unreachable
 
@@ -3324,11 +3356,11 @@ def f2(a: Any | None, b: str | None) -> None:
 def f3(a: str | None, b: Any | None) -> None:
     if None is not a == b:
         reveal_type(a)  # N: Revealed type is "builtins.str"
-        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any"
 
     if (None is not a) and (a == b):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any"
 
 def f4(a: str | None, b: str | None, c: str | None) -> None:
     if None is not a == b == c:

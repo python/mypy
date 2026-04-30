@@ -715,14 +715,14 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         keywords.append((key, value))
 
     metaclass = dict(keywords).get("metaclass") if keywords else None
-    filtered_keywords = [(k, v) for k, v in keywords if k != "metaclass"] if keywords else None
 
     class_def = ClassDef(
         name,
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
-        keywords=filtered_keywords,
+        # Note we keep metaclass in keywords as well, to match the old parser.
+        keywords=keywords if keywords else None,
         type_args=type_params,
     )
     class_def.decorators = decorators
@@ -1329,15 +1329,16 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         op = bool_ops[read_int(data)]
         values = read_expression_list(state, data)
         # Convert list of values to nested OpExpr nodes
-        # E.g., [a, b, c] with "and" becomes OpExpr("and", OpExpr("and", a, b), c)
+        # E.g., [a, b, c] with "and" becomes OpExpr("and", a, OpExpr("and", b, c))
+        # This matches the old parser behavior, on which we may implicitly rely.
         assert len(values) >= 2
-        result = values[0]
-        for val in values[1:]:
-            result = OpExpr(op, result, val)
-            result.line = values[0].line
-            result.column = values[0].column
-            result.end_line = val.end_line
-            result.end_column = val.end_column
+        result = last = values[-1]
+        for val in values[-2::-1]:
+            result = OpExpr(op, val, result)
+            result.line = val.line
+            result.column = val.column
+            result.end_line = last.end_line
+            result.end_column = last.end_column
         read_loc(data, result)
         expect_end_tag(data)
         return result
@@ -1375,7 +1376,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(state, data, fitems)
+        expr = build_fstring_join(data, fitems)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LIST_COMPREHENSION:
@@ -1576,20 +1577,15 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
 
 
 def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
-    items = []
     n = read_int(data)
-    items = [read_fstring_item(state, data) for i in range(n)]
-    return build_fstring_join(state, data, items)
+    items = [read_fstring_item(state, data) for _ in range(n)]
+    return build_fstring_join(data, items)
 
 
-def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+    items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
-        read_loc(data, expr)
-        return expr
-    if all(isinstance(item, StrExpr) for item in items):
-        s = "".join([cast(StrExpr, item).value for item in items])
-        expr = StrExpr(s)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
@@ -1601,6 +1597,22 @@ def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) 
     set_line_column(str_expr, call)
     set_line_column(member, call)
     return call
+
+
+def collapse_consecutive_str_items(items: list[Expression]) -> list[Expression]:
+    if len(items) <= 1:
+        return items
+    last = items[0]
+    new_items = [last]
+    for item in items[1:]:
+        if isinstance(last, StrExpr) and isinstance(item, StrExpr):
+            last.value += item.value
+            last.end_line = item.end_line
+            last.end_column = item.end_column
+        else:
+            new_items.append(item)
+            last = item
+    return new_items
 
 
 def read_fstring_item(state: State, data: ReadBuffer) -> Expression:

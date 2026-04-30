@@ -135,6 +135,25 @@ inline static int vec_get_buffer(PyObject *obj, Py_buffer *view) {
 }
 #endif
 
+static inline VEC vec_from_sequence(PyObject *seq, int64_t cap, const int is_list) {
+    Py_ssize_t n = is_list ? PyList_GET_SIZE(seq) : PyTuple_GET_SIZE(seq);
+    Py_ssize_t alloc_size = n > cap ? n : cap;
+    VEC v = vec_alloc(alloc_size);
+    if (VEC_IS_ERROR(v))
+        return vec_error();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
+        ITEM_C_TYPE x = UNBOX_ITEM(item);
+        if (IS_UNBOX_ERROR(x)) {
+            VEC_DECREF(v);
+            return vec_error();
+        }
+        v.buf->items[i] = x;
+    }
+    v.len = n;
+    return v;
+}
+
 VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
     if (cap < 0) {
         PyErr_SetString(PyExc_ValueError, "capacity must not be negative");
@@ -174,6 +193,12 @@ VEC FUNC(FromIterable)(PyObject *iterable, int64_t cap) {
         return v;
     }
 #endif
+
+    if (PyList_CheckExact(iterable)) {
+        return vec_from_sequence(iterable, cap, 1);
+    } else if (PyTuple_CheckExact(iterable)) {
+        return vec_from_sequence(iterable, cap, 0);
+    }
 
     VEC v = vec_alloc(cap);
     if (VEC_IS_ERROR(v))

@@ -400,6 +400,7 @@ typedef struct _VecTAPI {
     VecT (*remove)(VecT, PyObject *);
     // TODO: Py_ssize_t
     VecT (*slice)(VecT, int64_t, int64_t);
+    VecT (*from_iterable)(size_t, PyObject *, int64_t);
     VecT (*extend)(VecT, PyObject *, size_t);
     VecT (*extend_vec)(VecT, VecT, size_t);
 } VecTAPI;
@@ -716,7 +717,7 @@ static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap);
+VecT VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap);
 PyObject *VecT_Box(VecT vec, size_t item_type);
 VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
 VecT VecT_Extend(VecT vec, PyObject *iterable, size_t item_type);

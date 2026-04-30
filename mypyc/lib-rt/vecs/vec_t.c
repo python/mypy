@@ -24,12 +24,18 @@ static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
         return NULL;
     buf->item_type = item_type;
     Py_INCREF(VEC_BUF_ITEM_TYPE(buf));
-    PyObject_GC_Track(buf);
     return buf;
 }
 
-// Alloc a partially initialized vec. Caller *must* immediately initialize len, and buf->items
-// if size > 0.
+static inline void vec_track_buffer(VecT *vec) {
+    if (vec->buf != NULL) {
+        PyObject_GC_Track(vec->buf);
+    }
+}
+
+// Alloc a partially initialized vec. If size > 0, caller *must* immediately initialize len,
+// and buf->items. Caller *must* also call vec_track_buffer on the returned vec but only
+// after initializing the items.
 static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     VecTBufObject *buf;
 
@@ -51,6 +57,7 @@ PyObject *VecT_Box(VecT vec, size_t item_type) {
         vec.buf = alloc_buf(0, item_type);
         if (vec.buf == NULL)
             return NULL;
+        vec_track_buffer(&vec);
     }
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
     if (obj == NULL) {
@@ -93,6 +100,7 @@ VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
     for (Py_ssize_t i = 0; i < cap; i++) {
         vec.buf->items[i] = NULL;
     }
+    vec_track_buffer(&vec);
     vec.len = size;
     return vec;
 }
@@ -143,6 +151,7 @@ VecT VecT_Slice(VecT vec, int64_t start, int64_t end) {
         Py_INCREF(item);
         res.buf->items[i] = item;
     }
+    vec_track_buffer(&res);
     return res;
 }
 
@@ -180,6 +189,7 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
+        vec_track_buffer(&res);
         PyObject *result = VecT_Box(res, vec.buf->item_type);
         if (result == NULL) {
             VEC_DECREF(res);
@@ -260,6 +270,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         Py_INCREF(x);
         new.len = 1;
         new.buf->items[0] = x;
+        vec_track_buffer(&new);
         return new;
     }
     Py_ssize_t cap = VEC_CAP(vec);
@@ -294,6 +305,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
         }
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
+        vec_track_buffer(&new);
         VEC_DECREF(vec);
         return new;
     }
@@ -361,6 +373,7 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
         }
         memset(new.buf->items + src.len, 0, sizeof(PyObject *) * (new_len - src.len));
         new.len = new_len;
+        vec_track_buffer(&new);
         return new;
     }
     Py_ssize_t cap = VEC_CAP(dst);
@@ -405,6 +418,7 @@ VecT VecT_ExtendVec(VecT dst, VecT src, size_t item_type) {
     }
     memset(new.buf->items + new_len, 0, sizeof(PyObject *) * (new_cap - new_len));
     new.len = new_len;
+    vec_track_buffer(&new);
     VEC_DECREF(dst);
     return new;
 }
@@ -671,20 +685,52 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+static inline VecT vec_from_sequence(
+        size_t item_type, PyObject *seq, int64_t cap, const int is_list) {
+    Py_ssize_t n = is_list ? PyList_GET_SIZE(seq) : PyTuple_GET_SIZE(seq);
+    Py_ssize_t alloc_size = n > cap ? n : cap;
+    VecT v = vec_alloc(alloc_size, item_type);
+    if (VEC_IS_ERROR(v))
+        return vec_error();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
+        if (!VecT_ItemCheck(v, item, item_type)) {
+            for (Py_ssize_t j = i; j < alloc_size; j++)
+                v.buf->items[j] = NULL;
+            VEC_DECREF(v);
+            return vec_error();
+        }
+        Py_INCREF(item);
+        v.buf->items[i] = item;
+    }
+    for (Py_ssize_t j = n; j < alloc_size; j++)
+        v.buf->items[j] = NULL;
+    vec_track_buffer(&v);
+    v.len = n;
+    return v;
+}
+
+VecT VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
+    if (PyList_CheckExact(iterable)) {
+        return vec_from_sequence(item_type, iterable, cap, 1);
+    } else if (PyTuple_CheckExact(iterable)) {
+        return vec_from_sequence(item_type, iterable, cap, 0);
+    }
+
     VecT v = vec_alloc(cap, item_type);
     if (VEC_IS_ERROR(v))
-        return NULL;
+        return vec_error();
     if (cap > 0) {
         for (int64_t i = 0; i < cap; i++)
             v.buf->items[i] = NULL;
     }
     v.len = 0;
+    vec_track_buffer(&v);
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
@@ -692,22 +738,22 @@ PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
             Py_DECREF(iter);
             VEC_DECREF(v);
             Py_DECREF(item);
-            return NULL;
+            return vec_error();
         }
         v = VecT_Append(v, item, item_type);
         Py_DECREF(item);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
-            return NULL;
+            return vec_error();
         }
     }
     Py_DECREF(iter);
     if (PyErr_Occurred()) {
         VEC_DECREF(v);
-        return NULL;
+        return vec_error();
     }
-    return VecT_Box(v, item_type);
+    return v;
 }
 
 VecTAPI Vec_TAPI = {
@@ -721,6 +767,7 @@ VecTAPI Vec_TAPI = {
     VecT_Pop,
     VecT_Remove,
     VecT_Slice,
+    VecT_FromIterable,
     VecT_Extend,
     VecT_ExtendVec,
 };

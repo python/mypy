@@ -44,6 +44,40 @@ def test_construct_from_initializer() -> None:
     with assertRaises(TypeError):
         vec[i64]([None])
 
+def test_construct_from_tuple() -> None:
+    v = vec[i64](())
+    assert len(v) == 0
+    v = vec[i64]((1, 2, 3))
+    assert len(v) == 3
+    assert v[0] == 1
+    assert v[1] == 2
+    assert v[2] == 3
+    v = vec[i64]((2**63 - 1, -2**63))
+    assert len(v) == 2
+    assert v[0] == 2**63 - 1
+    assert v[1] == -2**63
+    with assertRaises(TypeError):
+        vec[i64](('x',))
+    with assertRaises(TypeError):
+        vec[i64]((None,))
+    with assertRaises(TypeError):
+        vec[i64]((1, 'x', 2))
+
+def test_construct_from_tuple_with_capacity() -> None:
+    v = vec[i64]((1, 2), capacity=5)
+    assert len(v) == 2
+    assert v[0] == 1
+    assert v[1] == 2
+    old = v
+    v = append(v, 3)
+    v = append(v, 4)
+    v = append(v, 5)
+    old[0] = 99
+    assert v[0] == 99
+    v = vec[i64]((1, 2, 3), capacity=1)
+    assert len(v) == 3
+    assert v[2] == 3
+
 def test_append() -> None:
     v = vec[i64]()
     v = append(v, 1)

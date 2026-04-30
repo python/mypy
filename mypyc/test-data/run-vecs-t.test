@@ -160,6 +160,30 @@ def test_construct_from_list_comprehension() -> None:
         for j in range(i):
             assert v[j] == str(j * j + 5)
 
+def test_construct_from_list() -> None:
+    a: list[str] = []
+    assert vec[str](a) == vec[str]()
+    b = ["x", "y"]
+    v = vec[str](b)
+    assert len(v) == 2
+    assert v[0] == "x"
+    assert v[1] == "y"
+    for i in range(50):
+        c = [str(j * j) for j in range(i)]
+        v = vec[str](c)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == str(j * j)
+
+def test_construct_from_tuple() -> None:
+    a: tuple[str, ...] = ()
+    assert vec[str](a) == vec[str]()
+    b: tuple[str, ...] = ("x", "y")
+    v = vec[str](b)
+    assert len(v) == 2
+    assert v[0] == "x"
+    assert v[1] == "y"
+
 def test_construct_from_iterable() -> None:
     for i in range(50):
         it: Iterable[str] = iter([str(i * i) for i in range(i)])

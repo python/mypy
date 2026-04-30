@@ -943,3 +943,31 @@ def f(x):
 L0:
     r0 = VecI64Api.from_iterable(x, 0)
     return r0
+
+[case testVecI64CreateFromListObject]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def from_list(a: list[i64]) -> vec[i64]:
+    return vec[i64](a)
+[out]
+def from_list(a):
+    a :: list
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.from_iterable(a, 0)
+    return r0
+
+[case testVecI64CreateFromTupleObject]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def from_tuple(a: tuple[i64, ...]) -> vec[i64]:
+    return vec[i64](a)
+[out]
+def from_tuple(a):
+    a :: tuple
+    r0 :: vec[i64]
+L0:
+    r0 = VecI64Api.from_iterable(a, 0)
+    return r0

@@ -99,6 +99,13 @@ def test_basic_int_operations() -> None:
         with assertRaises(TypeError):
             append(v, "0")
 
+def test_construct_bool_from_list() -> None:
+    v = vec[bool]([True, False, True])
+    assert len(v) == 3
+    assert v[0] is True
+    assert v[1] is False
+    assert v[2] is True
+
 def test_equality() -> None:
     for t1 in ITEM_TYPES:
         for t2 in ITEM_TYPES:
