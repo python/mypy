@@ -5405,6 +5405,165 @@ reveal_type(meet(fD4C))  # N: Revealed type is "TypedDict({'a'=: builtins.int}, 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testOperatorContainsNarrowsTypedDicts_unionWithList_closed]
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+
+class D(TypedDict, closed=True):
+    foo: int
+
+d_or_list: D | list[str]
+
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D, list[str]])
+elif 'bar' in d_or_list:
+    assert_type(d_or_list, list[str])
+else:
+    assert_type(d_or_list, list[str])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_total_closed]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, TypeVar, Union
+
+class D1(TypedDict, closed=True):
+    foo: int
+
+class D2(TypedDict, closed=True):
+    bar: int
+
+d: D1 | D2
+
+if 'foo' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+foo_or_bar: Literal['foo', 'bar']
+if foo_or_bar in d:
+    assert_type(d, Union[D1, D2])
+else:
+    assert_type(d, Union[D1, D2])
+
+foo_or_invalid: Literal['foo', 'invalid']
+if foo_or_invalid in d:
+    assert_type(d, D1)
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+else:
+    assert_type(d, Union[D1, D2])
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+
+TD = TypeVar('TD', D1, D2)
+
+def f(arg: TD) -> None:
+    value: int
+    if 'foo' in arg:
+        assert_type(arg['foo'], int)
+    else:
+        assert_type(arg['bar'], int)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_closed]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+
+class DClosed(TypedDict, closed=True):
+    foo: int
+
+class DNotClosed(TypedDict):
+    bar: int
+
+d_not_closed: DNotClosed
+
+if 'bar' in d_not_closed:
+    assert_type(d_not_closed, DNotClosed)
+else:
+    spam = 'ham'  # E: Statement is unreachable
+
+if 'spam' in d_not_closed:
+    assert_type(d_not_closed, DNotClosed)
+else:
+    assert_type(d_not_closed, DNotClosed)
+
+d_closed: DClosed
+
+if 'spam' in d_closed:
+    spam = 'ham'  # E: Statement is unreachable
+else:
+    assert_type(d_closed, DClosed)
+
+d_union: DClosed | DNotClosed
+
+if 'foo' in d_union:
+    assert_type(d_union, Union[DClosed, DNotClosed])
+else:
+    assert_type(d_union, DNotClosed)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse_closed]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, Union
+
+class DTotal(TypedDict, closed=True):
+    required_key: int
+
+class DNotTotal(TypedDict, total=False, closed=True):
+    optional_key: int
+
+d: DTotal | DNotTotal
+
+if 'required_key' in d:
+    assert_type(d, DTotal)
+else:
+    assert_type(d, DNotTotal)
+
+if 'optional_key' in d:
+    assert_type(d, DNotTotal)
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+key: Literal['optional_key', 'required_key']
+if key in d:
+    assert_type(d, Union[DTotal, DNotTotal])
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired_closed]
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import Required, NotRequired
+
+class D1(TypedDict, closed=True):
+    required_key: Required[int]
+    optional_key: NotRequired[int]
+
+class D2(TypedDict, closed=True):
+    abc: int
+    xyz: int
+
+d: D1 | D2
+
+if 'required_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+if 'optional_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, Union[D1, D2])
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 [case testTypedDictFinalAndClassVar]
 from typing import TypedDict, Final, ClassVar

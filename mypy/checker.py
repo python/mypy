@@ -6416,6 +6416,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         )
                     ) or (
                         key not in possible_iterable_type.items
+                        and not possible_iterable_type.is_closed
                         and not possible_iterable_type.is_final
                     ):
                         if_types.append(possible_iterable_type)
