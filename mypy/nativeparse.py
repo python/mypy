@@ -271,7 +271,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=2,
+        cache_version=3,
     )
     return (
         ast_bytes,
@@ -376,7 +376,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
             names.append((name, asname))
 
         stmt = ImportFrom(module_id, relative, names)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.FOR_STMT:
@@ -435,7 +435,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
                 asname = None
             ids.append((name, asname))
         stmt = Import(ids)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.RAISE_STMT:
@@ -519,7 +519,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         relative = read_int(data)
 
         stmt = ImportAll(module_id, relative)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.NONLOCAL_DECL:
