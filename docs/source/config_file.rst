@@ -1006,6 +1006,20 @@ These options may only be set in the global section (``[mypy]``).
     Skip cache internal consistency checks based on mtime.
 
 
+Parallel type-checking configuration
+************************************
+
+These options may only be set in the global section (``[mypy]``).
+
+.. confval:: num_workers
+
+    :type: integer
+    :default: 0
+
+    Use specific number of parallel worker processes for type-checking, see
+    :ref:`parallel type-checking <parallel>` for more details.
+
+
 Advanced options
 ****************
 
@@ -1066,6 +1080,14 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about missing type annotations in typeshed.  This is only relevant
     in combination with :confval:`disallow_untyped_defs` or :confval:`disallow_incomplete_defs`.
+
+.. confval:: native_parser
+
+    :type: boolean
+    :default: False
+
+    This enables fast Rust-based parser that parses directly to mypy AST.
+    It will become the default parser in one of the next mypy releases.
 
 
 Report generation

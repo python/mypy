@@ -1032,6 +1032,37 @@ beyond what incremental mode can offer, try running mypy in
     Skip cache internal consistency checks based on mtime.
 
 
+.. _parallel:
+
+Parallel type-checking
+**********************
+
+By default, mypy checks all modules in the same Python process, this can be slow
+for large code bases. Mypy offers experimental parallel type-checking mode using
+multiple worker processes. In parallel mode, modules that do not depend om each
+other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
+used to manage most of the shared state. Parallel type-checking also requires
+:option:`--local-partial-types <mypy --no-local-partial-types>`, which is
+enabled by default starting from mypy 2.0.
+
+.. option:: -n NUMBER, --num-workers NUMBER
+
+    Use ``NUMBER`` parallel worker processes (in addition to the coordinator
+    process) to perform type-checking. Specifying ``--num-workers 0`` (default)
+    disables parallel checking. Automatic detection of the optimal number
+    of workers is not supported yet.
+
+Notes:
+* An import cycle is always processed as a whole by a worker process. Thus,
+  avoiding large import cycles in your code will *significantly* improve
+  type-checking speed.
+* Specifying a number of workers that is larger than the number of *physical*
+  CPU cores is not beneficial, since mypy is usually CPU bound. Best way to
+  tune the number of workers on a given machine is to start from 2-3 workers
+  and increase the number while you see a performance improvement.
+* Parallel mode requires and automatically enables :option:`--native-parser`.
+
+
 Advanced options
 ****************
 
@@ -1104,6 +1135,11 @@ in developing or debugging mypy internals.
     Running ``mypy --shadow-file original.py temp.py original.py`` will then
     cause mypy to type check the contents of ``temp.py`` instead of  ``original.py``,
     but error messages will still reference ``original.py``.
+
+.. option:: --native-parser
+
+    This enables fast Rust-based parser that parses directly to mypy AST.
+    It will become the default parser in one of the next mypy releases.
 
 
 Report generation
