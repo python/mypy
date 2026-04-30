@@ -3287,3 +3287,23 @@ MypyFile:1(
     NameExpr(d)
     ListExpr:1()
     list?[int?]))
+
+[case testDebugFString]
+f"test {x=}"
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      MemberExpr:1(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:1(
+          StrExpr(test x=)
+          CallExpr:1(
+            MemberExpr:1(
+              StrExpr({!r:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))

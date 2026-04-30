@@ -1376,7 +1376,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(state, data, fitems)
+        expr = build_fstring_join(data, fitems)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LIST_COMPREHENSION:
@@ -1577,20 +1577,15 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
 
 
 def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
-    items = []
     n = read_int(data)
-    items = [read_fstring_item(state, data) for i in range(n)]
-    return build_fstring_join(state, data, items)
+    items = [read_fstring_item(state, data) for _ in range(n)]
+    return build_fstring_join(data, items)
 
 
-def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+    items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
-        read_loc(data, expr)
-        return expr
-    if all(isinstance(item, StrExpr) for item in items):
-        s = "".join([cast(StrExpr, item).value for item in items])
-        expr = StrExpr(s)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
@@ -1602,6 +1597,22 @@ def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) 
     set_line_column(str_expr, call)
     set_line_column(member, call)
     return call
+
+
+def collapse_consecutive_str_items(items: list[Expression]) -> list[Expression]:
+    if len(items) <= 1:
+        return items
+    last = items[0]
+    new_items = [last]
+    for item in items[1:]:
+        if isinstance(last, StrExpr) and isinstance(item, StrExpr):
+            last.value += item.value
+            last.end_line = item.end_line
+            last.end_column = item.end_column
+        else:
+            new_items.append(item)
+            last = item
+    return new_items
 
 
 def read_fstring_item(state: State, data: ReadBuffer) -> Expression:
