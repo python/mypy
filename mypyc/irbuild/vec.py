@@ -606,6 +606,10 @@ def vec_to_tuple(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | N
     return _vec_to_sequence(builder, vec, line, "to_tuple", tuple_rprimitive)
 
 
+def supports_vec_to_sequence(vec_type: RVec) -> bool:
+    return vec_api_by_item_type.get(vec_type.item_type) is not None or vec_type.depth() == 0
+
+
 def _vec_to_sequence(
     builder: LowLevelIRBuilder, vec: Value, line: int, method: str, result_type: RType
 ) -> Value | None:
@@ -615,7 +619,7 @@ def _vec_to_sequence(
     api_name = vec_api_by_item_type.get(item_type)
     if api_name is not None:
         name = f"{api_name}.{method}"
-    elif vec_type.depth() == 0:
+    elif supports_vec_to_sequence(vec_type):
         name = f"VecTApi.{method}"
     else:
         return None

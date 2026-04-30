@@ -100,6 +100,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_format_call,
 )
 from mypyc.irbuild.vec import (
+    supports_vec_to_sequence,
     vec_append,
     vec_extend,
     vec_pop,
@@ -341,7 +342,7 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg_type = builder.node_type(expr.args[0])
-        if isinstance(arg_type, RVec):
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
             vec = builder.accept(expr.args[0])
             return vec_to_list(builder.builder, vec, expr.line)
     return None
@@ -411,7 +412,7 @@ def translate_list_from_generator_call(
 def translate_vec_to_tuple(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg_type = builder.node_type(expr.args[0])
-        if isinstance(arg_type, RVec):
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
             vec = builder.accept(expr.args[0])
             return vec_to_tuple(builder.builder, vec, expr.line)
     return None

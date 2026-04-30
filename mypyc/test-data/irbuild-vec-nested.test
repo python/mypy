@@ -32,6 +32,43 @@ L0:
     r1 = PySequence_Tuple(r0)
     return r1
 
+[case testVecNestedConvertToSequenceEvaluatesArgOnce]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def make() -> vec[vec[i64]]:
+    return vec[vec[i64]]()
+
+def to_list() -> list[vec[i64]]:
+    return list(make())
+
+def to_tuple() -> tuple[vec[i64], ...]:
+    return tuple(make())
+[out]
+def make():
+    r0 :: vec[vec[i64]]
+L0:
+    r0 = VecNestedApi.alloc(0, 0, 2, 1)
+    return r0
+def to_list():
+    r0 :: vec[vec[i64]]
+    r1 :: object
+    r2 :: list
+L0:
+    r0 = make()
+    r1 = box(vec[vec[i64]], r0)
+    r2 = PySequence_List(r1)
+    return r2
+def to_tuple():
+    r0 :: vec[vec[i64]]
+    r1 :: object
+    r2 :: tuple
+L0:
+    r0 = make()
+    r1 = box(vec[vec[i64]], r0)
+    r2 = PySequence_Tuple(r1)
+    return r2
+
 [case testVecNestedCreateEmpty]
 from librt.vecs import vec, append
 from mypy_extensions import i64
