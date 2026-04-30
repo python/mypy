@@ -5283,6 +5283,23 @@ f_g(h)  # E: Argument 1 to "f_g" has incompatible type "H"; expected "G"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictSubtypingClosedTypeVarBound]
+from typing import TypedDict, TypeVar
+A = TypedDict('A', {'x': int}, closed=True)
+B = TypedDict('B', {'x': int})
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+def fA(t: TA) -> TA: return t
+def fB(t: TB) -> TB: return t
+a: A
+b: B
+fA(a)
+fA(b)  # E: Value of type variable "TA" of "fA" cannot be "B"
+fB(a)
+fB(b)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testJoinOfClosedTypedDict]
 from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int}, closed=True)

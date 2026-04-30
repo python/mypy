@@ -1341,6 +1341,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     " must be enabled with --enable-incomplete-feature=InlineTypedDict",
                     t,
                 )
+            is_closed = False
             required_keys = req_keys
             fallback = self.named_type("typing._TypedDict")
             for typ in t.extra_items_from:
@@ -1363,9 +1364,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             readonly_keys = t.readonly_keys
             required_keys = t.required_keys
             fallback = t.fallback
-        # TODO: Implement closure analysis
+            is_closed = t.is_closed
         return TypedDictType(
-            items, required_keys, readonly_keys, False, fallback, t.line, t.column
+            items, required_keys, readonly_keys, is_closed, fallback, t.line, t.column
         )
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
