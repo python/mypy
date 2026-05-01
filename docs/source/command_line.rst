@@ -1037,7 +1037,7 @@ beyond what incremental mode can offer, try running mypy in
 Parallel type-checking
 **********************
 
-By default, mypy checks all modules in the same Python process, this can be slow
+By default, mypy checks all modules in the same Python process. This can be slow
 for large code bases. Mypy offers experimental parallel type-checking mode using
 multiple worker processes. In parallel mode, modules that do not depend om each
 other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
@@ -1060,7 +1060,7 @@ Notes:
 
 * Specifying a number of workers that is larger than the number of *physical*
   CPU cores is not beneficial, since mypy is usually CPU bound. Best way to
-  tune the number of workers on a given machine is to start from 2-3 workers
+  tune the number of workers on a given machine is to start from 3-4 workers
   and increase the number while you see a performance improvement.
 
 * Parallel mode requires and automatically enables :option:`--native-parser`.
