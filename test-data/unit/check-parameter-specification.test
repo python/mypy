@@ -2742,16 +2742,16 @@ def f8(x: int, /, **kwargs: str) -> int:
 def f9(x: int, **kwargs: Unpack[Opt]) -> int:
     return 0
 
-reveal_type(Sneaky(f1).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, Never]"
-reveal_type(Sneaky(f2, 1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int})"
-reveal_type(Sneaky(f3, 1).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, Never]"
-reveal_type(Sneaky(f4, x=1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x': builtins.int})"
-reveal_type(Sneaky(f5, 1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y'?: builtins.int})"
-reveal_type(Sneaky(f5, 1, 2).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y'?: builtins.int})"
+reveal_type(Sneaky(f1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {}, closed=True)"
+reveal_type(Sneaky(f2, 1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int}, closed=True)"
+reveal_type(Sneaky(f3, 1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {}, closed=True)"
+reveal_type(Sneaky(f4, x=1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x': builtins.int}, closed=True)"
+reveal_type(Sneaky(f5, 1).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y'?: builtins.int}, closed=True)"
+reveal_type(Sneaky(f5, 1, 2).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y'?: builtins.int}, closed=True)"
 reveal_type(Sneaky(f6, x=1).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 reveal_type(Sneaky(f6, x=1, y=2).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 reveal_type(Sneaky(f7, 1, y='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int})"
 reveal_type(Sneaky(f8, 1, y='').kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
-reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
-reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
+reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
+reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
 [builtins fixtures/paramspec.pyi]
