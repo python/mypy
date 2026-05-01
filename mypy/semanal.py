@@ -2108,7 +2108,7 @@ class SemanticAnalyzer(
         if (
             defn.info
             and defn.info.typeddict_type
-            and not has_placeholder(defn.info.typeddict_type)
+            and not defn.info.typeddict_type.analysis_incomplete
         ):
             # This is a valid TypedDict, and it is fully analyzed.
             return True

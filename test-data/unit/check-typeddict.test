@@ -299,7 +299,7 @@ class Point1(TypedDict):
     x: int
 class Point2(TypedDict):
     x: float
-class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
+class Bad(Point1, Point2): # E: Incompatible definitions of field "x" in base classes "Point2" and "Point1"
     pass
 
 b: Bad
@@ -313,7 +313,7 @@ from typing import TypedDict
 class Point1(TypedDict):
     x: int
 class Point2(Point1):
-    x: float # E: Overwriting TypedDict field "x" while extending
+    x: float # E: Definition of field "x" incompatible with base class "Point1"
 
 p2: Point2
 reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.float})"
@@ -326,7 +326,7 @@ from typing import TypedDict
 class Point1(TypedDict):
     x: float
 class Point2(Point1):
-    x: int # E: Overwriting TypedDict field "x" while extending
+    x: int # E: Definition of field "x" incompatible with base class "Point1"
 
 p2: Point2
 reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.int})"
@@ -340,7 +340,7 @@ class Point1(TypedDict):
     x: int
 class Point2(TypedDict, total=False):
     x: int
-class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
+class Bad(Point1, Point2): # E: Field "x" is required in base class "Point1" but not in base class "Point2"
     pass
 
 b: Bad
@@ -354,10 +354,10 @@ from typing import TypedDict
 class Point1(TypedDict):
     x: int
 class Point2(Point1, total=False):
-    x: int # E: Overwriting TypedDict field "x" while extending
+    x: int # E: Field "x" is required in base class "Point1"
 
 p2: Point2
-reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.int})"
+reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -368,11 +368,11 @@ class Point1(TypedDict, total=False):
     x: int
 class Point2(TypedDict):
     x: int
-class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
+class Bad(Point1, Point2): # E: Field "x" is required in base class "Point2" but not in base class "Point1"
     pass
 
 b: Bad
-reveal_type(b) # N: Revealed type is "TypedDict('__main__.Bad', {'x': builtins.int})"
+reveal_type(b) # N: Revealed type is "TypedDict('__main__.Bad', {'x'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -382,7 +382,7 @@ from typing import TypedDict
 class Point1(TypedDict, total=False):
     x: int
 class Point2(Point1):
-    x: int # E: Overwriting TypedDict field "x" while extending
+    x: int # E: Field "x" is not required and not readonly in base class "Point1"
 
 p2: Point2
 reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.int})"
@@ -1818,9 +1818,11 @@ class Z("ZB"): pass
 class A(TypedDict):
     key: "X"
 class B(A):
-    key: "Y"  # E: Overwriting TypedDict field "key" while extending
+    key: "Y"  # E: Definition of field "key" incompatible with base class "A"
 class C(A):
-    key: "Z"  # E: Overwriting TypedDict field "key" while extending
+    key: "Z"  # E: Definition of field "key" incompatible with base class "A"
+class D(A):
+    key: int  # E: Definition of field "key" incompatible with base class "A"
 
 class XB: pass
 class YB(X): pass
@@ -4372,7 +4374,7 @@ class A(TypedDict):
     key: ReadOnly[str]
 
 class B(A):
-    key: str  # E: Overwriting TypedDict field "key" while extending
+    key: str
 
 a: A
 b: B
@@ -4382,7 +4384,7 @@ def accepts_B(d: B): ...
 
 accepts_A(a)
 accepts_A(b)
-accepts_B(a)
+accepts_B(a)  # E: Argument 1 to "accepts_B" has incompatible type "A"; expected "B"
 accepts_B(b)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -4393,14 +4395,14 @@ from typing import ReadOnly, TypedDict
 class A(TypedDict):
     key: ReadOnly[float]
 class B(A):
-    key: int  # E: Overwriting TypedDict field "key" while extending
+    key: int
 class C(A):
-    key: ReadOnly[int]  # E: Overwriting TypedDict field "key" while extending
+    key: ReadOnly[int]
 
 a: A
 reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'key'=: builtins.float})"
 b: B
-reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key'=: builtins.int})"
+reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key': builtins.int})"
 c: C
 reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'=: builtins.int})"
 [builtins fixtures/dict.pyi]
@@ -4416,9 +4418,9 @@ class Z("ZB"): pass
 class A(TypedDict):
     key: ReadOnly["X"]
 class B(A):
-    key: "Y"  # E: Overwriting TypedDict field "key" while extending
+    key: "Y"  # ok: Y subclasses X via YB
 class C(A):
-    key: "Z"  # E: Overwriting TypedDict field "key" while extending
+    key: "Z"  # E: Definition of field "key" incompatible with base class "A"
 
 class XB: pass
 class YB(X): pass
@@ -4432,14 +4434,14 @@ from typing import ReadOnly, TypedDict
 class A(TypedDict):
     key: ReadOnly[int]
 class B(A):
-    key: float  # E: Overwriting TypedDict field "key" while extending
+    key: float  # E: Definition of field "key" incompatible with base class "A"
 class C(A):
-    key: ReadOnly[float]  # E: Overwriting TypedDict field "key" while extending
+    key: ReadOnly[float]  # E: Definition of field "key" incompatible with base class "A"
 
 a: A
 reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'key'=: builtins.int})"
 b: B
-reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key'=: builtins.float})"
+reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key': builtins.float})"
 c: C
 reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'=: builtins.float})"
 [builtins fixtures/dict.pyi]
@@ -4454,17 +4456,17 @@ class A(TypedDict):
 class B(TypedDict):
     key: ReadOnly[int]
 
-class C(B, A):  # E: Overwriting TypedDict field "key" while merging
+class C(B, A):  # Left-most base "wins"
     pass
 
-class D(A, B):  # E: Overwriting TypedDict field "key" while merging
+class D(A, B):  # E: Incompatible definitions of field "key" in base classes "B" and "A"  \
+                # N: This can be resolved by redeclaring the field "key" with a mutually compatible type
     pass
 
 c: C
 reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'=: builtins.int})"
 d: D
 reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'key'=: builtins.float})"
-
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4475,12 +4477,12 @@ class A(TypedDict, total=False):
     key: ReadOnly[int]
 
 class B(A):
-    key: int  # E: Overwriting TypedDict field "key" while extending
+    key: int
 
 a: A
 reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'key'?=: builtins.int})"
 b: B
-reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key'=: builtins.int})"
+reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4491,12 +4493,12 @@ class A(TypedDict):
     key: ReadOnly[int]
 
 class B(A, total=False):
-    key: int  # E: Overwriting TypedDict field "key" while extending
+    key: int  # E: Field "key" is required in base class "A"
 
 a: A
 reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'key'=: builtins.int})"
 b: B
-reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key'=: builtins.int})"
+reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4509,9 +4511,9 @@ class A(TypedDict, total=True):
 class B(TypedDict, total=False):
     key: ReadOnly[int]
 
-class C(B, A):  # E: Overwriting TypedDict field "key" while merging
+class C(B, A):
     pass
-class D(A, B):  # E: Overwriting TypedDict field "key" while merging
+class D(A, B):
     pass
 
 c: C
@@ -4533,24 +4535,24 @@ class B(TypedDict):
 class C(TypedDict):
     key: int
 
-class D1(A, B): pass  # E: Overwriting TypedDict field "key" while merging
+class D1(A, B): pass
 d1: D1
-reveal_type(d1)  # N: Revealed type is "TypedDict('__main__.D1', {'key'=: builtins.float})"
-class D2(B, A): pass  # E: Overwriting TypedDict field "key" while merging
+reveal_type(d1)  # N: Revealed type is "TypedDict('__main__.D1', {'key': builtins.float})"
+class D2(B, A): pass
 d2: D2
-reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'key'=: builtins.float})"
-class D3(A, C): pass  # E: Overwriting TypedDict field "key" while merging
+reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'key': builtins.float})"
+class D3(A, C): pass
 d3: D3
-reveal_type(d3)  # N: Revealed type is "TypedDict('__main__.D3', {'key'=: builtins.float})"
-class D4(C, A): pass  # E: Overwriting TypedDict field "key" while merging
+reveal_type(d3)  # N: Revealed type is "TypedDict('__main__.D3', {'key': builtins.int})"
+class D4(C, A): pass
 d4: D4
-reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'key'=: builtins.int})"
-class D5(A, B, C): pass  # E: Overwriting TypedDict field "key" while merging
+reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'key': builtins.int})"
+class D5(A, B, C): pass  # E: Incompatible definitions of field "key" in base classes "C" and "B"
 d5: D5
-reveal_type(d5)  # N: Revealed type is "TypedDict('__main__.D5', {'key'=: builtins.float})"
-class D6(C, B, A): pass  # E: Overwriting TypedDict field "key" while merging
+reveal_type(d5)  # N: Revealed type is "TypedDict('__main__.D5', {'key': builtins.float})"
+class D6(C, B, A): pass  # E: Incompatible definitions of field "key" in base classes "B" and "C"
 d6: D6
-reveal_type(d6)  # N: Revealed type is "TypedDict('__main__.D6', {'key'=: builtins.int})"
+reveal_type(d6)  # N: Revealed type is "TypedDict('__main__.D6', {'key': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

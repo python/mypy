@@ -2950,6 +2950,7 @@ class TypedDictType(ProperType):
         "fallback",
         "extra_items_from",
         "to_be_mutated",
+        "analysis_incomplete",
     )
 
     items: dict[str, Type]  # item_name -> item_type
@@ -2959,6 +2960,7 @@ class TypedDictType(ProperType):
 
     extra_items_from: list[ProperType]  # only used during semantic analysis
     to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
+    analysis_incomplete: bool  # a placeholder type prevented complete analysis checking
 
     def __init__(
         self,
@@ -2978,6 +2980,7 @@ class TypedDictType(ProperType):
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
         self.to_be_mutated = False
+        self.analysis_incomplete = False
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
