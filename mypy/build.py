@@ -493,7 +493,12 @@ def build_inner(
 
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
-    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+    error_formatter = None if options.output is None else OUTPUT_CHOICES.get(options.output)
+    errors = Errors(
+        options,
+        read_source=lambda path: read_py_file(path, cached_read),
+        error_formatter=error_formatter,
+    )
     # Record import errors so that they can be replayed by the workers.
     if workers:
         errors.global_watcher = True
@@ -516,7 +521,7 @@ def build_inner(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
+        error_formatter=error_formatter,
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
