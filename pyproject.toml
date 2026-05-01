@@ -14,6 +14,8 @@ requires = [
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
+    # required to work around a mypyc import bug
+    "ast-serialize>=0.3.0,<1.0.0",
 ]
 build-backend = "setuptools.build_meta"
 

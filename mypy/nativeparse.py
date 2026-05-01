@@ -19,17 +19,10 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-import sys
 import time
 from typing import Final, cast
 
-try:
-    import ast_serialize  # type: ignore[import-not-found, unused-ignore]
-except ImportError:
-    print("error: ast-serialize package not installed")
-    print("note: to install run `pip install ast-serialize`")
-    sys.exit(2)
-
+import ast_serialize
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
