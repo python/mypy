@@ -5422,6 +5422,43 @@ reveal_type(meet(fD4C))  # N: Revealed type is "TypedDict({'a'=: builtins.int}, 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictGetMethodClosed]
+from typing import TypedDict, Literal
+class Unrelated: pass
+D = TypedDict('D', {'x': int, 'y': str}, closed=True)
+d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
+reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
+reveal_type(d.get('y')) # N: Revealed type is "builtins.str"
+reveal_type(d.get('z')) # N: Revealed type is "None"
+reveal_type(d.get('z', u)) # N: Revealed type is "__main__.Unrelated"
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y)) # N: Revealed type is "builtins.str"
+reveal_type(d.get(z)) # N: Revealed type is "None"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "builtins.int | builtins.str"
+reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.int | None"
+reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.int | builtins.str | None"
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y, u)) # N: Revealed type is "builtins.str"
+reveal_type(d.get(z, u)) # N: Revealed type is "__main__.Unrelated"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "builtins.int | builtins.str"
+reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.int | __main__.Unrelated"
+reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.int | builtins.str | __main__.Unrelated"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testOperatorContainsNarrowsTypedDicts_unionWithList_closed]
 from __future__ import annotations
 from typing import assert_type, TypedDict, Union
