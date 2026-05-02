@@ -304,8 +304,7 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
             if lower is not None
         ]
         if precise_param_lowers and not all(
-            is_similar_params(precise_param_lowers[0], lower)
-            for lower in precise_param_lowers[1:]
+            is_similar_params(precise_param_lowers[0], lower) for lower in precise_param_lowers[1:]
         ):
             return None
 
