@@ -9,6 +9,8 @@ import mypy.plugin
 import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
 from mypy.erasetype import erase_typevars
+from mypy.expandtype import expand_type
+from mypy.infer import infer_type_arguments
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR2,
@@ -16,13 +18,17 @@ from mypy.nodes import (
     ArgKind,
     Argument,
     CallExpr,
+    Expression,
+    MemberExpr,
     NameExpr,
     Var,
 )
 from mypy.plugins.common import add_method_to_class
 from mypy.typeops import get_all_type_vars
 from mypy.types import (
+    ANY_STRATEGY,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     Instance,
     Overloaded,
@@ -30,9 +36,11 @@ from mypy.types import (
     ParamSpecType,
     Type,
     TypeOfAny,
+    TypeVarId,
     TypeVarType,
     UnboundType,
     UnionType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -41,6 +49,7 @@ functools_total_ordering_makers: Final = {"functools.total_ordering"}
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 
 PARTIAL: Final = "functools.partial"
+PLACEHOLDER: Final = "functools.Placeholder"
 
 
 class _MethodInfo:
@@ -134,6 +143,22 @@ def _analyze_class(ctx: mypy.plugin.ClassDefContext) -> dict[str, _MethodInfo | 
     return comparison_methods
 
 
+def _is_functools_placeholder(expr: Expression) -> bool:
+    return isinstance(expr, (NameExpr, MemberExpr)) and expr.fullname == PLACEHOLDER
+
+
+class _HasUnpack(BoolTypeQuery):
+    def __init__(self) -> None:
+        super().__init__(ANY_STRATEGY)
+
+    def visit_unpack_type(self, t: UnpackType) -> bool:
+        return True
+
+
+def _has_unpack(typ: Type) -> bool:
+    return typ.accept(_HasUnpack())
+
+
 def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     """Infer a more precise return type for functools.partial"""
     if not isinstance(ctx.api, mypy.checker.TypeChecker):  # use internals
@@ -184,6 +209,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     actual_arg_kinds = []
     actual_arg_names = []
     actual_types = []
+    placeholder_actuals = []
     seen_args = set()
     for i, param in enumerate(ctx.args[1:], start=1):
         for j, a in enumerate(param):
@@ -198,6 +224,9 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
             actual_types.append(ctx.arg_types[i][j])
+            placeholder_actuals.append(
+                ctx.arg_kinds[i][j].is_positional() and _is_functools_placeholder(a)
+            )
 
     formal_to_actual = map_actuals_to_formals(
         actual_kinds=actual_arg_kinds,
@@ -215,8 +244,20 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             continue
         can_infer_ids.update({tv.id for tv in get_all_type_vars(arg_type)})
 
+    defaulted_arg_types = list(fn_type.arg_types)
+    for i, actuals in enumerate(formal_to_actual):
+        if any(placeholder_actuals[j] for j in actuals):
+            # functools.Placeholder is a positional sentinel introduced in Python 3.14.
+            # It occupies the formal slot but does not bind it, so make the validation
+            # call accept the sentinel while preserving the original type for the
+            # resulting partial signature below.
+            defaulted_arg_types[i] = actual_types[
+                next(j for j in actuals if placeholder_actuals[j])
+            ]
+
     # special_sig="partial" allows omission of args/kwargs typed with ParamSpec
     defaulted = fn_type.copy_modified(
+        arg_types=defaulted_arg_types,
         arg_kinds=[
             (
                 ArgKind.ARG_OPT
@@ -273,10 +314,30 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     partial_kinds = []
     partial_types = []
     partial_names = []
+    inferred_type_vars: dict[TypeVarId, Type] = {}
+    if any(placeholder_actuals) and len(bound.arg_types) == len(fn_type.arg_types):
+        for i, actuals in enumerate(formal_to_actual):
+            if not actuals or any(placeholder_actuals[j] for j in actuals):
+                continue
+            if _has_unpack(fn_type.arg_types[i]) or _has_unpack(bound.arg_types[i]):
+                # TypeVarTuple/Unpack constraints are handled by check_call() above. Calling
+                # infer_type_arguments() directly on an UnpackType trips the constraint builder's
+                # internal "unpack should be handled at a higher level" guard.
+                continue
+            inferred_args = infer_type_arguments(
+                fn_type.variables, fn_type.arg_types[i], bound.arg_types[i]
+            )
+            for type_var, inferred_arg in zip(fn_type.variables, inferred_args):
+                if inferred_arg is not None and mypy.checker.is_valid_inferred_type(
+                    inferred_arg, ctx.api.options
+                ):
+                    inferred_type_vars[type_var.id] = inferred_arg
     # We need to fully apply any positional arguments (they cannot be respecified)
     # However, keyword arguments can be respecified, so just give them a default
     for i, actuals in enumerate(formal_to_actual):
-        if len(bound.arg_types) == len(fn_type.arg_types):
+        if any(placeholder_actuals[j] for j in actuals):
+            arg_type = expand_type(fn_type.arg_types[i], inferred_type_vars)
+        elif len(bound.arg_types) == len(fn_type.arg_types):
             arg_type = bound.arg_types[i]
             if not mypy.checker.is_valid_inferred_type(arg_type, ctx.api.options):
                 arg_type = fn_type.arg_types[i]  # bit of a hack
@@ -285,10 +346,16 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             # true when PEP 646 things are happening. See testFunctoolsPartialTypeVarTuple
             arg_type = fn_type.arg_types[i]
 
-        if not actuals or fn_type.arg_kinds[i] in (ArgKind.ARG_STAR, ArgKind.ARG_STAR2):
+        if (
+            not actuals
+            or fn_type.arg_kinds[i] in (ArgKind.ARG_STAR, ArgKind.ARG_STAR2)
+            or any(placeholder_actuals[j] for j in actuals)
+        ):
             partial_kinds.append(fn_type.arg_kinds[i])
             partial_types.append(arg_type)
-            partial_names.append(fn_type.arg_names[i])
+            partial_names.append(
+                None if any(placeholder_actuals[j] for j in actuals) else fn_type.arg_names[i]
+            )
         else:
             assert actuals
             if any(actual_arg_kinds[j] in (ArgKind.ARG_POS, ArgKind.ARG_STAR) for j in actuals):

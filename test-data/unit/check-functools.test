@@ -333,6 +333,9 @@ def bar(a: int, b: str, c: float) -> None: ...
 p(bar, 1, "a", 3.0)  # OK
 p(bar, 1, "a", 3.0, kwarg="asdf")  # OK
 p(bar, 1, "a", "b")  # E: Argument 1 to "foo" has incompatible type "Callable[[int, str, float], None]"; expected "Callable[[int, str, str], None]"
+p2 = functools.partial(foo, bar, 1)  # E: Argument 1 to "foo" has incompatible type "Callable[[int, str, float], None]"; expected "Callable[[int], None]"
+p2("a", 3.0, kwarg="asdf")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int" \
+                              # E: Argument 2 to "foo" has incompatible type "float"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialUnion]
@@ -725,4 +728,54 @@ def outer_c(arg: Tc) -> None:
                                        # N: Revealed type is "functools.partial[builtins.str]"
     use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
                                             # N: "partial[str].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> str"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialPlaceholder]
+import functools
+from functools import partial, Placeholder as _
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def foo(a: int, b: str, c: bool) -> tuple[int, str, bool]: ...
+
+
+p = partial(foo, _, "x", _)
+reveal_type(p)  # N: Revealed type is "functools.partial[tuple[builtins.int, builtins.str, builtins.bool]]"
+reveal_type(p(1, True))  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.bool]"
+p("bad", True)  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+p(1, 1)  # E: Argument 2 to "foo" has incompatible type "int"; expected "bool"
+p(a=1, c=True)  # E: Unexpected keyword argument "a" for "foo" \
+                # E: Unexpected keyword argument "c" for "foo"
+
+
+def same(a: T, b: T) -> T: ...
+def same_list(a: T, b: list[T]) -> T: ...
+
+
+generic = partial(same, _, 1)
+reveal_type(generic)  # N: Revealed type is "functools.partial[builtins.int]"
+generic(2)
+generic("bad")  # E: Argument 1 to "same" has incompatible type "str"; expected "int"
+
+nested_generic = partial(same_list, _, [1])
+reveal_type(nested_generic)  # N: Revealed type is "functools.partial[builtins.int]"
+nested_generic(2)
+nested_generic("bad")  # E: Argument 1 to "same_list" has incompatible type "str"; expected "int"
+
+module_attr = partial(foo, functools.Placeholder, "x", functools.Placeholder)
+reveal_type(module_attr(1, True))  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.bool]"
+partial(foo, a=_)  # E: Argument "a" to "foo" has incompatible type "_PlaceholderType"; expected "int"
+[file functools.pyi]
+from typing import Any, Callable, Final, Generic, TypeVar
+
+_T = TypeVar("_T")
+
+class _PlaceholderType: ...
+Placeholder: Final[_PlaceholderType]
+
+class partial(Generic[_T]):
+    def __new__(cls, func: Callable[..., _T], /, *args: Any, **kwargs: Any) -> partial[_T]: ...
+    def __call__(self, *args: Any, **kwargs: Any) -> _T: ...
 [builtins fixtures/tuple.pyi]
