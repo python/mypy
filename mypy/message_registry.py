@@ -92,7 +92,6 @@ AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a va
 TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
     "Too many assignment targets for variadic unpack"
 )
-INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
