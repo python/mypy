@@ -46,6 +46,7 @@ from mypyc.ir.ops import (
     GetAttr,
     Integer,
     LoadAddress,
+    LoadGlobal,
     LoadLiteral,
     Register,
     Return,
@@ -936,7 +937,9 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
     elif typ.fullname in builtin_names:
-        builtin_addr_type, src = builtin_names[typ.fullname]
+        builtin_addr_type, src, is_ptr = builtin_names[typ.fullname]
+        if is_ptr:
+            class_obj = builder.add(LoadGlobal(builtin_addr_type, src, line))
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
     elif isinstance(unbounded_type, UnboundType):
         path_parts = unbounded_type.name.split(".")
@@ -1013,7 +1016,7 @@ def gen_calls_to_correct_impl(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
 
-    typ, src = builtin_names["builtins.int"]
+    typ, src, _ = builtin_names["builtins.int"]
     int_type_obj = builder.add(LoadAddress(typ, src, line))
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
 

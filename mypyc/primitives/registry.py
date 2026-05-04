@@ -85,7 +85,14 @@ binary_ops: dict[str, list[PrimitiveDescription]] = {}
 # Primitive ops for unary ops
 unary_ops: dict[str, list[PrimitiveDescription]] = {}
 
-builtin_names: dict[str, tuple[RType, str]] = {}
+
+class BuiltInName(NamedTuple):
+    type: RType
+    src: str  # name of the target to load
+    is_ptr: bool  # whether the target is already a pointer (PyObject *)
+
+
+builtin_names: dict[str, BuiltInName] = {}
 
 
 def method_op(
@@ -381,9 +388,11 @@ def unary_op(
     return desc
 
 
-def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
+def load_address_op(
+    name: str, type: RType, src: str, *, is_ptr: bool = False
+) -> LoadAddressDescription:
     assert name not in builtin_names, "already defined: %s" % name
-    builtin_names[name] = (type, src)
+    builtin_names[name] = BuiltInName(type, src, is_ptr)
     return LoadAddressDescription(name, type, src)
 
 

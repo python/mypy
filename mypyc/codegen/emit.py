@@ -1171,7 +1171,9 @@ class Emitter:
 
     def type_c_ptr(self, typ: RPrimitive | RInstance) -> str | None:
         if isinstance(typ, RPrimitive) and typ.is_refcounted:
-            return "&" + builtin_names[typ.name][1]
+            builtin = builtin_names[typ.name]
+            prefix = "" if builtin.is_ptr else "&"
+            return prefix + builtin.src
         elif isinstance(typ, RInstance):
             return self.type_struct_name(typ.class_ir)
         return None

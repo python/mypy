@@ -53,7 +53,10 @@ not_implemented_op = load_address_op(
 
 # Get the boxed StopAsyncIteration object
 stop_async_iteration_op = load_address_op(
-    name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
+    name="builtins.StopAsyncIteration",
+    type=object_rprimitive,
+    src="PyExc_StopAsyncIteration",
+    is_ptr=True,
 )
 
 # id(obj)

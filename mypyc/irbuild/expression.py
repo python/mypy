@@ -69,6 +69,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     Integer,
     LoadAddress,
+    LoadGlobal,
     LoadLiteral,
     PrimitiveDescription,
     RaiseStandardError,
@@ -158,7 +159,9 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return builder.none(expr.line)
     fullname = expr.node.fullname
     if fullname in builtin_names:
-        typ, src = builtin_names[fullname]
+        typ, src, is_ptr = builtin_names[fullname]
+        if is_ptr:
+            return builder.add(LoadGlobal(typ, src, expr.line))
         return builder.add(LoadAddress(typ, src, expr.line))
     # special cases
     if fullname == "builtins.None":
