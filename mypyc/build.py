@@ -610,30 +610,25 @@ def mypyc_build(
     # Write out the generated C and collect the files for each group
     # Should this be here??
     group_cfilenames: list[tuple[list[str], list[str]]] = []
-    for (group_sources, group_name), cfiles in zip(groups, group_cfiles):
+    for cfiles in group_cfiles:
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            if not options.mypyc_skip_c_generation:
+            # Empty contents marks a file the previous run already wrote
+            # (fully-cached group): skip the rewrite and just reuse it.
+            if ctext and not options.mypyc_skip_c_generation:
                 write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 
-        # Fully-cached SCC (e.g. pip's second setup.py invoke for the
-        # wheel phase): mypyc returns empty ctext but the previous run's
-        # .c file is still on disk. Reuse it so we don't link with
-        # sources=[].
-        if not cfilenames and group_name is not None:
-            from mypyc.codegen.emitmodule import group_dir as _group_dir
-
-            short_suffix = "_" + exported_name(group_name.split(".")[-1])
-            existing = os.path.join(
-                compiler_options.target_dir, _group_dir(group_name), f"__native{short_suffix}.c"
-            )
-            if os.path.exists(existing):
-                cfilenames.append(existing)
-
-        deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
+        # The header regex matches both quote styles, so the result can
+        # include system headers like `<Python.h>` that don't live under
+        # target_dir. Joining those produces non-existent paths which
+        # would force a full rebuild on every run via Extension.depends.
+        candidate_deps = (
+            os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)
+        )
+        deps = [d for d in candidate_deps if os.path.exists(d)]
         group_cfilenames.append((cfilenames, deps))
 
     return groups, group_cfilenames, source_deps

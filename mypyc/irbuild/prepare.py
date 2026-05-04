@@ -184,8 +184,8 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
                 mapper.symbol_fullnames.add(node.node.fullname)
                 # Trait/builtin-base classes have an ir.ctor FuncDecl
                 # but no emitted CPyDef_<ctor>, so a cross-group direct
-                # call would hit an undefined symbol. Mirror the same
-                # skip in prepare_ext_class_def.
+                # call would hit an undefined symbol. Mirror the skip
+                # in prepare_init_method.
                 if not ir.is_trait and not ir.builtin_base:
                     mapper.func_to_decl[node.node] = ir.ctor
 

@@ -1323,9 +1323,13 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         // Compute the module's last dotted segment for the separate=True check.
         Py_ssize_t name_len = PyUnicode_GetLength(module_name);
         Py_ssize_t last_dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
-        PyObject *last_segment = last_dot >= 0
-            ? PyUnicode_Substring(module_name, last_dot + 1, name_len)
-            : (Py_INCREF(module_name), module_name);
+        PyObject *last_segment;
+        if (last_dot >= 0) {
+            last_segment = PyUnicode_Substring(module_name, last_dot + 1, name_len);
+        } else {
+            last_segment = module_name;
+            Py_INCREF(last_segment);
+        }
         if (last_segment == NULL) {
             Py_DECREF(module_path);
             return -1;
@@ -1333,9 +1337,13 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         // Compare shared_lib_file basename against "<last_segment>__mypyc<ext>".
         PyObject *expected_basename = PyUnicode_FromFormat(
             "%U__mypyc%U", last_segment, ext_suffix);
-        PyObject *actual_basename = sep >= 0
-            ? PyUnicode_Substring(shared_lib_file, sep + 1, sf_len)
-            : (Py_INCREF(shared_lib_file), shared_lib_file);
+        PyObject *actual_basename;
+        if (sep >= 0) {
+            actual_basename = PyUnicode_Substring(shared_lib_file, sep + 1, sf_len);
+        } else {
+            actual_basename = shared_lib_file;
+            Py_INCREF(actual_basename);
+        }
         int is_per_module_lib = 0;
         if (expected_basename != NULL && actual_basename != NULL) {
             is_per_module_lib =

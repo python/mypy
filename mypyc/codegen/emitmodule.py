@@ -362,7 +362,12 @@ def compile_ir_to_c(
             if source.module in modules
         }
         if not group_modules:
-            ctext[group_name] = []
+            # Fully-cached group (e.g. pip's second setup.py invoke for
+            # the wheel phase): no fresh IR was produced. Reuse the file
+            # list recorded in any module's IR cache so the linker still
+            # sees the previous run's outputs; empty content is a "do
+            # not rewrite" sentinel for mypyc_build.
+            ctext[group_name] = _load_cached_group_files(group_sources, result)
             continue
         generator = GroupGenerator(
             group_modules, source_paths, group_name, mapper.group_map, names, compiler_options
@@ -370,6 +375,32 @@ def compile_ir_to_c(
         ctext[group_name] = generator.generate_c_for_modules()
 
     return ctext
+
+
+def _load_cached_group_files(
+    group_sources: list[BuildSource], result: BuildResult
+) -> list[tuple[str, str]]:
+    """Read the .c/.h paths recorded for this group on the previous run.
+
+    All modules in a group share the same src_hashes map, so the first
+    readable IR cache is sufficient. Returns paths paired with empty
+    content so callers can distinguish "reuse on disk" from "newly
+    generated".
+    """
+    for source in group_sources:
+        state = result.graph.get(source.module)
+        if state is None:
+            continue
+        try:
+            ir_json = result.manager.metastore.read(get_state_ir_cache_name(state))
+        except (FileNotFoundError, OSError):
+            continue
+        try:
+            ir_data = json.loads(ir_json)
+        except json.JSONDecodeError:
+            continue
+        return [(path, "") for path in ir_data.get("src_hashes", {})]
+    return []
 
 
 def get_ir_cache_name(id: str, path: str, options: Options) -> str:
