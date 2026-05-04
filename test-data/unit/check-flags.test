@@ -2271,6 +2271,20 @@ foo(A)
 foo(A.foo)
 [builtins fixtures/classmethod.pyi]
 
+[case testDisallowAnyGenericsForTypeObjectArguments]
+# flags: --disallow-any-generics
+from typing import TypeVar
+
+S = TypeVar("S")
+T = TypeVar("T")
+A = list[S]
+
+def f(arg: type[T]) -> None:
+    pass
+
+f(list)  # E: Missing type arguments for generic type "list"
+f(A)  # E: Missing type arguments for generic type "A"
+
 [case testDisallowSubclassingAny]
 # flags: --config-file tmp/mypy.ini
 import m

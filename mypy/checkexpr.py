@@ -390,6 +390,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
             if is_type_type_context(self.type_context[-1]):
+                if self.chk.options.disallow_any_generics and not self.chk.is_typeshed_stub:
+                    fix_instance(
+                        Instance(node, [], line=e.line, column=e.column),
+                        self.msg.fail,
+                        self.msg.note,
+                        disallow_any=True,
+                        options=self.chk.options,
+                    )
                 # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
@@ -4987,7 +4995,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
-        disallow_any = self.chk.options.disallow_any_generics and self.is_callee
+        disallow_any = self.chk.options.disallow_any_generics and (
+            self.is_callee or is_type_type_context(self.type_context[-1])
+        )
         item = get_proper_type(
             set_any_tvars(
                 alias,

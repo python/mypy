@@ -632,6 +632,22 @@ else:
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testDisallowAnyGenericsForTypeFormArguments]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm --disallow-any-generics
+from typing_extensions import TypeForm, TypeVar
+
+S = TypeVar("S")
+T = TypeVar("T")
+A = list[S]
+
+def accept_typeform(typx: TypeForm[T]) -> None:
+    pass
+
+accept_typeform(list)  # E: Missing type arguments for generic type "list"
+accept_typeform(A)  # E: Missing type arguments for generic type "A"
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 -- Type Expressions Assignable To TypeForm Variable
 
