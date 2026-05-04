@@ -1705,6 +1705,23 @@ reveal_type(a)  # N: Revealed type is "builtins.bool"
 a = 3
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
+[case testMatchCapturePatternAfterPreviousCase]
+# flags: --strict-equality --warn-unreachable
+
+def f1(x: int | None, y: int):
+    match x:
+        case None:
+            pass
+        case y:
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
+def f2(x: int | None, y: int):
+    match x:
+        case None if bool():
+            pass
+        case y:  # E: Incompatible types in capture pattern (pattern captures type "int | None", variable has type "int")
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
 [case testMatchCapturePatternPreexistingIncompatible]
 # flags: --strict-equality --warn-unreachable
 a: str
