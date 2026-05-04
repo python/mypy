@@ -1874,3 +1874,26 @@ def test_nested_coroutine_calls_another_nested_function():
 from typing import Any, Generator
 
 def run(x: object) -> object: ...
+
+[case testRaiseStopAsyncIteration]
+from async_iter import async_iter
+from testutil import assertRaises
+
+async def test_iteration() -> None:
+    new_list: list[int] = []
+    async for v in async_iter([1, 2, 3]):
+        new_list.append(v)
+
+    assert new_list == [1, 2, 3]
+
+    with assertRaises(StopAsyncIteration):
+        await async_iter([]).__anext__()
+
+[file async_iter.py]
+from typing import AsyncIterator
+
+async def async_iter(vals: list[int]) -> AsyncIterator[int]:
+    for v in vals:
+        yield v
+
+[typing fixtures/typing-full.pyi]
