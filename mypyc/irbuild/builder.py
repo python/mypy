@@ -153,7 +153,7 @@ from mypyc.primitives.misc_ops import (
     import_op,
     native_import_op,
 )
-from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.registry import BuiltInName, CFunctionDescription, function_ops
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 # These int binary operations can borrow their operands safely, since the
@@ -1602,6 +1602,9 @@ class IRBuilder:
                 obj.line,
             )
         )
+
+    def load_builtin(self, builtin: BuiltInName, line: int) -> Value:
+        return self.builder.load_builtin(builtin, line)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

@@ -183,6 +183,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
+    BuiltInName,
     CFunctionDescription,
     binary_ops,
     function_ops,
@@ -323,8 +324,16 @@ class LowLevelIRBuilder:
     def get_element(self, reg: Value, field: str) -> Value:
         return self.add(GetElement(reg, field))
 
-    def load_address(self, name: str, rtype: RType) -> Value:
-        return self.add(LoadAddress(rtype, name))
+    def load_address(self, name: str, rtype: RType, line: int = -1) -> Value:
+        return self.add(LoadAddress(rtype, name, line))
+
+    def load_global(self, name: str, rtype: RType, line: int) -> Value:
+        return self.add(LoadGlobal(rtype, name, line))
+
+    def load_builtin(self, builtin: BuiltInName, line: int) -> Value:
+        if builtin.is_ptr:
+            return self.load_global(builtin.src, builtin.type, line)
+        return self.load_address(builtin.src, builtin.type, line)
 
     def load_struct_field(
         self, ptr: Value, struct: RStruct, field: str, *, borrow: bool = False

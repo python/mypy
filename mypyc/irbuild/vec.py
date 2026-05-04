@@ -213,8 +213,7 @@ def vec_item_type_info(
     builder: LowLevelIRBuilder, typ: RType, line: int
 ) -> tuple[Value | None, bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
-        typ, src, _ = builtin_names[typ.name]
-        return builder.load_address(src, typ), False, 0
+        return builder.load_builtin(builtin_names[typ.name], line), False, 0
     elif isinstance(typ, RInstance):
         return builder.load_native_type_object(typ.name), False, 0
     elif typ in vec_item_type_tags:
