@@ -53,7 +53,8 @@ def foo() -> None:
 ```
 
 You can still use `--allow-redefinition-old` to fall back to the old behavior. We have no
-plans to remove the legacy behavior.
+plans to remove the legacy behavior, but the old functionality is maintained on a best effort
+basis.
 
 Contributed by Jukka Lehtosalo in [PR 21276](https://github.com/python/mypy/pull/21276).
 
