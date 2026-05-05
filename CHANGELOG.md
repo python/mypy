@@ -2,7 +2,7 @@
 
 ## Next Release
 
-### Enabling `--local-partial-types` by default
+### Enabling `--local-partial-types` by Default
 
 This flag affects the inference of types based on assignments in other scopes.
 For now, explicitly disabling this continues to be supported, but this support will be removed
@@ -11,12 +11,51 @@ in mypy, like the daemon or the new implementation of flexible redefinitions.
 
 Contributed by Ivan Levkivskyi, Jukka Lehtosalo, Shantanu in [PR 21163](https://github.com/python/mypy/pull/21163)
 
-### Enabling `--strict-bytes` by default
+### Enabling `--strict-bytes` by Default
 
 Per [PEP 688](https://peps.python.org/pep-0688), mypy no longer treats `bytearray` and `memoryview`
 values as assignable to the `bytes` type.
 
 Contributed by Shantanu in [PR 18371](https://github.com/python/mypy/pull/18371)
+
+### New Behavior for `--allow-redefinition`
+
+The `--allow-redefinition` flag now behaves like `--allow-redefinition-new` in mypy 1.20
+and earlier. The new behavior is generally more flexible. For example, you can have different
+types for a variable in different blocks:
+
+```python
+# mypy: allow-redefinition
+
+def foo(cond: bool) -> None:
+    if cond:
+        for x in ["a", "b"]:
+            # Type of "x" is "str" here
+            ...
+    else:
+        for x in [1, 2]:
+            # Type of "x" is "int" here
+            ...
+```
+
+The new behavior requires `--local-partial-types`, which is now enabled by default.
+
+However, `--allow-redefinition` doesn't allow giving two type annotations for the same
+variable. The old behavior (sometimes) allows this. Code like this now generates an error
+when using `--allow-redefinition`:
+
+```python
+def foo() -> None:
+    x: list[int] = []
+    ...
+    x: list[str] = []  # Error: "x" redefined
+    ...
+```
+
+You can still use `--allow-redefinition-old` to fall back to the old behavior. We have no
+plans to remove the legacy behavior.
+
+Contributed by Jukka Lehtosalo in [PR 21276](https://github.com/python/mypy/pull/21276).
 
 ### Drop Support for Targeting Python 3.9
 
@@ -25,7 +64,7 @@ Use `--python-version 3.10` or newer.
 
 Contributed by Shantanu, Marc Mueller in [PR 21243](https://github.com/python/mypy/pull/21243)
 
-### Remove special casing of legacy bundled stubs
+### Remove Special Casing of Legacy Bundled Stubs
 
 Mypy used to bundle stubs for a few packages in versions 0.812 and earlier. To navigate the
 transition, mypy used to report missing types for these packages even if `--ignore-missing-imports`
@@ -33,7 +72,7 @@ was set. Mypy now consistently respects `--ignore-missing-imports` for all packa
 
 Contributed by Shantanu in [PR 18372](https://github.com/python/mypy/pull/18372)
 
-### Prevent assignment to None for non-Optional class variables with type comments
+### Prevent Assignment to None for Non-Optional Class Variables with Type Comments
 
 Mypy used to allow assignment to None for class variables when using type comments. This was a
 common idiom in Python 3.5 and earlier, prior to the introduction of variable annotations.
