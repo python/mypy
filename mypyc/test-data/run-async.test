@@ -1930,7 +1930,7 @@ async def test_wrapper() -> None:
     assert new_list == ['a', 'b', 'c', 'd']
 
     with assertRaises(StopAsyncIteration):
-        await async_iter([]).__anext__()
+        await AsyncIter([]).__anext__()
 
 [file async_iter.py]
 from typing import AsyncIterator
