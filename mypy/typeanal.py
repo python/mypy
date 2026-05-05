@@ -580,6 +580,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.api.fail("Nested Concatenates are invalid", t, code=codes.VALID_TYPE)
 
         args = self.anal_array(t.args[:-1])
+        if any(isinstance(arg, (Parameters, ParamSpecType)) for arg in args):
+            self.api.fail("Nested Concatenates are invalid", t, code=codes.VALID_TYPE)
+            return AnyType(TypeOfAny.from_error)
         pre = ps.prefix if isinstance(ps, ParamSpecType) else ps
 
         # mypy can't infer this :(
