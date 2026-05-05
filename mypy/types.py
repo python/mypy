@@ -37,6 +37,7 @@ from mypy.cache import (
     Tag,
     WriteBuffer,
     read_bool,
+    read_flags,
     read_int,
     read_int_list,
     read_literal,
@@ -46,6 +47,7 @@ from mypy.cache import (
     read_str_opt_list,
     read_tag,
     write_bool,
+    write_flags,
     write_int,
     write_int_list,
     write_literal,
@@ -2139,7 +2141,6 @@ class CallableType(FunctionLike):
         "arg_types",  # Types of function arguments
         "arg_kinds",  # ARG_ constants
         "arg_names",  # Argument names; None if not a keyword argument
-        "min_args",  # Minimum number of arguments; derived from arg_kinds
         "ret_type",  # Return value type
         "name",  # Name (may be None; for error messages and plugins)
         "definition",  # For error messages.  May be None.
@@ -2159,6 +2160,7 @@ class CallableType(FunctionLike):
         # (this is used for error messages)
         "imprecise_arg_kinds",
         "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
+        "instance_type",
     )
 
     def __init__(
@@ -2195,7 +2197,6 @@ class CallableType(FunctionLike):
                 # See testParamSpecJoin, that relies on passing e.g `P.args` as plain argument.
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
-        self.min_args = arg_kinds.count(ARG_POS)
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or "<bound method" not in name
@@ -2219,6 +2220,7 @@ class CallableType(FunctionLike):
         self.type_guard = type_guard
         self.type_is = type_is
         self.unpack_kwargs = unpack_kwargs
+        self.instance_type: Instance | None = None
 
     def copy_modified(
         self: CT,
@@ -2273,6 +2275,7 @@ class CallableType(FunctionLike):
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
+        modified.instance_type = self.instance_type
         # Optimization: Only NewTypes are supported as subtypes since
         # the class is effectively final, so we can use a cast safely.
         return cast(CT, modified)
@@ -2290,6 +2293,10 @@ class CallableType(FunctionLike):
             if kind == ARG_STAR2:
                 return FormalArgument(None, position, type, False)
         return None
+
+    @property
+    def min_args(self) -> int:
+        return self.arg_kinds.count(ARG_POS)
 
     @property
     def is_var_arg(self) -> bool:
@@ -2325,7 +2332,7 @@ class CallableType(FunctionLike):
 
     def with_name(self, name: str) -> CallableType:
         """Return a copy of this type with the specified name."""
-        return self.copy_modified(ret_type=self.ret_type, name=name)
+        return self.copy_modified(name=name)
 
     def get_name(self) -> str | None:
         return self.name
@@ -2616,26 +2623,39 @@ class CallableType(FunctionLike):
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, CALLABLE_TYPE)
         self.fallback.write(data)
+        write_flags(
+            data,
+            [
+                self.is_ellipsis_args,
+                self.implicit,
+                self.is_bound,
+                self.from_concatenate,
+                self.imprecise_arg_kinds,
+                self.unpack_kwargs,
+            ],
+        )
         write_type_list(data, self.arg_types)
         write_int_list(data, [int(x.value) for x in self.arg_kinds])
         write_str_opt_list(data, self.arg_names)
         self.ret_type.write(data)
         write_str_opt(data, self.name)
         write_type_list(data, self.variables)
-        write_bool(data, self.is_ellipsis_args)
-        write_bool(data, self.implicit)
-        write_bool(data, self.is_bound)
         write_type_opt(data, self.type_guard)
         write_type_opt(data, self.type_is)
-        write_bool(data, self.from_concatenate)
-        write_bool(data, self.imprecise_arg_kinds)
-        write_bool(data, self.unpack_kwargs)
         write_tag(data, END_TAG)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> CallableType:
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
+        (
+            is_ellipsis_args,
+            implicit,
+            is_bound,
+            from_concatenate,
+            imprecise_arg_kinds,
+            unpack_kwargs,
+        ) = read_flags(data, num_flags=6)
         ret = CallableType(
             read_type_list(data),
             [ARG_KINDS[ak] for ak in read_int_list(data)],
@@ -2644,14 +2664,14 @@ class CallableType(FunctionLike):
             fallback,
             name=read_str_opt(data),
             variables=read_type_var_likes(data),
-            is_ellipsis_args=read_bool(data),
-            implicit=read_bool(data),
-            is_bound=read_bool(data),
+            is_ellipsis_args=is_ellipsis_args,
+            implicit=implicit,
+            is_bound=is_bound,
             type_guard=read_type_opt(data),
             type_is=read_type_opt(data),
-            from_concatenate=read_bool(data),
-            imprecise_arg_kinds=read_bool(data),
-            unpack_kwargs=read_bool(data),
+            from_concatenate=from_concatenate,
+            imprecise_arg_kinds=imprecise_arg_kinds,
+            unpack_kwargs=unpack_kwargs,
         )
         assert read_tag(data) == END_TAG
         return ret

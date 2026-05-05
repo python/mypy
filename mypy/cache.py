@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 8
+CACHE_VERSION: Final = 9
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -556,6 +556,20 @@ def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
     for key in sorted(value):
         write_str_bare(data, key)
         write_json_value(data, value[key])
+
+
+def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
+    assert len(flags) <= 26, "This many flags not supported yet"
+    packed = 0
+    for i, flag in enumerate(flags):
+        if flag:
+            packed |= 1 << i
+    write_int(data, packed)
+
+
+def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
+    packed = read_int(data)
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def write_errors(data: WriteBuffer, errs: list[ErrorTuple]) -> None:
