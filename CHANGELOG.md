@@ -57,6 +57,20 @@ plans to remove the legacy behavior.
 
 Contributed by Jukka Lehtosalo in [PR 21276](https://github.com/python/mypy/pull/21276).
 
+### Parallel Type Checking
+
+Mypy now supports experimental parallel and incremental type checking. Use `--num-workers N`
+or `-nN` to use `N` worker processes to type check in parallel. The speedup depends on the
+import structure of your codebase and your environment, but for large projects we've seen
+performance gains of **up to 5x** when using 8 worker processes.
+
+Parallel type checking implicitly enables the new native parser. There are still some
+minor semantic differences between parallel and non-parallel modes, which we will be fixing
+in future mypy releases.
+
+This was contributed by Ivan Levkivskyi, with additional contributions from Jukka Lehtosalo
+and Emma Smith.
+
 ### Drop Support for Targeting Python 3.9
 
 Mypy no longer supports type checking code with `--python-version 3.9`.
