@@ -85,10 +85,10 @@ binary_ops: dict[str, list[PrimitiveDescription]] = {}
 # Primitive ops for unary ops
 unary_ops: dict[str, list[PrimitiveDescription]] = {}
 
-# Mapping of type name to (type, C variable name). The C variables are PyObject.
+# Mapping of type name to (type, C value variable name).
 builtin_names: dict[str, tuple[RType, str]] = {}
 
-# Mapping of type name to (type, C variable name). The C variables are PyObject *.
+# Mapping of type name to (type, C pointer variable name).
 global_names: dict[str, tuple[RType, str]] = {}
 
 
