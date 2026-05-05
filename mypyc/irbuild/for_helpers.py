@@ -36,8 +36,8 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
-    LoadMem,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -63,7 +63,6 @@ from mypyc.ir.rtypes import (
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
-    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -828,8 +827,9 @@ class ForAsyncIterable(ForGenerator):
         line = self.line
 
         def except_match() -> Value:
-            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
+            return builder.add(
+                LoadGlobal(stop_async_iteration_op.type, stop_async_iteration_op.src, line)
+            )
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
