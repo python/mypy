@@ -6778,6 +6778,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             expr_indices=[0, 1],
                             narrowable_indices={0},
                         )
+                        if else_map and not (
+                            isinstance(p_typ := get_proper_type(iterable_type), TupleType)
+                            and all(
+                                is_singleton_equality_type(get_proper_type(item))
+                                for item in p_typ.items
+                            )
+                        ):
+                            # In general, we can't do negative narrowing, since e.g. the container
+                            # could just be empty. However, we can do negative narrowing for some
+                            # tuples e.g. `x not in (None,)`
+                            else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
                     if_type, else_type = self.conditional_types_for_iterable(

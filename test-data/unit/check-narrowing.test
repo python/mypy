@@ -3268,6 +3268,21 @@ def f1(x: Union[str, float], t1: list[Literal['a', 'b']], t2: list[str]):
         reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
 [builtins fixtures/primitives.pyi]
 
+[case testNegativeNarrowingInContainer]
+# flags: --warn-unreachable
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+
+def count(colors: list[Color]) -> None:
+    counts: dict[Color, int] = {}
+    for color in colors:
+        if color not in counts:
+            counts[color] = 0
+        counts[color] += 1
+[builtins fixtures/dict.pyi]
+
 [case testNarrowAnyWithEqualityOrContainment]
 # flags: --strict-equality --warn-unreachable
 # https://github.com/python/mypy/issues/17841
