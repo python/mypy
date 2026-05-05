@@ -6778,7 +6778,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             expr_indices=[0, 1],
                             narrowable_indices={0},
                         )
-                        if else_map and not is_tuple_of_singletons(iterable_type):
+                        if else_map and not (
+                            isinstance(p_typ := get_proper_type(iterable_type), TupleType)
+                            and all(
+                                is_singleton_equality_type(get_proper_type(item))
+                                for item in p_typ.items
+                            )
+                        ):
                             # In general, we can't do negative narrowing, since e.g. the container
                             # could just be empty. However, we can do negative narrowing for some
                             # tuples e.g. `x not in (None,)`
@@ -8796,18 +8802,6 @@ def builtin_item_type(tp: Type) -> Type | None:
                 return map_instance_to_supertype(tp.fallback, base).args[0]
         assert False, "No Mapping base class found for TypedDict fallback"
     return None
-
-
-def is_tuple_of_singletons(tp: Type) -> bool:
-    tp = get_proper_type(tp)
-    if not isinstance(tp, TupleType):
-        return False
-    for item in tp.items:
-        if isinstance(item, UnpackType):
-            return False
-        if not is_singleton_equality_type(get_proper_type(item)):
-            return False
-    return True
 
 
 def is_unreachable_map(map: TypeMap) -> bool:
