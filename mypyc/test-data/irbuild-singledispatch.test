@@ -1,0 +1,331 @@
+[case testNativeCallsUsedInDispatchFunction]
+from functools import singledispatch
+@singledispatch
+def f(arg) -> bool:
+    return False
+
+@f.register
+def g(arg: int) -> bool:
+    return True
+[out]
+def __mypyc_singledispatch_main_function_f__(arg):
+    arg :: object
+L0:
+    return 0
+def f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.f_obj
+    r0, r1 :: dict
+    r2 :: str
+    r3 :: i32
+    r4 :: bit
+L0:
+    r0 = PyDict_New()
+    __mypyc_self__.registry = r0
+    r1 = PyDict_New()
+    r2 = 'dispatch_cache'
+    r3 = PyObject_SetAttr(__mypyc_self__, r2, r1)
+    r4 = r3 >= 0 :: signed
+    return 1
+def f_obj.__call__(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.f_obj
+    arg :: object
+    r0 :: ptr
+    r1 :: object
+    r2 :: dict
+    r3, r4 :: object
+    r5 :: bit
+    r6, r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: dict
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: i32
+    r15 :: bit
+    r16 :: object
+    r17 :: ptr
+    r18 :: object
+    r19 :: bit
+    r20 :: int
+    r21 :: bit
+    r22 :: int
+    r23 :: bool
+    r24 :: object[1]
+    r25 :: object_ptr
+    r26 :: object
+    r27 :: bool
+L0:
+    r0 = get_element_ptr arg ob_type :: PyObject
+    r1 = borrow load_mem r0 :: builtins.object*
+    keep_alive arg
+    r2 = __mypyc_self__.dispatch_cache
+    r3 = CPyDict_GetWithNone(r2, r1)
+    r4 = load_address _Py_NoneStruct
+    r5 = r3 != r4
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = r3
+    goto L3
+L2:
+    r7 = functools :: module
+    r8 = '_find_impl'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = __mypyc_self__.registry
+    r11 = [r1, r10]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
+    keep_alive r1, r10
+    r14 = PyDict_SetItem(r2, r1, r13)
+    r15 = r14 >= 0 :: signed
+    r6 = r13
+L3:
+    r16 = load_address PyLong_Type
+    r17 = get_element_ptr r6 ob_type :: PyObject
+    r18 = borrow load_mem r17 :: builtins.object*
+    keep_alive r6
+    r19 = r18 == r16
+    if r19 goto L4 else goto L7 :: bool
+L4:
+    r20 = unbox(int, r6)
+    r21 = int_eq r20, 0
+    if r21 goto L5 else goto L6 :: bool
+L5:
+    r22 = unbox(int, arg)
+    r23 = g(r22)
+    return r23
+L6:
+    unreachable
+L7:
+    r24 = [arg]
+    r25 = load_address r24
+    r26 = PyObject_Vectorcall(r6, r25, 1, 0)
+    keep_alive arg
+    r27 = unbox(bool, r26)
+    return r27
+def f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def f_obj.register(__mypyc_self__, cls, func):
+    __mypyc_self__ :: __main__.f_obj
+    cls, func, r0 :: object
+L0:
+    r0 = CPySingledispatch_RegisterFunction(__mypyc_self__, cls, func)
+    return r0
+def f(arg):
+    arg :: object
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = f_obj.__call__(r2, arg)
+    return r3
+def g(arg):
+    arg :: int
+L0:
+    return 1
+
+[case testCallsToSingledispatchFunctionsAreNative]
+from functools import singledispatch
+
+@singledispatch
+def f(x: object) -> None:
+    pass
+
+def test():
+    f('a')
+[out]
+def __mypyc_singledispatch_main_function_f__(x):
+    x :: object
+L0:
+    return 1
+def f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.f_obj
+    r0, r1 :: dict
+    r2 :: str
+    r3 :: i32
+    r4 :: bit
+L0:
+    r0 = PyDict_New()
+    __mypyc_self__.registry = r0
+    r1 = PyDict_New()
+    r2 = 'dispatch_cache'
+    r3 = PyObject_SetAttr(__mypyc_self__, r2, r1)
+    r4 = r3 >= 0 :: signed
+    return 1
+def f_obj.__call__(__mypyc_self__, x):
+    __mypyc_self__ :: __main__.f_obj
+    x :: object
+    r0 :: ptr
+    r1 :: object
+    r2 :: dict
+    r3, r4 :: object
+    r5 :: bit
+    r6, r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: dict
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: i32
+    r15 :: bit
+    r16 :: object
+    r17 :: ptr
+    r18 :: object
+    r19 :: bit
+    r20 :: int
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23 :: object
+    r24 :: None
+L0:
+    r0 = get_element_ptr x ob_type :: PyObject
+    r1 = borrow load_mem r0 :: builtins.object*
+    keep_alive x
+    r2 = __mypyc_self__.dispatch_cache
+    r3 = CPyDict_GetWithNone(r2, r1)
+    r4 = load_address _Py_NoneStruct
+    r5 = r3 != r4
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = r3
+    goto L3
+L2:
+    r7 = functools :: module
+    r8 = '_find_impl'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = __mypyc_self__.registry
+    r11 = [r1, r10]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
+    keep_alive r1, r10
+    r14 = PyDict_SetItem(r2, r1, r13)
+    r15 = r14 >= 0 :: signed
+    r6 = r13
+L3:
+    r16 = load_address PyLong_Type
+    r17 = get_element_ptr r6 ob_type :: PyObject
+    r18 = borrow load_mem r17 :: builtins.object*
+    keep_alive r6
+    r19 = r18 == r16
+    if r19 goto L4 else goto L5 :: bool
+L4:
+    r20 = unbox(int, r6)
+    unreachable
+L5:
+    r21 = [x]
+    r22 = load_address r21
+    r23 = PyObject_Vectorcall(r6, r22, 1, 0)
+    keep_alive x
+    r24 = unbox(None, r23)
+    return r24
+def f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def f_obj.register(__mypyc_self__, cls, func):
+    __mypyc_self__ :: __main__.f_obj
+    cls, func, r0 :: object
+L0:
+    r0 = CPySingledispatch_RegisterFunction(__mypyc_self__, cls, func)
+    return r0
+def f(x):
+    x :: object
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: None
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = f_obj.__call__(r2, x)
+    return r3
+def test():
+    r0 :: str
+    r1 :: None
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = f(r0)
+    r2 = box(None, 1)
+    return r2
+
+[case registerNestedFunctionError]
+from functools import singledispatch
+from typing import Any, overload
+
+def dec(x: Any) -> Any:
+    return x
+
+def f() -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_func(x: Any) -> None:
+        pass
+
+@dec
+def g() -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_decorated(x: Any) -> None:
+        pass
+
+@overload
+def h(x: int) -> None:
+    pass
+@overload
+def h(x: str) -> None:
+    pass
+def h(x: Any) -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_overload(x: Any) -> None:
+        pass
+
+@singledispatch
+def outside(x: Any) -> None:
+    pass
+
+def i() -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_func(x: int) -> None:
+        pass
+
+@dec
+def j() -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_decorated(x: int) -> None:
+        pass
+
+@overload
+def k(x: int) -> None:
+    pass
+@overload
+def k(x: str) -> None:
+    pass
+def k(x: Any) -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_overload(x: int) -> None:
+        pass

@@ -1,0 +1,250 @@
+-- Test cases for generating fine-grained dependencies for classes.
+--
+-- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
+
+-- TODO: Move class related test cases from deps.test to here
+
+[case testNamedTuple]
+from typing import NamedTuple, Any
+from a import A
+N = NamedTuple('N', [('a', 'A')])
+
+def f(a: Any) -> None:
+    n = N(a)
+    n.a
+[file a.py]
+class A: pass
+[builtins fixtures/tuple.pyi]
+[out]
+<m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
+<m.N.a> -> m.f
+<m.N> -> m.f
+<a.A> -> <m.N.a>, <m.N>, m
+<a> -> m
+
+[case testNamedTuple2]
+from typing import NamedTuple, Any, Tuple
+from a import A, B
+N = NamedTuple('N', [('a', 'Tuple[A, B]')])
+
+def f(a: Any) -> None:
+    n = N(a)
+    n.a
+[file a.py]
+class A: pass
+class B: pass
+[builtins fixtures/tuple.pyi]
+[out]
+<m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
+<m.N.a> -> m.f
+<m.N> -> m.f
+<a.A> -> <m.N.a>, <m.N>, m
+<a.B> -> <m.N.a>, <m.N>, m
+<a> -> m
+
+[case testNamedTuple3]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+M = NamedTuple('M', [('z', 'N')])
+y = M(x)
+[builtins fixtures/tuple.pyi]
+[out]
+<m.M.__init__> -> m
+<m.M.__new__> -> m
+<m.M> -> <m.y>, m
+<m.N.__init__> -> m
+<m.N.__new__> -> m
+<m.N> -> <m.M.z>, <m.M>, <m.x>, <m.y>, m
+<m.x> -> m
+<m.y> -> m
+
+[case testNamedTuple4]
+from typing import NamedTuple, Any
+from a import A
+class N(NamedTuple):
+    a: A
+
+def f(a: Any) -> None:
+    n = N(a)
+    n.a
+[file a.py]
+class A: pass
+[builtins fixtures/tuple.pyi]
+[out]
+<m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
+<m.N.a> -> m.f
+<m.N> -> m.N, m.f
+<a.A> -> <m.N.a>, <m.N>, m, m.N
+<a> -> m
+
+[case testIfFalseInClassBody]
+class A:
+    if False:
+        x = None  # type: str
+        x.foo()
+[builtins fixtures/bool.pyi]
+[out]
+<m.A> -> m.A
+
+[case testAlwaysFalseIsinstanceInClassBody]
+class A:
+    x: int
+    if isinstance(x, str):
+        y: str = None
+        y.foo()
+[builtins fixtures/isinstance.pyi]
+[out]
+<m.A> -> m.A
+
+[case testDoubleAttributeInitializationToNone]
+class C:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = None
+[out]
+<m.C.x> -> m.C.__init__
+<m.C> -> m.C
+
+[case testClassNestedWithinFunction]
+class C: pass
+
+def f() -> None:
+    class S1(C): pass
+
+class D:
+    def g(self) -> None:
+        class S2(C): pass
+[out]
+-- TODO: Is it okay to have targets like m.S1@4.__init__?
+<m.C.(abstract)> -> <m.S1@4.__init__>, <m.S2@8.__init__>, m.D.g, m.f
+<m.C.__init__> -> <m.S1@4.__init__>, <m.S2@8.__init__>
+<m.C.__new__> -> <m.S1@4.__new__>, <m.S2@8.__new__>
+<m.C> -> m.C, m.D.g, m.f
+<m.D.g> -> m.D.g
+<m.D> -> m.D
+<m.f> -> m.f
+
+[case testClassSuper]
+class C:
+    def __init__(self, x: int) -> None: pass
+    def foo(self) -> None: pass
+
+class D(C):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        super().foo()
+[out]
+<m.C.(abstract)> -> <m.D.__init__>, m
+<m.C.__init__> -> <m.D.__init__>, m.D.__init__
+<m.C.__new__> -> <m.D.__new__>
+<m.C.foo> -> <m.D.foo>, m.D.__init__
+<m.C> -> m, m.C, m.D
+<m.D> -> m.D
+
+[case testClassMissingInit]
+class C:
+    def __init__(self, x: int) -> None: pass
+
+class D(C):
+    pass
+
+def foo() -> None:
+    D(6)
+[out]
+<m.C.(abstract)> -> <m.D.__init__>, m
+<m.C.__init__> -> <m.D.__init__>
+<m.C.__new__> -> <m.D.__new__>
+<m.C> -> m, m.C, m.D
+<m.D.__init__> -> m.foo
+<m.D.__new__> -> m.foo
+<m.D> -> m.D, m.foo
+
+[case testClassBasedEnum]
+from enum import Enum
+from m import B
+
+class A(Enum):
+    X = B()
+
+def f(a: A) -> None:
+    pass
+def g() -> None:
+    A.X
+[file m.py]
+class B: pass
+[builtins fixtures/enum.pyi]
+[out]
+<m.A.X> -> m.g
+<m.A> -> <m.f>, m.A, m.f, m.g
+<m.B.__init__> -> m
+<m.B.__new__> -> m
+-- The <m.A.X> dependency target is superfluous but benign
+<m.B> -> <m.A.X>, m
+<m> -> m
+
+[case testClassAttribute]
+class C:
+    x = 0
+
+def f() -> None:
+    C.x
+
+def g() -> None:
+    C.x = 1
+[out]
+<m.C.x> -> m.f, m.g
+<m.C> -> m.C, m.f, m.g
+
+[case testStaticAndClassMethods]
+class C:
+    @staticmethod
+    def foo() -> None:
+        h()
+
+    @classmethod
+    def bar(cls) -> None:
+        h()
+
+def fstatic() -> None:
+    C.foo()
+
+def fclass() -> None:
+    C.bar()
+
+cc = C()
+
+def gstatic() -> None:
+    cc.foo()
+
+def gclass() -> None:
+    cc.bar()
+
+def h() -> None: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.bar> -> m, m.fclass, m.gclass
+<m.C.foo> -> m, m.fstatic, m.gstatic
+<m.C> -> <m.cc>, m, m.C, m.fclass, m.fstatic
+<m.cc> -> m, m.gclass, m.gstatic
+<m.h> -> m.C.bar, m.C.foo
+
+[case testClassAttributeWithMetaclass]
+class M(type):
+    x = 1
+class C(metaclass=M):
+    pass
+def f() -> None:
+    C.x
+[out]
+<m.C.x> -> m.f
+<m.C> -> m.C, m.f
+<m.M.x> -> m.f
+<m.M> -> <m.C>, m, m.M

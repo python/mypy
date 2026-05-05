@@ -1,0 +1,83 @@
+name: "Mypy"
+description: "Optional Static Typing for Python."
+author: "Jukka Lehtosalo and contributors"
+inputs:
+  options:
+    description: >
+      Options passed to mypy. Use `mypy --help` to see available options.
+    required: false
+  paths:
+    description: >
+      Explicit paths to run mypy on. Defaults to the current directory.
+    required: false
+    default: "."
+  version:
+    description: >
+      Mypy version to use (PEP440) - e.g. "0.910"
+    required: false
+    default: ""
+  install_types:
+    description: >
+      Whether to automatically install missing library stub packages.
+      ('yes'|'no', default: 'yes')
+    default: "yes"
+  install_project_dependencies:
+    description: >
+      Whether to attempt to install project dependencies into mypy
+      environment. ('yes'|'no', default: 'yes')
+    default: "yes"
+branding:
+  color: "blue"
+  icon: "check-circle"
+runs:
+  using: composite
+  steps:
+    - name: mypy setup  # zizmor: ignore[template-injection]
+      shell: bash
+      run: |
+        echo ::group::Installing mypy...
+        export PIP_DISABLE_PIP_VERSION_CHECK=1
+
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          HOST_PYTHON=python
+        else
+          HOST_PYTHON=python3
+        fi
+
+        venv_script="import os.path; import venv; import sys;
+        path = os.path.join(r'${{ github.action_path }}', '.mypy-venv');
+        venv.main([path]);
+        bin_subdir = 'Scripts' if sys.platform == 'win32' else 'bin';
+        print(os.path.join(path, bin_subdir, 'python'));
+        "
+
+        VENV_PYTHON=$(echo $venv_script | "$HOST_PYTHON")
+        mypy_spec="mypy"
+
+        if [ -n "${{ inputs.version }}" ]; then
+          mypy_spec+="==${{ inputs.version }}"
+        fi
+
+        if ! "$VENV_PYTHON" -m pip install "$mypy_spec"; then
+          echo "::error::Could not install mypy."
+          exit 1
+        fi
+        echo ::endgroup::
+
+        if [ "${{ inputs.install_project_dependencies }}" == "yes" ]; then
+          VENV=$("$VENV_PYTHON" -c 'import sys;print(sys.prefix)')
+          echo ::group::Installing project dependencies...
+          "$VENV_PYTHON" -m pip download --dest="$VENV"/deps .
+          "$VENV_PYTHON" -m pip install -U --find-links="$VENV"/deps "$VENV"/deps/*
+          echo ::endgroup::
+        fi
+
+        echo ::group::Running mypy...
+        mypy_opts=""
+        if [ "${{ inputs.install_types }}" == "yes" ]; then
+          mypy_opts+="--install-types --non-interactive"
+        fi
+
+        echo "mypy $mypy_opts ${{ inputs.options }} ${{ inputs.paths }}"
+        "$VENV_PYTHON" -m mypy $mypy_opts ${{ inputs.options }} ${{ inputs.paths }}
+        echo ::endgroup::

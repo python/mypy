@@ -1,0 +1,930 @@
+-- NOTE: If a module has a name starting or ending with _, it is skipped in
+--       output.
+
+[case testImport]
+import x
+x.y
+[file x.py]
+y = 1
+[out]
+MypyFile:1(
+  Import:1(x)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(x)
+      y [x.y])))
+MypyFile:1(
+  tmp/x.py
+  AssignmentStmt:1(
+    NameExpr(y [x.y])
+    IntExpr(1)
+    builtins.int))
+
+[case testImportedNameInType]
+import m
+x = None # type: m.c
+[file m.py]
+class c: pass
+[out]
+MypyFile:1(
+  Import:1(m)
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    m.c))
+MypyFile:1(
+  tmp/m.py
+  ClassDef:1(
+    c
+    PassStmt:1()))
+
+[case testImportFrom]
+from m import y
+x = y
+[file m.py]
+y = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [y])
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    NameExpr(y [m.y])))
+MypyFile:1(
+  tmp/m.py
+  AssignmentStmt:1(
+    NameExpr(y [m.y])
+    IntExpr(1)
+    builtins.int))
+
+[case testImportFromType]
+from m import c
+x = None # type: c
+[file m.py]
+class c: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [c])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    m.c))
+MypyFile:1(
+  tmp/m.py
+  ClassDef:1(
+    c
+    PassStmt:1()))
+
+[case testImportMultiple]
+import _m, _n
+_m.x, _n.y
+[fixture _m.py]
+x = 1
+[fixture _n.py]
+y = 2
+[out]
+MypyFile:1(
+  Import:1(_m, _n)
+  ExpressionStmt:2(
+    TupleExpr:2(
+      MemberExpr:2(
+        NameExpr(_m)
+        x [_m.x])
+      MemberExpr:2(
+        NameExpr(_n)
+        y [_n.y]))))
+
+[case testImportAs]
+import _m as n
+n.x
+[fixture _m.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(_m : n)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(n [_m])
+      x [_m.x])))
+
+[case testImportFromMultiple]
+from _m import x, y
+x, y
+[fixture _m.py]
+x = y = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(_m, [x, y])
+  ExpressionStmt:2(
+    TupleExpr:2(
+      NameExpr(x [_m.x])
+      NameExpr(y [_m.y]))))
+
+[case testImportFromAs]
+from _m import y as z
+z
+[fixture _m.py]
+y = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(_m, [y : z])
+  ExpressionStmt:2(
+    NameExpr(z [_m.y])))
+
+[case testAccessImportedName]
+from m import x
+y = x
+[file m.py]
+from _n import x
+[fixture _n.py]
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [x])
+  AssignmentStmt:2(
+    NameExpr(y* [__main__.y])
+    NameExpr(x [_n.x])))
+MypyFile:1(
+  tmp/m.py
+  ImportFrom:1(_n, [x]))
+
+[case testAccessImportedName2]
+import _m
+y = _m.x
+[fixture _m.py]
+from _n import x
+[fixture _n.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(_m)
+  AssignmentStmt:2(
+    NameExpr(y* [__main__.y])
+    MemberExpr:2(
+      NameExpr(_m)
+      x [_n.x])))
+
+[case testAccessingImportedNameInType]
+from _m import c
+x = None # type: c
+[fixture _m.py]
+from _n import c
+[fixture _n.py]
+class c: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(_m, [c])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    _n.c))
+
+[case testAccessingImportedNameInType2]
+import _m
+x = None # type: _m.c
+[fixture _m.py]
+from _n import c
+[fixture _n.py]
+class c: pass
+[out]
+MypyFile:1(
+  Import:1(_m)
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    _n.c))
+
+[case testAccessingImportedModule]
+from _m import _n
+_n.x
+[fixture _m.py]
+import _n
+[fixture _n.py]
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(_m, [_n])
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(_n)
+      x [_n.x])))
+
+[case testAccessingImportedModule2]
+import _m
+_m._n.x
+[fixture _m.py]
+import _n
+[fixture _n.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(_m)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        NameExpr(_m)
+        _n)
+      x [_n.x])))
+
+[case testAccessTypeViaDoubleIndirection]
+from _m import c
+a = None # type: c
+[fixture _m.py]
+from _n import c
+[fixture _n.py]
+class c: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(_m, [c])
+  AssignmentStmt:2(
+    NameExpr(a [__main__.a])
+    NameExpr(None [builtins.None])
+    _n.c))
+
+[case testAccessTypeViaDoubleIndirection2]
+import _m
+a = None # type: _m.c
+[fixture _m.py]
+from _n import c
+[fixture _n.py]
+class c: pass
+[out]
+MypyFile:1(
+  Import:1(_m)
+  AssignmentStmt:2(
+    NameExpr(a [__main__.a])
+    NameExpr(None [builtins.None])
+    _n.c))
+
+[case testImportAsterisk]
+from _m import *
+x, y
+[fixture _m.py]
+x = y = 1
+[out]
+MypyFile:1(
+  ImportAll:1(_m)
+  ExpressionStmt:2(
+    TupleExpr:2(
+      NameExpr(x [_m.x])
+      NameExpr(y [_m.y]))))
+
+[case testImportAsteriskAndImportedNames]
+from _m import *
+n_.x, y
+[fixture _m.py]
+import n_
+from n_ import y
+[fixture n_.py]
+x = y = 1
+[out]
+MypyFile:1(
+  ImportAll:1(_m)
+  ExpressionStmt:2(
+    TupleExpr:2(
+      MemberExpr:2(
+        NameExpr(n_)
+        x [n_.x])
+      NameExpr(y [n_.y]))))
+
+[case testImportAsteriskAndImportedNamesInTypes]
+from _m import *
+x = None # type: n_.c
+y = None # type: d
+[fixture _m.py]
+import n_
+from n_ import d
+[fixture n_.py]
+class c: pass
+class d: pass
+[out]
+MypyFile:1(
+  ImportAll:1(_m)
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    n_.c)
+  AssignmentStmt:3(
+    NameExpr(y [__main__.y])
+    NameExpr(None [builtins.None])
+    n_.d))
+
+[case testModuleInSubdir]
+import _m
+_m.x
+[fixture _m/__init__.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(_m)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(_m)
+      x [_m.x])))
+
+[case testNestedModules]
+import m.n
+m.n.x, m.y
+[fixture m/__init__.py]
+y = 1
+[file m/n.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(m.n)
+  ExpressionStmt:2(
+    TupleExpr:2(
+      MemberExpr:2(
+        MemberExpr:2(
+          NameExpr(m)
+          n [m.n])
+        x [m.n.x])
+      MemberExpr:2(
+        NameExpr(m)
+        y [m.y]))))
+MypyFile:1(
+  tmp/m/n.py
+  AssignmentStmt:1(
+    NameExpr(x [m.n.x])
+    IntExpr(1)
+    builtins.int))
+
+[case testImportFromSubmodule]
+from m._n import x
+x
+[fixture m/__init__.py]
+[fixture m/_n.py]
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(m._n, [x])
+  ExpressionStmt:2(
+    NameExpr(x [m._n.x])))
+
+[case testImportAllFromSubmodule]
+from m._n import *
+x, y
+[fixture m/__init__.py]
+[fixture m/_n.py]
+x = y = 1
+[out]
+MypyFile:1(
+  ImportAll:1(m._n)
+  ExpressionStmt:2(
+    TupleExpr:2(
+      NameExpr(x [m._n.x])
+      NameExpr(y [m._n.y]))))
+
+[case testSubmodulesAndTypes]
+import m._n
+x = None # type: m._n.c
+[fixture m/__init__.py]
+[fixture m/_n.py]
+class c: pass
+[out]
+MypyFile:1(
+  Import:1(m._n)
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    m._n.c))
+
+[case testSubmodulesAndTypes2]
+from m._n import c
+x = None # type: c
+[fixture m/__init__.py]
+[fixture m/_n.py]
+class c: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(m._n, [c])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    m._n.c))
+
+[case testFromPackageImportModule]
+from m import _n
+_n.x
+[fixture m/__init__.py]
+[fixture m/_n.py]
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [_n])
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(_n [m._n])
+      x [m._n.x])))
+
+[case testDeeplyNestedModule]
+import m.n.k
+m.n.k.x
+m.n.b
+m.a
+[fixture m/__init__.py]
+a = 1
+[fixture m/n/__init__.py]
+b = 1
+[file m/n/k.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(m.n.k)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        MemberExpr:2(
+          NameExpr(m)
+          n [m.n])
+        k [m.n.k])
+      x [m.n.k.x]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      MemberExpr:3(
+        NameExpr(m)
+        n [m.n])
+      b [m.n.b]))
+  ExpressionStmt:4(
+    MemberExpr:4(
+      NameExpr(m)
+      a [m.a])))
+MypyFile:1(
+  tmp/m/n/k.py
+  AssignmentStmt:1(
+    NameExpr(x [m.n.k.x])
+    IntExpr(1)
+    builtins.int))
+
+[case testImportInSubmodule]
+import m._n
+y = m._n.x
+[fixture m/__init__.py]
+[fixture m/_n.py]
+from m._k import x
+[fixture m/_k.py]
+x = 1
+[out]
+MypyFile:1(
+  Import:1(m._n)
+  AssignmentStmt:2(
+    NameExpr(y* [__main__.y])
+    MemberExpr:2(
+      MemberExpr:2(
+        NameExpr(m)
+        _n [m._n])
+      x [m._k.x])))
+
+[case testBuiltinsUsingModule]
+o = None # type: __builtins__.object
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(o [__main__.o])
+    NameExpr(None [builtins.None])
+    builtins.object))
+
+[case testImplicitAccessToBuiltins]
+object
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(object [builtins.object])))
+
+[case testAssignmentToModuleAttribute]
+import _m
+_m.x = (
+  _m.x)
+[fixture _m.py]
+x = None
+[out]
+MypyFile:1(
+  Import:1(_m)
+  AssignmentStmt:2(
+    MemberExpr:2(
+      NameExpr(_m)
+      x [_m.x])
+    MemberExpr:3(
+      NameExpr(_m)
+      x [_m.x])))
+
+[case testAssignmentThatRefersToModule]
+import _m
+_m.x[None] = None
+[fixture _m.py]
+x = None
+[out]
+MypyFile:1(
+  Import:1(_m)
+  AssignmentStmt:2(
+    IndexExpr:2(
+      MemberExpr:2(
+        NameExpr(_m)
+        x [_m.x])
+      NameExpr(None [builtins.None]))
+    NameExpr(None [builtins.None])))
+
+[case testImportInBlock]
+if 1:
+    import _x
+    _x.y
+[fixture _x.py]
+y = 1
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      Import:2(_x)
+      ExpressionStmt:3(
+        MemberExpr:3(
+          NameExpr(_x)
+          y [_x.y])))))
+
+[case testImportInFunction]
+def f() -> None:
+    import _x
+    _x.y
+[fixture _x.py]
+y = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:2(
+      Import:2(_x)
+      ExpressionStmt:3(
+        MemberExpr:3(
+          NameExpr(_x)
+          y [_x.y])))))
+
+[case testImportInClassBody]
+class A:
+    from _x import y
+    z = y
+[fixture _x.py]
+y = 1
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    ImportFrom:2(_x, [y])
+    AssignmentStmt:3(
+      NameExpr(z* [m])
+      NameExpr(y [__main__.A.y]))))
+
+[case testImportInClassBody2]
+class A:
+    import _x
+    z = _x.y
+[fixture _x.py]
+y = 1
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    Import:2(_x)
+    AssignmentStmt:3(
+      NameExpr(z* [m])
+      MemberExpr:3(
+        NameExpr(_x)
+        y [_x.y]))))
+
+[case testImportModuleTwice]
+def f() -> None:
+    import x
+    import x
+    x.y
+[file x.py]
+y = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:2(
+      Import:2(x)
+      Import:3(x)
+      ExpressionStmt:4(
+        MemberExpr:4(
+          NameExpr(x)
+          y [x.y])))))
+MypyFile:1(
+  tmp/x.py
+  AssignmentStmt:1(
+    NameExpr(y [x.y])
+    IntExpr(1)
+    builtins.int))
+
+[case testRelativeImport0]
+import m.x
+m.x.z.y
+[fixture m/__init__.py]
+[file m/x.py]
+from . import z
+[file m/z.py]
+y = 1
+[out]
+MypyFile:1(
+  Import:1(m.x)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        MemberExpr:2(
+          NameExpr(m)
+          x [m.x])
+        z [m.z])
+      y [m.z.y])))
+MypyFile:1(
+  tmp/m/x.py
+  ImportFrom:1(., [z]))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y [m.z.y])
+    IntExpr(1)
+    builtins.int))
+
+[case testRelativeImport1]
+import m.t.b as b
+b.x.y
+b.z.y
+[fixture m/__init__.py]
+[file m/x.py]
+y = 1
+[file m/z.py]
+y = 3
+[fixture m/t/__init__.py]
+[file m/t/b.py]
+from .. import x, z
+[out]
+MypyFile:1(
+  Import:1(m.t.b : b)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        NameExpr(b [m.t.b])
+        x [m.x])
+      y [m.x.y]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      MemberExpr:3(
+        NameExpr(b [m.t.b])
+        z [m.z])
+      y [m.z.y])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(.., [x, z]))
+MypyFile:1(
+  tmp/m/x.py
+  AssignmentStmt:1(
+    NameExpr(y [m.x.y])
+    IntExpr(1)
+    builtins.int))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
+
+[case testRelativeImport2]
+import m.t.b as b
+b.xy
+b.zy
+[fixture m/__init__.py]
+[file m/x.py]
+y = 1
+[file m/z.py]
+y = 3
+[fixture m/t/__init__.py]
+[file m/t/b.py]
+from ..x import y as xy
+from ..z import y as zy
+[out]
+MypyFile:1(
+  Import:1(m.t.b : b)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(b [m.t.b])
+      xy [m.x.y]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      NameExpr(b [m.t.b])
+      zy [m.z.y])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(..x, [y : xy])
+  ImportFrom:2(..z, [y : zy]))
+MypyFile:1(
+  tmp/m/x.py
+  AssignmentStmt:1(
+    NameExpr(y [m.x.y])
+    IntExpr(1)
+    builtins.int))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
+
+[case testRelativeImport3]
+import m.t
+m.zy
+m.xy
+m.t.y
+[fixture m/__init__.py]
+from .x import *
+from .z import *
+[file m/x.py]
+from .z import zy as xy
+[file m/z.py]
+zy = 3
+[fixture m/t/__init__.py]
+from .b import *
+[file m/t/b.py]
+from .. import xy as y
+[out]
+MypyFile:1(
+  Import:1(m.t)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(m)
+      zy [m.z.zy]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      NameExpr(m)
+      xy [m.z.zy]))
+  ExpressionStmt:4(
+    MemberExpr:4(
+      MemberExpr:4(
+        NameExpr(m)
+        t [m.t])
+      y [m.z.zy])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(.., [xy : y]))
+MypyFile:1(
+  tmp/m/x.py
+  ImportFrom:1(.z, [zy : xy]))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(zy [m.z.zy])
+    IntExpr(3)
+    builtins.int))
+
+[case testRelativeImportFromSameModule]
+import m.x
+[fixture m/__init__.py]
+[file m/x.py]
+from .x import nonexistent
+[out]
+tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
+
+[case testImportFromSameModule]
+import m.x
+[fixture m/__init__.py]
+[file m/x.py]
+from m.x import nonexistent
+[out]
+tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
+
+[case testImportMisspellingSingleCandidate]
+import f
+[fixture m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function"?
+
+[case testImportMisspellingMultipleCandidates]
+import f
+[fixture m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+def somef_unction():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function" or "somef_unction"?
+
+[case testImportMisspellingMultipleCandidatesTruncated]
+import f
+[fixture m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+def somef_unction():
+    pass
+def somefu_nction():
+    pass
+def somefun_ction():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function", "somef_unction", or "somefu_nction"?
+
+[case testFromImportAsInStub]
+from m import *
+x
+y  # E: Name "y" is not defined
+[file m.pyi]
+from m2 import x as x
+from m2 import y
+[file m2.py]
+x = 1
+y = 2
+[out]
+
+[case testFromImportAsInNonStub]
+from m_ import *
+x
+y
+[fixture m_.py]
+from m2_ import x as x
+from m2_ import y
+[fixture m2_.py]
+x = 1
+y = 2
+[out]
+MypyFile:1(
+  ImportAll:1(m_)
+  ExpressionStmt:2(
+    NameExpr(x [m2_.x]))
+  ExpressionStmt:3(
+    NameExpr(y [m2_.y])))
+
+[case testImportAsInStub]
+from m import *
+m2
+m3  # E: Name "m3" is not defined
+[file m.pyi]
+import m2 as m2
+import m3
+[file m2.py]
+[file m3.py]
+[out]
+
+[case testImportAsInNonStub]
+from m_ import *
+m2_
+m3_
+[fixture m_.py]
+import m2_ as m2_
+import m3_
+[fixture m2_.py]
+[fixture m3_.py]
+[out]
+MypyFile:1(
+  ImportAll:1(m_)
+  ExpressionStmt:2(
+    NameExpr(m2_))
+  ExpressionStmt:3(
+    NameExpr(m3_)))
+
+[case testErrorsInMultipleModules]
+import m
+x
+[file m.py]
+y
+[out]
+tmp/m.py:1: error: Name "y" is not defined
+main:2: error: Name "x" is not defined
+
+[case testImportTwice]
+import typing
+from x import a, a # ok (we could give a warning, but this is valid)
+def f() -> None:
+    from x import a
+    from x import a # ok
+import x
+import x # ok, since we may import multiple submodules of a package
+[file x.py]
+a = 1
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ImportFrom:2(x, [a, a])
+  FuncDef:3(
+    f
+    def ()
+    Block:4(
+      ImportFrom:4(x, [a])
+      ImportFrom:5(x, [a])))
+  Import:6(x)
+  Import:7(x))
+MypyFile:1(
+  tmp/x.py
+  AssignmentStmt:1(
+    NameExpr(a [x.a])
+    IntExpr(1)
+    builtins.int))

@@ -1,0 +1,27 @@
+[case testLiteralSemanalBasicAssignment]
+from typing import Literal
+foo: Literal[3]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  AssignmentStmt:2(
+    NameExpr(foo [__main__.foo])
+    TempNode:2(
+      Any)
+    Literal[3]))
+
+[case testLiteralSemanalInFunction]
+from typing import Literal
+def foo(a: Literal[1], b: Literal["  foo  "]) -> Literal[True]: pass
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Literal])
+  FuncDef:2(
+    foo
+    Args(
+      Var(a)
+      Var(b))
+    def (a: Literal[1], b: Literal['  foo  ']) -> Literal[True]
+    Block:2(
+      PassStmt:2())))

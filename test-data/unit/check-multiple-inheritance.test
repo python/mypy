@@ -1,0 +1,734 @@
+-- Test cases for multiple inheritance.
+--
+-- Related: check-abstract.test
+
+
+-- No name collisions
+-- ------------------
+
+
+[case testSimpleMultipleInheritanceAndMethods]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def g(self, x: str) -> None: pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+c.g('')
+c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
+
+[case testSimpleMultipleInheritanceAndMethods2]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def g(self, x): pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+c.g('')
+c.g(1)
+
+[case testSimpleMultipleInheritanceAndInstanceVariables]
+import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.y = ''
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.y = ''
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testSimpleMultipleInheritanceAndInstanceVariableInClassBody]
+import typing
+class A:
+    x = 1
+class B:
+    y = ''
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.y = ''
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testSimpleMultipleInheritanceAndClassVariable]
+import typing
+class A:
+    x = 1
+class B:
+    y = ''
+class C(A, B): pass
+C.x = 1
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+C.y = ''
+C.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+-- Name collisions
+-- ---------------
+
+
+[case testMethodNameCollisionInMultipleInheritanceWithValidSigs]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x: int) -> None: pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testInstanceVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
+import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.x = 1
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testClassVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
+import typing
+class A:
+    x = 1
+class B:
+    x = 1
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+C.x = 1
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x: str) -> None: pass
+class C(A, B): pass
+[out]
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs2]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x, y): pass
+class C(A, B): pass
+class D(B, A): pass
+[out]
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:7: error: Definition of "f" in base class "B" is incompatible with definition in base class "A"
+
+
+[case testMethodOverridingWithBothDynamicallyAndStaticallyTypedMethods]
+class A:
+    def f(self) -> int: pass
+class B:
+    def f(self): pass
+class C(B, A): pass
+class D(A, B): pass
+[out]
+
+[case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes]
+import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.x = ''
+class C(A, B): pass
+[out]
+main:8: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+
+[case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes]
+import typing
+class A:
+    x = 1
+class B:
+    x = ''
+class C(A, B): pass
+[out]
+main:6: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodOverlapsWithClassVariableInMultipleInheritance]
+from typing import Callable
+class A:
+    def f(self) -> None: pass
+class B:
+    f = ''
+class C(A, B): pass
+[out]
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodOverlapsWithInstanceVariableInMultipleInheritance]
+from typing import Callable
+class A:
+    def f(self) -> None: pass
+class B:
+    def g(self) -> None:
+        self.f = ''
+class C(A, B): pass
+[out]
+main:7: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMultipleInheritanceAndInit]
+import typing
+class A:
+    def __init__(self, x: int) -> None: pass
+class B:
+    def __init__(self) -> None: pass
+class C(A, B): pass
+
+[case testMultipleInheritanceAndDifferentButCompatibleSignatures]
+class A:
+    def clear(self): pass
+
+class B:
+    def clear(self, x=None): pass
+
+class C(B, A): pass
+class D(A, B): pass
+[out]
+main:8: error: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
+
+
+-- Special cases
+-- -------------
+
+
+[case testGenericInheritanceAndOverridingWithMultipleInheritance]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class G(Generic[T]):
+    def f(self, s: int) -> 'G[T]': pass
+class A(G[int]):
+    def f(self, s: int) -> 'A': pass
+class B(A, int): pass
+
+[case testCannotDetermineTypeInMultipleInheritance]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+class A(B, C):
+    pass
+class B:
+    @dec
+    def f(self): pass
+class C:
+    @dec
+    def f(self): pass
+def dec(f: Callable[..., T]) -> Callable[..., T]:
+    return f
+[out]
+main:3: error: Cannot determine type of "f" in base class "B"
+main:3: error: Cannot determine type of "f" in base class "C"
+
+[case testMultipleInheritance_NestedClassesWithSameName]
+class Mixin1:
+    class Meta:
+        pass
+class Mixin2:
+    class Meta:
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:7: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassesWithSameNameCustomMetaclass]
+class Metaclass(type):
+    pass
+class Mixin1:
+    class Meta(metaclass=Metaclass):
+        pass
+class Mixin2:
+    class Meta(metaclass=Metaclass):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:9: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassesWithSameNameOverloadedNew]
+from mixins import Mixin1, Mixin2
+class A(Mixin1, Mixin2):
+    pass
+[file mixins.py]
+class Mixin1:
+    class Meta:
+        pass
+class Mixin2:
+    class Meta:
+        pass
+[file mixins.pyi]
+from typing import overload, Any, Mapping, Dict
+class Mixin1:
+    class Meta:
+        @overload
+        def __new__(cls, *args, **kwargs: None) -> Mixin1.Meta:
+            pass
+        @overload
+        def __new__(cls, *args, **kwargs: Dict[str, Any]) -> Mixin1.Meta:
+            pass
+class Mixin2:
+    class Meta:
+        pass
+[builtins fixtures/dict.pyi]
+[out]
+main:2: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndAttrHaveSameName]
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    Nested1: str
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:6: error: Definition of "Nested1" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndFunctionHaveSameName]
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    def Nested1(self) -> str:
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:7: error: Definition of "Nested1" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndRefToOtherClass]
+class Outer:
+    pass
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    Nested1 = Outer
+class A(Mixin2, Mixin1):
+    pass
+[out]
+main:8: error: Definition of "Nested1" in base class "Mixin2" is incompatible with definition in base class "Mixin1"
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMRO]
+class A:
+    def __init__(self, arg: str) -> None:
+        pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMROCustomMetaclass]
+class Metaclass(type):
+    pass
+class A(metaclass=Metaclass):
+    pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMROOverloadedNew]
+from mixins import A, B
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[file mixins.py]
+class A:
+    pass
+class B(A):
+    pass
+[file mixins.pyi]
+from typing import overload, Dict, Any
+class A:
+    @overload
+    def __new__(cls, *args, **kwargs: None) -> A:
+        pass
+    @overload
+    def __new__(cls, *args, **kwargs: Dict[str, Any]) -> A:
+        pass
+class B:
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+main:6: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testMultipleInheritance_ReferenceToGenericClasses]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Generic1(Generic[T]):
+    pass
+class Generic2(Generic[T]):
+    pass
+class Base1:
+    Nested = Generic1
+class Base2:
+    Nested = Generic2
+class A(Base1, Base2):
+    pass
+[out]
+main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_GenericSubclasses_SuperclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base1, Base2):
+    pass
+[out]
+main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_GenericSubclasses_SubclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base2, Base1):
+    pass
+[out]
+
+[case testMultipleInheritance_RefersToNamedTuples]
+from typing import NamedTuple
+class NamedTuple1:
+    attr1: int
+class NamedTuple2:
+    attr2: int
+class Base1:
+    Nested = NamedTuple1
+class Base2:
+    Nested = NamedTuple2
+class A(Base1, Base2):
+    pass
+[out]
+main:10: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_NestedVariableRefersToSuperlassUnderSubclass]
+class A:
+    def __init__(self, arg: str) -> None:
+        pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = B
+class Base2:
+    NestedVar = A
+class Combo(Base2, Base1): ...
+[out]
+main:10: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['A']
+[out]
+
+[case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['Base1']
+[out]
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base1]", base class "Base2" defined the type as "GenericBase[Base2]")
+
+[case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['Base2']
+[out]
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
+
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType2]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base1']
+class A(Base1, Base2):
+    Nested: GenericBase['Base1']
+[out]
+
+[case testMultipleInheritance_MethodDefinitionsCompatibleWithOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+# int defines __or__ as:
+#     def __or__(self, n: int) -> int: ...
+class IntFlag(int, Flag):
+    def __or__(self: _T, other: Union[int, _T]) -> _T: ...
+[out]
+
+[case testMultipleInheritance_MethodDefinitionsIncompatibleOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+class IntFlag(int, Flag):
+    def __or__(self: _T, other: str) -> _T: ...
+[out]
+main:8: error: Argument 1 of "__or__" is incompatible with supertype "Flag"; supertype defines the argument type as "IntFlag"
+main:8: note: This violates the Liskov substitution principle
+main:8: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+[case testMultipleInheritance_MethodDefinitionsCompatibleNoOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+class IntFlag(int, Flag):
+    pass
+[out]
+
+[case testMultipleInheritance_MethodsReturningSelfCompatible]
+class A(object):
+    def x(self) -> 'A':
+        return self
+
+class B(object):
+    def x(self) -> 'B':
+        return self
+
+class C(A, B):
+    def x(self) -> 'C':
+        return self
+
+[case testMultipleInheritance_MethodsReturningSelfIncompatible]
+class A(object):
+    def x(self) -> 'A':
+        return self
+
+class B(object):
+    def x(self) -> 'B':
+        return self
+
+class C(A, B): # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+    pass
+
+[case testNestedVariableRefersToSubclassOfAnotherNestedClass]
+class Mixin1:
+    class Meta:
+        pass
+class Outer(Mixin1.Meta):
+    pass
+class Mixin2:
+    NestedVar = Outer
+class Combo(Mixin2, Mixin1): ...
+[out]
+
+[case testNestedVariableRefersToCompletelyDifferentClasses]
+class A:
+    pass
+class B:
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+main:9: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testDoNotFailIfBothNestedClassesInheritFromAny]
+from typing import Any
+class Mixin1:
+    class Meta(Any):
+        pass
+class Mixin2:
+    class Meta(Any):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+
+[case testDoNotFailIfOneOfNestedClassesIsOuterInheritedFromAny]
+from typing import Any
+class Outer(Any):
+    pass
+class Mixin1:
+    Meta = Outer
+class Mixin2:
+    class Meta(Any):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+
+[case testGenericMultipleOverrideRemap]
+from typing import TypeVar, Generic, Tuple
+
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+
+class ItemsView(Generic[K, V]):
+    def __iter__(self) -> Tuple[K, V]: ...
+
+class Sequence(Generic[T]):
+    def __iter__(self) -> T: ...
+
+# Override compatible between bases.
+class OrderedItemsView(ItemsView[K, V], Sequence[Tuple[K, V]]):
+    def __iter__(self) -> Tuple[K, V]: ...
+
+class OrderedItemsViewDirect(ItemsView[K, V], Sequence[Tuple[K, V]]):
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testGenericMultipleOverrideReplace]
+from typing import TypeVar, Generic, Union
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def foo(self, x: T) -> None: ...
+
+class B(A[T]): ...
+
+class C1:
+    def foo(self, x: str) -> None: ...
+
+class C2:
+    def foo(self, x: Union[str, int]) -> None: ...
+
+class D1(B[str], C1): ...
+class D2(B[Union[int, str]], C2): ...
+class D3(C2, B[str]): ...
+class D4(B[str], C2): ...  # E: Definition of "foo" in base class "A" is incompatible with definition in base class "C2"
+
+
+[case testMultipleInheritanceOverridingOfFunctionsWithCallableInstances]
+from typing import Any, Callable
+
+def dec1(f: Callable[[Any, int], None]) -> Callable[[Any, int], None]: ...
+
+class F:
+    def __call__(self, x: int) -> None: ...
+
+def dec2(f: Callable[[Any, int], None]) -> F: ...
+
+class B1:
+    def f(self, x: int) -> None: ...
+
+class B2:
+    @dec1
+    def f(self, x: int) -> None: ...
+
+class B3:
+    @dec2
+    def f(self, x: int) -> None: ...
+
+class B4:
+    f = F()
+
+class C12(B1, B2): ...
+class C13(B1, B3): ...  # E: Definition of "f" in base class "B1" is incompatible with definition in base class "B3"
+class C14(B1, B4): ...  # E: Definition of "f" in base class "B1" is incompatible with definition in base class "B4"
+class C21(B2, B1): ...
+class C23(B2, B3): ...  # E: Definition of "f" in base class "B2" is incompatible with definition in base class "B3"
+class C24(B2, B4): ...  # E: Definition of "f" in base class "B2" is incompatible with definition in base class "B4"
+class C31(B3, B1): ...
+class C32(B3, B2): ...
+class C34(B3, B4): ...
+class C41(B4, B1): ...
+class C42(B4, B2): ...
+class C43(B4, B3): ...
+
+[case testMultipleInheritanceExplicitDiamondResolution]
+# Adapted from #14279
+class A:
+    class M:
+        pass
+
+class B0(A):
+    class M(A.M):
+        pass
+
+class B1(A):
+    class M(A.M):
+        pass
+
+class C(B0,B1):
+    class M(B0.M, B1.M):
+        pass
+
+class D0(B0):
+    pass
+class D1(B1):
+    pass
+
+class D(D0,D1,C):
+    pass

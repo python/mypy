@@ -1,0 +1,36 @@
+name: Sync typeshed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1,15 * *"
+
+permissions: {}
+
+jobs:
+  sync_typeshed:
+    name: Sync typeshed
+    if: github.repository == 'python/mypy'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true  # needed to `git push` the PR branch
+        # TODO: use whatever solution ends up working for
+        # https://github.com/python/typeshed/issues/8434
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: git config
+        run: |
+          git config --global user.name mypybot
+          git config --global user.email '<>'
+      - name: Sync typeshed
+        run: |
+          python -m pip install requests==2.28.1
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} python misc/sync-typeshed.py --make-pr

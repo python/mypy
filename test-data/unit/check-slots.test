@@ -1,0 +1,563 @@
+[case testSlotsDefinitionWithStrAndListAndTuple]
+class A:
+    __slots__ = "a"
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+
+class B:
+    __slots__ = ("a", "b")
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+
+class C:
+    __slots__ = ['c']
+    def __init__(self) -> None:
+        self.a = 1  # E: Trying to assign name "a" that is not in "__slots__" of type "__main__.C"
+        self.c = 3
+
+class WithVariable:
+    __fields__ = ['a', 'b']
+    __slots__ = __fields__
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3
+[builtins fixtures/list.pyi]
+
+
+[case testSlotsDefinitionWithDict]
+class D:
+    __slots__ = {'key': 'docs'}
+    def __init__(self) -> None:
+        self.key = 1
+        self.missing = 2  # E: Trying to assign name "missing" that is not in "__slots__" of type "__main__.D"
+[builtins fixtures/dict.pyi]
+
+
+[case testSlotsDefinitionWithDynamicDict]
+slot_kwargs = {'b': 'docs'}
+class WithDictKwargs:
+    __slots__ = {'a': 'docs', **slot_kwargs}
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3
+[builtins fixtures/dict.pyi]
+
+
+[case testSlotsDefinitionWithSet]
+class E:
+    __slots__ = {'e'}
+    def __init__(self) -> None:
+        self.e = 1
+        self.missing = 2  # E: Trying to assign name "missing" that is not in "__slots__" of type "__main__.E"
+[builtins fixtures/set.pyi]
+
+
+[case testSlotsDefinitionOutsideOfClass]
+__slots__ = ("a", "b")
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 2
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsDefinitionWithClassVar]
+class A:
+    __slots__ = ('a',)
+    b = 4
+
+    def __init__(self) -> None:
+        self.a = 1
+
+        # You cannot override class-level variables, but you can use them:
+        b = self.b
+        self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+
+        self.c = 3  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+
+A.b = 1
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsDefinitionMultipleVars1]
+class A:
+    __slots__ = __fields__ = ("a", "b")
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 2
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsDefinitionMultipleVars2]
+class A:
+    __fields__ = __slots__ = ("a", "b")
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 2
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentEmptySlots]
+class A:
+    __slots__ = ()
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+a = A()
+a.a = 1
+a.b = 2
+a.missing = 2
+[out]
+main:4: error: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
+main:5: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:8: error: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
+main:9: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:10: error: "A" has no attribute "missing"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithSuper]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    __slots__ = ("b", "c")
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self._one = 1
+
+b = B()
+b.a = 1
+b.b = 2
+b.c = 3
+b._one = 1
+b._two = 2
+[out]
+main:9: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:14: error: "B" has no attribute "c"
+main:15: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:16: error: "B" has no attribute "_two"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithSuperDuplicateSlots]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    __slots__ = ("a", "b",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithMixin]
+class A:
+    __slots__ = ("a",)
+class Mixin:
+    __slots__ = ("m",)
+class B(A, Mixin):
+    __slots__ = ("b",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.m = 2
+        self._one = 1
+
+b = B()
+b.a = 1
+b.m = 2
+b.b = 2
+b._two = 2
+[out]
+main:5: error: Class "B" has incompatible disjoint bases
+main:11: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:16: error: "B" has no attribute "b"
+main:17: error: "B" has no attribute "_two"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithSlottedSuperButNoChildSlots]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 1
+
+b = B()
+b.a = 1
+b.b = 2
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithoutSuperSlots]
+class A:
+    pass  # no slots
+class B(A):
+    __slots__ = ("a", "b")
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+
+b = B()
+b.a = 1
+b.b = 2
+b.missing = 3
+b.extra = 4  # E: "B" has no attribute "extra"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithoutSuperMixingSlots]
+class A:
+    __slots__ = ()
+class Mixin:
+    pass  # no slots
+class B(A, Mixin):
+    __slots__ = ("a", "b")
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+
+b = B()
+b.a = 1
+b.b = 2
+b.missing = 3
+b.extra = 4  # E: "B" has no attribute "extra"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithExplicitSetattr]
+class A:
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+    def __setattr__(self, k, v) -> None:
+        ...
+
+a = A()
+a.a = 1
+a.b = 2
+a.c = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithParentSetattr]
+class Parent:
+    __slots__ = ()
+
+    def __setattr__(self, k, v) -> None:
+        ...
+
+class A(Parent):
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+a = A()
+a.a = 1
+a.b = 2
+a.c = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithProps]
+from typing import Any
+
+custom_prop: Any
+
+class A:
+    __slots__ = ("a",)
+
+    @property
+    def first(self) -> int:
+        ...
+
+    @first.setter
+    def first(self, arg: int) -> None:
+        ...
+
+class B(A):
+    __slots__ = ("b",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3
+
+    @property
+    def second(self) -> int:
+        ...
+
+    @second.setter
+    def second(self, arg: int) -> None:
+        ...
+
+    def get_third(self) -> int:
+        ...
+
+    def set_third(self, arg: int) -> None:
+        ...
+
+    third = custom_prop(get_third, set_third)
+
+b = B()
+b.a = 1
+b.b = 2
+b.c = 3
+b.first = 1
+b.second = 2
+b.third = 3
+b.extra = 'extra'
+[out]
+main:22: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+main:43: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+main:47: error: "B" has no attribute "extra"
+[builtins fixtures/property.pyi]
+
+
+[case testSlotsAssignmentWithUnionProps]
+from typing import Any, Callable, Union
+
+custom_obj: Any
+
+class custom_property(object):
+    def __set__(self, *args, **kwargs):
+        ...
+
+class A:
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+
+    b: custom_property
+    c: Union[Any, custom_property]
+    d: Union[Callable, custom_property]
+    e: Callable
+
+a = A()
+a.a = 1
+a.b = custom_obj
+a.c = custom_obj
+a.d = custom_obj
+a.e = custom_obj
+[out]
+[builtins fixtures/dict.pyi]
+
+
+[case testSlotsAssignmentWithMethodReassign]
+class A:
+    __slots__ = ()
+
+    def __init__(self) -> None:
+        self.method = lambda: None  # E: Cannot assign to a method
+
+    def method(self) -> None:
+        ...
+
+a = A()
+a.method = lambda: None  # E: Cannot assign to a method
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithExplicitDict]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    __slots__ = ("__dict__",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+b = B()
+b.a = 1
+b.b = 2
+b.c = 3  # E: "B" has no attribute "c"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithExplicitSuperDict]
+class A:
+    __slots__ = ("__dict__",)
+class B(A):
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+b = B()
+b.a = 1
+b.b = 2
+b.c = 3  # E: "B" has no attribute "c"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithVariable]
+slot_name = "b"
+class A:
+    __slots__ = ("a", slot_name)
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3
+
+a = A()
+a.a = 1
+a.b = 2
+a.c = 3
+a.d = 4  # E: "A" has no attribute "d"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentMultipleLeftValues]
+class A:
+    __slots__ = ("a", "b")
+    def __init__(self) -> None:
+        self.a, self.b, self.c = (1, 2, 3)  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentMultipleAssignments]
+class A:
+    __slots__ = ("a",)
+    def __init__(self) -> None:
+        self.a = self.b = self.c = 1
+[out]
+main:4: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:4: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsWithTupleCall]
+class A:
+    # TODO: for now this way of writing tuples are not recognised
+    __slots__ = tuple(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsWithListCall]
+class A:
+    # TODO: for now this way of writing lists are not recognised
+    __slots__ = list(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/list.pyi]
+
+
+[case testSlotsWithSetCall]
+class A:
+    # TODO: for now this way of writing sets are not recognised
+    __slots__ = set(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/set.pyi]
+
+
+[case testSlotsWithDictCall]
+class A:
+    # TODO: for now this way of writing dicts are not recognised
+    __slots__ = dict((("a", "docs"), ("b", "docs")))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/dict.pyi]
+
+[case testSlotsNotInClass]
+# Shouldn't be triggered
+__slots__ = [1, 2]
+reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.int]"
+
+def foo() -> None:
+    __slots__ = 1
+    reveal_type(__slots__)  # N: Revealed type is "builtins.int"
+
+[case testSlotsEmptyList]
+class A:
+    __slots__ = []
+    reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testSlotsEmptySet]
+class A:
+    __slots__ = set()
+    reveal_type(__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+[builtins fixtures/set.pyi]
+
+[case testSlotsWithAny]
+from typing import Any
+
+some_obj: Any
+
+class A:
+    # You can do anything with `Any`:
+    __slots__ = some_obj
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+
+[case testSlotsWithClassVar]
+from typing import ClassVar
+class X:
+    __slots__ = ('a',)
+    a: int
+x = X()
+X.a  # E: "a" in __slots__ conflicts with class variable access
+x.a
+[builtins fixtures/tuple.pyi]
+
+[case testSlotsOnSelfType]
+from typing_extensions import Self
+
+class X:
+    __slots__ = ("foo",)
+    foo: int
+
+    def method1(self: Self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
+
+    def method2(self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
+[builtins fixtures/tuple.pyi]

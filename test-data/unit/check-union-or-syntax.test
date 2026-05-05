@@ -1,0 +1,211 @@
+-- Type checking of union types with '|' syntax
+
+[case testUnionOrSyntaxWithTwoBuiltinsTypes]
+from __future__ import annotations
+def f(x: int | str) -> int | str:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+    z: int | str = 0
+    reveal_type(z)  # N: Revealed type is "builtins.int | builtins.str"
+    return x
+reveal_type(f)  # N: Revealed type is "def (x: builtins.int | builtins.str) -> builtins.int | builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOrSyntaxWithThreeBuiltinsTypes]
+def f(x: int | str | float) -> int | str | float:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.float"
+    z: int | str | float = 0
+    reveal_type(z)  # N: Revealed type is "builtins.int | builtins.str | builtins.float"
+    return x
+reveal_type(f)  # N: Revealed type is "def (x: builtins.int | builtins.str | builtins.float) -> builtins.int | builtins.str | builtins.float"
+
+[case testUnionOrSyntaxWithTwoTypes]
+class A: pass
+class B: pass
+def f(x: A | B) -> A | B:
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    z: A | B = A()
+    reveal_type(z)  # N: Revealed type is "__main__.A | __main__.B"
+    return x
+reveal_type(f)  # N: Revealed type is "def (x: __main__.A | __main__.B) -> __main__.A | __main__.B"
+
+[case testUnionOrSyntaxWithThreeTypes]
+class A: pass
+class B: pass
+class C: pass
+def f(x: A | B | C) -> A | B | C:
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"
+    z: A | B | C = A()
+    reveal_type(z)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"
+    return x
+reveal_type(f)  # N: Revealed type is "def (x: __main__.A | __main__.B | __main__.C) -> __main__.A | __main__.B | __main__.C"
+
+[case testUnionOrSyntaxWithLiteral]
+from typing import Literal
+reveal_type(Literal[4] | str)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnionOrSyntaxWithBadOperator]
+x: 1 + 2  # E: Invalid type comment or annotation
+
+[case testUnionOrSyntaxWithBadOperands]
+x: int | 42  # E: Invalid type: try using Literal[42] instead?
+y: 42 | int  # E: Invalid type: try using Literal[42] instead?
+z: str | 42 | int  # E: Invalid type: try using Literal[42] instead?
+
+[case testUnionOrSyntaxWithGenerics]
+from typing import List
+x: List[int | str]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testUnionOrSyntaxWithQuotedFunctionTypes]
+from typing import Union
+def f(x: 'Union[int, str, None]') -> 'Union[int, None]':
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | None"
+    return 42
+reveal_type(f)  # N: Revealed type is "def (x: builtins.int | builtins.str | None) -> builtins.int | None"
+
+def g(x: "int | str | None") -> "int | None":
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | None"
+    return 42
+reveal_type(g)  # N: Revealed type is "def (x: builtins.int | builtins.str | None) -> builtins.int | None"
+
+[case testUnionOrSyntaxWithQuotedVariableTypes]
+y: "int | str" = 42
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.str"
+
+[case testUnionOrSyntaxWithTypeAliasWorking]
+T = int | str
+x: T
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+S = list[int] | str | None
+y: S
+reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | builtins.str | None"
+U = str | None
+z: U
+reveal_type(z)  # N: Revealed type is "builtins.str | None"
+
+def f(): pass
+
+X = int | str | f()
+b: X  # E: Variable "__main__.X" is not valid as a type \
+    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/type.pyi]
+
+[case testUnionOrSyntaxInComment]
+x = 1  # type: int | str
+
+[case testUnionOrSyntaxFutureImport]
+from __future__ import annotations
+x: int | None
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOrSyntaxInStubFile]
+from lib import x
+[file lib.pyi]
+x: int | None
+
+[case testUnionOrSyntaxInMiscRuntimeContexts]
+from typing import cast
+
+class C(list[int | None]):
+    pass
+
+def f() -> object: pass
+
+reveal_type(cast(str | None, f()))  # N: Revealed type is "builtins.str | None"
+reveal_type(list[str | None]())  # N: Revealed type is "builtins.list[builtins.str | None]"
+[builtins fixtures/type.pyi]
+
+[case testUnionOrSyntaxRuntimeContextInStubFile]
+import lib
+reveal_type(lib.x)  # N: Revealed type is "builtins.int | builtins.list[builtins.str] | None"
+reveal_type(lib.y)  # N: Revealed type is "builtins.list[builtins.int | None]"
+
+[file lib.pyi]
+A = int | list[str] | None
+x: A
+B = list[int | None]
+y: B
+class C(list[int | None]):
+    pass
+[builtins fixtures/type.pyi]
+
+[case testUnionOrSyntaxInIsinstance]
+class C: pass
+
+def f(x: int | str | C) -> None:
+    if isinstance(x, int | str):
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
+
+def g(x: int | str | tuple[int, str] | C) -> None:
+    if isinstance(x, int | str | tuple):
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | tuple[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
+[builtins fixtures/isinstance_python3_10.pyi]
+
+[case testUnionOrSyntaxInIsinstanceNotSupported]
+from typing import Union
+def f(x: Union[int, str, None]) -> None:
+    if isinstance(x, int | str):
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+[builtins fixtures/isinstance.pyi]
+
+[case testImplicit604TypeAliasWithCyclicImportInStub]
+from was_builtins import foo
+reveal_type(foo)  # N: Revealed type is "builtins.str | was_mmap.mmap"
+[file was_builtins.pyi]
+import was_mmap
+WriteableBuffer = was_mmap.mmap
+ReadableBuffer = str | WriteableBuffer
+foo: ReadableBuffer
+[file was_mmap.pyi]
+from was_builtins import *
+class mmap: ...
+[builtins fixtures/type.pyi]
+
+[case testTypeAliasWithNewUnionIsInstance]
+SimpleAlias = int | str
+
+def foo(x: int | str | tuple):
+    if isinstance(x, SimpleAlias):
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+ParameterizedAlias = str | list[str]
+
+# these are false negatives:
+isinstance(5, str | list[str])
+isinstance(5, ParameterizedAlias)
+[builtins fixtures/type.pyi]
+
+[case testIsInstanceUnionNone]
+def foo(value: str | bool | None):
+    assert not isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "builtins.bool"
+
+def bar(value: object):
+    assert isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "builtins.str | None"
+[builtins fixtures/type.pyi]
+
+
+# TODO: Get this test to pass
+[case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]
+from was_builtins import foo
+reveal_type(foo)  # N: Revealed type is "Union[builtins.str, was_mmap.mmap]"
+[file was_builtins.py]
+import was_mmap
+WriteableBuffer = was_mmap.mmap
+ReadableBuffer = str | WriteableBuffer
+foo: ReadableBuffer
+[file was_mmap.py]
+from was_builtins import *
+class mmap: ...

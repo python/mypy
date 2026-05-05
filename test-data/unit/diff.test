@@ -1,0 +1,1635 @@
+-- Test cases for taking a diff of two module ASTs/symbol tables.
+-- The diffs are used for fined-grained incremental checking.
+
+[case testChangeTypeOfModuleAttribute]
+x = 1
+y = 1
+[file next.py]
+x = ''
+y = 1
+[out]
+__main__.x
+
+[case testChangeSignatureOfModuleFunction]
+def f(x: int) -> None:
+    pass
+def g(y: str) -> None:
+    pass
+[file next.py]
+def f(x: str) -> None:
+    x = ''
+def g(y: str) -> None:
+    y = ''
+[out]
+__main__.f
+
+[case testAddModuleAttribute]
+x = 1
+[file next.py]
+x = 1
+y = 1
+[out]
+__main__.y
+
+[case testRemoveModuleAttribute]
+x = 1
+y = 1
+[file next.py]
+x = 1
+[out]
+__main__.y
+
+--
+-- Classes
+--
+
+[case testChangeMethodSignature]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file next.py]
+class A:
+    def f(self, x: int) -> None: pass
+    def g(self) -> None: pass
+[out]
+__main__.A.f
+
+[case testChangeAttributeType]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = ''
+[out]
+__main__.A.y
+
+[case testAddAttribute]
+class A: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.f
+__main__.A.x
+
+[case testAddAttribute2]
+class A:
+    def f(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.x
+
+[case testRemoveAttribute]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file next.py]
+class A: pass
+[out]
+__main__.A.f
+__main__.A.x
+
+[case testAddMethod]
+class A:
+    def f(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[out]
+__main__.A.g
+
+[case testRemoveMethod]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None: pass
+[out]
+__main__.A.g
+
+[case testAddImport]
+import nn
+[file next.py]
+import n
+import nn
+[file n.py]
+x = 1
+[file nn.py]
+y = 1
+[out]
+__main__.n
+
+[case testRemoveImport]
+import n
+[file next.py]
+[file n.py]
+x = 1
+[out]
+__main__.n
+
+[case testChangeClassIntoFunction]
+class A: pass
+[file next.py]
+def A() -> None: pass
+[out]
+__main__.A
+
+[case testDeleteClass]
+class A: pass
+[file next.py]
+[out]
+__main__.A
+
+[case testAddBaseClass]
+class A: pass
+[file next.py]
+class B: pass
+class A(B): pass
+[out]
+__main__.A
+__main__.B
+
+[case testChangeBaseClass]
+class A: pass
+class B: pass
+class C(A): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.C
+
+[case testRemoveBaseClass]
+class A: pass
+class B(A): pass
+[file next.py]
+class A: pass
+class B: pass
+[out]
+__main__.B
+
+[case testRemoveClassFromMiddleOfMro]
+class A: pass
+class B(A): pass
+class C(B): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.B
+__main__.C
+
+[case testDifferenceInConstructor]
+class A:
+    def __init__(self) -> None: pass
+[file next.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+__main__.A.__init__
+
+[case testChangeSignatureOfMethodInNestedClass]
+class A:
+    class B:
+        def f(self) -> int: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testChangeTypeOfAttributeInNestedClass]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = 1
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = ''
+[out]
+__main__.A.B.x
+
+[case testAddMethodToNestedClass]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testAddNestedClass]
+class A: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+__main__.A.B
+
+[case testRemoveNestedClass]
+class A:
+    class B:
+        def f(self) -> None: pass
+[file next.py]
+class A: pass
+[out]
+__main__.A.B
+
+[case testChangeNestedClassToMethod]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    def B(self) -> None: pass
+
+[out]
+__main__.A.B
+
+[case testChangeNamedTupleAttribute]
+
+from typing import NamedTuple
+class A:
+    x: str
+N = NamedTuple('N', [('x', int), ('y', str)])
+M = NamedTuple('M', [('x', int), ('y', str)])
+[file next.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int), ('y', int)])
+M = NamedTuple('M', [('x', int), ('y', str)])
+[builtins fixtures/tuple.pyi]
+[out]
+__main__.A
+__main__.N
+__main__.N._NT
+__main__.N.__new__
+__main__.N._asdict
+__main__.N._make
+__main__.N._replace
+__main__.N.y
+
+[case testSimpleDecoratedFunction]
+from a import dec
+@dec
+def f() -> None: pass
+@dec
+def g() -> None: pass
+[file next.py]
+from a import dec
+@dec
+def f(x: int) -> None: pass
+@dec
+def g() -> None: pass
+[file a.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(f: T) -> T:
+    return f
+[out]
+__main__.f
+
+[case testSimpleDecoratedMethod]
+from a import dec
+class A:
+    @dec
+    def f(self) -> None:
+        self.g()
+    @dec
+    def g(self) -> None: pass
+[file next.py]
+from a import dec
+class A:
+    @dec
+    def f(self, x: int) -> None:
+        self.g()
+    @dec
+    def g(self) -> None: pass
+[file a.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(f: T) -> T:
+    return f
+[out]
+__main__.A.f
+
+[case testTypeVarBound]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+S = TypeVar('S')
+[out]
+__main__.T
+
+[case testTypeVarVariance]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', covariant=True)
+C = TypeVar('C', covariant=True)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', contravariant=True)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testTypeVarValues]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str)
+C = TypeVar('C', int, str)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str, object)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testGenericFunction]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[out]
+__main__.T
+__main__.f
+
+[case testGenericTypes]
+from typing import List
+x: List[int]
+y: List[int]
+[file next.py]
+from typing import List
+x: List[int]
+y: List[str]
+[builtins fixtures/list.pyi]
+[out]
+__main__.y
+
+[case testTypeAliasOfList]
+from typing import List
+X = List[int]
+Y = List[int]
+[file next.py]
+from typing import List
+X = List[str]
+Y = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.X
+
+[case testTypeAliasOfCallable]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[int], str]
+C = Callable[[int], str]
+[file next.py]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[], str]
+C = Callable[[int], int]
+[out]
+__main__.B
+__main__.C
+
+[case testGenericTypeAlias]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+A = Callable[[T], T]
+B = Callable[[T], T]
+[file next.py]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+A = Callable[[T], T]
+B = Callable[[T], S]
+[out]
+__main__.B
+__main__.S
+
+[case testDifferentListTypes]
+from typing import List
+A = List
+B = list
+C = List
+[file next.py]
+from typing import List
+A = List
+B = list
+C = list
+[builtins fixtures/list.pyi]
+[out]
+__main__.C
+
+[case testDecoratorChangesSignature]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: str) -> Iterator[None]:
+    yield
+[file next.py]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: object) -> Iterator[None]:
+    yield
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/list.pyi]
+[out]
+__main__.g
+
+[case testOverloadedMethod]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: str) -> str: pass
+    def g(self, x): pass
+[file next.py]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: object) -> object: pass
+    def g(self, x): pass
+[out]
+__main__.A.g
+
+[case testPropertyWithSetter]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+[file next.py]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> str:
+        pass
+
+    @x.setter
+    def x(self, o: str) -> None:
+        pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.B.x
+
+[case testFunctionalEnum]
+from enum import Enum, IntEnum
+A = Enum('A', 'x')
+B = Enum('B', 'x')
+C = Enum('C', 'x')
+D = IntEnum('D', 'x')
+[file next.py]
+from enum import Enum, IntEnum
+A = Enum('A', 'x')
+B = Enum('B', 'y')
+C = IntEnum('C', 'x')
+D = IntEnum('D', 'x y')
+[builtins fixtures/enum.pyi]
+[out]
+__main__.B.x
+__main__.B.y
+__main__.C
+__main__.D.y
+
+[case testClassBasedEnum]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Y = 1
+class C(Enum):
+    X = 0
+    Y = 1
+class D(Enum):
+    X = 0
+    Y = 1
+class E(Enum):
+    X = 0
+[file next.py]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Z = 1
+class C(Enum):
+    X = 0
+    Y = 1
+    Z = 2
+class D(Enum):
+    X = 'a'
+    Y = 'b'
+class F(Enum):
+    X = 0
+[builtins fixtures/enum.pyi]
+[out]
+__main__.B.Y
+__main__.B.Z
+__main__.C.Z
+__main__.D.X
+__main__.D.Y
+__main__.E
+__main__.F
+
+[case testTypedDict]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': str})
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict2]
+from typing import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from typing import TypedDict
+class Point(TypedDict):
+    x: int
+    y: str
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict3]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int})
+p = Point(dict(x=42))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict4]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
+p = Point(dict(x=42, y=1337))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypeAliasSimple]
+A = int
+B = int
+[file next.py]
+A = str
+B = int
+[out]
+__main__.A
+
+[case testTypeAliasGeneric]
+from typing import List
+A = List[int]
+B = List[int]
+[file next.py]
+from typing import List
+A = List[str]
+B = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenToNonGen]
+from typing import List
+A = List[str]
+B = List
+[file next.py]
+from typing import List
+A = List
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasNonGenToGen]
+from typing import List
+A = List
+B = List
+[file next.py]
+from typing import List
+A = List[str]
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenericTypeVar]
+from typing import TypeVar, Dict
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[file next.py]
+from typing import TypeVar, Dict
+class T: pass
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[builtins fixtures/dict.pyi]
+[out]
+__main__.A
+__main__.T
+
+[case testNewType]
+from typing import NewType
+class C: pass
+class D: pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+N3 = NewType('N3', C)
+class N4(C): pass
+[file next.py]
+from typing import NewType
+class C: pass
+class D(C): pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+class N3(C): pass
+N4 = NewType('N4', C)
+[out]
+__main__.D
+__main__.N2
+__main__.N3
+__main__.N3.__init__
+__main__.N4
+__main__.N4.__init__
+
+[case testChangeGenericBaseClassOnly]
+from typing import List
+class C(List[int]): pass
+[file next.py]
+from typing import List
+class C(List[str]): pass
+[builtins fixtures/list.pyi]
+[out]
+__main__.C
+
+[case testOverloads]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: int) -> None: pass
+@overload
+def b(x: str) -> str: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+def c(x):
+    pass
+@overload
+def d(x: int) -> None: pass
+@overload
+def d(x: str) -> str: pass
+def d(x):
+    pass
+[file next.py]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: str) -> str: pass
+@overload
+def b(x: int) -> None: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+@overload
+def c(x: C) -> C: pass
+def c(x):
+    pass
+def d(x: int) -> None:
+    pass
+@overload
+def e(x: int) -> None: pass
+@overload
+def e(x: str) -> str: pass
+def e(x):
+    pass
+[out]
+__main__.b
+__main__.c
+__main__.d
+__main__.e
+
+[case testOverloadsExternalOnly]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: Base) -> Base:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: B) -> B: pass
+def g(x: Base) -> Base:
+    pass
+[file next.py]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: object) -> object:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: C) -> C: pass
+def g(x: Base) -> Base:
+    pass
+[out]
+__main__.g
+
+[case testNestedFunctionDoesntMatter]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(x: A) -> B:
+        pass
+[file next.py]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(y: B) -> A:
+        pass
+[out]
+
+[case testProtocolVsNominal]
+from typing import Protocol
+class A(Protocol):
+    x: int
+class B(Protocol):
+    x: int
+class C(Protocol):
+    x: int
+class D(Protocol):
+    x: int
+[file next.py]
+from typing import Protocol
+class A(Protocol):
+    x: int
+class B(Protocol):
+    x: str
+class C(Protocol):
+    x: int
+    y: int
+class D:
+    x: int
+[out]
+__main__.B.x
+__main__.C.(abstract)
+__main__.C.y
+__main__.D
+__main__.D.(abstract)
+
+[case testProtocolNormalVsGeneric]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol[T]):
+    x: T
+class P2(Protocol[T]):
+    x: T
+    y: T
+[file next.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol):
+    x: int
+class P2(Protocol[T]):
+    x: T
+[out]
+__main__.P
+__main__.P.x
+__main__.P2.(abstract)
+__main__.P2.y
+
+[case testAddAbstractMethod]
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def f(self) -> None: pass
+[file next.py]
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[out]
+__main__.A.(abstract)
+__main__.A.g
+
+[case testFinalFlagsTriggerVar]
+from typing import Final
+
+v: Final = 1
+w: Final = 1
+x: Final = 1
+y: Final[int] = 1
+z: Final[int] = 1
+same1: Final = 1
+same2: Final[int] = 1
+class C:
+    v: Final = 1
+    w: Final = 1
+    x: Final = 1
+    y: Final[int] = 1
+    z: Final[int] = 1
+    same1: Final = 1
+    same2: Final[int] = 1
+    def __init__(self) -> None:
+        self.vi: Final = 1
+        self.wi: Final = 1
+        self.xi: Final = 1
+        self.yi: Final[int] = 1
+        self.zi: Final[int] = 1
+        self.same1_instance: Final = 1
+        self.same2_instance: Final[int] = 1
+
+[file next.py]
+from typing import Final
+
+v: Final = 0
+w = 1
+x: Final[int] = 1
+y: int = 1
+z: Final = 1
+same1: Final = 1
+same2: Final[int] = 0
+class C:
+    v: Final = 0
+    w = 1
+    x: Final[int]  = 1
+    y: int = 1
+    z: Final = 1
+    same1: Final = 1
+    same2: Final[int] = 0
+    def __init__(self) -> None:
+        self.vi: Final = 0
+        self.wi = 1
+        self.xi: Final[int] = 1
+        self.yi: int = 1
+        self.zi: Final = 1
+        self.same1_instance: Final = 1
+        self.same2_instance: Final[int] = 0
+[out]
+__main__.C.v
+__main__.C.vi
+__main__.C.w
+__main__.C.wi
+__main__.C.x
+__main__.C.xi
+__main__.C.y
+__main__.C.yi
+__main__.C.z
+__main__.C.zi
+__main__.v
+__main__.w
+__main__.x
+__main__.y
+__main__.z
+
+[case testFinalFlagsTriggerMethod]
+from typing import final
+
+class C:
+    def meth(self) -> int: pass
+    @final
+    def same(self) -> int: pass
+    @classmethod
+    def cmeth(cls) -> int: pass
+
+[file next.py]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: pass
+    @final
+    def same(self) -> int: pass
+    @final
+    @classmethod
+    def cmeth(cls) -> int: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.cmeth
+__main__.C.meth
+
+[case testFinalFlagsTriggerProperty]
+from typing import final
+
+class C:
+    @final
+    @property
+    def p(self) -> int: pass
+    @final
+    @property
+    def same(self) -> str: pass
+
+[file next.py]
+from typing import final
+
+class C:
+    @property
+    def p(self) -> int: pass
+    @final
+    @property
+    def same(self) -> str: pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.C.p
+
+[case testFinalFlagsTriggerMethodOverload]
+from typing import final, overload
+
+class C:
+    @overload
+    def m(self, x: int) -> int: ...
+    @overload
+    def m(self, x: str) -> str: ...
+    @final
+    def m(self, x):
+        pass
+    @overload
+    def same(self, x: int) -> int: ...
+    @overload
+    def same(self, x: str) -> str: ...
+    @final
+    def same(self, x):
+        pass
+
+[file next.py]
+from typing import final, overload
+
+class C:
+    @overload
+    def m(self, x: int) -> int: ...
+    @overload
+    def m(self, x: str) -> str: ...
+    def m(self, x):
+        pass
+    @overload
+    def same(self, x: int) -> int: ...
+    @overload
+    def same(self, x: str) -> str: ...
+    @final
+    def same(self, x):
+        pass
+[out]
+__main__.C.m
+
+[case testDynamicBasePluginDiff]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+class Diff:
+    x: Column[int]
+[file next.py]
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+class Diff(Base):
+    x: Column[int]
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+[out]
+__main__.Diff
+__main__.Diff.x
+
+[case testLiteralTriggersVar]
+from typing import Literal
+
+x: Literal[1] = 1
+y = 1
+z: Literal[1] = 1
+same: Literal[1] = 1
+class C:
+    x_class: Literal[1] = 1
+    y_class = 1
+    z_class: Literal[1] = 1
+    same_class: Literal[1] = 1
+    def __init__(self) -> None:
+        self.x_instance: Literal[1] = 1
+        self.y_instance = 1
+        self.z_instance: Literal[1] = 1
+        self.same_instance: Literal[1] = 1
+
+[file next.py]
+from typing import Literal
+
+x = 1
+y: Literal[1] = 1
+z: Literal[2] = 2
+same: Literal[1] = 1
+class C:
+    x_class = 1
+    y_class: Literal[1] = 1
+    z_class: Literal[2] = 2
+    same_class: Literal[1] = 1
+    def __init__(self) -> None:
+        self.x_instance = 1
+        self.y_instance: Literal[1] = 1
+        self.z_instance: Literal[2] = 2
+        self.same_instance: Literal[1] = 1
+[builtins fixtures/tuple.pyi]
+[out]
+__main__.C.x_class
+__main__.C.x_instance
+__main__.C.y_class
+__main__.C.y_instance
+__main__.C.z_class
+__main__.C.z_instance
+__main__.x
+__main__.y
+__main__.z
+
+[case testLiteralTriggersFunctions]
+from typing import Literal
+
+def function_1() -> int: pass
+def function_2() -> Literal[1]: pass
+def function_3() -> Literal[1]: pass
+
+def function_4(x: int) -> None: pass
+def function_5(x: Literal[1]) -> None: pass
+def function_6(x: Literal[1]) -> None: pass
+
+def function_same_1() -> Literal[1]: pass
+def function_same_2(x: Literal[1]) -> None: pass
+
+class C:
+    def method_1(self) -> int: pass
+    def method_2(self) -> Literal[1]: pass
+    def method_3(self) -> Literal[1]: pass
+
+    def method_4(self, x: int) -> None: pass
+    def method_5(self, x: Literal[1]) -> None: pass
+    def method_6(self, x: Literal[1]) -> None: pass
+
+    def method_same_1(self) -> Literal[1]: pass
+    def method_same_2(self, x: Literal[1]) -> None: pass
+
+    @classmethod
+    def classmethod_1(cls) -> int: pass
+    @classmethod
+    def classmethod_2(cls) -> Literal[1]: pass
+    @classmethod
+    def classmethod_3(cls) -> Literal[1]: pass
+
+    @classmethod
+    def classmethod_4(cls, x: int) -> None: pass
+    @classmethod
+    def classmethod_5(cls, x: Literal[1]) -> None: pass
+    @classmethod
+    def classmethod_6(cls, x: Literal[1]) -> None: pass
+
+    @classmethod
+    def classmethod_same_1(cls) -> Literal[1]: pass
+    @classmethod
+    def classmethod_same_2(cls, x: Literal[1]) -> None: pass
+
+    @staticmethod
+    def staticmethod_1() -> int: pass
+    @staticmethod
+    def staticmethod_2() -> Literal[1]: pass
+    @staticmethod
+    def staticmethod_3() -> Literal[1]: pass
+
+    @staticmethod
+    def staticmethod_4(x: int) -> None: pass
+    @staticmethod
+    def staticmethod_5(x: Literal[1]) -> None: pass
+    @staticmethod
+    def staticmethod_6(x: Literal[1]) -> None: pass
+
+    @staticmethod
+    def staticmethod_same_1() -> Literal[1]: pass
+    @staticmethod
+    def staticmethod_same_2(x: Literal[1]) -> None: pass
+
+[file next.py]
+from typing import Literal
+
+def function_1() -> Literal[1]: pass
+def function_2() -> int: pass
+def function_3() -> Literal[2]: pass
+
+def function_4(x: Literal[1]) -> None: pass
+def function_5(x: int) -> None: pass
+def function_6(x: Literal[2]) -> None: pass
+
+def function_same_1() -> Literal[1]: pass
+def function_same_2(x: Literal[1]) -> None: pass
+
+class C:
+    def method_1(self) -> Literal[1]: pass
+    def method_2(self) -> int: pass
+    def method_3(self) -> Literal[2]: pass
+
+    def method_4(self, x: Literal[1]) -> None: pass
+    def method_5(self, x: int) -> None: pass
+    def method_6(self, x: Literal[2]) -> None: pass
+
+    def method_same_1(self) -> Literal[1]: pass
+    def method_same_2(self, x: Literal[1]) -> None: pass
+
+    @classmethod
+    def classmethod_1(cls) -> Literal[1]: pass
+    @classmethod
+    def classmethod_2(cls) -> int: pass
+    @classmethod
+    def classmethod_3(cls) -> Literal[2]: pass
+
+    @classmethod
+    def classmethod_4(cls, x: Literal[1]) -> None: pass
+    @classmethod
+    def classmethod_5(cls, x: int) -> None: pass
+    @classmethod
+    def classmethod_6(cls, x: Literal[2]) -> None: pass
+
+    @classmethod
+    def classmethod_same_1(cls) -> Literal[1]: pass
+    @classmethod
+    def classmethod_same_2(cls, x: Literal[1]) -> None: pass
+
+    @staticmethod
+    def staticmethod_1() -> Literal[1]: pass
+    @staticmethod
+    def staticmethod_2() -> int: pass
+    @staticmethod
+    def staticmethod_3() -> Literal[2]: pass
+
+    @staticmethod
+    def staticmethod_4(x: Literal[1]) -> None: pass
+    @staticmethod
+    def staticmethod_5(x: int) -> None: pass
+    @staticmethod
+    def staticmethod_6(x: Literal[2]) -> None: pass
+
+    @staticmethod
+    def staticmethod_same_1() -> Literal[1]: pass
+    @staticmethod
+    def staticmethod_same_2(x: Literal[1]) -> None: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.classmethod_1
+__main__.C.classmethod_2
+__main__.C.classmethod_3
+__main__.C.classmethod_4
+__main__.C.classmethod_5
+__main__.C.classmethod_6
+__main__.C.method_1
+__main__.C.method_2
+__main__.C.method_3
+__main__.C.method_4
+__main__.C.method_5
+__main__.C.method_6
+__main__.C.staticmethod_1
+__main__.C.staticmethod_2
+__main__.C.staticmethod_3
+__main__.C.staticmethod_4
+__main__.C.staticmethod_5
+__main__.C.staticmethod_6
+__main__.function_1
+__main__.function_2
+__main__.function_3
+__main__.function_4
+__main__.function_5
+__main__.function_6
+
+[case testLiteralTriggersProperty]
+from typing import Literal
+
+class C:
+    @property
+    def p1(self) -> Literal[1]: pass
+
+    @property
+    def p2(self) -> int: pass
+
+    @property
+    def same(self) -> Literal[1]: pass
+
+[file next.py]
+from typing import Literal
+
+class C:
+    @property
+    def p1(self) -> int: pass
+
+    @property
+    def p2(self) -> Literal[1]: pass
+
+    @property
+    def same(self) -> Literal[1]: pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.C.p1
+__main__.C.p2
+
+[case testLiteralsTriggersOverload]
+from typing import Literal, overload
+
+@overload
+def func(x: str) -> str: ...
+@overload
+def func(x: Literal[1])  -> int: ...
+def func(x):
+    pass
+
+@overload
+def func_same(x: str) -> str: ...
+@overload
+def func_same(x: Literal[1])  -> int: ...
+def func_same(x):
+    pass
+
+class C:
+    @overload
+    def method(self, x: str) -> str: ...
+    @overload
+    def method(self, x: Literal[1]) -> int: ...
+    def method(self, x):
+        pass
+
+    @overload
+    def method_same(self, x: str) -> str: ...
+    @overload
+    def method_same(self, x: Literal[1]) -> int: ...
+    def method_same(self, x):
+        pass
+
+[file next.py]
+from typing import Literal, overload
+
+@overload
+def func(x: str) -> str: ...
+@overload
+def func(x: Literal[2])  -> int: ...
+def func(x):
+    pass
+
+@overload
+def func_same(x: str) -> str: ...
+@overload
+def func_same(x: Literal[1])  -> int: ...
+def func_same(x):
+    pass
+
+class C:
+    @overload
+    def method(self, x: str) -> str: ...
+    @overload
+    def method(self, x: Literal[2]) -> int: ...
+    def method(self, x):
+        pass
+
+    @overload
+    def method_same(self, x: str) -> str: ...
+    @overload
+    def method_same(self, x: Literal[1]) -> int: ...
+    def method_same(self, x):
+        pass
+[builtins fixtures/tuple.pyi]
+[out]
+__main__.C.method
+__main__.func
+
+[case testUnionOfLiterals]
+from typing import Literal
+x: Literal[1, '2']
+[file next.py]
+from typing import Literal
+x: Literal[1, 2]
+[builtins fixtures/tuple.pyi]
+[out]
+__main__.x
+
+[case testUnionOfCallables]
+from typing import Callable, Union
+from mypy_extensions import Arg
+x: Union[Callable[[Arg(int, 'x')], None],
+         Callable[[int], None]]
+[file next.py]
+from typing import Callable, Union
+from mypy_extensions import Arg
+x: Union[Callable[[Arg(int, 'y')], None],
+         Callable[[int], None]]
+[builtins fixtures/tuple.pyi]
+[out]
+__main__.x
+
+[case testChangeParamSpec]
+from typing import ParamSpec, TypeVar
+A = ParamSpec('A')
+B = ParamSpec('B')
+C = TypeVar('C')
+[file next.py]
+from typing import ParamSpec, TypeVar
+A = ParamSpec('A')
+B = TypeVar('B')
+C = ParamSpec('C')
+[out]
+__main__.B
+__main__.C
+
+[case testEmptyBodySuper]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: ...
+[file next.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: return 0
+[out]
+__main__.C.meth
+
+[case testGenericFunctionWithOptionalReturnType]
+from typing import Type, TypeVar
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> T:
+        pass
+
+[file next.py]
+from typing import Type, TypeVar, Optional
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> Optional[T]:
+        pass
+
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.get_by_team_and_id
+__main__.Optional
+
+[case testPEP695TypeAlias]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = int
+type B = str
+type C = int
+D = int
+E: TypeAlias = int
+F = TypeAliasType("F", int)
+G = TypeAliasType("G", int)
+type H = int
+
+[file next.py]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = str
+type B = str
+type C[T] = int
+type D = int
+type E = int
+type F = int
+type G = str
+type H[T] = int
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+__main__.A
+__main__.C
+__main__.D
+__main__.E
+__main__.G
+__main__.H
+
+[case testPEP695TypeAlias2]
+# flags: --python-version=3.12
+type A[T: int] = list[T]
+type B[T: int] = list[T]
+type C[T: (int, str)] = list[T]
+type D[T: (int, str)] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[file next.py]
+# flags: --python-version=3.12
+type A[T] = list[T]
+type B[T: str] = list[T]
+type C[T: (int, None)] = list[T]
+type D[T] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[out]
+__main__.A
+__main__.B
+__main__.C
+__main__.D
+
+[case testPEP695GenericFunction]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T](x: T, y: T) -> T:
+    return x
+[file next.py]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T, S](x: T, y: S) -> S:
+    return y
+[out]
+__main__.g
+
+[case testPEP695GenericClass]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T]:
+    pass
+class E[T]:
+    pass
+class F[T]:
+    def f(self, x: object) -> T: ...
+[file next.py]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T: int]:
+    pass
+class E:
+    pass
+class F[T]:
+    def f(self, x: T) -> T: ...
+[out]
+__main__.D
+__main__.E
+__main__.F
+__main__.F.f

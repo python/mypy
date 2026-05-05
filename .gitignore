@@ -1,0 +1,62 @@
+build/
+__pycache__
+*.py[cod]
+*~
+/build
+/env*/
+docs/build/
+docs/source/_build
+mypyc/doc/_build
+*.iml
+/out/
+.venv*
+venv/
+.mypy_cache/
+.incremental_checker_cache.json
+.cache
+test-data/packages/.pip_lock
+dmypy.json
+.dmypy.json
+/.mypyc_test_output
+
+# Packages
+*.egg
+*.egg-info
+*.eggs
+
+# IDEs
+.idea
+.vscode
+
+# vim temporary files
+.*.sw?
+*.sw?
+
+# Operating Systems
+.DS_Store
+
+# Coverage Files
+htmlcov
+.coverage*
+
+# pytest cache
+.pytest_cache/
+
+# virtualenv
+.Python
+bin/
+lib/
+include/
+.python-version
+pyvenv.cfg
+
+.tox
+pip-wheel-metadata
+
+
+test_capi
+*.o
+*.a
+test_capi
+/mypyc/lib-rt/build/
+/mypyc/lib-rt/*.so

@@ -1,0 +1,118 @@
+[case testUnboundTypeVar]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f() -> T: # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    ...
+f()
+
+U = TypeVar('U', bound=int)
+
+def g() -> U: # E: A function returning TypeVar should receive at least one argument containing the same TypeVar \
+              # N: Consider using the upper bound "int" instead
+    ...
+
+V = TypeVar('V', int, str)
+
+def h() -> V:  # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    ...
+
+[case testInnerFunctionTypeVar]
+
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def g(a: T) -> T:
+    def f() -> T:
+        ...
+    return f()
+
+[case testUnboundIterableOfTypeVars]
+from typing import Iterable, TypeVar
+
+T = TypeVar('T')
+
+def f() -> Iterable[T]:
+    ...
+f()
+
+[case testBoundTypeVar]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(a: T, b: T, c: int) -> T:
+    ...
+
+[case testNestedBoundTypeVar]
+from typing import Callable, List, Union, Tuple, TypeVar
+
+T = TypeVar('T')
+
+def f(a: Union[int, T], b: str) -> T:
+    ...
+
+def g(a: Callable[..., T], b: str) -> T:
+    ...
+
+def h(a: List[Union[Callable[..., T]]]) -> T:
+    ...
+
+def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
+    ...
+[builtins fixtures/tuple.pyi]
+
+[case testUnboundedTypevarUnpacking]
+from typing import TypeVar
+T = TypeVar("T")
+def f(t: T) -> None:
+    a, *b = t  # E: "object" object is not iterable
+
+[case testTypeVarType]
+from typing import Mapping, Type, TypeVar, Union
+T = TypeVar("T")
+
+class A: ...
+class B: ...
+
+lookup_table: Mapping[str, Type[Union[A,B]]]
+def load(lookup_table: Mapping[str, Type[T]], lookup_key: str) -> T:
+    ...
+reveal_type(load(lookup_table, "a"))  # N: Revealed type is "__main__.A | __main__.B"
+
+lookup_table_a: Mapping[str, Type[A]]
+def load2(lookup_table: Mapping[str, Type[Union[T, int]]], lookup_key: str) -> T:
+    ...
+reveal_type(load2(lookup_table_a, "a"))  # N: Revealed type is "__main__.A"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTypeAssignment]
+# Adapted from https://github.com/python/mypy/issues/12115
+from typing import TypeVar, Type, Callable, Union, Any
+
+t1: Type[bool] = bool
+t2: Union[Type[bool], Type[str]] = bool
+
+T1 = TypeVar("T1", bound=Union[bool, str])
+def foo1(t: Type[T1]) -> None: ...
+foo1(t1)
+foo1(t2)
+
+T2 = TypeVar("T2", bool, str)
+def foo2(t: Type[T2]) -> None: ...
+foo2(t1)
+# Rejected correctly: T2 cannot be Union[bool, str]
+foo2(t2)  # E: Value of type variable "T2" of "foo2" cannot be "bool | str"
+
+T3 = TypeVar("T3")
+def foo3(t: Type[T3]) -> None: ...
+foo3(t1)
+foo3(t2)
+
+def foo4(t: Type[Union[bool, str]]) -> None: ...
+foo4(t1)
+foo4(t2)
+[builtins fixtures/tuple.pyi]

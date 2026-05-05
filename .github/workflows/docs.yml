@@ -1,0 +1,51 @@
+name: Check documentation build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, 'release*']
+    tags: ['*']
+  pull_request:
+    paths:
+    - 'docs/**'
+    # We now have a docs check that fails if any error codes don't have documentation,
+    # so it's important to do the docs build on all PRs touching mypy/errorcodes.py
+    # in case somebody's adding a new error code without any docs
+    - 'mypy/errorcodes.py'
+    # Part of the documentation is automatically generated from the options
+    # definitions in mypy/main.py
+    - 'mypy/main.py'
+    - 'mypyc/doc/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - CREDITS
+    - LICENSE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TOXENV: docs
+      TOX_SKIP_MISSING_INTERPRETERS: False
+      VERIFY_MYPY_ERROR_CODES: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tox
+        run: pip install tox==4.26.0
+      - name: Setup tox environment
+        run: tox run -e ${{ env.TOXENV }} --notest
+      - name: Test
+        run: tox run -e ${{ env.TOXENV }} --skip-pkg-install

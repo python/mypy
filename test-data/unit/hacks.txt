@@ -1,0 +1,99 @@
+Weird legacy stuff in test cases
+================================
+
+Due to historical reasons, test cases contain things that may appear
+baffling without extra context. This file attempts to describe most of
+them.
+
+Dummy if statements to prevent redefinition
+-------------------------------------------
+
+Many test cases use if statements to prevent an assignment from creating
+a new variable. This in anticipation of allowing assignments to redefine
+variables by default. Conditional assignments will continue to refine
+a previously defined variable instead of defining a new one. When the
+test cases were written, we didn't anticipate that variables could be
+allowed to be redefined, and adding if statements was the easiest way
+to migrate these tests.
+
+Example:
+
+```
+x = 0
+if int():
+    x = ''  # Always generates an error since this is not a redefinition
+
+y = 0
+y = ''  # This could be valid if a new 'y' is defined here
+```
+
+Note that some of the checks may turn out to be redundant, as the
+exact rules for what constitutes a redefinition are still up for
+debate. This is okay since the extra if statements generally don't
+otherwise affect semantics.
+
+There are a few ways this is used, depending on the context:
+
+* `if int():` is the most common one. Assignments in the if body won't
+  redefine variables defined before the if statement.
+* `if 1:` is used if the body of the if statement returns a value, and
+  mypy would complain about a missing return statement otherwise. This
+  works since `if 1:` is treated as an always taken condition, whereas
+  `if int():` is not recognized as such.
+* `if str():` is used if the builtins fixture doesn't define `int` for
+  some reason.
+
+Function definition to prevent redefinition
+-------------------------------------------
+
+Sometimes test cases assume that a variable is not redefined, and we
+insert a dummy function definition to prevent this, since variables won't
+be able to be redefined across a function definition. Example:
+
+```
+x = 0
+
+def f(): pass
+
+x = ''  # Does not redefine x because of the definition of f() above
+```
+
+Dummy variable reference to allow redefinition
+----------------------------------------------
+
+The plan is to only allow a variable to be redefined if the value has
+been accessed. This wouldn't count as redefinition, since `x` is never
+read:
+
+```
+x = 0
+x = ''  # Not a redefinition
+```
+
+Sometimes we add a dummy variable access to allow redefinition in the
+future, or to trigger the redefinition machinery even if redefinition
+should not be okay:
+
+```
+x = 0
+x
+x = ''  # Could be a redefinition
+```
+
+The reason for this special case is type comments with dummy
+initializers, where the second assignment should never be treated
+as a redefinition:
+
+```
+x = None  # type: int
+x = ''  # Should not redefine x, since it has only been declared
+```
+
+Similarly, if there is only a variable annotation, the first
+assignment won't redefine the variable, as this would override
+the declared type:
+
+```
+x: int
+x = ''  # Should not redefine x
+```

@@ -1,0 +1,11 @@
+[project]
+name = 'typedpkg_namespace.alpha'
+version = '0.1'
+description = 'test'
+
+[tool.hatch.build]
+include = ["**/*.py", "**/*.pyi", "**/py.typed"]
+
+[build-system]
+requires = ["hatchling==1.18"]
+build-backend = "hatchling.build"

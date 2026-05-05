@@ -1,0 +1,368 @@
+# Test cases for booleans (compile and run)
+
+[case testTrueAndFalse]
+def t() -> bool:
+    return True
+
+def f() -> bool:
+    return False
+[file driver.py]
+from native import t, f
+print(t())
+print(f())
+[out]
+True
+False
+
+[case testBoolOps]
+from __future__ import annotations
+
+from typing import Optional, Any
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
+
+def f(x: bool) -> bool:
+    if x:
+        return False
+    else:
+        return True
+
+def test_if() -> None:
+    assert f(True) is False
+    assert f(False) is True
+
+def test_bitwise_and() -> None:
+    # Use eval() to avoid constant folding
+    t: bool = eval('True')
+    f: bool = eval('False')
+    assert t & t == True
+    assert t & f == False
+    assert f & t == False
+    assert f & f == False
+    t &= t
+    assert t == True
+    t &= f
+    assert t == False
+
+def test_bitwise_or() -> None:
+    # Use eval() to avoid constant folding
+    t: bool = eval('True')
+    f: bool = eval('False')
+    assert t | t == True
+    assert t | f == True
+    assert f | t == True
+    assert f | f == False
+    t |= f
+    assert t == True
+    f |= t
+    assert f == True
+
+def test_bitwise_xor() -> None:
+    # Use eval() to avoid constant folding
+    t: bool = eval('True')
+    f: bool = eval('False')
+    assert t ^ t == False
+    assert t ^ f == True
+    assert f ^ t == True
+    assert f ^ f == False
+    t ^= f
+    assert t == True
+    t ^= t
+    assert t == False
+    f ^= f
+    assert f == False
+
+def test_isinstance_bool() -> None:
+    a = True
+    b = 1.0
+    c = 1
+    d = False
+    assert isinstance(a, bool) == True
+    assert isinstance(b, bool) == False
+    assert isinstance(c, bool) == False
+    assert isinstance(d, bool) == True
+
+class C: pass
+class D:
+    def __init__(self, b: bool) -> None:
+        self.b = b
+
+    def __bool__(self) -> bool:
+        return self.b
+
+class E: pass
+class F(E):
+    def __init__(self, b: bool) -> None:
+        self.b = b
+
+    def __bool__(self) -> bool:
+        return self.b
+
+def optional_to_bool1(o: Optional[C]) -> bool:
+    return bool(o)
+
+def optional_to_bool2(o: Optional[D]) -> bool:
+    return bool(o)
+
+def optional_to_bool3(o: Optional[E]) -> bool:
+    return bool(o)
+
+def test_optional_to_bool() -> None:
+    assert not optional_to_bool1(None)
+    assert optional_to_bool1(C())
+    assert not optional_to_bool2(None)
+    assert not optional_to_bool2(D(False))
+    assert optional_to_bool2(D(True))
+    assert not optional_to_bool3(None)
+    assert optional_to_bool3(E())
+    assert not optional_to_bool3(F(False))
+    assert optional_to_bool3(F(True))
+
+def not_c(c: C) -> bool:
+    return not c
+
+def not_c_opt(c: C | None) -> bool:
+    return not c
+
+def not_d(d: D) -> bool:
+    return not d
+
+def not_d_opt(d: D | None) -> bool:
+    return not d
+
+def test_not_instance() -> None:
+    assert not not_c(C())
+    assert not_c_opt(None)
+    assert not not_c_opt(C())
+
+    assert not_d(D(False))
+    assert not not_d(D(True))
+    assert not_d_opt(D(False))
+    assert not_d_opt(None)
+    assert not not_d_opt(D(True))
+
+def test_any_to_bool() -> None:
+    a: Any = int()
+    b: Any = a + 1
+    assert not bool(a)
+    assert bool(b)
+
+def eq(x: bool, y: bool) -> bool:
+    return x == y
+
+def ne(x: bool, y: bool) -> bool:
+    return x != y
+
+def lt(x: bool, y: bool) -> bool:
+    return x < y
+
+def le(x: bool, y: bool) -> bool:
+    return x <= y
+
+def gt(x: bool, y: bool) -> bool:
+    return x > y
+
+def ge(x: bool, y: bool) -> bool:
+    return x >= y
+
+def test_comparisons() -> None:
+    for x in True, False:
+        for y in True, False:
+            x2: Any = x
+            y2: Any = y
+            assert eq(x, y) == (x2 == y2)
+            assert ne(x, y) == (x2 != y2)
+            assert lt(x, y) == (x2 < y2)
+            assert le(x, y) == (x2 <= y2)
+            assert gt(x, y) == (x2 > y2)
+            assert ge(x, y) == (x2 >= y2)
+
+def eq_mixed(x: bool, y: int) -> bool:
+    return x == y
+
+def neq_mixed(x: int, y: bool) -> bool:
+    return x != y
+
+def lt_mixed(x: bool, y: int) -> bool:
+    return x < y
+
+def gt_mixed(x: int, y: bool) -> bool:
+    return x > y
+
+def test_mixed_comparisons() -> None:
+    for x in True, False:
+        for n in -(1 << 70), -123, 0, 1, 1753, 1 << 70:
+            assert eq_mixed(x, n) == (int(x) == n)
+            assert neq_mixed(n, x) == (n != int(x))
+            assert lt_mixed(x, n) == (int(x) < n)
+            assert gt_mixed(n, x) == (n > int(x))
+
+def add(x: bool, y: bool) -> int:
+    return x + y
+
+def add_mixed(b: bool, n: int) -> int:
+    return b + n
+
+def sub_mixed(n: int, b: bool) -> int:
+    return n - b
+
+def test_arithmetic() -> None:
+    for x in True, False:
+        for y in True, False:
+            assert add(x, y) == int(x) + int(y)
+        for n in -(1 << 70), -123, 0, 1, 1753, 1 << 70:
+            assert add_mixed(x, n) == int(x) + n
+            assert sub_mixed(n, x) == n - int(x)
+
+def add_mixed_i64(b: bool, n: i64) -> i64:
+    return b + n
+
+def sub_mixed_i64(n: i64, b: bool) -> i64:
+    return n - b
+
+def test_arithmetic_i64() -> None:
+    for x in True, False:
+        for n in -(1 << 62), -123, 0, 1, 1753, 1 << 62:
+            assert add_mixed_i64(x, n) == int(x) + n
+            assert sub_mixed_i64(n, x) == n - int(x)
+
+def eq_mixed_i64(x: bool, y: i64) -> bool:
+    return x == y
+
+def neq_mixed_i64(x: i64, y: bool) -> bool:
+    return x != y
+
+def lt_mixed_i64(x: bool, y: i64) -> bool:
+    return x < y
+
+def gt_mixed_i64(x: i64, y: bool) -> bool:
+    return x > y
+
+def test_mixed_comparisons_i64() -> None:
+    for x in True, False:
+        for n in -(1 << 62), -123, 0, 1, 1753, 1 << 62:
+            assert eq_mixed_i64(x, n) == (int(x) == n)
+            assert neq_mixed_i64(n, x) == (n != int(x))
+            assert lt_mixed_i64(x, n) == (int(x) < n)
+            assert gt_mixed_i64(n, x) == (n > int(x))
+
+def not_object(x: object) -> bool:
+    return not x
+
+def not_str(x: str) -> bool:
+    return not x
+
+def not_int(x: int) -> bool:
+    return not x
+
+def not_list(x: list[int]) -> bool:
+    return not x
+
+def not_tuple(x: tuple[int, ...]) -> bool:
+    return not x
+
+def not_dict(x: dict[str, int]) -> bool:
+    return not x
+
+def test_not_object() -> None:
+    assert not_object(None)
+    assert not_object([])
+    assert not_object(0)
+    assert not not_object(1)
+    assert not not_object([1])
+
+def test_not_str() -> None:
+    assert not_str(str())
+    assert not not_str('x' + str())
+
+def test_not_int() -> None:
+    assert not_int(int('0'))
+    assert not not_int(int('1'))
+    assert not not_int(int('-1'))
+
+def test_not_list() -> None:
+    assert not_list([])
+    assert not not_list([1])
+
+def test_not_tuple() -> None:
+    assert not_tuple(())
+    assert not not_tuple((1,))
+
+def test_not_dict() -> None:
+    assert not_dict({})
+    assert not not_dict({'x': 1})
+
+def not_str_opt(x: str | None) -> bool:
+    return not x
+
+def not_int_opt(x: int | None) -> bool:
+    return not x
+
+def not_list_opt(x: list[int] | None) -> bool:
+    return not x
+
+def not_tuple_opt(x: tuple[int, ...] | None) -> bool:
+    return not x
+
+def not_dict_opt(x: dict[str, int] | None) -> bool:
+    return not x
+
+def test_not_str_opt() -> None:
+    assert not_str_opt(str())
+    assert not_str_opt(None)
+    assert not not_str_opt('x' + str())
+
+def test_not_int_opt() -> None:
+    assert not_int_opt(int('0'))
+    assert not_int_opt(None)
+    assert not not_int_opt(int('1'))
+    assert not not_int_opt(int('-1'))
+
+def test_not_list_opt() -> None:
+    assert not_list_opt([])
+    assert not_list_opt(None)
+    assert not not_list_opt([1])
+
+def test_not_tuple_opt() -> None:
+    assert not_tuple_opt(())
+    assert not_tuple_opt(None)
+    assert not not_tuple_opt((1,))
+
+def test_not_dict_opt() -> None:
+    assert not_dict_opt({})
+    assert not_dict_opt(None)
+    assert not not_dict_opt({'x': 1})
+
+[case testBoolMixInt]
+def test_mix() -> None:
+    y = False
+    print((y or 0) and True)
+[out]
+0
+
+[case testIsInstance]
+from typing import Any
+def test_built_in() -> None:
+    true: Any = True
+    false: Any = False
+    assert isinstance(true, bool)
+    assert isinstance(false, bool)
+
+    assert not isinstance(set(), bool)
+    assert not isinstance((), bool)
+    assert not isinstance((True, False), bool)
+    assert not isinstance({False, True}, bool)
+    assert not isinstance(int() + 1, bool)
+    assert not isinstance(str() + 'False', bool)
+
+def test_user_defined() -> None:
+    from userdefinedbool import bool
+
+    b: Any = True
+    assert isinstance(bool(), bool)
+    assert not isinstance(b, bool)
+
+[file userdefinedbool.py]
+class bool:
+    pass

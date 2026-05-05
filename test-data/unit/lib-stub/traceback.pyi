@@ -1,0 +1,3 @@
+# Very simplified traceback stubs for use in tests
+
+def print_tb(*args, **kwargs) -> None: ...

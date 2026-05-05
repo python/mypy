@@ -1,0 +1,262 @@
+-- Test cases for warning generation.
+
+-- Redundant casts
+-- ---------------
+
+[case testRedundantCast]
+# flags: --warn-redundant-casts
+from typing import cast
+a = 1
+b = cast(str, a)
+c = cast(int, a)
+[out]
+main:5: error: Redundant cast to "int"
+
+[case testRedundantCastWithIsinstance]
+# flags: --warn-redundant-casts
+from typing import cast, Union
+x = 1  # type: Union[int, str]
+if isinstance(x, str):
+    cast(str, x)
+[builtins fixtures/isinstance.pyi]
+[out]
+main:5: error: Redundant cast to "str"
+
+[case testCastToSuperclassNotRedundant]
+# flags: --warn-redundant-casts
+from typing import cast, TypeVar, List
+T = TypeVar('T')
+def add(xs: List[T], ys: List[T]) -> List[T]: pass
+class A: pass
+class B(A): pass
+a = A()
+b = B()
+# Without the cast, the following line would fail to type check.
+c = add([cast(A, b)], [a])
+[builtins fixtures/list.pyi]
+
+[case testCastToAnyTypeNotRedundant]
+# flags: --warn-redundant-casts
+from typing import cast, Any
+a: Any
+b = cast(Any, a)
+[builtins fixtures/list.pyi]
+
+[case testCastToObjectNotRedunant]
+# flags: --warn-redundant-casts
+from typing import cast
+
+a = 1
+b = cast(object, 1)
+
+[case testCastFromLiteralRedundant]
+# flags: --warn-redundant-casts
+from typing import cast
+
+cast(int, 1)
+[out]
+main:4: error: Redundant cast to "int"
+
+[case testCastFromUnionOfAnyOk]
+# flags: --warn-redundant-casts
+from typing import Any, cast, Union
+
+x = Any
+y = Any
+z = Any
+
+def f(q: Union[x, y, z]) -> None:
+    cast(Union[x, y], q)
+
+-- Unused 'type: ignore' comments
+-- ------------------------------
+
+[case testUnusedTypeIgnore]
+# flags: --warn-unused-ignores
+a = 1
+if int():
+    a = 'a' # type: ignore
+if int():
+    a = 2 # type: ignore # E: Unused "type: ignore" comment
+if int():
+    a = 'b' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUnusedTypeIgnoreImport]
+# flags: --warn-unused-ignores
+import banana # type: ignore
+import m # type: ignore
+from m import * # type: ignore
+[file m.py]
+pass
+[out]
+main:3: error: Unused "type: ignore" comment
+main:4: error: Unused "type: ignore" comment
+
+
+-- No return
+-- ---------
+
+[case testNoReturn]
+# flags: --warn-no-return
+def f() -> int:
+    pass
+
+def g() -> int:
+    if bool():
+        return 1
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Missing return statement
+
+[case testNoReturnWhile]
+# flags: --warn-no-return
+def h() -> int:
+    while True:
+        if bool():
+            return 1
+
+def i() -> int:
+    while 1:
+        if bool():
+            return 1
+        if bool():
+            break
+
+def j() -> int:
+    while 1:
+        if bool():
+            return 1
+        if bool():
+            continue
+[builtins fixtures/list.pyi]
+[out]
+main:7: error: Missing return statement
+
+[case testNoReturnExcept]
+# flags: --warn-no-return
+def f() -> int:
+    try:
+        return 1
+    except:
+        pass
+def g() -> int:
+    try:
+        pass
+    except:
+        return 1
+    else:
+        return 1
+def h() -> int:
+    try:
+        pass
+    except:
+        pass
+    else:
+        pass
+    finally:
+        return 1
+[builtins fixtures/exception.pyi]
+[out]
+main:2: error: Missing return statement
+
+[case testNoReturnEmptyBodyWithDocstring]
+def f() -> int:
+    """Return the number of peppers."""
+    # This might be an @abstractmethod, for example
+    pass
+[out]
+
+
+-- Returning Any
+-- -------------
+
+[case testReturnAnyFromTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> int: return g()
+[out]
+main:4: error: Returning Any from function declared to return "int"
+
+[case testReturnAnyForNotImplementedInBinaryMagicMethods]
+# flags: --warn-return-any
+class A:
+    def __eq__(self, other: object) -> bool: return NotImplemented
+[builtins fixtures/notimplemented.pyi]
+[out]
+
+[case testReturnAnyForNotImplementedInNormalMethods]
+# flags: --warn-return-any
+class A:
+    def some(self) -> bool: return NotImplemented
+[builtins fixtures/notimplemented.pyi]
+[out]
+main:3: error: Returning Any from function declared to return "bool"
+
+[case testReturnAnyFromTypedFunctionWithSpecificFormatting]
+# flags: --warn-return-any
+from typing import Any, Tuple
+typ = Tuple[int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int,
+            int, int, int, int, int, int, int, int, int, int, int, int, int]
+def g() -> Any: pass
+def f() -> typ: return g()
+[builtins fixtures/tuple.pyi]
+[out]
+main:11: error: Returning Any from function declared to return "tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int]"
+
+[case testReturnAnySilencedFromTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> int:
+    result = g() # type: int
+    return result
+[out]
+
+[case testReturnAnyFromUntypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f(): return g()
+[out]
+
+[case testReturnAnyFromAnyTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> Any: return g()
+[out]
+
+[case testOKReturnAnyIfProperSubtype]
+# flags: --warn-return-any
+from typing import Any, Optional
+
+class Test(object):
+
+    def __init__(self) -> None:
+        self.attr = "foo"  # type: Any
+
+    def foo(self, do_it: bool) -> Optional[Any]:
+        if do_it:
+            return self.attr  # Should not warn here
+        else:
+            return None
+[builtins fixtures/list.pyi]
+[out]
+
+[case testReturnAnyDeferred]
+# flags: --warn-return-any
+def foo(a1: A) -> int:
+    if a1._x:
+        return 1
+    n = 1
+    return n
+
+class A:
+    def __init__(self, x: int) -> None:
+        self._x = x

@@ -1,0 +1,80 @@
+-- Test cases for reporting errors when a test case uses a fixture with
+-- missing definitions.  At least in the most common cases this should not
+-- result in an uncaught exception.  These tests make sure that this behavior
+-- does not regress.
+--
+-- NOTE: These tests do NOT test behavior of mypy outside tests.
+
+[case testVariableUndefinedUsingDefaultFixture]
+import m
+# This used to cause a crash since types.ModuleType is not available
+# by default. We fall back to 'object' now.
+m.x # E: "object" has no attribute "x"
+[file m.py]
+
+[case testSetMissingFromStubs]
+from typing import Set
+def f(x: Set[int]) -> None: pass
+[out]
+main:1: error: Module "typing" has no attribute "Set"
+main:1: note: Maybe your test fixture does not define "builtins.set"?
+main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
+
+[case testBaseExceptionMissingFromStubs]
+e: BaseException
+[out]
+main:1: error: Name "BaseException" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.BaseException"?
+main:1: note: Consider adding [builtins fixtures/exception.pyi] to your test description
+
+[case testExceptionMissingFromStubs]
+e: Exception
+[out]
+main:1: error: Name "Exception" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.Exception"?
+main:1: note: Consider adding [builtins fixtures/exception.pyi] to your test description
+
+[case testIsinstanceMissingFromStubs]
+if isinstance(1, int):
+    pass
+[out]
+main:1: error: Name "isinstance" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.isinstance"?
+main:1: note: Consider adding [builtins fixtures/isinstancelist.pyi] to your test description
+
+[case testTupleMissingFromStubs1]
+tuple()
+[out]
+main:1: error: Name "tuple" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.tuple"?
+main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+
+[case testTupleMissingFromStubs2]
+tuple()
+from typing import Tuple
+x: Tuple[int, str]
+[out]
+main:1: error: Name "tuple" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.tuple"?
+main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+main:3: error: Name "tuple" is not defined
+
+[case testClassmethodMissingFromStubs]
+class A:
+    @classmethod
+    def f(cls): pass
+[out]
+main:2: error: Name "classmethod" is not defined
+main:2: note: Maybe your test fixture does not define "builtins.classmethod"?
+main:2: note: Consider adding [builtins fixtures/classmethod.pyi] to your test description
+
+[case testPropertyMissingFromStubs]
+class A:
+    @property
+    def f(self): pass
+[out]
+main:2: error: Name "property" is not defined
+main:2: note: Maybe your test fixture does not define "builtins.property"?
+main:2: note: Consider adding [builtins fixtures/property.pyi] to your test description

@@ -1,0 +1,183 @@
+-- Type checking after an error during semantic analysis
+-- -----------------------------------------------------
+--
+-- This tests both the semantic analyzer (that it does not generate
+-- corrupt state on error) and the type checker (that it can deal with
+-- whatever state the semantic analyzer sets up).
+
+-- TODO:
+--  - invalid type in annotation
+--  - invalid function comment type annotation
+--  - invalid multiple assignment type annotation
+--  - using a type variable as a value
+--  - using special names defined in typing as values
+
+[case testMissingModuleImport1]
+import m # E
+m.foo()
+m.x = m.y
+1() # E
+[out]
+main:1: error: Cannot find implementation or library stub for module named "m"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:4: error: "int" not callable
+
+[case testMissingModuleImport2]
+from m import x # E
+x.foo()
+x.a = x.b
+1() # E
+[out]
+main:1: error: Cannot find implementation or library stub for module named "m"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:4: error: "int" not callable
+
+[case testMissingModuleImport3]
+from m import * # E
+x # E
+1() # E
+[out]
+main:1: error: Cannot find implementation or library stub for module named "m"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Name "x" is not defined
+main:3: error: "int" not callable
+
+[case testInvalidBaseClass1]
+class A(X): # E: Name "X" is not defined
+    x = 1
+A().foo(1)
+A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testInvalidBaseClass2]
+
+X = 1
+class A(X): # E
+    x = 1
+A().foo(1)
+A().x = '' # E
+[out]
+main:3: error: Variable "__main__.X" is not valid as a type
+main:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+main:3: error: Invalid base class "X"
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+[case testInvalidNumberOfTypeArgs]
+from typing import TypeVar
+T = TypeVar('T')
+class C:  # Forgot to add type params here
+    def __init__(self, t: T) -> None: pass
+c = C(t=3)  # type: C[int]  # E: "C" expects no type arguments, but 1 given
+
+[case testBreakOutsideLoop]
+break # E: "break" outside loop
+
+[case testContinueOutsideLoop]
+continue # E: "continue" outside loop
+
+[case testYieldOutsideFunction]
+yield # E: "yield" outside function
+x = 1
+yield from x # E: "yield from" outside function
+[(yield 1) for _ in x] # E: "yield" inside comprehension or generator expression
+{(yield 1) for _ in x} # E: "yield" inside comprehension or generator expression
+{i: (yield 1) for i in x} # E: "yield" inside comprehension or generator expression
+((yield 1) for _ in x) # E: "yield" inside comprehension or generator expression
+y = 1
+[(yield from x) for _ in y] # E: "yield from" inside comprehension or generator expression
+{(yield from x) for _ in y} # E: "yield from" inside comprehension or generator expression
+{i: (yield from x) for i in y} # E: "yield from" inside comprehension or generator expression
+((yield from x) for _ in y) # E: "yield from" inside comprehension or generator expression
+def f(y):
+    [x for x in (yield y)]
+    {x for x in (yield y)}
+    {x: x for x in (yield y)}
+    (x for x in (yield y))
+    [x for x in (yield from y)]
+    {x for x in (yield from y)}
+    {x: x for x in (yield from y)}
+    (x for x in (yield from y))
+def g(y):
+    [(yield 1) for _ in y] # E: "yield" inside comprehension or generator expression
+    {(yield 1) for _ in y} # E: "yield" inside comprehension or generator expression
+    {i: (yield 1) for i in y} # E: "yield" inside comprehension or generator expression
+    ((yield 1) for _ in y) # E: "yield" inside comprehension or generator expression
+    lst = 1
+    [(yield from lst) for _ in y] # E: "yield from" inside comprehension or generator expression
+    {(yield from lst) for _ in y} # E: "yield from" inside comprehension or generator expression
+    {i: (yield from lst) for i in y} # E: "yield from" inside comprehension or generator expression
+    ((yield from lst) for _ in y) # E: "yield from" inside comprehension or generator expression
+def h(y):
+    lst = 1
+    [x for x in lst if (yield y)] # E: "yield" inside comprehension or generator expression
+    {x for x in lst if (yield y)} # E: "yield" inside comprehension or generator expression
+    {x: x for x in lst if (yield y)} # E: "yield" inside comprehension or generator expression
+    (x for x in lst if (yield y)) # E: "yield" inside comprehension or generator expression
+    lst = 1
+    [x for x in lst if (yield from y)] # E: "yield from" inside comprehension or generator expression
+    {x for x in lst if (yield from y)} # E: "yield from" inside comprehension or generator expression
+    {x: x for x in lst if (yield from y)} # E: "yield from" inside comprehension or generator expression
+    (x for x in lst if (yield from y)) # E: "yield from" inside comprehension or generator expression
+
+[case testImportFuncDup]
+
+import m
+def m() -> None: ...  # E: Name "m" already defined (by an import)
+
+[file m.py]
+[out]
+
+[case testIgnoredImportDup]
+
+import m # type: ignore
+from m import f # type: ignore
+def m() -> None: ...  # E: Name "m" already defined (possibly by an import)
+def f() -> None: ...  # E: Name "f" already defined (possibly by an import)
+
+[out]
+
+[case testRuntimeProtoTwoBases]
+from typing import TypeVar, Generic, Protocol, runtime_checkable
+
+T = TypeVar('T')
+
+@runtime_checkable
+class P(Protocol, Generic[T]):
+    attr: T
+
+class C:
+    attr: int
+
+x: P[int] = C()
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testSemanalDoesNotLeakSyntheticTypes]
+# flags: --cache-fine-grained
+from typing import Generic, NamedTuple, TypedDict, TypeVar
+from dataclasses import dataclass
+
+T = TypeVar('T')
+class Wrap(Generic[T]): pass
+
+invalid_1: 1 + 2        # E: Invalid type comment or annotation
+invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class A:
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class B(NamedTuple):
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class C(TypedDict):
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+@dataclass
+class D:
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

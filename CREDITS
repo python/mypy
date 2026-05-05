@@ -1,0 +1,61 @@
+Credits
+-------
+
+For a full list of contributors you can mine the commit history:
+https://github.com/python/mypy/commits/master
+
+For lists of contributors per mypy release (including typeshed) see
+the release blog posts at https://mypy-lang.blogspot.com/.
+
+Dropbox core team:
+
+  Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
+  Ivan Levkivskyi <levkivskyi@gmail.com>
+  Jared Hance
+
+Non-Dropbox core team members:
+
+  Emma Harper Smith <emma@python.org>
+  Guido van Rossum <guido@python.org>
+  Jelle Zijlstra <jelle.zijlstra@gmail.com>
+  Michael J. Sullivan <sully@msully.net>
+  Shantanu Jain
+  Xuanda Yang <th3charlie@gmail.com>
+  Jingchen Ye <97littleleaf11@gmail.com>
+  Nikita Sobolev <mail@sobolevn.me>
+
+Past Dropbox core team members:
+
+  David Fisher
+  Svyatoslav Ilinskiy
+  Greg Price
+  Naomi Seyfer
+  Michael Lee
+  Reid Barton
+
+Additional thanks to:
+
+  Alex Allain
+  Max Bolingbroke
+  Peter Calvert
+  Kannan Goundan
+  Kathy Gray
+  David J Greaves
+  Riitta Ikonen
+  Terho Ikonen
+  Stephen Kell
+  Łukasz Langa
+  Laura Lehtosalo
+  Peter Ludemann
+  Seppo Mattila
+  Robin Message
+  Alan Mycroft
+  Dominic Orchard
+  Pekka Rapinoja
+  Matt Robben
+  Satnam Singh
+  Juha Sorva
+  Clay Sweetser
+  Jorma Tarhio
+  Jussi Tuovila
+  Andrey Vlasovskikh

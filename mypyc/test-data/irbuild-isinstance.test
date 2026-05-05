@@ -1,0 +1,219 @@
+[case testIsinstanceInt]
+def is_int(value: object) -> bool:
+    return isinstance(value, int)
+
+[out]
+def is_int(value):
+    value :: object
+    r0 :: bit
+L0:
+    r0 = PyLong_Check(value)
+    return r0
+
+[case testIsinstanceNotBool1]
+def is_not_bool(value: object) -> bool:
+    return not isinstance(value, bool)
+
+[out]
+def is_not_bool(value):
+    value :: object
+    r0, r1 :: bit
+L0:
+    r0 = PyBool_Check(value)
+    r1 = r0 ^ 1
+    return r1
+
+[case testIsinstanceIntAndNotBool]
+# This test is to ensure that 'value' doesn't get coerced to int when we are
+# checking if it's a bool, since an int can never be an instance of a bool
+def is_not_bool_and_is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+[out]
+def is_not_bool_and_is_int(value):
+    value :: object
+    r0 :: bit
+    r1 :: bool
+    r2, r3 :: bit
+L0:
+    r0 = PyLong_Check(value)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    r1 = r0
+    goto L3
+L2:
+    r2 = PyBool_Check(value)
+    r3 = r2 ^ 1
+    r1 = r3
+L3:
+    return r1
+
+[case testBorrowSpecialCaseWithIsinstance]
+class C:
+    s: str
+
+def g() -> object:
+    pass
+
+def f() -> None:
+    x = g()
+    if isinstance(x, C):
+        x.s
+[out]
+def g():
+    r0 :: object
+L0:
+    r0 = box(None, 1)
+    return r0
+def f():
+    r0, x, r1 :: object
+    r2 :: ptr
+    r3 :: object
+    r4 :: bit
+    r5 :: __main__.C
+    r6 :: str
+L0:
+    r0 = g()
+    x = r0
+    r1 = __main__.C :: type
+    r2 = get_element_ptr x ob_type :: PyObject
+    r3 = borrow load_mem r2 :: builtins.object*
+    keep_alive x
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = borrow cast(__main__.C, x)
+    r6 = r5.s
+    keep_alive x
+L2:
+    return 1
+
+[case testBytes]
+from typing import Any
+
+def is_bytes(x: Any) -> bool:
+    return isinstance(x, bytes)
+
+def is_bytearray(x: Any) -> bool:
+    return isinstance(x, bytearray)
+
+[out]
+def is_bytes(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyBytes_Check(x)
+    return r0
+def is_bytearray(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyByteArray_Check(x)
+    return r0
+
+[case testDict]
+from typing import Any
+
+def is_dict(x: Any) -> bool:
+    return isinstance(x, dict)
+
+[out]
+def is_dict(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyDict_Check(x)
+    return r0
+
+[case testFloat]
+from typing import Any
+
+def is_float(x: Any) -> bool:
+    return isinstance(x, float)
+
+[out]
+def is_float(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyFloat_Check(x)
+    return r0
+
+[case testSet]
+from typing import Any
+
+def is_set(x: Any) -> bool:
+    return isinstance(x, set)
+
+def is_frozenset(x: Any) -> bool:
+    return isinstance(x, frozenset)
+
+[out]
+def is_set(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PySet_Check(x)
+    return r0
+def is_frozenset(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyFrozenSet_Check(x)
+    return r0
+
+[case testStr]
+from typing import Any
+
+def is_str(x: Any) -> bool:
+    return isinstance(x, str)
+
+[out]
+def is_str(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyUnicode_Check(x)
+    return r0
+
+[case testTuple]
+from typing import Any
+
+def is_tuple(x: Any) -> bool:
+    return isinstance(x, tuple)
+
+[out]
+def is_tuple(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyTuple_Check(x)
+    return r0
+
+[case testTupleOfPrimitives]
+from typing import Any
+
+def is_instance(x: Any) -> bool:
+    return isinstance(x, (str, int, bytes))
+
+[out]
+def is_instance(x):
+    x :: object
+    r0, r1, r2 :: bit
+    r3 :: bool
+L0:
+    r0 = PyUnicode_Check(x)
+    if r0 goto L3 else goto L1 :: bool
+L1:
+    r1 = PyLong_Check(x)
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = PyBytes_Check(x)
+    if r2 goto L3 else goto L4 :: bool
+L3:
+    r3 = 1
+    goto L5
+L4:
+    r3 = 0
+L5:
+    return r3

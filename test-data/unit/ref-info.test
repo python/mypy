@@ -1,0 +1,83 @@
+[case testCallGlobalFunction]
+def f() -> None:
+    g()
+
+def g() -> None:
+    pass
+[out]
+2:4:__main__.g
+
+[case testCallMethod]
+def f() -> None:
+    c = C()
+    if int():
+        c.method()
+
+class C:
+    def method(self) -> None: pass
+[out]
+2:8:__main__.C
+3:7:builtins.int
+4:8:__main__.C.method
+
+[case testCallStaticMethod]
+class C:
+    def f(self) -> None:
+        C.static()
+        self.static()
+
+    @classmethod
+    def cm(cls) -> None:
+        cls.static()
+
+    @staticmethod
+    def static() -> None: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+3:8:__main__.C
+3:8:__main__.C.static
+4:8:__main__.C.static
+8:8:__main__.C.static
+
+[case testCallClassMethod]
+class C:
+    def f(self) -> None:
+        C.cm()
+        self.cm()
+
+    @classmethod
+    def cm(cls) -> None:
+        cls.cm()
+[builtins fixtures/classmethod.pyi]
+[out]
+3:8:__main__.C
+3:8:__main__.C.cm
+4:8:__main__.C.cm
+8:8:__main__.C.cm
+
+[case testTypeVarWithValueRestriction]
+from typing import TypeVar
+
+T = TypeVar("T", "C", "D")
+
+def f(o: T) -> None:
+    f(o)
+    o.m()
+    o.x
+
+class C:
+    x: int
+    def m(self) -> None: pass
+
+class D:
+    x: str
+    def m(self) -> None: pass
+[out]
+3:4:typing.TypeVar
+3:0:__main__.T
+6:4:__main__.f
+7:4:__main__.C.m
+8:4:__main__.C.x
+6:4:__main__.f
+7:4:__main__.D.m
+8:4:__main__.D.x
