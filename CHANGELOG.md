@@ -94,6 +94,22 @@ However, this was a soundness hole and has now been removed.
 
 Contributed by Shantanu in [PR 20054](https://github.com/python/mypy/pull/20054)
 
+### librt.strings: String and Bytes Primitives for Mypyc
+
+In mypy 1.20, we introduced [librt](https://pypi.org/project/librt/) as a standard library
+for mypyc that fills in some gaps in the Python standard library and the C API.
+This release addds the new module `librt.strings`, which contains utilities for building
+string and bytes objects, and for accessing and generating binary data:
+
+ * `StringWriter` and `BytesWriter` classes allow quickly building `str` and `bytes objects
+   from parts.
+ * `read_*` and `write_*` functions provide fast reading and writing of binary encoded data.
+
+Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_strings.html) for
+the details.
+
+Contributed by Jukka Lehtosalo.
+
 ## Mypy 1.20
 
 We’ve just uploaded mypy 1.20.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
