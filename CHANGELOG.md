@@ -2,7 +2,18 @@
 
 ## Next Release
 
-### Enabling `--local-partial-types` by Default
+## Mypy 2.0
+
+We’ve just uploaded mypy 2.0.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. There are also changes to options and defaults.
+You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### Enable `--local-partial-types` by Default
 
 This flag affects the inference of types based on assignments in other scopes.
 For now, explicitly disabling this continues to be supported, but this support will be removed
@@ -11,7 +22,7 @@ in mypy, like the daemon or the new implementation of flexible redefinitions.
 
 Contributed by Ivan Levkivskyi, Jukka Lehtosalo, Shantanu in [PR 21163](https://github.com/python/mypy/pull/21163).
 
-### Enabling `--strict-bytes` by Default
+### Enable `--strict-bytes` by Default
 
 Per [PEP 688](https://peps.python.org/pep-0688), mypy no longer treats `bytearray` and `memoryview`
 values as assignable to the `bytes` type.
@@ -71,6 +82,25 @@ in future mypy releases.
 
 Contributed by Ivan Levkivskyi, with additional contributions from Emma Smith and Jukka
 Lehtosalo.
+
+A very partial list of changes (only the most recent changes):
+
+- Freeze garbage collection in parallel workers for 4-5% speedup (Ivan Levkivskyi, PR [21302](https://github.com/python/mypy/pull/21302))
+- Expose `--num-workers` and `--native-parser` (Ivan Levkivskyi, PR [21387](https://github.com/python/mypy/pull/21387))
+- Split type checking into interface and implementation in parallel workers (Ivan Levkivskyi, PR [21119](https://github.com/python/mypy/pull/21119))
+- Batch module groups for parallel processing (Ivan Levkivskyi, PR [21287](https://github.com/python/mypy/pull/21287))
+- Optimize parallel workers start-up (Ivan Levkivskyi, PR [21203](https://github.com/python/mypy/pull/21203))
+- Parse files in parallel when possible (Ivan Levkivskyi, PR [21175](https://github.com/python/mypy/pull/21175))
+- Use parallel parsing at all stages (Ivan Levkivskyi, PR [21266](https://github.com/python/mypy/pull/21266))
+- Fix sequential bottleneck in parallel parsing (Jukka Lehtosalo, PR [21291](https://github.com/python/mypy/pull/21291))
+- Fail fast when user tries to generate reports with parallel workers (Ivan Levkivskyi, PR [21341](https://github.com/python/mypy/pull/21341))
+- Partially support old NumPy plugin in parallel type checking (Ivan Levkivskyi, PR [21324](https://github.com/python/mypy/pull/21324))
+- Handle reachability consistently in parallel type checking (Ivan Levkivskyi, PR [21322](https://github.com/python/mypy/pull/21322))
+- Always respect `@no_type_check` in parallel type checking (Ivan Levkivskyi, PR [21320](https://github.com/python/mypy/pull/21320))
+- Minor fixes in parallel checking (Ivan Levkivskyi, PR [21319](https://github.com/python/mypy/pull/21319))
+- Fix plugins logic in parallel type checking (Ivan Levkivskyi, PR [21252](https://github.com/python/mypy/pull/21252))
+- Fix Windows IPC race condition when using parallel checking (Jukka Lehtosalo, PR [21228](https://github.com/python/mypy/pull/21228))
+- Report parallel worker exit status on receive failure (Jukka Lehtosalo, PR [21224](https://github.com/python/mypy/pull/21224))
 
 ### Drop Support for Targeting Python 3.9
 
@@ -146,6 +176,7 @@ Contributed by Jukka Lehtosalo.
 
 ### Performance Improvements
 
+- Replace `NamedTuple` with faster regular classes in hot paths (Shantanu, PR [21326](https://github.com/python/mypy/pull/21326))
 - Avoid calling best-match suggestions unless the message is shown (Ivan Levkivskyi, PR [21307](https://github.com/python/mypy/pull/21307))
 - Order cases in native parser based on AST node frequency (Jukka Lehtosalo, PR [21219](https://github.com/python/mypy/pull/21219))
 
@@ -167,47 +198,57 @@ The new native parser is still experimental.
 - Support `--package-root` with native parser (Ivan Levkivskyi, PR [21321](https://github.com/python/mypy/pull/21321))
 - Improve call expressions in type annotations with native parser (Jukka Lehtosalo, PR [21300](https://github.com/python/mypy/pull/21300))
 - Depend on `ast-serialize` by default (Jukka Lehtosalo, PR [21297](https://github.com/python/mypy/pull/21297))
-- Parse files in parallel when possible (Ivan Levkivskyi, PR [21175](https://github.com/python/mypy/pull/21175))
-- Use parallel parsing at all stages (Ivan Levkivskyi, PR [21266](https://github.com/python/mypy/pull/21266))
 
 ### Other Notable Fixes and Improvements
 
-- Expose `--num-workers` and `--native-parser` (Ivan Levkivskyi, PR [21387](https://github.com/python/mypy/pull/21387))
 - Fix narrowing for `AbstractSet` and `Mapping` (Shantanu, PR [21352](https://github.com/python/mypy/pull/21352))
 - Preserve gradual guarantee when narrowing `Any` union via equality (Shantanu, PR [21368](https://github.com/python/mypy/pull/21368))
 - Make type variable upper bound narrowing symmetric (Ivan Levkivskyi, PR [21350](https://github.com/python/mypy/pull/21350))
-- Fail fast when user tries to generate reports with parallel workers (Ivan Levkivskyi, PR [21341](https://github.com/python/mypy/pull/21341))
 - Behave consistently when type-checking stub package directly (Ivan Levkivskyi, PR [21330](https://github.com/python/mypy/pull/21330))
 - Add support for `Final[...]` in dataclasses (Ivan Levkivskyi, PR [21334](https://github.com/python/mypy/pull/21334))
 - Narrow more sequence parents (Shantanu, PR [21327](https://github.com/python/mypy/pull/21327))
-- Partially support old NumPy plugin in parallel type checking (Ivan Levkivskyi, PR [21324](https://github.com/python/mypy/pull/21324))
-- Handle reachability consistently in parallel type checking (Ivan Levkivskyi, PR [21322](https://github.com/python/mypy/pull/21322))
-- Always respect `@no_type_check` in parallel type checking (Ivan Levkivskyi, PR [21320](https://github.com/python/mypy/pull/21320))
-- Minor fixes in parallel checking (Ivan Levkivskyi, PR [21319](https://github.com/python/mypy/pull/21319))
 - Better narrowing for enums and other types with known equality (Shantanu, PR [21281](https://github.com/python/mypy/pull/21281))
 - Fix pathspec error (Ivan Levkivskyi, PR [21296](https://github.com/python/mypy/pull/21296))
 - Use sharding for SQLite cache (Jukka Lehtosalo, PR [21292](https://github.com/python/mypy/pull/21292))
-- Batch module groups for parallel processing (Ivan Levkivskyi, PR [21287](https://github.com/python/mypy/pull/21287))
 - Limit type inference context fallback to walrus operator only (Ivan Levkivskyi, PR [21294](https://github.com/python/mypy/pull/21294))
-- Fix sequential bottleneck in parallel parsing (Jukka Lehtosalo, PR [21291](https://github.com/python/mypy/pull/21291))
 - Support `.git/info/exclude` for `--exclude-gitignore` (RogerJinIS, PR [21286](https://github.com/python/mypy/pull/21286))
 - Let `--allow-redefinition` widen global in function with `None` initialization (Jukka Lehtosalo, PR [21285](https://github.com/python/mypy/pull/21285))
 - Delete Python 2 extra (Shantanu, PR [18374](https://github.com/python/mypy/pull/18374))
-- Fix plugins logic in parallel type checking (Ivan Levkivskyi, PR [21252](https://github.com/python/mypy/pull/21252))
 - No longer narrow final globals in functions (Ivan Levkivskyi, PR [21241](https://github.com/python/mypy/pull/21241))
 - Narrow unions containing `Any` in conditional branches (Shantanu, PR [21231](https://github.com/python/mypy/pull/21231))
-- Fix Windows IPC race condition when using parallel checking (Jukka Lehtosalo, PR [21228](https://github.com/python/mypy/pull/21228))
-- Report parallel worker exit status on receive failure (Jukka Lehtosalo, PR [21224](https://github.com/python/mypy/pull/21224))
-- Split type checking into interface and implementation in parallel workers (Ivan Levkivskyi, PR [21119](https://github.com/python/mypy/pull/21119))
 - Propagate narrowing within chained comparisons (Shantanu, PR [21160](https://github.com/python/mypy/pull/21160))
-- Determine development version hash without running git (Jukka Lehtosalo, PR [21212](https://github.com/python/mypy/pull/21212))
-- Optimize parallel workers start-up (Ivan Levkivskyi, PR [21203](https://github.com/python/mypy/pull/21203))
 - Add proper lazy deserialization (Ivan Levkivskyi, PR [21198](https://github.com/python/mypy/pull/21198))
 - Add `install_types` to options affecting cache (Brian Schubert, PR [21070](https://github.com/python/mypy/pull/21070))
 - Narrow `Any` in conditional type checks (Shantanu, PR [21167](https://github.com/python/mypy/pull/21167))
 - Fix exception handler target location in new parser (Ivan Levkivskyi, PR [21185](https://github.com/python/mypy/pull/21185))
 - Improve traceback display (Shantanu, PR [21155](https://github.com/python/mypy/pull/21155))
 - Include 2 more files in the sdist: CREDITS and typeshed README (Michael R. Crusoe, PR [21131](https://github.com/python/mypy/pull/21131))
+
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=c5e47faeda2cf9d233f91bc1dc95814b0cc7ccba+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+- Brian Schubert
+- Ethan Sarp
+- Ivan Levkivskyi
+- Jukka Lehtosalo
+- Kevin Kannammalil
+- Leo Ji
+- Marc Mueller
+- Michael R. Crusoe
+- Piotr Sawicki
+- Pranav Manglik
+- RogerJinIS
+- Shantanu
+- Vaggelis Danias
+- wyattscarpenter
+- Yosof Badr
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 1.20
 
