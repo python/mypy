@@ -449,18 +449,25 @@ def write_file(path: str, contents: str) -> None:
         os.utime(path, times=(new_mtime, new_mtime))
 
 
+_MYPYC_EXTENSION_MARKER = "_mypyc_skip_redundant_inplace_copy"
 _setuptools_patch_applied = False
 
 
 def _patch_setuptools_copy_extensions_to_source() -> None:
-    """Skip redundant `.so` copies in --inplace builds.
+    """Skip redundant `.so` copies for extensions we generated.
 
     setuptools' copy_extensions_to_source rewrites every `.so` in the
     source tree on every build_ext, even when nothing changed. On macOS
     this invalidates AMFI's signature cache (~100 ms re-verification per
     `.so` on the next import), eating most of the separate=True
-    incremental speedup. We patch it to skip the copy when src and dst
-    already match. Idempotent; applied from mypycify().
+    incremental speedup.
+
+    The patch is global because copy_extensions_to_source runs during
+    setup()'s build_ext command, after mypycify() has already returned;
+    we can't scope a context manager around it. Instead the skip only
+    fires for extensions tagged by mypycify (via the marker attribute),
+    so other setuptools users in the same setup.py see the unmodified
+    upstream behavior, including stub writes. Idempotent.
     """
     global _setuptools_patch_applied
     if _setuptools_patch_applied:
@@ -484,7 +491,14 @@ def _patch_setuptools_copy_extensions_to_source() -> None:
         build_py = self.get_finalized_command("build_py")
         for ext in self.extensions:
             inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
-            if _files_match(regular_file, inplace_file):
+            # Only short-circuit for extensions mypycify produced.
+            # Skipping the copy also skips the stub write below, which
+            # is safe here because mypyc-generated extensions never set
+            # _needs_stub. For any other extension, fall through to the
+            # original setuptools behavior.
+            if getattr(ext, _MYPYC_EXTENSION_MARKER, False) and _files_match(
+                regular_file, inplace_file
+            ):
                 continue
             if os.path.exists(regular_file) or not ext.optional:
                 self.copy_file(regular_file, inplace_file, level=self.verbose)
@@ -918,5 +932,10 @@ def mypycify(
                     extra_compile_args=cflags,
                 )
             )
+
+    # Tag every extension we own so the build_ext patch knows it's
+    # safe to skip the redundant inplace copy for these specifically.
+    for ext in extensions:
+        setattr(ext, _MYPYC_EXTENSION_MARKER, True)
 
     return extensions
