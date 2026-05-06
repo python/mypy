@@ -467,7 +467,7 @@ def _patch_setuptools_copy_extensions_to_source() -> None:
     we can't scope a context manager around it. Instead the skip only
     fires for extensions tagged by mypycify (via the marker attribute),
     so other setuptools users in the same setup.py see the unmodified
-    upstream behavior, including stub writes. Idempotent.
+    upstream behavior, including stub writes.
     """
     global _setuptools_patch_applied
     if _setuptools_patch_applied:
@@ -475,6 +475,8 @@ def _patch_setuptools_copy_extensions_to_source() -> None:
     _setuptools_patch_applied = True
 
     from setuptools.command.build_ext import build_ext as _build_ext
+
+    original = _build_ext.copy_extensions_to_source
 
     def _files_match(a: str, b: str) -> bool:
         try:
@@ -488,23 +490,28 @@ def _patch_setuptools_copy_extensions_to_source() -> None:
         return sa.st_size == sb.st_size and int(sa.st_mtime) == int(sb.st_mtime)
 
     def patched(self: Any) -> None:
+        # Find mypyc-generated extensions whose .so already matches the
+        # inplace destination -- those are the ones to skip. Anything
+        # else (non-mypyc, or mypyc but stale) goes through the
+        # unmodified original method, so we don't have to keep its body
+        # in sync as setuptools evolves.
         build_py = self.get_finalized_command("build_py")
+        to_skip = []
         for ext in self.extensions:
-            inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
-            # Only short-circuit for extensions mypycify produced.
-            # Skipping the copy also skips the stub write below, which
-            # is safe here because mypyc-generated extensions never set
-            # _needs_stub. For any other extension, fall through to the
-            # original setuptools behavior.
-            if getattr(ext, _MYPYC_EXTENSION_MARKER, False) and _files_match(
-                regular_file, inplace_file
-            ):
+            if not getattr(ext, _MYPYC_EXTENSION_MARKER, False):
                 continue
-            if os.path.exists(regular_file) or not ext.optional:
-                self.copy_file(regular_file, inplace_file, level=self.verbose)
-            if ext._needs_stub:
-                inplace_stub = self._get_equivalent_stub(ext, inplace_file)
-                self._write_stub_file(inplace_stub, ext, compile=True)
+            inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
+            if _files_match(regular_file, inplace_file):
+                to_skip.append(ext)
+        if not to_skip:
+            original(self)
+            return
+        saved = self.extensions
+        self.extensions = [e for e in saved if e not in to_skip]
+        try:
+            original(self)
+        finally:
+            self.extensions = saved
 
     _build_ext.copy_extensions_to_source = patched  # type: ignore[method-assign]
 
