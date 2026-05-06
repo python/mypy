@@ -83,22 +83,22 @@ in future mypy releases.
 Contributed by Ivan Levkivskyi, with additional contributions from Emma Smith and Jukka
 Lehtosalo.
 
-A very partial list of changes (only the most recent changes):
+Recent related changes since the last release:
 
 - Freeze garbage collection in parallel workers for 4-5% speedup (Ivan Levkivskyi, PR [21302](https://github.com/python/mypy/pull/21302))
 - Expose `--num-workers` and `--native-parser` (Ivan Levkivskyi, PR [21387](https://github.com/python/mypy/pull/21387))
 - Split type checking into interface and implementation in parallel workers (Ivan Levkivskyi, PR [21119](https://github.com/python/mypy/pull/21119))
 - Batch module groups for parallel processing (Ivan Levkivskyi, PR [21287](https://github.com/python/mypy/pull/21287))
-- Optimize parallel workers start-up (Ivan Levkivskyi, PR [21203](https://github.com/python/mypy/pull/21203))
+- Optimize parallel worker startup (Ivan Levkivskyi, PR [21203](https://github.com/python/mypy/pull/21203))
 - Parse files in parallel when possible (Ivan Levkivskyi, PR [21175](https://github.com/python/mypy/pull/21175))
 - Use parallel parsing at all stages (Ivan Levkivskyi, PR [21266](https://github.com/python/mypy/pull/21266))
 - Fix sequential bottleneck in parallel parsing (Jukka Lehtosalo, PR [21291](https://github.com/python/mypy/pull/21291))
-- Fail fast when user tries to generate reports with parallel workers (Ivan Levkivskyi, PR [21341](https://github.com/python/mypy/pull/21341))
+- Fail fast when a user tries to generate reports with parallel workers (Ivan Levkivskyi, PR [21341](https://github.com/python/mypy/pull/21341))
 - Partially support old NumPy plugin in parallel type checking (Ivan Levkivskyi, PR [21324](https://github.com/python/mypy/pull/21324))
 - Handle reachability consistently in parallel type checking (Ivan Levkivskyi, PR [21322](https://github.com/python/mypy/pull/21322))
 - Always respect `@no_type_check` in parallel type checking (Ivan Levkivskyi, PR [21320](https://github.com/python/mypy/pull/21320))
 - Minor fixes in parallel checking (Ivan Levkivskyi, PR [21319](https://github.com/python/mypy/pull/21319))
-- Fix plugins logic in parallel type checking (Ivan Levkivskyi, PR [21252](https://github.com/python/mypy/pull/21252))
+- Fix plugin logic in parallel type checking (Ivan Levkivskyi, PR [21252](https://github.com/python/mypy/pull/21252))
 - Fix Windows IPC race condition when using parallel checking (Jukka Lehtosalo, PR [21228](https://github.com/python/mypy/pull/21228))
 - Report parallel worker exit status on receive failure (Jukka Lehtosalo, PR [21224](https://github.com/python/mypy/pull/21224))
 
@@ -146,7 +146,7 @@ Contributed by Jukka Lehtosalo.
 - Document `librt.time` (Jukka Lehtosalo, PR [21372](https://github.com/python/mypy/pull/21372))
 - Mark `librt.time.time()` non-experimental (Ivan Levkivskyi, PR [21310](https://github.com/python/mypy/pull/21310))
 - Fix `librt.time` primitive now that it is no longer experimental (Ivan Levkivskyi, PR [21318](https://github.com/python/mypy/pull/21318))
-- Fix librt API/ABI version checks (Jukka Lehtosalo, PR [21311](https://github.com/python/mypy/pull/21311))
+- Fix `librt` API/ABI version checks (Jukka Lehtosalo, PR [21311](https://github.com/python/mypy/pull/21311))
 - Generate more type methods for classes with attribute dictionaries (Piotr Sawicki, PR [21290](https://github.com/python/mypy/pull/21290))
 - Fix reference counting for tuple items during deallocation (Shantanu, PR [21245](https://github.com/python/mypy/pull/21245))
 - Release new instances when `__init__` raises (Shantanu, PR [21248](https://github.com/python/mypy/pull/21248))
@@ -155,7 +155,7 @@ Contributed by Jukka Lehtosalo.
 - Fix crash on import errors during cleanup (Shantanu, PR [21247](https://github.com/python/mypy/pull/21247))
 - Fix reference leak in str index (Shantanu, PR [21251](https://github.com/python/mypy/pull/21251))
 - Fix memory leak in integer true division (Shantanu, PR [21246](https://github.com/python/mypy/pull/21246))
-- Fix reference leaks in `list/dict.clear` (Shantanu, PR [21244](https://github.com/python/mypy/pull/21244))
+- Fix reference leaks in `list.clear()`/`dict.clear()` (Shantanu, PR [21244](https://github.com/python/mypy/pull/21244))
 - Resolve type aliases in function specialization (esarp, PR [21233](https://github.com/python/mypy/pull/21233))
 - Report an error if an acyclic class inherits from non-acyclic (Piotr Sawicki, PR [21227](https://github.com/python/mypy/pull/21227))
 - Fix `b64decode` to match new CPython behavior (Piotr Sawicki, PR [21200](https://github.com/python/mypy/pull/21200))
@@ -190,13 +190,13 @@ Contributed by Jukka Lehtosalo.
 - Rename "value restriction" to "value-constrained type variable" (Leo Ji, PR [21112](https://github.com/python/mypy/pull/21112))
 - Clarify that invariant-by-default applies to legacy `TypeVar` syntax (Leo Ji, PR [21108](https://github.com/python/mypy/pull/21108))
 
-### Improvements to Native Parser
+### Improvements to the Native Parser
 
 The new native parser is still experimental.
 
 - Make new parser consistent with the old one (Ivan Levkivskyi, PR [21377](https://github.com/python/mypy/pull/21377))
-- Support `--package-root` with native parser (Ivan Levkivskyi, PR [21321](https://github.com/python/mypy/pull/21321))
-- Improve call expressions in type annotations with native parser (Jukka Lehtosalo, PR [21300](https://github.com/python/mypy/pull/21300))
+- Support `--package-root` with the native parser (Ivan Levkivskyi, PR [21321](https://github.com/python/mypy/pull/21321))
+- Improve call expressions in type annotations with the native parser (Jukka Lehtosalo, PR [21300](https://github.com/python/mypy/pull/21300))
 - Depend on `ast-serialize` by default (Jukka Lehtosalo, PR [21297](https://github.com/python/mypy/pull/21297))
 
 ### Other Notable Fixes and Improvements
@@ -204,15 +204,15 @@ The new native parser is still experimental.
 - Fix narrowing for `AbstractSet` and `Mapping` (Shantanu, PR [21352](https://github.com/python/mypy/pull/21352))
 - Preserve gradual guarantee when narrowing `Any` union via equality (Shantanu, PR [21368](https://github.com/python/mypy/pull/21368))
 - Make type variable upper bound narrowing symmetric (Ivan Levkivskyi, PR [21350](https://github.com/python/mypy/pull/21350))
-- Behave consistently when type-checking stub package directly (Ivan Levkivskyi, PR [21330](https://github.com/python/mypy/pull/21330))
+- Behave consistently when type-checking a stub package directly (Ivan Levkivskyi, PR [21330](https://github.com/python/mypy/pull/21330))
 - Add support for `Final[...]` in dataclasses (Ivan Levkivskyi, PR [21334](https://github.com/python/mypy/pull/21334))
 - Narrow more sequence parents (Shantanu, PR [21327](https://github.com/python/mypy/pull/21327))
 - Better narrowing for enums and other types with known equality (Shantanu, PR [21281](https://github.com/python/mypy/pull/21281))
 - Fix pathspec error (Ivan Levkivskyi, PR [21296](https://github.com/python/mypy/pull/21296))
-- Use sharding for SQLite cache (Jukka Lehtosalo, PR [21292](https://github.com/python/mypy/pull/21292))
-- Limit type inference context fallback to walrus operator only (Ivan Levkivskyi, PR [21294](https://github.com/python/mypy/pull/21294))
+- Use sharding for the SQLite cache (Jukka Lehtosalo, PR [21292](https://github.com/python/mypy/pull/21292))
+- Limit type inference context fallback to the walrus operator only (Ivan Levkivskyi, PR [21294](https://github.com/python/mypy/pull/21294))
 - Support `.git/info/exclude` for `--exclude-gitignore` (RogerJinIS, PR [21286](https://github.com/python/mypy/pull/21286))
-- Let `--allow-redefinition` widen global in function with `None` initialization (Jukka Lehtosalo, PR [21285](https://github.com/python/mypy/pull/21285))
+- Let `--allow-redefinition` widen a global in a function with `None` initialization (Jukka Lehtosalo, PR [21285](https://github.com/python/mypy/pull/21285))
 - Delete Python 2 extra (Shantanu, PR [18374](https://github.com/python/mypy/pull/18374))
 - No longer narrow final globals in functions (Ivan Levkivskyi, PR [21241](https://github.com/python/mypy/pull/21241))
 - Narrow unions containing `Any` in conditional branches (Shantanu, PR [21231](https://github.com/python/mypy/pull/21231))
@@ -222,8 +222,7 @@ The new native parser is still experimental.
 - Narrow `Any` in conditional type checks (Shantanu, PR [21167](https://github.com/python/mypy/pull/21167))
 - Fix exception handler target location in new parser (Ivan Levkivskyi, PR [21185](https://github.com/python/mypy/pull/21185))
 - Improve traceback display (Shantanu, PR [21155](https://github.com/python/mypy/pull/21155))
-- Include 2 more files in the sdist: CREDITS and typeshed README (Michael R. Crusoe, PR [21131](https://github.com/python/mypy/pull/21131))
-
+- Include two more files in the sdist: `CREDITS` and the typeshed `README` (Michael R. Crusoe, PR [21131](https://github.com/python/mypy/pull/21131))
 
 ### Typeshed Updates
 
