@@ -1364,8 +1364,8 @@ VecT = RStruct(
 
 VecNestedBufItem = RStruct(
     name="VecNestedBufItem",
-    names=["len", "buf"],
-    types=[c_pyssize_t_rprimitive, object_non_refcounted_rprimitive],
+    names=["len", "items"],
+    types=[c_pyssize_t_rprimitive, pointer_rprimitive],
 )
 
 # Buffer for vec[vec[t]]

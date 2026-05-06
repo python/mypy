@@ -845,18 +845,19 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         r = VecNested_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
+        PyObject *popped_buf = VecNested_ItemBuf(VEC_NESTED_BUF(r.f0), r.f1);
         result_item0 = VecNested_Box(r.f0);
         if (result_item0 == NULL) {
-            VEC_NESTED_DECREF(r.f0);
-            Py_DECREF(r.f1.buf);
+            Py_XDECREF(popped_buf);
             return NULL;
         }
         result_item1 = VecNested_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
-            Py_DECREF(r.f1.buf);
+            Py_XDECREF(popped_buf);
             return NULL;
         }
+        Py_XDECREF(popped_buf);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);

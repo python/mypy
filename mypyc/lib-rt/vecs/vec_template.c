@@ -88,7 +88,7 @@ VEC FUNC(Unbox)(PyObject *obj) {
 }
 
 VEC FUNC(ConvertFromNested)(VecNestedBufItem item) {
-    return (VEC) { item.len, item.buf ? ((BUF_OBJECT *)item.buf)->items : NULL };
+    return (VEC) { item.len, (ITEM_C_TYPE *)item.items };
 }
 
 VEC FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {

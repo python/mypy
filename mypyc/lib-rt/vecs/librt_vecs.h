@@ -82,7 +82,7 @@ typedef struct _VecTBufObject {
 
 typedef struct _VecNestedBufItem {
     Py_ssize_t len;
-    PyObject *buf;
+    CPyPtr items;
 } VecNestedBufItem;
 
 // Nested vec type: vec[vec[...]], vec[vec[...] | None], etc.
@@ -146,14 +146,31 @@ typedef struct _VecNested {
 } VecNested;
 
 // Recover buffer object from items pointer. Only valid when items != NULL.
-#define VEC_I64_BUF(v) ((VecI64BufObject *)((char *)(v).items - offsetof(VecI64BufObject, items)))
-#define VEC_I32_BUF(v) ((VecI32BufObject *)((char *)(v).items - offsetof(VecI32BufObject, items)))
-#define VEC_I16_BUF(v) ((VecI16BufObject *)((char *)(v).items - offsetof(VecI16BufObject, items)))
-#define VEC_U8_BUF(v) ((VecU8BufObject *)((char *)(v).items - offsetof(VecU8BufObject, items)))
-#define VEC_FLOAT_BUF(v) ((VecFloatBufObject *)((char *)(v).items - offsetof(VecFloatBufObject, items)))
-#define VEC_BOOL_BUF(v) ((VecBoolBufObject *)((char *)(v).items - offsetof(VecBoolBufObject, items)))
-#define VEC_T_BUF(v) ((VecTBufObject *)((char *)(v).items - offsetof(VecTBufObject, items)))
-#define VEC_NESTED_BUF(v) ((VecNestedBufObject *)((char *)(v).items - offsetof(VecNestedBufObject, items)))
+#define VEC_I64_BUF_FROM_ITEMS(items_) \
+    ((VecI64BufObject *)((char *)(items_) - offsetof(VecI64BufObject, items)))
+#define VEC_I32_BUF_FROM_ITEMS(items_) \
+    ((VecI32BufObject *)((char *)(items_) - offsetof(VecI32BufObject, items)))
+#define VEC_I16_BUF_FROM_ITEMS(items_) \
+    ((VecI16BufObject *)((char *)(items_) - offsetof(VecI16BufObject, items)))
+#define VEC_U8_BUF_FROM_ITEMS(items_) \
+    ((VecU8BufObject *)((char *)(items_) - offsetof(VecU8BufObject, items)))
+#define VEC_FLOAT_BUF_FROM_ITEMS(items_) \
+    ((VecFloatBufObject *)((char *)(items_) - offsetof(VecFloatBufObject, items)))
+#define VEC_BOOL_BUF_FROM_ITEMS(items_) \
+    ((VecBoolBufObject *)((char *)(items_) - offsetof(VecBoolBufObject, items)))
+#define VEC_T_BUF_FROM_ITEMS(items_) \
+    ((VecTBufObject *)((char *)(items_) - offsetof(VecTBufObject, items)))
+#define VEC_NESTED_BUF_FROM_ITEMS(items_) \
+    ((VecNestedBufObject *)((char *)(items_) - offsetof(VecNestedBufObject, items)))
+
+#define VEC_I64_BUF(v) VEC_I64_BUF_FROM_ITEMS((v).items)
+#define VEC_I32_BUF(v) VEC_I32_BUF_FROM_ITEMS((v).items)
+#define VEC_I16_BUF(v) VEC_I16_BUF_FROM_ITEMS((v).items)
+#define VEC_U8_BUF(v) VEC_U8_BUF_FROM_ITEMS((v).items)
+#define VEC_FLOAT_BUF(v) VEC_FLOAT_BUF_FROM_ITEMS((v).items)
+#define VEC_BOOL_BUF(v) VEC_BOOL_BUF_FROM_ITEMS((v).items)
+#define VEC_T_BUF(v) VEC_T_BUF_FROM_ITEMS((v).items)
+#define VEC_NESTED_BUF(v) VEC_NESTED_BUF_FROM_ITEMS((v).items)
 
 // Type-specific incref/decref. Safe when items may be NULL.
 #define VEC_I64_INCREF(v) do { if ((v).items) Py_INCREF(VEC_I64_BUF(v)); } while (0)
@@ -460,7 +477,7 @@ typedef struct tuple_T2VvVi {
     VecNested f0;
     VecNestedBufItem f1;
 } tuple_T2VvVi;
-static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
+static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, 0 } };
 #endif
 
 typedef tuple_T2VvVi VecNestedPopResult;
@@ -785,6 +802,51 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src);
 VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
 VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index);
 
+static inline PyObject *VecNested_ItemBuf(VecNestedBufObject *parent, VecNestedBufItem item) {
+    if (item.items == 0)
+        return NULL;
+    if (parent->depth > 1)
+        return (PyObject *)VEC_NESTED_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_I64)
+        return (PyObject *)VEC_I64_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_U8)
+        return (PyObject *)VEC_U8_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_FLOAT)
+        return (PyObject *)VEC_FLOAT_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_I32)
+        return (PyObject *)VEC_I32_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_I16)
+        return (PyObject *)VEC_I16_BUF_FROM_ITEMS(item.items);
+    if (parent->item_type == VEC_ITEM_TYPE_BOOL)
+        return (PyObject *)VEC_BOOL_BUF_FROM_ITEMS(item.items);
+    return (PyObject *)VEC_T_BUF_FROM_ITEMS(item.items);
+}
+
+static inline void VecNested_ItemXINCREF(VecNestedBufObject *parent, VecNestedBufItem item) {
+    Py_XINCREF(VecNested_ItemBuf(parent, item));
+}
+
+static inline void VecNested_ItemXDECREF(VecNestedBufObject *parent, VecNestedBufItem item) {
+    Py_XDECREF(VecNested_ItemBuf(parent, item));
+}
+
+static inline void VecNested_ItemCLEAR(VecNestedBufObject *parent, VecNestedBufItem *item) {
+    PyObject *buf = VecNested_ItemBuf(parent, *item);
+    item->items = 0;
+    Py_XDECREF(buf);
+}
+
+static inline int VecNested_ItemVISIT(
+        VecNestedBufObject *parent, VecNestedBufItem item, visitproc visit, void *arg) {
+    PyObject *buf = VecNested_ItemBuf(parent, item);
+    if (buf) {
+        int ret = visit(buf, arg);
+        if (ret)
+            return ret;
+    }
+    return 0;
+}
+
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
 static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem *unboxed) {
@@ -796,38 +858,38 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
             VecTObject *o = (VecTObject *)item;
             if (VEC_T_BUF(o->vec)->item_type == v_buf->item_type) {
                 unboxed->len = o->vec.len;
-                unboxed->buf = (PyObject *)VEC_T_BUF(o->vec);
+                unboxed->items = (CPyPtr)o->vec.items;
                 return 0;
             }
         } else if (item->ob_type == &VecI64Type && v_buf->item_type == VEC_ITEM_TYPE_I64) {
             VecI64Object *o = (VecI64Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_I64_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         } else if (item->ob_type == &VecU8Type && v_buf->item_type == VEC_ITEM_TYPE_U8) {
             VecU8Object *o = (VecU8Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_U8_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         } else if (item->ob_type == &VecFloatType && v_buf->item_type == VEC_ITEM_TYPE_FLOAT) {
             VecFloatObject *o = (VecFloatObject *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_FLOAT_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         } else if (item->ob_type == &VecI32Type && v_buf->item_type == VEC_ITEM_TYPE_I32) {
             VecI32Object *o = (VecI32Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_I32_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         } else if (item->ob_type == &VecI16Type && v_buf->item_type == VEC_ITEM_TYPE_I16) {
             VecI16Object *o = (VecI16Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_I16_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         } else if (item->ob_type == &VecBoolType && v_buf->item_type == VEC_ITEM_TYPE_BOOL) {
             VecBoolObject *o = (VecBoolObject *)item;
             unboxed->len = o->vec.len;
-            unboxed->buf = o->vec.items ? (PyObject *)VEC_BOOL_BUF(o->vec) : NULL;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         }
     } else if (item->ob_type == &VecNestedType) {
@@ -836,7 +898,7 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
         if (o_buf->depth == v_buf->depth - 1
             && o_buf->item_type == v_buf->item_type) {
             unboxed->len = o->vec.len;
-            unboxed->buf = (PyObject *)o_buf;
+            unboxed->items = (CPyPtr)o->vec.items;
             return 0;
         }
     }
@@ -848,44 +910,44 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
 static inline PyObject *VecNested_BoxItem(VecNested v, VecNestedBufItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
-    Py_XINCREF(item.buf);
     VecNestedBufObject *v_buf = VEC_NESTED_BUF(v);
+    VecNested_ItemXINCREF(v_buf, item);
     if (v_buf->depth > 1) {
         // Item is a nested vec
         VecNested iv = { .len = item.len,
-            .items = item.buf ? ((VecNestedBufObject *)item.buf)->items : NULL };
+            .items = (VecNestedBufItem *)item.items };
         return VecNested_Box(iv);
     } else {
         // Item is a non-nested vec
         size_t item_type = v_buf->item_type;
         if (item_type == VEC_ITEM_TYPE_I64) {
             VecI64 iv = { .len = item.len,
-                .items = item.buf ? ((VecI64BufObject *)item.buf)->items : NULL };
+                .items = (int64_t *)item.items };
             return VecI64_Box(iv);
         } else if (item_type == VEC_ITEM_TYPE_U8) {
             VecU8 iv = { .len = item.len,
-                .items = item.buf ? ((VecU8BufObject *)item.buf)->items : NULL };
+                .items = (uint8_t *)item.items };
             return VecU8_Box(iv);
         } else if (item_type == VEC_ITEM_TYPE_FLOAT) {
             VecFloat iv = { .len = item.len,
-                .items = item.buf ? ((VecFloatBufObject *)item.buf)->items : NULL };
+                .items = (double *)item.items };
             return VecFloat_Box(iv);
         } else if (item_type == VEC_ITEM_TYPE_I32) {
             VecI32 iv = { .len = item.len,
-                .items = item.buf ? ((VecI32BufObject *)item.buf)->items : NULL };
+                .items = (int32_t *)item.items };
             return VecI32_Box(iv);
         } else if (item_type == VEC_ITEM_TYPE_I16) {
             VecI16 iv = { .len = item.len,
-                .items = item.buf ? ((VecI16BufObject *)item.buf)->items : NULL };
+                .items = (int16_t *)item.items };
             return VecI16_Box(iv);
         } else if (item_type == VEC_ITEM_TYPE_BOOL) {
             VecBool iv = { .len = item.len,
-                .items = item.buf ? ((VecBoolBufObject *)item.buf)->items : NULL };
+                .items = (char *)item.items };
             return VecBool_Box(iv);
         } else {
             // Generic vec[t]
             VecT iv = { .len = item.len,
-                .items = item.buf ? ((VecTBufObject *)item.buf)->items : NULL };
+                .items = (PyObject **)item.items };
             return VecT_Box(iv, item_type);
         }
     }

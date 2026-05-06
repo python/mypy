@@ -71,7 +71,7 @@ VecNested VecNested_Unbox(PyObject *obj, size_t item_type, size_t depth) {
 }
 
 VecNested VecNested_ConvertFromNested(VecNestedBufItem item) {
-    return (VecNested) { item.len, item.buf ? ((VecNestedBufObject *)item.buf)->items : NULL };
+    return (VecNested) { item.len, (VecNestedBufItem *)item.items };
 }
 
 VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
@@ -86,7 +86,7 @@ VecNested VecNested_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_
         return vec;
     for (Py_ssize_t i = 0; i < cap; i++) {
         vec.items[i].len = -1;
-        vec.items[i].buf = NULL;
+        vec.items[i].items = 0;
     }
     vec.len = size;
     vec_track_buffer(&vec);
@@ -132,7 +132,7 @@ VecNested VecNested_Slice(VecNested vec, int64_t start, int64_t end) {
     res.len = slicelength;
     for (Py_ssize_t i = 0; i < slicelength; i++) {
         VecNestedBufItem item = vec.items[start + i];
-        Py_XINCREF(item.buf);
+        VecNested_ItemXINCREF(vec_buf, item);
         res.items[i] = item;
     }
     vec_track_buffer(&res);
@@ -166,7 +166,7 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
         Py_ssize_t j = start;
         for (Py_ssize_t i = 0; i < slicelength; i++) {
             VecNestedBufItem item = vec.items[j];
-            Py_INCREF(item.buf);
+            VecNested_ItemXINCREF(vec_buf, item);
             res.items[i] = item;
             j += step;
         }
@@ -188,8 +188,9 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         VecNestedBufItem item;
         if (VecNested_UnboxItem(v, o, &item) < 0)
             return -1;
-        Py_XINCREF(item.buf);
-        Py_XDECREF(v.items[i].buf);
+        VecNestedBufObject *v_buf = VEC_BUF(v);
+        VecNested_ItemXINCREF(v_buf, item);
+        VecNested_ItemXDECREF(v_buf, v.items[i]);
         v.items[i] = item;
         return 0;
     } else {
@@ -265,20 +266,20 @@ PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
 // Append item to 'vec', stealing 'vec'. Return 'vec' with item appended.
 VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
-    Py_XINCREF(x.buf);
+    VecNestedBufObject *vec_buf = VEC_BUF(vec);
+    VecNested_ItemXINCREF(vec_buf, x);
     if (vec.len < cap) {
         // Slot may have duplicate ref from prior remove/pop
-        Py_XDECREF(vec.items[vec.len].buf);
+        VecNested_ItemXDECREF(vec_buf, vec.items[vec.len]);
         vec.items[vec.len] = x;
         vec.len++;
         return vec;
     } else {
         Py_ssize_t new_size = Vec_GrowCapacity(cap);
         // TODO: Avoid initializing to zero here
-        VecNestedBufObject *vec_buf = VEC_BUF(vec);
         VecNested new = vec_alloc(new_size, vec_buf->item_type, vec_buf->depth);
         if (VEC_IS_ERROR(new)) {
-            Py_XDECREF(x.buf);
+            VecNested_ItemXDECREF(vec_buf, x);
             // The input vec is being consumed/stolen by this function, so on error
             // we must decref it to avoid leaking the buffer.
             VEC_DECREF(vec);
@@ -292,7 +293,7 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
             // Other references to old buffer exist; INCREF items in new buffer
             // so old buffer keeps valid references for aliases.
             for (Py_ssize_t i = 0; i < vec.len; i++)
-                Py_XINCREF(new.items[i].buf);
+                VecNested_ItemXINCREF(vec_buf, new.items[i]);
         } else {
             // No aliases; transfer ownership by clearing old buffer items.
             memset(vec.items, 0, sizeof(VecNestedBufItem) * vec.len);
@@ -359,13 +360,15 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
     Py_ssize_t new_len = dst.len + src.len;
     // VecNested buf is never NULL (even for empty vecs), so no NULL guard needed
     Py_ssize_t cap = VEC_CAP(dst);
+    VecNestedBufObject *dst_buf = VEC_BUF(dst);
+    VecNestedBufObject *src_buf = VEC_BUF(src);
     if (new_len <= cap && dst.items != src.items) {
         // Fast path: enough capacity and no aliasing
         for (Py_ssize_t i = 0; i < src.len; i++) {
             VecNestedBufItem item = src.items[i];
-            Py_XINCREF(item.buf);
+            VecNested_ItemXINCREF(src_buf, item);
             // Slot may have duplicate ref from prior remove/pop
-            Py_XDECREF(dst.items[dst.len + i].buf);
+            VecNested_ItemXDECREF(dst_buf, dst.items[dst.len + i]);
             dst.items[dst.len + i] = item;
         }
         dst.len = new_len;
@@ -374,7 +377,6 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
     // Need to reallocate (or dst and src share a buffer)
     Py_ssize_t new_cap = Vec_GrowCapacityTo(cap, new_len);
     int aliased = dst.items == src.items;
-    VecNestedBufObject *dst_buf = VEC_BUF(dst);
     VecNested new = vec_alloc(new_cap, dst_buf->item_type, dst_buf->depth);
     if (VEC_IS_ERROR(new)) {
         VEC_DECREF(dst);
@@ -384,14 +386,14 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
         // dst and src share a buffer -- incref all items instead of
         // moving refs, to avoid mutating the shared buffer
         for (Py_ssize_t i = 0; i < dst.len; i++) {
-            Py_XINCREF(dst.items[i].buf);
+            VecNested_ItemXINCREF(dst_buf, dst.items[i]);
             new.items[i] = dst.items[i];
         }
     } else {
         memcpy(new.items, dst.items, sizeof(VecNestedBufItem) * dst.len);
         if (Py_REFCNT(dst_buf) > 1) {
             for (Py_ssize_t i = 0; i < dst.len; i++)
-                Py_XINCREF(new.items[i].buf);
+                VecNested_ItemXINCREF(dst_buf, new.items[i]);
         } else {
             memset(dst.items, 0, sizeof(VecNestedBufItem) * dst.len);
         }
@@ -399,7 +401,7 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
     // Copy src items (incref each buf)
     for (Py_ssize_t i = 0; i < src.len; i++) {
         VecNestedBufItem item = src.items[i];
-        Py_XINCREF(item.buf);
+        VecNested_ItemXINCREF(src_buf, item);
         new.items[dst.len + i] = item;
     }
     memset(new.items + new_len, 0, sizeof(VecNestedBufItem) * (new_cap - new_len));
@@ -412,6 +414,7 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
 // Remove item from 'vec', stealing 'vec'. Return 'vec' with item removed.
 VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
     VecNestedBufItem *items = self.items;
+    VecNestedBufObject *self_buf = VEC_BUF(self);
 
     PyObject *boxed_arg = VecNested_BoxItem(self, arg);
     if (boxed_arg == NULL) {
@@ -423,7 +426,7 @@ VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
 
     for (Py_ssize_t i = 0; i < self.len; i++) {
         int match = 0;
-        if (items[i].len == arg.len && items[i].buf == arg.buf)
+        if (items[i].len == arg.len && items[i].items == arg.items)
             match = 1;
         else {
             PyObject *item = box_vec_item_by_index(self, i);
@@ -447,11 +450,11 @@ VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
         }
         if (match) {
             if (i < self.len - 1) {
-                Py_CLEAR(items[i].buf);
+                VecNested_ItemCLEAR(self_buf, &items[i]);
                 for (; i < self.len - 1; i++) {
                     items[i] = items[i + 1];
                 }
-                Py_XINCREF(items[self.len - 1].buf);
+                VecNested_ItemXINCREF(self_buf, items[self.len - 1]);
             }
             self.len--;
             Py_DECREF(boxed_arg);
@@ -481,16 +484,17 @@ VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index) {
         VEC_DECREF(v);
         result.f0 = vec_error();
         result.f1.len = 0;
-        result.f1.buf = NULL;
+        result.f1.items = 0;
         return result;
     }
 
     VecNestedBufItem *items = v.items;
+    VecNestedBufObject *v_buf = VEC_BUF(v);
     result.f1 = items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++)
         items[i] = items[i + 1];
     if (v.len > 0)
-        Py_XINCREF(items[v.len - 1].buf);
+        VecNested_ItemXINCREF(v_buf, items[v.len - 1]);
     v.len--;
     // Return the stolen reference without INCREF
     result.f0 = v;
@@ -534,7 +538,9 @@ VecNestedBuf_traverse(VecNestedBufObject *self, visitproc visit, void *arg)
     if (!Vec_IsMagicItemType(self->item_type))
         Py_VISIT(VEC_BUF_ITEM_TYPE(self));
     for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
-        Py_VISIT(self->items[i].buf);
+        int ret = VecNested_ItemVISIT(self, self->items[i], visit, arg);
+        if (ret)
+            return ret;
     }
     return 0;
 }
@@ -542,12 +548,12 @@ VecNestedBuf_traverse(VecNestedBufObject *self, visitproc visit, void *arg)
 static inline int
 VecNestedBuf_clear(VecNestedBufObject *self)
 {
+    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
+        VecNested_ItemCLEAR(self, &self->items[i]);
+    }
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF(VEC_BUF_ITEM_TYPE(self));
         self->item_type = 0;
-    }
-    for (Py_ssize_t i = 0; i < VEC_BUF_SIZE(self); i++) {
-        Py_CLEAR(self->items[i].buf);
     }
     return 0;
 }
@@ -711,7 +717,7 @@ PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *itera
     if (cap > 0) {
         for (int64_t i = 0; i < cap; i++) {
             v.items[i].len = -1;
-            v.items[i].buf = NULL;
+            v.items[i].items = 0;
         }
     }
     v.len = 0;

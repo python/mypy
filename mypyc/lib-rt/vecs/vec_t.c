@@ -90,7 +90,7 @@ VecT VecT_Unbox(PyObject *obj, size_t item_type) {
 }
 
 VecT VecT_ConvertFromNested(VecNestedBufItem item) {
-    return (VecT) { item.len, item.buf ? ((VecTBufObject *)item.buf)->items : NULL };
+    return (VecT) { item.len, (PyObject **)item.items };
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
