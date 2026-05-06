@@ -113,11 +113,10 @@ def f(v, i):
     r6 :: i64
     r7, r8 :: bit
     r9 :: native_int
-    r10 :: object
-    r11 :: ptr
-    r12 :: native_int
-    r13 :: ptr
-    r14 :: i64
+    r10 :: ptr
+    r11 :: native_int
+    r12 :: ptr
+    r13 :: i64
 L0:
     r0 = v.len
     r1 = extend signed r0: native_int to i64
@@ -148,13 +147,12 @@ L8:
     CPyInt32_Overflow()
     unreachable
 L9:
-    r10 = v.buf
-    r11 = get_element_ptr r10 items :: VecI64BufObject
-    r12 = r9 * 8
-    r13 = r11 + r12
-    r14 = load_mem r13 :: i64*
+    r10 = v.items
+    r11 = r9 * 8
+    r12 = r10 + r11
+    r13 = load_mem r12 :: i64*
     keep_alive v
-    return r14
+    return r13
 
 [case testVecI64Append]
 from librt.vecs import vec, append
