@@ -121,26 +121,44 @@ The ``vec`` class
 Functions
 ---------
 
+Since the following operations return a modified value, they are module-level functions
+instead of methods.
+
 .. function:: append(v: vec[T], o: T) -> vec[T]
 
    Return ``v`` with item ``o`` appended to it. If ``v`` has unused capacity, reuse
-   the existing buffer. The time complexity is O(1) on average.
+   the existing buffer. The time complexity is O(1) on average. Example::
+
+       v = vec[i32]()
+       v = append(v, 1)
 
 .. function:: extend(v: vec[T], it: Iterable[T]) -> vec[T]
 
    Return ``v`` with all items from iterable ``it`` appended to it. If ``v`` has sufficient
    unused capacity, reuse the existing buffer. The time complexity is O(n) on average,
-   where n is the length of ``it``.
+   where n is the length of ``it``. Example::
+
+       v = vec[u8]()
+       v = extend(v, b"foo")
 
 .. function:: remove(v: vec[T], o: T) -> vec[T]
 
    Return ``v`` with the first instance of item ``o`` removed. Reuse the buffer
-   from ``v``. Raise ``ValueError`` if value doesn't exist.
+   from ``v``. Raise ``ValueError`` if value doesn't exist. Example::
+
+       v = vec[i32]([1, 2, 3])
+       v = remove(v, 2)
+       # v has items [1, 3]
 
 .. function:: pop(v: vec[T], i: i64 = -1) -> tuple[vec[T], T]
 
    Return ``(new_v, item)``, where ``item`` is the value at index ``i`` and
    ``new_v`` is ``v`` with that item removed. Reuse the buffer from ``v``.
+   Example::
+
+       v = vec[i32]([1, 2, 3])
+       v, x = pop(v)
+       # x is 3; v has items [1, 2]
 
 Macro operations
 ----------------
@@ -193,7 +211,7 @@ it's also significantly more efficient than ``array.array`` for small sequences.
 Using vecs outside compiled code
 --------------------------------
 
-``vec`` is fully supported in non-compiled code, but ``vec`` values` will be boxed in such
+``vec`` is fully supported in non-compiled code, but ``vec`` values will be boxed in such
 non-native contexts. There will be always two objects, a boxed vec object and a buffer object,
 whereas in native contexts usually only the buffer is a dynamically allocated object.
 ``vec`` is primarily useful in code compiled using mypyc, and it's been heavily optimized
