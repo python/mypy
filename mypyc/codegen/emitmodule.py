@@ -305,7 +305,7 @@ def compile_modules_to_ir(
 
     # Process the graph by SCC in topological order, like we do in mypy.build
     for scc in sorted_components(result.graph):
-        scc_states = [result.graph[id] for id in scc.mod_ids]
+        scc_states = [result.graph[id] for id in sorted(scc.mod_ids)]
         trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
 
         if not trees:
@@ -1441,7 +1441,7 @@ class GroupGenerator:
             if decl.mark:
                 return
 
-            for child in decl.declaration.dependencies:
+            for child in sorted(decl.declaration.dependencies):
                 _toposort_visit(child)
 
             result.append(decl.declaration)

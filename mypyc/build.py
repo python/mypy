@@ -485,8 +485,11 @@ def construct_groups(
     else:
         groups = [(sources, None)]
 
-    # Generate missing names
+    # Generate missing names.
+    # Sort the modules to make the compilation results consistent regardless of
+    # the source file order passed to mypycify.
     for i, (group, name) in enumerate(groups):
+        group = sorted(group, key=lambda source: source.module)
         if use_shared_lib and not name:
             if group_name_override is not None:
                 name = group_name_override
@@ -494,6 +497,7 @@ def construct_groups(
                 name = group_name([source.module for source in group])
         groups[i] = (group, name)
 
+    groups = sorted(groups, key=lambda g: (g[1] or "", [s.module for s in g[0]]))
     return groups
 
 
