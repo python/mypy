@@ -31,7 +31,7 @@ Follow submodule links in the table to a detailed description of each submodule.
    * - :doc:`librt.time <librt_time>`
      - Time utilities
    * - :doc:`librt.vecs <librt_vecs>`
-     - Fast growable array-like container ``vec```
+     - Fast growable array type ``vec``
 
 Installing librt
 ----------------
