@@ -99,11 +99,11 @@ The ``vec`` class
 
    .. describe:: v[i:j] → vec[T]
 
-      Return a slice. This constructs a new ``vec`` object.
+      Return a slice. This constructs a new ``vec`` object. ``i`` and ``j`` may be negative.
 
    .. describe:: v[i] = o
 
-      Assign to an item.
+      Assign to an item (index may be negative).
 
    .. describe:: o in v → bool
 
@@ -181,11 +181,21 @@ Implementation details
 ----------------------
 
 In a native context, such as in a local variable or a parameter in a native function,
-or in an attribute of a native class, vec values are implement as value objects with two
-fields: length and buffer. The buffer is a normal Python object. If a vec object is
-empty, no buffer object is required. This means that empty vecs are particularly efficient
-in a native context (usually 16 bytes).
+or in an attribute of a native class, vec values are implemented as value objects with two
+fields: length and buffer. The buffer is a normal Python object, but it's not directly
+accessible to users. If a vec object is empty, no buffer object is required. This means that
+empty vecs are particularly efficient in a native context (usually 16 bytes).
 
 A packed representation is used for buffers with supported value item types, including for
 nested vecs. The packed representation is much more efficient than a Python list object, and
 it's also significantly more efficient than ``array.array`` for small sequences.
+
+Using vecs outside compiled code
+--------------------------------
+
+``vec`` is fully supported in non-compiled code, but ``vec`` values` will be boxed in such
+non-native contexts. There will be always two objects, a boxed vec object and a buffer object,
+whereas in native contexts usually only the buffer is a dynamically allocated object.
+``vec`` is primarily useful in code compiled using mypyc, and it's been heavily optimized
+for this use case. There may be no performance benefit in interpreted code over using
+``list`` or ``array.array``.
