@@ -538,7 +538,7 @@ class Base(NamedTuple):
                               # E: No overload variant of "__getitem__" of "tuple" matches argument type "TypeVar" \
                               # N: Possible overload variants: \
                               # N:     def __getitem__(self, int, /) -> int \
-                              # N:     def __getitem__(self, slice, /) -> tuple[int, ...]
+                              # N:     def __getitem__(self, slice[int | None], /) -> tuple[int, ...]
         return self.x
     def bad_override(self) -> int:
         return self.x

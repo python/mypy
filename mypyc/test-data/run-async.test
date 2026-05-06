@@ -1874,3 +1874,69 @@ def test_nested_coroutine_calls_another_nested_function():
 from typing import Any, Generator
 
 def run(x: object) -> object: ...
+
+[case testRaiseStopAsyncIteration]
+from async_iter import async_iter
+from testutil import assertRaises
+
+class AsyncIter:
+    def __init__(self, vals: list[str]) -> None:
+        self._iter = iter(vals)
+
+    def __aiter__(self) -> AsyncIter:
+        return self
+
+    async def __anext__(self) -> str:
+        try:
+            return next(self._iter)
+        except StopIteration:
+            raise StopAsyncIteration
+
+async def test_iterator() -> None:
+    new_list: list[int] = []
+    async for v in async_iter([1, 2, 3]):
+        new_list.append(v)
+    assert new_list == [1, 2, 3]
+
+    new_list = []
+    iter = async_iter([1, 2, 3])
+    while True:
+        try:
+            v = await iter.__anext__()
+            new_list.append(v)
+        except StopAsyncIteration:
+            new_list.append(4)
+            break
+    assert new_list == [1, 2, 3, 4]
+
+    with assertRaises(StopAsyncIteration):
+        await async_iter([]).__anext__()
+
+async def test_wrapper() -> None:
+    new_list: list[str] = []
+    async for v in AsyncIter(['a', 'b', 'c']):
+        new_list.append(v)
+    assert new_list == ['a', 'b', 'c']
+
+    new_list = []
+    iter = AsyncIter(['a', 'b', 'c'])
+    while True:
+        try:
+            v = await iter.__anext__()
+            new_list.append(v)
+        except StopAsyncIteration:
+            new_list.append('d')
+            break
+    assert new_list == ['a', 'b', 'c', 'd']
+
+    with assertRaises(StopAsyncIteration):
+        await AsyncIter([]).__anext__()
+
+[file async_iter.py]
+from typing import AsyncIterator
+
+async def async_iter(vals: list[int]) -> AsyncIterator[int]:
+    for v in vals:
+        yield v
+
+[typing fixtures/typing-full.pyi]

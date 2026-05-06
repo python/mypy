@@ -19,17 +19,10 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-import sys
 import time
 from typing import Final, cast
 
-try:
-    import ast_serialize  # type: ignore[import-not-found, unused-ignore]
-except ImportError:
-    print("error: ast-serialize package not installed")
-    print("note: to install run `pip install ast-serialize`")
-    sys.exit(2)
-
+import ast_serialize
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
@@ -271,7 +264,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=2,
+        cache_version=3,
     )
     return (
         ast_bytes,
@@ -376,7 +369,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
             names.append((name, asname))
 
         stmt = ImportFrom(module_id, relative, names)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.FOR_STMT:
@@ -435,7 +428,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
                 asname = None
             ids.append((name, asname))
         stmt = Import(ids)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.RAISE_STMT:
@@ -519,7 +512,7 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         relative = read_int(data)
 
         stmt = ImportAll(module_id, relative)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.NONLOCAL_DECL:

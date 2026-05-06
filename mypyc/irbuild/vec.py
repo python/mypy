@@ -54,7 +54,6 @@ from mypyc.ir.rtypes import (
     vec_api_by_item_type,
     vec_item_type_tags,
 )
-from mypyc.primitives.registry import builtin_names
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -213,8 +212,7 @@ def vec_item_type_info(
     builder: LowLevelIRBuilder, typ: RType, line: int
 ) -> tuple[Value | None, bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
-        typ, src = builtin_names[typ.name]
-        return builder.load_address(src, typ), False, 0
+        return builder.load_builtin(typ.name, line), False, 0
     elif isinstance(typ, RInstance):
         return builder.load_native_type_object(typ.name), False, 0
     elif typ in vec_item_type_tags:

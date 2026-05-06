@@ -1603,6 +1603,9 @@ class IRBuilder:
             )
         )
 
+    def load_builtin(self, name: str, line: int) -> Value | None:
+        return self.builder.load_builtin(name, line)
+
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
     """Generate blocks for arguments that have default values.

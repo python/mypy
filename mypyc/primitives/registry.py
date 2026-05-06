@@ -85,7 +85,11 @@ binary_ops: dict[str, list[PrimitiveDescription]] = {}
 # Primitive ops for unary ops
 unary_ops: dict[str, list[PrimitiveDescription]] = {}
 
+# Mapping of type name to (type, C value variable name).
 builtin_names: dict[str, tuple[RType, str]] = {}
+
+# Mapping of type name to (type, C pointer variable name).
+global_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
@@ -384,6 +388,12 @@ def unary_op(
 def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     assert name not in builtin_names, "already defined: %s" % name
     builtin_names[name] = (type, src)
+    return LoadAddressDescription(name, type, src)
+
+
+def load_global_op(name: str, type: RType, src: str) -> LoadAddressDescription:
+    assert name not in global_names, "already defined: %s" % name
+    global_names[name] = (type, src)
     return LoadAddressDescription(name, type, src)
 
 
