@@ -499,6 +499,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
             type_is=(t.type_is.accept(self) if t.type_is is not None else None),
         )
+        if t.instance_type is not None:
+            repl_type = t.instance_type.accept(self)
+            assert isinstance(repl_type, ProperType) and isinstance(repl_type, Instance)
+            expanded.instance_type = repl_type
         if needs_normalization:
             return expanded.with_normalized_var_args()
         return expanded

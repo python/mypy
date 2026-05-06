@@ -7338,7 +7338,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is "__main__.A"
+reveal_type(A())  # N: Revealed type is "builtins.int"
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -7448,6 +7448,80 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+[case testNewReturnType13]
+from typing import Protocol
+
+class Foo(Protocol):
+    def foo(self) -> str: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # E: Incompatible return type for "__new__" (returns "Foo", but must return a subtype of "A")
+
+reveal_type(A())  # N: Revealed type is "__main__.Foo"
+reveal_type(A().foo())  # N: Revealed type is "builtins.str"
+
+[case testNewReturnType14]
+from __future__ import annotations
+
+class A:
+    def __new__(cls) -> int: raise  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
+
+class B(A):
+    @classmethod
+    def foo(cls) -> int: raise
+
+reveal_type(B.foo())  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType15]
+from typing import Generic, Type, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __new__(cls) -> B[int]: ...
+    @classmethod
+    def foo(cls: Type[A[T]]) -> T: ...
+
+class B(A[T]): ...
+
+# The Never without error is not ideal, but matches the behavior without custom __new__().
+reveal_type(B.foo())  # N: Revealed type is "Never"
+reveal_type(B[str].foo())  # N: Revealed type is "builtins.str"
+
+class C(A[str]): ...
+
+reveal_type(C.foo())  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType16]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> T:  # E: "__new__" must return a class instance (got "T")
+        ...
+
+class Model:
+    pass
+
+reveal_type(A[Model]())  # N: Revealed type is "__main__.Model"
+
+class B(A[Model]):
+    pass
+
+reveal_type(B())  # N: Revealed type is "__main__.Model"
+[builtins fixtures/dict.pyi]
+
+[case testNewReturnType17]
+class C:
+    def __new__(self) -> D:
+        return D()
+
+class D(C):
+    x: int
+
+C.x  # E: "type[C]" has no attribute "x"
 
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties

@@ -171,12 +171,17 @@ def apply_generic_arguments(
         assert isinstance(typ, TypeVarLikeType)
         remaining_tvars.append(typ)
 
-    return callable.copy_modified(
+    applied = callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
         type_is=type_is,
     )
+    if callable.instance_type is not None:
+        repl_type = expand_type(callable.instance_type, id_to_type)
+        assert isinstance(repl_type, Instance)
+        applied.instance_type = repl_type
+    return applied
 
 
 def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> CallableType | None:

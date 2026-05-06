@@ -2315,6 +2315,8 @@ class CallableType(FunctionLike):
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
+        if self.instance_type is not None:
+            return self.instance_type.type
         ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
             ret = get_proper_type(ret.upper_bound)
