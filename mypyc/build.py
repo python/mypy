@@ -490,24 +490,21 @@ def _patch_setuptools_copy_extensions_to_source() -> None:
         return sa.st_size == sb.st_size and int(sa.st_mtime) == int(sb.st_mtime)
 
     def patched(self: Any) -> None:
-        # Find mypyc-generated extensions whose .so already matches the
-        # inplace destination -- those are the ones to skip. Anything
-        # else (non-mypyc, or mypyc but stale) goes through the
-        # unmodified original method, so we don't have to keep its body
-        # in sync as setuptools evolves.
         build_py = self.get_finalized_command("build_py")
-        to_skip = []
-        for ext in self.extensions:
+
+        def is_redundant(ext: Any) -> bool:
             if not getattr(ext, _MYPYC_EXTENSION_MARKER, False):
-                continue
+                return False
             inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
-            if _files_match(regular_file, inplace_file):
-                to_skip.append(ext)
-        if not to_skip:
-            original(self)
-            return
+            return _files_match(regular_file, inplace_file)
+
+        # Hide our already-fresh extensions from setuptools' loop and
+        # let it handle whatever's left. Delegating instead of
+        # reimplementing the body means future setuptools changes carry
+        # over for free. self.extensions is restored before we return
+        # so anything that inspects it later sees the original list.
         saved = self.extensions
-        self.extensions = [e for e in saved if e not in to_skip]
+        self.extensions = [ext for ext in saved if not is_redundant(ext)]
         try:
             original(self)
         finally:
