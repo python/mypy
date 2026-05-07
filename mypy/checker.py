@@ -8445,7 +8445,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     n.node = sym.node
                     n.kind = GDEF
                     n.fullname = sym.node.fullname
-                    self.binder.assign_type(n, sym.node.type, sym.node.type)
+                    typ = get_declaration(n)
+                    if typ is not None:
+                        self.binder.assign_type(n, typ, typ)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
