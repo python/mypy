@@ -547,7 +547,7 @@ KNOWN_NATIVE_TYPES: Final = {
 } | {
     "librt.random.Random": RPrimitive(
         "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
-    ),
+    )
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
