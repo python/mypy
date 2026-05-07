@@ -1937,6 +1937,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
                 self.note("You can use Concatenate as the first argument to Callable", t)
             else:
+                assert isinstance(analyzed, ParamSpecType)
                 self.fail(
                     INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
                     t,
