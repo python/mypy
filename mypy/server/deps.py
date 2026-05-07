@@ -1003,6 +1003,12 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         for arg in typ.arg_types:
             triggers.extend(self.get_type_triggers(arg))
         triggers.extend(self.get_type_triggers(typ.ret_type))
+        if typ.type_guard is not None:
+            triggers.extend(self.get_type_triggers(typ.type_guard))
+        if typ.type_is is not None:
+            triggers.extend(self.get_type_triggers(typ.type_is))
+        if typ.instance_type is not None:
+            triggers.extend(self.get_type_triggers(typ.instance_type))
         # fallback is a metaclass type for class objects, and is
         # processed separately.
         return triggers

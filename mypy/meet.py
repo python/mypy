@@ -1182,9 +1182,20 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    if t.instance_type is None:
+        instance_type = s.instance_type
+    elif s.instance_type is None:
+        instance_type = t.instance_type
+    else:
+        meet = meet_types(t.instance_type, s.instance_type)
+        if isinstance(meet, Instance):
+            instance_type = meet
+        else:
+            instance_type = None
     return t.copy_modified(
         arg_types=arg_types,
         ret_type=meet_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )

@@ -749,17 +749,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
                         return True
             if right.type.is_protocol and left.is_type_obj():
-                ret_type = get_proper_type(left.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = mypy.typeops.tuple_fallback(ret_type)
-                if isinstance(ret_type, Instance) and is_protocol_implementation(
-                    ret_type, right, proper_subtype=self.proper_subtype, class_obj=True
+                instance_type = left.get_instance_type()
+                if isinstance(instance_type, Instance) and is_protocol_implementation(
+                    instance_type, right, proper_subtype=self.proper_subtype, class_obj=True
                 ):
                     return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
-            return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
+            return left.is_type_obj() and self._is_subtype(
+                left.get_instance_type() if isinstance(right.item, Instance) else left.ret_type,
+                right.item,
+            )
         else:
             return False
 

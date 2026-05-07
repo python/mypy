@@ -2186,6 +2186,7 @@ class CallableType(FunctionLike):
         from_concatenate: bool = False,
         imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
+        instance_type: Instance | None = None,
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -2220,7 +2221,7 @@ class CallableType(FunctionLike):
         self.type_guard = type_guard
         self.type_is = type_is
         self.unpack_kwargs = unpack_kwargs
-        self.instance_type: Instance | None = None
+        self.instance_type = instance_type
 
     def copy_modified(
         self: CT,
@@ -2244,6 +2245,7 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
+        instance_type: Bogus[Instance | None] = _dummy,
     ) -> CT:
         modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -2274,8 +2276,8 @@ class CallableType(FunctionLike):
                 else self.imprecise_arg_kinds
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
+            instance_type=instance_type if instance_type is not _dummy else self.instance_type,
         )
-        modified.instance_type = self.instance_type
         # Optimization: Only NewTypes are supported as subtypes since
         # the class is effectively final, so we can use a cast safely.
         return cast(CT, modified)
@@ -2313,10 +2315,10 @@ class CallableType(FunctionLike):
             get_proper_type(self.ret_type), UninhabitedType
         )
 
-    def type_object(self) -> mypy.nodes.TypeInfo:
+    def get_instance_type(self) -> ProperType:
         assert self.is_type_obj()
         if self.instance_type is not None:
-            return self.instance_type.type
+            return self.instance_type
         ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
             ret = get_proper_type(ret.upper_bound)
@@ -2326,8 +2328,12 @@ class CallableType(FunctionLike):
             ret = ret.fallback
         if isinstance(ret, LiteralType):
             ret = ret.fallback
-        assert isinstance(ret, Instance)
-        return ret.type
+        return ret
+
+    def type_object(self) -> mypy.nodes.TypeInfo:
+        instance_type = self.get_instance_type()
+        assert isinstance(instance_type, Instance)
+        return instance_type.type
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_callable_type(self)
@@ -2592,10 +2598,13 @@ class CallableType(FunctionLike):
             "implicit": self.implicit,
             "is_bound": self.is_bound,
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
-            "type_is": (self.type_is.serialize() if self.type_is is not None else None),
+            "type_is": self.type_is.serialize() if self.type_is is not None else None,
             "from_concatenate": self.from_concatenate,
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
+            "instance_type": (
+                self.instance_type.serialize() if self.instance_type is not None else None
+            ),
         }
 
     @classmethod
@@ -2616,15 +2625,21 @@ class CallableType(FunctionLike):
             type_guard=(
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
-            type_is=(deserialize_type(data["type_is"]) if data["type_is"] is not None else None),
+            type_is=deserialize_type(data["type_is"]) if data["type_is"] is not None else None,
             from_concatenate=data["from_concatenate"],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
+            instance_type=(
+                Instance.deserialize(data["instance_type"])
+                if data["instance_type"] is not None
+                else None
+            ),
         )
 
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, CALLABLE_TYPE)
         self.fallback.write(data)
+        write_type_opt(data, self.instance_type)
         write_flags(
             data,
             [
@@ -2650,6 +2665,11 @@ class CallableType(FunctionLike):
     def read(cls, data: ReadBuffer) -> CallableType:
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
+        if (tag := read_tag(data)) == LITERAL_NONE:
+            instance_type = None
+        else:
+            assert tag == INSTANCE
+            instance_type = Instance.read(data)
         (
             is_ellipsis_args,
             implicit,
@@ -2674,6 +2694,7 @@ class CallableType(FunctionLike):
             from_concatenate=from_concatenate,
             imprecise_arg_kinds=imprecise_arg_kinds,
             unpack_kwargs=unpack_kwargs,
+            instance_type=instance_type,
         )
         assert read_tag(data) == END_TAG
         return ret
