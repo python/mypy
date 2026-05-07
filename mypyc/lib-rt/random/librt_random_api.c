@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "librt_random_api.h"
 
 void *LibRTRandom_API[LIBRT_RANDOM_API_LEN] = {0};
