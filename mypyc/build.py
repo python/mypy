@@ -121,7 +121,12 @@ LIBRT_MODULES = [
         ["vecs"],
     ),
     ModDesc("librt.time", ["time/librt_time.c"], ["time/librt_time.h"], []),
-    ModDesc("librt.random", ["random/librt_random.c"], [], ["random"]),
+    ModDesc(
+        "librt.random",
+        ["random/librt_random.c"],
+        ["random/librt_random.h", "random/librt_random_api.h", "random/librt_random_api.c"],
+        ["random"],
+    ),
 ]
 
 try:
