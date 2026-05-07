@@ -5720,8 +5720,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     ) -> None:
         # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
         defn = e.func
-        if defn.is_awaitable_coroutine:
-            assert isinstance(defn.type, CallableType)
+        if defn.is_awaitable_coroutine and isinstance(defn.type, CallableType):
             # Update the return type to AwaitableGenerator (unless we already did).
             # Note, this doesn't exist in typing.py, only in typing.pyi.
             if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
@@ -5744,6 +5743,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if self.recurse_into_functions or e.func.def_or_infer_vars:
             with self.tscope.function_scope(e.func), self.set_recurse_into_functions():
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
+
+        # For unannotated functions, defn.type is only available after check_func_item
+        # infers it. Apply the AwaitableGenerator wrapping now if it wasn't done above.
+        if defn.is_awaitable_coroutine and isinstance(defn.type, CallableType):
+            if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
+                t = defn.type.ret_type
+                c = defn.is_coroutine
+                ty = self.get_generator_yield_type(t, c)
+                tc = self.get_generator_receive_type(t, c)
+                if c:
+                    tr = self.get_coroutine_return_type(t)
+                else:
+                    tr = self.get_generator_return_type(t, c)
+                ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
+                typ = defn.type.copy_modified(ret_type=ret_type)
+                defn.type = typ
 
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
