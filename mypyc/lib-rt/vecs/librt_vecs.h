@@ -20,8 +20,6 @@
 // ABI version is changed, but see the comment above).
 #define LIBRT_VECS_API_VERSION 1
 
-#ifdef MYPYC_EXPERIMENTAL
-
 // Magic (native) integer return value on exception. Caller must also
 // use PyErr_Occurred() since this overlaps with valid integer values.
 #define MYPYC_INT_ERROR -113
@@ -996,7 +994,5 @@ PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
 int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item);
 PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
 PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // VEC_H_INCL

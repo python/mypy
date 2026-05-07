@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 // Implementation of nested vec[t], when t is a vec type.
 //
 // Examples of types supported:
@@ -764,5 +763,3 @@ VecNestedAPI Vec_NestedAPI = {
     VecNested_Extend,
     VecNested_ExtendVec,
 };
-
-#endif  // MYPYC_EXPERIMENTAL

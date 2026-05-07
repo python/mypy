@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 // Implementation of generic vec[t], when t is a plain type object (possibly optional).
 //
 // Examples of types supported:
@@ -838,5 +837,3 @@ VecTAPI Vec_TAPI = {
     VecT_ToList,
     VecT_ToTuple,
 };
-
-#endif  // MYPYC_EXPERIMENTAL

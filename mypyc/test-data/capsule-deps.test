@@ -79,7 +79,7 @@ def f() -> bytes:
 Capsule(name='librt.base64')
 Capsule(name='librt.strings')
 
-[case testVecCapsuleDepInFunction_experimental]
+[case testVecCapsuleDepInFunction]
 from librt.vecs import vec
 
 def f() -> None:
@@ -87,7 +87,7 @@ def f() -> None:
 [out]
 Capsule(name='librt.vecs')
 
-[case testVecCapsuleDepInMethod_experimental]
+[case testVecCapsuleDepInMethod]
 from librt.vecs import vec
 
 class C:
@@ -96,14 +96,14 @@ class C:
 [out]
 Capsule(name='librt.vecs')
 
-[case testVecCapsuleDepAtTopLevel_experimental]
+[case testVecCapsuleDepAtTopLevel]
 from librt.vecs import vec
 
 vec[str]()
 [out]
 Capsule(name='librt.vecs')
 
-[case testVecCapsuleDepInAttributeType_experimental]
+[case testVecCapsuleDepInAttributeType]
 from librt.vecs import vec
 
 class C:

@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 // NOTE: This file can't be compiled on its own, it must be #included
 //       with certain #defines set, as described below.
 //
@@ -821,5 +820,3 @@ NAME(API) FEATURES = {
 #undef VEC_CAP
 #undef VEC_INCREF
 #undef VEC_DECREF
-
-#endif  // MYPYC_EXPERIMENTAL

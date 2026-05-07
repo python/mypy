@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecBool
 #define VEC_TYPE VecBoolType
 #define VEC_OBJECT VecBoolObject
@@ -17,5 +16,3 @@
 #define BUFFER_FORMAT "b"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

@@ -1,4 +1,4 @@
-[case testLibrtVecsTInterpreted_librt_experimental]
+[case testLibrtVecsTInterpreted_librt]
 # Test cases for vec[<ref type>], using generic operations (simulates use from interpreted code).
 import sys
 from typing import cast, List, Any

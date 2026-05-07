@@ -4,7 +4,7 @@
 --
 -- vec[i64] test cases are in run-vecs-i64.test.
 
-[case testVecMiscBasicOps_librt_experimental]
+[case testVecMiscBasicOps_librt]
 # mypy: allow-redefinition-old
 
 from typing import Any, Iterable, cast

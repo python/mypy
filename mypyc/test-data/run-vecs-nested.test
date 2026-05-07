@@ -1,4 +1,4 @@
-[case testVecNestedBasicOps_librt_experimental]
+[case testVecNestedBasicOps_librt]
 from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 

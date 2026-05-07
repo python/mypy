@@ -1,16 +1,5 @@
 #include "librt_vecs_api.h"
 
-#ifndef MYPYC_EXPERIMENTAL
-
-int
-import_librt_vecs(void)
-{
-    // All librt.vecs features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else
-
 VecCapsule *VecApi = NULL;
 VecI64API VecI64Api = {0};
 VecI32API VecI32Api = {0};
@@ -60,5 +49,3 @@ import_librt_vecs(void)
     VecNestedApi = *VecApi->nested;
     return 0;
 }
-
-#endif // MYPYC_EXPERIMENTAL

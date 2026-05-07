@@ -342,7 +342,7 @@ L0:
     x = r13
     return x
 
-[case testVecU8ToBytes_experimental]
+[case testVecU8ToBytes]
 from librt.vecs import vec
 from mypy_extensions import u8
 

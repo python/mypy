@@ -74,8 +74,6 @@
 #include <Python.h>
 #include "librt_vecs.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 PyTypeObject *LibRTVecs_I64TypeObj;
 PyTypeObject *LibRTVecs_I32TypeObj;
 PyTypeObject *LibRTVecs_I16TypeObj;
@@ -982,22 +980,17 @@ static VecCapsule Capsule = {
     get_vec_type,
 };
 
-#endif  // MYPYC_EXPERIMENTAL
-
 static PyMethodDef VecsMethods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
     {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value from a vec"},
     {"pop",  vec_pop, METH_VARARGS, "Remove and return vec item at index (default last)"},
     {"extend",  vec_extend, METH_VARARGS, "Extend a vec with items from an iterable"},
-#endif
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 static int
 librt_vecs_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     PyObject *ext = PyImport_ImportModule("mypy_extensions");
     if (ext == NULL) {
         return -1;
@@ -1109,7 +1102,6 @@ librt_vecs_module_exec(PyObject *m)
     }
 
     Py_DECREF(ext);
-#endif
     return 0;
 }
 

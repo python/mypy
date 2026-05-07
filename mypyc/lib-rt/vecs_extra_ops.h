@@ -1,8 +1,6 @@
 #ifndef VECS_EXTRA_OPS_H
 #define VECS_EXTRA_OPS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
 #include "vecs/librt_vecs_api.h"
 
 // Check if obj is an instance of vec (any vec type)
@@ -16,7 +14,5 @@ static inline PyObject *CPyVecU8_ToBytes(VecU8 v) {
     }
     return PyBytes_FromStringAndSize((const char *)v.items, v.len);
 }
-
-#endif // MYPYC_EXPERIMENTAL
 
 #endif
