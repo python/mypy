@@ -484,7 +484,7 @@ VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index) {
         VEC_DECREF(v);
         result.f0 = vec_error();
         result.f1.len = 0;
-        result.f1.items = 0;
+        result.f1.items = NULL;
         return result;
     }
 

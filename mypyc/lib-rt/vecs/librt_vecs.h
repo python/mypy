@@ -82,7 +82,7 @@ typedef struct _VecTBufObject {
 
 typedef struct _VecNestedBufItem {
     Py_ssize_t len;
-    CPyPtr items;
+    void *items;
 } VecNestedBufItem;
 
 // Nested vec type: vec[vec[...]], vec[vec[...] | None], etc.
@@ -803,7 +803,7 @@ VecNested VecNested_Remove(VecNested vec, VecNestedBufItem x);
 VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index);
 
 static inline PyObject *VecNested_ItemBuf(VecNestedBufObject *parent, VecNestedBufItem item) {
-    if (item.items == 0)
+    if (item.items == NULL)
         return NULL;
     if (parent->depth > 1)
         return (PyObject *)VEC_NESTED_BUF_FROM_ITEMS(item.items);
@@ -832,7 +832,7 @@ static inline void VecNested_ItemXDECREF(VecNestedBufObject *parent, VecNestedBu
 
 static inline void VecNested_ItemCLEAR(VecNestedBufObject *parent, VecNestedBufItem *item) {
     PyObject *buf = VecNested_ItemBuf(parent, *item);
-    item->items = 0;
+    item->items = NULL;
     Py_XDECREF(buf);
 }
 
@@ -858,38 +858,38 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
             VecTObject *o = (VecTObject *)item;
             if (VEC_T_BUF(o->vec)->item_type == v_buf->item_type) {
                 unboxed->len = o->vec.len;
-                unboxed->items = (CPyPtr)o->vec.items;
+                unboxed->items = o->vec.items;
                 return 0;
             }
         } else if (item->ob_type == &VecI64Type && v_buf->item_type == VEC_ITEM_TYPE_I64) {
             VecI64Object *o = (VecI64Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         } else if (item->ob_type == &VecU8Type && v_buf->item_type == VEC_ITEM_TYPE_U8) {
             VecU8Object *o = (VecU8Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         } else if (item->ob_type == &VecFloatType && v_buf->item_type == VEC_ITEM_TYPE_FLOAT) {
             VecFloatObject *o = (VecFloatObject *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         } else if (item->ob_type == &VecI32Type && v_buf->item_type == VEC_ITEM_TYPE_I32) {
             VecI32Object *o = (VecI32Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         } else if (item->ob_type == &VecI16Type && v_buf->item_type == VEC_ITEM_TYPE_I16) {
             VecI16Object *o = (VecI16Object *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         } else if (item->ob_type == &VecBoolType && v_buf->item_type == VEC_ITEM_TYPE_BOOL) {
             VecBoolObject *o = (VecBoolObject *)item;
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         }
     } else if (item->ob_type == &VecNestedType) {
@@ -898,7 +898,7 @@ static inline int VecNested_UnboxItem(VecNested v, PyObject *item, VecNestedBufI
         if (o_buf->depth == v_buf->depth - 1
             && o_buf->item_type == v_buf->item_type) {
             unboxed->len = o->vec.len;
-            unboxed->items = (CPyPtr)o->vec.items;
+            unboxed->items = o->vec.items;
             return 0;
         }
     }
