@@ -133,12 +133,13 @@ chacha8_next64(chacha8_rng *rng)
     return ((uint64_t)hi << 32) | lo;
 }
 
-// Return a uniformly distributed random value in [0, range) using
-// Lemire's nearly divisionless method for perfect uniformity.
-// Uses 32-bit multiply for small ranges, 64-bit for large ranges.
+// Return a uniformly distributed random value in [0, range).
+// Use Lemire's nearly divisionless method for small ranges, and a portable
+// rejection sampler for larger ranges to avoid non-standard 128-bit arithmetic.
 static inline uint64_t
 chacha8_next_ranged(chacha8_rng *rng, uint64_t range)
 {
+    assert(range != 0);
     if (likely(range <= UINT32_MAX)) {
         // 32-bit Lemire: multiply r * range to get 64-bit product,
         // upper 32 bits are the result in [0, range).
@@ -153,17 +154,19 @@ chacha8_next_ranged(chacha8_rng *rng, uint64_t range)
         }
         return m >> 32;
     }
-    // 64-bit Lemire: use __uint128_t for the 128-bit product.
-    __uint128_t m = (__uint128_t)chacha8_next64(rng) * range;
-    uint64_t lo = (uint64_t)m;
-    if (unlikely(lo < range)) {
-        uint64_t thresh = (-range) % range;
-        while (lo < thresh) {
-            m = (__uint128_t)chacha8_next64(rng) * range;
-            lo = (uint64_t)m;
-        }
+    // If range is a power of two, masking produces an unbiased result.
+    if ((range & (range - 1)) == 0) {
+        return chacha8_next64(rng) & (range - 1);
     }
-    return (uint64_t)(m >> 64);
+    uint64_t r;
+    // In unsigned arithmetic, -range is 2**64 - range, so this computes
+    // 2**64 % range. Rejecting values below this threshold leaves exactly
+    // floor(2**64 / range) full buckets of size range, avoiding modulo bias.
+    uint64_t thresh = -range % range;
+    do {
+        r = chacha8_next64(rng);
+    } while (unlikely(r < thresh));
+    return r % range;
 }
 
 // Return a random i64 starting at 'start', with 'range' possible values.
