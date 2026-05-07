@@ -81,10 +81,16 @@ The ``vec`` class
    A generic growable array type. The runtime type parameter ``T`` used when
    calling ``vec[T](...)`` determines the element type.
 
-   The ``capacity`` parameter allows defining the initial
-   minimum capacity of the buffer, some of which may be unused after
+   The ``capacity`` parameter allows defining the minimum initial
+   capacity of the buffer, some of which may be unused after
    construction. Unused capacity allows fast ``append`` and ``extend``
-   operations that don't need to reallocate the buffer.
+   operations that don't need to reallocate the buffer. Actual capacity
+   will be larger than ``capacity`` if ``items`` has more than ``capacity``
+   items.
+
+   Mypyc treats ``vec[T]([x] * n)`` as a special form. For example,
+   ``vec[u8]([0] * n)`` constructs a zero-initialized vec object
+   efficiently, without building an intermediate list.
 
    It's an error to construct a ``vec`` object without providing an
    item type: ``vec()`` raises an exception.
