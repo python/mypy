@@ -1,5 +1,5 @@
 from mypyc.ir.deps import LIBRT_RANDOM
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import float_rprimitive, int64_rprimitive, random_rprimitive
 from mypyc.primitives.registry import function_op, method_op
 
@@ -75,7 +75,7 @@ function_op(
     arg_types=[],
     return_type=float_rprimitive,
     c_function_name="LibRTRandom_module_random_internal",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC_OVERLAPPING,
     experimental=True,
     dependencies=[LIBRT_RANDOM],
 )

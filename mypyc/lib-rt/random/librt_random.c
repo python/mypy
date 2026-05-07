@@ -648,7 +648,7 @@ static double
 module_random_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        CPyError_OutOfMemory();
+        return CPY_FLOAT_ERROR;
     return random_double_impl(rng);
 }
 
@@ -660,7 +660,7 @@ module_randint_internal(int64_t a, int64_t b) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        CPyError_OutOfMemory();
+        return CPY_LL_INT_ERROR;
     uint64_t range = (uint64_t)b - (uint64_t)a + 1;
     return random_i64_from_range(rng, a, range);
 }
@@ -673,7 +673,7 @@ module_randrange1_internal(int64_t stop) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        CPyError_OutOfMemory();
+        return CPY_LL_INT_ERROR;
     return (int64_t)chacha8_next_ranged(rng, (uint64_t)stop);
 }
 
@@ -685,7 +685,7 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     }
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
-        CPyError_OutOfMemory();
+        return CPY_LL_INT_ERROR;
     uint64_t range = (uint64_t)stop - (uint64_t)start;
     return random_i64_from_range(rng, start, range);
 }
