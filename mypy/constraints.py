@@ -759,13 +759,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 and template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
             ):
-                ret_type = get_proper_type(actual.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = mypy.typeops.tuple_fallback(ret_type)
-                if isinstance(ret_type, Instance):
+                instance_type = actual.get_instance_type()
+                if isinstance(instance_type, Instance):
                     res.extend(
                         self.infer_constraints_from_protocol_members(
-                            ret_type, template, ret_type, template, class_obj=True
+                            instance_type, template, instance_type, template, class_obj=True
                         )
                     )
             actual = actual.fallback

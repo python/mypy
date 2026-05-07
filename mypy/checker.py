@@ -5515,7 +5515,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not item.is_type_obj():
                     self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                     return self.default_exception_type(is_star)
-                exc_type = erase_typevars(item.ret_type)
+                exc_type = erase_typevars(item.get_instance_type())
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
