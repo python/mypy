@@ -166,6 +166,15 @@ chacha8_next_ranged(chacha8_rng *rng, uint64_t range)
     return (uint64_t)(m >> 64);
 }
 
+// Return a random i64 starting at 'start', with 'range' possible values.
+// A zero range represents the full 2**64 i64 domain.
+static inline int64_t
+random_i64_from_range(chacha8_rng *rng, int64_t start, uint64_t range)
+{
+    uint64_t offset = range == 0 ? chacha8_next64(rng) : chacha8_next_ranged(rng, range);
+    return (int64_t)((uint64_t)start + offset);
+}
+
 static void
 chacha8_reset(chacha8_rng *rng)
 {
@@ -316,9 +325,8 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
 static inline PyObject*
 randint_impl(chacha8_rng *rng, int64_t a, int64_t b)
 {
-    uint64_t range = (uint64_t)(b - a) + 1;
-    int64_t result = a + (int64_t)chacha8_next_ranged(rng, range);
-    return PyLong_FromLongLong(result);
+    uint64_t range = (uint64_t)b - (uint64_t)a + 1;
+    return PyLong_FromLongLong(random_i64_from_range(rng, a, range));
 }
 
 static PyObject*
@@ -517,8 +525,8 @@ Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
     }
-    uint64_t range = (uint64_t)(stop - start);
-    return start + (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, range);
+    uint64_t range = (uint64_t)stop - (uint64_t)start;
+    return random_i64_from_range(&((RandomObject *)self)->rng, start, range);
 }
 
 static int64_t
@@ -527,8 +535,8 @@ Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
         PyErr_SetString(PyExc_ValueError, "empty range for randint()");
         return CPY_LL_INT_ERROR;
     }
-    uint64_t range = (uint64_t)(b - a) + 1;
-    return a + (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, range);
+    uint64_t range = (uint64_t)b - (uint64_t)a + 1;
+    return random_i64_from_range(&((RandomObject *)self)->rng, a, range);
 }
 
 static double
@@ -653,8 +661,8 @@ module_randint_internal(int64_t a, int64_t b) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
         CPyError_OutOfMemory();
-    uint64_t range = (uint64_t)(b - a) + 1;
-    return a + (int64_t)chacha8_next_ranged(rng, range);
+    uint64_t range = (uint64_t)b - (uint64_t)a + 1;
+    return random_i64_from_range(rng, a, range);
 }
 
 static int64_t
@@ -678,8 +686,8 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
         CPyError_OutOfMemory();
-    uint64_t range = (uint64_t)(stop - start);
-    return start + (int64_t)chacha8_next_ranged(rng, range);
+    uint64_t range = (uint64_t)stop - (uint64_t)start;
+    return random_i64_from_range(rng, start, range);
 }
 
 #ifdef MYPYC_EXPERIMENTAL

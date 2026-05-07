@@ -187,6 +187,80 @@ def test_module_seed_different() -> None:
     vals2 = [randint(0, 1000000) for _ in range(20)]
     assert vals1 != vals2
 
+[case testRandomWideI64Ranges_librt_experimental]
+from typing import Any
+
+from librt.random import Random, randint, randrange
+from mypy_extensions import i64
+
+def method_randint(r: Random, a: i64, b: i64) -> i64:
+    return r.randint(a, b)
+
+def method_randrange(r: Random, a: i64, b: i64) -> i64:
+    return r.randrange(a, b)
+
+def module_randint(a: i64, b: i64) -> i64:
+    return randint(a, b)
+
+def module_randrange(a: i64, b: i64) -> i64:
+    return randrange(a, b)
+
+def test_full_i64_randint_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    r = Random(42)
+    saw_non_min = False
+    for i in range(20):
+        val = method_randint(r, lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_full_i64_randint_module_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    saw_non_min = False
+    for i in range(20):
+        val = module_randint(lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_wide_i64_randrange_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    r = Random(43)
+    for i in range(20):
+        val = method_randrange(r, lo, hi)
+        assert lo <= val < hi
+        val = module_randrange(lo, hi)
+        assert lo <= val < hi
+
+def test_full_i64_randint_python_api() -> None:
+    r: Any = Random(42)
+    lo = -9223372036854775808
+    hi = 9223372036854775807
+    saw_non_min = False
+    for i in range(20):
+        val = r.randint(lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_wide_i64_randrange_python_api() -> None:
+    r: Any = Random(43)
+    randrange_any: Any = randrange
+    lo = -9223372036854775808
+    hi = 9223372036854775807
+    for i in range(20):
+        val = r.randrange(lo, hi)
+        assert lo <= val < hi
+        val = randrange_any(lo, hi)
+        assert lo <= val < hi
+
 [case testRandomErrors_librt_experimental]
 from librt.random import Random, randint, randrange
 from testutil import assertRaises
