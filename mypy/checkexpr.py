@@ -1787,6 +1787,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         might_have_shifted_args = (
             not self.msg.prefer_simple_messages()
+            and len(args) >= 2  # see gh-21427
             and all(k == ARG_POS for k in callee.arg_kinds)
             and all(k == ARG_POS for k in arg_kinds)
             and len(arg_kinds) == len(callee.arg_kinds) - 1
