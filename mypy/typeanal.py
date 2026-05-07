@@ -1927,28 +1927,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.allow_typed_dict_special_forms = old_allow_typed_dict_special_forms
             self.allow_ellipsis = old_allow_ellipsis
             self.allow_unpack = old_allow_unpack
-        if not allow_param_spec:
-            if isinstance(analyzed, Parameters):
+        if (
+            not allow_param_spec
+            and isinstance(analyzed, (ParamSpecType, Parameters))
+            and (isinstance(analyzed, Parameters) or analyzed.flavor == ParamSpecFlavor.BARE)
+        ):
+            is_concatenate = isinstance(analyzed, Parameters) or analyzed.prefix.arg_types
+            if is_concatenate:
                 self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
                 self.note("You can use Concatenate as the first argument to Callable", t)
-                analyzed = AnyType(TypeOfAny.from_error)
-            elif isinstance(analyzed, ParamSpecType) and analyzed.flavor == ParamSpecFlavor.BARE:
-                if analyzed.prefix.arg_types:
-                    self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
-                    self.note("You can use Concatenate as the first argument to Callable", t)
-                    analyzed = AnyType(TypeOfAny.from_error)
-                else:
-                    self.fail(
-                        INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
-                        t,
-                        code=codes.VALID_TYPE,
-                    )
-                    self.note(
-                        INVALID_PARAM_SPEC_LOCATION_NOTE.format(analyzed.name),
-                        t,
-                        code=codes.VALID_TYPE,
-                    )
-                    analyzed = AnyType(TypeOfAny.from_error)
+            else:
+                self.fail(
+                    INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+                self.note(
+                    INVALID_PARAM_SPEC_LOCATION_NOTE.format(analyzed.name),
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+            analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
