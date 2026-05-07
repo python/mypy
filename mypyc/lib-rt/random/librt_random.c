@@ -310,40 +310,6 @@ module_random(PyObject *module, PyObject *Py_UNUSED(ignored))
     return PyFloat_FromDouble(random_double_impl(rng));
 }
 
-// Return a random non-negative 31-bit integer [0, 2^31).
-static inline int32_t
-randbits31_impl(chacha8_rng *rng)
-{
-    return (int32_t)(chacha8_next(rng) >> 1);
-}
-
-// Return a random non-negative 62-bit integer (fits in a tagged integer).
-static inline int64_t
-randbits62_impl(chacha8_rng *rng)
-{
-    uint32_t lo = chacha8_next(rng);
-    uint32_t hi = chacha8_next(rng);
-    return (int64_t)(((uint64_t)hi << 30) | (lo >> 2));
-}
-
-static PyObject*
-module_randbits31(PyObject *module, PyObject *Py_UNUSED(ignored))
-{
-    chacha8_rng *rng = get_thread_rng();
-    if (rng == NULL)
-        return NULL;
-    return PyLong_FromLong(randbits31_impl(rng));
-}
-
-static PyObject*
-module_randbits62(PyObject *module, PyObject *Py_UNUSED(ignored))
-{
-    chacha8_rng *rng = get_thread_rng();
-    if (rng == NULL)
-        return NULL;
-    return PyLong_FromLongLong(randbits62_impl(rng));
-}
-
 // Generate random integer in [a, b] using the given RNG.
 static inline PyObject*
 randint_impl(chacha8_rng *rng, int64_t a, int64_t b)
@@ -535,16 +501,6 @@ Random_type_internal(void) {
 }
 
 static int64_t
-Random_randbits62_internal(PyObject *self) {
-    return randbits62_impl(&((RandomObject *)self)->rng);
-}
-
-static int32_t
-Random_randbits31_internal(PyObject *self) {
-    return randbits31_impl(&((RandomObject *)self)->rng);
-}
-
-static int64_t
 Random_randrange1_internal(PyObject *self, int64_t stop) {
     if (unlikely(stop <= 0)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
@@ -617,16 +573,6 @@ Random_random(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
 }
 
 static PyObject*
-Random_randbits31(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLong(randbits31_impl(&self->rng));
-}
-
-static PyObject*
-Random_randbits62(RandomObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLongLong(randbits62_impl(&self->rng));
-}
-
-static PyObject*
 Random_seed(RandomObject *self, PyObject *const *args, Py_ssize_t nargs) {
     if (nargs != 1) {
         PyErr_Format(PyExc_TypeError,
@@ -649,12 +595,6 @@ static PyMethodDef Random_methods[] = {
     },
     {"random", (PyCFunction) Random_random, METH_NOARGS,
      PyDoc_STR("Return random float in [0.0, 1.0).")
-    },
-    {"randbits31", (PyCFunction) Random_randbits31, METH_NOARGS,
-     PyDoc_STR("Return random non-negative 31-bit integer.")
-    },
-    {"randbits62", (PyCFunction) Random_randbits62, METH_NOARGS,
-     PyDoc_STR("Return random non-negative 62-bit integer.")
     },
     {"seed", (PyCFunction) Random_seed, METH_FASTCALL,
      PyDoc_STR("Seed the random number generator with an integer.")
@@ -685,12 +625,6 @@ static PyMethodDef librt_random_module_methods[] = {
     },
     {"randrange", (PyCFunction) module_randrange, METH_FASTCALL,
      PyDoc_STR("Return random integer in range [start, stop) using thread-local RNG.")
-    },
-    {"randbits31", (PyCFunction) module_randbits31, METH_NOARGS,
-     PyDoc_STR("Return random non-negative 31-bit integer using thread-local RNG.")
-    },
-    {"randbits62", (PyCFunction) module_randbits62, METH_NOARGS,
-     PyDoc_STR("Return random non-negative 62-bit integer using thread-local RNG.")
     },
     {"seed", (PyCFunction) module_seed, METH_FASTCALL,
      PyDoc_STR("Seed the thread-local RNG with an integer.")
@@ -746,22 +680,6 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     return start + (int64_t)chacha8_next_ranged(rng, range);
 }
 
-static int32_t
-module_randbits31_internal(void) {
-    chacha8_rng *rng = get_thread_rng();
-    if (rng == NULL)
-        CPyError_OutOfMemory();
-    return randbits31_impl(rng);
-}
-
-static int64_t
-module_randbits62_internal(void) {
-    chacha8_rng *rng = get_thread_rng();
-    if (rng == NULL)
-        CPyError_OutOfMemory();
-    return randbits62_impl(rng);
-}
-
 #ifdef MYPYC_EXPERIMENTAL
 
 static int
@@ -796,9 +714,7 @@ librt_random_module_exec(PyObject *m)
         (void *)Random_internal,
         (void *)Random_from_seed_internal,
         (void *)Random_type_internal,
-        (void *)Random_randbits62_internal,
         (void *)Random_random_internal,
-        (void *)Random_randbits31_internal,
         (void *)Random_randint_internal,
         (void *)Random_randrange1_internal,
         (void *)Random_randrange2_internal,
@@ -806,8 +722,6 @@ librt_random_module_exec(PyObject *m)
         (void *)module_randint_internal,
         (void *)module_randrange1_internal,
         (void *)module_randrange2_internal,
-        (void *)module_randbits31_internal,
-        (void *)module_randbits62_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

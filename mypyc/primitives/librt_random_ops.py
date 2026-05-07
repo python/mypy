@@ -1,6 +1,6 @@
 from mypyc.ir.deps import LIBRT_RANDOM
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
-from mypyc.ir.rtypes import float_rprimitive, int32_rprimitive, int64_rprimitive, random_rprimitive
+from mypyc.ir.rtypes import float_rprimitive, int64_rprimitive, random_rprimitive
 from mypyc.primitives.registry import function_op, method_op
 
 # Random() -- construct with OS entropy
@@ -58,28 +58,6 @@ method_op(
     dependencies=[LIBRT_RANDOM],
 )
 
-# Random.randbits31() -- return random 31-bit integer as i32
-method_op(
-    name="randbits31",
-    arg_types=[random_rprimitive],
-    return_type=int32_rprimitive,
-    c_function_name="LibRTRandom_Random_randbits31_internal",
-    error_kind=ERR_NEVER,
-    experimental=True,
-    dependencies=[LIBRT_RANDOM],
-)
-
-# Random.randbits62() -- return random 62-bit integer
-method_op(
-    name="randbits62",
-    arg_types=[random_rprimitive],
-    return_type=int64_rprimitive,
-    c_function_name="LibRTRandom_Random_randbits62_internal",
-    error_kind=ERR_NEVER,
-    experimental=True,
-    dependencies=[LIBRT_RANDOM],
-)
-
 # Random.random() -- return random float in [0.0, 1.0)
 method_op(
     name="random",
@@ -120,28 +98,6 @@ function_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randrange2_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
-    dependencies=[LIBRT_RANDOM],
-)
-
-# Module-level randbits31() -- return random 31-bit integer using thread-local RNG
-function_op(
-    name="librt.random.randbits31",
-    arg_types=[],
-    return_type=int32_rprimitive,
-    c_function_name="LibRTRandom_module_randbits31_internal",
-    error_kind=ERR_NEVER,
-    experimental=True,
-    dependencies=[LIBRT_RANDOM],
-)
-
-# Module-level randbits62() -- return random 62-bit integer using thread-local RNG
-function_op(
-    name="librt.random.randbits62",
-    arg_types=[],
-    return_type=int64_rprimitive,
-    c_function_name="LibRTRandom_module_randbits62_internal",
-    error_kind=ERR_NEVER,
     experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
