@@ -1098,6 +1098,7 @@ import types
 @types.coroutine
 def f(x):
     yield
+    1 + ""  # OK, in untyped function
     return 1
 
 async def test() -> None:
@@ -1113,6 +1114,7 @@ import types
 @types.coroutine
 def f(x: int):
     yield
+    1 + ""  # E: Unsupported left operand type for + ("int")
     return 1
 
 async def test() -> None:

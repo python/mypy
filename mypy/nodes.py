@@ -1068,7 +1068,11 @@ class FuncItem(FuncBase):
         return self.max_pos
 
     def is_dynamic(self) -> bool:
-        return self.type is None
+        return (
+            self.type is None
+            or isinstance(self.type, mypy.types.CallableType)
+            and self.type.implicit
+        )
 
 
 FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
