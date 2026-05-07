@@ -571,10 +571,7 @@ VecT_dealloc(VecTObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecT_dealloc)
-    if (self->vec.items) {
-        Py_DECREF(VEC_BUF(self->vec));
-        self->vec.items = NULL;
-    }
+    VecT_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }

@@ -524,10 +524,7 @@ VecNested_dealloc(VecNestedObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecNested_dealloc)
-    if (self->vec.items) {
-        Py_DECREF(VEC_BUF(self->vec));
-        self->vec.items = NULL;
-    }
+    VecNested_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }

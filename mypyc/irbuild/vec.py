@@ -168,7 +168,7 @@ def vec_create_initialized(
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    vec_set_mem_item(builder, for_loop.index, item_type, init, line)
+    vec_set_mem_item(builder, for_loop.index, item_type, init)
     for_loop.finish()
 
     builder.keep_alive([vec], line)
@@ -188,7 +188,7 @@ def vec_create_from_values(
     item_type = vtype.item_type
     step = step_size(item_type)
     for value in values:
-        vec_set_mem_item(builder, ptr, item_type, value, line)
+        vec_set_mem_item(builder, ptr, item_type, value)
         ptr = builder.int_add(ptr, step)
     builder.keep_alive([vec], line)
     return vec
@@ -268,7 +268,6 @@ def vec_load_mem_item(
     builder: LowLevelIRBuilder,
     ptr: Value,
     item_type: RType,
-    line: int,
     *,
     can_borrow: bool = False,
 ) -> Value:
@@ -277,7 +276,7 @@ def vec_load_mem_item(
 
 
 def vec_set_mem_item(
-    builder: LowLevelIRBuilder, ptr: Value, item_type: RType, item: Value, line: int
+    builder: LowLevelIRBuilder, ptr: Value, item_type: RType, item: Value
 ) -> None:
     """Store a vec item, converting RVec values to nested storage items."""
     builder.set_mem(ptr, item_type, item)
@@ -338,7 +337,7 @@ def vec_get_item_unsafe(
     index = as_platform_int(builder, index, line)
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
-    result = vec_load_mem_item(builder, item_addr, vtype.item_type, line, can_borrow=can_borrow)
+    result = vec_load_mem_item(builder, item_addr, vtype.item_type, can_borrow=can_borrow)
     builder.keep_alives.append(base)
     return result
 
@@ -357,9 +356,9 @@ def vec_set_item(
     if item_type.is_refcounted:
         # Read an unborrowed reference to cause a decref to be
         # generated for the old item.
-        old_item = vec_load_mem_item(builder, item_addr, item_type, line, can_borrow=True)
+        old_item = vec_load_mem_item(builder, item_addr, item_type, can_borrow=True)
         builder.add(DecRef(old_item))
-    vec_set_mem_item(builder, item_addr, item_type, item, line)
+    vec_set_mem_item(builder, item_addr, item_type, item)
     builder.keep_alive([base], line)
 
 
@@ -372,7 +371,7 @@ def vec_init_item_unsafe(
     item_addr = vec_item_ptr(builder, base, index)
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
-    vec_set_mem_item(builder, item_addr, item_type, item, line)
+    vec_set_mem_item(builder, item_addr, item_type, item)
     builder.keep_alive([base], line)
 
 
@@ -556,7 +555,7 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = vec_load_mem_item(builder, for_loop.index, item_type, line, can_borrow=True)
+    item = vec_load_mem_item(builder, for_loop.index, item_type, can_borrow=True)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))

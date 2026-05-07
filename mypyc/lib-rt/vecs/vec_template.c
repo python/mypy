@@ -665,7 +665,7 @@ static int vec_getbuffer(VEC_OBJECT *self, Py_buffer *view, int flags) {
 
     view->obj = (PyObject *)self;
     Py_INCREF(self);
-    view->buf = (self->vec.items != NULL) ? (void *)self->vec.items : NULL;
+    view->buf = (void *)self->vec.items;
     view->len = self->vec.len * (Py_ssize_t)sizeof(ITEM_C_TYPE);
     view->readonly = 1;
     view->itemsize = sizeof(ITEM_C_TYPE);
