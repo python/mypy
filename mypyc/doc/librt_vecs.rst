@@ -88,6 +88,11 @@ The ``vec`` class
    will be larger than ``capacity`` if ``items`` has more than ``capacity``
    items.
 
+   Construction from ``list`` and ``tuple`` objects is optimized.
+   Also, for value item types, construction from an object that implements
+   the buffer protocol is optimized (such as ``bytes``), if the format
+   is compatible with the vec item type.
+
    Mypyc treats ``vec[T]([x] * n)`` as a special form. For example,
    ``vec[u8]([0] * n)`` constructs a zero-initialized vec object
    efficiently, without building an intermediate list. There are
