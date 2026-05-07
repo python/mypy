@@ -95,6 +95,7 @@ VEC_ITEMS_C_TYPE: Final = {
     "VecBool": "char *",
     "VecT": "PyObject **",
     "VecNested": "VecNestedBufItem *",
+    "VecNestedBufItem": "void *",
 }
 
 
@@ -864,7 +865,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def set_element_item(self, src_type: RType, field: str, item: str) -> str:
-        if isinstance(src_type, RVec) and field == "items":
+        if field == "items" and src_type._ctype in VEC_ITEMS_C_TYPE:
             return f"({VEC_ITEMS_C_TYPE[src_type._ctype]}){item}"
         return item
 
