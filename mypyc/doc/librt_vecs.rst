@@ -90,7 +90,9 @@ The ``vec`` class
 
    Mypyc treats ``vec[T]([x] * n)`` as a special form. For example,
    ``vec[u8]([0] * n)`` constructs a zero-initialized vec object
-   efficiently, without building an intermediate list.
+   efficiently, without building an intermediate list. There are
+   also other constructor-related special forms -- see `Special
+   forms`_ below.
 
    It's an error to construct a ``vec`` object without providing an
    item type: ``vec()`` raises an exception.
@@ -166,8 +168,8 @@ instead of methods.
        v, x = pop(v)
        # x is 3; v has items [1, 2]
 
-Macro operations
-----------------
+Special forms
+--------------
 
 Certain combinations of operations that would be multiple separate operations in
 regular Python are guaranteed to be compiled by mypyc to direct operations
@@ -176,7 +178,7 @@ with no unnecessary temporary objects.
 .. list-table::
    :header-rows: 1
 
-   * - Operation
+   * - Special form
      - Description
    * - ``vec[T]()``
      - Construct empty vec with no buffer. This doesn't perform any dynamic allocation
