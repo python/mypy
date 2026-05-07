@@ -224,7 +224,7 @@ it's also significantly more efficient than ``array.array`` for small sequences.
 Multiple vec values can share the same underlying buffer. For example, assigning a vec
 to another variable creates an alias that refers to the same buffer::
 
-    v = vec[i32]([1, 2, 3])
+    v = vec[i32]([1, 2, 3], capacity=3)
     w = v  # v and w share the same buffer
 
     w[0] = 99
@@ -234,9 +234,9 @@ However, this sharing is not guaranteed to persist if there are operations that 
 the length (such as ``append``). These may reallocate the buffer, breaking the sharing
 silently::
 
-    v = append(v, 4)  # reallocates the buffer if there is no free capacity
+    v = append(v, 4)  # reallocates the buffer since there is no free capacity
     v[0] = 0
-    print(w[0])  # still 99 -- v and w may no longer share a buffer
+    print(w[0])  # still 99 -- v and w no longer share a buffer
 
 If you need independent copies, use slicing (``v[:]``) to explicitly create a vec with
 its own buffer. It's not recommended to rely on the details of buffer reallocation,
