@@ -1,6 +1,6 @@
 from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
@@ -58,4 +58,6 @@ def load(
     object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
     **kwds: Any,
 ) -> Any: ...
-def detect_encoding(b: bytes | bytearray) -> str: ...  # undocumented
+def detect_encoding(
+    b: bytes | bytearray,
+) -> Literal["utf-8", "utf-8-sig", "utf-16", "utf-16-be", "utf-16-le", "utf-32", "utf-32-be", "utf-32-le"]: ...  # undocumented

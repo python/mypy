@@ -312,6 +312,8 @@ def _is_subtype(
         # ErasedType as we do for non-proper subtyping.
         return True
 
+    # Cases specific w.r.t. right type are easier to handle before entering the SubtypeVisitor.
+    # Currently, these include Union types and TypeVarType with values.
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
@@ -360,6 +362,17 @@ def _is_subtype(
         elif is_subtype_of_item:
             return True
         # otherwise, fall through
+
+    if isinstance(right, TypeVarType) and right.values and not isinstance(left, TypeVarType):
+        if proper_subtype:
+            if all(
+                is_proper_subtype(orig_left, v, subtype_context=subtype_context)
+                for v in right.values
+            ):
+                return True
+        elif all(is_subtype(orig_left, v, subtype_context=subtype_context) for v in right.values):
+            return True
+
     return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 

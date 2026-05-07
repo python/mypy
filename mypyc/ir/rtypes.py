@@ -1017,7 +1017,7 @@ class RVec(RType):
     def __init__(self, item_type: RType) -> None:
         self.name = "vec[%s]" % item_type
         self.item_type = item_type
-        self.names = ["len", "buf"]
+        self.names = ["len", "items"]
         self.dependencies = (LIBRT_VECS,)
         if isinstance(item_type, RUnion):
             non_opt = optional_value_type(item_type)
@@ -1026,14 +1026,14 @@ class RVec(RType):
         if item_type in vec_buf_types:
             self._ctype = vec_c_types[item_type]
             self.buf_type = vec_buf_types[item_type]
-            self.types = [c_pyssize_t_rprimitive, self.buf_type]
+            self.types = [c_pyssize_t_rprimitive, pointer_rprimitive]
         elif isinstance(non_opt, RVec):
             self._ctype = "VecNested"
-            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
+            self.types = [c_pyssize_t_rprimitive, pointer_rprimitive]
             self.buf_type = VecNestedBufObject
         else:
             self._ctype = "VecT"
-            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
+            self.types = [c_pyssize_t_rprimitive, pointer_rprimitive]
             self.buf_type = VecTBufObject
 
     @property
@@ -1076,8 +1076,8 @@ class RVec(RType):
     def field_type(self, name: str) -> RType:
         if name == "len":
             return c_pyssize_t_rprimitive
-        elif name == "buf":
-            return object_rprimitive
+        elif name == "items":
+            return pointer_rprimitive
         assert False, f"RVec has no field '{name}'"
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
@@ -1346,7 +1346,7 @@ VecBoolBufObject = RStruct(
 
 # Struct type for vec[i64] (in most cases use RVec instead).
 VecI64 = RStruct(
-    name="VecI64", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+    name="VecI64", names=["len", "items"], types=[c_pyssize_t_rprimitive, pointer_rprimitive]
 )
 
 
@@ -1359,13 +1359,13 @@ VecTBufObject = RStruct(
 
 # Struct type for vec[t] (in most cases use RVec instead).
 VecT = RStruct(
-    name="VecT", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+    name="VecT", names=["len", "items"], types=[c_pyssize_t_rprimitive, pointer_rprimitive]
 )
 
 VecNestedBufItem = RStruct(
     name="VecNestedBufItem",
-    names=["len", "buf"],
-    types=[c_pyssize_t_rprimitive, object_non_refcounted_rprimitive],
+    names=["len", "items"],
+    types=[c_pyssize_t_rprimitive, pointer_rprimitive],
 )
 
 # Buffer for vec[vec[t]]
@@ -1383,7 +1383,7 @@ VecNestedBufObject = RStruct(
 
 # Struct type for vec[vec[...]] (in most cases use RVec instead).
 VecNested = RStruct(
-    name="VecNested", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+    name="VecNested", names=["len", "items"], types=[c_pyssize_t_rprimitive, pointer_rprimitive]
 )
 
 VecNestedBufObject_rprimitive = RPrimitive(

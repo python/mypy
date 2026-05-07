@@ -86,6 +86,18 @@ from mypyc.ir.rtypes import (
     is_tagged,
 )
 
+VEC_ITEMS_C_TYPE: Final = {
+    "VecI64": "int64_t *",
+    "VecI32": "int32_t *",
+    "VecI16": "int16_t *",
+    "VecU8": "uint8_t *",
+    "VecFloat": "double *",
+    "VecBool": "char *",
+    "VecT": "PyObject **",
+    "VecNested": "VecNestedBufItem *",
+    "VecNestedBufItem": "void *",
+}
+
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
     return native_function_type_from_decl(fn.decl, emitter)
@@ -557,7 +569,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
@@ -794,7 +806,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
@@ -829,8 +841,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_set_element(self, op: SetElement) -> None:
         dest = self.reg(op)
-        item = self.reg(op.item)
         field = op.field
+        item = self.set_element_item(op.src.type, field, self.reg(op.item))
         if isinstance(op.src, Undef):
             # First assignment to an undefined struct is trivial.
             self.emit_line(f"{dest}.{field} = {item};")
@@ -843,7 +855,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # TODO: Support tuples (or use RStruct for tuples)?
             src = self.reg(op.src)
             src_type = op.src.type
-            assert isinstance(src_type, RStruct), src_type
+            assert isinstance(src_type, (RStruct, RVec)), src_type
             init_items = []
             for n in src_type.names:
                 if n != field:
@@ -851,6 +863,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 else:
                     init_items.append(item)
             self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
+
+    def set_element_item(self, src_type: RType, field: str, item: str) -> str:
+        if field == "items" and src_type._ctype in VEC_ITEMS_C_TYPE:
+            return f"({VEC_ITEMS_C_TYPE[src_type._ctype]}){item}"
+        return item
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type

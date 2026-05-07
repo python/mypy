@@ -1076,11 +1076,11 @@ class IRBuilder:
             items = target_type.items
             assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = set(map(self.mapper.type_to_rtype, items))
+            rtypes = list(dict.fromkeys(self.mapper.type_to_rtype(item) for item in items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:
-                return RUnion.make_simplified_union(list(rtypes))
+                return RUnion.make_simplified_union(rtypes)
         assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:

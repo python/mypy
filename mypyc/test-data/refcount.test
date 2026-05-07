@@ -1519,11 +1519,10 @@ def f(v, i, x):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: str
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: str
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -1541,14 +1540,13 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecTBufObject
-    r8 = r5 * 8
-    r9 = r7 + r8
-    r10 = borrow load_mem r9 :: builtins.str*
-    dec_ref r10
+    r6 = v.items
+    r7 = r5 * 8
+    r8 = r6 + r7
+    r9 = borrow load_mem r8 :: builtins.str*
+    dec_ref r9
     inc_ref x
-    set_mem r9, x :: builtins.str*
+    set_mem r8, x :: builtins.str*
     return 1
 
 [case testVecTConstructFromListMultiply_64bit]
@@ -1564,31 +1562,29 @@ def f(n):
     r0, r1 :: object
     r2, r3 :: ptr
     r4 :: vec[str | None]
-    r5 :: object
-    r6 :: ptr
-    r7 :: i64
-    r8, r9 :: ptr
-    r10 :: bit
-    r11 :: ptr
+    r5 :: ptr
+    r6 :: i64
+    r7, r8 :: ptr
+    r9 :: bit
+    r10 :: ptr
 L0:
     r0 = box(None, 1)
     r1 = load_address PyUnicode_Type
     r2 = r1
     r3 = r2 | 1
     r4 = VecTApi.alloc(n, n, r3)
-    r5 = r4.buf
-    r6 = get_element_ptr r5 items :: VecTBufObject
-    r7 = n * 8
-    r8 = r6 + r7
-    r9 = r6
+    r5 = r4.items
+    r6 = n * 8
+    r7 = r5 + r6
+    r8 = r5
 L1:
-    r10 = r9 < r8 :: unsigned
-    if r10 goto L2 else goto L3 :: bool
+    r9 = r8 < r7 :: unsigned
+    if r9 goto L2 else goto L3 :: bool
 L2:
     inc_ref r0
-    set_mem r9, r0 :: union*
-    r11 = r9 + 8
-    r9 = r11
+    set_mem r8, r0 :: union*
+    r10 = r8 + 8
+    r8 = r10
     goto L1
 L3:
     return r4
@@ -1610,13 +1606,12 @@ def f(v):
     t :: i64
     r0, r1 :: native_int
     r2 :: bit
-    r3 :: object
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: ptr
-    r7, s :: str
-    r8 :: None
-    r9 :: native_int
+    r3 :: ptr
+    r4 :: native_int
+    r5 :: ptr
+    r6, s :: str
+    r7 :: None
+    r8 :: native_int
 L0:
     t = 0
     r0 = 0
@@ -1625,17 +1620,16 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = v.buf
-    r4 = get_element_ptr r3 items :: VecTBufObject
-    r5 = r0 * 8
-    r6 = r4 + r5
-    r7 = load_mem r6 :: builtins.str*
-    s = r7
-    r8 = g(s)
+    r3 = v.items
+    r4 = r0 * 8
+    r5 = r3 + r4
+    r6 = load_mem r5 :: builtins.str*
+    s = r6
+    r7 = g(s)
     dec_ref s
 L3:
-    r9 = r0 + 1
-    r0 = r9
+    r8 = r0 + 1
+    r0 = r8
     goto L1
 L4:
     return t
@@ -1655,22 +1649,20 @@ def f():
     r2 :: object
     r3 :: ptr
     r4 :: vec[str]
-    r5 :: object
-    r6, r7, r8 :: ptr
+    r5, r6, r7 :: ptr
 L0:
     r0 = 'x'
     r1 = 'y'
     r2 = load_address PyUnicode_Type
     r3 = r2
     r4 = VecTApi.alloc(2, 2, r3)
-    r5 = r4.buf
-    r6 = get_element_ptr r5 items :: VecTBufObject
+    r5 = r4.items
     inc_ref r0
-    set_mem r6, r0 :: builtins.str*
-    r7 = r6 + 8
+    set_mem r5, r0 :: builtins.str*
+    r6 = r5 + 8
     inc_ref r1
-    set_mem r7, r1 :: builtins.str*
-    r8 = r7 + 8
+    set_mem r6, r1 :: builtins.str*
+    r7 = r6 + 8
     return r4
 
 [case testVecI64GetItemBorrowVec_64bit]
@@ -1693,11 +1685,10 @@ def C.f(self, x):
     r4 :: bit
     r5 :: bool
     r6 :: i64
-    r7 :: object
-    r8 :: ptr
-    r9 :: i64
-    r10 :: ptr
-    r11 :: i64
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: i64
 L0:
     r0 = borrow self.v
     r1 = r0.len
@@ -1716,12 +1707,11 @@ L3:
 L4:
     r6 = x
 L5:
-    r7 = r0.buf
-    r8 = get_element_ptr r7 items :: VecI64BufObject
-    r9 = r6 * 8
-    r10 = r8 + r9
-    r11 = load_mem r10 :: i64*
-    return r11
+    r7 = r0.items
+    r8 = r6 * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: i64*
+    return r10
 
 [case testVecI64LenBorrowVec_64bit]
 from librt.vecs import vec
@@ -1753,14 +1743,14 @@ def f(vv, v):
     vv :: vec[vec[str]]
     v :: vec[str]
     r0 :: native_int
-    r1 :: object
-    r2, r3 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r1 :: ptr
+    r2, r3 :: VecNestedBufItem{len:native_int, items:ptr}
     r4 :: vec[vec[str]]
 L0:
     r0 = v.len
-    r1 = v.buf
+    r1 = v.items
     r2 = set_element undef VecNestedBufItem, len, r0
-    r3 = set_element r2, buf, r1
+    r3 = set_element r2, items, r1
     inc_ref vv
     r4 = VecNestedApi.append(vv, r3)
     return r4
@@ -1781,11 +1771,10 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: str
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: str
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -1803,12 +1792,11 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecTBufObject
-    r8 = r5 * 8
-    r9 = r7 + r8
-    r10 = load_mem r9 :: builtins.str*
-    return r10
+    r6 = v.items
+    r7 = r5 * 8
+    r8 = r6 + r7
+    r9 = load_mem r8 :: builtins.str*
+    return r9
 
 [case testVecNestedGetItem_64bit]
 from librt.vecs import vec
@@ -1829,11 +1817,10 @@ def f(v, n):
     r6 :: bit
     r7 :: bool
     r8 :: i64
-    r9 :: object
-    r10 :: ptr
-    r11 :: i64
-    r12 :: ptr
-    r13, vv :: vec[str]
+    r9 :: ptr
+    r10 :: i64
+    r11 :: ptr
+    r12, vv :: vec[str]
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
@@ -1854,13 +1841,12 @@ L3:
 L4:
     r8 = n
 L5:
-    r9 = r2.buf
-    r10 = get_element_ptr r9 items :: VecNestedBufObject
-    r11 = r8 * 16
-    r12 = r10 + r11
-    r13 = load_mem r12 :: vec[str]*
+    r9 = r2.items
+    r10 = r8 * 16
+    r11 = r9 + r10
+    r12 = load_mem r11 :: vec[str]*
     dec_ref r2
-    vv = r13
+    vv = r12
     dec_ref vv
     return 1
 L6:
@@ -1883,22 +1869,20 @@ def f(v, n, m):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: vec[i64]
-    r11 :: native_int
-    r12 :: bit
-    r13 :: i64
-    r14 :: bit
-    r15 :: bool
-    r16 :: i64
-    r17 :: object
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: vec[i64]
+    r10 :: native_int
+    r11 :: bit
+    r12 :: i64
+    r13 :: bit
+    r14 :: bool
+    r15 :: i64
+    r16 :: ptr
+    r17 :: i64
     r18 :: ptr
     r19 :: i64
-    r20 :: ptr
-    r21 :: i64
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -1916,33 +1900,31 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecNestedBufObject
-    r8 = r5 * 16
-    r9 = r7 + r8
-    r10 = borrow load_mem r9 :: vec[i64]*
-    r11 = r10.len
-    r12 = m < r11 :: unsigned
-    if r12 goto L9 else goto L6 :: bool
+    r6 = v.items
+    r7 = r5 * 16
+    r8 = r6 + r7
+    r9 = borrow load_mem r8 :: vec[i64]*
+    r10 = r9.len
+    r11 = m < r10 :: unsigned
+    if r11 goto L9 else goto L6 :: bool
 L6:
-    r13 = m + r11
-    r14 = r13 < r11 :: unsigned
-    if r14 goto L8 else goto L7 :: bool
+    r12 = m + r10
+    r13 = r12 < r10 :: unsigned
+    if r13 goto L8 else goto L7 :: bool
 L7:
-    r15 = raise IndexError
+    r14 = raise IndexError
     unreachable
 L8:
-    r16 = r13
+    r15 = r12
     goto L10
 L9:
-    r16 = m
+    r15 = m
 L10:
-    r17 = r10.buf
-    r18 = get_element_ptr r17 items :: VecI64BufObject
-    r19 = r16 * 8
-    r20 = r18 + r19
-    r21 = load_mem r20 :: i64*
-    return r21
+    r16 = r9.items
+    r17 = r15 * 8
+    r18 = r16 + r17
+    r19 = load_mem r18 :: i64*
+    return r19
 
 [case testVecPop]
 from librt.vecs import vec, pop, append
@@ -1984,15 +1966,17 @@ def f(v: vec[vec[str]]) -> vec[str]:
 [out]
 def f(v):
     v :: vec[vec[str]]
-    r0 :: tuple[vec[vec[str]], VecNestedBufItem{len:native_int, buf:object_nrc}]
+    r0 :: tuple[vec[vec[str]], VecNestedBufItem{len:native_int, items:ptr}]
     r1, r2 :: vec[vec[str]]
-    r3, r4 :: VecNestedBufItem{len:native_int, buf:object_nrc}
-    r5 :: vec[str]
-    r6 :: tuple[vec[vec[str]], vec[str]]
-    r7 :: vec[vec[str]]
-    r8 :: vec[str]
-    r9, vv :: vec[vec[str]]
-    r10, x :: vec[str]
+    r3, r4 :: VecNestedBufItem{len:native_int, items:ptr}
+    r5 :: native_int
+    r6 :: ptr
+    r7, r8 :: vec[str]
+    r9 :: tuple[vec[vec[str]], vec[str]]
+    r10 :: vec[vec[str]]
+    r11 :: vec[str]
+    r12, vv :: vec[vec[str]]
+    r13, x :: vec[str]
 L0:
     inc_ref v
     r0 = VecNestedApi.pop(v, -1)
@@ -2000,15 +1984,18 @@ L0:
     r2 = unborrow r1
     r3 = borrow r0[1]
     r4 = unborrow r3
-    r5 = VecTApi.convert_from_nested(r4)
-    r6 = (r2, r5)
-    r7 = borrow r6[0]
-    r8 = borrow r6[1]
-    r9 = unborrow r7
-    vv = r9
+    r5 = r4.len
+    r6 = r4.items
+    r7 = set_element undef vec[str], len, r5
+    r8 = set_element r7, items, r6
+    r9 = (r2, r8)
+    r10 = borrow r9[0]
+    r11 = borrow r9[1]
+    r12 = unborrow r10
+    vv = r12
     dec_ref vv
-    r10 = unborrow r8
-    x = r10
+    r13 = unborrow r11
+    x = r13
     return x
 
 [case testPropertySetterCallWithRefcountedObject]

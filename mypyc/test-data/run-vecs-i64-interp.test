@@ -1,4 +1,4 @@
-[case testLibrtVecsI64Interpreted_librt_experimental]
+[case testLibrtVecsI64Interpreted_librt]
 # Test cases for vec[i64], using generic operations (simulates use from interpreted code).
 #
 # These also act as test cases for specialized vec types in general (e.g. vec[float]),

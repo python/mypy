@@ -43,9 +43,25 @@ bar('42')
 {"file": "main", "line": 14, "column": 0, "end_line": 14, "end_column": 9, "message": "No overload variant of \"foo\" matches argument type \"str\"", "hint": "Possible overload variants:\n    def foo() -> None\n    def foo(x: int) -> None", "code": "call-overload", "severity": "error"}
 {"file": "main", "line": 17, "column": 0, "end_line": 17, "end_column": 9, "message": "Too many arguments for \"bar\"", "hint": null, "code": "call-arg", "severity": "error"}
 
+[case testOutputJsonParallel]
+# flags: --output=json --num-workers=2
+def foo() -> None:
+    pass
+
+foo(1)
+[out]
+{"file": "main", "line": 5, "column": 0, "end_line": 5, "end_column": 6, "message": "Too many arguments for \"foo\"", "hint": null, "code": "call-arg", "severity": "error"}
+
 [case testOutputJsonSyntaxError]
 # flags: --output=json
 klass foo
 [out]
 {"file": "main", "line": 2, "column": 7, "end_line": 2, "end_column": 8, "message": "Invalid syntax", "hint": null, "code": "syntax", "severity": "error"}
+!!! Mypy crashed !!!
+
+[case testOutputJsonSyntaxErrorParallel]
+# flags: --output=json --num-workers=2
+break
+[out]
+{"file": "main", "line": 2, "column": 0, "end_line": 2, "end_column": 5, "message": "\"break\" outside loop", "hint": null, "code": null, "severity": "error"}
 !!! Mypy crashed !!!
