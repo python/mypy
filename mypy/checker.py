@@ -5721,11 +5721,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
         defn = e.func
         if defn.is_awaitable_coroutine:
-            assert isinstance(defn.type, CallableType)
+            typ = self.function_type(defn)
+            assert isinstance(typ, CallableType)
             # Update the return type to AwaitableGenerator (unless we already did).
             # Note, this doesn't exist in typing.py, only in typing.pyi.
-            if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
-                t = defn.type.ret_type
+            if not is_named_instance(typ.ret_type, "typing.AwaitableGenerator"):
+                t = typ.ret_type
                 c = defn.is_coroutine
                 ty = self.get_generator_yield_type(t, c)
                 tc = self.get_generator_receive_type(t, c)
@@ -5734,8 +5735,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else:
                     tr = self.get_generator_return_type(t, c)
                 ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
-                typ = defn.type.copy_modified(ret_type=ret_type)
-                defn.type = typ
+                defn.type = typ.copy_modified(ret_type=ret_type)
 
         # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
