@@ -274,7 +274,7 @@ ensure_tls_key(void)
 
 // Get the thread-local RNG, initializing on first use.
 // Returns NULL with Python exception set on failure.
-static chacha8_rng *
+static inline chacha8_rng *
 get_thread_rng(void)
 {
     chacha8_rng *rng = tls_rng;
