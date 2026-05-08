@@ -270,3 +270,17 @@ L1:
 L2:
     r3 = CPyStringWriter_GetItem(s, r0)
     return r3
+
+[case testLibrtStringsIsSpaceIR]
+from librt.strings import isspace
+from mypy_extensions import i32
+
+def is_ws(c: i32) -> bool:
+    return isspace(c)
+[out]
+def is_ws(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsSpace(c)
+    return r0

@@ -1,4 +1,9 @@
-from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS, STRING_WRITER_EXTRA_OPS
+from mypyc.ir.deps import (
+    BYTES_WRITER_EXTRA_OPS,
+    CODEPOINT_EXTRA_OPS,
+    LIBRT_STRINGS,
+    STRING_WRITER_EXTRA_OPS,
+)
 from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
@@ -386,4 +391,16 @@ string_writer_get_item_unsafe_op = custom_primitive_op(
     c_function_name="CPyStringWriter_GetItem",
     error_kind=ERR_NEVER,
     dependencies=[LIBRT_STRINGS, STRING_WRITER_EXTRA_OPS],
+)
+
+
+# Codepoint classification helpers operating on i32 codepoints
+# (typically obtained via ord(s[i])). Negative inputs return False.
+function_op(
+    name="librt.strings.isspace",
+    arg_types=[int32_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTStrings_IsSpace",
+    error_kind=ERR_NEVER,
+    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
 )

@@ -4,6 +4,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
+#include "codepoint_extra_ops.h"
 #include "librt_strings.h"
 
 #define CPY_BOOL_ERROR 2
@@ -1153,6 +1154,40 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
+// Codepoint classification helpers exposed to interpreted callers.
+// The C-side names are prefixed `cp_` to avoid colliding with libc's
+// <ctype.h> isspace / isdigit / etc. Compiled callers go through the
+// LibRTStrings_* static inlines in codepoint_extra_ops.h instead.
+//
+// All wrappers parse a single int argument as i32 (codepoint) and
+// dispatch to the corresponding LibRTStrings_* function. The parse
+// step accepts any int but rejects values outside the i32 range with
+// OverflowError, matching the input domain of the compiled fast path.
+
+#define CP_PARSE_I32(arg, var)                                              \
+    int32_t var;                                                            \
+    do {                                                                    \
+        int _overflow;                                                      \
+        long _c = PyLong_AsLongAndOverflow((arg), &_overflow);              \
+        if (_c == -1 && PyErr_Occurred())                                   \
+            return NULL;                                                    \
+        if (_overflow != 0 || _c < INT32_MIN || _c > INT32_MAX) {           \
+            PyErr_SetString(PyExc_OverflowError,                            \
+                            "codepoint out of i32 range");                  \
+            return NULL;                                                    \
+        }                                                                   \
+        (var) = (int32_t)_c;                                                \
+    } while (0)
+
+#define DEFINE_CP_BOOL_WRAPPER(name, fn)                                    \
+    static PyObject*                                                        \
+    cp_##name(PyObject *module, PyObject *arg) {                            \
+        CP_PARSE_I32(arg, c);                                               \
+        return PyBool_FromLong(fn(c));                                      \
+    }
+
+DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
+
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
      PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
@@ -1213,6 +1248,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
+    },
+    {"isspace", cp_isspace, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is Unicode whitespace.")
     },
     {NULL, NULL, 0, NULL}
 };
