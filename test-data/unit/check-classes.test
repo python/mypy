@@ -7540,6 +7540,18 @@ reveal_type(B())  # N: Revealed type is "__main__.A"
 # Ignore "implicit" return type to preserve backwards compatibility.
 reveal_type(C())  # N: Revealed type is "__main__.C"
 
+[case testNewReturnType19]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def f(tp: type[T]) -> T: ...
+
+class C:
+    def __new__(cls) -> int: ...  # type: ignore[misc]
+
+reveal_type(f(C))  # N: Revealed type is "__main__.C"
+
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
 from sympy.ops import AssocOp

@@ -1375,8 +1375,16 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
 
     def visit_type_type(self, template: TypeType) -> list[Constraint]:
         if isinstance(self.actual, CallableType):
+            if self.actual.is_type_obj():
+                return infer_constraints(
+                    template.item, self.actual.get_instance_type(), self.direction
+                )
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
+            if self.actual.is_type_obj():
+                return infer_constraints(
+                    template.item, self.actual.items[0].get_instance_type(), self.direction
+                )
             return infer_constraints(template.item, self.actual.items[0].ret_type, self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
