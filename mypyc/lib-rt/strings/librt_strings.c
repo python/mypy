@@ -1192,6 +1192,7 @@ cp_parse_i32(PyObject *arg, int32_t *out) {
 
 DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
 DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
+DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
 
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
@@ -1259,6 +1260,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"isdigit", cp_isdigit, METH_O,
      PyDoc_STR("Test whether a codepoint (i32) is a Unicode digit.")
+    },
+    {"isalnum", cp_isalnum, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is alphanumeric.")
     },
     {NULL, NULL, 0, NULL}
 };
