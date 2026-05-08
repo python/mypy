@@ -26,9 +26,10 @@ from mypy.cache import (
     read_int,
 )
 from mypy.config_parser import parse_mypy_comments
-from mypy.errors import CompileError
-from mypy.nodes import MypyFile, ParseError
+from mypy.errors import CompileError, Errors
+from mypy.nodes import FileRawData, MypyFile, ParseError
 from mypy.options import Options
+from mypy.parse import load_from_raw
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import get_mypy_comments
@@ -270,6 +271,21 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
                 + locs(1, 0, 1, 14)
                 + [END_TAG, END_TAG]
             )
+
+    def test_incompatible_binary_data_reports_clear_error(self) -> None:
+        raw_data = FileRawData(bytes([LITERAL_NONE]), b"", [], {}, False, False)
+        options = Options()
+        errors = Errors(options)
+
+        with self.assertRaises(CompileError) as cm:
+            load_from_raw("bad.py", "bad", raw_data, errors, options)
+
+        self.assertEqual(cm.exception.module_with_blocker, "bad")
+        self.assertEqual(len(cm.exception.messages), 1)
+        message = cm.exception.messages[0]
+        self.assertIn("bad.py: error: The native parser produced serialized AST data", message)
+        self.assertIn("incompatible ast-serialize version", message)
+        self.assertIn("Original error: AssertionError", message)
 
 
 @contextlib.contextmanager

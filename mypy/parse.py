@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import NoReturn
 
 from librt.internal import ReadBuffer
 
@@ -9,6 +10,14 @@ from mypy.cache import read_int
 from mypy.errors import Errors
 from mypy.nodes import FileRawData, MypyFile, ParseError
 from mypy.options import Options
+
+
+def _raise_native_parser_error(
+    fnam: str, module: str | None, errors: Errors, options: Options, message: str
+) -> NoReturn:
+    errors.set_file(fnam, module, options=options)
+    errors.report(-1, None, message, blocker=True)
+    errors.raise_error()
 
 
 def parse(
@@ -37,9 +46,12 @@ def parse(
             ignore_errors = options.ignore_errors or fnam in errors.ignored_files
             # If errors are ignored, we can drop many function bodies to speed up type checking.
             strip_function_bodies = ignore_errors and not options.preserve_asts
-            tree, _, _ = mypy.nativeparse.native_parse(
-                fnam, options, skip_function_bodies=strip_function_bodies
-            )
+            try:
+                tree, _, _ = mypy.nativeparse.native_parse(
+                    fnam, options, skip_function_bodies=strip_function_bodies
+                )
+            except mypy.nativeparse.NativeParserError as err:
+                _raise_native_parser_error(fnam, module, errors, options, str(err))
             # Set is_stub based on file extension
             tree.is_stub = fnam.endswith(".pyi")
             # Note: tree.imports is populated directly by load_from_raw() with deserialized
@@ -69,16 +81,34 @@ def load_from_raw(
     If imports_only is true, only deserialize imports and return a mostly
     empty AST.
     """
-    from mypy.nativeparse import State, deserialize_imports, read_statements
+    from mypy.nativeparse import (
+        State,
+        deserialize_imports,
+        invalid_ast_serialize_data_message,
+        read_statements,
+    )
 
     state = State(options)
-    if imports_only:
-        defs = []
-    else:
-        data = ReadBuffer(raw_data.defs)
-        n = read_int(data)
-        defs = read_statements(state, data, n)
-    imports = deserialize_imports(raw_data.imports)
+    try:
+        if imports_only:
+            defs = []
+        else:
+            data = ReadBuffer(raw_data.defs)
+            n = read_int(data)
+            defs = read_statements(state, data, n)
+        imports = deserialize_imports(raw_data.imports)
+    except (
+        AssertionError,
+        EOFError,
+        IndexError,
+        KeyError,
+        TypeError,
+        UnicodeDecodeError,
+        ValueError,
+    ) as err:
+        _raise_native_parser_error(
+            fnam, module, errors, options, invalid_ast_serialize_data_message(err)
+        )
 
     tree = MypyFile(defs, imports)
     tree.path = fnam
@@ -93,7 +123,8 @@ def load_from_raw(
     all_errors = raw_data.raw_errors + state.errors
     errors.set_file(fnam, module, options=options)
     for error in all_errors:
-        # Note we never raise in this function, so it should not be called in coordinator.
+        # Regular parse errors are reported here; invalid serialized native parser
+        # data is converted to a blocking error above.
         report_parse_error(error, errors)
     if imports_only:
         # Preserve raw data when only de-serializing imports, it will be sent to

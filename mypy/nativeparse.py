@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import os
 import time
+from functools import cache
+from importlib import metadata
 from typing import Final, cast
 
 import ast_serialize
@@ -161,6 +163,81 @@ from mypy.util import unnamed_function
 
 TypeIgnores = list[tuple[int, list[str]]]
 
+AST_SERIALIZE_REQUIREMENT: Final = ">=0.3.0,<1.0.0"
+AST_SERIALIZE_MIN_VERSION: Final = (0, 3, 0)
+AST_SERIALIZE_MAX_VERSION: Final = (1, 0, 0)
+
+
+class NativeParserError(Exception):
+    """Raised when the native parser cannot produce compatible serialized data."""
+
+
+@cache
+def ast_serialize_version() -> str | None:
+    """Return the installed ast-serialize package version, if available."""
+    try:
+        return metadata.version("ast-serialize")
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _parse_release(version: str) -> tuple[int, ...] | None:
+    release = version.split("+", 1)[0].split("-", 1)[0]
+    parts = []
+    for part in release.split("."):
+        digits = ""
+        for char in part:
+            if not char.isdigit():
+                break
+            digits += char
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts) if parts else None
+
+
+def _is_release_less(left: tuple[int, ...], right: tuple[int, ...]) -> bool:
+    size = max(len(left), len(right))
+    left += (0,) * (size - len(left))
+    right += (0,) * (size - len(right))
+    return left < right
+
+
+@cache
+def _check_ast_serialize_version() -> None:
+    version = ast_serialize_version()
+    if version is None:
+        return
+    release = _parse_release(version)
+    if release is None:
+        return
+    if _is_release_less(release, AST_SERIALIZE_MIN_VERSION) or not _is_release_less(
+        release, AST_SERIALIZE_MAX_VERSION
+    ):
+        raise NativeParserError(
+            f"Incompatible ast-serialize version {version} is installed; "
+            f"mypy requires ast-serialize{AST_SERIALIZE_REQUIREMENT}. "
+            "Upgrade ast-serialize or reinstall mypy's dependencies."
+        )
+
+
+def _format_native_parser_exception(err: BaseException) -> str:
+    detail = str(err)
+    return f"{type(err).__name__}: {detail}" if detail else type(err).__name__
+
+
+def invalid_ast_serialize_data_message(err: BaseException) -> str:
+    version = ast_serialize_version()
+    installed = f" (installed ast-serialize: {version})" if version is not None else ""
+    return (
+        "The native parser produced serialized AST data that mypy cannot read. "
+        "This usually means an incompatible ast-serialize version is installed"
+        f"{installed}; mypy requires ast-serialize{AST_SERIALIZE_REQUIREMENT}. "
+        "Upgrade ast-serialize or reinstall mypy's dependencies. "
+        f"Original error: {_format_native_parser_exception(err)}"
+    )
+
+
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
@@ -257,25 +334,29 @@ def parse_to_binary_ast(
         time.sleep(0.0001)  # type: ignore[unreachable]
         if time.time() - t0 > 10.0:
             raise ImportError("Cannot import ast_serialize")
-    ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
-        filename,
-        skip_function_bodies=skip_function_bodies,
-        python_version=options.python_version,
-        platform=options.platform,
-        always_true=options.always_true,
-        always_false=options.always_false,
-        cache_version=3,
-    )
-    return (
-        ast_bytes,
-        errors,
-        ignores,
-        import_bytes,
-        ast_data["is_partial_package"],
-        ast_data["uses_template_strings"],
-        ast_data["source_hash"],
-        ast_data["mypy_comments"],
-    )
+    _check_ast_serialize_version()
+    try:
+        ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
+            filename,
+            skip_function_bodies=skip_function_bodies,
+            python_version=options.python_version,
+            platform=options.platform,
+            always_true=options.always_true,
+            always_false=options.always_false,
+            cache_version=3,
+        )
+        return (
+            ast_bytes,
+            errors,
+            ignores,
+            import_bytes,
+            ast_data["is_partial_package"],
+            ast_data["uses_template_strings"],
+            ast_data["source_hash"],
+            ast_data["mypy_comments"],
+        )
+    except (AssertionError, KeyError, TypeError, ValueError) as err:
+        raise NativeParserError(invalid_ast_serialize_data_message(err)) from err
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
