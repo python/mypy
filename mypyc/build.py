@@ -450,6 +450,70 @@ def write_file(path: str, contents: str) -> None:
         os.utime(path, times=(new_mtime, new_mtime))
 
 
+_MYPYC_EXTENSION_MARKER = "_mypyc_skip_redundant_inplace_copy"
+_setuptools_patch_applied = False
+
+
+def _patch_setuptools_copy_extensions_to_source() -> None:
+    """Skip redundant `.so` copies for extensions we generated.
+
+    setuptools' copy_extensions_to_source rewrites every `.so` in the
+    source tree on every build_ext, even when nothing changed. On macOS
+    this invalidates AMFI's signature cache (~100 ms re-verification per
+    `.so` on the next import), eating most of the separate=True
+    incremental speedup.
+
+    The patch is global because copy_extensions_to_source runs during
+    setup()'s build_ext command, after mypycify() has already returned;
+    we can't scope a context manager around it. Instead the skip only
+    fires for extensions tagged by mypycify (via the marker attribute),
+    so other setuptools users in the same setup.py see the unmodified
+    upstream behavior, including stub writes.
+    """
+    global _setuptools_patch_applied
+    if _setuptools_patch_applied:
+        return
+    _setuptools_patch_applied = True
+
+    from setuptools.command.build_ext import build_ext as _build_ext
+
+    original = _build_ext.copy_extensions_to_source
+
+    def _files_match(a: str, b: str) -> bool:
+        try:
+            sa = os.stat(a)
+            sb = os.stat(b)
+        except OSError:
+            return False
+        # Compare size + whole-second mtime. distutils' copy_file
+        # propagates the source mtime, but macOS drops sub-second
+        # precision on write so the float values never match verbatim.
+        return sa.st_size == sb.st_size and int(sa.st_mtime) == int(sb.st_mtime)
+
+    def patched(self: Any) -> None:
+        build_py = self.get_finalized_command("build_py")
+
+        def is_redundant(ext: Any) -> bool:
+            if not getattr(ext, _MYPYC_EXTENSION_MARKER, False):
+                return False
+            inplace_file, regular_file = self._get_inplace_equivalent(build_py, ext)
+            return _files_match(regular_file, inplace_file)
+
+        # Hide our already-fresh extensions from setuptools' loop and
+        # let it handle whatever's left. Delegating instead of
+        # reimplementing the body means future setuptools changes carry
+        # over for free. self.extensions is restored before we return
+        # so anything that inspects it later sees the original list.
+        saved = self.extensions
+        self.extensions = [ext for ext in saved if not is_redundant(ext)]
+        try:
+            original(self)
+        finally:
+            self.extensions = saved
+
+    _build_ext.copy_extensions_to_source = patched  # type: ignore[method-assign]
+
+
 def construct_groups(
     sources: list[BuildSource],
     separate: bool | list[tuple[list[str], str | None]],
@@ -513,7 +577,7 @@ def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
     """
     headers: set[str] = set()
     for _, contents in cfiles:
-        headers.update(re.findall(r'#include "(.*)"', contents))
+        headers.update(re.findall(r'#include [<"]([^>"]+)[>"]', contents))
 
     return sorted(headers)
 
@@ -573,12 +637,21 @@ def mypyc_build(
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            if not options.mypyc_skip_c_generation:
+            # Empty contents marks a file the previous run already wrote
+            # (fully-cached group): skip the rewrite and just reuse it.
+            if ctext and not options.mypyc_skip_c_generation:
                 write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 
-        deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
+        # The header regex matches both quote styles, so the result can
+        # include system headers like `<Python.h>` that don't live under
+        # target_dir. Joining those produces non-existent paths which
+        # would force a full rebuild on every run via Extension.depends.
+        candidate_deps = (
+            os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)
+        )
+        deps = [d for d in candidate_deps if os.path.exists(d)]
         group_cfilenames.append((cfilenames, deps))
 
     return groups, group_cfilenames, source_deps
@@ -755,6 +828,9 @@ def mypycify(
                                have no backward compatibility guarantees!
     """
 
+    # Skip redundant inplace .so copies on every build_ext invocation.
+    _patch_setuptools_copy_extensions_to_source()
+
     # Figure out our configuration
     compiler_options = CompilerOptions(
         strip_asserts=strip_asserts,
@@ -868,5 +944,10 @@ def mypycify(
                     extra_compile_args=cflags,
                 )
             )
+
+    # Tag every extension we own so the build_ext patch knows it's
+    # safe to skip the redundant inplace copy for these specifically.
+    for ext in extensions:
+        setattr(ext, _MYPYC_EXTENSION_MARKER, True)
 
     return extensions

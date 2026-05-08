@@ -326,6 +326,18 @@ class Emitter:
         # See docs above
         return self.get_module_group_prefix(obj.module_name)
 
+    def register_group_dep(self, cl: ClassIR) -> None:
+        """Record `cl`'s defining group as a cross-group dep, if any.
+
+        Call this when emitting code that refers to `cl`'s struct
+        layout: the .c file consuming that layout needs the defining
+        group's `__native_*.h` included, and group_deps drives which
+        headers get pulled in.
+        """
+        target_group = self.context.group_map.get(cl.module_name)
+        if target_group and target_group != self.context.group_name:
+            self.context.group_deps.add(target_group)
+
     def static_name(self, id: str, module: str | None, prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 

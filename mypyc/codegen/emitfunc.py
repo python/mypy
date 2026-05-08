@@ -360,6 +360,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         classes, and *(obj + attr_offset) for attributes defined by traits. We also
         insert all necessary C casts here.
         """
+        # The struct cast below needs the defining group's __native.h
+        # included by the consuming .c file. Record both the receiver
+        # and declaring classes as cross-group deps.
+        self.emitter.register_group_dep(op.class_type.class_ir)
+        self.emitter.register_group_dep(decl_cl)
         cast = f"({op.class_type.struct_name(self.emitter.names)} *)"
         if decl_cl.is_trait and op.class_type.class_ir.is_trait:
             # For pure trait access find the offset first, offsets
