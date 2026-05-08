@@ -700,6 +700,10 @@ def verify_typeinfo(
         to_check.discard("__init__")
     if is_runtime_typeddict:
         to_check.discard("__new__")
+    # PEP 695 generic syntax (class Foo[T]: ...) implicitly provides __class_getitem__
+    # at runtime, so don't require an explicit stub definition.
+    if stub.defn.type_args is not None:
+        to_check.discard("__class_getitem__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
