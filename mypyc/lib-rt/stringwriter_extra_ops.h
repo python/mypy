@@ -1,9 +1,9 @@
 #ifndef STRINGWRITER_EXTRA_OPS_H
 #define STRINGWRITER_EXTRA_OPS_H
 
+#include <Python.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <Python.h>
 
 #include "mypyc_util.h"
 #include "strings/librt_strings_api.h"
