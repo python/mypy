@@ -121,6 +121,7 @@ LIBRT_MODULES = [
         ["vecs"],
     ),
     ModDesc("librt.time", ["time/librt_time.c"], ["time/librt_time.h"], []),
+    ModDesc("librt.random", ["random/librt_random.c"], ["random/librt_random.h"], ["random"]),
 ]
 
 try:
@@ -631,6 +632,9 @@ def get_cflags(
             # Disables C Preprocessor (cpp) warnings
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
+            "-Wno-array-bounds",
+            "-Wno-stringop-overread",
+            "-Wno-stringop-overflow",
         ]
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
