@@ -7995,3 +7995,19 @@ import mod
 [out2]
 main:2: error: Cannot find implementation or library stub for module named "mod"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testIncrementalFileConfigCommentsStale]
+-- When a dependency changes, the importing module becomes stale and is
+-- reprocessed via process_stale_scc. As inline config comments are not cached
+-- (by design), moving the order of processing the stale SCC can accidentally
+-- break file config comments on subsequent runs.
+# mypy: disable-error-code="import-not-found"
+import nonexistent
+import b
+[file b.py]
+x = 1
+[file b.py.2]
+x = "hello"
+[builtins fixtures/module.pyi]
+[stale b]
+[rechecked b]
