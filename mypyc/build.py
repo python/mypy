@@ -124,7 +124,7 @@ LIBRT_MODULES = [
     ModDesc(
         "librt.random",
         ["random/librt_random.c"],
-        ["random/librt_random.h", "random/librt_random_api.h", "random/librt_random_api.c"],
+        ["random/librt_random.h"],
         ["random"],
     ),
 ]
