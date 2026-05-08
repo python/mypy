@@ -12,6 +12,9 @@ from mypy.options import Options
 
 
 class TestMetadataStore(unittest.TestCase):
+    @unittest.skipUnless(
+        build.__file__.endswith(".py"), "mock patching is unreliable for compiled mypy"
+    )
     def test_create_metastore_falls_back_to_filesystem_when_sqlite_missing(self) -> None:
         options = Options()
         options.sqlite_cache = True
