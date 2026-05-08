@@ -7523,6 +7523,23 @@ class D(C):
 
 C.x  # E: "type[C]" has no attribute "x"
 
+[case testNewReturnType18]
+class A:
+    def __new__(cls) -> A:
+        return A()
+
+class B(A):
+    def __new__(cls) -> A:  # E: Incompatible return type for "__new__" (returns "A", but must return a subtype of "B")
+        return super().__new__(cls)
+
+class C(B): ...
+
+# Always respect explicit return type after giving an error.
+reveal_type(B())  # N: Revealed type is "__main__.A"
+
+# Ignore "implicit" return type to preserve backwards compatibility.
+reveal_type(C())  # N: Revealed type is "__main__.C"
+
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
 from sympy.ops import AssocOp

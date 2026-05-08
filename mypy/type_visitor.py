@@ -263,8 +263,6 @@ class TypeTranslator(TypeVisitor[Type]):
             arg_types=self.translate_type_list(t.arg_types),
             ret_type=t.ret_type.accept(self),
             variables=self.translate_variables(t.variables),
-            type_guard=t.type_guard.accept(self) if t.type_guard is not None else None,
-            type_is=t.type_is.accept(self) if t.type_is is not None else None,
             instance_type=instance_type,
         )
 
@@ -424,7 +422,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_callable_type(self, t: CallableType, /) -> T:
         # FIX generics
         types = t.arg_types + [t.ret_type]
-        if t.instance_type is not None:
+        # Avoid double-counting when using queries in reports.
+        if t.instance_type is not None and t.instance_type != t.ret_type:
             types.append(t.instance_type)
         return self.query_types(types)
 
@@ -562,13 +561,11 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def visit_callable_type(self, t: CallableType, /) -> bool:
         # FIX generics
         # Avoid allocating any objects here as an optimization.
-        args = self.query_types(t.arg_types)
-        ret = t.ret_type.accept(self)
         inst = t.instance_type.accept(self) if t.instance_type is not None else False
         if self.strategy == ANY_STRATEGY:
-            return args or ret or inst
+            return self.query_types(t.arg_types) or t.ret_type.accept(self) or inst
         else:
-            return args and ret and inst
+            return self.query_types(t.arg_types) and t.ret_type.accept(self) and inst
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
         return self.query_types([t.partial_fallback] + t.items)

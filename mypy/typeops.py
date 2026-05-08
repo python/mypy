@@ -217,7 +217,9 @@ def type_object_type(
                     is_bound=True,
                     fallback=instance_cache.function_type,
                 )
-                result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
+                result: FunctionLike = class_callable(
+                    sig, info, None, fallback, None, is_new=False
+                )
                 if allow_cache and state.strict_optional:
                     info.type_object_type = result
                 return result
@@ -299,19 +301,24 @@ def type_object_type_from_function(
         special_sig = "dict"
 
     if isinstance(signature, CallableType):
-        return class_callable(signature, info, fallback, special_sig, is_new, orig_self_types[0])
+        return class_callable(
+            signature, info, def_info, fallback, special_sig, is_new, orig_self_types[0]
+        )
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items: list[CallableType] = []
         for item, orig_self in zip(signature.items, orig_self_types):
-            items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
+            items.append(
+                class_callable(item, info, def_info, fallback, special_sig, is_new, orig_self)
+            )
         return Overloaded(items)
 
 
 def class_callable(
     init_type: CallableType,
     info: TypeInfo,
+    def_info: TypeInfo | None,
     type_type: Instance,
     special_sig: str | None,
     is_new: bool,
@@ -331,7 +338,17 @@ def class_callable(
     if (
         is_new
         and explicit_type is not None
-        and not is_subtype(default_ret_type, explicit_type, ignore_type_params=True)
+        # We used to only use the explicit return type of __new__() when it was a subtype
+        # of the current class. As a result, we may now have a situation like this:
+        #     class C:
+        #         def __new__(cls) -> C: ...
+        #     class D(C): ...
+        # So we need to ignore the explicit annotation when creating constructor type for D.
+        and (
+            def_info is info
+            and not isinstance(explicit_type, AnyType)
+            or not is_subtype(default_ret_type, explicit_type, ignore_type_params=True)
+        )
     ):
         ret_type = explicit_type
     elif (
@@ -340,8 +357,7 @@ def class_callable(
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
-        # Only use the declared return type from __new__ or declared self in __init__
-        # if it is actually returning a subtype of what we would return otherwise.
+        # Use the declared self in __init__ if it is a subtype of what we would use otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = explicit_type
