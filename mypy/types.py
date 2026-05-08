@@ -2319,8 +2319,9 @@ class CallableType(FunctionLike):
     def get_instance_type(self, *, force_fallback: bool = False) -> ProperType:
         """Get underlying type of a type object.
 
-        By default, this will return a precise self-type, most notably a TupleType for
-        named tuples. If an Instance fallback is required, use force_fallback=True.
+        By default, this will return a precise self-type, essentially whatever is
+        returned by fill_typevars(). Most notably this is a TupleType for named tuples.
+        If an Instance fallback is required, use force_fallback=True.
         """
         assert self.is_type_obj()
         if self.instance_type is not None:
