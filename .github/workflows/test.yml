@@ -59,6 +59,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
+        - name: Test suite with py315-ubuntu, mypyc-compiled
+          python: '3.15'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
         - name: Test suite with py314t-ubuntu, mypyc-compiled
           python: '3.14t'
           os: ubuntu-24.04-arm
@@ -196,6 +202,7 @@ jobs:
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
+        allow-prereleases: true
 
     - name: Install tox
       run: |
