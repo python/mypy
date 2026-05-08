@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from typing import NoReturn
 from unittest.mock import patch
 
 from mypy import build
@@ -17,12 +16,12 @@ class TestMetadataStore(unittest.TestCase):
         options = Options()
         options.sqlite_cache = True
 
-        def missing_sqlite(db_file: str, set_journal_mode: bool) -> NoReturn:
-            raise ModuleNotFoundError("No module named '_sqlite3'")
-
         with tempfile.TemporaryDirectory() as tmpdir:
             options.cache_dir = tmpdir
-            with patch("mypy.metastore.connect_db", missing_sqlite):
+            with patch(
+                "mypy.build.SqliteMetadataStore",
+                side_effect=ModuleNotFoundError("No module named '_sqlite3'"),
+            ):
                 store = build.create_metastore(options, parallel_worker=False)
 
             try:
