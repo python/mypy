@@ -197,6 +197,37 @@ def test_module_seed_different() -> None:
     assert vals1 != vals2
 
 #
+# Wrapper function calling convention (via Any)
+#
+
+def test_method_random_via_wrapper() -> None:
+    r: Any = Random(42)
+    val = r.random()
+    assert isinstance(val, float)
+    assert 0.0 <= val < 1.0
+
+def test_method_seed_via_wrapper() -> None:
+    r: Any = Random(0)
+    r.seed(42)
+    val = r.random()
+    assert 0.0 <= val < 1.0
+
+def test_module_random_via_wrapper() -> None:
+    random_any: Any = random
+    val = random_any()
+    assert isinstance(val, float)
+    assert 0.0 <= val < 1.0
+
+def test_module_randint_via_wrapper() -> None:
+    randint_any: Any = randint
+    val = randint_any(0, 10)
+    assert 0 <= val <= 10
+
+def test_module_seed_via_wrapper() -> None:
+    seed_any: Any = seed
+    seed_any(42)
+
+#
 # Wide i64 ranges
 #
 
