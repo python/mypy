@@ -693,8 +693,6 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     return random_i64_from_range(rng, start, range);
 }
 
-#ifdef MYPYC_EXPERIMENTAL
-
 static int
 random_abi_version(void) {
     return LIBRT_RANDOM_ABI_VERSION;
@@ -704,8 +702,6 @@ static int
 random_api_version(void) {
     return LIBRT_RANDOM_API_VERSION;
 }
-
-#endif
 
 static int
 librt_random_module_exec(PyObject *m)
@@ -719,7 +715,6 @@ librt_random_module_exec(PyObject *m)
     if (PyModule_AddObjectRef(m, "Random", (PyObject *) &RandomType) < 0) {
         return -1;
     }
-#ifdef MYPYC_EXPERIMENTAL
     // Export mypyc internal C API via capsule
     static void *librt_random_api[LIBRT_RANDOM_API_LEN] = {
         (void *)random_abi_version,
@@ -740,7 +735,6 @@ librt_random_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 

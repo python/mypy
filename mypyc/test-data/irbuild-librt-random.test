@@ -1,4 +1,4 @@
-[case testLibrtRandomConstructor_experimental_64bit]
+[case testLibrtRandomConstructor_64bit]
 from librt.random import Random
 
 def make_random() -> Random:
@@ -10,7 +10,7 @@ L0:
     r0 = LibRTRandom_Random_internal()
     return r0
 
-[case testLibrtRandomConstructorWithSeed_experimental_64bit]
+[case testLibrtRandomConstructorWithSeed_64bit]
 from librt.random import Random
 from mypy_extensions import i64
 
@@ -24,7 +24,7 @@ L0:
     r0 = LibRTRandom_Random_from_seed_internal(n)
     return r0
 
-[case testLibrtRandomRandrange_experimental_64bit]
+[case testLibrtRandomRandrange_64bit]
 from librt.random import Random
 from mypy_extensions import i64
 
@@ -46,7 +46,7 @@ L0:
     r0 = LibRTRandom_Random_randrange2_internal(r, start, stop)
     return r0
 
-[case testLibrtRandomRandint_experimental_64bit]
+[case testLibrtRandomRandint_64bit]
 from librt.random import Random
 from mypy_extensions import i64
 
@@ -60,7 +60,7 @@ L0:
     r0 = LibRTRandom_Random_randint_internal(r, a, b)
     return r0
 
-[case testLibrtRandomRandom_experimental_64bit]
+[case testLibrtRandomRandom_64bit]
 from librt.random import Random
 
 def rand(r: Random) -> float:
@@ -73,7 +73,7 @@ L0:
     r0 = LibRTRandom_Random_random_internal(r)
     return r0
 
-[case testLibrtRandomModuleRandom_experimental_64bit]
+[case testLibrtRandomModuleRandom_64bit]
 from librt.random import random
 
 def module_random() -> float:
@@ -85,7 +85,7 @@ L0:
     r0 = LibRTRandom_module_random_internal()
     return r0
 
-[case testLibrtRandomModuleRandint_experimental_64bit]
+[case testLibrtRandomModuleRandint_64bit]
 from librt.random import randint
 from mypy_extensions import i64
 
@@ -98,7 +98,7 @@ L0:
     r0 = LibRTRandom_module_randint_internal(a, b)
     return r0
 
-[case testLibrtRandomModuleRandrange_experimental_64bit]
+[case testLibrtRandomModuleRandrange_64bit]
 from librt.random import randrange
 from mypy_extensions import i64
 

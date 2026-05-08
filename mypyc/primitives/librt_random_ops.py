@@ -10,7 +10,6 @@ function_op(
     return_type=random_rprimitive,
     c_function_name="LibRTRandom_Random_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -21,7 +20,6 @@ function_op(
     return_type=random_rprimitive,
     c_function_name="LibRTRandom_Random_from_seed_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -32,7 +30,6 @@ method_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_Random_randint_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -43,7 +40,6 @@ method_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_Random_randrange1_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -54,7 +50,6 @@ method_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_Random_randrange2_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -65,7 +60,6 @@ method_op(
     return_type=float_rprimitive,
     c_function_name="LibRTRandom_Random_random_internal",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -76,7 +70,6 @@ function_op(
     return_type=float_rprimitive,
     c_function_name="LibRTRandom_module_random_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -87,7 +80,6 @@ function_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randrange1_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -98,7 +90,6 @@ function_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randrange2_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -109,6 +100,5 @@ function_op(
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randint_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_RANDOM],
 )

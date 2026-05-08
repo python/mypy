@@ -9,8 +9,6 @@
 int
 import_librt_random(void);
 
-#ifdef MYPYC_EXPERIMENTAL
-
 extern void *LibRTRandom_API[LIBRT_RANDOM_API_LEN];
 
 #define LibRTRandom_ABIVersion (*(int (*)(void)) LibRTRandom_API[0])
@@ -30,7 +28,5 @@ extern void *LibRTRandom_API[LIBRT_RANDOM_API_LEN];
 static inline bool CPyRandom_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTRandom_Random_type_internal();
 }
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_RANDOM_API_H

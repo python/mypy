@@ -1,4 +1,4 @@
-[case testRandom_librt_experimental]
+[case testRandom_librt]
 from typing import Any
 
 from librt.random import Random, random, randint, randrange, seed

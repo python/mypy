@@ -7,10 +7,6 @@ void *LibRTRandom_API[LIBRT_RANDOM_API_LEN] = {0};
 int
 import_librt_random(void)
 {
-#ifndef MYPYC_EXPERIMENTAL
-    // All librt.random features are experimental for now, so don't set up the API here.
-    return 0;
-#else
     PyObject *mod = PyImport_ImportModule("librt.random");
     if (mod == NULL)
         return -1;
@@ -46,5 +42,4 @@ import_librt_random(void)
     // entries, so this copy is safe.
     memcpy(LibRTRandom_API, capsule, sizeof(LibRTRandom_API));
     return 0;
-#endif
 }
