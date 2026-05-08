@@ -495,7 +495,7 @@ def bind_self(
 
         # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
-            self_vars, self_param_type, original_type, is_supertype=True
+            self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
         )
         if (
             is_classmethod
@@ -504,7 +504,11 @@ def bind_self(
         ):
             # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                self_vars, self_param_type, TypeType(original_type), is_supertype=True
+                self_vars,
+                self_param_type,
+                TypeType(original_type),
+                is_supertype=True,
+                erase_types=False,
             )
 
         # Update the method signature with the solutions found.

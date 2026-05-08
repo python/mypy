@@ -275,7 +275,11 @@ def infer_constraints_for_callable(
 
 
 def infer_constraints(
-    template: Type, actual: Type, direction: int, skip_neg_op: bool = False
+    template: Type,
+    actual: Type,
+    direction: int,
+    skip_neg_op: bool = False,
+    erase_types: bool = True,
 ) -> list[Constraint]:
     """Infer type constraints.
 
@@ -312,14 +316,14 @@ def infer_constraints(
             # Return early on an empty branch.
             return []
         type_state.inferring.append((template, actual))
-        res = _infer_constraints(template, actual, direction, skip_neg_op)
+        res = _infer_constraints(template, actual, direction, skip_neg_op, erase_types)
         type_state.inferring.pop()
         return res
-    return _infer_constraints(template, actual, direction, skip_neg_op)
+    return _infer_constraints(template, actual, direction, skip_neg_op, erase_types)
 
 
 def _infer_constraints(
-    template: Type, actual: Type, direction: int, skip_neg_op: bool
+    template: Type, actual: Type, direction: int, skip_neg_op: bool, erase_types: bool
 ) -> list[Constraint]:
     orig_template = template
     template = get_proper_type(template)
@@ -424,7 +428,7 @@ def _infer_constraints(
         return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
-    return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
+    return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op, erase_types))
 
 
 def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
@@ -659,7 +663,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     # TODO: The value may be None. Is that actually correct?
     actual: ProperType
 
-    def __init__(self, actual: ProperType, direction: int, skip_neg_op: bool) -> None:
+    def __init__(
+        self, actual: ProperType, direction: int, skip_neg_op: bool, erase_types: bool
+    ) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -667,6 +673,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # this is used to prevent infinite recursion when both template and actual are
         # generic callables.
         self.skip_neg_op = skip_neg_op
+        # Normally we should erase generic actual type when inferring against type[T]
+        # to avoid leaking type variables, see testGenericClassAsArgumentToType.
+        # The only exception is self-types in generic classes, where we set this to False.
+        self.erase_types = erase_types
 
     # Trivial leaf types
 
@@ -1376,15 +1386,17 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     def visit_type_type(self, template: TypeType) -> list[Constraint]:
         if isinstance(self.actual, CallableType):
             if self.actual.is_type_obj():
-                return infer_constraints(
-                    template.item, self.actual.get_instance_type(), self.direction
-                )
+                instance_type = self.actual.get_instance_type()
+                if self.erase_types:
+                    instance_type = erase_typevars(instance_type)
+                return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
             if self.actual.is_type_obj():
-                return infer_constraints(
-                    template.item, self.actual.items[0].get_instance_type(), self.direction
-                )
+                instance_type = self.actual.items[0].get_instance_type()
+                if self.erase_types:
+                    instance_type = erase_typevars(instance_type)
+                return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.items[0].ret_type, self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
