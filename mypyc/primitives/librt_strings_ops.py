@@ -404,3 +404,12 @@ function_op(
     error_kind=ERR_NEVER,
     dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
 )
+
+function_op(
+    name="librt.strings.isdigit",
+    arg_types=[int32_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTStrings_IsDigit",
+    error_kind=ERR_NEVER,
+    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+)

@@ -1191,6 +1191,7 @@ cp_parse_i32(PyObject *arg, int32_t *out) {
     }
 
 DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
+DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
 
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
@@ -1255,6 +1256,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"isspace", cp_isspace, METH_O,
      PyDoc_STR("Test whether a codepoint (i32) is Unicode whitespace.")
+    },
+    {"isdigit", cp_isdigit, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a Unicode digit.")
     },
     {NULL, NULL, 0, NULL}
 };
