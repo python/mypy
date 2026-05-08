@@ -103,6 +103,7 @@ else:
                 "librt.strings",
                 [
                     "strings/librt_strings.c",
+                    "codepoint_extra_ops.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",

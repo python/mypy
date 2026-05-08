@@ -1194,6 +1194,7 @@ DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
 DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
 DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
 DEFINE_CP_BOOL_WRAPPER(isalpha, LibRTStrings_IsAlpha)
+DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
 
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
@@ -1267,6 +1268,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"isalpha", cp_isalpha, METH_O,
      PyDoc_STR("Test whether a codepoint (i32) is a Unicode letter.")
+    },
+    {"isidentifier", cp_isidentifier, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a valid identifier start (XID_Start).")
     },
     {NULL, NULL, 0, NULL}
 };

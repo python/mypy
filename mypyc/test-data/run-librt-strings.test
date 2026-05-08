@@ -1443,7 +1443,7 @@ def test_new_without_init_is_usable() -> None:
 [case testLibrtStringsCodepointClassifiers_librt]
 from typing import Any
 from mypy_extensions import i32
-from librt.strings import isspace, isdigit, isalnum, isalpha
+from librt.strings import isspace, isdigit, isalnum, isalpha, isidentifier
 
 from testutil import assertRaises
 
@@ -1455,6 +1455,7 @@ def test_codepoint_classifiers() -> None:
         assert not isdigit(bad)
         assert not isalnum(bad)
         assert not isalpha(bad)
+        assert not isidentifier(bad)
     # Verify each codepoint primitive agrees with the matching str method
     # across all Unicode codepoints, including the ord(chr(i)) round-trip.
     # Any forces generic dispatch on the str side.
@@ -1466,6 +1467,7 @@ def test_codepoint_classifiers() -> None:
         assert isdigit(o) == isdigit(i) == a.isdigit()
         assert isalnum(o) == isalnum(i) == a.isalnum()
         assert isalpha(o) == isalpha(i) == a.isalpha()
+        assert isidentifier(o) == isidentifier(i) == a.isidentifier()
 
 
 def test_codepoint_classifiers_via_any() -> None:
@@ -1476,6 +1478,7 @@ def test_codepoint_classifiers_via_any() -> None:
         (isdigit, "5", "a"),
         (isalnum, "A", " "),
         (isalpha, "A", " "),
+        (isidentifier, "A", "0"),
     ):
         f: Any = fn
         assert f(ord(true_input)) is True

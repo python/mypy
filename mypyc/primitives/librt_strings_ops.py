@@ -431,3 +431,15 @@ function_op(
     error_kind=ERR_NEVER,
     dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
 )
+
+# isidentifier checks XID_Start semantics for a single codepoint, matching
+# str.isidentifier() on a 1-character string. The non-ASCII path allocates
+# but swallows OOM (returning False), keeping the function ERR_NEVER.
+function_op(
+    name="librt.strings.isidentifier",
+    arg_types=[int32_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTStrings_IsIdentifier",
+    error_kind=ERR_NEVER,
+    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+)
