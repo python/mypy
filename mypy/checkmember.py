@@ -407,20 +407,8 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items[0].ret_type
-    instance_type = typ.items[0].instance_type
-    if instance_type is not None:
-        itype = instance_type
-    else:
-        assert isinstance(ret_type, ProperType)
-        if isinstance(ret_type, TupleType):
-            ret_type = tuple_fallback(ret_type)
-        if isinstance(ret_type, TypedDictType):
-            ret_type = ret_type.fallback
-        if isinstance(ret_type, LiteralType):
-            ret_type = ret_type.fallback
-        itype = ret_type
-    if isinstance(itype, Instance):
+    instance_type = typ.items[0].get_instance_type(force_fallback=True)
+    if isinstance(instance_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
             # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
@@ -437,14 +425,18 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                itype, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
+                instance_type,
+                name,
+                mx,
+                original_vars=typ.items[0].variables,
+                mcs_fallback=typ.fallback,
             )
             if result:
                 return result
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, f"Unexpected type {itype!r}"
+        assert False, f"Unexpected type {instance_type!r}"
 
 
 def analyze_type_type_member_access(

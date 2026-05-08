@@ -348,17 +348,13 @@ def class_callable(
     else:
         ret_type = default_ret_type
 
-    instance_type = default_ret_type
-    if isinstance(instance_type, TupleType):
-        instance_type = instance_type.partial_fallback
-        assert isinstance(instance_type, Instance)
     return init_type.copy_modified(
         ret_type=ret_type,
         fallback=type_type,
         name=info.name,
         variables=variables,
         special_sig=special_sig,
-        instance_type=instance_type,
+        instance_type=default_ret_type,
     )
 
 

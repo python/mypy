@@ -258,7 +258,7 @@ class TypeTranslator(TypeVisitor[Type]):
         instance_type = None
         if t.instance_type is not None:
             instance_type = t.instance_type.accept(self)
-            assert isinstance(instance_type, ProperType) and isinstance(instance_type, Instance)
+            assert isinstance(instance_type, ProperType)
         return t.copy_modified(
             arg_types=self.translate_type_list(t.arg_types),
             ret_type=t.ret_type.accept(self),

@@ -717,7 +717,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(typ, Instance):
                 info = typ.type
             elif isinstance(typ, CallableType) and typ.is_type_obj():
-                instance_type = typ.get_instance_type()
+                instance_type = typ.get_instance_type(force_fallback=True)
                 if isinstance(instance_type, Instance):
                     info = instance_type.type
                 else:
@@ -1668,7 +1668,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if callable_name is None and callee.name:
             callable_name = callee.name
         if callee.is_type_obj():
-            instance_type = callee.get_instance_type()
+            instance_type = callee.get_instance_type(force_fallback=True)
             if isinstance(instance_type, Instance):
                 callable_name = instance_type.type.fullname
         if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:

@@ -973,7 +973,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return result
         elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
             # In this case we are able to potentially produce a better meet.
-            res = meet_types(self.s.item, t.ret_type)
+            res = meet_types(self.s.item, t.get_instance_type())
             if not isinstance(res, (NoneType, UninhabitedType)):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
@@ -1187,11 +1187,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     elif s.instance_type is None:
         instance_type = t.instance_type
     else:
-        meet = meet_types(t.instance_type, s.instance_type)
-        if isinstance(meet, Instance):
-            instance_type = meet
-        else:
-            instance_type = None
+        instance_type = meet_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         ret_type=meet_types(t.ret_type, s.ret_type),

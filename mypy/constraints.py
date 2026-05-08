@@ -759,7 +759,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 and template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
             ):
-                instance_type = actual.get_instance_type()
+                instance_type = actual.get_instance_type(force_fallback=True)
                 if isinstance(instance_type, Instance):
                     res.extend(
                         self.infer_constraints_from_protocol_members(

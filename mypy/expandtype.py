@@ -496,7 +496,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         instance_type = None
         if t.instance_type is not None:
             instance_type = t.instance_type.accept(self)
-            assert isinstance(instance_type, ProperType) and isinstance(instance_type, Instance)
+            assert isinstance(instance_type, ProperType)
         expanded = t.copy_modified(
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),

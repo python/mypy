@@ -174,7 +174,7 @@ def apply_generic_arguments(
     instance_type = None
     if callable.instance_type is not None:
         instance_type = expand_type(callable.instance_type, id_to_type)
-        assert isinstance(instance_type, Instance)
+        assert isinstance(instance_type, ProperType)
 
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),

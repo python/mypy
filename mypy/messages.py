@@ -2231,7 +2231,7 @@ class MessageBuilder:
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
             if subtype.is_type_obj():
-                instance_type = subtype.get_instance_type()
+                instance_type = subtype.get_instance_type(force_fallback=True)
                 if not isinstance(instance_type, Instance):
                     return
                 class_obj = True

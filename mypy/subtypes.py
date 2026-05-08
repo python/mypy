@@ -749,7 +749,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
                         return True
             if right.type.is_protocol and left.is_type_obj():
-                instance_type = left.get_instance_type()
+                instance_type = left.get_instance_type(force_fallback=True)
                 if isinstance(instance_type, Instance) and is_protocol_implementation(
                     instance_type, right, proper_subtype=self.proper_subtype, class_obj=True
                 ):
@@ -757,10 +757,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
-            return left.is_type_obj() and self._is_subtype(
-                left.get_instance_type() if isinstance(right.item, Instance) else left.ret_type,
-                right.item,
-            )
+            return left.is_type_obj() and self._is_subtype(left.get_instance_type(), right.item)
         else:
             return False
 
