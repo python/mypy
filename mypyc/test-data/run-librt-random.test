@@ -1,5 +1,13 @@
-[case testRandomBasic_librt_experimental]
-from librt.random import Random
+[case testRandom_librt_experimental]
+from typing import Any
+
+from librt.random import Random, random, randint, randrange, seed
+from mypy_extensions import i64
+from testutil import assertRaises
+
+#
+# Random object basics
+#
 
 def test_random_construct() -> None:
     r = Random()
@@ -125,8 +133,9 @@ def test_seed_method_resets_state() -> None:
     actual = [r.randint(0, 1000000) for _ in range(20)]
     assert expected == actual
 
-[case testRandomModuleLevel_librt_experimental]
-from librt.random import random, randint, randrange, seed
+#
+# Module-level functions
+#
 
 def test_module_random_basic() -> None:
     for i in range(100):
@@ -187,11 +196,9 @@ def test_module_seed_different() -> None:
     vals2 = [randint(0, 1000000) for _ in range(20)]
     assert vals1 != vals2
 
-[case testRandomWideI64Ranges_librt_experimental]
-from typing import Any
-
-from librt.random import Random, randint, randrange
-from mypy_extensions import i64
+#
+# Wide i64 ranges
+#
 
 def method_randint(r: Random, a: i64, b: i64) -> i64:
     return r.randint(a, b)
@@ -261,9 +268,9 @@ def test_wide_i64_randrange_python_api() -> None:
         val = randrange_any(lo, hi)
         assert lo <= val < hi
 
-[case testRandomErrors_librt_experimental]
-from librt.random import Random, randint, randrange
-from testutil import assertRaises
+#
+# Error handling
+#
 
 def test_randint_empty_range() -> None:
     r = Random()
