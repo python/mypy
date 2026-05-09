@@ -30,6 +30,8 @@ Follow submodule links in the table to a detailed description of each submodule.
      - String and bytes utilities
    * - :doc:`librt.time <librt_time>`
      - Time utilities
+   * - :doc:`librt.vecs <librt_vecs>`
+     - Fast growable array type ``vec``
 
 Installing librt
 ----------------

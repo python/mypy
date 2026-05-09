@@ -744,3 +744,17 @@ def fn(w: W) -> W:
         reveal_type(w)  # N: Revealed type is "builtins.int"
     return w
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarValuesSubtypeOfAll]
+from typing import TypeVar
+
+class B: ...
+class C(B): ...
+
+S = TypeVar("S", B, C)
+b = B()
+c = C()
+def g(x: S = c):  # OK
+    ...
+def h(x: S = b):  # E: Incompatible default for parameter "x" (default has type "B", parameter has type "S")
+    ...

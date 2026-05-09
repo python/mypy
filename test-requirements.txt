@@ -46,7 +46,7 @@ pre-commit==4.3.0
     # via -r test-requirements.in
 psutil==7.1.0
     # via -r test-requirements.in
-pygments==2.19.2
+pygments==2.20.0
     # via pytest
 pytest==8.4.2
     # via
@@ -67,7 +67,7 @@ types-setuptools==80.9.0.20250822
     # via -r build-requirements.txt
 typing-extensions==4.15.0
     # via -r mypy-requirements.txt
-virtualenv==20.34.0
+virtualenv==20.35.4
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
