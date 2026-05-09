@@ -1,8 +1,8 @@
 #ifndef LIBRT_STRINGS_H
 #define LIBRT_STRINGS_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include "librt_strings_common.h"
 
 // ABI version -- only an exact match is compatible. This will only be changed in
