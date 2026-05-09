@@ -1751,8 +1751,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return False
 
         if not func.arg_types:
+            # The diagnostic is emitted at method definition time, so "self"
+            # here is a parameter, not an argument supplied at a call site.
+            # Match the wording used by message_registry.py:227 for the
+            # parallel "self parameter missing" diagnostic. See #20939.
             self.fail(
-                'Method must have at least one argument. Did you forget the "self" argument?', defn
+                'Method must have at least one parameter. Did you forget the "self" parameter?',
+                defn,
             )
             return False
 
