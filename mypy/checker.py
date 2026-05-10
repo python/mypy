@@ -6772,7 +6772,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
                 if left_index in narrowable_operand_index_to_hash:
                     p_iterable_type = get_proper_type(iterable_type)
-                    if isinstance(p_iterable_type, TupleType):
+                    if (
+                        isinstance(p_iterable_type, TupleType)
+                        and find_unpack_in_list(p_iterable_type.items) is None
+                    ):
                         # For some tuples, we can do negative narrowing, e.g. `x not in (None,)`
                         all_if_maps = []
                         all_else_maps = []

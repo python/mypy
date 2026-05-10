@@ -2294,18 +2294,16 @@ def f(x: Optional[int], lst: Optional[List[int]], nested_any: List[List[Any]]) -
 
 [case testNarrowTypeAfterInTuple]
 # flags: --warn-unreachable
-from typing import Optional
 class A: pass
 class B(A): pass
 class C(A): pass
 
-y: Optional[B]
-if y in (B(), C()):
-    reveal_type(y) # N: Revealed type is "__main__.B"
-else:
-    reveal_type(y) # N: Revealed type is "__main__.B | None"
+def f(y: B | None):
+    if y in (B(), C()):
+        reveal_type(y) # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(y) # N: Revealed type is "__main__.B | None"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNarrowTypeAfterInNamedTuple]
 # flags: --warn-unreachable
