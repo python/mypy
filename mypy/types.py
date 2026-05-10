@@ -9,8 +9,8 @@ from typing import (
     Any,
     ClassVar,
     Final,
-    NewType,
     NamedTuple,
+    NewType,
     TypeAlias as _TypeAlias,
     TypeGuard,
     TypeVar,
@@ -65,6 +65,7 @@ from mypy.util import IdMapper
 T = TypeVar("T")
 
 JsonDict: _TypeAlias = dict[str, Any]
+
 
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
@@ -3302,11 +3303,7 @@ class LiteralType(ProperType):
         value: LiteralValue | JsonDict = self.value
         if isinstance(value, SentinelValue):
             value = {".class": "SentinelValue", "fullname": value.fullname, "name": value.name}
-        return {
-            ".class": "LiteralType",
-            "value": value,
-            "fallback": self.fallback.serialize(),
-        }
+        return {".class": "LiteralType", "value": value, "fallback": self.fallback.serialize()}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> LiteralType:
