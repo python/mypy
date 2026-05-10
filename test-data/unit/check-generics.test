@@ -3542,7 +3542,7 @@ reveal_type(C.foo)  # N: Revealed type is "def [T] (self: __main__.B[T`1]) -> T`
 reveal_type(C[int].foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
 reveal_type(D.foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
 
-[case testDeterminismFromJoinOrderingInSolver]
+[case testDeterminismFromJoinOrderingInSolver1]
 # Used to fail non-deterministically
 # https://github.com/python/mypy/issues/19121
 from __future__ import annotations
@@ -3594,6 +3594,46 @@ def draw_none(
         takes_int_str_none(c2)
         takes_int_str_none(c3)
 [builtins fixtures/tuple.pyi]
+
+[case testDeterminismFromJoinOrderingInSolver2]
+# Used to fail non-deterministically
+# https://github.com/python/mypy/issues/21445
+from typing import Generic, Iterable, TypeVar, overload
+
+class A: ...
+
+@overload
+def f0(a: A, b: object, /) -> object: ...
+@overload
+def f0(a: object, b: int, /) -> object: ...
+def f0(a, b, /): ...
+
+@overload
+def f1(a: int, b: object, /) -> object: ...
+@overload
+def f1(a: object, b: A, /) -> object: ...
+def f1(a, b, /): ...
+
+def g(a, b, /): ...
+
+T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+
+class ziplike(Generic[T]):
+    def __new__(cls, x: str, y: tuple[V, ...], /) -> ziplike[tuple[str, V]]:
+        raise
+    def __iter__(self) -> ziplike[T]:
+        return self
+    def __next__(self) -> T:
+        raise
+
+class dictlike(Generic[K, V]):
+    def __init__(self, arg: Iterable[tuple[K, V]]) -> None: pass
+
+x = dictlike(ziplike("012", (f0, f1, g)))
+reveal_type(x)  # N: Revealed type is "__main__.dictlike[builtins.str, Overload(def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any)]"
+[builtins fixtures/dict.pyi]
 
 [case testPropertyWithGenericSetter]
 from typing import TypeVar
