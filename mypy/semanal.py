@@ -2112,20 +2112,20 @@ class SemanticAnalyzer(
             and defn.info.typeddict_type
             and not has_placeholder(defn.info.typeddict_type)
         ):
-            # This is a valid TypedDict, and it is fully analyzed.
-            for decorator in defn.decorators:
-                decorator.accept(self)
-            return True
-        is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
+            # Don't reprocess everything
+            is_typeddict = True
+            info = defn.info
+        else:
+            is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
-            for decorator in defn.decorators:
-                decorator.accept(self)
-                if info is not None:
-                    self.analyze_class_decorator_common(defn, info, decorator)
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
                 self.prepare_class_def(defn, info, custom_names=True)
+            for decorator in defn.decorators:
+                decorator.accept(self)
+                if defn.info:
+                    self.analyze_class_decorator_common(defn, decorator)
             return True
         return False
 
@@ -2157,7 +2157,7 @@ class SemanticAnalyzer(
                 with self.scope.class_scope(defn.info):
                     for deco in defn.decorators:
                         deco.accept(self)
-                        self.analyze_class_decorator_common(defn, defn.info, deco)
+                        self.analyze_class_decorator_common(defn, deco)
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
             return True
@@ -2239,7 +2239,7 @@ class SemanticAnalyzer(
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-        self.analyze_class_decorator_common(defn, defn.info, decorator)
+        self.analyze_class_decorator_common(defn, decorator)
         if isinstance(decorator, RefExpr):
             if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
                 if defn.info.is_protocol:
@@ -2251,13 +2251,12 @@ class SemanticAnalyzer(
         ):
             defn.info.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
 
-    def analyze_class_decorator_common(
-        self, defn: ClassDef, info: TypeInfo, decorator: Expression
-    ) -> None:
+    def analyze_class_decorator_common(self, defn: ClassDef, decorator: Expression) -> None:
         """Common method for applying class decorators.
 
         Called on regular classes, typeddicts, and namedtuples.
         """
+        info = defn.info
         if refers_to_fullname(decorator, FINAL_DECORATOR_NAMES):
             info.is_final = True
         elif refers_to_fullname(decorator, DISJOINT_BASE_DECORATOR_NAMES):
