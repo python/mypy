@@ -699,6 +699,7 @@ class TypeVarType(TypeVarLikeType):
             self.id == other.id
             and self.upper_bound == other.upper_bound
             and self.values == other.values
+            and self.default == other.default
         )
 
     def serialize(self) -> JsonDict:

@@ -595,7 +595,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         elif t in self.seen_aliases:
             return self.default
         self.seen_aliases.add(t)
-        return get_proper_type(t).accept(self)
+        return get_proper_type(t).accept(self) or self.query_types(t.args)
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:
         """Perform a query for a sequence of types using the strategy to combine the results."""

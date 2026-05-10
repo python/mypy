@@ -337,3 +337,8 @@ type Result[T, E] = Ok[T, E] | Err[E, T]
 class Bar[U]:
     def foo(data: U, cond: bool) -> Result[U, str]:
         return Ok(data) if cond else Err("Error")
+
+[case testRecursiveAliasTypeVarDefaultNewStyle]
+type A[T = A] = int
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.int"

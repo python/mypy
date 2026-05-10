@@ -1899,6 +1899,7 @@ class SemanticAnalyzer(
                 allow_param_spec_literals=type_param.kind == PARAM_SPEC_KIND,
                 allow_tuple_literal=type_param.kind == PARAM_SPEC_KIND,
                 allow_unpack=type_param.kind == TYPE_VAR_TUPLE_KIND,
+                analyzing_tvar_def=True,
             )
             if default is None:
                 default = PlaceholderType(None, [], context.line)
@@ -1985,18 +1986,10 @@ class SemanticAnalyzer(
 
         self.check_type_alias_bases(bases)
 
-        for tvd in tvar_defs:
-            if isinstance(tvd, TypeVarType) and any(
-                has_placeholder(t) for t in [tvd.upper_bound] + tvd.values
-            ):
-                # Some type variable bounds or values are not ready, we need
-                # to re-analyze this class.
-                self.defer()
-            if has_placeholder(tvd.default):
-                # Placeholder values in TypeVarLikeTypes may get substituted in.
-                # Defer current target until they are ready.
-                self.mark_incomplete(defn.name, defn)
-                return
+        if any(has_placeholder(tvd) for tvd in tvar_defs):
+            # Some type variable bounds or values are not ready, we need
+            # to re-analyze this class.
+            self.defer()
 
         self.analyze_class_keywords(defn)
         bases_result = self.analyze_base_classes(bases)
@@ -4167,6 +4160,10 @@ class SemanticAnalyzer(
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
+
+            if any(has_placeholder(tv) for tv in alias_tvars):
+                self.defer()
+
         self.add_type_alias_deps(depends_on)
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
@@ -4220,7 +4217,7 @@ class SemanticAnalyzer(
             # An alias gets updated.
             updated = False
             if isinstance(existing.node, TypeAlias):
-                if existing.node.target != res:
+                if existing.node.target != res or existing.node.alias_tvars != alias_tvars:
                     # Copy expansion to the existing alias, this matches how we update base classes
                     # for a TypeInfo _in place_ if there are nested placeholders.
                     existing.node.target = res
@@ -4990,6 +4987,7 @@ class SemanticAnalyzer(
                 allow_unbound_tvars=allow_unbound_tvars,
                 allow_param_spec_literals=allow_param_spec_literals,
                 allow_unpack=allow_unpack,
+                analyzing_tvar_def=param_name == "default",
             )
             if analyzed is None:
                 # Type variables are special: we need to place them in the symbol table
@@ -4999,15 +4997,21 @@ class SemanticAnalyzer(
                 #     class Custom(Generic[T]):
                 #         ...
                 analyzed = PlaceholderType(None, [], context.line)
-            typ = get_proper_type(analyzed)
-            if report_invalid_typevar_arg and isinstance(typ, AnyType) and typ.is_from_error:
-                self.fail(
-                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
-                    param_value,
-                )
+            if report_invalid_typevar_arg:
+                if (
+                    isinstance(analyzed, ProperType)
+                    and isinstance(analyzed, AnyType)
+                    and analyzed.is_from_error
+                ):
+                    self.fail(
+                        message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(
+                            typevarlike_name, param_name
+                        ),
+                        param_value,
+                    )
                 # Note: we do not return 'None' here -- we want to continue
                 # using the AnyType.
-            return typ
+            return analyzed
         except TypeTranslationError:
             if report_invalid_typevar_arg:
                 self.fail(
@@ -5715,10 +5719,8 @@ class SemanticAnalyzer(
             # Now go through all new variables and temporary replace all tvars that still
             # refer to some placeholders. We defer the whole alias and will revisit it again,
             # as well as all its dependents.
-            for i, tv in enumerate(alias_tvars):
-                if has_placeholder(tv):
-                    self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
-                    alias_tvars[i] = self._trivial_typevarlike_like(tv)
+            if any(has_placeholder(tv) for tv in alias_tvars):
+                self.defer()
 
             self.add_type_alias_deps(depends_on)
             check_for_explicit_any(
@@ -5785,46 +5787,6 @@ class SemanticAnalyzer(
             s.name.accept(self)
         finally:
             self.pop_type_args(s.type_args)
-
-    def _trivial_typevarlike_like(self, tv: TypeVarLikeType) -> TypeVarLikeType:
-        object_type = self.named_type("builtins.object")
-        if isinstance(tv, TypeVarType):
-            return TypeVarType(
-                tv.name,
-                tv.fullname,
-                tv.id,
-                values=[],
-                upper_bound=object_type,
-                default=AnyType(TypeOfAny.from_omitted_generics),
-                variance=tv.variance,
-                line=tv.line,
-                column=tv.column,
-            )
-        elif isinstance(tv, TypeVarTupleType):
-            tuple_type = self.named_type("builtins.tuple", [object_type])
-            return TypeVarTupleType(
-                tv.name,
-                tv.fullname,
-                tv.id,
-                upper_bound=tuple_type,
-                tuple_fallback=tuple_type,
-                default=AnyType(TypeOfAny.from_omitted_generics),
-                line=tv.line,
-                column=tv.column,
-            )
-        elif isinstance(tv, ParamSpecType):
-            return ParamSpecType(
-                tv.name,
-                tv.fullname,
-                tv.id,
-                flavor=tv.flavor,
-                upper_bound=object_type,
-                default=AnyType(TypeOfAny.from_omitted_generics),
-                line=tv.line,
-                column=tv.column,
-            )
-        else:
-            assert False, f"Unknown TypeVarLike: {tv!r}"
 
     #
     # Expressions
@@ -7711,6 +7673,7 @@ class SemanticAnalyzer(
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        analyzing_tvar_def: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -7742,6 +7705,7 @@ class SemanticAnalyzer(
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
+            analyzing_tvar_def=analyzing_tvar_def,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -7769,6 +7733,7 @@ class SemanticAnalyzer(
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
+        analyzing_tvar_def: bool = False,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -7790,6 +7755,7 @@ class SemanticAnalyzer(
             prohibit_self_type=prohibit_self_type,
             prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
+            analyzing_tvar_def=analyzing_tvar_def,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -7816,6 +7782,7 @@ class SemanticAnalyzer(
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
+        analyzing_tvar_def: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
 
@@ -7853,6 +7820,7 @@ class SemanticAnalyzer(
             prohibit_self_type=prohibit_self_type,
             prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
+            analyzing_tvar_def=analyzing_tvar_def,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)
