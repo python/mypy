@@ -3251,13 +3251,14 @@ def narrow_tuple_exact(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], Literal
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 
 def narrow_tuple_expression(x: Literal['a', 'b', 'c']):
+    # TODO: this should match narrow_tuple_exact
     if x in ('a', 'b'):
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
 
     if x not in ('a', 'b'):
-        reveal_type(x)  # N: Revealed type is "Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 

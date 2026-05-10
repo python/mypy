@@ -6780,7 +6780,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         all_if_maps = []
                         all_else_maps = []
                         for known_item in p_iterable_type.items:
-                            known_item = coerce_to_literal(known_item)
+                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
+                            if is_literal_type_like(known_item) or (
+                                isinstance(known_item, Instance) and known_item.type.is_enum
+                            ):
+                                known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
                                 operands=[operands[left_index], operands[right_index]],
