@@ -3423,11 +3423,7 @@ class SemanticAnalyzer(
         assert isinstance(rvalue, CallExpr)
         callee = rvalue.callee
         assert isinstance(callee, RefExpr)
-        if callee.fullname == "typing_extensions.sentinel":
-            fallback_fullname = "typing_extensions.Sentinel"
-        else:
-            fallback_fullname = callee.fullname
-        typ = self.named_type_or_none(fallback_fullname)
+        typ = self.named_type_or_none(callee.fullname)
         if typ is None:
             return None
         name = f"{self.type.name}.{var.name}" if self.type is not None else var.name

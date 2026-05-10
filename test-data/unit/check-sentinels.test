@@ -36,6 +36,8 @@ MISSING = Sentinel("MISSING")
 SPECIAL = Sentinel("SPECIAL")
 
 def func(x: int | MISSING | SPECIAL) -> None:
+    # We could reasonably do narrowing here, but currently we're pretty conservative
+    # about narrowing on ==.
     if x == MISSING:
         assert_type(x, int | MISSING | SPECIAL)
     else:
