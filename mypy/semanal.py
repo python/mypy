@@ -364,13 +364,6 @@ Tag: _TypeAlias = int
 # string literal as a type expression.
 _MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
 
-# Matches any valid Python identifier, including identifiers with Unicode characters.
-#
-# [^\d\W] = word character that is not a digit
-# \w = word character
-# \Z = match end of string; does not allow a trailing \n, unlike $
-_IDENTIFIER_RE = re.compile(r"^[^\d\W]\w*\Z", re.UNICODE)
-
 
 class SemanticAnalyzer(
     NodeVisitor[None], SemanticAnalyzerInterface, SemanticAnalyzerPluginInterface, SplittingVisitor
@@ -8052,7 +8045,7 @@ class SemanticAnalyzer(
                 return
             # Filter out string literals which look like an identifier but
             # cannot be a type expression, for a few common reasons
-            if _IDENTIFIER_RE.fullmatch(str_value):
+            if str_value.isidentifier():
                 sym = self.lookup(str_value, UnboundType(str_value), suppress_errors=True)
                 if sym is None:
                     # Does not refer to anything in the local symbol table
