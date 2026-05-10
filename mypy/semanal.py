@@ -8069,12 +8069,9 @@ class SemanticAnalyzer(
                         # Cannot be a Literal[...] or Annotated[..., ...] type
                         maybe_type_expr.as_type = None
                         return
-                elif (
-                    str_value == ""
-                    or str_value.isspace()
-                    or (len(str_value) == 1 and str_value in ".,/:*-=[]\\")
-                ):
-                    # Empty or whitespace-only string is not a valid type
+                elif len(str_value) < 2 or str_value.isspace():
+                    # Whitespace-only strings cannot be valid types. Very short strings can
+                    # only be valid if they are identifiers, but we already checked for those.
                     maybe_type_expr.as_type = None
                     return
                 # Filter out string literals with common patterns that could not
