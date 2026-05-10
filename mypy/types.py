@@ -10,6 +10,7 @@ from typing import (
     ClassVar,
     Final,
     NewType,
+    NamedTuple,
     TypeAlias as _TypeAlias,
     TypeGuard,
     TypeVar,
@@ -33,6 +34,7 @@ from mypy.cache import (
     EXTRA_ATTRS,
     LIST_GEN,
     LITERAL_NONE,
+    LITERAL_SENTINEL,
     ReadBuffer,
     Tag,
     WriteBuffer,
@@ -94,7 +96,12 @@ JsonDict: _TypeAlias = dict[str, Any]
 #
 # Note: Float values are only used internally. They are not accepted within
 # Literal[...].
-LiteralValue: _TypeAlias = int | str | bool | float
+class SentinelValue(NamedTuple):
+    fullname: str
+    name: str
+
+
+LiteralValue: _TypeAlias = int | str | bool | float | SentinelValue
 
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
@@ -107,6 +114,12 @@ TYPE_VAR_LIKE_NAMES: Final = (
     "typing_extensions.ParamSpec",
     "typing.TypeVarTuple",
     "typing_extensions.TypeVarTuple",
+)
+
+SENTINEL_TYPE_NAMES: Final = (
+    "builtins.sentinel",
+    "typing_extensions.sentinel",
+    "typing_extensions.Sentinel",
 )
 
 TYPED_NAMEDTUPLE_NAMES: Final = ("typing.NamedTuple", "typing_extensions.NamedTuple")
@@ -3226,11 +3239,15 @@ class LiteralType(ProperType):
     #       almost no test cases where we would redundantly compute
     #       `can_be_false`/`can_be_true`.
     def can_be_false_default(self) -> bool:
+        if isinstance(self.value, SentinelValue):
+            return False
         if self.fallback.type.is_enum:
             return self.fallback.can_be_false
         return not self.value
 
     def can_be_true_default(self) -> bool:
+        if isinstance(self.value, SentinelValue):
+            return True
         if self.fallback.type.is_enum:
             return self.fallback.can_be_true
         return bool(self.value)
@@ -3251,6 +3268,9 @@ class LiteralType(ProperType):
     def is_enum_literal(self) -> bool:
         return self.fallback.type.is_enum
 
+    def is_sentinel_literal(self) -> bool:
+        return isinstance(self.value, SentinelValue)
+
     def value_repr(self) -> str:
         """Returns the string representation of the underlying type.
 
@@ -3258,6 +3278,9 @@ class LiteralType(ProperType):
         except it includes some additional logic to correctly handle cases
         where the value is a string, byte string, a unicode string, or an enum.
         """
+        if isinstance(self.value, SentinelValue):
+            return self.value.name
+
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname
 
@@ -3276,21 +3299,33 @@ class LiteralType(ProperType):
             return raw
 
     def serialize(self) -> JsonDict | str:
+        value: LiteralValue | JsonDict = self.value
+        if isinstance(value, SentinelValue):
+            value = {".class": "SentinelValue", "fullname": value.fullname, "name": value.name}
         return {
             ".class": "LiteralType",
-            "value": self.value,
+            "value": value,
             "fallback": self.fallback.serialize(),
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> LiteralType:
         assert data[".class"] == "LiteralType"
-        return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
+        value = data["value"]
+        if isinstance(value, dict):
+            assert value[".class"] == "SentinelValue"
+            value = SentinelValue(value["fullname"], value["name"])
+        return LiteralType(value=value, fallback=Instance.deserialize(data["fallback"]))
 
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, LITERAL_TYPE)
         self.fallback.write(data)
-        write_literal(data, self.value)
+        if isinstance(self.value, SentinelValue):
+            write_tag(data, LITERAL_SENTINEL)
+            write_str(data, self.value.fullname)
+            write_str(data, self.value.name)
+        else:
+            write_literal(data, self.value)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -3298,7 +3333,11 @@ class LiteralType(ProperType):
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         tag = read_tag(data)
-        ret = LiteralType(read_literal(data, tag), fallback)
+        if tag == LITERAL_SENTINEL:
+            value = SentinelValue(read_str(data), read_str(data))
+        else:
+            value = read_literal(data, tag)
+        ret = LiteralType(value, fallback)
         assert read_tag(data) == END_TAG
         return ret
 
@@ -3958,6 +3997,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType, /) -> str:
+        if isinstance(t.value, SentinelValue):
+            return t.value_repr()
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:

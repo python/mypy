@@ -37,6 +37,7 @@ from mypy.types import (
     NoneType,
     Overloaded,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
     TypeOfAny,
@@ -64,6 +65,15 @@ class TypesSuite(Suite):
 
     def test_any(self) -> None:
         assert_equal(str(AnyType(TypeOfAny.special_form)), "Any")
+
+    def test_sentinel_literal_json_roundtrip(self) -> None:
+        literal = LiteralType(SentinelValue("__main__.MISSING", "MISSING"), self.fx.a)
+        assert_equal(str(literal), "MISSING")
+        data = literal.serialize()
+        assert isinstance(data, dict)
+        roundtrip = LiteralType.deserialize(data)
+        self.assertEqual(roundtrip.value, literal.value)
+        self.assertEqual(roundtrip.fallback.type_ref, self.fx.a.type.fullname)
 
     def test_simple_unbound_type(self) -> None:
         u = UnboundType("Foo")
