@@ -8036,13 +8036,6 @@ class SemanticAnalyzer(
             return
         elif isinstance(maybe_type_expr, StrExpr):
             str_value = maybe_type_expr.value  # cache
-            # Filter out string literals with common patterns that could not
-            # possibly be in a type expression
-            if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
-                # A common pattern in string literals containing a sentence.
-                # But cannot be a type expression.
-                maybe_type_expr.as_type = None
-                return
             # Filter out string literals which look like an identifier but
             # cannot be a type expression, for a few common reasons
             if str_value.isidentifier():
@@ -8071,13 +8064,20 @@ class SemanticAnalyzer(
                         return
             else:  # does not look like an identifier
                 if '"' in str_value or "'" in str_value:
-                    # Only valid inside a Literal[...] type
+                    # Only valid inside a Literal[...] or Annotated[..., ...] type
                     if "[" not in str_value:
-                        # Cannot be a Literal[...] type
+                        # Cannot be a Literal[...] or Annotated[..., ...] type
                         maybe_type_expr.as_type = None
                         return
-                elif str_value == "":
-                    # Empty string is not a valid type
+                elif str_value == "" or str_value.isspace():
+                    # Empty or whitespace-only string is not a valid type
+                    maybe_type_expr.as_type = None
+                    return
+                # Filter out string literals with common patterns that could not
+                # possibly be in a type expression
+                if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
+                    # A common pattern in string literals containing a sentence.
+                    # But cannot be a type expression.
                     maybe_type_expr.as_type = None
                     return
         elif isinstance(maybe_type_expr, IndexExpr):
