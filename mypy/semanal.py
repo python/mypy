@@ -8069,7 +8069,11 @@ class SemanticAnalyzer(
                         # Cannot be a Literal[...] or Annotated[..., ...] type
                         maybe_type_expr.as_type = None
                         return
-                elif str_value == "" or str_value.isspace() or (len(str_value) == 1 and str_value in ".,/:*-=[]\\"):
+                elif (
+                    str_value == ""
+                    or str_value.isspace()
+                    or (len(str_value) == 1 and str_value in ".,/:*-=[]\\")
+                ):
                     # Empty or whitespace-only string is not a valid type
                     maybe_type_expr.as_type = None
                     return
