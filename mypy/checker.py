@@ -6779,16 +6779,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # For some tuples, we can do negative narrowing, e.g. `x not in (None,)`
                         all_if_maps = []
                         all_else_maps = []
-                        for tuple_item in p_iterable_type.items:
+                        for known_item in p_iterable_type.items:
+                            known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
                                 operands=[operands[left_index], operands[right_index]],
-                                operand_types=[item_type, tuple_item],
+                                operand_types=[item_type, known_item],
                                 expr_indices=[0, 1],
                                 narrowable_indices={0},
                             )
                             all_if_maps.append(if_map)
-                            if is_singleton_equality_type(get_proper_type(tuple_item)):
+                            if is_singleton_equality_type(get_proper_type(known_item)):
                                 all_else_maps.append(else_map)
                         if_map = reduce_or_conditional_type_maps(all_if_maps)
                         else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
