@@ -19,3 +19,6 @@ class sentinel:
     def __init__(self, name: str, /) -> None: ...
 
 class dict: pass
+class tuple: pass
+
+def isinstance(x: object, t: type) -> bool: pass

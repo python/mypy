@@ -85,3 +85,23 @@ def func(x: int | MISSING = MISSING) -> None:
         assert_type(x, MISSING)
 
 [builtins fixtures/sentinel.pyi]
+
+[case testIsinstanceSentinel]
+# flags: --python-version 3.15
+from typing import assert_type
+from typing_extensions import Sentinel
+
+BUILTIN = sentinel("BUILTIN")
+TYPEXT = Sentinel("TYPEXT")
+
+def func(x: int | BUILTIN | TYPEXT) -> None:
+    if isinstance(x, sentinel):
+        assert_type(x, BUILTIN)
+    else:
+        assert_type(x, int | TYPEXT)
+        if isinstance(x, Sentinel):
+            assert_type(x, TYPEXT)
+        else:
+            assert_type(x, int)
+
+[builtins fixtures/sentinel.pyi]
