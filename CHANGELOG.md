@@ -16,9 +16,9 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 The new `librt.vecs` module provides an efficient growable array type `vec` that is
 optimized for mypyc use. It provides fast, packed arrays with integer and floating point
-value types, which can be several times faster than `list` or `array.array` in
-code compiled using mypyc. It also supports nested `vec` objects and non-value-type items,
-such as ``vec[vec[str]]``.
+value types, which can be **several times faster** than `list`, and tens of times faster
+than `array.array` in code compiled using mypyc. It also supports nested `vec` objects and
+non-value-type items, such as ``vec[vec[str]]``.
 
 Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_vecs.html) for
 the details.
