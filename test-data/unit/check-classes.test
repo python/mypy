@@ -7324,11 +7324,12 @@ class A:
         pass
 
 class B:
-    def __new__(cls) -> Any:
+    def __new__(cls, x: int = 0) -> Any:
         pass
 
 reveal_type(A())  # N: Revealed type is "__main__.A"
 reveal_type(B())  # N: Revealed type is "Any"
+reveal_type(B(1))  # N: Revealed type is "Any"
 
 [case testNewReturnType3]
 

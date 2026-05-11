@@ -124,7 +124,6 @@ from mypy.state import state
 from mypy.subtypes import (
     covers_at_runtime,
     find_member,
-    is_equivalent,
     is_same_type,
     is_subtype,
     non_method_protocol_members,
@@ -1845,7 +1844,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if (
             callee.is_type_obj()
             and (len(arg_types) == 1)
-            and is_equivalent(callee.ret_type, self.named_type("builtins.type"))
+            and is_named_instance(callee.get_instance_type(), "builtins.type")
         ):
             callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
