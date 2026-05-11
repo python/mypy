@@ -12,7 +12,7 @@ improvements and bug fixes. You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
-### librt.vecs
+### librt.vecs: Fast Growable Array Type for Mypyc
 
 The new `librt.vecs` module provides an efficient growable array type `vec` that is
 optimized for mypyc use. It provides fast, packed arrays with integer and floating point
@@ -25,7 +25,7 @@ the details.
 
 This was contributed by Jukka Lehtosalo.
 
-### librt.random
+### librt.random: Fast Pseudo-Random Number Generation
 
 The new ``librt.random`` module provides fast pseudo-random number generation that is
 optimized for code compiled using mypyc. It can be 3x to 10x faster than the stdlib
@@ -63,6 +63,10 @@ This was contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/my
 - Add support for configuring `--num-workers` with an environment variable (Kevin Kannammalil, PR [21407](https://github.com/python/mypy/pull/21407))
 - Respect JSON output mode for syntax errors (Adam Turner, PR [21386](https://github.com/python/mypy/pull/21386))
 - Analyze `TypedDict` decorators (Pranav Manglik, PR [21267](https://github.com/python/mypy/pull/21267))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=e4d32e01bee44241a5e7c33298c261175b9f1bdb+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
 ## Mypy 2.0
 
