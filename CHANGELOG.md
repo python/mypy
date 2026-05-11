@@ -68,6 +68,21 @@ This was contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/my
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=e4d32e01bee44241a5e7c33298c261175b9f1bdb+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+Thanks to all mypy contributors who contributed to this release:
+
+### Acknowledgements
+
+- Adam Turner
+- Ivan Levkivskyi
+- Jukka Lehtosalo
+- Kevin Kannammalil
+- Piotr Sawicki
+- Shantanu
+- sobolevn
+- Vaggelis Danias
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
 ## Mypy 2.0
 
 We’ve just uploaded mypy 2.0.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
