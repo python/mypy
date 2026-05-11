@@ -7317,7 +7317,7 @@ reveal_type(B())  # N: Revealed type is "__main__.B"
 [case testNewReturnType2]
 from typing import Any
 
-# make sure that __new__ method that return Any are ignored when
+# make sure that __new__ method that return implicit Any are ignored when
 # determining the return type
 class A:
     def __new__(cls):
@@ -7328,7 +7328,7 @@ class B:
         pass
 
 reveal_type(A())  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "__main__.B"
+reveal_type(B())  # N: Revealed type is "Any"
 
 [case testNewReturnType3]
 
@@ -7536,9 +7536,11 @@ class C(B): ...
 
 # Always respect explicit return type after giving an error.
 reveal_type(B())  # N: Revealed type is "__main__.A"
+reveal_type(C())  # N: Revealed type is "__main__.A"
 
 # Ignore "implicit" return type to preserve backwards compatibility.
-reveal_type(C())  # N: Revealed type is "__main__.C"
+class D(A): ...
+reveal_type(D())  # N: Revealed type is "__main__.D"
 
 [case testNewReturnType19]
 from typing import TypeVar

@@ -329,11 +329,13 @@ def class_callable(
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
-    from mypy.subtypes import is_subtype
+    from mypy.subtypes import is_equivalent, is_subtype
 
     init_ret_type = get_proper_type(init_type.ret_type)
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
+    # Default return type in the class where constructor method was defined.
+    default_def_ret_type = fill_typevars(def_info) if def_info is not None else default_ret_type
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         is_new
@@ -345,9 +347,9 @@ def class_callable(
         #     class D(C): ...
         # So we need to ignore the explicit annotation when creating constructor type for D.
         and (
-            def_info is info
-            and not isinstance(explicit_type, AnyType)
-            or not is_subtype(default_ret_type, explicit_type, ignore_type_params=True)
+            isinstance(explicit_type, AnyType)
+            and explicit_type.type_of_any != TypeOfAny.unannotated
+            or not is_equivalent(default_def_ret_type, explicit_type, ignore_type_params=True)
         )
     ):
         ret_type = explicit_type
