@@ -69,7 +69,18 @@ def outer() -> None:
 from typing_extensions import Sentinel
 
 MISSING = Sentinel("MISSING")
-MISSING = Sentinel("OTHER")  # E: Cannot assign to final name "MISSING"
+MISSING = Sentinel("OTHER")  # E: Cannot redefine an existing name as final
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelImplicitlyFinalWithLaterReference]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+def func(x: int | _SENTINEL = _SENTINEL) -> int:
+    if x is _SENTINEL:
+        return 0
+    return x
 [builtins fixtures/tuple.pyi]
 
 [case testBuiltinsSentinelTypeExpression]

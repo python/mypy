@@ -3360,8 +3360,6 @@ class SemanticAnalyzer(
         s.is_alias_def = False
 
         sentinel_definition = self.is_sentinel_declaration(s)
-        if sentinel_definition and self.is_existing_final_lvalue(s):
-            sentinel_definition = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
         s.is_final_def = self.unwrap_final(s)
@@ -3398,15 +3396,6 @@ class SemanticAnalyzer(
         if not call.args or call.arg_kinds[0] != ARG_POS or not isinstance(call.args[0], StrExpr):
             return False
         return True
-
-    def is_existing_final_lvalue(self, s: AssignmentStmt) -> bool:
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return False
-        name = s.lvalues[0].name
-        existing = self.current_symbol_table().get(name)
-        if existing is not None and is_final_node(existing.node):
-            return True
-        return self.is_alias_for_final_name(name)
 
     def setup_sentinel_var(self, s: AssignmentStmt) -> None:
         lvalue = s.lvalues[0]
