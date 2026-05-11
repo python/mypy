@@ -23,18 +23,18 @@ non-value-type items, such as ``vec[vec[str]]``.
 Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_vecs.html) for
 the details.
 
-This was contributed by Jukka Lehtosalo.
+Contributed by Jukka Lehtosalo.
 
 ### librt.random: Fast Pseudo-Random Number Generation
 
-The new ``librt.random`` module provides fast pseudo-random number generation that is
+The new `librt.random` module provides fast pseudo-random number generation that is
 optimized for code compiled using mypyc. It can be 3x to 10x faster than the stdlib
-``random`` module in compiled code.
+`random` module in compiled code.
 
 Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_random.html) for
 the details.
 
-This was contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/21433)).
+Contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/21433)).
 
 ### Mypyc Improvements
 
@@ -68,9 +68,9 @@ This was contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/my
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=e4d32e01bee44241a5e7c33298c261175b9f1bdb+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
-Thanks to all mypy contributors who contributed to this release:
-
 ### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
 
 - Adam Turner
 - Ivan Levkivskyi
@@ -219,7 +219,7 @@ string and bytes objects, and for accessing and generating binary data:
 
 Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_strings.html) for
 the details.
-`
+
 Contributed by Jukka Lehtosalo.
 
 ### Mypyc Improvements
