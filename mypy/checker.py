@@ -5721,11 +5721,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
         defn = e.func
         if defn.is_awaitable_coroutine:
-            assert isinstance(defn.type, CallableType)
+            typ = self.function_type(defn)
+            assert isinstance(typ, CallableType)
             # Update the return type to AwaitableGenerator (unless we already did).
             # Note, this doesn't exist in typing.py, only in typing.pyi.
-            if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
-                t = defn.type.ret_type
+            if not is_named_instance(typ.ret_type, "typing.AwaitableGenerator"):
+                t = typ.ret_type
                 c = defn.is_coroutine
                 ty = self.get_generator_yield_type(t, c)
                 tc = self.get_generator_receive_type(t, c)
@@ -5734,8 +5735,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else:
                     tr = self.get_generator_return_type(t, c)
                 ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
-                typ = defn.type.copy_modified(ret_type=ret_type)
-                defn.type = typ
+                defn.type = typ.copy_modified(ret_type=ret_type)
 
         # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
@@ -6771,25 +6771,45 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else_map = {}
 
                 if left_index in narrowable_operand_index_to_hash:
-                    collection_item_type = get_proper_type(builtin_item_type(iterable_type))
-                    if collection_item_type is not None:
-                        if_map, else_map = self.narrow_type_by_identity_equality(
-                            "==",
-                            operands=[operands[left_index], operands[right_index]],
-                            operand_types=[item_type, collection_item_type],
-                            expr_indices=[0, 1],
-                            narrowable_indices={0},
-                        )
-                        if else_map and not (
-                            isinstance(p_typ := get_proper_type(iterable_type), TupleType)
-                            and all(
-                                is_singleton_equality_type(get_proper_type(item))
-                                for item in p_typ.items
+                    p_iterable_type = get_proper_type(iterable_type)
+                    if (
+                        isinstance(p_iterable_type, TupleType)
+                        and find_unpack_in_list(p_iterable_type.items) is None
+                    ):
+                        # For some tuples, we can do negative narrowing, e.g. `x not in (None,)`
+                        all_if_maps = []
+                        all_else_maps = []
+                        for known_item in p_iterable_type.items:
+                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
+                            p_known_item = get_proper_type(known_item)
+                            if is_literal_type_like(p_known_item) or (
+                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
+                            ):
+                                known_item = coerce_to_literal(known_item)
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, known_item],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
                             )
-                        ):
-                            # In general, we can't do negative narrowing, since e.g. the container
-                            # could just be empty. However, we can do negative narrowing for some
-                            # tuples e.g. `x not in (None,)`
+                            all_if_maps.append(if_map)
+                            if is_singleton_equality_type(get_proper_type(known_item)):
+                                all_else_maps.append(else_map)
+                        if_map = reduce_or_conditional_type_maps(all_if_maps)
+                        else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
+                    else:
+                        collection_item_type = get_proper_type(builtin_item_type(iterable_type))
+                        if collection_item_type is not None:
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, collection_item_type],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
+                            )
+                            # We can't do negative narrowing, since e.g. the container could
+                            # just be empty.
                             else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
@@ -8445,7 +8465,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     n.node = sym.node
                     n.kind = GDEF
                     n.fullname = sym.node.fullname
-                    self.binder.assign_type(n, sym.node.type, sym.node.type)
+                    typ = get_declaration(n)
+                    if typ is not None:
+                        self.binder.assign_type(n, typ, typ)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):

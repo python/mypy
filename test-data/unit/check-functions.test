@@ -3814,9 +3814,9 @@ f(1, b'x', 1)
 main:3: error: Missing positional argument "y" in call to "f"
 
 [case testMissingPositionalArgShiftDetectedFirst]
-def f(x: int, y: str, z: bytes) -> None: ...
+def f(x: int, y: str, z: bytes, last: float) -> None: ...
 
-f("hello", b'x')
+f("hello", b'x', 1.5)
 [builtins fixtures/primitives.pyi]
 [out]
 main:3: error: Missing positional argument "x" in call to "f"
@@ -3891,3 +3891,46 @@ f("hello", b'x')
 main:3: error: Missing positional argument "z" in call to "f"
 main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 main:3: error: Argument 2 to "f" has incompatible type "bytes"; expected "str"
+
+[case testMissingPositionalArgNamesHigherN]
+# See https://github.com/python/mypy/issues/21427
+def convert2(first: int, second: str) -> None: ...
+
+# Possibly omitted arg, but we still issue two errors because there is only one argument
+convert2("hello")  # E: Missing positional argument "second" in call to "convert2" \
+                   # E: Argument 1 to "convert2" has incompatible type "str"; expected "int"
+
+# Other cases
+convert2()  # E: Missing positional arguments "first", "second" in call to "convert2"
+
+convert2("hello", 1)  # E: Argument 1 to "convert2" has incompatible type "str"; expected "int" \
+                      # E: Argument 2 to "convert2" has incompatible type "int"; expected "str"
+
+def convert3(first: int, second: str, third: float) -> None: ...
+
+# Possibly omitted arg, but we now only issue one error
+convert3("hello", 3.15)  # E: Missing positional argument "first" in call to "convert3"
+
+# Other cases
+convert3("hello")  # E: Missing positional arguments "second", "third" in call to "convert3" \
+                   # E: Argument 1 to "convert3" has incompatible type "str"; expected "int"
+
+convert3(3.15, "hello")  # E: Missing positional argument "third" in call to "convert3" \
+                         # E: Argument 1 to "convert3" has incompatible type "float"; expected "int"
+
+def convert4(first: int, second: str, third: float, fourth: bytes) -> None: ...
+
+# Possibly omitted arg, but we now only issue one error
+convert4("hello", 3.15, b'')  # E: Missing positional argument "first" in call to "convert4"
+
+# Other cases
+convert4("hello")  # E: Missing positional arguments "second", "third", "fourth" in call to "convert4" \
+                   # E: Argument 1 to "convert4" has incompatible type "str"; expected "int"
+
+convert4("hello", 3.15)  # E: Missing positional arguments "third", "fourth" in call to "convert4" \
+                         # E: Argument 1 to "convert4" has incompatible type "str"; expected "int" \
+                         # E: Argument 2 to "convert4" has incompatible type "float"; expected "str"
+
+convert4(b'', "hello", 3.15)  # E: Missing positional argument "fourth" in call to "convert4" \
+                              # E: Argument 1 to "convert4" has incompatible type "bytes"; expected "int"
+[builtins fixtures/primitives.pyi]

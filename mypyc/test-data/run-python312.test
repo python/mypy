@@ -229,9 +229,10 @@ type C[*Ts] = tuple[*Ts]
 def test_type_var_tuple_type_alias() -> None:
     if sys.version_info >= (3, 15):   # type: ignore[operator]
         assert str(C[int, str]) == "_frozen_importlib.C[int, str]"
+        assert str(getattr(C, "__value__")) == "tuple[typing.Unpack[~Ts]]"
     else:
         assert str(C[int, str]) == "C[int, str]"
-    assert str(getattr(C, "__value__")) == "tuple[typing.Unpack[Ts]]"
+        assert str(getattr(C, "__value__")) == "tuple[typing.Unpack[Ts]]"
 
 type D[**P] = Callable[P, int]
 

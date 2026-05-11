@@ -113,7 +113,12 @@ def main(argv: list[str]) -> None:
     fscache = FileSystemCache()
     fscache.set_package_root(options.package_root)
     cached_read = fscache.read
-    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+    error_formatter = None if options.output is None else OUTPUT_CHOICES.get(options.output)
+    errors = Errors(
+        options,
+        read_source=lambda path: read_py_file(path, cached_read),
+        error_formatter=error_formatter,
+    )
 
     ctx = ServerContext(options, disable_error_code, enable_error_code, errors, fscache)
     try:

@@ -1,4 +1,4 @@
-[case testLibrtVecsNestedInterpreted_librt_experimental]
+[case testLibrtVecsNestedInterpreted_librt]
 # Test cases for nested vecs, using generic operations (simulates use from interpreted code).
 
 import sys

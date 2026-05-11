@@ -1091,3 +1091,35 @@ class Launcher(P):
                                           # E: "list[int]" has no attribute "__aiter__" (not async iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorUntyped]
+import types
+
+@types.coroutine
+def f(x):
+    yield
+    1 + ""  # OK, in untyped function
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorPartiallyTyped]
+import types
+
+@types.coroutine
+def f(x: int):
+    yield
+    1 + ""  # E: Unsupported left operand type for + ("int")
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: builtins.int) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

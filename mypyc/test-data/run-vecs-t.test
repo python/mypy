@@ -1,7 +1,7 @@
 -- Test cases for vec[t] where t is a boxed, non-vec type (PyObject *).
 -- Also tests for vec[t | None], which uses the same representation.
 
-[case testVecTBasicOps_librt_experimental]
+[case testVecTBasicOps_librt]
 from typing import Final, Any, Iterable, Optional, Tuple
 
 from mypy_extensions import i64

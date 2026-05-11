@@ -3201,7 +3201,7 @@ class X:
 [builtins fixtures/dict.pyi]
 
 
-[case testTypeNarrowingStringInLiteralContainer]
+[case testNarrowStringInLiteralContainer]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal
 
@@ -3233,6 +3233,69 @@ def narrow_set(x: str, t: set[Literal['a', 'b']]):
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowLiteralInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple_exact(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], Literal['b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_expression(x: Literal['a', 'b', 'c']):
+    # TODO: this should match narrow_tuple_exact
+    if x in ('a', 'b'):
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x not in ('a', 'b'):
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_union(x: Literal['a', 'b', 'c'], t: tuple[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_with_other_type(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], int]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['b'] | Literal['c']"
+
+def narrow_homo_tuple(x: Literal['a', 'b', 'c'], t: tuple[Literal['a', 'b'], ...]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_list(x: Literal['a', 'b', 'c'], t: list[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_set(x: Literal['a', 'b', 'c'], t: set[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
 [builtins fixtures/primitives.pyi]
 
 

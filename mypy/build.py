@@ -4769,13 +4769,13 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
     t2 = time.time()
     stale = scc
+    # Parse before verify_dependencies so that inline config comments
+    # (e.g. "# mypy: disable-error-code") are applied to options.
+    manager.parse_all([graph[id] for id in stale], post_parse=False)
     for id in stale:
         # Re-generate import errors in case this module was loaded from the cache.
         if graph[id].meta:
             graph[id].verify_dependencies(suppressed_only=True)
-    # We may already have parsed the modules, or not.
-    # If the former, parse_file() is a no-op.
-    manager.parse_all([graph[id] for id in stale], post_parse=False)
     if "typing" in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of
