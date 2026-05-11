@@ -14,20 +14,27 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### librt.vecs
 
-- Document `librt.vecs` (Jukka Lehtosalo, PR [21437](https://github.com/python/mypy/pull/21437))
-- Mark `librt.vecs` as non-experimental (Jukka Lehtosalo, PR [21430](https://github.com/python/mypy/pull/21430))
-- Add API and ABI versioning to `librt.vecs` (Jukka Lehtosalo, PR [21429](https://github.com/python/mypy/pull/21429))
-- Update vec value struct to have direct pointer to items (Jukka Lehtosalo, PR [21420](https://github.com/python/mypy/pull/21420))
-- Optimize vec to list and vec to tuple conversions (Jukka Lehtosalo, PR [21380](https://github.com/python/mypy/pull/21380))
-- Optimize list to vec and tuple to vec conversions (Jukka Lehtosalo, PR [21375](https://github.com/python/mypy/pull/21375))
-- Fix debug warnings and assertions from vecs (Piotr Sawicki, PR [21373](https://github.com/python/mypy/pull/21373))
-- Add buffer protocol support for vec (Jukka Lehtosalo, PR [21359](https://github.com/python/mypy/pull/21359))
-- Add primitive for `vec[u8]` to bytes conversion (Jukka Lehtosalo, PR [21357](https://github.com/python/mypy/pull/21357))
-- Faster vec `__init__` and `extend` with bytes arguments (Jukka Lehtosalo, PR [21355](https://github.com/python/mypy/pull/21355))
+The new `librt.vecs` module provides an efficient growable array type `vec` that is
+optimized for mypyc use. It provides fast, packed arrays with integer and floating point
+value types, which can be several times faster than `list` or `array.array` in
+code compiled using mypyc. It also supports nested `vec` objects and non-value-type items,
+such as ``vec[vec[str]]``.
+
+Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_vecs.html) for
+the details.
+
+This was contributed by Jukka Lehtosalo.
 
 ### librt.random
 
-- Add `librt.random` module (Jukka Lehtosalo, PR [21433](https://github.com/python/mypy/pull/21433))
+The new ``librt.random`` module provides fast pseudo-random number generation that is
+optimized for code compiled using mypyc. It can be 3x to 10x faster than the stdlib
+``random`` module in compiled code.
+
+Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_random.html) for
+the details.
+
+This was contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/21433)).
 
 ### Mypyc Improvements
 
@@ -47,7 +54,6 @@ You can read the full documentation for this release on [Read the Docs](http://m
 ### Other Notable Fixes and Improvements
 
 - Rely on typeshed stubs for `slice` typing (Ivan Levkivskyi, PR [21401](https://github.com/python/mypy/pull/21401))
-- Enable `TypeForm` by default (David Foster, PR [21262](https://github.com/python/mypy/pull/21262))
 - Improve negative narrowing for membership checks on tuples (Shantanu, PR [21456](https://github.com/python/mypy/pull/21456))
 - Narrow match captures based on previous cases (Shantanu, PR [21405](https://github.com/python/mypy/pull/21405))
 - Fix nondeterminism in overload resolution (Shantanu, PR [21455](https://github.com/python/mypy/pull/21455))
@@ -194,7 +200,7 @@ string and bytes objects, and for accessing and generating binary data:
 
 Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_strings.html) for
 the details.
-
+`
 Contributed by Jukka Lehtosalo.
 
 ### Mypyc Improvements
