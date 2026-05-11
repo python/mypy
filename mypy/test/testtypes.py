@@ -33,10 +33,10 @@ from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.typeops import false_only, make_simplified_union, true_only
 from mypy.types import (
+    LITERAL_TYPE,
     AnyType,
     CallableType,
     Instance,
-    LITERAL_TYPE,
     LiteralType,
     NoneType,
     Overloaded,
