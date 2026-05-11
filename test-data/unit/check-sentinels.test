@@ -86,6 +86,43 @@ def func(x: int | MISSING = MISSING) -> None:
 
 [builtins fixtures/sentinel.pyi]
 
+[case testPrivateSentinelNameCanBeReusedAcrossModules]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+[builtins fixtures/tuple.pyi]
+
+[case testPrivateSentinelNameCanBeReusedAfterStarImport]
+from other import *
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+[builtins fixtures/tuple.pyi]
+
+[case testPrivateSentinelNameCanBeReusedAfterStarImportWithAll]
+from other import *
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+__all__ = ("public",)
+public = 1
+[builtins fixtures/tuple.pyi]
+
 [case testIsinstanceSentinel]
 # flags: --python-version 3.15
 from typing import assert_type
