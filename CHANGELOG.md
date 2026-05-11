@@ -2,27 +2,43 @@
 
 ## Next Release
 
-### Mypyc Improvements
+## Mypy 2.1
 
-- Enable incremental self-compilation (Vaggelis Danias, PR [21369](https://github.com/python/mypy/pull/21369))
-- Add `librt.random` module (Jukka Lehtosalo, PR [21433](https://github.com/python/mypy/pull/21433))
+We’ve just uploaded mypy 2.1.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### librt.vecs
+
 - Document `librt.vecs` (Jukka Lehtosalo, PR [21437](https://github.com/python/mypy/pull/21437))
 - Mark `librt.vecs` as non-experimental (Jukka Lehtosalo, PR [21430](https://github.com/python/mypy/pull/21430))
 - Add API and ABI versioning to `librt.vecs` (Jukka Lehtosalo, PR [21429](https://github.com/python/mypy/pull/21429))
-- Make compilation order with multiple files consistent (Piotr Sawicki, PR [21419](https://github.com/python/mypy/pull/21419))
 - Update vec value struct to have direct pointer to items (Jukka Lehtosalo, PR [21420](https://github.com/python/mypy/pull/21420))
-- Fix crash on accessing `StopAsyncIteration` (Piotr Sawicki, PR [21406](https://github.com/python/mypy/pull/21406))
 - Optimize vec to list and vec to tuple conversions (Jukka Lehtosalo, PR [21380](https://github.com/python/mypy/pull/21380))
 - Optimize list to vec and tuple to vec conversions (Jukka Lehtosalo, PR [21375](https://github.com/python/mypy/pull/21375))
 - Fix debug warnings and assertions from vecs (Piotr Sawicki, PR [21373](https://github.com/python/mypy/pull/21373))
 - Add buffer protocol support for vec (Jukka Lehtosalo, PR [21359](https://github.com/python/mypy/pull/21359))
 - Add primitive for `vec[u8]` to bytes conversion (Jukka Lehtosalo, PR [21357](https://github.com/python/mypy/pull/21357))
-- Fix incremental compilation with `separate` flag (Vaggelis Danias, PR [21299](https://github.com/python/mypy/pull/21299))
 - Faster vec `__init__` and `extend` with bytes arguments (Jukka Lehtosalo, PR [21355](https://github.com/python/mypy/pull/21355))
+
+### librt.random
+
+- Add `librt.random` module (Jukka Lehtosalo, PR [21433](https://github.com/python/mypy/pull/21433))
+
+### Mypyc Improvements
+
+- Make compilation order with multiple files consistent (Piotr Sawicki, PR [21419](https://github.com/python/mypy/pull/21419))
+- Fix crash on accessing `StopAsyncIteration` (Piotr Sawicki, PR [21406](https://github.com/python/mypy/pull/21406))
+- Fix incremental compilation with `separate` flag (Vaggelis Danias, PR [21299](https://github.com/python/mypy/pull/21299))
 
 ### Fixes to Crashes
 
 - Fix crash on partial type with `--allow-redefinition` and `global` declaration (Jukka Lehtosalo, PR [21428](https://github.com/python/mypy/pull/21428))
+- Fix broken awaitable generator patching (Ivan Levkivskyi, PR [21435](https://github.com/python/mypy/pull/21435))
 
 ### Changes to Messages
 
@@ -30,15 +46,14 @@
 
 ### Other Notable Fixes and Improvements
 
+- Rely on typeshed stubs for `slice` typing (Ivan Levkivskyi, PR [21401](https://github.com/python/mypy/pull/21401))
 - Enable `TypeForm` by default (David Foster, PR [21262](https://github.com/python/mypy/pull/21262))
 - Improve negative narrowing for membership checks on tuples (Shantanu, PR [21456](https://github.com/python/mypy/pull/21456))
 - Narrow match captures based on previous cases (Shantanu, PR [21405](https://github.com/python/mypy/pull/21405))
 - Fix nondeterminism in overload resolution (Shantanu, PR [21455](https://github.com/python/mypy/pull/21455))
 - Respect file config comments for stale modules (Adam Turner, PR [21444](https://github.com/python/mypy/pull/21444))
-- Fix broken awaitable generator patching (Ivan Levkivskyi, PR [21435](https://github.com/python/mypy/pull/21435))
 - Fix JSON output mode for syntax errors in parallel mode (Adam Turner, PR [21434](https://github.com/python/mypy/pull/21434))
 - Fix type variable with values as a supertype (Ivan Levkivskyi, PR [21431](https://github.com/python/mypy/pull/21431))
-- Rely on typeshed stubs for `slice` typing (Ivan Levkivskyi, PR [21401](https://github.com/python/mypy/pull/21401))
 - Add support for configuring `--num-workers` with an environment variable (Kevin Kannammalil, PR [21407](https://github.com/python/mypy/pull/21407))
 - Respect JSON output mode for syntax errors (Adam Turner, PR [21386](https://github.com/python/mypy/pull/21386))
 - Analyze `TypedDict` decorators (Pranav Manglik, PR [21267](https://github.com/python/mypy/pull/21267))
