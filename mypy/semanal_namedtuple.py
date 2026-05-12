@@ -49,11 +49,7 @@ from mypy.nodes import (
     is_StrExpr_list,
 )
 from mypy.options import Options
-from mypy.reachability import (
-    ALWAYS_FALSE,
-    ALWAYS_TRUE,
-    infer_condition_value,
-)
+from mypy.reachability import ALWAYS_FALSE, ALWAYS_TRUE, infer_condition_value
 from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
@@ -167,19 +163,13 @@ class NamedTupleAnalyzer:
                     else:
                         encountered_unknown = True
 
-                if (
-                    not handled
-                    and not encountered_unknown
-                    and stmt.else_body is not None
-                ):
-                    yield from self.iter_reachable_namedtuple_statements(
-                        stmt.else_body.body
-                    )
+                if not handled and not encountered_unknown and stmt.else_body is not None:
+                    yield from self.iter_reachable_namedtuple_statements(stmt.else_body.body)
 
                 continue
 
             yield stmt
-    
+
     def check_namedtuple_classdef(
         self, defn: ClassDef, is_stub_file: bool
     ) -> tuple[list[str], list[Type], dict[str, Expression], list[Statement]] | None:
