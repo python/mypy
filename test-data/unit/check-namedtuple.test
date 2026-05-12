@@ -1541,3 +1541,85 @@ from foo import DEFERRED_INT, DEFERRED_STR
 DEFERRED_INT = 1
 DEFERRED_STR = "a"
 [builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleFieldPy312]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: str
+
+reveal_type(NT.x)
+reveal_type(NT.y)
+
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:11: note: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleFieldPy311]
+# flags: --python-version 3.11
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: str
+
+reveal_type(NT.x)
+NT.y
+
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:11: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleElseBranch]
+# flags: --python-version 3.11
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: str
+    else:
+        z: int
+
+reveal_type(NT.z)
+NT.y
+
+[out]
+main:13: note: Revealed type is "builtins.int"
+main:14: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleElseBranchPy312]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: str
+    else:
+        z: int
+
+reveal_type(NT.y)
+NT.z
+
+[out]
+main:13: note: Revealed type is "builtins.str"
+main:14: error: "type[NT]" has no attribute "z"
+
+[builtins fixtures/tuple.pyi]

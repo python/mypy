@@ -30,6 +30,7 @@ from mypy.nodes import (
     ExpressionStmt,
     FuncBase,
     FuncDef,
+    IfStmt,
     ListExpr,
     NamedTupleExpr,
     NameExpr,
@@ -48,6 +49,11 @@ from mypy.nodes import (
     is_StrExpr_list,
 )
 from mypy.options import Options
+from mypy.reachability import (
+    ALWAYS_FALSE,
+    ALWAYS_TRUE,
+    infer_condition_value,
+)
 from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
@@ -139,6 +145,33 @@ class NamedTupleAnalyzer:
         # This can't be a valid named tuple.
         return False, None
 
+    def iter_reachable_namedtuple_statements(
+        self, statements: list[Statement]
+    ) -> Iterator[Statement]:
+        for stmt in statements:
+            if isinstance(stmt, IfStmt):
+                handled = False
+
+                for expr, body in zip(stmt.expr, stmt.body):
+                    truth = infer_condition_value(expr, self.options)
+
+                    if truth == ALWAYS_TRUE:
+                        yield from self.iter_reachable_namedtuple_statements(body.body)
+                        handled = True
+                        break
+
+                    if truth == ALWAYS_FALSE:
+                        continue
+
+                if not handled and stmt.else_body is not None:
+                    yield from self.iter_reachable_namedtuple_statements(
+                        stmt.else_body.body
+                    )
+
+                continue
+
+            yield stmt
+    
     def check_namedtuple_classdef(
         self, defn: ClassDef, is_stub_file: bool
     ) -> tuple[list[str], list[Type], dict[str, Expression], list[Statement]] | None:
@@ -157,7 +190,7 @@ class NamedTupleAnalyzer:
         types: list[Type] = []
         default_items: dict[str, Expression] = {}
         statements: list[Statement] = []
-        for stmt in defn.defs.body:
+        for stmt in self.iter_reachable_namedtuple_statements(defn.defs.body):
             statements.append(stmt)
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
