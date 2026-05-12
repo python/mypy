@@ -150,6 +150,7 @@ class NamedTupleAnalyzer:
     ) -> Iterator[Statement]:
         for stmt in statements:
             if isinstance(stmt, IfStmt):
+                encountered_unknown = False
                 handled = False
 
                 for expr, body in zip(stmt.expr, stmt.body):
@@ -160,10 +161,17 @@ class NamedTupleAnalyzer:
                         handled = True
                         break
 
-                    if truth == ALWAYS_FALSE:
+                    elif truth == ALWAYS_FALSE:
                         continue
 
-                if not handled and stmt.else_body is not None:
+                    else:
+                        encountered_unknown = True
+
+                if (
+                    not handled
+                    and not encountered_unknown
+                    and stmt.else_body is not None
+                ):
                     yield from self.iter_reachable_namedtuple_statements(
                         stmt.else_body.body
                     )
