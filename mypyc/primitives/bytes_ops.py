@@ -64,7 +64,6 @@ binary_op(
     return_type=bytes_rprimitive,
     c_function_name="CPyBytes_Concat",
     error_kind=ERR_MAGIC,
-    steals=[True, False],
 )
 
 # bytes * int
