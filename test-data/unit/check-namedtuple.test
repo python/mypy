@@ -1659,7 +1659,7 @@ class NT(NamedTuple):
     x: int
 
     if sys.version_info >= (3, 12):
-        if sys.platform == "linux":
+        if sys.version_info >= (3, 12):
             y: str
 
 reveal_type(NT.y)
