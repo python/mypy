@@ -2403,6 +2403,9 @@ class SemanticAnalyzer(
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym and sym.fullname in UNPACK_TYPE_NAMES:
+                if not t.args:
+                    # Unpack used without arguments, e.g. `Protocol[Unpack]`
+                    return None
                 inner_t = t.args[0]
                 if isinstance(inner_t, UnboundType):
                     return self.analyze_unbound_tvar_impl(inner_t, is_unpacked=True)

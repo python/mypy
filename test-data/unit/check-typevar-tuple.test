@@ -2765,3 +2765,11 @@ def func(d: Callable[[Unpack[Ts]], T]) -> T: ...
 y = func[1, int] # E: Type application is only supported for generic classes \
                  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleUnpackWithoutArgsInProtocol]
+# https://github.com/python/mypy/issues/21467
+from typing import Protocol, Unpack
+
+class C(Protocol[Unpack]):  # E: Free type variable expected in Protocol[...]
+    pass
+[builtins fixtures/tuple.pyi]
