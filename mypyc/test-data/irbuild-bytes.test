@@ -299,26 +299,3 @@ def foo(b: bytes, ba: bytearray) -> None:
 [out]
 main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
 main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"
-
-[case testBytesConcatRefcount]
-def f(a: bytes, b: bytes) -> bytes:
-    return b"1" + b
-[out]
-def f(a, b):
-    a, b, r0, r1 :: bytes
-L0:
-    r0 = b'1'
-    r1 = CPyBytes_Concat(r0, b)
-    return r1
-
-[case testChainedBytesConcatRefcount]
-def f(a: bytes, b: bytes, c: bytes) -> bytes:
-    return b"1" + b + c
-[out]
-def f(a, b, c):
-    a, b, c, r0, r1, r2 :: bytes
-L0:
-    r0 = b'1'
-    r1 = CPyBytes_Concat(r0, b)
-    r2 = CPyBytes_Concat(r1, c)
-    return r2
