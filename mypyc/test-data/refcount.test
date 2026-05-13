@@ -2153,4 +2153,3 @@ L0:
     r3 = CPyBytes_Concat(r2, c)
     dec_ref r2
     return r3
-
