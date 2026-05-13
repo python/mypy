@@ -6782,7 +6782,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         container_item_types = p_iterable_type.items
                     else:
                         container_expr = collapse_walrus(operands[right_index])
-                        if isinstance(container_expr, (TupleExpr, ListExpr, SetExpr)):
+                        if isinstance(container_expr, (ListExpr, SetExpr)):
                             if all(not isinstance(i, StarExpr) for i in container_expr.items):
                                 container_item_types = [
                                     self.lookup_type(e) for e in container_expr.items
