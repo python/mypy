@@ -113,8 +113,6 @@ class TypedDictAnalyzer:
             )
             if field_types is None:
                 return True, None  # Defer
-            if self.api.is_func_scope() and "@" not in defn.name:
-                defn.name += "@" + str(defn.line)
             info = self.build_typeddict_typeinfo(
                 defn.name, field_types, required_keys, readonly_keys, defn.line, existing_info
             )
@@ -128,7 +126,7 @@ class TypedDictAnalyzer:
         typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
         for expr in defn.base_type_exprs:
-            ok, maybe_type_info, _ = self.check_typeddict(expr, None, False)
+            ok, maybe_type_info, _ = self.check_typeddict(expr, None)
             if ok and maybe_type_info is not None:
                 # expr is a CallExpr
                 info = maybe_type_info
@@ -406,7 +404,7 @@ class TypedDictAnalyzer:
         return typ, is_required, readonly
 
     def check_typeddict(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, var_name: str | None
     ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
@@ -438,8 +436,6 @@ class TypedDictAnalyzer:
             # Error. Construct dummy return value.
             if var_name:
                 name = var_name
-                if is_func_scope:
-                    name += "@" + str(call.line)
             else:
                 name = var_name = "TypedDict@" + str(call.line)
             info = self.build_typeddict_typeinfo(name, {}, set(), set(), call.line, None)
@@ -452,9 +448,6 @@ class TypedDictAnalyzer:
                     node,
                     code=codes.NAME_MATCH,
                 )
-            if name != var_name or is_func_scope:
-                # Give it a unique name derived from the line number.
-                name += "@" + str(call.line)
             required_keys = {
                 field
                 for (field, t) in zip(items, types)
@@ -481,6 +474,11 @@ class TypedDictAnalyzer:
             existing_info = None
             if isinstance(node.analyzed, TypedDictExpr):
                 existing_info = node.analyzed.info
+
+            if var_name is None:
+                # Give it unique name in case a TypedDict() call is used as a base class.
+                name = "TypedDict@" + name
+
             info = self.build_typeddict_typeinfo(
                 name,
                 dict(zip(items, types)),
@@ -491,10 +489,12 @@ class TypedDictAnalyzer:
             )
             info.line = node.line
         # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-        if name != var_name or is_func_scope:
-            self.api.add_symbol_skip_local(name, info)
         if var_name:
-            self.api.add_symbol(var_name, info, node)
+            self.api.add_symbol(name, info, node)
+        if var_name is None or self.api.is_nested_within_func_scope():
+            if self.api.is_nested_within_func_scope():
+                name = f"{name}@{node.line}"
+            self.api.add_global_symbol(name, info)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call)
         return True, info, tvar_defs

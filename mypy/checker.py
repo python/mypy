@@ -8577,6 +8577,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         # message types are ignored.
         return False
 
+    def is_nested_within_func_scope(self) -> bool:
+        return self._chk.scope.top_level_function() is not None
+
     @property
     def type(self) -> TypeInfo | None:
         return self._chk.scope.current_class()

@@ -105,7 +105,7 @@ class NamedTupleAnalyzer:
         self.msg = msg
 
     def analyze_namedtuple_classdef(
-        self, defn: ClassDef, is_stub_file: bool, is_func_scope: bool
+        self, defn: ClassDef, is_stub_file: bool
     ) -> tuple[bool, TypeInfo | None]:
         """Analyze if given class definition can be a named tuple definition.
 
@@ -122,8 +122,6 @@ class NamedTupleAnalyzer:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items, statements = result
-                    if is_func_scope and "@" not in defn.name:
-                        defn.name += "@" + str(defn.line)
                     existing_info = None
                     if isinstance(defn.analyzed, NamedTupleExpr):
                         existing_info = defn.analyzed.info
@@ -221,7 +219,7 @@ class NamedTupleAnalyzer:
         return items, types, default_items, statements
 
     def check_namedtuple(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, var_name: str | None
     ) -> tuple[str | None, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a namedtuple.
 
@@ -256,15 +254,14 @@ class NamedTupleAnalyzer:
             # Error. Construct dummy return value.
             if var_name:
                 name = var_name
-                if is_func_scope:
-                    name += "@" + str(call.line)
             else:
                 name = var_name = "namedtuple@" + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line, None)
             self.store_namedtuple_info(info, var_name, call, is_typed)
-            if name != var_name or is_func_scope:
-                # NOTE: we skip local namespaces since they are not serialized.
-                self.api.add_symbol_skip_local(name, info)
+            if self.api.is_nested_within_func_scope():
+                # NOTE: we always serialize in global namespace for convenience,
+                # because local namespaces are never serialized.
+                self.api.add_global_symbol(f"{name}@{call.line}", info)
             return var_name, info, []
         if not ok:
             # This is a valid named tuple but some types are not ready.
@@ -280,16 +277,14 @@ class NamedTupleAnalyzer:
         else:
             name = typename
 
-        if var_name is None or is_func_scope:
-            # There are two special cases where need to give it a unique name derived
-            # from the line number:
+        if var_name is None:
+            # There are two special cases where need to give it a unique name:
             #   * This is a base class expression, since it often matches the class name:
             #         class NT(NamedTuple('NT', [...])):
             #             ...
-            #   * This is a local (function or method level) named tuple, since
-            #     two methods of a class can define a named tuple with the same name,
-            #     and they will be stored in the same namespace (see below).
-            name += "@" + str(call.line)
+            #   * This is a local (function or method level) named tuple, this case is
+            #     handled by basic_new_typeinfo().
+            name = "namedtuple@" + name
         if defaults:
             default_items = {
                 arg_name: default for arg_name, default in zip(items[-len(defaults) :], defaults)
@@ -312,21 +307,18 @@ class NamedTupleAnalyzer:
         else:
             call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
             call.analyzed.set_line(call)
-        # There are three cases where we need to store the generated TypeInfo
+        # There are two cases where we need to store the generated TypeInfo
         # second time (for the purpose of serialization):
-        #   * If there is a name mismatch like One = NamedTuple('Other', [...])
-        #     we also store the info under name 'Other@lineno', this is needed
-        #     because classes are (de)serialized using their actual fullname, not
-        #     the name of l.h.s.
         #   * If this is a method level named tuple. It can leak from the method
         #     via assignment to self attribute and therefore needs to be serialized
         #     (local namespaces are not serialized).
         #   * If it is a base class expression. It was not stored above, since
         #     there is no var_name (but it still needs to be serialized
         #     since it is in MRO of some class).
-        if name != var_name or is_func_scope:
-            # NOTE: we skip local namespaces since they are not serialized.
-            self.api.add_symbol_skip_local(name, info)
+        if var_name is None or self.api.is_nested_within_func_scope():
+            if self.api.is_nested_within_func_scope():
+                name = f"{name}@{call.line}"
+            self.api.add_global_symbol(name, info)
         return typename, info, tvar_defs
 
     def store_namedtuple_info(

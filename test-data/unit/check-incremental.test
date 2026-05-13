@@ -5188,7 +5188,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -6892,7 +6892,7 @@ class C:
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"
+tmp/a.py:3: note: Revealed type is "TypedDict('b.Hidden@5', {'x': builtins.int})"
 
 [case testNoIncrementalCrashOnInvalidEnumMethod]
 import a
@@ -6916,7 +6916,7 @@ class TheClass:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.pyenum@6"
 
 -- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
