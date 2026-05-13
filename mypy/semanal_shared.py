@@ -235,7 +235,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def add_global_symbol(self, name: str, node: SymbolNode) -> None:
-        """Add symbol to the current symbol table, skipping locals."""
+        """Add symbol directly to the global symbol table."""
         raise NotImplementedError
 
     @abstractmethod
