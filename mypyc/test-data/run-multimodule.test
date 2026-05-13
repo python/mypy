@@ -1423,6 +1423,45 @@ class Parent:
 from native import test
 test()
 
+[case testIncrementalCrossModuleInheritedAttrDefaults]
+# Regression: under separate=True, when only the subclass module is
+# recompiled (parent loaded from mypy's incremental cache, so its
+# ClassDef.defs.body is empty), the subclass produces no
+# __mypyc_defaults_setup of its own and ClassIR.get_method returns
+# the parent's. The emitted call must use the cross-group
+# exports_<group>. prefix, otherwise the generated C references an
+# undeclared symbol and clang/gcc fail to compile.
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    assert c.x == 1
+    assert c.y == "hello"
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+    y: str = "hello"
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    pass
+
+[file other_a.py.2]
+from other_b import Parent
+
+class Child(Parent):
+    pass
+
+def _force_recompile() -> int:
+    return 1
+
+[file driver.py]
+from native import test
+test()
+
 [case testExtraOpsFunction_experimental_librt]
 from librt.strings import BytesWriter
 
