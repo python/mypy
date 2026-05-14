@@ -15,7 +15,7 @@ requires = [
     "types-psutil",
     "types-setuptools",
     # required to work around a mypyc import bug
-    "ast-serialize>=0.3.0,<1.0.0",
+    "ast-serialize>=0.4.0,<1.0.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -59,7 +59,7 @@ dependencies = [
   "pathspec>=1.0.0",
   "tomli>=1.1.0; python_version<'3.11'",
   "librt>=0.11.0; platform_python_implementation != 'PyPy'",
-  "ast-serialize>=0.3.0,<1.0.0",
+  "ast-serialize>=0.4.0,<1.0.0",
 ]
 dynamic = ["version"]
 
