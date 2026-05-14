@@ -277,9 +277,6 @@ from mypy_extensions import i32
 
 def is_ws(c: i32) -> bool:
     return isspace(c)
-
-def is_ws_at(s: str, i: int) -> bool:
-    return isspace(ord(s[i]))
 [out]
 def is_ws(c):
     c :: i32
@@ -287,6 +284,13 @@ def is_ws(c):
 L0:
     r0 = LibRTStrings_IsSpace(c)
     return r0
+
+[case testLibrtStringsIsSpaceFromStrIndexIR_64bit]
+from librt.strings import isspace
+
+def is_ws_at(s: str, i: int) -> bool:
+    return isspace(ord(s[i]))
+[out]
 def is_ws_at(s, i):
     s :: str
     i :: int
