@@ -341,4 +341,3 @@ L8:
 L9:
     r16 = LibRTStrings_IsSpace(r15)
     return r16
-
