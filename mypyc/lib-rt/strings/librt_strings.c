@@ -1164,25 +1164,29 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
 // step accepts any int but rejects values outside the i32 range with
 // OverflowError, matching the input domain of the compiled fast path.
 
-#define CP_PARSE_I32(arg, var)                                              \
-    int32_t var;                                                            \
-    do {                                                                    \
-        int _overflow;                                                      \
-        long _c = PyLong_AsLongAndOverflow((arg), &_overflow);              \
-        if (_c == -1 && PyErr_Occurred())                                   \
-            return NULL;                                                    \
-        if (_overflow != 0 || _c < INT32_MIN || _c > INT32_MAX) {           \
-            PyErr_SetString(PyExc_OverflowError,                            \
-                            "codepoint out of i32 range");                  \
-            return NULL;                                                    \
-        }                                                                   \
-        (var) = (int32_t)_c;                                                \
-    } while (0)
+// Parse a Python int as i32 codepoint. Returns 0 on success and writes
+// the value to *out; returns -1 on error with a Python exception set.
+static int
+cp_parse_i32(PyObject *arg, int32_t *out) {
+    int overflow;
+    long c = PyLong_AsLongAndOverflow(arg, &overflow);
+    if (c == -1 && PyErr_Occurred())
+        return -1;
+    if (overflow != 0 || c < INT32_MIN || c > INT32_MAX) {
+        PyErr_SetString(PyExc_OverflowError,
+                        "codepoint out of i32 range");
+        return -1;
+    }
+    *out = (int32_t)c;
+    return 0;
+}
 
 #define DEFINE_CP_BOOL_WRAPPER(name, fn)                                    \
     static PyObject*                                                        \
     cp_##name(PyObject *module, PyObject *arg) {                            \
-        CP_PARSE_I32(arg, c);                                               \
+        int32_t c;                                                          \
+        if (cp_parse_i32(arg, &c) < 0)                                      \
+            return NULL;                                                    \
         return PyBool_FromLong(fn(c));                                      \
     }
 
