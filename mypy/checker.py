@@ -8529,6 +8529,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         except KeyError:
             return None
 
+    def record_fixed_type(self, fixed: TypeInfo | TypeAlias) -> None:
+        pass
+
     def fail(
         self,
         msg: str,

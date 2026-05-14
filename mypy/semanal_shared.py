@@ -24,6 +24,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
+    TypeAlias,
     TypeInfo,
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
@@ -82,6 +83,10 @@ class SemanticAnalyzerCoreInterface:
 
     @abstractmethod
     def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def record_fixed_type(self, fixed: TypeInfo | TypeAlias) -> None:
         raise NotImplementedError
 
     @abstractmethod

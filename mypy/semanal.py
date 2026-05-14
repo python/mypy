@@ -538,6 +538,7 @@ class SemanticAnalyzer(
         #   [b.py]
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
+        self.types_fixed: set[TypeInfo | TypeAlias] | None = None
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -1883,6 +1884,7 @@ class SemanticAnalyzer(
                 upper_bound = self.named_type("builtins.tuple", [self.object_type()])
             else:
                 upper_bound = self.object_type()
+        self.types_fixed = None
         if type_param.default:
             default = self.anal_type(
                 type_param.default,
@@ -1904,6 +1906,8 @@ class SemanticAnalyzer(
                 default = self.check_typevartuple_default(default, type_param.default)
         else:
             default = AnyType(TypeOfAny.from_omitted_generics)
+        default_depends = self.types_fixed
+        self.types_fixed = None
         if type_param.kind == TYPE_VAR_KIND:
             values: list[Type] = []
             if type_param.values:
@@ -1916,7 +1920,7 @@ class SemanticAnalyzer(
                         values.append(AnyType(TypeOfAny.from_error))
                     else:
                         values.append(analyzed)
-            return TypeVarExpr(
+            tv = TypeVarExpr(
                 name=type_param.name,
                 fullname=fullname,
                 values=values,
@@ -1927,7 +1931,7 @@ class SemanticAnalyzer(
                 line=context.line,
             )
         elif type_param.kind == PARAM_SPEC_KIND:
-            return ParamSpecExpr(
+            tv = ParamSpecExpr(
                 name=type_param.name,
                 fullname=fullname,
                 upper_bound=upper_bound,
@@ -1938,7 +1942,7 @@ class SemanticAnalyzer(
         else:
             assert type_param.kind == TYPE_VAR_TUPLE_KIND
             tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
-            return TypeVarTupleExpr(
+            tv = TypeVarTupleExpr(
                 name=type_param.name,
                 fullname=fullname,
                 upper_bound=upper_bound,
@@ -1947,6 +1951,8 @@ class SemanticAnalyzer(
                 is_new_style=True,
                 line=context.line,
             )
+        tv.default_depends = default_depends
+        return tv
 
     def pop_type_args(self, type_args: list[TypeParam] | None) -> None:
         if not type_args:
@@ -1973,11 +1979,15 @@ class SemanticAnalyzer(
         self.infer_metaclass_and_bases_from_compat_helpers(defn)
 
         bases = defn.base_type_exprs
-        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
-            defn, bases, context=defn
+        bases, tvar_defs, is_protocol, declared_tvars = (
+            self.clean_up_bases_and_infer_type_variables(defn, bases, context=defn)
         )
 
         self.check_type_alias_bases(bases)
+        default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
+        for _, tv in declared_tvars:
+            if tv.default_depends is not None:
+                default_depends[tv.fullname] = tv.default_depends
 
         if any(has_placeholder(tvd) for tvd in tvar_defs):
             # Some type variable bounds or values are not ready, we need
@@ -2010,14 +2020,18 @@ class SemanticAnalyzer(
             if defn.info:
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
+                defn.info.default_depends = default_depends
             return
 
         if self.analyze_namedtuple_classdef(defn, tvar_defs):
+            if defn.info:
+                defn.info.default_depends = default_depends
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
         self.setup_type_vars(defn, tvar_defs)
+        defn.info.default_depends = default_depends
         if base_error:
             defn.info.fallback_to_any = True
         if any_meta:
@@ -2257,7 +2271,7 @@ class SemanticAnalyzer(
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context
-    ) -> tuple[list[Expression], list[TypeVarLikeType], bool]:
+    ) -> tuple[list[Expression], list[TypeVarLikeType], bool, list[tuple[str, TypeVarLikeExpr]]]:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
@@ -2349,7 +2363,7 @@ class SemanticAnalyzer(
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
         tvar_defs = self.tvar_defs_from_tvars(declared_tvars, context)
-        return base_type_exprs, tvar_defs, is_protocol
+        return base_type_exprs, tvar_defs, is_protocol, declared_tvars
 
     def analyze_class_typevar_declaration(
         self, base: Type, has_type_var_tuple: bool
@@ -3973,7 +3987,9 @@ class SemanticAnalyzer(
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
         python_3_12_type_alias: bool = False,
-    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], bool]:
+    ) -> tuple[
+        Type | None, list[TypeVarLikeType], set[str], bool, dict[str, set[TypeAlias | TypeInfo]]
+    ]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of type variables for generic aliases,
@@ -3993,7 +4009,7 @@ class SemanticAnalyzer(
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
             )
-            return None, [], set(), False
+            return None, [], set(), False, {}
 
         found_type_vars = self.find_type_var_likes(typ)
         namespace = self.qualified_name(name)
@@ -4032,7 +4048,11 @@ class SemanticAnalyzer(
             new_tvar_defs.append(td)
 
         indexed = bool(isinstance(typ, UnboundType) and (typ.args or typ.empty_tuple_index))
-        return analyzed, new_tvar_defs, depends_on, indexed
+        default_depends = {}
+        for _, tv in alias_type_vars:
+            if tv.default_depends is not None:
+                default_depends[tv.fullname] = tv.default_depends
+        return analyzed, new_tvar_defs, depends_on, indexed, default_depends
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -4132,9 +4152,10 @@ class SemanticAnalyzer(
             alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
             indexed = False
+            default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, indexed = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed, default_depends = self.analyze_alias(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
@@ -4199,6 +4220,7 @@ class SemanticAnalyzer(
             eager=eager,
             python_3_12_type_alias=pep_695,
         )
+        alias_node.default_depends = default_depends
         if isinstance(s.rvalue, (IndexExpr, CallExpr, OpExpr)):
             # Note: CallExpr is for "void = type(None)" and OpExpr is for "X | Y" union syntax.
             if not isinstance(s.rvalue.analyzed, TypeAliasExpr):
@@ -4218,6 +4240,7 @@ class SemanticAnalyzer(
                     # Copy expansion to the existing alias, this matches how we update base classes
                     # for a TypeInfo _in place_ if there are nested placeholders.
                     existing.node.target = res
+                    existing.node.default_depends = default_depends
                     existing.node.alias_tvars = alias_tvars
                     existing.node.no_args = no_args
                     updated = True
@@ -4750,6 +4773,7 @@ class SemanticAnalyzer(
         n_values = call.arg_kinds[1:].count(ARG_POS)
         values = self.analyze_value_types(call.args[1 : 1 + n_values])
 
+        self.types_fixed = None
         res = self.process_typevar_parameters(
             call.args[1 + n_values :],
             call.arg_names[1 + n_values :],
@@ -4757,6 +4781,8 @@ class SemanticAnalyzer(
             n_values,
             s,
         )
+        default_depends = self.types_fixed
+        self.types_fixed = None
         if res is None:
             return False
         variance, upper_bound, default = res
@@ -4797,6 +4823,7 @@ class SemanticAnalyzer(
             type_var = TypeVarExpr(
                 name, self.qualified_name(name), values, upper_bound, default, variance
             )
+            type_var.default_depends = default_depends
             type_var.line = call.line
             call.analyzed = type_var
             updated = True
@@ -4810,6 +4837,7 @@ class SemanticAnalyzer(
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
             call.analyzed.default = default
+            call.analyzed.default_depends = default_depends
         if any(has_placeholder(v) for v in values):
             self.process_placeholder(None, "TypeVar values", s, force_progress=updated)
         elif has_placeholder(upper_bound):
@@ -4962,6 +4990,11 @@ class SemanticAnalyzer(
             variance = INVARIANT
         return variance, upper_bound, default
 
+    def record_fixed_type(self, fixed: TypeInfo | TypeAlias) -> None:
+        if self.types_fixed is None:
+            self.types_fixed = set()
+        self.types_fixed.add(fixed)
+
     def get_typevarlike_argument(
         self,
         typevarlike_name: str,
@@ -4973,7 +5006,7 @@ class SemanticAnalyzer(
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_typevar_arg: bool = True,
-    ) -> ProperType | None:
+    ) -> Type | None:
         try:
             # We want to use our custom error message below, so we suppress
             # the default error message for invalid types here.
@@ -5053,6 +5086,7 @@ class SemanticAnalyzer(
         if n_values != 0:
             self.fail('Too many positional arguments for "ParamSpec"', s)
 
+        self.types_fixed = None
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
         for param_value, param_name in zip(
             call.args[1 + n_values :], call.arg_names[1 + n_values :]
@@ -5077,6 +5111,8 @@ class SemanticAnalyzer(
                     "The variance and bound arguments to ParamSpec do not have defined semantics yet",
                     s,
                 )
+        default_depends = self.types_fixed
+        self.types_fixed = None
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
@@ -5087,12 +5123,14 @@ class SemanticAnalyzer(
                 name, self.qualified_name(name), self.object_type(), default, INVARIANT
             )
             paramspec_var.line = call.line
+            paramspec_var.default_depends = default_depends
             call.analyzed = paramspec_var
             updated = True
         else:
             assert isinstance(call.analyzed, ParamSpecExpr)
             updated = default != call.analyzed.default
             call.analyzed.default = default
+            call.analyzed.default_depends = default_depends
         if has_placeholder(default):
             self.process_placeholder(None, "ParamSpec default", s, force_progress=updated)
 
@@ -5115,6 +5153,7 @@ class SemanticAnalyzer(
             self.fail('Too many positional arguments for "TypeVarTuple"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
+        self.types_fixed = None
         for param_value, param_name in zip(
             call.args[1 + n_values :], call.arg_names[1 + n_values :]
         ):
@@ -5133,6 +5172,9 @@ class SemanticAnalyzer(
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
+        default_depends = self.types_fixed
+        self.types_fixed = None
+
         name = self.extract_typevarlike_name(s, call)
         if name is None:
             return False
@@ -5150,12 +5192,14 @@ class SemanticAnalyzer(
                 INVARIANT,
             )
             typevartuple_var.line = call.line
+            typevartuple_var.default_depends = default_depends
             call.analyzed = typevartuple_var
             updated = True
         else:
             assert isinstance(call.analyzed, TypeVarTupleExpr)
             updated = default != call.analyzed.default
             call.analyzed.default = default
+            call.analyzed.default_depends = default_depends
         if has_placeholder(default):
             self.process_placeholder(None, "TypeVarTuple default", s, force_progress=updated)
 
@@ -5686,7 +5730,7 @@ class SemanticAnalyzer(
                 return
 
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, indexed = self.analyze_alias(
+            res, alias_tvars, depends_on, indexed, default_depends = self.analyze_alias(
                 s.name.name,
                 s.value.expr(),
                 allow_placeholder=True,
@@ -5743,6 +5787,7 @@ class SemanticAnalyzer(
                 eager=eager,
                 python_3_12_type_alias=True,
             )
+            alias_node.default_depends = default_depends
             s.alias_node = alias_node
 
             if (
@@ -5759,6 +5804,7 @@ class SemanticAnalyzer(
                         # Copy expansion to the existing alias, this matches how we update base classes
                         # for a TypeInfo _in place_ if there are nested placeholders.
                         existing.node.target = res
+                        existing.node.default_depends = default_depends
                         existing.node.alias_tvars = alias_tvars
                         updated = True
                         # Invalidate recursive status cache in case it was previously set.
