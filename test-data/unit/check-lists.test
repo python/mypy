@@ -103,3 +103,31 @@ if int():
 
 class A: pass
 class B: pass
+
+[case testUnpackListWithMixedStarExprAndNone21485]
+# 星号表达式与非星号项混合时，非星号项位置不固定，
+# 推断类型应为所有项类型的联合。参见 issue #21485。
+from typing import reveal_type
+xs: list[str]
+version, desc, *_ = [*xs, None, None]
+reveal_type(version)  # N: Revealed type is "builtins.str | None"
+reveal_type(desc)  # N: Revealed type is "builtins.str | None"
+[builtins fixtures/list.pyi]
+
+[case testUnpackListWithStarExprAndMixedTypes21485]
+# 更复杂的混合类型场景
+from typing import reveal_type
+xs: list[int]
+a, b, *_ = [*xs, "x"]
+reveal_type(a)  # N: Revealed type is "builtins.object"
+reveal_type(b)  # N: Revealed type is "builtins.object"
+[builtins fixtures/list.pyi]
+
+[case testUnpackListWithStarExprOnlyNoRegression21485]
+# 只有星号表达式时，行为不应改变
+from typing import reveal_type
+xs: list[int]
+a, b, *_ = [*xs]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]

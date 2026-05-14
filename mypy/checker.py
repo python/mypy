@@ -4107,11 +4107,49 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 iterable_num = iterable_end - iterable_start + 1
                 rvalue_needed = len(lvalues) - (len(rvalues) - iterable_num)
                 if rvalue_needed > 0:
-                    rvalues = (
-                        rvalues[0:iterable_start]
-                        + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
-                        + rvalues[iterable_end + 1 :]
-                    )
+                    # 当左值包含星号目标时，右值中星号之后的非星号项可能被分配到
+                    # 左值星号之前的变量上。这些项的位置不固定（取决于星号展开长度），
+                    # 需要使用联合类型。仅影响会被分配到左值星号左侧的多余项。
+                    # 参见 issue #21485。
+                    has_star_lvalue = any(isinstance(lv, StarExpr) for lv in lvalues)
+                    if has_star_lvalue:
+                        star_lv_idx = next(
+                            i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)
+                        )
+                        nr_right_lvs = len(lvalues) - star_lv_idx - 1
+                        trailing = rvalues[iterable_end + 1 :]
+                        excess = max(0, len(trailing) - nr_right_lvs)
+                        if excess > 0:
+                            excess_types: list[Type] = []
+                            for rv in trailing[:excess]:
+                                if not isinstance(rv, StarExpr):
+                                    excess_types.append(
+                                        get_proper_type(self.expr_checker.accept(rv))
+                                    )
+                            if excess_types:
+                                item_type = get_proper_type(
+                                    join.join_type_list([iterable_type] + excess_types)
+                                )
+                            else:
+                                item_type = iterable_type
+                            rvalues = (
+                                rvalues[0:iterable_start]
+                                + [TempNode(item_type, context=rval) for _ in range(rvalue_needed)]
+                                + [TempNode(item_type, context=rv) for rv in trailing[:excess]]
+                                + trailing[excess:]
+                            )
+                        else:
+                            rvalues = (
+                                rvalues[0:iterable_start]
+                                + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
+                                + rvalues[iterable_end + 1 :]
+                            )
+                    else:
+                        rvalues = (
+                            rvalues[0:iterable_start]
+                            + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
+                            + rvalues[iterable_end + 1 :]
+                        )
 
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next(
