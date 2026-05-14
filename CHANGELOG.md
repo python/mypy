@@ -2,6 +2,87 @@
 
 ## Next Release
 
+## Mypy 2.1
+
+We’ve just uploaded mypy 2.1.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### librt.vecs: Fast Growable Array Type for Mypyc
+
+The new `librt.vecs` module provides an efficient growable array type `vec` that is
+optimized for mypyc use. It provides fast, packed arrays with integer and floating point
+value types, which can be **several times faster** than `list`, and tens of times faster
+than `array.array` in code compiled using mypyc. It also supports nested `vec` objects and
+non-value-type items, such as ``vec[vec[str]]``.
+
+Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_vecs.html) for
+the details.
+
+Contributed by Jukka Lehtosalo.
+
+### librt.random: Fast Pseudo-Random Number Generation
+
+The new `librt.random` module provides fast pseudo-random number generation that is
+optimized for code compiled using mypyc. It can be 3x to 10x faster than the stdlib
+`random` module in compiled code.
+
+Refer to the [documentation](https://mypyc.readthedocs.io/en/latest/librt_random.html) for
+the details.
+
+Contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/21433)).
+
+### Mypyc Improvements
+
+- Make compilation order with multiple files consistent (Piotr Sawicki, PR [21419](https://github.com/python/mypy/pull/21419))
+- Fix crash on accessing `StopAsyncIteration` (Piotr Sawicki, PR [21406](https://github.com/python/mypy/pull/21406))
+- Fix incremental compilation with `separate` flag (Vaggelis Danias, PR [21299](https://github.com/python/mypy/pull/21299))
+
+### Fixes to Crashes
+
+- Fix crash on partial type with `--allow-redefinition` and `global` declaration (Jukka Lehtosalo, PR [21428](https://github.com/python/mypy/pull/21428))
+- Fix broken awaitable generator patching (Ivan Levkivskyi, PR [21435](https://github.com/python/mypy/pull/21435))
+
+### Changes to Messages
+
+- Fix function call error message for small number of arguments (sobolevn, PR [21432](https://github.com/python/mypy/pull/21432))
+
+### Other Notable Fixes and Improvements
+
+- Rely on typeshed stubs for `slice` typing (Ivan Levkivskyi, PR [21401](https://github.com/python/mypy/pull/21401))
+- Improve negative narrowing for membership checks on tuples (Shantanu, PR [21456](https://github.com/python/mypy/pull/21456))
+- Narrow match captures based on previous cases (Shantanu, PR [21405](https://github.com/python/mypy/pull/21405))
+- Fix nondeterminism in overload resolution (Shantanu, PR [21455](https://github.com/python/mypy/pull/21455))
+- Respect file config comments for stale modules (Adam Turner, PR [21444](https://github.com/python/mypy/pull/21444))
+- Fix JSON output mode for syntax errors in parallel mode (Adam Turner, PR [21434](https://github.com/python/mypy/pull/21434))
+- Fix type variable with values as a supertype (Ivan Levkivskyi, PR [21431](https://github.com/python/mypy/pull/21431))
+- Add support for configuring `--num-workers` with an environment variable (Kevin Kannammalil, PR [21407](https://github.com/python/mypy/pull/21407))
+- Respect JSON output mode for syntax errors (Adam Turner, PR [21386](https://github.com/python/mypy/pull/21386))
+- Analyze `TypedDict` decorators (Pranav Manglik, PR [21267](https://github.com/python/mypy/pull/21267))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=e4d32e01bee44241a5e7c33298c261175b9f1bdb+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+- Adam Turner
+- Ivan Levkivskyi
+- Jukka Lehtosalo
+- Kevin Kannammalil
+- Piotr Sawicki
+- Shantanu
+- sobolevn
+- Vaggelis Danias
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
 ## Mypy 2.0
 
 We’ve just uploaded mypy 2.0.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).

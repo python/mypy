@@ -2145,14 +2145,13 @@ match(b)  # E: Argument 1 to "match" has incompatible type "Bad"; expected "PC[U
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTupleCollectionCheck]
-from typing import Tuple, Optional
 from typing_extensions import Unpack
 
-allowed: Tuple[int, Unpack[Tuple[int, ...]]]
+allowed: tuple[int, Unpack[tuple[int, ...]]]
 
-x: Optional[int]
-if x in allowed:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+def f(x: int | None):
+    if x in allowed:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testJoinOfVariadicTupleCallablesNoCrash]
@@ -2765,4 +2764,12 @@ def func(d: Callable[[Unpack[Ts]], T]) -> T: ...
 
 y = func[1, int] # E: Type application is only supported for generic classes \
                  # E: Invalid type: try using Literal[1] instead?
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleUnpackWithoutArgsInProtocol]
+# https://github.com/python/mypy/issues/21467
+from typing import Protocol, Unpack
+
+class C(Protocol[Unpack]):  # E: Free type variable expected in Protocol[...]
+    pass
 [builtins fixtures/tuple.pyi]

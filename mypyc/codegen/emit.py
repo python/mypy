@@ -245,7 +245,7 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
-        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        formatted = pprint.pformat(obj, compact=True, indent=1, width=max(90 - line_width, 20))
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
 

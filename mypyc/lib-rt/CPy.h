@@ -3,8 +3,8 @@
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include <frameobject.h>
 #include <structmember.h>
 #include <assert.h>

@@ -2125,3 +2125,31 @@ L3:
     r8 = box(None, 1)
     inc_ref r8
     return r8
+
+[case testBytesConcatRefcount]
+def f(a: bytes, b: bytes) -> bytes:
+    return b"1" + a + b
+[out]
+def f(a, b):
+    a, b, r0, r1, r2 :: bytes
+L0:
+    r0 = b'1'
+    r1 = CPyBytes_Concat(r0, a)
+    r2 = CPyBytes_Concat(r1, b)
+    dec_ref r1
+    return r2
+
+[case testChainedBytesConcatRefcount]
+def f(a: bytes, b: bytes, c: bytes) -> bytes:
+    return b"1" + a + b + c
+[out]
+def f(a, b, c):
+    a, b, c, r0, r1, r2, r3 :: bytes
+L0:
+    r0 = b'1'
+    r1 = CPyBytes_Concat(r0, a)
+    r2 = CPyBytes_Concat(r1, b)
+    dec_ref r1
+    r3 = CPyBytes_Concat(r2, c)
+    dec_ref r2
+    return r3

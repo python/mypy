@@ -6771,28 +6771,69 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else_map = {}
 
                 if left_index in narrowable_operand_index_to_hash:
-                    collection_item_type = get_proper_type(builtin_item_type(iterable_type))
-                    if collection_item_type is not None:
-                        if_map, else_map = self.narrow_type_by_identity_equality(
-                            "==",
-                            operands=[operands[left_index], operands[right_index]],
-                            operand_types=[item_type, collection_item_type],
-                            expr_indices=[0, 1],
-                            narrowable_indices={0},
-                        )
-                        if else_map and not (
-                            isinstance(p_typ := get_proper_type(iterable_type), TupleType)
-                            and all(
-                                is_singleton_equality_type(get_proper_type(item))
-                                for item in p_typ.items
+                    p_iterable_type = get_proper_type(iterable_type)
+                    container_item_types = None
+
+                    # Can we statically determine container contents?
+                    if (
+                        isinstance(p_iterable_type, TupleType)
+                        and find_unpack_in_list(p_iterable_type.items) is None
+                    ):
+                        container_item_types = p_iterable_type.items
+                    else:
+                        container_expr = collapse_walrus(operands[right_index])
+                        if isinstance(container_expr, (ListExpr, SetExpr)):
+                            if all(not isinstance(i, StarExpr) for i in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(e) for e in container_expr.items
+                                ]
+                        elif isinstance(container_expr, DictExpr):
+                            if all(k is not None for k, v in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(cast(Expression, k))
+                                    for k, v in container_expr.items
+                                ]
+
+                    if container_item_types is not None:
+                        # If we know the exact contents, we can potentially do negative narrowing,
+                        # e.g. `x not in (None,)`
+                        all_if_maps = []
+                        all_else_maps = []
+                        for known_item in container_item_types:
+                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
+                            p_known_item = get_proper_type(known_item)
+                            if is_literal_type_like(p_known_item) or (
+                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
+                            ):
+                                known_item = coerce_to_literal(known_item)
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, known_item],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
                             )
-                        ):
-                            # In general, we can't do negative narrowing, since e.g. the container
-                            # could just be empty. However, we can do negative narrowing for some
-                            # tuples e.g. `x not in (None,)`
+                            all_if_maps.append(if_map)
+                            if is_singleton_equality_type(get_proper_type(known_item)):
+                                all_else_maps.append(else_map)
+                        if_map = reduce_or_conditional_type_maps(all_if_maps)
+                        else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
+                    else:
+                        collection_item_type = get_proper_type(builtin_item_type(p_iterable_type))
+                        if collection_item_type is not None:
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, collection_item_type],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
+                            )
+                            # We can't do negative narrowing, since e.g. the container could
+                            # just be empty.
                             else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
+                    # E.g. narrows the right operand in `if "key" in typed_dict`
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
                     )
