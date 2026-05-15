@@ -2015,6 +2015,10 @@ class SemanticAnalyzer(
             # are okay in nested positions, since they can't affect the MRO.
             self.mark_incomplete(defn.name, defn)
             return
+        if any(has_placeholder(base) for base, _ in base_types):
+            # We need to manually call defer() in case a placeholder was brought by a
+            # type variable default, so that type analyzer didn't call it.
+            self.defer()
 
         declared_metaclass, should_defer, any_meta = self.get_declared_metaclass(
             defn.name, defn.metaclass

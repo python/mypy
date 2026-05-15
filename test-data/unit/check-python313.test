@@ -364,6 +364,41 @@ class Parent[T = int]: ...
 
 reveal_type(Child())  # N: Revealed type is "__main__.Child[__main__.Parent[builtins.int]]"
 
+[case testNonRecursiveTypeVarDefaultImportCycleClassNewStyle]
+import exp
+[file exp.pyi]
+import ind
+
+class F[T: D = D]:
+    x: T
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+class Ind(F): ...
+x: Ind
+reveal_type(x.x)  # N: Revealed type is "exp.D"
+
+[case testNonRecursiveTypeVarDefaultImportCycleAliasNewStyle]
+import exp
+[file exp.pyi]
+import ind
+
+type F[T: D = D] = list[T]
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+type Ind = list[F]
+x: Ind
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[exp.D]]"
+
 [case testRecursiveTypeVarDefaultClassAndAliasNewStyle]
 class Trait[T = Pattern]:
     pass
