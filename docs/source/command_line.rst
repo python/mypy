@@ -912,6 +912,9 @@ of the above sections.
     tandem should be sufficient to get you virtually every useful check mypy
     can perform.
 
+    Due to a bug, this flag will not actually enable all error codes:
+    https://github.com/python/mypy/issues/19604
+
 .. _configuring-error-messages:
 
 Configuring error messages
