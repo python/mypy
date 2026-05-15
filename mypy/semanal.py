@@ -1888,7 +1888,9 @@ class SemanticAnalyzer(
                 upper_bound = self.named_type("builtins.tuple", [self.object_type()])
             else:
                 upper_bound = self.object_type()
-        self.types_fixed = None
+        # Reset fixed types both before and after each collection just in case.
+        if self.types_fixed is not None:
+            self.types_fixed.clear()
         if type_param.default:
             default = self.anal_type(
                 type_param.default,
@@ -1910,7 +1912,7 @@ class SemanticAnalyzer(
                 default = self.check_typevartuple_default(default, type_param.default)
         else:
             default = AnyType(TypeOfAny.from_omitted_generics)
-        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
+        default_depends = self.types_fixed
         self.types_fixed = None
         if type_param.kind == TYPE_VAR_KIND:
             values: list[Type] = []
@@ -4780,8 +4782,8 @@ class SemanticAnalyzer(
         n_values = call.arg_kinds[1:].count(ARG_POS)
         values = self.analyze_value_types(call.args[1 : 1 + n_values])
 
-        # Reset fixed types both before and after each collection just in case.
-        self.types_fixed = None
+        if self.types_fixed is not None:
+            self.types_fixed.clear()
         res = self.process_typevar_parameters(
             call.args[1 + n_values :],
             call.arg_names[1 + n_values :],
@@ -4789,7 +4791,7 @@ class SemanticAnalyzer(
             n_values,
             s,
         )
-        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
+        default_depends = self.types_fixed
         self.types_fixed = None
         if res is None:
             return False
@@ -5092,7 +5094,8 @@ class SemanticAnalyzer(
         if n_values != 0:
             self.fail('Too many positional arguments for "ParamSpec"', s)
 
-        self.types_fixed = None
+        if self.types_fixed is not None:
+            self.types_fixed.clear()
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
         for param_value, param_name in zip(
             call.args[1 + n_values :], call.arg_names[1 + n_values :]
@@ -5117,7 +5120,7 @@ class SemanticAnalyzer(
                     "The variance and bound arguments to ParamSpec do not have defined semantics yet",
                     s,
                 )
-        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
+        default_depends = self.types_fixed
         self.types_fixed = None
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
@@ -5159,7 +5162,8 @@ class SemanticAnalyzer(
             self.fail('Too many positional arguments for "TypeVarTuple"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
-        self.types_fixed = None
+        if self.types_fixed is not None:
+            self.types_fixed.clear()
         for param_value, param_name in zip(
             call.args[1 + n_values :], call.arg_names[1 + n_values :]
         ):
@@ -5178,7 +5182,7 @@ class SemanticAnalyzer(
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
-        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
+        default_depends = self.types_fixed
         self.types_fixed = None
 
         name = self.extract_typevarlike_name(s, call)
