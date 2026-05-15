@@ -1992,7 +1992,7 @@ class SemanticAnalyzer(
         if any(has_placeholder(tvd) for tvd in tvar_defs):
             # Some type variable bounds or values are not ready, we need
             # to re-analyze this class.
-            self.defer()
+            self.defer(force_progress=tvar_defs != defn.type_vars)
 
         self.analyze_class_keywords(defn)
         bases_result = self.analyze_base_classes(bases)
