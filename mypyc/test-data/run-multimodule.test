@@ -1557,3 +1557,87 @@ def test_buffer_round_trip() -> None:
 from other import test_buffer_round_trip
 
 test_buffer_round_trip()
+
+-- Regression tests for separate=True compilation.
+
+[case testSeparateCrossGroupEnumMethod]
+-- Under separate=True, methods of non-extension classes (like Enum subclasses)
+-- are compiled as direct C functions rather than vtable entries.
+-- `is_method_final` must short-circuit to True for non-ext classes so the
+-- cross-group call site emits a direct call rather than indexing into a
+-- vtable that `compute_vtable` skipped.
+from other_enum import Color
+
+def name_of_red() -> str:
+    return Color.RED.describe()
+
+def name_of_blue() -> str:
+    return Color.BLUE.describe()
+
+[file other_enum.py]
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+    def describe(self) -> str:
+        return "color:" + self.name
+
+[file driver.py]
+from native import name_of_red, name_of_blue
+assert name_of_red() == "color:RED"
+assert name_of_blue() == "color:BLUE"
+
+[case testSeparateCrossGroupGenerator]
+-- Under separate=True, mypyc-generated generator helper classes have their
+-- FuncIR bodies in the defining group; consumers only see FuncDecl via
+-- `method_decls`. `emit_method_call` must use `method_decl(name)` rather
+-- than asserting `get_method(name).decl` is non-None.
+from other_gen import count_up
+
+def sum_range(n: int) -> int:
+    total = 0
+    for x in count_up(n):
+        total += x
+    return total
+
+[file other_gen.py]
+from typing import Iterator
+
+def count_up(n: int) -> Iterator[int]:
+    i = 0
+    while i < n:
+        yield i
+        i += 1
+
+[file driver.py]
+from native import sum_range
+assert sum_range(0) == 0
+assert sum_range(1) == 0
+assert sum_range(5) == 10
+
+[case testSeparateCrossGroupInheritedInit]
+-- Under separate=True, a subclass whose __init__ is inherited from a
+-- different group must call the base's CPyPy_ wrapper through the exports
+-- table. This exercises `wrapper_function_call` in `generate_init_for_class`
+-- / `emit_setup_or_dunder_new_call`, and requires the CPyPy_ wrapper decl
+-- to be marked `needs_export=True` so it reaches the exports table.
+from other_base import Base
+
+class Child(Base):
+    def label(self) -> str:
+        return "child(" + str(self.x) + ")"
+
+def make_child(n: int) -> str:
+    return Child(n).label()
+
+[file other_base.py]
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+from native import make_child
+assert make_child(7) == "child(7)"
+assert make_child(-1) == "child(-1)"

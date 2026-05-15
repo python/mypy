@@ -10,8 +10,6 @@
 int
 import_librt_vecs(void);
 
-#ifdef MYPYC_EXPERIMENTAL
-
 // Global API pointers initialized by import_librt_vecs()
 extern VecCapsule *VecApi;
 extern VecI64API VecI64Api;
@@ -22,7 +20,5 @@ extern VecFloatAPI VecFloatApi;
 extern VecBoolAPI VecBoolApi;
 extern VecTAPI VecTApi;
 extern VecNestedAPI VecNestedApi;
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_VECS_API_H

@@ -173,10 +173,21 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
                 and not node.node.is_named_tuple
                 and node.node.typeddict_type is None
             ):
-                ir = deser_ctx.classes[node.node.fullname]
+                # Some TypeInfo entries are mypy-synthetic (e.g. anonymous
+                # intersection classes like "<subclass of X and Y>") and have
+                # no corresponding mypyc ClassIR. Skip those rather than
+                # aborting the whole cache load.
+                ir = deser_ctx.classes.get(node.node.fullname)
+                if ir is None:
+                    continue
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
-                mapper.func_to_decl[node.node] = ir.ctor
+                # Trait/builtin-base classes have an ir.ctor FuncDecl
+                # but no emitted CPyDef_<ctor>, so a cross-group direct
+                # call would hit an undefined symbol. Mirror the skip
+                # in prepare_init_method.
+                if not ir.is_trait and not ir.builtin_base:
+                    mapper.func_to_decl[node.node] = ir.ctor
 
     for module in modules:
         for func in get_module_func_defs(module):

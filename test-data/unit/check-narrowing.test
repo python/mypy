@@ -438,7 +438,7 @@ weird_mixture: Union[KeyedTypedDict, KeyedNamedTuple]
 if weird_mixture["key"] is Key.B:       # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
                                         # N: Possible overload variants: \
                                         # N:     def __getitem__(self, int, /) -> Literal[Key.C] \
-                                        # N:     def __getitem__(self, slice, /) -> tuple[Literal[Key.C], ...]
+                                        # N:     def __getitem__(self, slice[int | None], /) -> tuple[Literal[Key.C], ...]
     reveal_type(weird_mixture)          # N: Revealed type is "TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}) | tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}) | tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]"
@@ -944,11 +944,11 @@ from typing import Any
 def realistic(x: dict[str, Any]):
     val = x.get("hey")
     if val == 12:
-        reveal_type(val)  # N: Revealed type is "Any | Literal[12]?"
+        reveal_type(val)  # N: Revealed type is "Any"
 
 def f1(x: Any | None):
     if x == 12:
-        reveal_type(x)  # N: Revealed type is "Any | Literal[12]?"
+        reveal_type(x)  # N: Revealed type is "Any"
 
 class Custom:
     def __eq__(self, other: object) -> bool:
@@ -980,7 +980,7 @@ def f3(x: str | Custom, y: str | int):
 
 def f4(x: str | Any, y: str | int):
     if x == y:
-        reveal_type(x)  # N: Revealed type is "builtins.str | Any | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str | Any"
         reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str | Any"
@@ -3201,7 +3201,7 @@ class X:
 [builtins fixtures/dict.pyi]
 
 
-[case testTypeNarrowingStringInLiteralContainer]
+[case testNarrowStringInLiteralContainer]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal
 
@@ -3233,6 +3233,105 @@ def narrow_set(x: str, t: set[Literal['a', 'b']]):
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowLiteralInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def narrow_tuple_exact(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], Literal['b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_expression(x: Literal['a', 'b', 'c']):
+    # TODO: this should match narrow_tuple_exact
+    if x in ('a', 'b'):
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x not in ('a', 'b'):
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_union(x: Literal['a', 'b', 'c'], t: tuple[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x not in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_tuple_with_other_type(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], int]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['b'] | Literal['c']"
+
+def narrow_homo_tuple(x: Literal['a', 'b', 'c'], t: tuple[Literal['a', 'b'], ...]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_list(x: Literal['a', 'b', 'c'], t: list[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in ['a', 'b']:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in ['a', 'b', *[]]:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_set(x: Literal['a', 'b', 'c'], t: set[Literal['a', 'b']]):
+    if x in t:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a', 'b'}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a', 'b', *[]}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_dict(x: Literal['a', 'b', 'c'], t: dict[Literal['a', 'b'], int]):
+    if x in t:  # E: Unsupported operand types for in ("Literal['a', 'b', 'c']" and "dict[Literal['a', 'b'], int]")
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a': 0, 'b': 1}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a': 0, 'b': 1, **{}}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
 [builtins fixtures/primitives.pyi]
 
 
@@ -3268,6 +3367,21 @@ def f1(x: Union[str, float], t1: list[Literal['a', 'b']], t2: list[str]):
         reveal_type(x)  # N: Revealed type is "builtins.str | builtins.float"
 [builtins fixtures/primitives.pyi]
 
+[case testNegativeNarrowingInContainer]
+# flags: --warn-unreachable
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+
+def count(colors: list[Color]) -> None:
+    counts: dict[Color, int] = {}
+    for color in colors:
+        if color not in counts:
+            counts[color] = 0
+        counts[color] += 1
+[builtins fixtures/dict.pyi]
+
 [case testNarrowAnyWithEqualityOrContainment]
 # flags: --strict-equality --warn-unreachable
 # https://github.com/python/mypy/issues/17841
@@ -3283,6 +3397,38 @@ def f2(x: Any) -> None:
         return
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testNarrowAnyUnion]
+from typing import Any
+
+class A: ...
+
+def f1(x: A | int, y: Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+
+def f2(x: A | int, y: Any | None):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "Any | None"
+
+class AA(A): ...
+
+def f3(x: A | int, y: AA | Any):
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.AA | Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | builtins.int"
+        reveal_type(y)  # N: Revealed type is "__main__.AA | Any"
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowChainedContainment]
 # flags: --strict-equality --warn-unreachable
@@ -3324,11 +3470,11 @@ def f2(a: Any | None, b: str | None) -> None:
 def f3(a: str | None, b: Any | None) -> None:
     if None is not a == b:
         reveal_type(a)  # N: Revealed type is "builtins.str"
-        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any"
 
     if (None is not a) and (a == b):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-        reveal_type(b)  # N: Revealed type is "Any | builtins.str"
+        reveal_type(b)  # N: Revealed type is "Any"
 
 def f4(a: str | None, b: str | None, c: str | None) -> None:
     if None is not a == b == c:

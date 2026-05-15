@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_MAGIC,
-    ERR_NEVER,
     Assign,
     BasicBlock,
     Branch,
@@ -15,7 +14,6 @@ from mypyc.ir.ops import (
     ComparisonOp,
     DecRef,
     GetElement,
-    GetElementPtr,
     Integer,
     IntOp,
     RaiseStandardError,
@@ -46,13 +44,14 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
+    list_rprimitive,
     object_rprimitive,
     optional_value_type,
     pointer_rprimitive,
+    tuple_rprimitive,
     vec_api_by_item_type,
     vec_item_type_tags,
 )
-from mypyc.primitives.registry import builtin_names
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -169,7 +168,7 @@ def vec_create_initialized(
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    builder.set_mem(for_loop.index, item_type, init)
+    vec_set_mem_item(builder, for_loop.index, item_type, init)
     for_loop.finish()
 
     builder.keep_alive([vec], line)
@@ -189,7 +188,7 @@ def vec_create_from_values(
     item_type = vtype.item_type
     step = step_size(item_type)
     for value in values:
-        builder.set_mem(ptr, item_type, value)
+        vec_set_mem_item(builder, ptr, item_type, value)
         ptr = builder.int_add(ptr, step)
     builder.keep_alive([vec], line)
     return vec
@@ -211,8 +210,7 @@ def vec_item_type_info(
     builder: LowLevelIRBuilder, typ: RType, line: int
 ) -> tuple[Value | None, bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
-        typ, src = builtin_names[typ.name]
-        return builder.load_address(src, typ), False, 0
+        return builder.load_builtin(typ.name, line), False, 0
     elif isinstance(typ, RInstance):
         return builder.load_native_type_object(typ.name), False, 0
     elif typ in vec_item_type_tags:
@@ -244,14 +242,11 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
 
 
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
-    """Return pointer to first item in vec's buf.
+    """Return pointer to first item in vec.
 
-    Safe to call even when buf is NULL (empty vec), since GetElementPtr
-    uses offsetof-based arithmetic instead of &((T*)p)->field.
+    The items field points directly to the first element in the buffer.
     """
-    vtype = cast(RVec, vecobj.type)
-    buf = builder.get_element(vecobj, "buf")
-    return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
+    return builder.get_element(vecobj, "items")
 
 
 def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Value:
@@ -267,6 +262,20 @@ def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Val
         item_size = object_rprimitive.size
     delta = builder.int_mul(index, item_size)
     return builder.int_add(items_addr, delta)
+
+
+def vec_load_mem_item(
+    builder: LowLevelIRBuilder, ptr: Value, item_type: RType, *, can_borrow: bool = False
+) -> Value:
+    """Load a vec item from storage, converting nested vec slots to RVec values."""
+    return builder.load_mem(ptr, item_type, borrow=can_borrow)
+
+
+def vec_set_mem_item(
+    builder: LowLevelIRBuilder, ptr: Value, item_type: RType, item: Value
+) -> None:
+    """Store a vec item, converting RVec values to nested storage items."""
+    builder.set_mem(ptr, item_type, item)
 
 
 def vec_check_and_adjust_index(
@@ -324,7 +333,7 @@ def vec_get_item_unsafe(
     index = as_platform_int(builder, index, line)
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
-    result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
+    result = vec_load_mem_item(builder, item_addr, vtype.item_type, can_borrow=can_borrow)
     builder.keep_alives.append(base)
     return result
 
@@ -343,9 +352,9 @@ def vec_set_item(
     if item_type.is_refcounted:
         # Read an unborrowed reference to cause a decref to be
         # generated for the old item.
-        old_item = builder.load_mem(item_addr, item_type, borrow=True)
+        old_item = vec_load_mem_item(builder, item_addr, item_type, can_borrow=True)
         builder.add(DecRef(old_item))
-    builder.set_mem(item_addr, item_type, item)
+    vec_set_mem_item(builder, item_addr, item_type, item)
     builder.keep_alive([base], line)
 
 
@@ -358,32 +367,23 @@ def vec_init_item_unsafe(
     item_addr = vec_item_ptr(builder, base, index)
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
-    builder.set_mem(item_addr, item_type, item)
+    vec_set_mem_item(builder, item_addr, item_type, item)
     builder.keep_alive([base], line)
 
 
 def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     vec_len = builder.add(GetElement(item, "len"))
-    vec_buf = builder.add(GetElement(item, "buf"))
+    vec_items = builder.add(GetElement(item, "items"))
     temp = builder.add(SetElement(Undef(VecNestedBufItem), "len", vec_len))
-    return builder.add(SetElement(temp, "buf", vec_buf))
+    return builder.add(SetElement(temp, "items", vec_items))
 
 
 def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:
-    """Convert a value of type VecNestedBufItem to the corresponding RVec value."""
-    api_name = vec_api_by_item_type.get(vec_type.item_type)
-    if api_name is not None:
-        name = f"{api_name}.convert_from_nested"
-    elif isinstance(vec_type.item_type, RVec):
-        name = "VecNestedApi.convert_from_nested"
-    else:
-        name = "VecTApi.convert_from_nested"
-
-    return builder.add(
-        CallC(
-            name, [item], vec_type, steals=[True], is_borrowed=False, error_kind=ERR_NEVER, line=-1
-        )
-    )
+    """Convert an owned VecNestedBufItem to the corresponding RVec value."""
+    vec_len = builder.add(GetElement(item, "len"))
+    vec_items = builder.add(GetElement(item, "items"))
+    temp = builder.add(SetElement(Undef(vec_type), "len", vec_len))
+    return builder.add(SetElement(temp, "items", vec_items))
 
 
 def vec_item_type(builder: LowLevelIRBuilder, item_type: RType, line: int) -> Value:
@@ -551,7 +551,7 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = builder.load_mem(for_loop.index, item_type, borrow=True)
+    item = vec_load_mem_item(builder, for_loop.index, item_type, can_borrow=True)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))
@@ -594,3 +594,41 @@ def vec_slice(
         line=line,
     )
     return builder.add(call)
+
+
+def vec_to_list(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | None:
+    return _vec_to_sequence(builder, vec, line, "to_list", list_rprimitive)
+
+
+def vec_to_tuple(builder: LowLevelIRBuilder, vec: Value, line: int) -> Value | None:
+    return _vec_to_sequence(builder, vec, line, "to_tuple", tuple_rprimitive)
+
+
+def supports_vec_to_sequence(vec_type: RVec) -> bool:
+    return vec_api_by_item_type.get(vec_type.item_type) is not None or vec_type.depth() == 0
+
+
+def _vec_to_sequence(
+    builder: LowLevelIRBuilder, vec: Value, line: int, method: str, result_type: RType
+) -> Value | None:
+    vec_type = vec.type
+    assert isinstance(vec_type, RVec)
+    item_type = vec_type.item_type
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.{method}"
+    elif supports_vec_to_sequence(vec_type):
+        name = f"VecTApi.{method}"
+    else:
+        return None
+    return builder.add(
+        CallC(
+            name,
+            [vec],
+            result_type,
+            steals=[True],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
+    )

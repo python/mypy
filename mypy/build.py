@@ -493,7 +493,12 @@ def build_inner(
 
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
-    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+    error_formatter = None if options.output is None else OUTPUT_CHOICES.get(options.output)
+    errors = Errors(
+        options,
+        read_source=lambda path: read_py_file(path, cached_read),
+        error_formatter=error_formatter,
+    )
     # Record import errors so that they can be replayed by the workers.
     if workers:
         errors.global_watcher = True
@@ -516,7 +521,7 @@ def build_inner(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
+        error_formatter=error_formatter,
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
@@ -3313,7 +3318,9 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        if not options.native_parser:
+        if not options.native_parser or not self.manager.fscache.exists(
+            self.xpath, real_only=True
+        ):
             analyzer = SemanticAnalyzerPreAnalysis()
             with self.wrap_context():
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
@@ -4761,13 +4768,13 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
     t2 = time.time()
     stale = scc
+    # Parse before verify_dependencies so that inline config comments
+    # (e.g. "# mypy: disable-error-code") are applied to options.
+    manager.parse_all([graph[id] for id in stale], post_parse=False)
     for id in stale:
         # Re-generate import errors in case this module was loaded from the cache.
         if graph[id].meta:
             graph[id].verify_dependencies(suppressed_only=True)
-    # We may already have parsed the modules, or not.
-    # If the former, parse_file() is a no-op.
-    manager.parse_all([graph[id] for id in stale], post_parse=False)
     if "typing" in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of

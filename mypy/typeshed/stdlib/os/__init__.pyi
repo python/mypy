@@ -614,9 +614,12 @@ if sys.platform == "darwin" and sys.version_info >= (3, 12):
 SEEK_SET: Final = 0
 SEEK_CUR: Final = 1
 SEEK_END: Final = 2
-if sys.platform != "win32":
+if sys.platform == "linux":
     SEEK_DATA: Final = 3
     SEEK_HOLE: Final = 4
+elif sys.platform == "darwin":
+    SEEK_HOLE: Final = 3
+    SEEK_DATA: Final = 4
 
 O_RDONLY: Final[int]
 O_WRONLY: Final[int]
@@ -826,11 +829,9 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows)
     if sys.version_info >= (3, 12) and sys.platform == "win32":
         @property
-        @deprecated(
-            """\
+        @deprecated("""\
 Use st_birthtime instead to retrieve the file creation time. \
-In the future, this property will contain the last metadata change time."""
-        )
+In the future, this property will contain the last metadata change time.""")
         def st_ctime(self) -> float: ...
     else:
         @property
@@ -1531,7 +1532,36 @@ else:
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
 
-    if sys.version_info >= (3, 13):
+    if sys.version_info >= (3, 15):
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int | None = None,  # None allowed starting in 3.15
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] | None = None,  # None allowed starting in 3.15
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = (),
+            setpgroup: int | None = None,  # None allowed starting in 3.15
+            resetids: bool = False,
+            setsid: bool = False,
+            setsigmask: Iterable[int] = (),
+            setsigdef: Iterable[int] = (),
+            scheduler: tuple[Any, sched_param] | None = None,  # None allowed starting in 3.15
+        ) -> int: ...
+    elif sys.version_info >= (3, 13):
         def posix_spawn(
             path: StrOrBytesPath,
             argv: _ExecVArgs,

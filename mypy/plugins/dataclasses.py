@@ -662,7 +662,7 @@ class DataclassTransformer:
 
             # Allow bare x: Final[int] in class body, since it will be set in the generated
             # __init__() method (unless it is an InitVar), to match regular class semantics.
-            if node.is_final and not node.is_classvar and node.final_unset_in_class:
+            if node.is_final and node.final_unset_in_class:
                 if is_init_var:
                     self._api.fail("InitVar cannot be final", stmt.rvalue)
                 else:

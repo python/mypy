@@ -100,8 +100,12 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        if options.num_workers < 0:
+            fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
             fail("error: Cache must be enabled in parallel mode", stderr, options)
+        if not options.local_partial_types:
+            fail("error: --local-partial-types must be enabled in parallel mode", stderr, options)
         if options.report_dirs:
             fail(
                 "error: Reports are not supported in parallel mode yet\n"
@@ -389,7 +393,8 @@ command line flags. For more details, see:
 
 FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
+  Define MYPY_CACHE_DIR to override configuration cache_dir path.
+  Define MYPY_NUM_WORKERS to override configuration num_workers value."""
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -1175,7 +1180,11 @@ def define_options(
 
     # Experimental parallel type-checking support.
     internals_group.add_argument(
-        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+        "-n",
+        "--num-workers",
+        type=int,
+        default=0,
+        help="Number of separate mypy worker processes (experimental)",
     )
 
     report_group = parser.add_argument_group(
@@ -1288,7 +1297,11 @@ def define_options(
         help=argparse.SUPPRESS,
     )
     # --native-parser enables the native parser (experimental)
-    add_invertible_flag("--native-parser", default=False, help=argparse.SUPPRESS)
+    add_invertible_flag(
+        "--native-parser",
+        default=False,
+        help="Enable faster parser that parses directly to mypy AST",
+    )
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
@@ -1452,6 +1465,14 @@ def process_options(
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
     options.cache_dir = os.path.expanduser(options.cache_dir)
+
+    # Override num_workers if provided in the environment
+    environ_num_workers = os.getenv("MYPY_NUM_WORKERS", "")
+    if environ_num_workers.strip():
+        try:
+            options.num_workers = int(environ_num_workers)
+        except ValueError:
+            parser.error(f"MYPY_NUM_WORKERS must be an integer, got {environ_num_workers!r}")
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()

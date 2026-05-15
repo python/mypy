@@ -2212,3 +2212,59 @@ d3: A = d1 | d2
 reveal_type(d1 | d2)
 [out]
 _testDictOrUnionEdgeCases.py:10: note: Revealed type is "dict[str, dict[str, ... | int] | int]"
+
+[case testNarrowingMappingAndAbstractSet]
+# flags: --strict-equality --warn-unreachable
+from typing import Mapping, AbstractSet
+
+def f1(x: Mapping[str, int], y: dict[str, int]) -> None:
+    if isinstance(x, dict):
+        reveal_type(x)
+
+    if x == y:
+        reveal_type(x)
+        reveal_type(y)
+
+    if x == {}:
+        reveal_type(x)
+
+def f2(x: AbstractSet[int], y: set[int]) -> None:
+    if isinstance(x, set):
+        reveal_type(x)
+
+    if x == y:
+        reveal_type(x)
+        reveal_type(y)
+
+    if x == set():
+        reveal_type(x)
+
+def f3(x: frozenset[int], y: set[int]):
+    if x == y:
+        reveal_type(x)
+        reveal_type(y)
+
+def f4(x: dict[str, int], y: set[str]):
+    if x.keys() == y:
+        reveal_type(x)
+        reveal_type(y)
+
+    z = x.keys()
+    if z == y:
+        reveal_type(z)
+        reveal_type(y)
+[out]
+_testNarrowingMappingAndAbstractSet.py:6: note: Revealed type is "dict[Any, Any]"
+_testNarrowingMappingAndAbstractSet.py:9: note: Revealed type is "typing.Mapping[str, int]"
+_testNarrowingMappingAndAbstractSet.py:10: note: Revealed type is "dict[str, int]"
+_testNarrowingMappingAndAbstractSet.py:13: note: Revealed type is "typing.Mapping[str, int]"
+_testNarrowingMappingAndAbstractSet.py:17: note: Revealed type is "set[Any]"
+_testNarrowingMappingAndAbstractSet.py:20: note: Revealed type is "typing.AbstractSet[int]"
+_testNarrowingMappingAndAbstractSet.py:21: note: Revealed type is "set[int]"
+_testNarrowingMappingAndAbstractSet.py:24: note: Revealed type is "typing.AbstractSet[int]"
+_testNarrowingMappingAndAbstractSet.py:28: note: Revealed type is "frozenset[int]"
+_testNarrowingMappingAndAbstractSet.py:29: note: Revealed type is "set[int]"
+_testNarrowingMappingAndAbstractSet.py:33: note: Revealed type is "dict[str, int]"
+_testNarrowingMappingAndAbstractSet.py:34: note: Revealed type is "set[str]"
+_testNarrowingMappingAndAbstractSet.py:38: note: Revealed type is "_collections_abc.dict_keys[str, int]"
+_testNarrowingMappingAndAbstractSet.py:39: note: Revealed type is "set[str]"

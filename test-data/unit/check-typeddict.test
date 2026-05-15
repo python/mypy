@@ -235,6 +235,20 @@ reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictDecoratorUndefinedNames]
+from typing import TypedDict
+
+@abc  # E: Name "abc" is not defined
+@efg.hij  # E: Name "efg" is not defined
+@klm[nop]  # E: Name "klm" is not defined \
+           # E: Name "nop" is not defined
+@qrs.tuv[wxy]  # E: Name "qrs" is not defined \
+               # E: Name "wxy" is not defined
+class A(TypedDict):
+    x: int
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
 # https://github.com/python/mypy/issues/5653
 from typing import TypedDict

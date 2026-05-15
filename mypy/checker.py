@@ -5721,11 +5721,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
         defn = e.func
         if defn.is_awaitable_coroutine:
-            assert isinstance(defn.type, CallableType)
+            typ = self.function_type(defn)
+            assert isinstance(typ, CallableType)
             # Update the return type to AwaitableGenerator (unless we already did).
             # Note, this doesn't exist in typing.py, only in typing.pyi.
-            if not is_named_instance(defn.type.ret_type, "typing.AwaitableGenerator"):
-                t = defn.type.ret_type
+            if not is_named_instance(typ.ret_type, "typing.AwaitableGenerator"):
+                t = typ.ret_type
                 c = defn.is_coroutine
                 ty = self.get_generator_yield_type(t, c)
                 tc = self.get_generator_receive_type(t, c)
@@ -5734,8 +5735,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else:
                     tr = self.get_generator_return_type(t, c)
                 ret_type = self.named_generic_type("typing.AwaitableGenerator", [ty, tc, tr, t])
-                typ = defn.type.copy_modified(ret_type=ret_type)
-                defn.type = typ
+                defn.type = typ.copy_modified(ret_type=ret_type)
 
         # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
@@ -5960,7 +5960,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         else_map[unwrapped_subject] = else_map[named_subject]
                     pattern_map = self.propagate_up_typemap_info(pattern_map)
                     else_map = self.propagate_up_typemap_info(else_map)
-                    self.remove_capture_conflicts(pattern_type.captures, inferred_types)
+                    self.check_and_remove_capture_conflicts(pattern_type.captures, inferred_types)
                     self.push_type_map(pattern_map, from_assignment=False)
                     if pattern_map:
                         for expr, typ in pattern_map.items():
@@ -6066,15 +6066,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     already_exists = True
                     if isinstance(expr.node, Var) and expr.node.is_final:
                         self.msg.cant_assign_to_final(expr.name, False, expr)
-                    if self.check_subtype(
-                        typ,
-                        previous_type,
-                        expr,
-                        msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
-                        subtype_label="pattern captures type",
-                        supertype_label="variable has type",
-                    ):
-                        inferred_types[var] = previous_type
+                    # We'll check compatibility in check_and_remove_capture_conflicts
+                    inferred_types[var] = previous_type
 
             if not already_exists:
                 new_type = UnionType.make_union(types)
@@ -6086,15 +6079,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
         return inferred_types
 
-    def remove_capture_conflicts(
+    def check_and_remove_capture_conflicts(
         self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
     ) -> None:
-        if not is_unreachable_map(type_map):
-            for expr, typ in list(type_map.items()):
-                if isinstance(expr, NameExpr):
-                    node = expr.node
-                    if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
-                        del type_map[expr]
+        if is_unreachable_map(type_map):
+            return
+        for expr, typ in list(type_map.items()):
+            if not isinstance(expr, NameExpr):
+                continue
+            node = expr.node
+            if node not in inferred_types or not self.check_subtype(
+                typ,
+                inferred_types[node],
+                expr,
+                msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
+                subtype_label="pattern captures type",
+                supertype_label="variable has type",
+            ):
+                del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
         if o.alias_node:
@@ -6769,17 +6771,69 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else_map = {}
 
                 if left_index in narrowable_operand_index_to_hash:
-                    collection_item_type = get_proper_type(builtin_item_type(iterable_type))
-                    if collection_item_type is not None:
-                        if_map, else_map = self.narrow_type_by_identity_equality(
-                            "==",
-                            operands=[operands[left_index], operands[right_index]],
-                            operand_types=[item_type, collection_item_type],
-                            expr_indices=[0, 1],
-                            narrowable_indices={0},
-                        )
+                    p_iterable_type = get_proper_type(iterable_type)
+                    container_item_types = None
+
+                    # Can we statically determine container contents?
+                    if (
+                        isinstance(p_iterable_type, TupleType)
+                        and find_unpack_in_list(p_iterable_type.items) is None
+                    ):
+                        container_item_types = p_iterable_type.items
+                    else:
+                        container_expr = collapse_walrus(operands[right_index])
+                        if isinstance(container_expr, (ListExpr, SetExpr)):
+                            if all(not isinstance(i, StarExpr) for i in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(e) for e in container_expr.items
+                                ]
+                        elif isinstance(container_expr, DictExpr):
+                            if all(k is not None for k, v in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(cast(Expression, k))
+                                    for k, v in container_expr.items
+                                ]
+
+                    if container_item_types is not None:
+                        # If we know the exact contents, we can potentially do negative narrowing,
+                        # e.g. `x not in (None,)`
+                        all_if_maps = []
+                        all_else_maps = []
+                        for known_item in container_item_types:
+                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
+                            p_known_item = get_proper_type(known_item)
+                            if is_literal_type_like(p_known_item) or (
+                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
+                            ):
+                                known_item = coerce_to_literal(known_item)
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, known_item],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
+                            )
+                            all_if_maps.append(if_map)
+                            if is_singleton_equality_type(get_proper_type(known_item)):
+                                all_else_maps.append(else_map)
+                        if_map = reduce_or_conditional_type_maps(all_if_maps)
+                        else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
+                    else:
+                        collection_item_type = get_proper_type(builtin_item_type(p_iterable_type))
+                        if collection_item_type is not None:
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, collection_item_type],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
+                            )
+                            # We can't do negative narrowing, since e.g. the container could
+                            # just be empty.
+                            else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
+                    # E.g. narrows the right operand in `if "key" in typed_dict`
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
                     )
@@ -6910,6 +6964,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if should_coerce_literals:
                     target_type = coerce_to_literal(target_type)
 
+                # Morally what we want to do is narrow for each branch based on:
+                # `if_type, else_type = conditional_types(expr_type, target)`
+                # What we actually do is first munge expr_type based on target_type to handle some
+                # special cased known `__eq__` implementations.
                 narrowable_expr_type, ambiguous_expr_type = partition_equality_ambiguous_types(
                     expr_type, target_type, is_identity=is_identity_comparison
                 )
@@ -6964,8 +7022,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 continue
             union_expr_type = get_proper_type(operand_types[i])
             if not isinstance(union_expr_type, UnionType):
-                # Here we won't be able to do any positive narrowing, because we can't conclude
-                # anything from a custom __eq__ returning True.
+                # Here we don't do any positive narrowing, because we can't conclude much
+                # from a custom __eq__ returning True.
                 # But we might be able to do some negative narrowing, since we can assume
                 # a custom __eq__ is reflexive. This should only apply to custom __eq__ enums,
                 # see testNarrowingEqualityCustomEqualityEnum
@@ -7038,7 +7096,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i], if_type, else_type
                     )
-                    or_if_maps.append(if_map)
+                    if not isinstance(get_proper_type(expr_type), AnyType):
+                        # We avoid positive narrowing for Any here, for consistency with the
+                        # non-union branch above and to preserve the gradual guarantee
+                        or_if_maps.append(if_map)
                     if is_target_for_value_narrowing(get_proper_type(target_type)):
                         or_else_maps.append(else_map)
 
@@ -8425,7 +8486,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     n.node = sym.node
                     n.kind = GDEF
                     n.fullname = sym.node.fullname
-                    self.binder.assign_type(n, sym.node.type, sym.node.type)
+                    typ = get_declaration(n)
+                    if typ is not None:
+                        self.binder.assign_type(n, typ, typ)
 
 
 class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
@@ -8924,24 +8987,9 @@ def reduce_and_conditional_type_maps(ms: list[TypeMap], *, use_meet: bool) -> Ty
     return result
 
 
-BUILTINS_CUSTOM_EQ_CHECKS: Final = {
-    "builtins.frozenset",
-    "_collections_abc.dict_keys",
-    "_collections_abc.dict_items",
-}
-
-
 def has_custom_eq_checks(t: Type) -> bool:
-    return (
-        custom_special_method(t, "__eq__", check_all=False)
-        or custom_special_method(t, "__ne__", check_all=False)
-        # custom_special_method has special casing for builtins.* and typing.* that make the
-        # above always return False. Some builtin collections still have equality behavior that
-        # crosses nominal type boundaries and isn't captured by VALUE_EQUALITY_TYPE_DOMAINS.
-        or (
-            isinstance(pt := get_proper_type(t), Instance)
-            and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS
-        )
+    return custom_special_method(t, "__eq__", check_all=False) or custom_special_method(
+        t, "__ne__", check_all=False
     )
 
 
@@ -9731,6 +9779,8 @@ CLOSED_VALUE_EQUALITY_DOMAINS: Final = {
     "builtins.bytes": "builtins.bytes",
     "builtins.bytearray": "builtins.bytes",
     "builtins.memoryview": "builtins.bytes",
+    "typing.Mapping": "typing.Mapping",
+    "typing.AbstractSet": "typing.AbstractSet",
 }
 
 VALUE_EQUALITY_DOMAINS: Final = {**OPEN_VALUE_EQUALITY_DOMAINS, **CLOSED_VALUE_EQUALITY_DOMAINS}

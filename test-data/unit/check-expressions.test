@@ -1226,10 +1226,10 @@ o[:]   # E: Value of type "object" is not indexable
 from typing import Any
 a: Any
 o: object
-a[o:1] # E: Slice index must be an integer, SupportsIndex or None
-a[1:o] # E: Slice index must be an integer, SupportsIndex or None
-a[o:]  # E: Slice index must be an integer, SupportsIndex or None
-a[:o]  # E: Slice index must be an integer, SupportsIndex or None
+a[o:1]
+a[1:o]
+a[o:]
+a[:o]
 [builtins fixtures/slice.pyi]
 
 [case testSliceSupportsIndex]

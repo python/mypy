@@ -1,4 +1,4 @@
-[case testLibrtVecsMiscInterpreted_librt_experimental]
+[case testLibrtVecsMiscInterpreted_librt]
 # Test cases for vec[<value primitive type>]. using generic operations.
 # This simulates use from interpreted code.
 #
@@ -98,6 +98,13 @@ def test_basic_int_operations() -> None:
             v["0"]
         with assertRaises(TypeError):
             append(v, "0")
+
+def test_construct_bool_from_list() -> None:
+    v = vec[bool]([True, False, True])
+    assert len(v) == 3
+    assert v[0] is True
+    assert v[1] is False
+    assert v[2] is True
 
 def test_equality() -> None:
     for t1 in ITEM_TYPES:
@@ -531,13 +538,104 @@ def test_extend_bool() -> None:
     v = extend(v, [False, True])
     assert v == vec[bool]([True, False, True])
 
-[case testLibrtVecsFeaturesNotAvailableInNonExperimentalBuild_librt]
-# This also ensures librt.vecs can be built without experimental features
-import librt.vecs
+[case testLibrtVecsBufferProtocol_librt]
+import struct
+from typing import Any
 
-def test_features_not_available() -> None:
-    vecs: object = getattr(librt, "vecs")
-    assert not hasattr(vecs, "vec")
-    assert not hasattr(vecs, "append")
-    assert not hasattr(vecs, "remove")
-    assert not hasattr(vecs, "pop")
+import librt.vecs
+import mypy_extensions
+
+from testutil import assertRaises
+
+vec: Any = librt.vecs.vec
+append: Any = librt.vecs.append
+extend: Any = librt.vecs.extend
+i64: Any = mypy_extensions.i64
+i32: Any = mypy_extensions.i32
+i16: Any = mypy_extensions.i16
+u8: Any = mypy_extensions.u8
+memoryview_: Any = eval('memoryview')
+
+def test_buffer_u8() -> None:
+    v = vec[u8]([1, 2, 3])
+    mv = memoryview_(v)
+    assert mv.format == "B"
+    assert mv.itemsize == 1
+    assert mv.readonly
+    assert mv.ndim == 1
+    assert mv.shape == (3,)
+    assert list(mv) == [1, 2, 3]
+
+def test_buffer_i64() -> None:
+    v = vec[i64]([10, 20, -30])
+    mv = memoryview_(v)
+    assert mv.format == "q"
+    assert mv.itemsize == 8
+    assert mv.readonly
+    assert mv.ndim == 1
+    assert mv.shape == (3,)
+    assert list(mv) == [10, 20, -30]
+
+def test_buffer_i32() -> None:
+    v = vec[i32]([5, -12])
+    mv = memoryview_(v)
+    assert mv.format == "i"
+    assert mv.itemsize == 4
+    assert mv.readonly
+    assert list(mv) == [5, -12]
+
+def test_buffer_i16() -> None:
+    v = vec[i16]([100, -200])
+    mv = memoryview_(v)
+    assert mv.format == "h"
+    assert mv.itemsize == 2
+    assert mv.readonly
+    assert list(mv) == [100, -200]
+
+def test_buffer_float() -> None:
+    v = vec[float]([1.5, -2.5])
+    mv = memoryview_(v)
+    assert mv.format == "d"
+    assert mv.itemsize == 8
+    assert mv.readonly
+    assert list(mv) == [1.5, -2.5]
+
+def test_buffer_bool() -> None:
+    v = vec[bool]([True, False, True])
+    mv = memoryview_(v)
+    assert mv.format == "b"
+    assert mv.itemsize == 1
+    assert mv.readonly
+    assert list(mv) == [1, 0, 1]
+
+def test_buffer_empty() -> None:
+    v = vec[i64]([])
+    mv = memoryview_(v)
+    assert mv.format == "q"
+    assert len(mv) == 0
+    assert mv.shape == (0,)
+    assert list(mv) == []
+
+def test_buffer_readonly() -> None:
+    v = vec[u8]([1, 2, 3])
+    mv = memoryview_(v)
+    with assertRaises(TypeError):
+        mv[0] = 99
+
+def test_buffer_bytes_conversion() -> None:
+    v = vec[u8]([72, 101, 108, 108, 111])
+    assert bytes(v) == b"Hello"
+
+def test_buffer_tobytes() -> None:
+    v = vec[i32]([1, 2])
+    mv = memoryview_(v)
+    b = mv.tobytes()
+    values = struct.unpack("ii", b)
+    assert values == (1, 2)
+
+def test_buffer_extend_from_shared_buffer() -> None:
+    old = vec[u8]([1, 2], capacity=5)
+    new = append(old, 3)
+    v = extend(old, memoryview_(new))
+    assert v == vec[u8]([1, 2, 1, 2, 3])
+    assert new == vec[u8]([1, 2, 3])

@@ -208,6 +208,7 @@ class bytearray:
     def join(self, x: Iterable[object]) -> bytes: ...
     def startswith(self, t: bytes) -> bool: ...
     def endswith(self, t: bytes) -> bool: ...
+    def __iter__(self) -> Iterator[int]: ...
 
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
@@ -371,6 +372,9 @@ class NotImplementedError(RuntimeError): pass
 class ReferenceError(Exception): pass
 
 class StopIteration(Exception):
+    value: Any
+
+class StopAsyncIteration(Exception):
     value: Any
 
 class ArithmeticError(Exception): pass

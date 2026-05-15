@@ -1818,6 +1818,44 @@ type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within
 type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
 type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
 
+[case testWalrusRebindsNamesLoadedInComprehensionTargets]
+# Newly legal in https://github.com/python/cpython/pull/100581
+from typing import Any
+
+def f(c: Any, d: Any, e: Any, f: Any, g: Any, h: Any, j: Any) -> None:
+    ((c := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(c := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(c := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((d := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(d := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(d := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((e := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(e := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(e := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((f := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(f := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(f := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((g := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(g := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(g := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((h := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(h := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(h := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((i := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(i := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(i := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((j := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(j := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(j := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+[builtins fixtures/primitives.pyi]
+
 [case testPEP695TypeAliasAndAnnotated]
 from typing_extensions import Annotated, Annotated as _Annotated
 import typing_extensions as t

@@ -500,6 +500,7 @@ class Errors:
         *,
         read_source: Callable[[str], list[str] | None] | None = None,
         hide_error_codes: bool | None = None,
+        error_formatter: ErrorFormatter | None = None,
     ) -> None:
         self.options = options
         self.hide_error_codes = (
@@ -507,6 +508,7 @@ class Errors:
         )
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
+        self.error_formatter = error_formatter
         self.initialize()
 
     def initialize(self) -> None:
@@ -1129,7 +1131,9 @@ class Errors:
         for path in self.error_info_map.keys():
             if path not in self.flushed_files:
                 error_tuples = self.file_messages(path)
-                msgs.extend(self.format_messages(path, error_tuples))
+                msgs.extend(
+                    self.format_messages(path, error_tuples, formatter=self.error_formatter)
+                )
         return msgs
 
     def targets(self) -> set[str]:
