@@ -907,7 +907,7 @@ of the above sections.
     contradictory.
 
     Enabling all codes is not the same as enabling all checks that mypy could
-    perform; for example, :option:`--strict-bytes` is not enabled by this flag.
+    perform.
     However, :option:`--strict` and :option:`--enable-all-error-codes` used in
     tandem should be sufficient to get you virtually every useful check mypy
     can perform.
