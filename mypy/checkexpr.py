@@ -4983,17 +4983,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
-        item = get_proper_type(
-            set_any_tvars(
-                alias,
-                [],
-                ctx.line,
-                ctx.column,
-                self.chk.options,
-                disallow_any=disallow_any,
-                fail=self.msg.fail,
-            )[0]
+        item, _ = set_any_tvars(
+            alias,
+            [],
+            ctx.line,
+            ctx.column,
+            self.chk.options,
+            disallow_any=disallow_any,
+            fail=self.msg.fail,
         )
+        item = get_proper_type(item)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor

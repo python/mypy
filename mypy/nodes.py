@@ -3168,6 +3168,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     # TypeVar(..., contravariant=True) defines a contravariant type
     # variable.
     variance: int
+    # Record instances and type aliases that appear bare/implicit in the default value
+    # of this type variable. This is needed to detect recursive type variable defaults.
+    default_depends: set[TypeInfo | TypeAlias] | None
 
     def __init__(
         self,
@@ -3186,7 +3189,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         self.default = default
         self.variance = variance
         self.is_new_style = is_new_style
-        self.default_depends: set[TypeInfo | TypeAlias] | None = None
+        self.default_depends = None
 
     @property
     def name(self) -> str:
@@ -3826,6 +3829,16 @@ class TypeInfo(SymbolNode):
     # appears in runtime context.
     type_object_type: mypy.types.FunctionLike | None
 
+    # Type variables whose defaults depend on defaults of type variables in other classes
+    # and type aliases. We keep track of this to safely handle situations like this one:
+    #     class C[T = D]: ...
+    #     class D[S = C]: ...
+    #     x: C
+    # Since we apply fix_instance() eagerly, inferring a precise type is quite tricky.
+    # Therefore, we infer the type of `x` as `C[D[Any]]` to avoid infinite recursion.
+    # Keys are type variable full names.
+    default_depends: dict[str, set[TypeAlias | TypeInfo]]
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3887,7 +3900,7 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         self.type_object_type = None
-        self.default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
+        self.default_depends = {}
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -4586,6 +4599,7 @@ class TypeAlias(SymbolNode):
         self.eager = eager
         self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
+        # This plays the same role as TypeInfo.default_depends attribute.
         self.default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):

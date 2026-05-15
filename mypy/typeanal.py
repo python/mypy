@@ -269,6 +269,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
+        # Set when we are analyzing a default of a type variable.
         self.analyzing_tvar_def = analyzing_tvar_def
 
     def lookup_qualified(
@@ -914,6 +915,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     analyzing_tvar_def=self.analyzing_tvar_def,
                 )
                 if self.analyzing_tvar_def and used_default:
+                    # For convenience, we make default depend on the original TypeInfo,
+                    # *not* on the special alias.
                     self.api.record_fixed_type(info)
                 return res
             return tup.copy_modified(
@@ -936,6 +939,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     analyzing_tvar_def=self.analyzing_tvar_def,
                 )
                 if self.analyzing_tvar_def and used_default:
+                    # For convenience, we make default depend on the original TypeInfo,
+                    # *not* on the special alias.
                     self.api.record_fixed_type(info)
                 return res
             # Create a named TypedDictType
@@ -2114,8 +2119,10 @@ def fix_instance(
             if tv.has_default():
                 arg = tv.default
                 if analyzing_tvar_def:
+                    # Record the use of default only when analyzing another default.
                     used_default = True
                     if is_typevar_default_recursive(tv.fullname, t.type):
+                        # If this results in infinite recursion, use Any instead.
                         use_any = True
             else:
                 use_any = True
@@ -2362,6 +2369,7 @@ def set_any_tvars(
         if arg is None:
             if tv.has_default():
                 arg = tv.default
+                # Same as for instances, record and avoid infinite recursion.
                 if analyzing_tvar_def:
                     used_default = True
                     if is_typevar_default_recursive(tv.fullname, node):
@@ -2401,16 +2409,19 @@ def set_any_tvars(
     return t, used_default
 
 
-def is_typevar_default_recursive(tv: str, start: TypeInfo | TypeAlias) -> bool:
-    if tv not in start.default_depends:
+def is_typevar_default_recursive(tv_fname: str, start: TypeInfo | TypeAlias) -> bool:
+    """Check if the type variable can lead to infinite recursion via defaults."""
+    if tv_fname not in start.default_depends:
         return False
-    todo = start.default_depends[tv].copy()
+    todo = start.default_depends[tv_fname].copy()
     seen: set[TypeAlias | TypeInfo] = set()
     while todo:
         node = todo.pop()
         if node is start:
             return True
         if node in seen:
+            # We don't return True here, since we are interested only in
+            # recursion via the original type variable.
             continue
         seen.add(node)
         for dep_nodes in node.default_depends.values():

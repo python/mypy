@@ -538,6 +538,10 @@ class SemanticAnalyzer(
         #   [b.py]
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
+
+        # Instances and type aliases that were fixed using default valuers of type
+        # variables. This can be used on-demand by type analyzer. Use record_fixed_type()
+        # to create the set lazily.
         self.types_fixed: set[TypeInfo | TypeAlias] | None = None
 
     # mypyc doesn't properly handle implementing an abstractproperty
@@ -1990,8 +1994,10 @@ class SemanticAnalyzer(
                 default_depends[tv.fullname] = tv.default_depends
 
         if any(has_placeholder(tvd) for tvd in tvar_defs):
-            # Some type variable bounds or values are not ready, we need
-            # to re-analyze this class.
+            # Some type variable bounds or values are not ready, we need to
+            # re-analyze this class. Note we force progress to handle cases like
+            # class C[T = C], this matches logic in process_typevar_parameters()
+            # for "old style" type variables.
             self.defer(force_progress=tvar_defs != defn.type_vars)
 
         self.analyze_class_keywords(defn)
@@ -2283,7 +2289,8 @@ class SemanticAnalyzer(
 
         Note that this is performed *before* semantic analysis.
 
-        Returns (remaining base expressions, inferred type variables, is protocol).
+        Returns a tuple:
+            (remaining base expressions, type variables, is protocol, type variable expressions).
         """
         removed: list[int] = []
         declared_tvars: TypeVarLikeList = []
@@ -3993,7 +4000,8 @@ class SemanticAnalyzer(
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of type variables for generic aliases,
-        a set of names the alias depends on, and True if the original type has empty tuple index.
+        a set of names the alias depends on, whether the original type has empty tuple index,
+        and any type variables whose defaults depend on other classes or type aliases.
         An example for the dependencies:
             A = int
             B = str
@@ -4179,9 +4187,6 @@ class SemanticAnalyzer(
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
 
-            if any(has_placeholder(tv) for tv in alias_tvars):
-                self.defer()
-
         self.add_type_alias_deps(depends_on)
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
@@ -4236,7 +4241,7 @@ class SemanticAnalyzer(
             # An alias gets updated.
             updated = False
             if isinstance(existing.node, TypeAlias):
-                if existing.node.target != res or existing.node.alias_tvars != alias_tvars:
+                if existing.node.target != res:
                     # Copy expansion to the existing alias, this matches how we update base classes
                     # for a TypeInfo _in place_ if there are nested placeholders.
                     existing.node.target = res
@@ -4250,6 +4255,8 @@ class SemanticAnalyzer(
                 # Otherwise just replace existing placeholder with type alias *in place*.
                 existing._node = alias_node
                 updated = True
+            # TODO: switch type aliases to if has_placeholder(): process_placeholder() pattern.
+            # Type aliases are last notable exception from this logic.
             if updated:
                 if self.final_iteration:
                     self.cannot_resolve_name(lvalue.name, "name", s)
@@ -4773,6 +4780,7 @@ class SemanticAnalyzer(
         n_values = call.arg_kinds[1:].count(ARG_POS)
         values = self.analyze_value_types(call.args[1 : 1 + n_values])
 
+        # Reset fixed types both before and after each collection just in case.
         self.types_fixed = None
         res = self.process_typevar_parameters(
             call.args[1 + n_values :],
@@ -5027,18 +5035,16 @@ class SemanticAnalyzer(
                 #     class Custom(Generic[T]):
                 #         ...
                 analyzed = PlaceholderType(None, [], context.line)
-            if report_invalid_typevar_arg:
-                if (
-                    isinstance(analyzed, ProperType)
-                    and isinstance(analyzed, AnyType)
-                    and analyzed.is_from_error
-                ):
-                    self.fail(
-                        message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(
-                            typevarlike_name, param_name
-                        ),
-                        param_value,
-                    )
+            if (
+                report_invalid_typevar_arg
+                and isinstance(analyzed, ProperType)
+                and isinstance(analyzed, AnyType)
+                and analyzed.is_from_error
+            ):
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
                 # Note: we do not return 'None' here -- we want to continue
                 # using the AnyType.
             return analyzed
@@ -5757,10 +5763,9 @@ class SemanticAnalyzer(
                 self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
                 return
 
-            # Now go through all new variables and temporary replace all tvars that still
-            # refer to some placeholders. We defer the whole alias and will revisit it again,
-            # as well as all its dependents.
             if any(has_placeholder(tv) for tv in alias_tvars):
+                # Defer the alias if some type variables are not ready, same as for classes.
+                # Note: progress is forced below (if needed).
                 self.defer()
 
             self.add_type_alias_deps(depends_on)
