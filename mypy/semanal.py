@@ -1910,7 +1910,7 @@ class SemanticAnalyzer(
                 default = self.check_typevartuple_default(default, type_param.default)
         else:
             default = AnyType(TypeOfAny.from_omitted_generics)
-        default_depends = self.types_fixed
+        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
         self.types_fixed = None
         if type_param.kind == TYPE_VAR_KIND:
             values: list[Type] = []
@@ -4789,7 +4789,7 @@ class SemanticAnalyzer(
             n_values,
             s,
         )
-        default_depends = self.types_fixed
+        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
         self.types_fixed = None
         if res is None:
             return False
@@ -5117,7 +5117,7 @@ class SemanticAnalyzer(
                     "The variance and bound arguments to ParamSpec do not have defined semantics yet",
                     s,
                 )
-        default_depends = self.types_fixed
+        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
         self.types_fixed = None
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
@@ -5178,7 +5178,7 @@ class SemanticAnalyzer(
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
-        default_depends = self.types_fixed
+        default_depends: set[TypeInfo | TypeAlias] | None = self.types_fixed
         self.types_fixed = None
 
         name = self.extract_typevarlike_name(s, call)
