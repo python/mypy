@@ -4919,6 +4919,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 tapp.expr.node,
                 tapp.types,
                 self.chk.fail,
+                self.chk.note,
                 tapp.expr.node.no_args,
                 tapp,
                 self.chk.options,

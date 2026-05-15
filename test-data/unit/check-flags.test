@@ -2717,3 +2717,34 @@ if (
     or z is None
 ):
     pass
+
+[case testRecursiveTypeVarDefaultMutualDisallow]
+# flags: --disallow-any-generic
+from typing import TypeVar, Generic
+
+class C(Generic["T"]):
+    pass
+
+class D(Generic["S"]):
+    pass
+
+T = TypeVar("T", default=D)  # E: Missing type arguments for generic type "D" \
+                             # N: Cyclic type variable defaults are not supported
+S = TypeVar("S", default=C)  # E: Missing type arguments for generic type "C" \
+                             # N: Cyclic type variable defaults are not supported
+
+c: C
+d: D
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.D[Any]]"
+reveal_type(d)  # N: Revealed type is "__main__.D[__main__.C[Any]]"
+
+[case testRecursiveTypeVarDefaultOnlyAliasDisallow]
+# flags: --disallow-any-generic
+from typing import TypeVar
+
+T = TypeVar("T", default="A")  # E: Missing type arguments for generic type "A" \
+                               # N: Cyclic type variable defaults are not supported
+A = list[T]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
+[builtins fixtures/tuple.pyi]

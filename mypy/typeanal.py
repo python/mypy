@@ -480,6 +480,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     node,
                     an_args,
                     self.fail,
+                    self.note,
                     node.no_args,
                     t,
                     self.options,
@@ -908,6 +909,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # TODO: should we allow NamedTuples generic in ParamSpec?
                     self.anal_array(args, allow_unpack=True),
                     self.fail,
+                    self.note,
                     False,
                     ctx,
                     self.options,
@@ -932,6 +934,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # TODO: should we allow TypedDicts generic in ParamSpec?
                     self.anal_array(args, allow_unpack=True),
                     self.fail,
+                    self.note,
                     False,
                     ctx,
                     self.options,
@@ -2051,6 +2054,7 @@ def get_omitted_any(
     options: Options,
     fullname: str | None = None,
     unexpanded_type: Type | None = None,
+    used_default: bool = False,
 ) -> AnyType:
     if disallow_any:
         typ = unexpanded_type or orig_type
@@ -2061,6 +2065,8 @@ def get_omitted_any(
             typ,
             code=codes.TYPE_ARG,
         )
+        if used_default:
+            note(message_registry.NO_CYCLIC_DEFAULT, typ, code=codes.TYPE_ARG)
 
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
@@ -2130,7 +2136,14 @@ def fix_instance(
                 if any_type is None:
                     fullname = None if use_generic_error else t.type.fullname
                     any_type = get_omitted_any(
-                        disallow_any, fail, note, t, options, fullname, unexpanded_type
+                        disallow_any,
+                        fail,
+                        note,
+                        t,
+                        options,
+                        fullname,
+                        unexpanded_type,
+                        used_default,
                     )
                 arg = any_type
             else:
@@ -2151,6 +2164,7 @@ def instantiate_type_alias(
     node: TypeAlias,
     args: list[Type],
     fail: MsgCallback,
+    note: MsgCallback,
     no_args: bool,
     ctx: Context,
     options: Options,
@@ -2180,15 +2194,7 @@ def instantiate_type_alias(
     if any(unknown_unpack(a) for a in args):
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
-        return set_any_tvars(
-            node,
-            [],
-            ctx.line,
-            ctx.column,
-            options,
-            special_form=True,
-            analyzing_tvar_def=analyzing_tvar_def,
-        )
+        return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
 
     if (
         no_args
@@ -2215,6 +2221,7 @@ def instantiate_type_alias(
             options,
             disallow_any=disallow_any,
             fail=fail,
+            note=note,
             unexpanded_type=unexpanded_type,
             analyzing_tvar_def=analyzing_tvar_def,
         )
@@ -2241,15 +2248,7 @@ def instantiate_type_alias(
         if any(isinstance(a, UnpackType) for a in args):
             # A variadic unpack in fixed size alias (fixed unpacks must be flattened by the caller)
             fail(message_registry.INVALID_UNPACK_POSITION, ctx, code=codes.VALID_TYPE)
-            return set_any_tvars(
-                node,
-                [],
-                ctx.line,
-                ctx.column,
-                options,
-                from_error=True,
-                analyzing_tvar_def=analyzing_tvar_def,
-            )
+            return set_any_tvars(node, [], ctx.line, ctx.column, options, from_error=True)
         min_tv_count = sum(not tv.has_default() for tv in node.alias_tvars)
         fill_typevars = act_len != max_tv_count
         correct = min_tv_count <= act_len <= max_tv_count
@@ -2296,7 +2295,10 @@ def instantiate_type_alias(
             ctx.line,
             ctx.column,
             options,
-            from_error=True,
+            disallow_any=disallow_any,
+            fail=fail,
+            note=note,
+            from_error=not correct,
             analyzing_tvar_def=analyzing_tvar_def,
         )
     elif node.tvar_tuple_index is not None:
@@ -2312,15 +2314,7 @@ def instantiate_type_alias(
                 act_suffix = len(args) - unpack - 1
                 if act_prefix < exp_prefix or act_suffix < exp_suffix:
                     fail("TypeVarTuple cannot be split", ctx, code=codes.TYPE_ARG)
-                    return set_any_tvars(
-                        node,
-                        [],
-                        ctx.line,
-                        ctx.column,
-                        options,
-                        from_error=True,
-                        analyzing_tvar_def=analyzing_tvar_def,
-                    )
+                    return set_any_tvars(node, [], ctx.line, ctx.column, options, from_error=True)
     # TODO: we need to check args validity w.r.t alias.alias_tvars.
     # Otherwise invalid instantiations will be allowed in runtime context.
     # Note: in type context, these will be still caught by semanal_typeargs.
@@ -2348,6 +2342,7 @@ def set_any_tvars(
     disallow_any: bool = False,
     special_form: bool = False,
     fail: MsgCallback | None = None,
+    note: MsgCallback | None = None,
     unexpanded_type: Type | None = None,
     analyzing_tvar_def: bool = False,
 ) -> tuple[TypeAliasType, bool]:
@@ -2374,6 +2369,7 @@ def set_any_tvars(
                     used_default = True
                     if is_typevar_default_recursive(tv.fullname, node):
                         arg = any_type
+                        used_any_type = True
             else:
                 arg = any_type
                 used_any_type = True
@@ -2390,7 +2386,7 @@ def set_any_tvars(
         assert isinstance(fixed, TypeAliasType)
         t.args = fixed.args
 
-    if used_any_type and disallow_any and node.alias_tvars:
+    if used_any_type and disallow_any and node.alias_tvars and not from_error:
         assert fail is not None
         if unexpanded_type:
             type_str = (
@@ -2406,6 +2402,13 @@ def set_any_tvars(
             Context(newline, newcolumn),
             code=codes.TYPE_ARG,
         )
+        if used_default:
+            assert note is not None
+            note(
+                message_registry.NO_CYCLIC_DEFAULT,
+                Context(newline, newcolumn),
+                code=codes.TYPE_ARG,
+            )
     return t, used_default
 
 
