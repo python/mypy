@@ -125,10 +125,10 @@ described above to install `tox` via `pip` (e.g., ``python -m pip install tox``)
 
 ## LLM-assisted contributions
 
-In general, mypy takes neutral stance on using various LLM code assistants to
-make contributions. LLMs are just another tools, and contributors bear full
-responsibility for the code they are submitting. Disclosing use of LLMs in pull
-request description is recommended, but not required.
+In general, mypy takes a neutral stance on using various LLM code assistants to
+make contributions. LLMs are just another tool, and contributors bear full
+responsibility for the code they are submitting. Disclosing the use of LLMs in
+pull request description is recommended, but not required.
 
 However, we discourage use of LLMs by *new* contributors. We are interested in
 growing long-term contributors who have good understanding of mypy code.
