@@ -4,20 +4,8 @@ import os
 import sys
 import tempfile
 import unittest
-from collections.abc import Iterator
-from contextlib import contextmanager
 
 from mypy.metastore import SqliteMetadataStore
-
-
-@contextmanager
-def _read_only_dir(path: str) -> Iterator[str]:
-    original_mode = os.stat(path).st_mode
-    os.chmod(path, 0o555)
-    try:
-        yield path
-    finally:
-        os.chmod(path, original_mode)
 
 
 @unittest.skipIf(
@@ -26,7 +14,9 @@ def _read_only_dir(path: str) -> Iterator[str]:
 )
 class TestSqliteMetadataStore(unittest.TestCase):
     def test_init_degrades_to_noop_when_cache_dir_not_creatable(self) -> None:
-        with tempfile.TemporaryDirectory() as parent, _read_only_dir(parent):
+        with tempfile.TemporaryDirectory() as parent:
+            os.chmod(parent, 0o555)
+
             cache_dir = os.path.join(parent, "mypy_cache")
 
             # Must not raise.
