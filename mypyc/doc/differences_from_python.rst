@@ -321,10 +321,8 @@ Dunder methods
 Native classes **cannot** use these dunders. If defined, they will not
 work as expected.
 
-* ``__del__``
 * ``__index__``
-* ``__getattr__``, ``__getattribute__``
-* ``__setattr__``
+* ``__getattribute__``
 * ``__delattr__``
 
 Generator expressions
@@ -355,7 +353,6 @@ non-exhaustive list of what won't work:
 - Compiled methods aren't considered methods by ``inspect.ismethod``
 - ``inspect.signature`` chokes on compiled functions with default arguments that
   are not simple literals
-- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************
