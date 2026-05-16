@@ -189,7 +189,12 @@ class SqliteMetadataStore(MetadataStore):
         if cache_dir_prefix.startswith(os.devnull):
             return
 
-        os.makedirs(cache_dir_prefix, exist_ok=True)
+        try:
+            os.makedirs(cache_dir_prefix, exist_ok=True)
+        except OSError:
+            # Prevent failing on read-only filesystem and such.
+            return
+
         if num_shards <= 1:
             self.dbs.append(
                 connect_db(os_path_join(cache_dir_prefix, "cache.db"), set_journal_mode)
