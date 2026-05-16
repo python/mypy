@@ -54,10 +54,11 @@ requires only minor changes to compile using mypyc.
 normal Python code. You can use interpreted Python during development,
 with familiar and fast workflows.
 
-**Runtime type safety.** Mypyc protects you from segfaults and memory
-corruption. Any unexpected runtime type safety violation is a bug in
-mypyc. Runtime values are checked against type annotations. (Without
-mypyc, type annotations are ignored at runtime.)
+**Runtime type safety.** Mypyc partially protects you from segfaults and
+memory corruption (see :ref:`free-threading` for limitations). Any
+unexpected runtime type safety violation is a bug in mypyc. Runtime
+values are checked against type annotations. (Without mypyc, type
+annotations are ignored at runtime.)
 
 **Find errors statically.** Mypyc uses mypy for static type checking
 that helps catch many bugs.

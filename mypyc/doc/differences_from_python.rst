@@ -260,6 +260,8 @@ When run as interpreted, the first example will execute slower due to
 the extra namespace lookups. In interpreted code final attributes can
 also be modified.
 
+.. _free-threading:
+
 Free threading
 --------------
 
