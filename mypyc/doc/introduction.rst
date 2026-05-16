@@ -23,8 +23,8 @@ also as normal, interpreted Python modules.
 Existing code with type annotations is often **1.5x to 5x** faster
 when compiled. Code tuned for mypyc can be **5x to 10x** faster.
 
-Mypyc currently aims to speed up non-numeric code, such as server
-applications. Mypyc is also used to compile itself (and mypy).
+Mypyc aims to be effective in many common use cases, including
+server applications. Mypyc is also used to compile itself (and mypy).
 
 Why mypyc?
 ----------
@@ -110,8 +110,7 @@ differently, however:
 * Mypyc performs strict enforcement of type annotations at runtime,
   resulting in better runtime type safety and easier debugging.
 
-Unlike Cython, mypyc doesn't directly support interfacing with C libraries
-or speeding up numeric code.
+Unlike Cython, mypyc doesn't directly support interfacing with C libraries.
 
 How does it work
 ----------------
