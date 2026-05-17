@@ -4103,6 +4103,12 @@ class TypeInfo(SymbolNode):
                 return True
         return False
 
+    def get_base(self, fullname: str) -> TypeInfo:
+        for cls in self.mro:
+            if cls.fullname == fullname:
+                return cls
+        assert False, f"Missing base {fullname} for {self.fullname}"
+
     def direct_base_classes(self) -> list[TypeInfo]:
         """Return a direct base classes.
 
