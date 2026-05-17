@@ -2112,7 +2112,7 @@ class TypeConverter:
             result = UnboundType(
                 value.name,
                 params,
-                line=self.line,
+                line=n.lineno,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
