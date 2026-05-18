@@ -1024,7 +1024,7 @@ class BuildManager:
                 self.post_parse_all(states)
             return
 
-        parallel_states = [state for state in states if state.tree is None]
+        parallel_states = []
         for state in states:
             if state.tree is not None:
                 # The file was already parsed.
