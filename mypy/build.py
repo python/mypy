@@ -1024,23 +1024,19 @@ class BuildManager:
                 self.post_parse_all(states)
             return
 
-        sequential_states = []
-        parallel_states = []
+        parallel_states = [state for state in states if state.tree is None]
         for state in states:
             if state.tree is not None:
                 # The file was already parsed.
+                state.needs_parse = False
                 continue
             parallel_states.append(state)
         if len(parallel_states) > 1:
-            self.parse_parallel(sequential_states, parallel_states)
-        else:
-            # Avoid using executor when there is no parallelism.
-            for state in states:
-                state.parse_file()
+            self.parse_parallel(parallel_states)
         if post_parse:
             self.post_parse_all(states)
 
-    def parse_parallel(self, sequential_states: list[State], parallel_states: list[State]) -> None:
+    def parse_parallel(self, parallel_states: list[State]) -> None:
         """Perform parallel parsing of states.
 
         Note: this duplicates a bit of logic from State.parse_file(). This is done
@@ -1048,7 +1044,7 @@ class BuildManager:
         parallelized efficiently.
         """
         parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
-            sequential_states, parallel_states
+            parallel_states
         )
 
         for state in parallel_parsed_states:
@@ -1093,12 +1089,9 @@ class BuildManager:
             state.check_blockers()
             state.setup_errors()
 
-    def parse_files_threaded_raw(
-        self, sequential_states: list[State], parallel_states: list[State]
-    ) -> tuple[list[State], set[State]]:
-        """Parse files using a thread pool.
+    def parse_files_threaded_raw(self, states: list[State]) -> tuple[list[State], set[State]]:
+        """Parse files in parallel using a thread pool.
 
-        Also parse sequential states while waiting for the parallel results.
         Trees from the new parser are left in raw (serialized) form.
 
         Return (list, set) of states that were actually parsed (not cached).
@@ -1114,7 +1107,7 @@ class BuildManager:
         # parse_file_inner() results in no visible improvement with more than 8 threads.
         # TODO: reuse thread pool and/or batch small files in single submit() call.
         with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
-            for state in parallel_states:
+            for state in states:
                 state.needs_parse = False
                 if state.id not in self.ast_cache:
                     self.log(f"Parsing {state.xpath} ({state.id})")
@@ -1128,10 +1121,6 @@ class BuildManager:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
                     state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
                     state.source_hash = source_hash
-
-            # Parse sequential before waiting on parallel.
-            for state in sequential_states:
-                state.parse_file()
 
             for fut in wait(futures).done:
                 fut.result()
