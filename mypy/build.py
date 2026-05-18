@@ -1030,10 +1030,6 @@ class BuildManager:
             if state.tree is not None:
                 # The file was already parsed.
                 continue
-            if not self.fscache.exists(state.xpath, real_only=True):
-                # New parser only supports parsing on-disk files.
-                sequential_states.append(state)
-                continue
             parallel_states.append(state)
         if len(parallel_states) > 1:
             self.parse_parallel(sequential_states, parallel_states)
@@ -3318,9 +3314,7 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        if not options.native_parser or not self.manager.fscache.exists(
-            self.xpath, real_only=True
-        ):
+        if not options.native_parser:
             analyzer = SemanticAnalyzerPreAnalysis()
             with self.wrap_context():
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
