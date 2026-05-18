@@ -163,7 +163,7 @@ from mypy.modulefinder import (
 from mypy.modules_state import modules_state
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import load_from_raw, parse, parse_native
+from mypy.parse import load_from_raw, parse
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
@@ -1117,9 +1117,7 @@ class BuildManager:
                     ignore_errors = state.ignore_all or state.options.ignore_errors
                     if ignore_errors:
                         self.errors.ignored_files.add(state.xpath)
-                    futures.append(
-                        executor.submit(state.parse_file_inner, state.source, parallel=True)
-                    )
+                    futures.append(executor.submit(state.parse_file_inner, state.source))
                     parallel_parsed_states.append(state)
                     parallel_parsed_states_set.add(state)
                 else:
@@ -1272,7 +1270,6 @@ class BuildManager:
         source: str | None,
         options: Options,
         raw_data: FileRawData | None = None,
-        parallel: bool = False,
     ) -> MypyFile:
         """Parse the source of a file with the given name.
 
@@ -1283,18 +1280,7 @@ class BuildManager:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
-            if source is not None:
-                tree = parse(source, path, id, self.errors, options=options)
-            else:
-                assert parallel
-                if not os.path.exists(path):
-                    build_error(
-                        "Cannot read file '{}': {}".format(
-                            path.replace(os.getcwd() + os.sep, ""),
-                            os.strerror(2),  # `errno.ENOENT`
-                        )
-                    )
-                tree = parse_native(source, path, id, self.errors, options=options)
+            tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         if self.stats_enabled:
             with self.stats_lock:
@@ -3193,12 +3179,10 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return source
 
-    def parse_file_inner(
-        self, source: str | None, raw_data: FileRawData | None = None, parallel: bool = False
-    ) -> None:
+    def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
         self.tree = self.manager.parse_file(
-            self.id, self.xpath, source, self.options, raw_data, parallel
+            self.id, self.xpath, source, options=self.options, raw_data=raw_data
         )
         self.time_spent_us += time_spent_us(t0)
 
