@@ -2813,6 +2813,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.check_multiple_inheritance(typ)
                 self.check_metaclass_compatibility(typ)
                 self.check_final_deletable(typ)
+                if typ.typeddict_type:
+                    self.check_typeddict_inheritance(defn)
 
             if defn.decorators:
                 sig: Type = type_object_type(defn.info)
@@ -3218,6 +3220,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             explanation = typ.explain_metaclass_conflict()
             if explanation:
                 self.note(explanation, typ, code=codes.METACLASS)
+
+    def check_typeddict_inheritance(self, defn: ClassDef) -> None:
+        """Ensure that the final definition of a TypedDict is compatible with its base classes."""
+        assert defn.info.typeddict_type
+        td = defn.info.typeddict_type
+        for constraint in td.field_constraints:
+            field_name = constraint.field_name
+            field_type = td.items[field_name]
+            if constraint.is_readonly:
+                is_compatible = is_subtype(field_type, constraint.field_type)
+            else:
+                is_compatible = is_equivalent(field_type, constraint.field_type)
+            if not is_compatible:
+                self.fail(constraint.failure_message, constraint.ctx)
+                if constraint.failure_note:
+                    self.note(constraint.failure_note, constraint.ctx)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
