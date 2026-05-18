@@ -345,3 +345,17 @@ L8:
 L9:
     r16 = LibRTStrings_IsSpace(r15)
     return r16
+
+[case testLibrtStringsIsDigitIR]
+from librt.strings import isdigit
+from mypy_extensions import i32
+
+def is_d(c: i32) -> bool:
+    return isdigit(c)
+[out]
+def is_d(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsDigit(c)
+    return r0

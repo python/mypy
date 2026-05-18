@@ -1440,19 +1440,23 @@ def test_new_without_init_is_usable() -> None:
     sw.write("hello")
     assert sw.getvalue() == "hello"
 
-[case testLibrtStringsIsSpace_librt]
+[case testLibrtStringsCodepointClassifiers_librt]
 from typing import Any
 from mypy_extensions import i32
-from librt.strings import isspace
+from librt.strings import isspace, isdigit
 
 
-def test_isspace() -> None:
-    assert not isspace(i32(-1))
-    assert not isspace(i32(-113))
-    # Verify our codepoint primitive agrees with str.isspace() across all
-    # Unicode codepoints, including the ord(chr(i)) round-trip. Any
-    # forces generic dispatch on the str side.
+def test_codepoint_classifiers() -> None:
+    # Negative values are not codepoints.
+    for bad in (i32(-1), i32(-113)):
+        assert not isspace(bad)
+        assert not isdigit(bad)
+    # Verify each codepoint primitive agrees with the matching str method
+    # across all Unicode codepoints, including the ord(chr(i)) round-trip.
+    # Any forces generic dispatch on the str side.
     for i in range(0x110000):
         c = chr(i)
         a: Any = c
-        assert isspace(ord(c)) == isspace(i) == a.isspace()
+        o = ord(c)
+        assert isspace(o) == isspace(i) == a.isspace()
+        assert isdigit(o) == isdigit(i) == a.isdigit()
