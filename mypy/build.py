@@ -1284,6 +1284,13 @@ class BuildManager:
                 tree = parse(source, path, id, self.errors, options=options)
             else:
                 assert parallel
+                if (source is None) and (not os.path.exists(path)):
+                    build_error(
+                        "Cannot read file '{}': {}".format(
+                            path.replace(os.getcwd() + os.sep, ""),
+                            os.strerror(2),  # `errno.ENOENT`
+                        )
+                    )
                 tree = parse_native(source, path, id, self.errors, options=options)
         tree._fullname = id
         if self.stats_enabled:
