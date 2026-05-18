@@ -710,15 +710,14 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         )
         return AnyType(TypeOfAny.from_error)
 
-    bound_method = analyze_decorator_or_funcbase_access(
-        defn=dunder_get,
-        itype=descriptor_type,
-        name="__get__",
-        mx=mx.copy_modified(self_type=descriptor_type),
-    )
-
-    typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
-    dunder_get_type = expand_type_by_instance(bound_method, typ)
+    # Use the unbound __get__ type and pass (self, instance, owner) together so that
+    # type inference can jointly solve all type variables. The bound-method approach
+    # (bind_self first, then call with 2 args) fails when the __get__ self annotation
+    # contains type variables that appear in the instance parameter too, because
+    # bind_self may not be able to unify them correctly against complex callable types.
+    typ = function_type(dunder_get, mx.chk.named_type("builtins.function"))
+    typ_for_instance = map_instance_to_supertype(descriptor_type, dunder_get.info)
+    dunder_get_type = expand_type_by_instance(typ, typ_for_instance)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
         owner_type = instance_type.items[0].ret_type
@@ -734,10 +733,11 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         callable_name,
         dunder_get_type,
         [
+            TempNode(orig_descriptor_type, context=mx.context),
             TempNode(instance_type, context=mx.context),
             TempNode(TypeType.make_normalized(owner_type), context=mx.context),
         ],
-        [ARG_POS, ARG_POS],
+        [ARG_POS, ARG_POS, ARG_POS],
         mx.context,
         object_type=descriptor_type,
     )
@@ -745,10 +745,11 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     _, inferred_dunder_get_type = mx.chk.expr_checker.check_call(
         dunder_get_type,
         [
+            TempNode(orig_descriptor_type, context=mx.context),
             TempNode(instance_type, context=mx.context),
             TempNode(TypeType.make_normalized(owner_type), context=mx.context),
         ],
-        [ARG_POS, ARG_POS],
+        [ARG_POS, ARG_POS, ARG_POS],
         mx.context,
         object_type=descriptor_type,
         callable_name=callable_name,
