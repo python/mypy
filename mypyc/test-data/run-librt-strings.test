@@ -1439,3 +1439,20 @@ def test_new_without_init_is_usable() -> None:
     assert sw.getvalue() == ""
     sw.write("hello")
     assert sw.getvalue() == "hello"
+
+[case testLibrtStringsIsSpace_librt]
+from typing import Any
+from mypy_extensions import i32
+from librt.strings import isspace
+
+
+def test_isspace() -> None:
+    assert not isspace(i32(-1))
+    assert not isspace(i32(-113))
+    # Verify our codepoint primitive agrees with str.isspace() across all
+    # Unicode codepoints, including the ord(chr(i)) round-trip. Any
+    # forces generic dispatch on the str side.
+    for i in range(0x110000):
+        c = chr(i)
+        a: Any = c
+        assert isspace(ord(c)) == isspace(i) == a.isspace()
