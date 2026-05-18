@@ -4,18 +4,30 @@ from _typeshed.importlib import MetaPathFinderProtocol, PathEntryFinderProtocol
 from builtins import object as _object
 from collections.abc import AsyncGenerator, Callable, Sequence
 from io import TextIOWrapper
-from types import FrameType, ModuleType, TracebackType
-from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeVar, final, overload, type_check_only
-from typing_extensions import LiteralString, TypeAlias, deprecated
+from types import FrameType, ModuleType, SimpleNamespace, TracebackType
+from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeAlias, TypeVar, final, overload, type_check_only
+from typing_extensions import LiteralString, deprecated
 
 _T = TypeVar("_T")
+_LazyImportMode: TypeAlias = Literal["normal", "all", "none"]
+_LazyImportFilter: TypeAlias = Callable[[str, str, tuple[str, ...] | None], bool]
 
 # see https://github.com/python/typeshed/issues/8513#issue-1333671093 for the rationale behind this alias
 _ExitCode: TypeAlias = str | int | None
 
+if sys.version_info >= (3, 15):
+    @type_check_only
+    class _AbiInfo(SimpleNamespace):
+        pointer_bits: int
+        free_threaded: bool
+        debug: bool
+        byteorder: Literal["little", "big"]
+
 # ----- sys variables -----
 if sys.platform != "win32":
     abiflags: str
+if sys.version_info >= (3, 15):
+    abi_info: _AbiInfo
 argv: list[str]
 base_exec_prefix: str
 base_prefix: str
@@ -40,8 +52,9 @@ maxsize: int
 maxunicode: int
 meta_path: list[MetaPathFinderProtocol]
 modules: dict[str, ModuleType]
-if sys.version_info >= (3, 10):
-    orig_argv: list[str]
+if sys.version_info >= (3, 15):
+    lazy_modules: dict[str, set[str]]
+orig_argv: list[str]
 path: list[str]
 path_hooks: list[Callable[[str], PathEntryFinderProtocol]]
 path_importer_cache: dict[str, PathEntryFinderProtocol | None]
@@ -65,9 +78,7 @@ ps2: object
 stdin: TextIO | MaybeNone
 stdout: TextIO | MaybeNone
 stderr: TextIO | MaybeNone
-
-if sys.version_info >= (3, 10):
-    stdlib_module_names: frozenset[str]
+stdlib_module_names: frozenset[str]
 
 __stdin__: Final[TextIOWrapper | None]  # Contains the original value of stdin
 __stdout__: Final[TextIOWrapper | None]  # Contains the original value of stdout
@@ -124,7 +135,7 @@ class _flags(_UninstantiableStructseq, tuple[int, ...]):
             "safe_path",
             "int_max_str_digits",
         )
-    elif sys.version_info >= (3, 10):
+    else:
         __match_args__: Final = (
             "debug",
             "inspect",
@@ -175,9 +186,8 @@ class _flags(_UninstantiableStructseq, tuple[int, ...]):
     def dev_mode(self) -> bool: ...
     @property
     def utf8_mode(self) -> int: ...
-    if sys.version_info >= (3, 10):
-        @property
-        def warn_default_encoding(self) -> int: ...
+    @property
+    def warn_default_encoding(self) -> int: ...
     if sys.version_info >= (3, 11):
         @property
         def safe_path(self) -> bool: ...
@@ -203,20 +213,19 @@ float_info: _float_info
 @final
 @type_check_only
 class _float_info(structseq[float], tuple[float, int, int, float, int, int, int, int, float, int, int]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = (
-            "max",
-            "max_exp",
-            "max_10_exp",
-            "min",
-            "min_exp",
-            "min_10_exp",
-            "dig",
-            "mant_dig",
-            "epsilon",
-            "radix",
-            "rounds",
-        )
+    __match_args__: Final = (
+        "max",
+        "max_exp",
+        "max_10_exp",
+        "min",
+        "min_exp",
+        "min_10_exp",
+        "dig",
+        "mant_dig",
+        "epsilon",
+        "radix",
+        "rounds",
+    )
 
     @property
     def max(self) -> float: ...  # DBL_MAX
@@ -247,8 +256,7 @@ hash_info: _hash_info
 @final
 @type_check_only
 class _hash_info(structseq[Any | int], tuple[int, int, int, int, int, str, int, int, int]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("width", "modulus", "inf", "nan", "imag", "algorithm", "hash_bits", "seed_bits", "cutoff")
+    __match_args__: Final = ("width", "modulus", "inf", "nan", "imag", "algorithm", "hash_bits", "seed_bits", "cutoff")
 
     @property
     def width(self) -> int: ...
@@ -290,8 +298,7 @@ int_info: _int_info
 @final
 @type_check_only
 class _int_info(structseq[int], tuple[int, int, int, int]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("bits_per_digit", "sizeof_digit", "default_max_str_digits", "str_digits_check_threshold")
+    __match_args__: Final = ("bits_per_digit", "sizeof_digit", "default_max_str_digits", "str_digits_check_threshold")
 
     @property
     def bits_per_digit(self) -> int: ...
@@ -309,8 +316,7 @@ _ThreadInfoLock: TypeAlias = Literal["semaphore", "mutex+cond"] | None
 @final
 @type_check_only
 class _thread_info(_UninstantiableStructseq, tuple[_ThreadInfoName, _ThreadInfoLock, str | None]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("name", "lock", "version")
+    __match_args__: Final = ("name", "lock", "version")
 
     @property
     def name(self) -> _ThreadInfoName: ...
@@ -326,8 +332,7 @@ _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 @final
 @type_check_only
 class _version_info(_UninstantiableStructseq, tuple[int, int, int, _ReleaseLevel, int]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("major", "minor", "micro", "releaselevel", "serial")
+    __match_args__: Final = ("major", "minor", "micro", "releaselevel", "serial")
 
     @property
     def major(self) -> int: ...
@@ -385,6 +390,11 @@ if sys.platform != "win32":
 
 def getfilesystemencoding() -> LiteralString: ...
 def getfilesystemencodeerrors() -> LiteralString: ...
+
+if sys.version_info >= (3, 15):
+    def get_lazy_imports() -> _LazyImportMode: ...
+    def get_lazy_imports_filter() -> _LazyImportFilter | None: ...
+
 def getrefcount(object: Any, /) -> int: ...
 def getrecursionlimit() -> int: ...
 def getsizeof(obj: object, default: int = ...) -> int: ...
@@ -467,8 +477,7 @@ _AsyncgenHook: TypeAlias = Callable[[AsyncGenerator[Any, Any]], None] | None
 @final
 @type_check_only
 class _asyncgen_hooks(structseq[_AsyncgenHook], tuple[_AsyncgenHook, _AsyncgenHook]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("firstiter", "finalizer")
+    __match_args__: Final = ("firstiter", "finalizer")
 
     @property
     def firstiter(self) -> _AsyncgenHook: ...
@@ -496,6 +505,10 @@ def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
 
+if sys.version_info >= (3, 15):
+    def set_lazy_imports(mode: _LazyImportMode) -> None: ...
+    def set_lazy_imports_filter(filter: _LazyImportFilter | None) -> None: ...
+
 if sys.version_info >= (3, 12):
     if sys.version_info >= (3, 13):
         def getunicodeinternedsize(*, _only_immortal: bool = False) -> int: ...
@@ -518,3 +531,7 @@ if sys.version_info >= (3, 14):
     def is_remote_debug_enabled() -> bool: ...
     def remote_exec(pid: int, script: StrOrBytesPath) -> None: ...
     def _is_immortal(op: object, /) -> bool: ...
+
+    from . import __jit
+
+    _jit = __jit

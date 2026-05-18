@@ -4,7 +4,7 @@ from _typeshed import SupportsLenAndGetItem
 from collections.abc import Callable, Iterable, MutableSequence, Sequence, Set as AbstractSet
 from fractions import Fraction
 from typing import Any, ClassVar, NoReturn, TypeVar, overload
-from typing_extensions import Self, deprecated
+from typing_extensions import deprecated
 
 __all__ = [
     "Random",
@@ -45,9 +45,6 @@ class Random(_random.Random):
     # Using other `seed` types is deprecated since 3.9 and removed in 3.11
     # Ignore Y041, since random.seed doesn't treat int like a float subtype. Having an explicit
     # int better documents conventional usage of random.seed.
-    if sys.version_info < (3, 10):
-        # this is a workaround for pyright correctly flagging an inconsistent inherited constructor, see #14624
-        def __new__(cls, x: int | float | str | bytes | bytearray | None = None) -> Self: ...  # noqa: Y041
 
     def seed(self, a: int | float | str | bytes | bytearray | None = None, version: int = 2) -> None: ...  # type: ignore[override]  # noqa: Y041
     def getstate(self) -> tuple[Any, ...]: ...
@@ -72,6 +69,7 @@ class Random(_random.Random):
         @overload
         @deprecated("The `random` parameter is deprecated since Python 3.9; removed in Python 3.11.")
         def shuffle(self, x: MutableSequence[Any], random: Callable[[], float] | None = None) -> None: ...
+
     if sys.version_info >= (3, 11):
         def sample(self, population: Sequence[_T], k: int, *, counts: Iterable[int] | None = None) -> list[_T]: ...
     else:

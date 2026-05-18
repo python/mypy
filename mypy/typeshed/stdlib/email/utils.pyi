@@ -4,8 +4,8 @@ from _typeshed import Unused
 from collections.abc import Iterable
 from email import _ParamType
 from email.charset import Charset
-from typing import overload
-from typing_extensions import TypeAlias, deprecated
+from typing import TypeAlias, overload
+from typing_extensions import deprecated
 
 __all__ = [
     "collapse_rfc2231_value",
@@ -36,14 +36,17 @@ def formataddr(pair: tuple[str | None, str], charset: str | Charset = "utf-8") -
 
 # `strict` parameter added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
 def getaddresses(fieldvalues: Iterable[str], *, strict: bool = True) -> list[tuple[str, str]]: ...
+
 @overload
 def parsedate(data: None) -> None: ...
 @overload
 def parsedate(data: str) -> tuple[int, int, int, int, int, int, int, int, int] | None: ...
+
 @overload
 def parsedate_tz(data: None) -> None: ...
 @overload
 def parsedate_tz(data: str) -> _PDTZ | None: ...
+
 def parsedate_to_datetime(data: str) -> datetime.datetime: ...
 def mktime_tz(data: _PDTZ) -> int: ...
 def formatdate(timeval: float | None = None, localtime: bool = False, usegmt: bool = False) -> str: ...
