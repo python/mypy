@@ -166,7 +166,9 @@ class TestHeaderDeps(unittest.TestCase):
             cross_group_h = os.path.join(provider_dir, "__native_provider.h")
 
             with open(consumer_c, "w") as f:
-                f.write('#include "__native_consumer.h"\n#include "__native_internal_consumer.h"\n')
+                f.write(
+                    '#include "__native_consumer.h"\n#include "__native_internal_consumer.h"\n'
+                )
             with open(consumer_h, "w") as f:
                 f.write("#include <Python.h>\n")
             with open(internal_h, "w") as f:
@@ -197,7 +199,9 @@ class TestHeaderDeps(unittest.TestCase):
             except OSError:
                 disk_text = ""
             deps_with_fix: set[str] = set()
-            for cfile_full, dep_names in [(consumer_c, get_header_deps([(consumer_c, disk_text)]))]:
+            for cfile_full, dep_names in [
+                (consumer_c, get_header_deps([(consumer_c, disk_text)]))
+            ]:
                 deps_with_fix.update(
                     resolve_cfile_deps(os.path.dirname(cfile_full), dep_names, tmp)
                 )
