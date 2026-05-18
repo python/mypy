@@ -1033,6 +1033,9 @@ class BuildManager:
             parallel_states.append(state)
         if len(parallel_states) > 1:
             self.parse_parallel(parallel_states)
+        elif len(parallel_states) == 1:
+            # Avoid using executor when there is no parallelism.
+            parallel_states[0].parse_file()
         if post_parse:
             self.post_parse_all(states)
 
