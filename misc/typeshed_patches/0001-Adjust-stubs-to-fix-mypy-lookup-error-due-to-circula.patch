@@ -1,4 +1,4 @@
-From 5c922a2484f2e18c7f901e62bb499b6414cf1090 Mon Sep 17 00:00:00 2001
+From 59841ad393c749cce0da8cd270f8d3f672637e20 Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Wed, 18 Feb 2026 13:11:02 +0100
 Subject: [PATCH] Adjust stubs to fix mypy lookup error due to circular
@@ -9,15 +9,14 @@ Subject: [PATCH] Adjust stubs to fix mypy lookup error due to circular
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/time.pyi b/mypy/typeshed/stdlib/time.pyi
-index 64a009318..d0853792b 100644
+index ac53089b8..9b5344b32 100644
 --- a/mypy/typeshed/stdlib/time.pyi
 +++ b/mypy/typeshed/stdlib/time.pyi
-@@ -1,16 +1,16 @@
+@@ -1,15 +1,15 @@
  import sys
  from _typeshed import structseq
--from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, final, type_check_only
-+from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, Union, final, type_check_only
- from typing_extensions import TypeAlias
+-from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, final, type_check_only
++from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, Union, final, type_check_only
  
  _TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
  
@@ -33,5 +32,5 @@ index 64a009318..d0853792b 100644
  altzone: int
  daylight: int
 -- 
-2.53.0
+2.54.0
 

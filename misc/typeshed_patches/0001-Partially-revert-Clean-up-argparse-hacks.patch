@@ -1,4 +1,4 @@
-From b6d495c10e79fb56ff64f8fb90c87894090f9cbe Mon Sep 17 00:00:00 2001
+From 3fa6658041d3ccd7f2a4bd725e21fa9768bf6ebc Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 15 Feb 2025 20:11:06 +0100
 Subject: [PATCH] Partially revert Clean up argparse hacks
@@ -8,16 +8,16 @@ Subject: [PATCH] Partially revert Clean up argparse hacks
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/argparse.pyi b/mypy/typeshed/stdlib/argparse.pyi
-index ae99eb036..c87b8f4fc 100644
+index 22d330a08..fa22f842d 100644
 --- a/mypy/typeshed/stdlib/argparse.pyi
 +++ b/mypy/typeshed/stdlib/argparse.pyi
 @@ -2,7 +2,7 @@ import sys
  from _typeshed import SupportsWrite, sentinel
  from collections.abc import Callable, Generator, Iterable, Sequence
  from re import Pattern
--from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeVar, overload, type_check_only
-+from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload, type_check_only
- from typing_extensions import Self, TypeAlias, deprecated
+-from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeAlias, TypeVar, overload, type_check_only
++from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeAlias, TypeVar, overload, type_check_only
+ from typing_extensions import Self, deprecated
  
  __all__ = [
 @@ -36,7 +36,9 @@ ONE_OR_MORE: Final = "+"
@@ -41,5 +41,5 @@ index ae99eb036..c87b8f4fc 100644
          default: Any = ...,
          type: _ActionType = ...,
 -- 
-2.52.0
+2.54.0
 
