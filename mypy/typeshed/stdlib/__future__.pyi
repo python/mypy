@@ -1,4 +1,4 @@
-from typing import TypeAlias
+from typing_extensions import TypeAlias
 
 _VersionInfo: TypeAlias = tuple[int, int, int, str, int]
 
