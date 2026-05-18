@@ -1114,7 +1114,7 @@ class BuildManager:
                     ignore_errors = state.ignore_all or state.options.ignore_errors
                     if ignore_errors:
                         self.errors.ignored_files.add(state.xpath)
-                    futures.append(executor.submit(state.parse_file_inner, ""))
+                    futures.append(executor.submit(state.parse_file_inner, state.source))
                     parallel_parsed_states.append(state)
                     parallel_parsed_states_set.add(state)
                 else:
