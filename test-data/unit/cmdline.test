@@ -593,7 +593,6 @@ import d
 
 [case testPackageRootMultipleParallel]
 # cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py --num-workers=2
-[file a/b/__init__.py]
 [file a/b/c.py]
 [file d.py]
 [file main.py]
