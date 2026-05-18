@@ -715,9 +715,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     # (bind_self first, then call with 2 args) fails when the __get__ self annotation
     # contains type variables that appear in the instance parameter too, because
     # bind_self may not be able to unify them correctly against complex callable types.
-    typ = function_type(dunder_get, mx.chk.named_type("builtins.function"))
-    typ_for_instance = map_instance_to_supertype(descriptor_type, dunder_get.info)
-    dunder_get_type = expand_type_by_instance(typ, typ_for_instance)
+    dunder_get_func = dunder_get.func if isinstance(dunder_get, Decorator) else dunder_get
+    typ = function_type(dunder_get_func, mx.chk.named_type("builtins.function"))
+    typ_for_instance = map_instance_to_supertype(descriptor_type, dunder_get_func.info)
+    dunder_get_type: Type = expand_type_by_instance(typ, typ_for_instance)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
         owner_type = instance_type.items[0].ret_type
