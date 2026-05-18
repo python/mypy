@@ -741,6 +741,17 @@ def mypyc_build(
                 write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
+            # For fully-cached groups ctext is empty; read the on-disk .c so
+            # the dep resolver can walk its transitive header chain and populate
+            # Extension.depends — otherwise cross-group export-table header
+            # changes (e.g. a new class shifting struct offsets) won't trigger
+            # a recompile of this cached consumer's .o.
+            if not ctext and os.path.exists(cfile):
+                try:
+                    with open(cfile, encoding="utf-8") as _f:
+                        ctext = _f.read()
+                except OSError:
+                    pass
             per_cfile_deps.append((cfile, get_header_deps([(cfile, ctext)])))
         pending.append(per_cfile_deps)
         group_cfilenames.append((cfilenames, []))
