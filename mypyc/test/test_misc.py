@@ -133,11 +133,77 @@ class TestHeaderDeps(unittest.TestCase):
             )
             assert deps == set()
 
-    def test_resolve_prefers_includer_dir_for_quoted_like_paths(self) -> None:
-        # When the same name resolves in both the includer's directory and
-        # target_dir, the includer-relative one wins — that's the
-        # preprocessor's behavior for `#include "..."`. Approximated here
-        # by checking the includer's dir first.
+    def test_cached_group_deps_populated_from_disk_cfile(self) -> None:
+        # Reproduces the scenario where generate_c returns empty cfiles for a group
+        # (the "fully-cached" path), but the .c file from the previous build is on
+        # disk.  Before the fix, per_cfile_deps was never populated for that group,
+        # so cross-group header changes didn't trigger a recompile of the stale .o.
+        #
+        # Layout:
+        #   target_dir/consumer/__native_consumer.c  <- cached group's .c
+        #   target_dir/consumer/__native_internal_consumer.h
+        #       └─ #include <provider/__native_provider.h>  <- cross-group dep
+        #   target_dir/provider/__native_provider.h  <- layout changed here
+        with tempfile.TemporaryDirectory() as tmp:
+            consumer_dir = os.path.join(tmp, "consumer")
+            os.makedirs(consumer_dir)
+            provider_dir = os.path.join(tmp, "provider")
+            os.makedirs(provider_dir)
+
+            consumer_c = os.path.join(consumer_dir, "__native_consumer.c")
+            consumer_h = os.path.join(consumer_dir, "__native_consumer.h")
+            internal_h = os.path.join(consumer_dir, "__native_internal_consumer.h")
+            cross_group_h = os.path.join(provider_dir, "__native_provider.h")
+
+            with open(consumer_c, "w") as f:
+                f.write('#include "__native_consumer.h"\n#include "__native_internal_consumer.h"\n')
+            with open(consumer_h, "w") as f:
+                f.write("#include <Python.h>\n")
+            with open(internal_h, "w") as f:
+                f.write(
+                    "#include <Python.h>\n"
+                    '#include "__native_consumer.h"\n'
+                    "#include <provider/__native_provider.h>\n"
+                )
+            with open(cross_group_h, "w") as f:
+                f.write("struct export_table_provider { int x; };\n")
+
+            # Without the fix: per_cfile_deps is never populated for the cached
+            # group, so no dep resolution happens and Extension.depends is empty.
+            deps_without_fix: set[str] = set()
+            for cfile_full, dep_names in []:  # empty — this is the pre-fix state
+                deps_without_fix.update(
+                    resolve_cfile_deps(os.path.dirname(cfile_full), dep_names, tmp)
+                )
+            assert deps_without_fix == set()
+
+            # With the fix: read the on-disk .c, call get_header_deps, then resolve.
+            try:
+                with open(consumer_c, encoding="utf-8") as _f:
+                    existing_text = _f.read()
+            except OSError:
+                existing_text = ""
+            per_cfile_deps = [
+                (consumer_c, get_header_deps([(os.path.basename(consumer_c), existing_text)]))
+            ]
+            deps_with_fix: set[str] = set()
+            for cfile_full, dep_names in per_cfile_deps:
+                deps_with_fix.update(
+                    resolve_cfile_deps(os.path.dirname(cfile_full), dep_names, tmp)
+                )
+
+            assert cross_group_h in deps_with_fix, (
+                f"cross-group header must be in deps so setuptools recompiles the "
+                f"stale .o when struct offsets shift; got {sorted(deps_with_fix)!r}"
+            )
+
+    def test_resolve_search_order_matches_preprocessor(self) -> None:
+        # When the same header name exists both next to the includer and
+        # under target_dir, the C preprocessor picks the includer-dir copy
+        # for `#include "shared.h"` and the target_dir copy for
+        # `#include <shared.h>`. The resolver must record the same path
+        # the compiler will actually consume, otherwise mtimes of the
+        # wrong file drive incremental rebuild decisions.
         with tempfile.TemporaryDirectory() as tmp:
             includer = os.path.join(tmp, "groupA")
             target = os.path.join(tmp, "build")

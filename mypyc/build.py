@@ -635,7 +635,7 @@ def resolve_cfile_deps(
             # them, but the .h guard is a cheap belt-and-braces.
             if candidate.endswith(".h"):
                 try:
-                    with open(candidate, encoding="utf-8", errors="replace") as f:
+                    with open(candidate, encoding="utf-8") as f:
                         header_contents = f.read()
                 except OSError:
                     header_contents = ""
@@ -729,6 +729,14 @@ def mypyc_build(
             )
             if os.path.exists(existing):
                 cfilenames.append(existing)
+                try:
+                    with open(existing, encoding="utf-8") as _f:
+                        existing_text = _f.read()
+                except OSError:
+                    existing_text = ""
+                per_cfile_deps.append(
+                    (existing, get_header_deps([(os.path.basename(existing), existing_text)]))
+                )
 
         pending.append(per_cfile_deps)
         group_cfilenames.append((cfilenames, []))
