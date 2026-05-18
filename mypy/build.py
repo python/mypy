@@ -1284,7 +1284,7 @@ class BuildManager:
                 tree = parse(source, path, id, self.errors, options=options)
             else:
                 assert parallel
-                if (source is None) and (not os.path.exists(path)):
+                if not os.path.exists(path):
                     build_error(
                         "Cannot read file '{}': {}".format(
                             path.replace(os.getcwd() + os.sep, ""),
