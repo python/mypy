@@ -3211,7 +3211,11 @@ class State:
             # The file was already parsed.
             return
 
-        if raw_data is None:
+        if raw_data is None and not (
+            self.options.native_parser
+            and self.source is None
+            and self.manager.fscache.exists(self.xpath, real_only=True)
+        ):
             source = self.get_source()
         else:
             source = ""
