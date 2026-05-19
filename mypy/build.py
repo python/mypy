@@ -2729,7 +2729,11 @@ class State:
                 meta, meta_ex = meta_pair
                 interface_hash = meta.interface_hash
                 meta_source_hash = meta.hash
-        if path and source is None and manager.fscache.isdir(path):
+        if (
+            path
+            and source is None
+            and (manager.fscache.isdir(path) or manager.fscache.init_under_package_root(path))
+        ):
             source = ""
 
         if manager.stats_enabled:
@@ -3173,7 +3177,10 @@ class State:
                     else:
                         err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
-            elif self.path and self.manager.fscache.isdir(self.path):
+            elif self.path and (
+                manager.fscache.isdir(self.path)
+                or manager.fscache.init_under_package_root(self.path)
+            ):
                 source = ""
                 self.source_hash = ""
             else:
