@@ -683,11 +683,8 @@ def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: E
     The code returns NULL on a raised exception.
     """
     emitter.emit_lines(
-        "if ({}{}{}((PyObject *){}) == 0) {{".format(
-            emitter.get_group_prefix(defaults_fn.decl),
-            NATIVE_PREFIX,
-            defaults_fn.cname(emitter.names),
-            self_name,
+        "if ({}((PyObject *){}) == 0) {{".format(
+            emitter.native_function_call(defaults_fn.decl), self_name
         ),
         "Py_DECREF(self);",
         "return NULL;",
