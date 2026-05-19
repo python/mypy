@@ -3138,7 +3138,7 @@ class TypedDictType(ProperType):
         elif self.is_closed:
             item_type = UninhabitedType()
             is_required = False
-            is_readonly = True
+            is_readonly = False
         else:
             is_required = False
             is_readonly = True

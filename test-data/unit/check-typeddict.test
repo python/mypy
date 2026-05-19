@@ -5490,12 +5490,17 @@ T = TypeVar('T')
 def meet(x: Callable[[T, T], None]) -> T: pass
 A = TypedDict('A', {}, closed=True)
 B = TypedDict('B', {'x': Any})
+C = TypedDict('C', {'x': Any}, total=False)
 def fAB(x: A, y: B) -> None: pass
 def fBA(x: B, y: A) -> None: pass
+def fAC(x: A, y: C) -> None: pass
+def fCA(x: C, y: A) -> None: pass
 if int():
     reveal_type(meet(fAB))  # N: Revealed type is "Never"
 if int():
     reveal_type(meet(fBA))  # N: Revealed type is "Never"
+reveal_type(meet(fAC))  # N: Revealed type is "TypedDict({}, closed=True)"
+reveal_type(meet(fCA))  # N: Revealed type is "TypedDict({}, closed=True)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -5507,7 +5512,7 @@ B = TypedDict('B', {'x': NotRequired[Never], 'y': NotRequired[Any]}, closed=True
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: A, y: B) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: Never, 'y'?: Never}, closed=True)"
+reveal_type(f(g))  # N: Revealed type is "TypedDict({}, closed=True)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

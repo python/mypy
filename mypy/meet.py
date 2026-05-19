@@ -1152,11 +1152,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
                 if (
                     is_closed
-                    and is_readonly
+                    and not is_readonly
                     and isinstance(get_proper_type(meet_type), UninhabitedType)
                 ):
-                    # Simplify emitted type by omitting redundant ReadOnly[Never] keys
-                    # from closed TypedDicts
+                    # Simplify emitted type by omitting redundant Never keys from closed
+                    # TypedDicts
                     continue
 
                 items[name] = meet_type
