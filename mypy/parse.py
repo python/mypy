@@ -12,7 +12,7 @@ from mypy.options import Options
 
 
 def parse(
-    source: str | bytes,
+    source: str | bytes | None,
     fnam: str,
     module: str | None,
     errors: Errors,
@@ -26,6 +26,9 @@ def parse(
 
     New parser returns empty tree with serialized data. To get the full tree and
     the parse errors, use eager=True.
+
+    `source` must not be `None` if the old parser is used. The new parser will read and
+    parse contents from path `fnam` if `source` is `None`.
     """
     if options.native_parser:
         import mypy.nativeparse
@@ -44,6 +47,8 @@ def parse(
             tree = load_from_raw(fnam, module, tree.raw_data, errors, options)
         return tree
 
+    if source is None:
+        raise ValueError("Source cannot be `None` when using the old parser")
     if options.transform_source is not None:
         source = options.transform_source(source)
     import mypy.fastparse
