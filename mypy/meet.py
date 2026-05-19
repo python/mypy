@@ -1135,30 +1135,25 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             meet_type = s_item_type
         elif s_item_type is None:
             meet_type = t_item_type
-        elif l_mutable and r_mutable:
-            if is_equivalent(s_item_type, t_item_type) and r_required == l_required:
-                meet_type = s_item_type
-            else:
-                meet_type = None
-        elif l_mutable:
-            if is_subtype(s_item_type, t_item_type) and not (r_required and not l_required):
-                meet_type = s_item_type
-            else:
-                meet_type = None
-        elif r_mutable:
-            if is_subtype(t_item_type, s_item_type) and not (l_required and not r_required):
-                meet_type = t_item_type
-            else:
-                meet_type = None
         else:
-            m = meet_types(s_item_type, t_item_type)
-            if not isinstance(m, UninhabitedType):
-                meet_type = m
-            elif not l_required and not r_required:
-                # A non-required key can be Never
-                meet_type = m
-            else:
-                meet_type = None
+            meet_type = meet_types(s_item_type, t_item_type)
+
+        if (
+            s_item_type is not None
+            and l_mutable
+            and (not is_equivalent(meet_type, s_item_type) or (r_required and not l_required))
+        ):
+            meet_type = None
+        elif (
+            t_item_type is not None
+            and r_mutable
+            and (not is_equivalent(meet_type, t_item_type) or (l_required and not r_required))
+        ):
+            meet_type = None
+        elif isinstance(get_proper_type(meet_type), UninhabitedType) and (
+            l_required or r_required
+        ):
+            meet_type = None
 
         return (meet_type, is_readonly)
 

@@ -711,6 +711,53 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': bui
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMeetOfTypedDictsWithAny]
+from typing import Any, TypedDict, TypeVar, Callable
+A = TypedDict('A', {'x': Any})
+B = TypedDict('B', {'x': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def gAB(x: A, y: B) -> None: pass
+def gBA(x: B, y: A) -> None: pass
+reveal_type(f(gAB))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+reveal_type(f(gBA))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictMissingAndAny]
+from typing import Any, TypedDict, TypeVar, Callable, ReadOnly
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+A = TypedDict('A', {'x': Any})
+B = TypedDict('B', {'y': Any})
+C = TypedDict('C', {'y': Any}, total=False)
+def fAB(x: A, y: B) -> None: pass
+def fBA(x: B, y: A) -> None: pass
+def fAC(x: A, y: C) -> None: pass
+def fCA(x: C, y: A) -> None: pass
+if int():
+    reveal_type(meet(fAB))  # N: Revealed type is "TypedDict({'x': Any, 'y': Any})"
+if int():
+    reveal_type(meet(fBA))  # N: Revealed type is "TypedDict({'y': Any, 'x': Any})"
+if int():
+    reveal_type(meet(fAC))  # N: Revealed type is "TypedDict({'x': Any, 'y'?: Any})"
+if int():
+    reveal_type(meet(fCA))  # N: Revealed type is "TypedDict({'y'?: Any, 'x': Any})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsNotRequiredNeverAndAny]
+from typing import Any, NotRequired, TypedDict, TypeVar, Callable
+from typing_extensions import Never
+A = TypedDict('A', {'x': NotRequired[Any], 'y': NotRequired[Never]})
+B = TypedDict('B', {'x': NotRequired[Never], 'y': NotRequired[Any]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: A, y: B) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: Never, 'y'?: Never})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited]
 from typing import TypedDict, TypeVar, Callable
 XYa = TypedDict('XYa', {'x': int, 'y': int})
@@ -4854,6 +4901,25 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': bui
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMeetOfTypedDictsWithDifferingMutabilityAndAny]
+from typing import Any, TypedDict, TypeVar, Callable, ReadOnly
+A = TypedDict('A', {'x': Any})
+B = TypedDict('B', {'x': ReadOnly[int]})
+C = TypedDict('C', {'x': ReadOnly[Any]})
+D = TypedDict('D', {'x': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def gAB(x: A, y: B) -> None: pass
+def gBA(x: B, y: A) -> None: pass
+def gCD(x: C, y: D) -> None: pass
+def gDC(x: D, y: C) -> None: pass
+reveal_type(f(gAB))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+reveal_type(f(gBA))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+reveal_type(f(gCD))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+reveal_type(f(gDC))  # N: Revealed type is "TypedDict({'x': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testMeetOfTypedDictsWithIncompatibleReadOnlyCommonKeysIsUninhabitedUnlessNotRequired]
 from typing import TypedDict, TypeVar, Callable, ReadOnly
 A = TypedDict('A', {'x': ReadOnly[int]})
@@ -4920,6 +4986,17 @@ T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: Xa, y: Xb) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: TypedDict({'a': builtins.int, 'b': builtins.int})})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithReadOnlyKeysAndAny]
+from typing import Any, TypedDict, TypeVar, Callable, ReadOnly
+A = TypedDict('A', {'x': ReadOnly[Any]})
+B = TypedDict('B', {'x': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: A, y: B) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -5392,6 +5469,45 @@ if int():
 def fGH(x: G, y: H) -> None: pass
 if int():
     reveal_type(meet(fGH))  # N: Revealed type is "TypedDict({}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsExplicitAndImplicitClosedMissing]
+from typing import Any, NotRequired, ReadOnly, TypedDict, TypeVar, Callable
+from typing_extensions import Never
+A = TypedDict('A', {'x': ReadOnly[NotRequired[Never]]}, closed=True)
+B = TypedDict('B', {'y': ReadOnly[NotRequired[Never]]}, closed=True)
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: A, y: B) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictClosedMissingAndAny]
+from typing import Any, TypedDict, TypeVar, Callable, ReadOnly
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+A = TypedDict('A', {}, closed=True)
+B = TypedDict('B', {'x': Any})
+def fAB(x: A, y: B) -> None: pass
+def fBA(x: B, y: A) -> None: pass
+if int():
+    reveal_type(meet(fAB))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fBA))  # N: Revealed type is "Never"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsClosedNotRequiredNeverAndAny]
+from typing import Any, NotRequired, TypedDict, TypeVar, Callable
+from typing_extensions import Never
+A = TypedDict('A', {'x': NotRequired[Any], 'y': NotRequired[Never]}, closed=True)
+B = TypedDict('B', {'x': NotRequired[Never], 'y': NotRequired[Any]}, closed=True)
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: A, y: B) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: Never, 'y'?: Never}, closed=True)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
