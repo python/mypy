@@ -4281,3 +4281,17 @@ def func(y: H) -> H:
     else:
         return y
 [builtins fixtures/primitives.pyi]
+
+[case testValueInContainerNoWideningToNonSubtype]
+# Regression test for https://github.com/python/mypy/issues/21512
+# Narrowing x in `if x in container` must not widen x to the container item
+# type when that item type is not a subtype of x's declared type.
+class Size(tuple[int, ...]):
+    def numel(self) -> int: ...
+
+sizes: list[Size]
+value = (1, 2, 3)
+if value in sizes:
+    reveal_type(value)  # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
+    value.numel()  # E: "tuple[int, int, int]" has no attribute "numel"
+[builtins fixtures/primitives.pyi]
