@@ -1287,6 +1287,13 @@ class BuildManager:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
+            # Handle fake `__init__.py` files due to `--package-root`
+            if (
+                (source is None)
+                and (os.path.dirname(path) in self.fscache.fake_package_cache)
+                and (os.path.basename(path) == "__init__.py")
+            ):
+                source = ""
             tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         if self.stats_enabled:
@@ -2729,11 +2736,7 @@ class State:
                 meta, meta_ex = meta_pair
                 interface_hash = meta.interface_hash
                 meta_source_hash = meta.hash
-        if (
-            path
-            and source is None
-            and (manager.fscache.isdir(path) or manager.fscache.init_under_package_root(path))
-        ):
+        if path and source is None and manager.fscache.isdir(path):
             source = ""
 
         if manager.stats_enabled:
@@ -3177,10 +3180,7 @@ class State:
                     else:
                         err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
-            elif self.path and (
-                manager.fscache.isdir(self.path)
-                or manager.fscache.init_under_package_root(self.path)
-            ):
+            elif self.path and manager.fscache.isdir(self.path):
                 source = ""
                 self.source_hash = ""
             else:
