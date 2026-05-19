@@ -1389,9 +1389,9 @@ class UninhabitedType(ProperType):
 
     ambiguous: bool  # Is this a result of inference for a variable without constraints?
 
-    def __init__(self, line: int = -1, column: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1, *, ambiguous: bool = False) -> None:
         super().__init__(line, column)
-        self.ambiguous = False
+        self.ambiguous = ambiguous
 
     def can_be_true_default(self) -> bool:
         return False

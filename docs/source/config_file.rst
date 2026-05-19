@@ -1018,6 +1018,8 @@ These options may only be set in the global section (``[mypy]``).
 
     Use specific number of parallel worker processes for type-checking, see
     :ref:`parallel type-checking <parallel>` for more details.
+    This setting will be overridden by the ``MYPY_NUM_WORKERS`` environment
+    variable.
 
 
 Advanced options

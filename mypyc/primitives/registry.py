@@ -85,7 +85,11 @@ binary_ops: dict[str, list[PrimitiveDescription]] = {}
 # Primitive ops for unary ops
 unary_ops: dict[str, list[PrimitiveDescription]] = {}
 
+# Mapping of type name to (type, C value variable name).
 builtin_names: dict[str, tuple[RType, str]] = {}
+
+# Mapping of type name to (type, C pointer variable name).
+global_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
@@ -387,12 +391,19 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
+def load_global_op(name: str, type: RType, src: str) -> LoadAddressDescription:
+    assert name not in global_names, "already defined: %s" % name
+    global_names[name] = (type, src)
+    return LoadAddressDescription(name, type, src)
+
+
 # Import various modules that set up global state.
 import mypyc.primitives.bytearray_ops
 import mypyc.primitives.bytes_ops
 import mypyc.primitives.dict_ops
 import mypyc.primitives.float_ops
 import mypyc.primitives.int_ops
+import mypyc.primitives.librt_random_ops
 import mypyc.primitives.librt_strings_ops
 import mypyc.primitives.librt_time_ops
 import mypyc.primitives.librt_vecs_ops

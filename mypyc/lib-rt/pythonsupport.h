@@ -6,8 +6,8 @@
 #ifndef CPY_PYTHONSUPPORT_H
 #define CPY_PYTHONSUPPORT_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>

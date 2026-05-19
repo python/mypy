@@ -1,6 +1,6 @@
 #define PY_SSIZE_T_CLEAN
-#include <stdint.h>
 #include "CPy.h"
+#include <stdint.h>
 
 #define CPyFunction_weakreflist(f) (((PyCFunctionObject *)f)->m_weakreflist)
 #define CPyFunction_class(f) ((PyObject*) ((PyCMethodObject *) (f))->mm_class)

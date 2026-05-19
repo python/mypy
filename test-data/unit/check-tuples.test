@@ -1435,7 +1435,7 @@ reveal_type(t[x])  # N: Revealed type is "builtins.int | builtins.str"
 t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
       # N: Possible overload variants: \
       # N:     def __getitem__(self, int, /) -> int | str \
-      # N:     def __getitem__(self, slice, /) -> tuple[int | str, ...]
+      # N:     def __getitem__(self, slice[int | None], /) -> tuple[int | str, ...]
 
 [builtins fixtures/tuple.pyi]
 
@@ -1444,7 +1444,7 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
-t[y:]  # E: Slice index must be an integer, SupportsIndex or None
+t[y:]  # E: Invalid index type "slice[str, None, None]" for "tuple[int, str]"; expected type "slice[int | None]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleSliceStepZeroNoCrash]
