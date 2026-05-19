@@ -354,7 +354,7 @@ class Point1(TypedDict):
     x: int
 class Point2(TypedDict, total=False):
     x: int
-class Bad(Point1, Point2): # E: Field "x" is required in base class "Point1" but not in base class "Point2"
+class Bad(Point1, Point2): # E: Field "x" is required in base class "Point1" but can be deleted in base class "Point2"
     pass
 
 b: Bad
@@ -382,7 +382,7 @@ class Point1(TypedDict, total=False):
     x: int
 class Point2(TypedDict):
     x: int
-class Bad(Point1, Point2): # E: Field "x" is required in base class "Point2" but not in base class "Point1"
+class Bad(Point1, Point2): # E: Field "x" is required in base class "Point2" but can be deleted in base class "Point1"
     pass
 
 b: Bad
@@ -396,7 +396,7 @@ from typing import TypedDict
 class Point1(TypedDict, total=False):
     x: int
 class Point2(Point1):
-    x: int # E: Field "x" is not required and not readonly in base class "Point1"
+    x: int # E: Field "x" can be deleted in base class "Point1"
 
 p2: Point2
 reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.int})"

@@ -311,18 +311,17 @@ class TypedDictAnalyzer:
                 )
             else:
                 self.fail(
-                    f'Field "{field_name}" is required in base class "{source.base_name}" but not in base class "{primary_source_base_name}"',
+                    f'Field "{field_name}" is required in base class "{source.base_name}" but can be deleted in base class "{primary_source_base_name}"',
                     ctx,
                 )
         elif not source.is_required and not source.is_readonly and is_required:
             if primary_source_base_name is None:
                 self.fail(
-                    f'Field "{field_name}" is not required and not readonly in base class "{source.base_name}"',
-                    ctx,
+                    f'Field "{field_name}" can be deleted in base class "{source.base_name}"', ctx
                 )
             else:
                 self.fail(
-                    f'Field "{field_name}" is required in base class "{primary_source_base_name}" but not in base class "{source.base_name}"',
+                    f'Field "{field_name}" is required in base class "{primary_source_base_name}" but can be deleted in base class "{source.base_name}"',
                     ctx,
                 )
 
