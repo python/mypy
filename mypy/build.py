@@ -1026,6 +1026,13 @@ class BuildManager:
 
         parallel_states = []
         for state in states:
+            if not self.fscache.exists(state.xpath):
+                build_error(
+                    "Cannot read file '{}': {}".format(
+                        state.xpath.replace(os.getcwd() + os.sep, ""),
+                        os.strerror(2),  # `errno.ENOENT`
+                    )
+                )
             if state.tree is not None:
                 # The file was already parsed.
                 state.needs_parse = False
