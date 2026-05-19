@@ -1445,6 +1445,8 @@ from typing import Any
 from mypy_extensions import i32
 from librt.strings import isspace, isdigit, isalnum
 
+from testutil import assertRaises
+
 
 def test_codepoint_classifiers() -> None:
     # Negative values are not codepoints.
@@ -1462,3 +1464,23 @@ def test_codepoint_classifiers() -> None:
         assert isspace(o) == isspace(i) == a.isspace()
         assert isdigit(o) == isdigit(i) == a.isdigit()
         assert isalnum(o) == isalnum(i) == a.isalnum()
+
+
+def test_codepoint_classifiers_via_any() -> None:
+    # Iterate so the callee is opaque to mypyc and dispatch falls back to
+    # the PyMethodDef wrapper, exercising the i32 range check.
+    for fn, true_input, false_input in (
+        (isspace, " ", "a"),
+        (isdigit, "5", "a"),
+        (isalnum, "A", " "),
+    ):
+        f: Any = fn
+        assert f(ord(true_input)) is True
+        assert f(ord(false_input)) is False
+        # Negative values are valid i32, just not codepoints.
+        assert f(-1) is False
+        # Inputs outside i32 range raise OverflowError through the wrapper.
+        with assertRaises(OverflowError, "codepoint out of i32 range"):
+            f(1 << 40)
+        with assertRaises(OverflowError, "codepoint out of i32 range"):
+            f(-(1 << 40))
