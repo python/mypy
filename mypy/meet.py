@@ -35,6 +35,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictItem,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
@@ -1101,12 +1102,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def resolve_typeddict_item_type(
-        self,
-        name: str,
-        s: TypedDictType,
-        s_item_type: Type | None,
-        t: TypedDictType,
-        t_item_type: Type | None,
+        self, name: str, s: TypedDictItem, t: TypedDictItem
     ) -> tuple[Type | None, bool]:
         """Return the type and readonlyness of a meet item.
 
@@ -1114,44 +1110,30 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         returned type will be None; the overall meet type should
         be UninhabitedType.
         """
-        # A missing key is implicitly ReadOnly[NotRequired[...]]
-        l_mutable = s_item_type is not None and name not in s.readonly_keys
-        r_mutable = t_item_type is not None and name not in t.readonly_keys
-        l_required = name in s.required_keys
-        r_required = name in t.required_keys
+        is_readonly = s.readonly and t.readonly
 
-        is_readonly = not l_mutable and not r_mutable
-
-        # Simplify the logic by using Never instead of None for missing keys
-        # in closed TypedDicts. Ideally we'd use builtins.object instead of
-        # None in open TypedDicts, but that is hard to get.
-        if s_item_type is None and s.is_closed:
-            s_item_type = UninhabitedType()
-        if t_item_type is None and t.is_closed:
-            t_item_type = UninhabitedType()
-
-        if t_item_type is None:
-            assert s_item_type is not None
-            meet_type = s_item_type
-        elif s_item_type is None:
-            meet_type = t_item_type
+        if t.typ is None:
+            assert s.typ is not None
+            meet_type = s.typ
+        elif s.typ is None:
+            meet_type = t.typ
         else:
-            meet_type = meet_types(s_item_type, t_item_type)
+            meet_type = meet_types(s.typ, t.typ)
 
         if (
-            s_item_type is not None
-            and l_mutable
-            and (not is_equivalent(meet_type, s_item_type) or (r_required and not l_required))
+            s.typ is not None
+            and s.mutable
+            and (not is_equivalent(meet_type, s.typ) or (t.required and not s.required))
         ):
             meet_type = None
         elif (
-            t_item_type is not None
-            and r_mutable
-            and (not is_equivalent(meet_type, t_item_type) or (l_required and not r_required))
+            t.typ is not None
+            and t.mutable
+            and (not is_equivalent(meet_type, t.typ) or (s.required and not t.required))
         ):
             meet_type = None
         elif isinstance(get_proper_type(meet_type), UninhabitedType) and (
-            l_required or r_required
+            s.required or t.required
         ):
             meet_type = None
 
@@ -1162,10 +1144,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             is_closed = self.s.is_closed or t.is_closed
             items: dict[str, Type] = {}
             readonly_keys: set[str] = set()
-            for name, s_item_type, t_item_type in self.s.zipall(t):
-                meet_type, is_readonly = self.resolve_typeddict_item_type(
-                    name, self.s, s_item_type, t, t_item_type
-                )
+            for name, s_item, t_item in self.s.zipall(t):
+                meet_type, is_readonly = self.resolve_typeddict_item_type(name, s_item, t_item)
 
                 if meet_type is None:
                     return self.default(self.s)

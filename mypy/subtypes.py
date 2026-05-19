@@ -940,46 +940,48 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
 
             # Perform fast key-based checks before recursing into value types
-            for name, l_type, r_type in left.zipall(right):
-                l_required = name in left.required_keys
-                r_required = name in right.required_keys
-                l_mutable = l_type is not None and name not in left.readonly_keys
-                r_mutable = r_type is not None and name not in right.readonly_keys
-
+            for name, l, r in left.zipall(right):
                 # New keys cannot be added to a closed supertype
-                if r_type is None and right.is_closed:
-                    return False
-                # Keys cannot be dropped in an open subtype
-                # as this would implicitly widen the type constraint
-                if l_type is None and not left.is_closed:
+                if name not in right.items and right.is_closed:
                     return False
                 # Required keys must remain required
-                if r_required and not l_required:
+                if r.required and not l.required:
                     return False
                 # Mutable keys must remain mutable
-                if r_mutable and not l_mutable:
+                if r.mutable and not l.mutable:
                     return False
                 # Mutable optional keys must also remain optional,
                 # to retain the ability to delete them
-                if r_mutable and not r_required and l_required:
+                if r.mutable and not r.required and l.required:
                     return False
 
-            for name, l, r in left.zip(right):
-                # TODO: should we pass on the full subtype_context here and below?
-                right_readonly = name in right.readonly_keys
-                if not right_readonly:
+            for name, l, r in left.zipall(right):
+                if r.mutable:
+                    # None will only be used for missing ReadOnly[object] keys
+                    assert r.typ is not None
+                    # Guaranteed by "mutable keys must remain mutable" check
+                    assert l.typ is not None
+
+                    # TODO: should we pass on the full subtype_context here and below?
                     if self.proper_subtype:
-                        check = is_same_type(l, r)
+                        check = is_same_type(l.typ, r.typ)
                     else:
                         check = is_equivalent(
-                            l,
-                            r,
+                            l.typ,
+                            r.typ,
                             ignore_type_params=self.subtype_context.ignore_type_params,
                             options=self.options,
                         )
                 else:
                     # Read-only items behave covariantly
-                    check = self._is_subtype(l, r)
+                    if r.typ is None:
+                        check = True
+                    elif l.typ is None:
+                        # Keys cannot be dropped in an open subtype
+                        # as this would implicitly widen the type constraint
+                        check = False
+                    else:
+                        check = self._is_subtype(l.typ, r.typ)
                 if not check:
                     return False
             # (NOTE: Fallbacks don't matter.)

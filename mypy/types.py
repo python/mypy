@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Final,
+    NamedTuple,
     NewType,
     TypeAlias as _TypeAlias,
     TypeGuard,
@@ -2923,6 +2924,26 @@ class TupleType(ProperType):
         return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
+class TypedDictItem(NamedTuple):
+    """Type, mutability and requiredness of an item in a TypedDict.
+
+    If typ is `None`, the item comes from a missing item in an open TypedDict, and
+    the type should be treated as if it were a `builtins.object`. (Missing items in
+    closed TypedDicts will have an uninhabited type.)
+
+    TODO: pass a `builtins.object` instead of None when TypedDictType gains a
+    proper extra_items field.
+    """
+
+    typ: Type | None
+    required: bool
+    readonly: bool
+
+    @property
+    def mutable(self) -> bool:
+        return not self.readonly
+
+
 class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
@@ -3109,15 +3130,28 @@ class TypedDictType(ProperType):
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
-    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, Type | None, Type | None]]:
+    def item(self, item_name: str) -> TypedDictItem:
+        item_type = self.items.get(item_name)
+        if item_type is not None:
+            is_required = item_name in self.required_keys
+            is_readonly = item_name in self.readonly_keys
+        elif self.is_closed:
+            item_type = UninhabitedType()
+            is_required = False
+            is_readonly = True
+        else:
+            is_required = False
+            is_readonly = True
+        return TypedDictItem(item_type, is_required, is_readonly)
+
+    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, TypedDictItem, TypedDictItem]]:
         left = self
-        for item_name, left_item_type in left.items.items():
-            right_item_type = right.items.get(item_name)
-            yield (item_name, left_item_type, right_item_type)
-        for item_name, right_item_type in right.items.items():
+        for item_name in left.items:
+            yield (item_name, left.item(item_name), right.item(item_name))
+        for item_name in right.items:
             if item_name in left.items:
                 continue
-            yield (item_name, None, right_item_type)
+            yield (item_name, left.item(item_name), right.item(item_name))
 
 
 class RawExpressionType(ProperType):
