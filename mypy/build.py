@@ -1038,66 +1038,59 @@ class BuildManager:
                 state.needs_parse = False
                 continue
             parallel_states.append(state)
+
         if len(parallel_states) > 1:
-            self.parse_parallel(parallel_states)
+            # This duplicates a bit of logic from State.parse_file(). This is done to
+            # optimize handling of states parsed in parallel.
+
+            parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
+                parallel_states
+            )
+
+            for state in parallel_parsed_states:
+                # New parser only returns serialized ASTs
+                with state.wrap_context():
+                    assert state.tree is not None
+                    raw_data = state.tree.raw_data
+                    if raw_data is not None:
+                        state.source_hash = raw_data.source_hash
+                        state.apply_inline_configuration(raw_data.mypy_comments)
+                        state.tree = load_from_raw(
+                            state.xpath,
+                            state.id,
+                            raw_data,
+                            self.errors,
+                            state.options,
+                            imports_only=bool(self.workers),
+                        )
+                    if self.errors.is_blockers():
+                        self.log("Bailing due to parse errors")
+                        self.errors.raise_error()
+
+            for state in parallel_states:
+                assert state.tree is not None
+                if state in parallel_parsed_states_set:
+                    if state.tree.raw_data is not None:
+                        # source_hash was already extracted above, but raw_data
+                        # may have been preserved for workers (imports_only=True).
+                        pass
+                    elif state.source_hash is None:
+                        # At least namespace packages may not have source.
+                        state.get_source()
+                    state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                    state.semantic_analysis_pass1()
+                    self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
+                self.modules[state.id] = state.tree
+                if state.tree.raw_data is not None:
+                    state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
+                state.check_blockers()
+                state.setup_errors()
         elif len(parallel_states) == 1:
             # Avoid using executor when there is no parallelism.
             parallel_states[0].parse_file()
+
         if post_parse:
             self.post_parse_all(states)
-
-    def parse_parallel(self, parallel_states: list[State]) -> None:
-        """Perform parallel parsing of states.
-
-        Note: this duplicates a bit of logic from State.parse_file(). This is done
-        as an optimization to parallelize only those parts of the code that can be
-        parallelized efficiently.
-        """
-        parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
-            parallel_states
-        )
-
-        for state in parallel_parsed_states:
-            # New parser returns serialized ASTs. Deserialize full trees only if not using
-            # parallel workers.
-            with state.wrap_context():
-                assert state.tree is not None
-                raw_data = state.tree.raw_data
-                if raw_data is not None:
-                    # Apply inline mypy config before deserialization, since
-                    # some options (e.g. implicit_optional) affect deserialization
-                    state.source_hash = raw_data.source_hash
-                    state.apply_inline_configuration(raw_data.mypy_comments)
-                    state.tree = load_from_raw(
-                        state.xpath,
-                        state.id,
-                        raw_data,
-                        self.errors,
-                        state.options,
-                        imports_only=bool(self.workers),
-                    )
-                if self.errors.is_blockers():
-                    self.log("Bailing due to parse errors")
-                    self.errors.raise_error()
-
-        for state in parallel_states:
-            assert state.tree is not None
-            if state in parallel_parsed_states_set:
-                if state.tree.raw_data is not None:
-                    # source_hash was already extracted above, but raw_data
-                    # may have been preserved for workers (imports_only=True).
-                    pass
-                elif state.source_hash is None:
-                    # At least namespace packages may not have source.
-                    state.get_source()
-                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
-                state.semantic_analysis_pass1()
-                self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
-            self.modules[state.id] = state.tree
-            if state.tree.raw_data is not None:
-                state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
-            state.check_blockers()
-            state.setup_errors()
 
     def parse_files_threaded_raw(self, states: list[State]) -> tuple[list[State], set[State]]:
         """Parse files in parallel using a thread pool.
