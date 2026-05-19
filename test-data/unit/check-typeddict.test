@@ -5315,23 +5315,29 @@ fB(b)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfClosedTypedDict]
-from typing import TypedDict, TypeVar
+from typing import Any, TypedDict, TypeVar
 A = TypedDict('A', {'x': int}, closed=True)
 B = TypedDict('B', {'y': int})
 C = TypedDict('C', {'y': int}, closed=True)
 D = TypedDict('D', {'x': int, 'y': int}, closed=True)
+E = TypedDict('E', {'x': Any, 'y': Any})
 T = TypeVar('T')
 def j(x: T, y: T) -> T: return x
 a: A
 b: B
 c: C
 d: D
+e: E
 reveal_type(j(a, b)) # N: Revealed type is "TypedDict({'y'?=: builtins.int})"
 reveal_type(j(b, a)) # N: Revealed type is "TypedDict({'y'?=: builtins.int})"
 reveal_type(j(a, c)) # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'?=: builtins.int}, closed=True)"
 reveal_type(j(c, a)) # N: Revealed type is "TypedDict({'y'?=: builtins.int, 'x'?=: builtins.int}, closed=True)"
 reveal_type(j(a, d)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
 reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
+reveal_type(j(a, e)) # N: Revealed type is "TypedDict({'x': Any, 'y'?=: Any})"
+reveal_type(j(e, a)) # N: Revealed type is "TypedDict({'x': Any, 'y'?=: Any})"
+reveal_type(j(b, e)) # N: Revealed type is "TypedDict({'y': Any})"
+reveal_type(j(e, b)) # N: Revealed type is "TypedDict({'y': Any})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

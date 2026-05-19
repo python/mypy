@@ -622,44 +622,43 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
         If the type is None, the item should be omitted from the join keys.
         """
+        s_readonly = s_item_type is None or item_name in s.readonly_keys
+        t_readonly = t_item_type is None or item_name in t.readonly_keys
+        s_required = item_name in s.required_keys
+        t_required = item_name in t.required_keys
+
+        is_required = s_required and t_required
+
+        # Simplify the logic by using Never instead of None for missing keys
+        # in closed TypedDicts. Ideally we'd use builtins.object instead of
+        # None in open TypedDicts, but that is hard to get.
+        if s_item_type is None and s.is_closed:
+            s_item_type = UninhabitedType()
+        if t_item_type is None and t.is_closed:
+            t_item_type = UninhabitedType()
+
         if s_item_type is None or t_item_type is None:
-            is_required = False
-            if (s_item_type is None and not s.is_closed) or (
-                t_item_type is None and not t.is_closed
-            ):
-                # Key is implicitly NotRequired[ReadOnly[object]] in one type and
-                # (object join T) == object. Omitting it in the join leaves it implicitly
-                # of object type.
-                join_type = None
-            else:
-                # Key is implicitly NotRequired[Never] in one type and (Never join T) == T
-                join_type = s_item_type if t_item_type is None else t_item_type
-            # One type is missing the setitem overload for this key, so the join supertype
-            # must also omit it
+            # Key is implicitly NotRequired[ReadOnly[object]] in one type and
+            # (object join T) == object. Omitting it in the join leaves it implicitly
+            # of object type.
+            join_type = None
             is_readonly = True
         else:
-            s_required = item_name in s.required_keys
-            t_required = item_name in t.required_keys
-            is_required = s_required and t_required
+            join_type = join_types(s_item_type, t_item_type)
 
-            if not is_equivalent(s_item_type, t_item_type):
-                join_type = join_types(s_item_type, t_item_type)
+            if s_required != t_required:
+                # As one of the input types marks the key as not required, it must
+                # be not required in the join supertype. However, as the other input
+                # type does not have a delitem overload for the key, the delitem
+                # overload must be omitted in the join supertype too. This can only
+                # be done by marking the key as readonly.
+                is_readonly = True
+            elif s_readonly or t_readonly:
+                # If either type has no setitem overload for this key,
+                # then the join supertype must also omit it
                 is_readonly = True
             else:
-                join_type = s_item_type
-                s_readonly = item_name in s.readonly_keys
-                t_readonly = item_name in t.readonly_keys
-                if s_required != t_required:
-                    # As one of the input types marks the key as not required, it must
-                    # be not required in the join supertype. However, as the other input
-                    # type does not have a delitem overload for the key, the delitem
-                    # overload must be omitted in the join supertype too. This can only
-                    # be done by marking the key as readonly.
-                    is_readonly = True
-                else:
-                    # If either type has no setitem overload for this key,
-                    # then the join supertype must also omit it
-                    is_readonly = s_readonly or t_readonly
+                is_readonly = not is_equivalent(s_item_type, t_item_type)
 
         return join_type, is_required, is_readonly
 
