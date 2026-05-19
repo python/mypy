@@ -5391,6 +5391,30 @@ fB(b)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictSubtypingClosedExplicitNever]
+from typing import NotRequired, ReadOnly, TypedDict
+from typing_extensions import Never
+A = TypedDict('A', {}, closed=True)
+B = TypedDict('B', {'x': NotRequired[Never]}, closed=True)
+C = TypedDict('C', {'x': ReadOnly[NotRequired[Never]]}, closed=True)
+def f_a(x: A) -> None: pass
+def f_b(x: B) -> None: pass
+def f_c(x: C) -> None: pass
+a: A
+b: B
+c: C
+# Logically identical types: legal
+f_a(b)
+f_b(a)
+# Subtype allows key removal: legal
+f_c(a)
+f_c(b)
+# Subtype prevents key removal: illegal
+f_a(c)  # E: Argument 1 to "f_a" has incompatible type "C"; expected "A"
+f_b(c)  # E: Argument 1 to "f_b" has incompatible type "C"; expected "B"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testJoinOfClosedTypedDict]
 from typing import Any, TypedDict, TypeVar
 A = TypedDict('A', {'x': int}, closed=True)

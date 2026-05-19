@@ -941,9 +941,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             # Perform fast key-based checks before recursing into value types
             for name, l, r in left.zipall(right):
-                # New keys cannot be added to a closed supertype
-                if name not in right.items and right.is_closed:
-                    return False
                 # Required keys must remain required
                 if r.required and not l.required:
                     return False
