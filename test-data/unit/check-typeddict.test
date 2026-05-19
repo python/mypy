@@ -941,6 +941,18 @@ c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}  # E: Type of TypedDict is
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictUnionWithNonTypedDictLiteralKey]
+from typing import Union, TypedDict
+
+class Foo(TypedDict):
+    some: str
+    name: str
+
+baz: Union[Foo, dict[int, float]] = {1: 5.2}
+baz2: Union[Foo, dict[int, float]] = {'some': 'x', 'name': 'y'}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 -- Use dict literals
 
 [case testTypedDictDictLiterals]
