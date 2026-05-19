@@ -150,6 +150,15 @@ def func_error_alias2(
     reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
 [builtins fixtures/dict.pyi]
 
+[case testTypeVarDefaultsExplicitNever]
+from typing import Generic, Never, TypeVar
+
+D = TypeVar("D", default=int)
+class WithDefault(Generic[D]): pass
+
+never_with_default: WithDefault[Never] = WithDefault()
+explicit_with_default: WithDefault[Never] = WithDefault[Never]()
+
 [case testTypeVarDefaultsFunctions]
 from typing import TypeVar, ParamSpec, List, Union, Callable, Tuple
 from typing_extensions import TypeVarTuple, Unpack

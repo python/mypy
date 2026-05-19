@@ -2085,7 +2085,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
         for arg in args:
-            if has_uninhabited_component(arg) or has_erased_component(arg):
+            if has_ambiguous_uninhabited_component(arg) or has_erased_component(arg):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -6719,8 +6719,8 @@ class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
         return True
 
 
-def has_ambiguous_uninhabited_component(t: Type) -> bool:
-    return t.accept(HasAmbiguousUninhabitedComponentsQuery())
+def has_ambiguous_uninhabited_component(t: Type | None) -> bool:
+    return t is not None and t.accept(HasAmbiguousUninhabitedComponentsQuery())
 
 
 class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
