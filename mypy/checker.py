@@ -6831,6 +6831,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             # We can't do negative narrowing, since e.g. the container could
                             # just be empty.
                             else_map = {}
+                            # The `in` operator uses __eq__, not isinstance. Knowing that
+                            # value == some_container_element does not imply value has the
+                            # runtime type of that element. Discard any narrowing that would
+                            # widen item_type to a non-subtype (e.g. tuple[int,int,int] must
+                            # not be widened to a subclass Size just because they compare equal).
+                            left_expr = collapse_walrus(operands[left_index])
+                            if left_expr in if_map and not is_proper_subtype(
+                                if_map[left_expr], item_type, ignore_promotions=True
+                            ):
+                                del if_map[left_expr]
 
                 if right_index in narrowable_operand_index_to_hash:
                     # E.g. narrows the right operand in `if "key" in typed_dict`
