@@ -899,6 +899,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     ctx,
                     self.options,
                     use_standard_error=True,
+                    empty_tuple_index=empty_tuple_index,
                 )
             return tup.copy_modified(
                 items=self.anal_array(tup.items, allow_unpack=True), fallback=instance
