@@ -7,10 +7,12 @@ https://github.com/mypyc/ast_serialize first (see the README for the details).
 from __future__ import annotations
 
 import contextlib
+import importlib.metadata
 import os
 import tempfile
 import unittest
 from collections.abc import Iterator
+from unittest.mock import patch
 
 from librt.internal import ReadBuffer
 
@@ -36,6 +38,7 @@ from mypy.util import get_mypy_comments
 # If the experimental ast_serialize module isn't installed, the following import will fail
 # and we won't run any native parser tests.
 try:
+    from mypy import nativeparse
     from mypy.nativeparse import (
         State,
         deserialize_imports,
@@ -230,6 +233,54 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
             output.append(f"{line_num}: from {module} import *{flags_str}")
 
     return output
+
+
+@unittest.skipUnless(has_nativeparse, "nativeparse not available")
+class TestNativeParserVersion(unittest.TestCase):
+    def setUp(self) -> None:
+        nativeparse._ast_serialize_version_checked = False
+
+    def tearDown(self) -> None:
+        nativeparse._ast_serialize_version_checked = False
+
+    def test_ast_serialize_version_accepts_minimum(self) -> None:
+        with patch("importlib.metadata.version", return_value="0.5.0"):
+            nativeparse._validate_ast_serialize_version()
+
+    def test_ast_serialize_version_reports_old_version(self) -> None:
+        for version in ["0.2.3", "0.4.0"]:
+            with self.subTest(version=version):
+                with patch("importlib.metadata.version", return_value=version):
+                    with self.assertRaises(CompileError) as context:
+                        nativeparse._validate_ast_serialize_version()
+
+                self.assertEqual(
+                    context.exception.messages,
+                    [
+                        f"mypy: error: ast-serialize {version} is too old; "
+                        "mypy requires ast-serialize>=0.5.0,<1.0.0"
+                    ],
+                )
+
+    def test_ast_serialize_version_reports_too_new_version(self) -> None:
+        with patch("importlib.metadata.version", return_value="1.0.0"):
+            with self.assertRaises(CompileError) as context:
+                nativeparse._validate_ast_serialize_version()
+
+        self.assertEqual(
+            context.exception.messages,
+            [
+                "mypy: error: ast-serialize 1.0.0 is too new; "
+                "mypy requires ast-serialize>=0.5.0,<1.0.0"
+            ],
+        )
+
+    def test_ast_serialize_version_ignores_missing_metadata(self) -> None:
+        with patch(
+            "importlib.metadata.version",
+            side_effect=importlib.metadata.PackageNotFoundError("ast-serialize"),
+        ):
+            nativeparse._validate_ast_serialize_version()
 
 
 @unittest.skipUnless(has_nativeparse, "nativeparse not available")

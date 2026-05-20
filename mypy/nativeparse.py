@@ -18,6 +18,7 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
+import importlib.metadata
 import os
 import time
 from typing import Final, cast
@@ -47,6 +48,7 @@ from mypy.cache import (
     read_str_opt,
     read_tag,
 )
+from mypy.errors import CompileError
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -164,6 +166,59 @@ TypeIgnores = list[tuple[int, list[str]]]
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
+_AST_SERIALIZE_REQUIREMENT: Final = "ast-serialize>=0.5.0,<1.0.0"
+_AST_SERIALIZE_MIN_VERSION: Final = (0, 5, 0)
+_AST_SERIALIZE_MAX_VERSION: Final = (1, 0, 0)
+_ast_serialize_version_checked = False
+
+
+def _parse_ast_serialize_version(version: str) -> tuple[int, int, int] | None:
+    release = version.split("+", 1)[0].split("-", 1)[0]
+    components = release.split(".")
+    if len(components) > 3:
+        components = components[:3]
+
+    parts: list[int] = []
+    for component in components:
+        if not component.isdigit():
+            return None
+        parts.append(int(component))
+
+    while len(parts) < 3:
+        parts.append(0)
+    return parts[0], parts[1], parts[2]
+
+
+def _validate_ast_serialize_version() -> None:
+    global _ast_serialize_version_checked
+    if _ast_serialize_version_checked:
+        return
+
+    try:
+        version = importlib.metadata.version("ast-serialize")
+    except importlib.metadata.PackageNotFoundError:
+        _ast_serialize_version_checked = True
+        return
+
+    parsed_version = _parse_ast_serialize_version(version)
+    if parsed_version is None:
+        _ast_serialize_version_checked = True
+        return
+    if parsed_version < _AST_SERIALIZE_MIN_VERSION:
+        raise CompileError(
+            [
+                f"mypy: error: ast-serialize {version} is too old; "
+                f"mypy requires {_AST_SERIALIZE_REQUIREMENT}"
+            ]
+        )
+    if parsed_version >= _AST_SERIALIZE_MAX_VERSION:
+        raise CompileError(
+            [
+                f"mypy: error: ast-serialize {version} is too new; "
+                f"mypy requires {_AST_SERIALIZE_REQUIREMENT}"
+            ]
+        )
+    _ast_serialize_version_checked = True
 
 
 class State:
@@ -250,6 +305,8 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 def parse_to_binary_ast(
     filename: str, options: Options, skip_function_bodies: bool = False
 ) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
+    _validate_ast_serialize_version()
+
     # This is a horrible hack to work around a mypyc bug where imported
     # module may be not ready in a thread sometimes.
     t0 = time.time()
