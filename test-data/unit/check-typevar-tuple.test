@@ -2803,3 +2803,38 @@ c2: S2[int, str] = S2((1, "", 2))  # E: Argument 1 to "S2" has incompatible type
 t: S2[Unpack[tuple[int, ...]]] = S2((1, 2))
 t_bad: S2[Unpack[tuple[int, ...]]] = S2((1, ""))  # E: Argument 1 to "S2" has incompatible type "tuple[int, str]"; expected "tuple[int, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubclassEmptyIndex]
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Shape(tuple[Unpack[Ts]]): ...
+
+class Shape0(Shape[()]): ...
+
+x: Shape[()]
+y: Shape0
+
+reveal_type(x)  # N: Revealed type is "tuple[(), fallback=__main__.Shape[()]]"
+reveal_type(y)  # N: Revealed type is "tuple[(), fallback=__main__.Shape0]"
+
+def test(t: tuple[int, ...]) -> None: ...
+test(x)
+test(y)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubclassVariadicIndex]
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Shape(tuple[Unpack[Ts]]): ...
+
+class ShapeN(Shape[Unpack[tuple[int, ...]]]): ...
+
+x: Shape[Unpack[tuple[int, ...]]]
+y: ShapeN
+
+def test(t: tuple[int, ...]) -> None: ...
+test(x)
+test(y)
+[builtins fixtures/tuple.pyi]
