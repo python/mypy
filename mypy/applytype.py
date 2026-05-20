@@ -39,7 +39,7 @@ def get_target_type(
     skip_unsatisfied: bool,
 ) -> Type | None:
     p_type = get_proper_type(type)
-    if isinstance(p_type, UninhabitedType) and tvar.has_default():
+    if isinstance(p_type, UninhabitedType) and p_type.ambiguous and tvar.has_default():
         return tvar.default
     if isinstance(tvar, ParamSpecType):
         return type

@@ -2773,3 +2773,68 @@ from typing import Protocol, Unpack
 class C(Protocol[Unpack]):  # E: Free type variable expected in Protocol[...]
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testGenericTupleSubclassConstructor]
+from typing import TypeVar, TypeVarTuple, Unpack
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+
+class S1(tuple[T, S]): ...
+class S2(tuple[Unpack[Ts]]): ...
+
+reveal_type(S1((1, "")))  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.S1[builtins.int, builtins.str]]"
+reveal_type(S1((1, "", 2)))  # N: Revealed type is "tuple[Never, Never, fallback=__main__.S1[Never, Never]]" \
+                             # E: Argument 1 to "S1" has incompatible type "tuple[int, str, int]"; expected "tuple[Never, Never]"
+
+a1: S1[int, str] = S1((1, ""))
+b1: S1[int, str] = S1((1, 1))  # E: Argument 1 to "S1" has incompatible type "tuple[int, int]"; expected "tuple[int, str]"
+c1: S1[int, str] = S1((1, "", 2))  # E: Argument 1 to "S1" has incompatible type "tuple[int, str, int]"; expected "tuple[int, str]"
+
+reveal_type(S2(()))  # N: Revealed type is "tuple[(), fallback=__main__.S2[()]]"
+reveal_type(S2((1, "")))  # N: Revealed type is "tuple[Literal[1]?, Literal['']?, fallback=__main__.S2[Literal[1]?, Literal['']?]]"
+reveal_type(S2((1, "", 2)))  # N: Revealed type is "tuple[Literal[1]?, Literal['']?, Literal[2]?, fallback=__main__.S2[Literal[1]?, Literal['']?, Literal[2]?]]"
+
+a2: S2[int, str] = S2((1, ""))
+b2: S2[int, str] = S2((1, 1))  # E: Argument 1 to "S2" has incompatible type "tuple[int, int]"; expected "tuple[int, str]"
+c2: S2[int, str] = S2((1, "", 2))  # E: Argument 1 to "S2" has incompatible type "tuple[int, str, int]"; expected "tuple[int, str]"
+
+t: S2[Unpack[tuple[int, ...]]] = S2((1, 2))
+t_bad: S2[Unpack[tuple[int, ...]]] = S2((1, ""))  # E: Argument 1 to "S2" has incompatible type "tuple[int, str]"; expected "tuple[int, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubclassEmptyIndex]
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Shape(tuple[Unpack[Ts]]): ...
+
+class Shape0(Shape[()]): ...
+
+x: Shape[()]
+y: Shape0
+
+reveal_type(x)  # N: Revealed type is "tuple[(), fallback=__main__.Shape[()]]"
+reveal_type(y)  # N: Revealed type is "tuple[(), fallback=__main__.Shape0]"
+
+def test(t: tuple[int, ...]) -> None: ...
+test(x)
+test(y)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubclassVariadicIndex]
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Shape(tuple[Unpack[Ts]]): ...
+
+class ShapeN(Shape[Unpack[tuple[int, ...]]]): ...
+
+x: Shape[Unpack[tuple[int, ...]]]
+y: ShapeN
+
+def test(t: tuple[int, ...]) -> None: ...
+test(x)
+test(y)
+[builtins fixtures/tuple.pyi]

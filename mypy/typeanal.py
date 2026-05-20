@@ -914,6 +914,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     ctx,
                     self.options,
                     use_standard_error=True,
+                    empty_tuple_index=empty_tuple_index,
                     analyzing_tvar_def=self.analyzing_tvar_def,
                 )
                 if self.analyzing_tvar_def and used_default:

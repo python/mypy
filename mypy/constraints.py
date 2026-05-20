@@ -1224,8 +1224,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
         actual = self.actual
         unpack_index = find_unpack_in_list(template.items)
-        is_varlength_tuple = (
-            isinstance(actual, Instance) and actual.type.fullname == "builtins.tuple"
+        # TODO: we may need to be careful with direction to avoid spurious constraints.
+        is_varlength_tuple = isinstance(actual, Instance) and actual.type.has_base(
+            "builtins.tuple"
         )
 
         if isinstance(actual, TupleType) or is_varlength_tuple:
@@ -1237,23 +1238,26 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     unpack_type = template.items[unpack_index]
                     assert isinstance(unpack_type, UnpackType)
                     unpacked_type = get_proper_type(unpack_type.type)
+                    assert isinstance(actual, Instance)  # ensured by is_varlength_tuple == True
+                    mapped = map_instance_to_supertype(
+                        actual, actual.type.get_base("builtins.tuple")
+                    )
                     if isinstance(unpacked_type, TypeVarTupleType):
                         res = [
-                            Constraint(type_var=unpacked_type, op=self.direction, target=actual)
+                            Constraint(type_var=unpacked_type, op=self.direction, target=mapped)
                         ]
                     else:
                         assert (
                             isinstance(unpacked_type, Instance)
                             and unpacked_type.type.fullname == "builtins.tuple"
                         )
-                        res = infer_constraints(unpacked_type, actual, self.direction)
-                    assert isinstance(actual, Instance)  # ensured by is_varlength_tuple == True
+                        res = infer_constraints(unpacked_type, mapped, self.direction)
                     for i, ti in enumerate(template.items):
                         if i == unpack_index:
                             # This one we just handled above.
                             continue
                         # For Tuple[T, *Ts, S] <: tuple[X, ...] infer also T <: X and S <: X.
-                        res.extend(infer_constraints(ti, actual.args[0], self.direction))
+                        res.extend(infer_constraints(ti, mapped.args[0], self.direction))
                     return res
                 else:
                     assert isinstance(actual, TupleType)
