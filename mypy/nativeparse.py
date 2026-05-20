@@ -18,7 +18,6 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
-import importlib.metadata
 import os
 import time
 from typing import Final, cast
@@ -169,7 +168,6 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 _AST_SERIALIZE_REQUIREMENT: Final = "ast-serialize>=0.5.0,<1.0.0"
 _AST_SERIALIZE_MIN_VERSION: Final = (0, 5, 0)
 _AST_SERIALIZE_MAX_VERSION: Final = (1, 0, 0)
-_ast_serialize_version_checked = False
 
 
 def _parse_ast_serialize_version(version: str) -> tuple[int, int, int] | None:
@@ -190,19 +188,15 @@ def _parse_ast_serialize_version(version: str) -> tuple[int, int, int] | None:
 
 
 def _validate_ast_serialize_version() -> None:
-    global _ast_serialize_version_checked
-    if _ast_serialize_version_checked:
-        return
+    from importlib import metadata
 
     try:
-        version = importlib.metadata.version("ast-serialize")
-    except importlib.metadata.PackageNotFoundError:
-        _ast_serialize_version_checked = True
+        version = metadata.version("ast-serialize")
+    except metadata.PackageNotFoundError:
         return
 
     parsed_version = _parse_ast_serialize_version(version)
     if parsed_version is None:
-        _ast_serialize_version_checked = True
         return
     if parsed_version < _AST_SERIALIZE_MIN_VERSION:
         raise CompileError(
@@ -218,7 +212,6 @@ def _validate_ast_serialize_version() -> None:
                 f"mypy requires {_AST_SERIALIZE_REQUIREMENT}"
             ]
         )
-    _ast_serialize_version_checked = True
 
 
 class State:

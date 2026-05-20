@@ -7,11 +7,11 @@ https://github.com/mypyc/ast_serialize first (see the README for the details).
 from __future__ import annotations
 
 import contextlib
-import importlib.metadata
 import os
 import tempfile
 import unittest
 from collections.abc import Iterator
+from importlib import metadata
 from unittest.mock import patch
 
 from librt.internal import ReadBuffer
@@ -237,12 +237,6 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
 
 @unittest.skipUnless(has_nativeparse, "nativeparse not available")
 class TestNativeParserVersion(unittest.TestCase):
-    def setUp(self) -> None:
-        nativeparse._ast_serialize_version_checked = False
-
-    def tearDown(self) -> None:
-        nativeparse._ast_serialize_version_checked = False
-
     def test_ast_serialize_version_accepts_minimum(self) -> None:
         with patch("importlib.metadata.version", return_value="0.5.0"):
             nativeparse._validate_ast_serialize_version()
@@ -278,7 +272,7 @@ class TestNativeParserVersion(unittest.TestCase):
     def test_ast_serialize_version_ignores_missing_metadata(self) -> None:
         with patch(
             "importlib.metadata.version",
-            side_effect=importlib.metadata.PackageNotFoundError("ast-serialize"),
+            side_effect=metadata.PackageNotFoundError("ast-serialize"),
         ):
             nativeparse._validate_ast_serialize_version()
 
