@@ -81,9 +81,9 @@ arbitrarily complex types. For example, you can define nested
 ``TypedDict``\s and containers with ``TypedDict`` items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
-extra items is compatible with (a subtype of) a narrower
+extra items can be compatible with (a subtype of) a narrower
 ``TypedDict``, assuming item types are compatible (*totality* also affects
-subtyping, as discussed below).
+subtyping, as does *closing*, as discussed below).
 
 A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
 type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
@@ -276,6 +276,35 @@ vary :ref:`covariantly <variance-of-generics>`:
     m: Movie = {"name": "Jaws", "year": 1975}
     process_entry(m)  # OK
 
+Closing
+-------
+
+You can use the ``closed`` keyword, introduced to ``TypedDict`` in Python
+3.15 (and available via ``typing_extensions.TypedDict`` in older
+versions) to prevent structural subtypes from adding extra keys to a
+type (:pep:`728`):
+
+.. code-block:: python
+
+   HasName = TypedDict("HasName", {"name": str})
+   HasOnlyName = TypedDict("HasOnlyName", {"name": str}, closed=True)
+   Movie = TypedDict("Movie", {"name": str, "year": int})
+
+   movie: Movie = {"name": "Nimona", "year": 2023}
+   has_name: HasName = movie  # OK: type is open
+   has_only_name: HasOnlyName = movie  # Error: type is closed
+
+This allows the typechecker to determine that certain operations are safe,
+when they otherwise wouldn't be due to the potential presence of unknown
+keys.
+
+The ``closed`` keyword can also be used in class-based syntax:
+
+.. code-block:: python
+
+   class HasOnlyName(TypedDict, closed=True):
+       name: str
+
 Unions of TypedDicts
 --------------------
 
@@ -288,6 +317,40 @@ section of the docs has a full description with an example, but in short, you wi
 need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
+
+Alternatively, you can implement tagged unions with single-key wrapper dictionaries:
+
+.. code-block:: python
+
+   class Book(TypedDict):
+       name: str
+       length: int
+       ...
+
+   class DVD(TypedDict):
+       name: str
+       length: int
+       ...
+
+   TaggedBook = TypedDict('TaggedBook', {'book': Book}, closed=True)
+   TaggedDVD = TypedDict('TaggedDVD', {'dvd': DVD}, closed=True)
+   type Inventory = TaggedBook | TaggedDVD
+
+   def print_length(inventory: Inventory) -> None:
+       if "book" in inventory:
+           print(inventory["book"]["length"], 'pages')
+       else:
+           print(inventory["dvd"]["length"], 'minutes')
+
+Here, the ``closed`` keyword is necessary to allow the ``if`` guard to safely
+narrow the types; without it, there could be a structural subtype of ``TaggedDVD``
+that contains a ``book`` field of arbitrary type.
+
+.. note::
+
+   Applying ``@final`` to a TypedDict is a legacy way of marking it as closed
+   for the purposes of type narrowing. It was never fully implemented and is
+   now superseded; it may be removed in future.
 
 Inline TypedDict types
 ----------------------
