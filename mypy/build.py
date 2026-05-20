@@ -1048,6 +1048,9 @@ class BuildManager:
                     assert state.tree is not None
                     raw_data = state.tree.raw_data
                     if raw_data is not None:
+                        # Apply inline mypy config before deserialization, since
+                        # some options (e.g. implicit_optional) affect how the
+                        # AST is built during deserialization.
                         state.source_hash = raw_data.source_hash
                         state.apply_inline_configuration(raw_data.mypy_comments)
                         state.tree = load_from_raw(
