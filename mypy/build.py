@@ -1035,8 +1035,9 @@ class BuildManager:
             parallel_states.append(state)
 
         if len(parallel_states) > 1:
-            # This duplicates a bit of logic from State.parse_file(). This is done to
-            # optimize handling of states parsed in parallel.
+            # This duplicates a bit of logic from State.parse_file(). This is done as an
+            # optimization to parallelize only those parts of the code that can be
+            # parallelized efficiently.
 
             parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
                 parallel_states
