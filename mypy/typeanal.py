@@ -2098,15 +2098,16 @@ def fix_instance(
                         disallow_any, fail, note, t, options, fullname, unexpanded_type
                     )
                 arg = any_type
+            with state.strict_optional_set(options.strict_optional):
+                # Gradually expand defaults, as they may depend on previous variables.
+                if tv.has_default():
+                    arg = expand_type(arg, env)
+                env[tv.id] = arg
             args.append(arg)
-        env[tv.id] = arg
+        else:
+            env[tv.id] = arg
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
-    if not t.type.has_type_var_tuple_type:
-        with state.strict_optional_set(True):
-            fixed = expand_type(t, env)
-        assert isinstance(fixed, Instance)
-        t.args = fixed.args
 
 
 def instantiate_type_alias(
@@ -2288,7 +2289,6 @@ def set_any_tvars(
 
     env: dict[TypeVarId, Type] = {}
     used_any_type = False
-    has_type_var_tuple_type = False
     for tv, arg in itertools.zip_longest(node.alias_tvars, args, fillvalue=None):
         if tv is None:
             continue
@@ -2300,16 +2300,16 @@ def set_any_tvars(
                 used_any_type = True
             if isinstance(tv, TypeVarTupleType):
                 # TODO Handle TypeVarTuple defaults
-                has_type_var_tuple_type = True
                 arg = UnpackType(Instance(tv.tuple_fallback.type, [any_type]))
+            with state.strict_optional_set(options.strict_optional):
+                # Gradually expand defaults, as they may depend on previous variables.
+                if tv.has_default():
+                    arg = expand_type(arg, env)
+                env[tv.id] = arg
             args.append(arg)
-        env[tv.id] = arg
+        else:
+            env[tv.id] = arg
     t = TypeAliasType(node, args, newline, newcolumn)
-    if not has_type_var_tuple_type:
-        with state.strict_optional_set(options.strict_optional):
-            fixed = expand_type(t, env)
-        assert isinstance(fixed, TypeAliasType)
-        t.args = fixed.args
 
     if used_any_type and disallow_any and node.alias_tvars:
         assert fail is not None

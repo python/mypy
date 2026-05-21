@@ -137,8 +137,7 @@ def func_error_alias1(
     reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, Any]"
     reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
 
-TERR2 = Dict[T4, T3]  # TODO should be an error  \
-                      # Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
+TERR2 = Dict[T4, T3]  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
 
 def func_error_alias2(
     a: TERR2,
@@ -518,8 +517,8 @@ def func_d3(
     reveal_type(b)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.list[builtins.int]]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.float]"
 
-    # k = ClassD3()
-    # reveal_type(k)  # Revealed type is "__main__.ClassD3[builtins.str, builtins.list[builtins.str]]"  # TODO
+    k = ClassD3()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassD3[builtins.str, builtins.list[builtins.str]]"
     l = ClassD3[int]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.list[builtins.int]]"
     m = ClassD3[int, float]()
@@ -904,6 +903,19 @@ Alias: TypeAlias = "MyClass[T1, T2]"
 class MyClass(Generic["T1", "T2"]): ...
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVariableDefaultNotSticky]
+from typing import Generic, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+
+class MyClass(Generic[T1, T2]): ...
+
+reveal_type(MyClass[int])  # N: Revealed type is "def () -> __main__.MyClass[builtins.int, builtins.int]"
+reveal_type(MyClass[str])  # N: Revealed type is "def () -> __main__.MyClass[builtins.str, builtins.str]"
+reveal_type(MyClass[bytes])  # N: Revealed type is "def () -> __main__.MyClass[builtins.bytes, builtins.bytes]"
+[builtins fixtures/tuple.pyi]
+
 [case testDefaultsApplicationInAliasNoCrashNested]
 from typing import Generic, TypeVar
 from typing_extensions import TypeAlias
@@ -928,19 +940,23 @@ T3 = TypeVar("T3", default=T2)
 class A(Generic[T1, T2, T3]): ...
 reveal_type(A)  # N: Revealed type is "def [T1, T2 = T1`1, T3 = T2`2 = T1`1] () -> __main__.A[T1`1, T2`2 = T1`1, T3`3 = T2`2 = T1`1]"
 a: A[int]
-reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int, builtins.int, T1`1]"
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int, builtins.int, builtins.int]"
 
-class B(Generic[T1, T3]): ...  # E: Type variable T2 referenced in the default of T3 is unbound
+AA = tuple[T1, T2, T3]
+aa: AA[str]
+reveal_type(aa)  # N: Revealed type is "tuple[builtins.str, builtins.str, builtins.str]"
+
+class B(Generic[T1, T3]): ...  # E: Type parameter "T3" has a default type that refers to one or more type variables that are out of scope
 reveal_type(B)  # N: Revealed type is "def [T1, T3 = Any] () -> __main__.B[T1`1, T3`2 = Any]"
 b: B[int]
 reveal_type(b)  # N: Revealed type is "__main__.B[builtins.int, Any]"
 
-class C(Generic[T2]): ...  # E: Type variable T1 referenced in the default of T2 is unbound
+class C(Generic[T2]): ...  # E: Type parameter "T2" has a default type that refers to one or more type variables that are out of scope
 reveal_type(C)  # N: Revealed type is "def [T2 = Any] () -> __main__.C[T2`1 = Any]"
 c: C
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
 
-class D(Generic[T2, T1]): ...  # E: Type variable T1 referenced in the default of T2 is unbound \
+class D(Generic[T2, T1]): ...  # E: Type parameter "T2" has a default type that refers to one or more type variables that are out of scope \
                                # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
 reveal_type(D)  # N: Revealed type is "def [T2 = Any, T1 = Any] () -> __main__.D[T2`1 = Any, T1`2 = Any]"
 d: D
