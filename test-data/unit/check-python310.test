@@ -3625,6 +3625,21 @@ match b:
     case _:
         pass
 
+[case testExhaustiveMatchIgnoresUnreachableClassPattern]
+# flags: --enable-error-code exhaustive-match
+class A: pass
+class B: pass
+
+x: A | None
+
+match x:
+    case None:
+        pass
+    case A() as a:
+        pass
+    case B():
+        pass
+
 [case testNonExhaustiveMatchWithFlag]
 # flags: --enable-error-code exhaustive-match --strict-equality --warn-unreachable
 
