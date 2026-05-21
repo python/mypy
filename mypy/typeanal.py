@@ -248,6 +248,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_final = allow_final
         # Are we in a context where ParamSpec literals are allowed?
         self.allow_param_spec_literals = allow_param_spec_literals
+        # Are we in a context where ParamSpec values are accepted directly?
+        self.allow_param_spec = False
         # Are we in context where literal "..." specifically is allowed?
         self.allow_ellipsis = False
         # Should we report an error whenever we encounter a RawExpressionType outside
@@ -461,6 +463,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             special = self.try_analyze_special_unbound_type(t, fullname)
             if special is not None:
                 return special
+            if node.fullname in CONCATENATE_TYPE_NAMES:
+                # Concatenate is an operator, no need for a proper type. Some callers analyze
+                # annotations directly via accept(), so validate direct invalid uses here.
+                result = self.apply_concatenate_operator(t)
+                if not (self.allow_param_spec or self.allow_param_spec_literals) and (
+                    isinstance(result, Parameters)
+                    or (
+                        isinstance(result, ParamSpecType)
+                        and result.flavor == ParamSpecFlavor.BARE
+                        and result.prefix.arg_types
+                    )
+                ):
+                    self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
+                    self.note("You can use Concatenate as the first argument to Callable", t)
+                    return AnyType(TypeOfAny.from_error)
+                return result
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
                 an_args = self.anal_array(
@@ -508,10 +526,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_type_with_type_info(node, t.args, t, t.empty_tuple_index)
             elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
-            # Concatenate is an operator, no need for a proper type
-            elif node.fullname in CONCATENATE_TYPE_NAMES:
-                # We check the return type further up the stack for valid use locations
-                return self.apply_concatenate_operator(t)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
@@ -1918,6 +1932,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_final = allow_final
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
+        old_allow_param_spec = self.allow_param_spec
+        self.allow_param_spec = allow_param_spec
         old_allow_unpack = self.allow_unpack
         self.allow_unpack = allow_unpack
         try:
@@ -1927,6 +1943,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.nesting_level -= 1
             self.allow_typed_dict_special_forms = old_allow_typed_dict_special_forms
             self.allow_ellipsis = old_allow_ellipsis
+            self.allow_param_spec = old_allow_param_spec
             self.allow_unpack = old_allow_unpack
         if (
             not allow_param_spec

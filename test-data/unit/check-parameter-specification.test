@@ -28,6 +28,9 @@ def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
 def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for Concatenate \
                                               # N: You can use Concatenate as the first argument to Callable
 
+plain_concatenate: Concatenate[...]  # E: Invalid location for Concatenate \
+                                     # N: You can use Concatenate as the first argument to Callable
+
 def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                    # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 
