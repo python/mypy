@@ -1024,85 +1024,76 @@ class BuildManager:
                 self.post_parse_all(states)
             return
 
-        sequential_states = []
         parallel_states = []
         for state in states:
+            if not self.fscache.exists(state.xpath, real_only=True):
+                state.source = state.get_source()
             if state.tree is not None:
                 # The file was already parsed.
-                continue
-            if not self.fscache.exists(state.xpath, real_only=True):
-                # New parser only supports parsing on-disk files.
-                sequential_states.append(state)
+                state.needs_parse = False
                 continue
             parallel_states.append(state)
+
         if len(parallel_states) > 1:
-            self.parse_parallel(sequential_states, parallel_states)
-        else:
+            # This duplicates a bit of logic from State.parse_file(). This is done as an
+            # optimization to parallelize only those parts of the code that can be
+            # parallelized efficiently.
+
+            parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
+                parallel_states
+            )
+
+            for state in parallel_parsed_states:
+                # New parser only returns serialized ASTs
+                with state.wrap_context():
+                    assert state.tree is not None
+                    raw_data = state.tree.raw_data
+                    if raw_data is not None:
+                        # Apply inline mypy config before deserialization, since
+                        # some options (e.g. implicit_optional) affect how the
+                        # AST is built during deserialization.
+                        state.source_hash = raw_data.source_hash
+                        state.apply_inline_configuration(raw_data.mypy_comments)
+                        state.tree = load_from_raw(
+                            state.xpath,
+                            state.id,
+                            raw_data,
+                            self.errors,
+                            state.options,
+                            imports_only=bool(self.workers),
+                        )
+                    if self.errors.is_blockers():
+                        self.log("Bailing due to parse errors")
+                        self.errors.raise_error()
+
+            for state in parallel_states:
+                assert state.tree is not None
+                if state in parallel_parsed_states_set:
+                    if state.tree.raw_data is not None:
+                        # source_hash was already extracted above, but raw_data
+                        # may have been preserved for workers (imports_only=True).
+                        pass
+                    elif state.source_hash is None:
+                        # At least namespace packages may not have source.
+                        state.get_source()
+                    state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                    state.semantic_analysis_pass1()
+                    self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
+                self.modules[state.id] = state.tree
+                if state.tree.raw_data is not None:
+                    state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
+                state.check_blockers()
+                state.setup_errors()
+        elif len(parallel_states) == 1:
             # Avoid using executor when there is no parallelism.
-            for state in states:
-                state.parse_file()
+            parallel_states[0].parse_file()
+
         if post_parse:
             self.post_parse_all(states)
 
-    def parse_parallel(self, sequential_states: list[State], parallel_states: list[State]) -> None:
-        """Perform parallel parsing of states.
+    def parse_files_threaded_raw(self, states: list[State]) -> tuple[list[State], set[State]]:
+        """Parse files in parallel using a thread pool.
 
-        Note: this duplicates a bit of logic from State.parse_file(). This is done
-        as an optimization to parallelize only those parts of the code that can be
-        parallelized efficiently.
-        """
-        parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
-            sequential_states, parallel_states
-        )
-
-        for state in parallel_parsed_states:
-            # New parser returns serialized ASTs. Deserialize full trees only if not using
-            # parallel workers.
-            with state.wrap_context():
-                assert state.tree is not None
-                raw_data = state.tree.raw_data
-                if raw_data is not None:
-                    # Apply inline mypy config before deserialization, since
-                    # some options (e.g. implicit_optional) affect deserialization
-                    state.source_hash = raw_data.source_hash
-                    state.apply_inline_configuration(raw_data.mypy_comments)
-                    state.tree = load_from_raw(
-                        state.xpath,
-                        state.id,
-                        raw_data,
-                        self.errors,
-                        state.options,
-                        imports_only=bool(self.workers),
-                    )
-                if self.errors.is_blockers():
-                    self.log("Bailing due to parse errors")
-                    self.errors.raise_error()
-
-        for state in parallel_states:
-            assert state.tree is not None
-            if state in parallel_parsed_states_set:
-                if state.tree.raw_data is not None:
-                    # source_hash was already extracted above, but raw_data
-                    # may have been preserved for workers (imports_only=True).
-                    pass
-                elif state.source_hash is None:
-                    # At least namespace packages may not have source.
-                    state.get_source()
-                state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
-                state.semantic_analysis_pass1()
-                self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
-            self.modules[state.id] = state.tree
-            if state.tree.raw_data is not None:
-                state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
-            state.check_blockers()
-            state.setup_errors()
-
-    def parse_files_threaded_raw(
-        self, sequential_states: list[State], parallel_states: list[State]
-    ) -> tuple[list[State], set[State]]:
-        """Parse files using a thread pool.
-
-        Also parse sequential states while waiting for the parallel results.
         Trees from the new parser are left in raw (serialized) form.
 
         Return (list, set) of states that were actually parsed (not cached).
@@ -1118,24 +1109,20 @@ class BuildManager:
         # parse_file_inner() results in no visible improvement with more than 8 threads.
         # TODO: reuse thread pool and/or batch small files in single submit() call.
         with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
-            for state in parallel_states:
+            for state in states:
                 state.needs_parse = False
                 if state.id not in self.ast_cache:
                     self.log(f"Parsing {state.xpath} ({state.id})")
                     ignore_errors = state.ignore_all or state.options.ignore_errors
                     if ignore_errors:
                         self.errors.ignored_files.add(state.xpath)
-                    futures.append(executor.submit(state.parse_file_inner, ""))
+                    futures.append(executor.submit(state.parse_file_inner, state.source))
                     parallel_parsed_states.append(state)
                     parallel_parsed_states_set.add(state)
                 else:
                     self.log(f"Using cached AST for {state.xpath} ({state.id})")
                     state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
                     state.source_hash = source_hash
-
-            # Parse sequential before waiting on parallel.
-            for state in sequential_states:
-                state.parse_file()
 
             for fut in wait(futures).done:
                 fut.result()
@@ -1279,7 +1266,7 @@ class BuildManager:
         self,
         id: str,
         path: str,
-        source: str,
+        source: str | None,
         options: Options,
         raw_data: FileRawData | None = None,
     ) -> MypyFile:
@@ -1287,13 +1274,12 @@ class BuildManager:
 
         Raise CompileError if there is a parse error.
         """
-        file_exists = self.fscache.exists(path, real_only=True)
         t0 = time.time()
         if raw_data:
             # If possible, deserialize from known binary data instead of parsing from scratch.
             tree = load_from_raw(path, id, raw_data, self.errors, options)
         else:
-            tree = parse(source, path, id, self.errors, options=options, file_exists=file_exists)
+            tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         if self.stats_enabled:
             with self.stats_lock:
@@ -3179,7 +3165,7 @@ class State:
                     else:
                         err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
-            elif self.path and self.manager.fscache.isdir(self.path):
+            elif self.path and manager.fscache.isdir(self.path):
                 source = ""
                 self.source_hash = ""
             else:
@@ -3192,7 +3178,7 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return source
 
-    def parse_file_inner(self, source: str, raw_data: FileRawData | None = None) -> None:
+    def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
         self.tree = self.manager.parse_file(
             self.id, self.xpath, source, options=self.options, raw_data=raw_data
@@ -3319,9 +3305,7 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        if not options.native_parser or not self.manager.fscache.exists(
-            self.xpath, real_only=True
-        ):
+        if not options.native_parser:
             analyzer = SemanticAnalyzerPreAnalysis()
             with self.wrap_context():
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
