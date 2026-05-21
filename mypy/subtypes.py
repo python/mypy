@@ -521,6 +521,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             or mapped.type.has_type_var_tuple_type
                         ):
                             return True
+                    # A NamedTuple Instance is a subtype of its own TupleType
+                    # representation (they are two views of the same type).
+                    if mapped.type.is_named_tuple and mapped.type is right.partial_fallback.type:
+                        return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
