@@ -682,6 +682,31 @@ def main() -> None:
     y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
     z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
+[case testErrorCodeFuncReturnsValueStaticAndClassMethod]
+# Regression test for https://github.com/python/mypy/issues/14179
+# Decorated methods (staticmethod, classmethod) should report
+# func-returns-value just like instance methods do.
+class Example:
+    def instance_op(self) -> None:
+        return None
+
+    @staticmethod
+    def static_op() -> None:
+        return None
+
+    @classmethod
+    def class_op(cls) -> None:
+        return None
+
+def main() -> None:
+    ex = Example()
+    a = ex.instance_op()  # E: "instance_op" of "Example" does not return a value (it only ever returns None)  [func-returns-value]
+    b = ex.static_op()    # E: "static_op" of "Example" does not return a value (it only ever returns None)  [func-returns-value]
+    c = ex.class_op()     # E: "class_op" of "Example" does not return a value (it only ever returns None)  [func-returns-value]
+    d = Example.static_op()  # E: "static_op" of "Example" does not return a value (it only ever returns None)  [func-returns-value]
+    e = Example.class_op()   # E: "class_op" of "Example" does not return a value (it only ever returns None)  [func-returns-value]
+[builtins fixtures/classmethod.pyi]
+
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
 

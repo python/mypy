@@ -731,6 +731,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def defn_returns_none(self, defn: SymbolNode | None) -> bool:
         """Check if `defn` can _only_ return None."""
+        if isinstance(defn, Decorator):
+            # Decorated functions (e.g. @staticmethod, @classmethod) are wrapped
+            # in a Decorator node; the resulting callable type is stored on the
+            # synthetic Var. We use that callable's return type so that
+            # `func-returns-value` is reported for decorated methods the same
+            # way it is for plain functions
+            # (https://github.com/python/mypy/issues/14179). The Var is marked
+            # is_inferred=True so we cannot reuse the Var branch below.
+            typ = get_proper_type(defn.var.type)
+            return isinstance(typ, CallableType) and isinstance(
+                get_proper_type(typ.ret_type), NoneType
+            )
         if isinstance(defn, FuncDef):
             return isinstance(defn.type, CallableType) and isinstance(
                 get_proper_type(defn.type.ret_type), NoneType
