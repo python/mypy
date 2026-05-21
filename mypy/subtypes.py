@@ -811,6 +811,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 mypy.typeops.tuple_fallback(left), right
             ):
                 return True
+            elif right.type.is_protocol and is_protocol_implementation(
+                left, right, proper_subtype=self.proper_subtype
+            ):
+                # Special-case protocols to get precise binding of self type for
+                # custom tuple types like NamedTuples.
+                return True
             return False
         elif isinstance(right, TupleType):
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
@@ -1185,7 +1191,7 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance,
+    left: Instance | TupleType,
     right: Instance,
     proper_subtype: bool = False,
     class_obj: bool = False,
@@ -1212,6 +1218,11 @@ def is_protocol_implementation(
     assert right.type.is_protocol
     if skip is None:
         skip = []
+    # Preserve original left type for precise self-type binding. Only tuple types are
+    # supported for now.
+    original_left = left
+    if isinstance(left, TupleType):
+        left = mypy.typeops.tuple_fallback(left)
     # We need to record this check to generate protocol fine-grained dependencies.
     type_state.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
@@ -1234,10 +1245,10 @@ def is_protocol_implementation(
             ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = find_member(member, right, left)
+            supertype = find_member(member, right, original_left)
             assert supertype is not None
 
-            subtype = get_protocol_member(left, member, class_obj)
+            subtype = get_protocol_member(left, original_left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1264,9 +1275,11 @@ def is_protocol_implementation(
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if IS_EXPLICIT_SETTER in superflags:
-                    supertype = find_member(member, right, left, is_lvalue=True)
+                    supertype = find_member(member, right, original_left, is_lvalue=True)
                 if IS_EXPLICIT_SETTER in subflags:
-                    subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
+                    subtype = get_protocol_member(
+                        left, original_left, member, class_obj, is_lvalue=True
+                    )
                 # At this point we know attribute is present on subtype, otherwise we
                 # would return False above.
                 assert supertype is not None and subtype is not None
@@ -1305,7 +1318,7 @@ def is_protocol_implementation(
 
 
 def get_protocol_member(
-    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+    left: Instance, original_left: Type, member: str, class_obj: bool, is_lvalue: bool = False
 ) -> Type | None:
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
@@ -1316,7 +1329,7 @@ def get_protocol_member(
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
-    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    subtype = find_member(member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue)
     if isinstance(subtype, PartialType):
         subtype = (
             NoneType()
