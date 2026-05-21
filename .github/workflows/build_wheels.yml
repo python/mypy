@@ -35,7 +35,7 @@ jobs:
               && cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform linux --archs aarch64 \
               | pyp 'json.dumps({"only": x, "os": "ubuntu-24.04-arm"})' \
               && cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform macos --archs x86_64 \
-              | pyp 'json.dumps({"only": x, "os": "macos-13"})' \
+              | pyp 'json.dumps({"only": x, "os": "macos-15-intel"})' \
               && cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform macos --archs arm64 \
               | pyp 'json.dumps({"only": x, "os": "macos-14"})'
             } | pyp 'json.dumps(list(map(json.loads, lines)))'

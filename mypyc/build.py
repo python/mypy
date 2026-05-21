@@ -566,13 +566,29 @@ def construct_groups(
     return groups
 
 
-# Captures both `#include "foo"` and `#include <foo>`. The two forms differ in
-# the preprocessor's search order, not in the set of files they can reference,
-# so we collect both and let the resolution step decide where each one lives.
-_INCLUDE_RE = re.compile(r'#\s*include\s+[<"]([^<>"]+)[>"]')
+# Single regex that captures both `#include "foo"` and `#include <foo>`. The
+# alternation lets us tell the two forms apart: the quoted-form match populates
+# group 1 and the angle-form match populates group 2. The C preprocessor
+# applies different search rules to each kind (see `_extract_includes`), so we
+# carry the kind through resolution rather than collapsing them up front.
+_INCLUDE_RE = re.compile(r'#\s*include\s+(?:"([^"]+)"|<([^>]+)>)')
 
 
-def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
+def _extract_includes(contents: str) -> list[tuple[bool, str]]:
+    """Return each `#include` directive's (is_angled, name) from `contents`.
+
+    is_angled=False for `#include "foo"`, True for `#include <foo>`.
+    """
+    out: list[tuple[bool, str]] = []
+    for quoted, angled in _INCLUDE_RE.findall(contents):
+        if quoted:
+            out.append((False, quoted))
+        else:
+            out.append((True, angled))
+    return out
+
+
+def get_header_deps(cfiles: list[tuple[str, str]]) -> list[tuple[bool, str]]:
     """Find all the headers directly included by a group of cfiles.
 
     We do this by just regexping the source, which is a bit simpler than
@@ -585,13 +601,13 @@ def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
     """
     headers: set[tuple[bool, str]] = set()
     for _, contents in cfiles:
-        headers.update(_INCLUDE_RE.findall(contents))
+        headers.update(_extract_includes(contents))
 
     return sorted(headers)
 
 
 def resolve_cfile_deps(
-    cfile_dir: str, direct_includes: list[str], target_dir: str
+    cfile_dir: str, direct_includes: list[tuple[bool, str]], target_dir: str
 ) -> set[str]:
     """Resolve a .c file's `#include` directives to on-disk paths, walking
     transitively through resolved headers.
@@ -616,13 +632,19 @@ def resolve_cfile_deps(
     list.
     """
     resolved: set[str] = set()
-    # Worklist of (search_dir, header_name). search_dir is the includer's
-    # directory — for the initial cfile it's the cfile's dir, for a
-    # transitively-included header it's that header's dir.
-    worklist: list[tuple[str, str]] = [(cfile_dir, dep) for dep in direct_includes]
+    # Worklist of (search_dir, is_angled, header_name). search_dir is the
+    # includer's directory — for the initial cfile it's the cfile's dir, for
+    # a transitively-included header it's that header's dir. It's only
+    # consulted for quoted-form includes.
+    worklist: list[tuple[str, bool, str]] = [
+        (cfile_dir, is_angled, dep) for is_angled, dep in direct_includes
+    ]
     while worklist:
-        search_dir, dep = worklist.pop()
-        for base in (search_dir, target_dir):
+        search_dir, is_angled, dep = worklist.pop()
+        # Quoted form: includer's dir first, then -I (target_dir).
+        # Angled form: -I only (skips the includer's dir).
+        search_bases = (target_dir,) if is_angled else (search_dir, target_dir)
+        for base in search_bases:
             candidate = os.path.normpath(os.path.join(base, dep))
             if not os.path.exists(candidate):
                 continue
@@ -640,8 +662,8 @@ def resolve_cfile_deps(
                 except OSError:
                     header_contents = ""
                 sub_dir = os.path.dirname(candidate)
-                for sub in _INCLUDE_RE.findall(header_contents):
-                    worklist.append((sub_dir, sub))
+                for sub_angled, sub in _extract_includes(header_contents):
+                    worklist.append((sub_dir, sub_angled, sub))
             break
     return resolved
 
@@ -707,7 +729,11 @@ def mypyc_build(
         per_cfile_deps: list[tuple[str, list[tuple[bool, str]]]] = []
         for cfile, ctext in cfiles:
             cfile_full = os.path.join(compiler_options.target_dir, cfile)
-            if not options.mypyc_skip_c_generation:
+            # Empty ctext marks a file the previous run already wrote (fully-cached
+            # group): skip the rewrite so we don't clobber the on-disk .c file
+            # with an empty stub, which would leave the next compile with no
+            # body to translate.
+            if ctext and not options.mypyc_skip_c_generation:
                 write_file(cfile_full, ctext)
             if os.path.splitext(cfile_full)[1] == ".c":
                 cfilenames.append(cfile_full)
@@ -723,9 +749,7 @@ def mypyc_build(
 
             short_suffix = "_" + exported_name(group_name.split(".")[-1])
             existing = os.path.join(
-                compiler_options.target_dir,
-                _group_dir(group_name),
-                f"__native{short_suffix}.c",
+                compiler_options.target_dir, _group_dir(group_name), f"__native{short_suffix}.c"
             )
             if os.path.exists(existing):
                 cfilenames.append(existing)

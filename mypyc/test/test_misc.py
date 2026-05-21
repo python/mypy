@@ -41,33 +41,35 @@ class TestHeaderDeps(unittest.TestCase):
 
     def test_get_header_deps_quoted_includes(self) -> None:
         # Quoted includes — the historical form. Used by the .c file to
-        # reach its own __native_<mod>.h / __native_internal_<mod>.h.
+        # reach its own __native_<mod>.h / __native_internal_<mod>.h. The
+        # `False` in each tuple marks the include as non-angled, which
+        # `resolve_cfile_deps` uses to search the includer's directory.
         cfile = '#include "__native_caller.h"\n#include "__native_internal_caller.h"\n'
         assert get_header_deps([("caller.c", cfile)]) == [
-            "__native_caller.h",
-            "__native_internal_caller.h",
+            (False, "__native_caller.h"),
+            (False, "__native_internal_caller.h"),
         ]
 
     def test_get_header_deps_angle_bracket_includes(self) -> None:
-        # Angle-bracket includes are also matched. The cross-group export
+        # Angle-bracket includes are also matched, and reported with
+        # is_angled=True so that the resolver skips the includer's dir
+        # for them (matching the C preprocessor). The cross-group export
         # header is reached via `#include <other_group/__native_other.h>`
         # in __native_internal_<mod>.h. Before this was matched the dep
         # was missed entirely and the consumer's .o was never invalidated
         # when the other group's struct layout shifted.
         cfile = "#include <Python.h>\n#include <lib/__native_functions.h>\n"
         assert get_header_deps([("caller.c", cfile)]) == [
-            "Python.h",
-            "lib/__native_functions.h",
+            (True, "Python.h"),
+            (True, "lib/__native_functions.h"),
         ]
 
     def test_get_header_deps_mixed_and_whitespace(self) -> None:
         # The preprocessor tolerates whitespace and the leading-hash form.
-        cfile = (
-            '# include "a.h"\n'
-            '#  include  <b.h>\n'
-            '#include\t"c.h"\n'
-        )
-        assert get_header_deps([("x.c", cfile)]) == ["a.h", "b.h", "c.h"]
+        # `get_header_deps` returns sorted tuples — non-angled (False) sorts
+        # before angled (True), then alphabetical within each kind.
+        cfile = '# include "a.h"\n#  include  <b.h>\n#include\t"c.h"\n'
+        assert get_header_deps([("x.c", cfile)]) == [(False, "a.h"), (False, "c.h"), (True, "b.h")]
 
     def test_resolve_walks_transitively_through_headers(self) -> None:
         # Reproduces the bug2 scenario: caller's .c only directly includes
@@ -107,9 +109,16 @@ class TestHeaderDeps(unittest.TestCase):
                 f.write("struct unrelated { int x; };\n")
 
             # caller.c is in build_dir, so its includer-dir is build_dir.
+            # Both directly-included headers are quoted (`False`); the
+            # cross-group header that __native_internal_caller.h reaches
+            # via `<lib/__native_functions.h>` is found by the recursive
+            # walk re-reading the on-disk header.
             deps = resolve_cfile_deps(
                 cfile_dir=build_dir,
-                direct_includes=["__native_caller.h", "__native_internal_caller.h"],
+                direct_includes=[
+                    (False, "__native_caller.h"),
+                    (False, "__native_internal_caller.h"),
+                ],
                 target_dir=build_dir,
             )
 
@@ -128,7 +137,7 @@ class TestHeaderDeps(unittest.TestCase):
             cfile_dir = tmp
             deps = resolve_cfile_deps(
                 cfile_dir=cfile_dir,
-                direct_includes=["Python.h", "CPy.h", "init.c"],
+                direct_includes=[(True, "Python.h"), (True, "CPy.h"), (False, "init.c")],
                 target_dir=cfile_dir,
             )
             assert deps == set()
@@ -156,7 +165,9 @@ class TestHeaderDeps(unittest.TestCase):
             cross_group_h = os.path.join(provider_dir, "__native_provider.h")
 
             with open(consumer_c, "w") as f:
-                f.write('#include "__native_consumer.h"\n#include "__native_internal_consumer.h"\n')
+                f.write(
+                    '#include "__native_consumer.h"\n#include "__native_internal_consumer.h"\n'
+                )
             with open(consumer_h, "w") as f:
                 f.write("#include <Python.h>\n")
             with open(internal_h, "w") as f:
@@ -170,8 +181,9 @@ class TestHeaderDeps(unittest.TestCase):
 
             # Without the fix: per_cfile_deps is never populated for the cached
             # group, so no dep resolution happens and Extension.depends is empty.
+            pre_fix_per_cfile_deps: list[tuple[str, list[tuple[bool, str]]]] = []
             deps_without_fix: set[str] = set()
-            for cfile_full, dep_names in []:  # empty — this is the pre-fix state
+            for cfile_full, dep_names in pre_fix_per_cfile_deps:
                 deps_without_fix.update(
                     resolve_cfile_deps(os.path.dirname(cfile_full), dep_names, tmp)
                 )
@@ -217,7 +229,13 @@ class TestHeaderDeps(unittest.TestCase):
             with open(global_h, "w") as f:
                 f.write("/* global */\n")
 
+            # Quoted form picks up local copy.
             deps = resolve_cfile_deps(
-                cfile_dir=includer, direct_includes=["shared.h"], target_dir=target
+                cfile_dir=includer, direct_includes=[(False, "shared.h")], target_dir=target
             )
             assert deps == {local_h}
+            # Angled form skips includer's dir, gets the target_dir copy.
+            deps = resolve_cfile_deps(
+                cfile_dir=includer, direct_includes=[(True, "shared.h")], target_dir=target
+            )
+            assert deps == {global_h}

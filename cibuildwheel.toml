@@ -8,13 +8,17 @@ linux.musllinux-aarch64-image = "musllinux_1_2"
 
 enable = []
 
-# Don't build musllinux arm64 and 32-bit Windows.
-# PyPy and 32-bit Linux are skipped by default.
-# Start building free threading wheels for Python 3.14, i.e. skip 3.13.
+# Skip: PyPy, 32-bit, musllinux aarch64, Windows, free-threaded builds.
+# PyPy lacks prebuilt ast-serialize wheels and the build env can't bootstrap
+# the Rust toolchain that maturin needs.
 skip = [
-  "cp313t-*",
+  "pp*",
   "*-win32",
+  "*-win_amd64",
   "*-musllinux_aarch64",
+  "cp313t-*",
+  "cp314t-*",
+  "*-manylinux_i686",
 ]
 
 build-verbosity = 1
