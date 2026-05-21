@@ -332,6 +332,16 @@ reveal_type(a3[1])  # N: Revealed type is "builtins.str"
 reveal_type(a3[2])  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarDefaultAssertTypeType]
+from typing import assert_type
+
+class NoNonDefaults[T = str, S = int]: ...
+
+assert_type(NoNonDefaults[()], type[NoNonDefaults[str, int]])
+assert_type(NoNonDefaults[str], type[NoNonDefaults[str, int]])
+assert_type(NoNonDefaults[str, int], type[NoNonDefaults[str, int]])
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarDefaultToAnotherTypeVarWrong]
 class A[Y = X, X = int]: ...  # E: Name "X" is not defined
 
