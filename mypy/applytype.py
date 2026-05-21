@@ -37,10 +37,12 @@ def get_target_type(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool,
+    id_to_type: dict[TypeVarId, Type],
 ) -> Type | None:
     p_type = get_proper_type(type)
     if isinstance(p_type, UninhabitedType) and p_type.ambiguous and tvar.has_default():
-        return tvar.default
+        # Gradually expand defaults, as they may depend on previous type variables.
+        return expand_type(tvar.default, id_to_type)
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
@@ -113,7 +115,13 @@ def apply_generic_arguments(
             continue
 
         target_type = get_target_type(
-            tvar, type, callable, report_incompatible_typevar_value, context, skip_unsatisfied
+            tvar,
+            type,
+            callable,
+            report_incompatible_typevar_value,
+            context,
+            skip_unsatisfied,
+            id_to_type,
         )
         if target_type is not None:
             id_to_type[tvar.id] = target_type

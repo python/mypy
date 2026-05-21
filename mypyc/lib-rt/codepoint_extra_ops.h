@@ -21,4 +21,8 @@ static inline bool LibRTStrings_IsAlnum(int32_t c) {
     return c >= 0 && Py_UNICODE_ISALNUM((Py_UCS4)c);
 }
 
+static inline bool LibRTStrings_IsAlpha(int32_t c) {
+    return c >= 0 && Py_UNICODE_ISALPHA((Py_UCS4)c);
+}
+
 #endif  // MYPYC_CODEPOINT_EXTRA_OPS_H
