@@ -201,6 +201,7 @@ from mypy.patterns import (
     ClassPattern,
     MappingPattern,
     OrPattern,
+    Pattern,
     SequencePattern,
     SingletonPattern,
     StarredPattern,
@@ -538,6 +539,12 @@ class SemanticAnalyzer(
         #   [b.py]
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
+
+        # Stack of sets of names assigned in each enclosing class body.
+        # Used to determine whether a name in a class body should be looked up
+        # in enclosing function-local scopes or skipped (matching CPython's
+        # LOAD_NAME vs LOAD_CLASSDEREF or LOAD_FROM_DICT_OR_DEREF behavior.
+        self.class_body_assigned_names: list[set[str]] = []
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -2091,6 +2098,10 @@ class SemanticAnalyzer(
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
+        # Pre-scan class body to find names assigned at class scope level.
+        # This must happen after enter_class (which pushes an empty set) so we
+        # can replace it with the real set.
+        self.class_body_assigned_names[-1] = collect_class_body_assigned_names(defn.defs.body)
         if any(b.self_type is not None for b in defn.info.mro):
             self.setup_self_type()
         defn.defs.accept(self)
@@ -2218,6 +2229,7 @@ class SemanticAnalyzer(
         self.loop_depth.append(0)
         self._type = info
         self.missing_names.append(set())
+        self.class_body_assigned_names.append(set())
 
     def leave_class(self) -> None:
         """Restore analyzer state."""
@@ -2227,6 +2239,7 @@ class SemanticAnalyzer(
         self.scope_stack.pop()
         self._type = self.type_stack.pop()
         self.missing_names.pop()
+        self.class_body_assigned_names.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
@@ -6592,9 +6605,19 @@ class SemanticAnalyzer(
             v._fullname = self.qualified_name(name)
             return SymbolTableNode(MDEF, v)
         # 3. Local (function) scopes
-        for table in reversed(self.locals):
-            if table is not None and name in table:
-                return table[name]
+        # If we're in a class body and this name is assigned in the class body,
+        # skip enclosing function locals.  This matches CPython's use of LOAD_NAME
+        # (class dict -> globals -> builtins) instead of
+        # LOAD_CLASSDEREF or LOAD_FROM_DICT_OR_DEREF for such names.
+        skip_func_locals = (
+            self.is_class_scope()
+            and self.class_body_assigned_names
+            and name in self.class_body_assigned_names[-1]
+        )
+        if not skip_func_locals:
+            for table in reversed(self.locals):
+                if table is not None and name in table:
+                    return table[name]
 
         # 4. Current file global scope
         if name in self.globals:
@@ -8317,6 +8340,118 @@ def names_modified_in_lvalue(lvalue: Lvalue) -> list[NameExpr]:
             result += names_modified_in_lvalue(item)
         return result
     return []
+
+
+def _collect_lvalue_names(lvalue: Lvalue, names: set[str]) -> None:
+    """Collect simple names from an lvalue into a set."""
+    if isinstance(lvalue, NameExpr):
+        names.add(lvalue.name)
+    elif isinstance(lvalue, StarExpr):
+        _collect_lvalue_names(lvalue.expr, names)
+    elif isinstance(lvalue, (ListExpr, TupleExpr)):
+        for item in lvalue.items:
+            _collect_lvalue_names(item, names)
+
+
+def _collect_pattern_names(pattern: Pattern, names: set[str]) -> None:
+    """Collect names bound by a match pattern."""
+    if isinstance(pattern, AsPattern):
+        if pattern.name is not None:
+            names.add(pattern.name.name)
+        if pattern.pattern is not None:
+            _collect_pattern_names(pattern.pattern, names)
+    elif isinstance(pattern, OrPattern):
+        for p in pattern.patterns:
+            _collect_pattern_names(p, names)
+    elif isinstance(pattern, SequencePattern):
+        for p in pattern.patterns:
+            _collect_pattern_names(p, names)
+    elif isinstance(pattern, StarredPattern):
+        if pattern.capture is not None:
+            names.add(pattern.capture.name)
+    elif isinstance(pattern, MappingPattern):
+        for p in pattern.values:
+            _collect_pattern_names(p, names)
+        if pattern.rest is not None:
+            names.add(pattern.rest.name)
+    elif isinstance(pattern, ClassPattern):
+        for p in pattern.positionals:
+            _collect_pattern_names(p, names)
+        for p in pattern.keyword_values:
+            _collect_pattern_names(p, names)
+
+
+def collect_class_body_assigned_names(stmts: list[Statement]) -> set[str]:
+    """Pre-scan a class body to find all names that are assigned at class scope.
+
+    This mirrors CPython's compile-time analysis that determines whether a name
+    in a class body is accessed via LOAD_NAME (class dict -> globals -> builtins)
+    or LOAD_CLASSDEREF or LOAD_FROM_DICT_OR_DEREF (class dict -> enclosing function cell).
+
+    Names that are assigned anywhere in the class body (even inside if/for/while/try/with blocks)
+    use LOAD_NAME, so they should NOT be resolved from enclosing function locals.
+
+    The scan is shallow: it recurses into control-flow blocks (if, for, while,
+    try, with, match) which don't create new scopes, but does NOT recurse into
+    function or class definitions which create their own scopes.
+    """
+    names: set[str] = set()
+    for s in stmts:
+        if isinstance(s, AssignmentStmt):
+            for lvalue in s.lvalues:
+                _collect_lvalue_names(lvalue, names)
+        elif isinstance(s, OperatorAssignmentStmt):
+            _collect_lvalue_names(s.lvalue, names)
+        elif isinstance(s, (FuncDef, OverloadedFuncDef, Decorator)):
+            names.add(s.name)
+        elif isinstance(s, ClassDef):
+            names.add(s.name)
+        elif isinstance(s, Import):
+            for module_id, as_id in s.ids:
+                names.add(as_id if as_id else module_id.split(".")[0])
+        elif isinstance(s, ImportFrom):
+            for name, as_name in s.names:
+                names.add(as_name if as_name else name)
+        elif isinstance(s, TypeAliasStmt):
+            names.add(s.name.name)
+        elif isinstance(s, DelStmt):
+            _collect_lvalue_names(s.expr, names)
+        elif isinstance(s, ForStmt):
+            _collect_lvalue_names(s.index, names)
+            names.update(collect_class_body_assigned_names(s.body.body))
+            if s.else_body:
+                names.update(collect_class_body_assigned_names(s.else_body.body))
+        elif isinstance(s, IfStmt):
+            for block in s.body:
+                names.update(collect_class_body_assigned_names(block.body))
+            if s.else_body:
+                names.update(collect_class_body_assigned_names(s.else_body.body))
+        elif isinstance(s, WhileStmt):
+            names.update(collect_class_body_assigned_names(s.body.body))
+            if s.else_body:
+                names.update(collect_class_body_assigned_names(s.else_body.body))
+        elif isinstance(s, TryStmt):
+            names.update(collect_class_body_assigned_names(s.body.body))
+            for var in s.vars:
+                if var is not None:
+                    names.add(var.name)
+            for handler in s.handlers:
+                names.update(collect_class_body_assigned_names(handler.body))
+            if s.else_body:
+                names.update(collect_class_body_assigned_names(s.else_body.body))
+            if s.finally_body:
+                names.update(collect_class_body_assigned_names(s.finally_body.body))
+        elif isinstance(s, WithStmt):
+            for target in s.target:
+                if target is not None:
+                    _collect_lvalue_names(target, names)
+            names.update(collect_class_body_assigned_names(s.body.body))
+        elif isinstance(s, MatchStmt):
+            for pattern in s.patterns:
+                _collect_pattern_names(pattern, names)
+            for body_block in s.bodies:
+                names.update(collect_class_body_assigned_names(body_block.body))
+    return names
 
 
 def is_same_var_from_getattr(n1: SymbolNode | None, n2: SymbolNode | None) -> bool:

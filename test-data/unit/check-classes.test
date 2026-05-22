@@ -9412,3 +9412,153 @@ from typ import NT
 def f() -> NT:
     return NT(x='')
 [builtins fixtures/tuple.pyi]
+
+-- Class body scope: enclosing function local visibility
+-- -----------------------------------------------------
+-- These tests verify that names assigned in a class body nested inside a
+-- function are NOT resolved from the enclosing function's local scope,
+-- matching CPython's LOAD_NAME semantics for class bodies (class dict ->
+-- globals -> builtins, skipping enclosing function locals).
+
+[case testClassBodySkipsEnclosingFunctionLocalForAssignedName]
+# A name assigned in the class body should not resolve from the enclosing
+# function's locals; it should fall through to globals/builtins.
+x = 1
+y = 2
+def func() -> None:
+    x = "xlocal"
+    y = "ylocal"
+    class C:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+        y = 1
+func()
+
+[case testClassBodyAssignedNameNoGlobalGivesError]
+# If the name is assigned in the class body and there is no global definition,
+# looking it up before the assignment should be an error.
+def func() -> None:
+    y = "ylocal"
+    class C:
+        z = y  # E: Name "y" is not defined
+        y = 1
+func()
+
+[case testClassBodyUnassignedNameSeesEnclosingFunctionLocal]
+# A name that is NOT assigned anywhere in the class body can still be
+# resolved from the enclosing function's local scope.
+def func() -> None:
+    x = "hello"
+    class C:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+func()
+
+[case testClassBodyMethodClosesOverEnclosingFunctionLocal]
+# Methods inside the class should still close over the enclosing function
+# locals, even for names that are assigned in the class body.
+x = 1
+y = 2
+def func() -> None:
+    x = "xlocal"
+    y = "ylocal"
+    class C:
+        y = 1
+        def method(self) -> None:
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+            reveal_type(y)  # N: Revealed type is "builtins.str"
+func()
+
+[case testClassBodyForwardRefClassAttrFallsToGlobal]
+# When a class attribute is assigned textually *after* its use,
+# is_active_symbol_in_class_body rejects it, and lookup should fall
+# through to the global — not the enclosing function local.
+x: int = 10
+def func() -> None:
+    x = "hello"
+    class C:
+        y = x  # should see global int, not func's str
+        x = 42
+    reveal_type(C.y)  # N: Revealed type is "builtins.int"
+func()
+
+[case testClassBodyNestedClassInFunctionSkipsFunctionLocal]
+# A doubly-nested class should also skip the enclosing function's locals.
+y: int = 1
+def func() -> None:
+    y = "ylocal"
+    class Outer:
+        class Inner:
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+            y = 42
+func()
+
+[case testClassBodyMethodInNestedClassClosesOverFunctionLocal]
+# A method in a nested class should still form a closure over the
+# enclosing function's locals.
+def func() -> None:
+    y = "ylocal"
+    class Outer:
+        class Inner:
+            y = 42
+            def method(self) -> None:
+                reveal_type(y)  # N: Revealed type is "builtins.str"
+func()
+
+[case testClassBodyGenericClassInFunctionStillWorks]
+# TypeVar defined in the enclosing function should still be visible
+# in the class body (TypeVarExpr is not a plain Var).
+from typing import TypeVar, Generic
+def func() -> None:
+    T = TypeVar('T')
+    class MyGeneric(Generic[T]):
+        def get(self, x: T) -> T:
+            return x
+    reveal_type(MyGeneric[int]().get(1))  # N: Revealed type is "builtins.int"
+func()
+
+[case testClassBodyAssignmentInControlFlow]
+# Names assigned inside if/for/while/try/with blocks in the class body
+# should still be treated as class-local.
+x: int = 10
+def func() -> None:
+    x = "xlocal"
+    class C:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        if True:
+            x = 42
+func()
+[builtins fixtures/bool.pyi]
+
+[case testClassBodyForLoopVariable]
+# A for-loop index variable at class scope should be local to the class.
+x: int = 10
+def func() -> None:
+    x = "xlocal"
+    class C:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        for x in [1, 2, 3]:
+            pass
+func()
+[builtins fixtures/list.pyi]
+
+[case testClassBodyImportedName]
+# An imported name in the class body should be treated as a class-local binding.
+import typing
+x: int = 10
+def func() -> None:
+    x = "xlocal"
+    class C:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        import typing as x  # type: ignore
+        # x is now assigned in the class body; use before assignment sees global int
+func()
+
+[case testClassBodyComprehensionSeesEnclosingVars]
+# Comprehensions inside a class body can see enclosing function locals
+def func() -> None:
+    items = [1, 2, 3]
+    class C:
+        result = [i for i in items]
+        reveal_type(result)  # N: Revealed type is "builtins.list[builtins.int]"
+func()
+[builtins fixtures/list.pyi]
