@@ -54,12 +54,7 @@ class ModDesc(NamedTuple):
 
 LIBRT_MODULES = [
     ModDesc("librt.internal", ["internal/librt_internal.c"], [], ["internal"]),
-    ModDesc(
-        "librt.strings",
-        ["strings/librt_strings.c", "codepoint_extra_ops.c"],
-        ["codepoint_extra_ops.h"],
-        ["strings"],
-    ),
+    ModDesc("librt.strings", ["strings/librt_strings.c"], [], ["strings"]),
     ModDesc(
         "librt.base64",
         [
