@@ -2466,9 +2466,6 @@ class SemanticAnalyzer(
         tvar_defs: list[TypeVarLikeType] = []
         last_tvar_name_with_default: str | None = None
         for name, tvar_expr in tvars:
-            tvar_expr.default = tvar_expr.default.accept(
-                TypeVarDefaultTranslator(self, tvar_expr.name, context)
-            )
             # PEP-695 type variables that are redeclared in an inner scope are warned
             # about elsewhere.
             if not tvar_expr.is_new_style and not self.tvar_scope.allow_binding(
@@ -2478,6 +2475,11 @@ class SemanticAnalyzer(
                     message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
                 )
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
+            # Fix any residual UnboundTypes in the generated TypeVarLike, keep
+            # TypeVarLikeExpr untouched as it may be shared by multiple classes.
+            tvar_def.default = tvar_def.default.accept(
+                TypeVarDefaultTranslator(self, tvar_expr.name, context)
+            )
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(
                     tvar_def.name, last_tvar_name_with_default, context

@@ -240,6 +240,12 @@ def type_object_type(
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     result = type_object_type_from_function(t, info, method.info, fallback, is_new)
+    # Tuple constructor in typeshed is imprecise (and precise one is impossible to express),
+    # so we special-case constructors for tuple types. Note we skip the tuple class itself
+    # as a micro-optimization, since it is unlikely one would write tuple((1, 2)).
+    if method.info.fullname == "builtins.tuple" and info.fullname != "builtins.tuple":
+        assert isinstance(result, CallableType)
+        result = result.copy_modified(special_sig="tuple")
     # Only write cached result is strict_optional=True, otherwise we may get
     # inconsistent behaviour because of union simplification.
     if allow_cache and state.strict_optional:

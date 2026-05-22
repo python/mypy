@@ -566,20 +566,113 @@ def construct_groups(
     return groups
 
 
-def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
-    """Find all the headers used by a group of cfiles.
+# Single regex that captures both `#include "foo"` and `#include <foo>`. The
+# alternation lets us tell the two forms apart: the quoted-form match populates
+# group 1 and the angle-form match populates group 2. The C preprocessor
+# applies different search rules to each kind (see `_extract_includes`), so we
+# carry the kind through resolution rather than collapsing them up front.
+_INCLUDE_RE = re.compile(r'#\s*include\s+(?:"([^"]+)"|<([^>]+)>)')
+
+
+def _extract_includes(contents: str) -> list[tuple[bool, str]]:
+    """Return each `#include` directive's (is_angled, name) from `contents`.
+
+    is_angled=False for `#include "foo"`, True for `#include <foo>`.
+    """
+    out: list[tuple[bool, str]] = []
+    for quoted, angled in _INCLUDE_RE.findall(contents):
+        if quoted:
+            out.append((False, quoted))
+        else:
+            out.append((True, angled))
+    return out
+
+
+def get_header_deps(cfiles: list[tuple[str, str]]) -> list[tuple[bool, str]]:
+    """Find all the headers directly included by a group of cfiles.
+
+    Returns a sorted, deduplicated list of `(is_angled, header_name)` pairs.
+    Callers that only need the names can ignore the bool, but it is needed by
+    `resolve_cfile_deps` to apply the correct preprocessor search order.
 
     We do this by just regexping the source, which is a bit simpler than
-    properly plumbing the data through.
+    properly plumbing the data through. Transitive header-to-header includes
+    are picked up by `resolve_cfile_deps` in `mypyc_build`, which can read
+    the on-disk headers after every group has written its files.
 
     Arguments:
-        cfiles: A list of (file name, file contents) pairs.
+        cfiles: A list of (file name, file contents) pairs. Contents must be
+            non-empty; callers handling cached groups must re-read the .c
+            from disk before calling, otherwise direct includes are missed
+            and Extension.depends ends up empty.
     """
-    headers: set[str] = set()
+    assert all(
+        contents for _, contents in cfiles
+    ), "get_header_deps requires non-empty file contents"
+    headers: set[tuple[bool, str]] = set()
     for _, contents in cfiles:
-        headers.update(re.findall(r'#include [<"]([^>"]+)[>"]', contents))
+        headers.update(_extract_includes(contents))
 
     return sorted(headers)
+
+
+def resolve_cfile_deps(
+    cfile_dir: str, direct_includes: list[tuple[bool, str]], target_dir: str
+) -> set[str]:
+    """
+    Resolve a .c file's `#include`s to on-disk paths, walking transitively through resolved headers.
+
+    The C preprocessor resolves `#include "foo"` against the includer's directory first, then via
+    -I, while `#include <foo>` only uses -I. We mirror that exactly: quoted includes are searched
+    in (includer_dir, target_dir) order, and angled includes are searched in target_dir only.
+    `target_dir` is the only -I path that holds files we generate; anything we cannot resolve under
+    it (or, for quoted form, the includer's dir) is dropped. Other headers like `<Python.h>` and
+    `<CPy.h>` live elsewhere and do not change between builds, so they are not real dependencies
+    for incremental purposes.
+
+    The walk is transitive: each resolved header is opened and scanned for its own `#include`
+    directives. Without this, cross-group export-table headers reached via `__native_internal_<mod>.h`
+    (which includes `<other_group/__native_other.h>`) would be missed, and edits that shift struct
+    offsets in `other_group` would not trigger a recompile of the consumer's .o file. Its baked-in
+    offsets would then resolve to whatever class/function now occupies that slot => runtime corruption.
+
+    Returns a set of resolved paths suitable for use as an Extension.depends list.
+    """
+    resolved: set[str] = set()
+
+    # Worklist of (search_dir, is_angled, header_name). search_dir is the includer's directory; for the
+    # initial cfile it is the cfile's dir, for a transitively-included header it is that header's dir.
+    # It is only consulted for quoted-form includes.
+    worklist: list[tuple[str, bool, str]] = [
+        (cfile_dir, is_angled, dep) for is_angled, dep in direct_includes
+    ]
+
+    while worklist:
+        search_dir, is_angled, dep = worklist.pop()
+        # Quoted form: includer's dir first, then -I (target_dir).
+        # Angled form: -I only (skips the includer's dir).
+        search_bases = (target_dir,) if is_angled else (search_dir, target_dir)
+        for base in search_bases:
+            candidate = os.path.normpath(os.path.join(base, dep))
+            if not os.path.exists(candidate):
+                continue
+            if candidate in resolved:
+                break
+            resolved.add(candidate)
+            # Recurse only into headers. Some lib-rt sources are pulled in as `#include "init.c"` etc.;
+            # those do not resolve under target_dir so they get filtered out before we would try to scan
+            # them, but the .h guard is a cheap belt-and-braces.
+            if candidate.endswith(".h"):
+                try:
+                    with open(candidate, encoding="utf-8") as f:
+                        header_contents = f.read()
+                except OSError:
+                    header_contents = ""
+                sub_dir = os.path.dirname(candidate)
+                for sub_angled, sub in _extract_includes(header_contents):
+                    worklist.append((sub_dir, sub_angled, sub))
+            break
+    return resolved
 
 
 def mypyc_build(
@@ -630,29 +723,48 @@ def mypyc_build(
             for (path, dirs, internal) in skip_cgen_input[1]
         ]
 
-    # Write out the generated C and collect the files for each group
+    # Write out the generated C and collect the files for each group.
     # Should this be here??
-    group_cfilenames: list[tuple[list[str], list[str]]] = []
+    #
+    # Header resolution is deferred to a second pass: a header in one group may include a header
+    # generated by another group, so resolving here misses cross-group deps for groups processed first.
+    pending: list[list[tuple[str, list[tuple[bool, str]]]]] = []
     for cfiles in group_cfiles:
-        cfilenames = []
+        per_cfile_deps: list[tuple[str, list[tuple[bool, str]]]] = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
+
             # Empty contents marks a file the previous run already wrote
             # (fully-cached group): skip the rewrite and just reuse it.
             if ctext and not options.mypyc_skip_c_generation:
                 write_file(cfile, ctext)
-            if os.path.splitext(cfile)[1] == ".c":
-                cfilenames.append(cfile)
 
-        # The header regex matches both quote styles, so the result can
-        # include system headers like `<Python.h>` that don't live under
-        # target_dir. Joining those produces non-existent paths which
-        # would force a full rebuild on every run via Extension.depends.
-        candidate_deps = (
-            os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)
-        )
-        deps = [d for d in candidate_deps if os.path.exists(d)]
-        group_cfilenames.append((cfilenames, deps))
+            # For fully-cached groups ctext is empty; read the on-disk .c so the dep resolver
+            # can walk its transitive header chain and populate Extension.depends. Otherwise,
+            # cross-group export-table header changes (e.g. a new class shifting struct offsets)
+            # won't trigger a recompile of this cached consumer's .o.
+            if not ctext and os.path.exists(cfile):
+                try:
+                    with open(cfile, encoding="utf-8") as _f:
+                        ctext = _f.read()
+                except OSError:
+                    pass
+            per_cfile_deps.append((cfile, get_header_deps([(cfile, ctext)])))
+        pending.append(per_cfile_deps)
+
+    # Second pass: assemble each group's .c filenames and resolve transitive deps now that every group's
+    # headers are on disk. See resolve_cfile_deps for the rules.
+    group_cfilenames: list[tuple[list[str], list[str]]] = []
+    for per_cfile in pending:
+        cfilenames = [cf for cf, _ in per_cfile if os.path.splitext(cf)[1] == ".c"]
+        deps_set: set[str] = set()
+        for cfile_full, dep_names in per_cfile:
+            deps_set.update(
+                resolve_cfile_deps(
+                    os.path.dirname(cfile_full), dep_names, compiler_options.target_dir
+                )
+            )
+        group_cfilenames.append((cfilenames, sorted(deps_set)))
 
     return groups, group_cfilenames, source_deps
 

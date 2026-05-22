@@ -1745,13 +1745,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     source = mypy.util.decode_python_encoding(data)
     errors = Errors(mypy_options)
     mod.ast = mypy.parse.parse(
-        source,
-        fnam=mod.path,
-        module=mod.module,
-        errors=errors,
-        options=mypy_options,
-        file_exists=True,
-        eager=True,
+        source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options, eager=True
     )
     mod.ast._fullname = mod.module
     if errors.is_blockers():

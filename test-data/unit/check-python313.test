@@ -291,7 +291,7 @@ reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeVarDefaultToAnotherTypeVar]
+[case testTypeVarDefaultToAnotherTypeVarClass]
 class A[X, Y = X, Z = Y]:
     x: X
     y: Y
@@ -300,8 +300,7 @@ class A[X, Y = X, Z = Y]:
 a1: A[int]
 reveal_type(a1.x)  # N: Revealed type is "builtins.int"
 reveal_type(a1.y)  # N: Revealed type is "builtins.int"
-# TODO: this must reveal `int` as well:
-reveal_type(a1.z)  # N: Revealed type is "X`1"
+reveal_type(a1.z)  # N: Revealed type is "builtins.int"
 
 a2: A[int, str]
 reveal_type(a2.x)  # N: Revealed type is "builtins.int"
@@ -312,6 +311,35 @@ a3: A[int, str, bool]
 reveal_type(a3.x)  # N: Revealed type is "builtins.int"
 reveal_type(a3.y)  # N: Revealed type is "builtins.str"
 reveal_type(a3.z)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultToAnotherTypeVarAlias]
+type A[X, Y = X, Z = Y] = tuple[X, Y, Z]
+
+a1: A[int]
+reveal_type(a1[0])  # N: Revealed type is "builtins.int"
+reveal_type(a1[1])  # N: Revealed type is "builtins.int"
+reveal_type(a1[2])  # N: Revealed type is "builtins.int"
+
+a2: A[int, str]
+reveal_type(a2[0])  # N: Revealed type is "builtins.int"
+reveal_type(a2[1])  # N: Revealed type is "builtins.str"
+reveal_type(a2[2])  # N: Revealed type is "builtins.str"
+
+a3: A[int, str, bool]
+reveal_type(a3[0])  # N: Revealed type is "builtins.int"
+reveal_type(a3[1])  # N: Revealed type is "builtins.str"
+reveal_type(a3[2])  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultAssertTypeType]
+from typing import assert_type
+
+class NoNonDefaults[T = str, S = int]: ...
+
+assert_type(NoNonDefaults[()], type[NoNonDefaults[str, int]])
+assert_type(NoNonDefaults[str], type[NoNonDefaults[str, int]])
+assert_type(NoNonDefaults[str, int], type[NoNonDefaults[str, int]])
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultToAnotherTypeVarWrong]
