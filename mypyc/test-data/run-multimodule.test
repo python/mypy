@@ -1734,3 +1734,47 @@ class Base:
 from native import make_child
 assert make_child(7) == "child(7)"
 assert make_child(-1) == "child(-1)"
+
+[case testIncrementalBuiltinBaseClassConstruction]
+# Regression: builtin_base classes (Exception subclasses) were unconditionally
+# added to func_to_decl in load_type_map, causing cross-group call sites to
+# emit CPyDef instead of CPyType for the constructor.
+from other_errors import MyError
+from other_util import process
+
+def run(value: str) -> None:
+    if not value:
+        raise MyError("empty")
+
+def compute(x: str) -> str:
+    result = process(x)
+    if not result:
+        raise MyError("no result")
+    return result
+
+[file other_errors.py]
+class MyError(Exception):
+    pass
+
+[file other_util.py]
+def process(x: str) -> str:
+    return x
+
+[file other_util.py.2]
+def process(x: str, flag: bool = False) -> str:
+    return x.strip()
+
+[file driver.py]
+from native import run, compute
+try:
+    run("")
+except Exception as e:
+    print(str(e))
+print(compute("hello"))
+
+[out]
+empty
+hello
+[out2]
+empty
+hello
