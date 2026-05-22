@@ -797,7 +797,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
-            assert isinstance(erased, Instance)  # type: ignore[misc]
+            assert isinstance(erased, ProperType) and isinstance(erased, Instance)
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if self.direction == SUBTYPE_OF and template.type.has_base(instance.type.fullname):
@@ -996,7 +996,24 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 res.extend(cb)
             return res
         elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
-            return infer_constraints(template, mypy.typeops.tuple_fallback(actual), self.direction)
+            instance = mypy.typeops.tuple_fallback(actual)
+            erased = erase_typevars(template)
+            assert isinstance(erased, ProperType) and isinstance(erased, Instance)
+            # Special-case protocols before using fallback to get more precise constraints
+            # for custom tuple types like NamedTuples.
+            if (
+                template.type.is_protocol
+                and self.direction == SUPERTYPE_OF
+                and not any(template == t for t in reversed(template.type.inferring))
+                and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
+            ):
+                template.type.inferring.append(template)
+                res = self.infer_constraints_from_protocol_members(
+                    instance, template, original_actual, template
+                )
+                template.type.inferring.pop()
+                return res
+            return infer_constraints(template, instance, self.direction)
         elif isinstance(actual, TypeVarType):
             if not actual.values and not actual.id.is_meta_var():
                 return infer_constraints(template, actual.upper_bound, self.direction)
