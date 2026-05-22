@@ -116,7 +116,7 @@ class EnumCallAnalyzer:
             info = self.build_enum_call_typeinfo(var_name, items, fullname, call.line)
         # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
         if self.api.is_nested_within_func_scope():
-            self.api.add_global_symbol(f"{var_name}@{node.line}", info)
+            self.api.add_global_symbol(var_name, node, info)
         call.analyzed = EnumCallExpr(info, items, values)
         call.analyzed.set_line(call)
         info.line = node.line

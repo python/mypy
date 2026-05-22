@@ -9420,4 +9420,4 @@ reveal_type(X)  # N: Revealed type is "Any"
 def f() -> None:
     class X:
         ...
-    x  # E: Name "x" is not defined
+    undefined  # E: Name "undefined" is not defined

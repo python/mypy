@@ -234,7 +234,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_global_symbol(self, name: str, node: SymbolNode) -> None:
+    def add_global_symbol(self, name: str, ctx: Context, node: SymbolNode) -> None:
         """Add symbol directly to the global symbol table."""
         raise NotImplementedError
 

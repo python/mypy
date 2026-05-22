@@ -132,7 +132,7 @@ class NewTypeAnalyzer:
             call.analyzed.info.bases = newtype_class_info.bases
         self.api.add_symbol(var_name, call.analyzed.info, s)
         if self.api.is_nested_within_func_scope():
-            self.api.add_global_symbol(f"{var_name}@{s.line}", call.analyzed.info)
+            self.api.add_global_symbol(var_name, s, call.analyzed.info)
         newtype_class_info.line = s.line
         return True
 

@@ -188,8 +188,10 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    func_scoped_name,
     get_member_expr_fullname,
     implicit_module_attrs,
+    inline_base,
     is_final_node,
     type_aliases,
     type_aliases_source_versions,
@@ -1992,7 +1994,7 @@ class SemanticAnalyzer(
                 return
 
         self.analyze_class_keywords(defn)
-        bases_result = self.analyze_base_classes(bases)
+        bases_result = self.analyze_base_classes(defn.name, bases)
         if bases_result is None or self.found_incomplete_ref(tag):
             # Something was incomplete. Defer current target.
             self.mark_incomplete(defn.name, defn)
@@ -2512,6 +2514,12 @@ class SemanticAnalyzer(
             tvar_defs.append(tvar_def)
         return tvar_defs
 
+    def class_fullname(self, name: str, line: int) -> str:
+        if not self.is_nested_within_func_scope():
+            return self.qualified_name(name)
+        name = func_scoped_name(name, line)
+        return f"{self.cur_mod_id}.{name}"
+
     def prepare_class_def(self, defn: ClassDef, info: TypeInfo | None = None) -> None:
         """Prepare for the analysis of a class definition.
 
@@ -2519,17 +2527,13 @@ class SemanticAnalyzer(
         argument is provided, store it instead (used for magic type definitions).
         """
         if not defn.info:
-            if not self.is_nested_within_func_scope():
-                defn.fullname = self.qualified_name(defn.name)
-            else:
-                defn.fullname = f"{self.cur_mod_id}.{defn.name}@{defn.line}"
+            defn.fullname = self.class_fullname(defn.name, defn.line)
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
         self.add_symbol(defn.name, defn.info, defn)
         if self.is_nested_within_func_scope():
-            global_name = f"{defn.name}@{defn.line}"
-            self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
+            self.add_global_symbol(defn.name, defn, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
         if (
@@ -2560,7 +2564,7 @@ class SemanticAnalyzer(
         return None
 
     def analyze_base_classes(
-        self, base_type_exprs: list[Expression]
+        self, cls_name: str, base_type_exprs: list[Expression]
     ) -> tuple[list[tuple[ProperType, Expression]], bool] | None:
         """Analyze base class types.
 
@@ -2572,7 +2576,7 @@ class SemanticAnalyzer(
         """
         is_error = False
         bases = []
-        for base_expr in base_type_exprs:
+        for i, base_expr in enumerate(base_type_exprs):
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
@@ -2590,7 +2594,10 @@ class SemanticAnalyzer(
 
             try:
                 base = self.expr_to_analyzed_type(
-                    base_expr, allow_placeholder=True, allow_type_any=True
+                    base_expr,
+                    allow_placeholder=True,
+                    allow_type_any=True,
+                    unique_name=inline_base(cls_name, i),
                 )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
@@ -5145,10 +5152,7 @@ class SemanticAnalyzer(
         #     with add_symbol(), and once using add_global_symbol() using the mangled name.
         #     The second one is needed to properly serialize any classes nested in functions.
         # TODO: make sure the daemon works well with these rules.
-        if self.is_nested_within_func_scope():
-            class_def.fullname = f"{self.cur_mod_id}.{name}@{line}"
-        else:
-            class_def.fullname = self.qualified_name(name)
+        class_def.fullname = self.class_fullname(name, line)
 
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
@@ -7007,7 +7011,7 @@ class SemanticAnalyzer(
             name, symbol, context, can_defer, escape_comprehensions, no_progress, type_param
         )
 
-    def add_global_symbol(self, name: str, node: SymbolNode) -> None:
+    def add_global_symbol(self, name: str, ctx: Context, node: SymbolNode) -> None:
         """Add symbol to a global namespace.
 
         This doesn't check for previous definition and is only used
@@ -7018,7 +7022,7 @@ class SemanticAnalyzer(
         This method can be used to add such classes to an enclosing,
         serialized symbol table.
         """
-        self.globals[name] = SymbolTableNode(GDEF, node)
+        self.globals[func_scoped_name(name, ctx.line)] = SymbolTableNode(GDEF, node)
 
     def add_symbol_table_node(
         self,
@@ -7678,13 +7682,16 @@ class SemanticAnalyzer(
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        unique_name: str | None = None,
     ) -> Type | None:
-        if isinstance(expr, CallExpr):
+        if unique_name is not None and isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
             # backwards compatibility, but new features like generic named tuples
             # and recursive named tuples will be not supported.
             expr.accept(self)
-            internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(expr, None)
+            internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
+                expr, unique_name
+            )
             if tvar_defs:
                 self.fail("Generic named tuples are not supported for legacy class syntax", expr)
                 self.note("Use either Python 3 class syntax, or the assignment syntax", expr)
