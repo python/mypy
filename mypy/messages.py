@@ -2245,7 +2245,7 @@ class MessageBuilder:
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
         if not isinstance(original_subtype, TupleType):
-            # Only tuples are supported as implementing protocols for now.
+            # Apart from instances, only tuples are supported as implementing protocols for now.
             original_subtype = subtype
 
         # Report missing members
