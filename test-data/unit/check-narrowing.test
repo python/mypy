@@ -3291,9 +3291,45 @@ def narrow_list(x: Literal['a', 'b', 'c'], t: list[Literal['a', 'b']]):
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
 
+    if x in ['a', 'b']:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in ['a', 'b', *[]]:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
 def narrow_set(x: Literal['a', 'b', 'c'], t: set[Literal['a', 'b']]):
     if x in t:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a', 'b'}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a', 'b', *[]}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+def narrow_dict(x: Literal['a', 'b', 'c'], t: dict[Literal['a', 'b'], int]):
+    if x in t:  # E: Unsupported operand types for in ("Literal['a', 'b', 'c']" and "dict[Literal['a', 'b'], int]")
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a': 0, 'b': 1}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+
+    if x in {'a': 0, 'b': 1, **{}}:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
 [builtins fixtures/primitives.pyi]

@@ -4552,7 +4552,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_lvalue(sub_expr)[0] or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
-                UninhabitedType()
+                UninhabitedType(ambiguous=True)
                 for sub_expr in lvalue.items
             ]
             lvalue_type = TupleType(types, self.named_type("builtins.tuple"))
@@ -6772,14 +6772,34 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
                 if left_index in narrowable_operand_index_to_hash:
                     p_iterable_type = get_proper_type(iterable_type)
+                    container_item_types = None
+
+                    # Can we statically determine container contents?
                     if (
                         isinstance(p_iterable_type, TupleType)
                         and find_unpack_in_list(p_iterable_type.items) is None
                     ):
-                        # For some tuples, we can do negative narrowing, e.g. `x not in (None,)`
+                        container_item_types = p_iterable_type.items
+                    else:
+                        container_expr = collapse_walrus(operands[right_index])
+                        if isinstance(container_expr, (ListExpr, SetExpr)):
+                            if all(not isinstance(i, StarExpr) for i in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(e) for e in container_expr.items
+                                ]
+                        elif isinstance(container_expr, DictExpr):
+                            if all(k is not None for k, v in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(cast(Expression, k))
+                                    for k, v in container_expr.items
+                                ]
+
+                    if container_item_types is not None:
+                        # If we know the exact contents, we can potentially do negative narrowing,
+                        # e.g. `x not in (None,)`
                         all_if_maps = []
                         all_else_maps = []
-                        for known_item in p_iterable_type.items:
+                        for known_item in container_item_types:
                             # Match the should_coerce_literals logic from narrow_type_by_identity_equality
                             p_known_item = get_proper_type(known_item)
                             if is_literal_type_like(p_known_item) or (
@@ -6799,7 +6819,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         if_map = reduce_or_conditional_type_maps(all_if_maps)
                         else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
                     else:
-                        collection_item_type = get_proper_type(builtin_item_type(iterable_type))
+                        collection_item_type = get_proper_type(builtin_item_type(p_iterable_type))
                         if collection_item_type is not None:
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
@@ -6813,6 +6833,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
+                    # E.g. narrows the right operand in `if "key" in typed_dict`
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
                     )

@@ -2220,8 +2220,9 @@ class MessageBuilder:
         class_obj = False
         is_module = False
         skip = []
+        original_subtype = subtype
         if isinstance(subtype, TupleType):
-            subtype = subtype.partial_fallback
+            subtype = mypy.typeops.tuple_fallback(subtype)
         elif isinstance(subtype, TypedDictType):
             subtype = subtype.fallback
         elif isinstance(subtype, TypeType):
@@ -2241,6 +2242,10 @@ class MessageBuilder:
                 skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
+        if not isinstance(original_subtype, TupleType):
+            # Apart from instances, only tuples are supported by
+            # is_protocol_implementation() for now.
+            original_subtype = subtype
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
@@ -2272,7 +2277,7 @@ class MessageBuilder:
 
         # Report member type conflicts
         conflict_types = get_conflict_protocol_types(
-            subtype, supertype, class_obj=class_obj, options=self.options
+            subtype, original_subtype, supertype, class_obj=class_obj, options=self.options
         )
         if conflict_types and (
             not is_subtype(subtype, erase_type(supertype), options=self.options)
@@ -3187,7 +3192,11 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 
 def get_conflict_protocol_types(
-    left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
+    left: Instance,
+    original_left: Type,
+    right: Instance,
+    class_obj: bool = False,
+    options: Options | None = None,
 ) -> list[tuple[str, Type, Type, bool]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
@@ -3199,7 +3208,7 @@ def get_conflict_protocol_types(
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = get_protocol_member(left, member, class_obj)
+        subtype = get_protocol_member(left, original_left, member, class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
@@ -3215,7 +3224,9 @@ def get_conflict_protocol_types(
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
-            set_subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
+            set_subtype = get_protocol_member(
+                left, original_left, member, class_obj, is_lvalue=True
+            )
             if set_subtype and not is_same_type(set_subtype, subtype):
                 different_setter = True
             subtype = set_subtype

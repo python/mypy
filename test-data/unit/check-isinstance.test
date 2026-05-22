@@ -2254,7 +2254,6 @@ if y not in x:
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListOfOptional]
 # flags: --warn-unreachable
@@ -2268,7 +2267,6 @@ if y not in x:
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
 # flags: --warn-unreachable
@@ -2319,7 +2317,6 @@ if y not in nt:
 else:
     reveal_type(y) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNarrowTypeAfterInDict]
 # flags: --warn-unreachable
@@ -2336,7 +2333,6 @@ if y not in x:
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNarrowTypeAfterInNoAnyOrObject]
 # flags: --warn-unreachable
@@ -2356,7 +2352,6 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInUserDefined]
 # flags: --warn-unreachable
@@ -2378,7 +2373,6 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInSet]
 # flags: --warn-unreachable
@@ -2395,7 +2389,6 @@ if y not in s:
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/set.pyi]
-[out]
 
 [case testNarrowTypeAfterInTypedDict]
 # flags: --warn-unreachable
@@ -2412,7 +2405,6 @@ def f() -> None:
     reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
-[out]
 
 [case testIsinstanceWidensWithAnyArg]
 # flags: --warn-unreachable
