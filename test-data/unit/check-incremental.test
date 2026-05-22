@@ -8011,3 +8011,50 @@ x = "hello"
 [builtins fixtures/module.pyi]
 [stale b]
 [rechecked b]
+
+[case testNamedTupleInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("N", [('x', int)])): pass
+class A(NamedTuple("N", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+[out2]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+
+[case testTypedDictInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import TypedDict
+class A(TypedDict("TD", {'x': int})):
+    pass
+class A(TypedDict("TD", {'x': str})):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+[out2]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"

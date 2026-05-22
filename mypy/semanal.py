@@ -7083,8 +7083,10 @@ class SemanticAnalyzer(
                 if isinstance(old, Var) and is_init_only(old):
                     if old.has_explicit_value:
                         self.fail("InitVar with default value cannot be redefined", context)
-                elif not (
-                    isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)
+                elif (
+                    not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new))
+                    # Avoid (additional) errors for internal symbols.
+                    and "@" not in name
                 ):
                     self.name_already_defined(name, context, existing)
         elif type_param or (
