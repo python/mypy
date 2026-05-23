@@ -1152,14 +1152,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
                     # since this will break transitivity of subtyping.
                     return False
-                constructor = get_constructor(left)
-                if isinstance(constructor, CallableType):
-                    # Only consider return type to match historic behavior (see below).
-                    return self._is_subtype(constructor.ret_type, right.ret_type)
-                elif isinstance(constructor, Overloaded):
-                    return all(
-                        self._is_subtype(c.ret_type, right.ret_type) for c in constructor.items
-                    )
+                item = left.item
+                # Note: self-types are special since returning `Self` is more precise
+                # than its upper bound, so we don't unwrap TypeVar to its bound here.
+                if isinstance(item, TupleType):
+                    item = mypy.typeops.tuple_fallback(item)
+                if isinstance(item, Instance):
+                    constructor = mypy.typeops.type_object_type(item.type)
+                    constructor = expand_type_by_instance(constructor, item)
+                    if isinstance(constructor, CallableType):
+                        # Only consider return type to match historic behavior (see below).
+                        return self._is_subtype(constructor.ret_type, right.ret_type)
+                    elif isinstance(constructor, Overloaded):
+                        return all(
+                            self._is_subtype(c.ret_type, right.ret_type) for c in constructor.items
+                        )
                 # This is unsound, we don't check the __init__ signature.
                 return self._is_subtype(left.item, right.ret_type)
 
@@ -2370,18 +2377,3 @@ def is_erased_instance(t: Instance) -> bool:
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
     return True
-
-
-def get_constructor(typ: TypeType) -> ProperType | None:
-    """Extract constructor of X from type[X] when possible."""
-    item = typ.item
-    # Note: self-types are special since returning `Self` is more precise
-    # than its upper bound.
-    if isinstance(item, TypeVarType) and not item.id.is_self():
-        item = get_proper_type(item.upper_bound)
-    if isinstance(item, TupleType):
-        item = mypy.typeops.tuple_fallback(item)
-    if isinstance(item, Instance):
-        constructor = mypy.typeops.type_object_type(item.type)
-        return expand_type_by_instance(constructor, item)
-    return None
