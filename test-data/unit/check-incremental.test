@@ -8012,6 +8012,32 @@ x = "hello"
 [stale b]
 [rechecked b]
 
+[case testNamedTupleInlineBaseClassNoNameCollision]
+import m
+[file m.py]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)
+reveal_type(b)
+[file m.py.2]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)  # touch
+reveal_type(b)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("Same", [('x', int)])): pass
+class B(NamedTuple("Same", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+[out2]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+
 [case testNamedTupleInlineBaseClassRedefined]
 import m
 [file m.py]
