@@ -9412,3 +9412,12 @@ from typ import NT
 def f() -> NT:
     return NT(x='')
 [builtins fixtures/tuple.pyi]
+
+[case testClassNestedInFunctionNotLeaking]
+from a import X  # E: Module "a" has no attribute "X"
+reveal_type(X)  # N: Revealed type is "Any"
+[file a.py]
+def f() -> None:
+    class X:
+        ...
+    undefined  # E: Name "undefined" is not defined
