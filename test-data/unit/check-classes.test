@@ -7327,9 +7327,15 @@ class B:
     def __new__(cls, x: int = 0) -> Any:
         pass
 
+class C:
+    def __new__(cls, x: int = 0):
+        pass
+
 reveal_type(A())  # N: Revealed type is "__main__.A"
 reveal_type(B())  # N: Revealed type is "Any"
 reveal_type(B(1))  # N: Revealed type is "Any"
+reveal_type(C())  # N: Revealed type is "__main__.C"
+reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 [case testNewReturnType3]
 
@@ -7554,6 +7560,114 @@ class C:
     def __new__(cls) -> int: ...  # type: ignore[misc]
 
 reveal_type(f(C))  # N: Revealed type is "__main__.C"
+
+[case testNewReturnTypeCallableSubtyping]
+from typing import Callable, Protocol
+
+class Foo:
+    def foo(self) -> None: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+ta: type[A]
+tf: type[Foo]
+
+class PA(Protocol):
+    def __call__(self) -> A: ...
+
+class PFoo(Protocol):
+    def __call__(self) -> Foo: ...
+
+def f(x: Callable[[], A]) -> None: ...
+def g(x: Callable[[], Foo]) -> None: ...
+def fp(x: PA) -> None: ...
+def gp(x: PFoo) -> None: ...
+def h(x: type[A]) -> None: ...
+def i(x: type[Foo]) -> None: ...
+
+f(A)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(A)
+fp(A)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+       # N: "A" has constructor incompatible with "__call__" of "PA" \
+       # N: Following member(s) of "A" have conflicts: \
+       # N:     Expected: \
+       # N:         def __call__() -> A \
+       # N:     Got: \
+       # N:         def A() -> Foo \
+       # N: "PA.__call__" has type "Callable[[], A]"
+gp(A)
+h(A)
+i(A)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(Foo)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(Foo)
+fp(Foo)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(Foo)
+h(Foo)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(Foo)
+
+f(ta)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(ta)
+fp(ta)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+        # N: "A" has constructor incompatible with "__call__" of "PA" \
+        # N: Following member(s) of "A" have conflicts: \
+        # N:     Expected: \
+        # N:         def __call__() -> A \
+        # N:     Got: \
+        # N:         def A() -> Foo \
+        # N: "PA.__call__" has type "Callable[[], A]"
+gp(ta)
+h(ta)
+i(ta)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(tf)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(tf)
+fp(tf)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(tf)
+h(tf)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(tf)
+
+[case testNewReturnTypeCallableJoins]
+from typing import TypeVar
+
+class Base: ...
+class Foo(Base): ...
+class Bar(Base): ...
+
+class Base2: ...
+
+class A(Base2):
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+class B(Base2):
+    def __new__(cls) -> Bar: ...  # type: ignore
+
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
+reveal_type(join(A, Foo))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(Foo, A))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(A, B))  # N: Revealed type is "def () -> __main__.Base"
+reveal_type(join(B, A))  # N: Revealed type is "def () -> __main__.Base"
+
+# This tests the type repr in error messages.
+j = join(A, B)
+x: int = j  # E: Incompatible types in assignment (expression has type "type[Base2]", variable has type "int")
 
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
