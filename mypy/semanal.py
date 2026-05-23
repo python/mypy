@@ -188,8 +188,10 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    func_scoped_name,
     get_member_expr_fullname,
     implicit_module_attrs,
+    inline_base,
     is_final_node,
     type_aliases,
     type_aliases_source_versions,
@@ -1992,7 +1994,7 @@ class SemanticAnalyzer(
                 return
 
         self.analyze_class_keywords(defn)
-        bases_result = self.analyze_base_classes(bases)
+        bases_result = self.analyze_base_classes(defn.name, bases)
         if bases_result is None or self.found_incomplete_ref(tag):
             # Something was incomplete. Defer current target.
             self.mark_incomplete(defn.name, defn)
@@ -2112,7 +2114,7 @@ class SemanticAnalyzer(
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info, custom_names=True)
+                self.prepare_class_def(defn, info)
             for decorator in defn.decorators:
                 decorator.accept(self)
                 if defn.info:
@@ -2136,13 +2138,13 @@ class SemanticAnalyzer(
             info: TypeInfo | None = defn.info
         else:
             is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
-                defn, self.is_stub_file, self.is_func_scope()
+                defn, self.is_stub_file
             )
         if is_named_tuple:
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info, custom_names=True)
+                self.prepare_class_def(defn, info)
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
@@ -2512,51 +2514,26 @@ class SemanticAnalyzer(
             tvar_defs.append(tvar_def)
         return tvar_defs
 
-    def prepare_class_def(
-        self, defn: ClassDef, info: TypeInfo | None = None, custom_names: bool = False
-    ) -> None:
+    def class_fullname(self, name: str, line: int) -> str:
+        if not self.is_nested_within_func_scope():
+            return self.qualified_name(name)
+        name = func_scoped_name(name, line)
+        return f"{self.cur_mod_id}.{name}"
+
+    def prepare_class_def(self, defn: ClassDef, info: TypeInfo | None = None) -> None:
         """Prepare for the analysis of a class definition.
 
         Create an empty TypeInfo and store it in a symbol table, or if the 'info'
         argument is provided, store it instead (used for magic type definitions).
         """
         if not defn.info:
-            defn.fullname = self.qualified_name(defn.name)
-            # TODO: Nested classes
+            defn.fullname = self.class_fullname(defn.name, defn.line)
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
-            if not custom_names:
-                # Some special classes (in particular NamedTuples) use custom fullname logic.
-                # Don't override it here (also see comment below, this needs cleanup).
-                if not self.is_func_scope():
-                    info._fullname = self.qualified_name(defn.name)
-                else:
-                    info._fullname = info.name
-        local_name = defn.name
-        if "@" in local_name:
-            local_name = local_name.split("@")[0]
-        self.add_symbol(local_name, defn.info, defn)
+        self.add_symbol(defn.name, defn.info, defn)
         if self.is_nested_within_func_scope():
-            # We need to preserve local classes, let's store them
-            # in globals under mangled unique names
-            #
-            # TODO: Putting local classes into globals breaks assumptions in fine-grained
-            #       incremental mode and we should avoid it. In general, this logic is too
-            #       ad-hoc and needs to be removed/refactored.
-            if "@" not in defn.info._fullname:
-                global_name = defn.info.name + "@" + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + "." + global_name
-            else:
-                # Preserve name from previous fine-grained incremental run.
-                global_name = defn.info.name
-            defn.fullname = defn.info._fullname
-            if defn.info.is_named_tuple or defn.info.typeddict_type:
-                # Named tuples and Typed dicts nested within a class are stored
-                # in the class symbol table.
-                self.add_symbol_skip_local(global_name, defn.info)
-            else:
-                self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
+            self.add_global_symbol(defn.name, defn, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
         if (
@@ -2587,7 +2564,7 @@ class SemanticAnalyzer(
         return None
 
     def analyze_base_classes(
-        self, base_type_exprs: list[Expression]
+        self, cls_name: str, base_type_exprs: list[Expression]
     ) -> tuple[list[tuple[ProperType, Expression]], bool] | None:
         """Analyze base class types.
 
@@ -2599,7 +2576,7 @@ class SemanticAnalyzer(
         """
         is_error = False
         bases = []
-        for base_expr in base_type_exprs:
+        for i, base_expr in enumerate(base_type_exprs):
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
@@ -2617,7 +2594,10 @@ class SemanticAnalyzer(
 
             try:
                 base = self.expr_to_analyzed_type(
-                    base_expr, allow_placeholder=True, allow_type_any=True
+                    base_expr,
+                    allow_placeholder=True,
+                    allow_type_any=True,
+                    unique_name=inline_base(cls_name, i),
                 )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
@@ -3594,7 +3574,7 @@ class SemanticAnalyzer(
             # This is an analyzed enum definition.
             # It is valid iff it can be stored correctly, failures were already reported.
             return self._is_single_name_assignment(s)
-        return self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
+        return self.enum_call_analyzer.process_enum_call(s)
 
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""
@@ -3618,7 +3598,7 @@ class SemanticAnalyzer(
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-                s.rvalue, name, self.is_func_scope()
+                s.rvalue, name
             )
             if internal_name is None:
                 return False
@@ -3655,7 +3635,7 @@ class SemanticAnalyzer(
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-                s.rvalue, name, self.is_func_scope()
+                s.rvalue, name
             )
             if not is_typed_dict:
                 return False
@@ -5161,17 +5141,18 @@ class SemanticAnalyzer(
         return True
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
-        if self.is_func_scope() and not self.type and "@" not in name:
-            name += "@" + str(line)
         class_def = ClassDef(name, Block([]))
-        if self.is_func_scope() and not self.type:
-            # Full names of generated classes should always be prefixed with the module names
-            # even if they are nested in a function, since these classes will be (de-)serialized.
-            # (Note that the caller should append @line to the name to avoid collisions.)
-            # TODO: clean this up, see #6422.
-            class_def.fullname = self.cur_mod_id + "." + self.qualified_name(name)
-        else:
-            class_def.fullname = self.qualified_name(name)
+        # Ground rules for classes nested in functions:
+        #   * Use is_nested_within_func_scope(), not is_func_scope(), to determine whether
+        #     to use any special logic, because nothing inside top-level functions is serialized.
+        #   * ClassDef.name is not mangled (i.e. @line suffix is not appended).
+        #   * ClassDef.fullname, and thus TypeInfo.fullname are always pkg.mod.Name@line, any
+        #     "intermediate" classes are not included in the fullname.
+        #   * The caller is responsible for storing the generated TypeInfo twice: once as usual
+        #     with add_symbol(), and once using add_global_symbol() using the mangled name.
+        #     The second one is needed to properly serialize any classes nested in functions.
+        # TODO: make sure the daemon works well with these rules.
+        class_def.fullname = self.class_fullname(name, line)
 
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
@@ -7030,27 +7011,18 @@ class SemanticAnalyzer(
             name, symbol, context, can_defer, escape_comprehensions, no_progress, type_param
         )
 
-    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
-        """Same as above, but skipping the local namespace.
+    def add_global_symbol(self, name: str, ctx: Context, node: SymbolNode) -> None:
+        """Add symbol to a global namespace.
 
         This doesn't check for previous definition and is only used
-        for serialization of method-level classes.
+        for serialization of classes nested in functions/methods.
 
         Classes defined within methods can be exposed through an
         attribute type, but method-level symbol tables aren't serialized.
         This method can be used to add such classes to an enclosing,
         serialized symbol table.
         """
-        # TODO: currently this is only used by named tuples and typed dicts.
-        # Use this method also by normal classes, see issue #6422.
-        if self.type is not None:
-            names = self.type.names
-            kind = MDEF
-        else:
-            names = self.globals
-            kind = GDEF
-        symbol = SymbolTableNode(kind, node)
-        names[name] = symbol
+        self.globals[func_scoped_name(name, ctx.line)] = SymbolTableNode(GDEF, node)
 
     def add_symbol_table_node(
         self,
@@ -7111,8 +7083,10 @@ class SemanticAnalyzer(
                 if isinstance(old, Var) and is_init_only(old):
                     if old.has_explicit_value:
                         self.fail("InitVar with default value cannot be redefined", context)
-                elif not (
-                    isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)
+                elif (
+                    not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new))
+                    # Avoid (additional) errors for internal symbols.
+                    and "@" not in name
                 ):
                     self.name_already_defined(name, context, existing)
         elif type_param or (
@@ -7710,14 +7684,15 @@ class SemanticAnalyzer(
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        unique_name: str | None = None,
     ) -> Type | None:
-        if isinstance(expr, CallExpr):
+        if unique_name is not None and isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
             # backwards compatibility, but new features like generic named tuples
             # and recursive named tuples will be not supported.
             expr.accept(self)
             internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-                expr, None, self.is_func_scope()
+                expr, unique_name
             )
             if tvar_defs:
                 self.fail("Generic named tuples are not supported for legacy class syntax", expr)

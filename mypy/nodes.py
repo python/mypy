@@ -5396,6 +5396,16 @@ def set_info(node: SymbolNode, info: TypeInfo) -> None:
             set_info(node.impl, info)
 
 
+def func_scoped_name(name: str, line: int) -> str:
+    """Mangled name to use when storing function-scoped symbols in global symbol tables."""
+    return f"{name}@{line}"
+
+
+def inline_base(name: str, index: int) -> str:
+    """Synthetic name to use when storing inlined base classes in symbol tables."""
+    return f"{name}@base{index + 1}"
+
+
 # See docstring for mypy/cache.py for reserved tag ranges.
 MYPY_FILE: Final[Tag] = 50
 OVERLOADED_FUNC_DEF: Final[Tag] = 51

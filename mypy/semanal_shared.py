@@ -137,6 +137,10 @@ class SemanticAnalyzerCoreInterface:
     def is_func_scope(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_nested_within_func_scope(self) -> bool:
+        raise NotImplementedError
+
     @property
     @abstractmethod
     def type(self) -> TypeInfo | None:
@@ -230,13 +234,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
-        """Add symbol to the current symbol table, skipping locals.
-
-        This is used to store symbol nodes in a symbol table that
-        is going to be serialized (local namespaces are not serialized).
-        See implementation docstring for more details.
-        """
+    def add_global_symbol(self, name: str, ctx: Context, node: SymbolNode) -> None:
+        """Add symbol directly to the global symbol table."""
         raise NotImplementedError
 
     @abstractmethod

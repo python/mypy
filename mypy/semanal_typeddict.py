@@ -33,6 +33,7 @@ from mypy.nodes import (
     TypeAlias,
     TypedDictExpr,
     TypeInfo,
+    inline_base,
 )
 from mypy.options import Options
 from mypy.semanal_shared import (
@@ -113,8 +114,6 @@ class TypedDictAnalyzer:
             )
             if field_types is None:
                 return True, None  # Defer
-            if self.api.is_func_scope() and "@" not in defn.name:
-                defn.name += "@" + str(defn.line)
             info = self.build_typeddict_typeinfo(
                 defn.name, field_types, required_keys, readonly_keys, defn.line, existing_info
             )
@@ -127,8 +126,8 @@ class TypedDictAnalyzer:
         # Extending/merging existing TypedDicts
         typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
-        for expr in defn.base_type_exprs:
-            ok, maybe_type_info, _ = self.check_typeddict(expr, None, False)
+        for i, expr in enumerate(defn.base_type_exprs):
+            ok, maybe_type_info, _ = self.check_typeddict(expr, inline_base(defn.name, i))
             if ok and maybe_type_info is not None:
                 # expr is a CallExpr
                 info = maybe_type_info
@@ -406,12 +405,13 @@ class TypedDictAnalyzer:
         return typ, is_required, readonly
 
     def check_typeddict(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, name: str
     ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
-        The optional var_name argument is the name of the variable to
-        which this is assigned, if any.
+        The name argument is the name of the variable to which this is assigned.
+        For an inlined base class this is a unique name generated from class name
+        base number.
 
         Return a pair (is it a typed dict, corresponding TypeInfo).
 
@@ -433,28 +433,19 @@ class TypedDictAnalyzer:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
             return True, None, []
-        name, items, types, total, tvar_defs, ok = res
+        typename, items, types, total, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            if var_name:
-                name = var_name
-                if is_func_scope:
-                    name += "@" + str(call.line)
-            else:
-                name = var_name = "TypedDict@" + str(call.line)
             info = self.build_typeddict_typeinfo(name, {}, set(), set(), call.line, None)
         else:
-            if var_name is not None and name != var_name:
+            if "@" not in name and name != typename:
                 self.fail(
                     'First argument "{}" to TypedDict() does not match variable name "{}"'.format(
-                        name, var_name
+                        typename, name
                     ),
                     node,
                     code=codes.NAME_MATCH,
                 )
-            if name != var_name or is_func_scope:
-                # Give it a unique name derived from the line number.
-                name += "@" + str(call.line)
             required_keys = {
                 field
                 for (field, t) in zip(items, types)
@@ -481,6 +472,7 @@ class TypedDictAnalyzer:
             existing_info = None
             if isinstance(node.analyzed, TypedDictExpr):
                 existing_info = node.analyzed.info
+
             info = self.build_typeddict_typeinfo(
                 name,
                 dict(zip(items, types)),
@@ -491,10 +483,9 @@ class TypedDictAnalyzer:
             )
             info.line = node.line
         # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-        if name != var_name or is_func_scope:
-            self.api.add_symbol_skip_local(name, info)
-        if var_name:
-            self.api.add_symbol(var_name, info, node)
+        self.api.add_symbol(name, info, node)
+        if self.api.is_nested_within_func_scope():
+            self.api.add_global_symbol(name, node, info)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call)
         return True, info, tvar_defs

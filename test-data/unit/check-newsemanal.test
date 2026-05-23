@@ -936,8 +936,8 @@ class C:
         self.o: Out
 
 c = C()
-reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6], __main__.Other@7, fallback=__main__.C.Out@5]"
-reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6]"
+reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@7, fallback=__main__.In@6], __main__.Other@7, fallback=__main__.Out@5]"
+reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@7, fallback=__main__.In@6]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassNestedMethod]
@@ -956,9 +956,9 @@ class C:
         self.o: Out
 
 c = C()
-reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9], __main__.Other@12, fallback=__main__.C.Out@5]"
-reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
-reveal_type(c.o.method())  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
+reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@12, fallback=__main__.In@9], __main__.Other@12, fallback=__main__.Out@5]"
+reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.In@9]"
+reveal_type(c.o.method())  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.In@9]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassForwardMethod]
