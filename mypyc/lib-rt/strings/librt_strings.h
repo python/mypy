@@ -13,11 +13,11 @@
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
-#define LIBRT_STRINGS_API_VERSION 4
+#define LIBRT_STRINGS_API_VERSION 5
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 14
+#define LIBRT_STRINGS_API_LEN 19
 
 typedef struct {
     PyObject_HEAD
