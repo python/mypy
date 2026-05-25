@@ -182,11 +182,7 @@ class State:
         )
 
     def check_min_version(
-        self,
-        feature: str,
-        min_version: tuple[int, int],
-        line: int,
-        column: int,
+        self, feature: str, min_version: tuple[int, int], line: int, column: int
     ) -> None:
         """Report a non blocker syntax error if the target Python feature is older than min_version."""
         if self.is_stub:
@@ -709,9 +705,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         func_def.is_coroutine = True
     read_loc(data, func_def)
     if type_params:
-        state.check_min_version(
-            "Type parameter lists", (3, 12), func_def.line, func_def.column
-        )
+        state.check_min_version("Type parameter lists", (3, 12), func_def.line, func_def.column)
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
@@ -761,9 +755,7 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     class_def.decorators = decorators
     read_loc(data, class_def)
     if type_params:
-        state.check_min_version(
-            "Type parameter lists", (3, 12), class_def.line, class_def.column
-        )
+        state.check_min_version("Type parameter lists", (3, 12), class_def.line, class_def.column)
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     return class_def
@@ -819,9 +811,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
 
     stmt = TypeAliasStmt(name, type_params, lambda_expr)
     read_loc(data, stmt)
-    state.check_min_version(
-        '"type" statements', (3, 12), stmt.line, stmt.column
-    )
+    state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
     check_type_param_defaults(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
