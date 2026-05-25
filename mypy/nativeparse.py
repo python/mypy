@@ -29,7 +29,7 @@ from librt.internal import (
     read_str as read_str_bare,
 )
 
-from mypy import defaults, message_registry, nodes, types
+from mypy import message_registry, nodes, types
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -190,10 +190,8 @@ class State:
     ) -> None:
         """Report a non blocker syntax error if the target Python feature is older than min_version."""
         if self.is_stub:
-            target = max(self.options.python_version, defaults.PYTHON3_VERSION)
-        else:
-            target = self.options.python_version
-        if target < min_version:
+            return
+        if self.options.python_version < min_version:
             self.add_error(
                 f"{feature} are only supported in Python "
                 f"{min_version[0]}.{min_version[1]} and greater",
