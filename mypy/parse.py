@@ -71,7 +71,7 @@ def load_from_raw(
     """
     from mypy.nativeparse import State, deserialize_imports, read_statements
 
-    state = State(options)
+    state = State(options, is_stub=fnam.endswith(".pyi"))
     if imports_only:
         defs = []
     else:
