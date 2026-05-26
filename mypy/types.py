@@ -2924,15 +2924,6 @@ class TupleType(ProperType):
         return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
-class TypedDictFieldConstraint(NamedTuple):
-    field_name: str
-    field_type: Type
-    is_readonly: bool
-    failure_message: str
-    failure_note: str | None
-    ctx: mypy.nodes.Context
-
-
 class TypedDictItem(NamedTuple):
     """Type, mutability and requiredness of an item in a TypedDict.
 
@@ -2981,8 +2972,6 @@ class TypedDictType(ProperType):
         "fallback",
         "extra_items_from",
         "to_be_mutated",
-        "analysis_incomplete",
-        "field_constraints",
     )
 
     items: dict[str, Type]  # item_name -> item_type
@@ -2992,10 +2981,6 @@ class TypedDictType(ProperType):
 
     extra_items_from: list[ProperType]  # only used during semantic analysis
     to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
-    analysis_incomplete: bool  # a placeholder type prevented complete analysis checking
-    field_constraints: list[
-        TypedDictFieldConstraint
-    ]  # delayed constraints to validate later in checking
 
     def __init__(
         self,
@@ -3017,8 +3002,6 @@ class TypedDictType(ProperType):
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
         self.to_be_mutated = False
-        self.analysis_incomplete = False
-        self.field_constraints = []
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)

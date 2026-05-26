@@ -3225,17 +3225,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         """Ensure that the final definition of a TypedDict is compatible with its base classes."""
         assert defn.info.typeddict_type
         td = defn.info.typeddict_type
-        for constraint in td.field_constraints:
-            field_name = constraint.field_name
-            field_type = td.items[field_name]
-            if constraint.is_readonly:
-                is_compatible = is_subtype(field_type, constraint.field_type)
-            else:
-                is_compatible = is_equivalent(field_type, constraint.field_type)
-            if not is_compatible:
-                self.fail(constraint.failure_message, constraint.ctx)
-                if constraint.failure_note:
-                    self.note(constraint.failure_note, constraint.ctx)
+        data = defn.info.typeddict_data
+        if data is None or not data.ready:
+            return
+        for base, base_items in data.bases:
+            assert base.typeddict_type
+            for field_name, base_type in base_items.items():
+                field_type = td.items[field_name]
+                assert field_type
+                is_readonly = field_name in base.typeddict_type.readonly_keys
+                if is_readonly:
+                    is_compatible = is_subtype(field_type, base_type)
+                else:
+                    is_compatible = is_equivalent(field_type, base_type)
+                if not is_compatible:
+                    source = data.field_sources[field_name]
+                    if source.base is None:
+                        self.fail(
+                            f'Definition of field "{field_name}" incompatible with base class "{base.name}"',
+                            source.ctx,
+                        )
+                    else:
+                        self.fail(
+                            f'Incompatible definitions of field "{field_name}" in base classes "{base.name}" and "{source.base.name}"',
+                            source.ctx,
+                        )
+                        if field_name in td.readonly_keys:
+                            self.note(
+                                f'This can be resolved by redeclaring the field "{field_name}" with a mutually compatible type',
+                                source.ctx,
+                            )
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:

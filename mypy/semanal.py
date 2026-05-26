@@ -2101,7 +2101,7 @@ class SemanticAnalyzer(
         if (
             defn.info
             and defn.info.typeddict_type
-            and not defn.info.typeddict_type.analysis_incomplete
+            and (defn.info.typeddict_data is None or defn.info.typeddict_data.ready)
         ):
             # Don't reprocess everything
             is_typeddict = True

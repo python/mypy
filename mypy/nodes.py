@@ -3655,6 +3655,7 @@ class TypeInfo(SymbolNode):
         "is_type_check_only",
         "deprecated",
         "type_object_type",
+        "typeddict_data",
     )
 
     _fullname: str  # Fully qualified name
@@ -3816,6 +3817,9 @@ class TypeInfo(SymbolNode):
     # appears in runtime context.
     type_object_type: mypy.types.FunctionLike | None
 
+    # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+    typeddict_data: TypedDictData | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3877,6 +3881,7 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         self.type_object_type = None
+        self.typeddict_data = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -5195,6 +5200,44 @@ class DataclassTransformSpec:
         )
         assert read_tag(data) == END_TAG
         return ret
+
+
+class TypedDictFieldSource:
+    """Source of a TypedDict field definition, used for forming error messages.
+
+    May be defined directly on the type, or on a base class.
+    """
+
+    __slots__ = ("base", "ctx")
+
+    base: TypeInfo | None
+    ctx: Context
+
+    def __init__(self, base: TypeInfo | None, ctx: Context) -> None:
+        self.base = base
+        self.ctx = ctx
+
+
+class TypedDictData:
+    """Stores information needed for delayed validation of TypedDict inheritance."""
+
+    __slots__ = ("ready", "bases", "field_sources")
+
+    # If False, the type definition referenced a placeholder
+    ready: bool
+
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    field_sources: dict[str, TypedDictFieldSource]
+
+    def __init__(
+        self,
+        ready: bool,
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        field_sources: dict[str, TypedDictFieldSource],
+    ) -> None:
+        self.ready = ready
+        self.bases = bases
+        self.field_sources = field_sources
 
 
 @trait
