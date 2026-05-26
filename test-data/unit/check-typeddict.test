@@ -4669,6 +4669,10 @@ class B(A):
 class C(A):
     key: "Z"  # E: Definition of field "key" incompatible with base class "A"
 
+x: A
+y: B
+x = y  # ok: B is a valid subtype of A
+
 class XB: pass
 class YB(X): pass
 class ZB: pass
@@ -4710,10 +4714,23 @@ class D(A, B):  # E: Incompatible definitions of field "key" in base classes "B"
                 # N: This can be resolved by redeclaring the field "key" with a mutually compatible type
     pass
 
+class E(A, B):
+    key: ReadOnly[int]  # ok: explicit redefinition
+
 c: C
 reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'=: builtins.int})"
 d: D
 reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'key'=: builtins.float})"
+e: E
+reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'key'=: builtins.int})"
+
+# Verify that subclasses are valid subtypes
+a: A
+b: B
+a = c
+b = c
+a = e
+b = e
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4730,6 +4747,8 @@ a: A
 reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'key'?=: builtins.int})"
 b: B
 reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'key': builtins.int})"
+
+a = b  # ok: B is a valid subtype of A
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
