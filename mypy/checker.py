@@ -6455,13 +6455,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 for key in item_str_literals:
                     if key in bound.required_keys:
                         if_types.append(possible_iterable_type)
-                    elif (
-                        key in bound.items
-                        and not isinstance(get_proper_type(bound.items[key]), UninhabitedType)
-                    ) or (key not in bound.items and not bound.is_closed and not bound.is_final):
-                        if_types.append(possible_iterable_type)
+                    elif key in bound.items and isinstance(
+                        get_proper_type(bound.items[key]), UninhabitedType
+                    ):
+                        # If an item is explicitly declared uninhabited, we can exclude it from if_types;
+                        # see testOperatorContainsNarrowsTypedDicts_closed
+                        else_types.append(possible_iterable_type)
+                    elif key not in bound.items and (bound.is_closed or bound.is_final):
+                        # If an item is missing and the type is closed, we can exclude it from if_types;
+                        # see testOperatorContainsNarrowsTypedDicts_closed
+                        # We also support "final" as a legacy way of expressing "closed" in this specific case;
+                        # see testOperatorContainsNarrowsTypedDicts_final
                         else_types.append(possible_iterable_type)
                     else:
+                        if_types.append(possible_iterable_type)
                         else_types.append(possible_iterable_type)
             else:
                 if_types.append(possible_iterable_type)
