@@ -949,7 +949,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         kwargs: list[tuple[Expression | None, Expression]],
         context: Context,
     ) -> bool:
-        result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
+        with self.msg.filter_errors():
+            result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
         if result is not None:
             validated_kwargs, _ = result
             return callee.required_keys <= set(validated_kwargs.keys()) <= set(callee.items.keys())
@@ -1763,6 +1764,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             callee.arg_names,
             lambda i: self.accept(args[i]),
         )
+
+        if callee.special_sig == "tuple" and len(args) == 1:
+            with self.msg.filter_errors():
+                arg_type = get_proper_type(self.accept(args[0]))
+            # Give precise constructor signature for situations like this:
+            #     class Shape[*Ts](tuple[*Ts]): ...
+            #     Shape((1, 2))
+            # The argument type is the same as return type, but with builtins.tuple fallback.
+            if isinstance(arg_type, TupleType):
+                assert isinstance(callee.ret_type, ProperType)
+                if isinstance(callee.ret_type, TupleType):
+                    # Actual type argument is ignored by tuple_fallback() in this case.
+                    any_type = AnyType(TypeOfAny.special_form)
+                    new_arg_type = callee.ret_type.copy_modified(
+                        fallback=self.chk.named_generic_type("builtins.tuple", [any_type])
+                    )
+                    callee = callee.copy_modified(arg_types=[new_arg_type])
+                elif isinstance(callee.ret_type, Instance):
+                    new_arg_type = map_instance_to_supertype(
+                        callee.ret_type, self.chk.lookup_typeinfo("builtins.tuple")
+                    )
+                    callee = callee.copy_modified(arg_types=[new_arg_type])
 
         if callee.is_generic():
             need_refresh = any(
@@ -4932,10 +4955,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if tapp.expr.node.python_3_12_type_alias:
                 return self.type_alias_type_type()
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            item = instantiate_type_alias(
+            item, _ = instantiate_type_alias(
                 tapp.expr.node,
                 tapp.types,
                 self.chk.fail,
+                self.chk.note,
                 tapp.expr.node.no_args,
                 tapp,
                 self.chk.options,
@@ -5000,17 +5024,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
-        item = get_proper_type(
-            set_any_tvars(
-                alias,
-                [],
-                ctx.line,
-                ctx.column,
-                self.chk.options,
-                disallow_any=disallow_any,
-                fail=self.msg.fail,
-            )
+        item, _ = set_any_tvars(
+            alias,
+            [],
+            ctx.line,
+            ctx.column,
+            self.chk.options,
+            disallow_any=disallow_any,
+            fail=self.msg.fail,
         )
+        item = get_proper_type(item)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
@@ -5073,11 +5096,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     return [AnyType(TypeOfAny.from_error)] * len(vars)
 
         # TODO: in future we may want to support type application to variadic functions.
-        if (
-            not vars
-            or not any(isinstance(v, TypeVarTupleType) for v in vars)
-            or not t.is_type_obj()
-        ):
+        if not vars or not t.is_type_obj() or t.type_object().fullname == "builtins.tuple":
             return list(args)
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
@@ -5090,6 +5109,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 fake, self.chk.fail, self.chk.note, disallow_any=False, options=self.chk.options
             )
             args = list(fake.args)
+
+        if not any(isinstance(v, TypeVarTupleType) for v in vars):
+            return args
 
         prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
         suffix = len(vars) - prefix - 1

@@ -8581,6 +8581,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         except KeyError:
             return None
 
+    def record_fixed_type(self, fixed: TypeInfo | TypeAlias) -> None:
+        pass
+
     def fail(
         self,
         msg: str,
@@ -8628,6 +8631,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         # a fail() message with a note() message or not. Both of those
         # message types are ignored.
         return False
+
+    def is_nested_within_func_scope(self) -> bool:
+        return self._chk.scope.top_level_function() is not None
 
     @property
     def type(self) -> TypeInfo | None:

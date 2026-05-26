@@ -729,13 +729,13 @@ class C:
         self.c = A
 [builtins fixtures/tuple.pyi]
 [out1]
-main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.A@4]"
+main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.A@4]"
 [out2]
-main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.A@4]"
+main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.A@4]"
 
 --
 -- Strict optional
@@ -1066,13 +1066,13 @@ class C:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out1]
-main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:2: note: Revealed type is "TypedDict('ntcrash.A@4', {'x': builtins.int})"
+main:3: note: Revealed type is "TypedDict('ntcrash.A@4', {'x': builtins.int})"
+main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.A@4', {'x': builtins.int})"
 [out2]
-main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:2: note: Revealed type is "TypedDict('ntcrash.A@4', {'x': builtins.int})"
+main:3: note: Revealed type is "TypedDict('ntcrash.A@4', {'x': builtins.int})"
+main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.A@4', {'x': builtins.int})"
 
 [case testSerializeNonTotalTypedDict]
 from m import d

@@ -98,7 +98,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         with temp_source(source) as fnam:
-            node, errors, type_ignores = native_parse(fnam, options, skip_function_bodies)
+            node, errors, type_ignores = native_parse(fnam, options, None, skip_function_bodies)
             errors += load_tree(node, options)
             node.path = "main"
             a = node.str_with_options(options).split("\n")
@@ -234,7 +234,7 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
 
 @unittest.skipUnless(has_nativeparse, "nativeparse not available")
 class TestNativeParserBinaryFormat(unittest.TestCase):
-    def test_trivial_binary_data(self) -> None:
+    def _assert_trivial_binary_data(self, b: bytes, /) -> None:
         # A quick sanity check to ensure the serialized data looks as expected. Only covers
         # a few AST nodes.
 
@@ -250,9 +250,9 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
                 int_enc(end_column - start_column),
             ]
 
-        with temp_source("print('hello')") as fnam:
-            b, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
-            assert list(b) == (
+        self.assertEqual(
+            list(b),
+            (
                 [LITERAL_INT, 22, nodes.EXPR_STMT, nodes.CALL_EXPR]
                 + [nodes.NAME_EXPR, LITERAL_STR]
                 + [int_enc(5)]
@@ -269,7 +269,25 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
                 + [LIST_GEN, 22, LITERAL_NONE]
                 + locs(1, 0, 1, 14)
                 + [END_TAG, END_TAG]
-            )
+            ),
+        )
+
+    def test_trivial_binary_data_from_file(self) -> None:
+        with temp_source("print('hello')") as fnam:
+            b, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
+            self._assert_trivial_binary_data(b)
+
+    def test_trivial_binary_data_from_string_source(self) -> None:
+        b, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), "print('hello')")
+        self._assert_trivial_binary_data(b)
+
+    def test_trivial_binary_data_from_bytes_source(self) -> None:
+        b, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), b"print('hello')")
+        self._assert_trivial_binary_data(b)
+
+    def test_invalid_bytes_raises(self) -> None:
+        with self.assertRaises(UnicodeDecodeError):
+            parse_to_binary_ast("", Options(), b"\xff")
 
 
 @contextlib.contextmanager

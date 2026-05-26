@@ -129,6 +129,9 @@ def freshen_function_type_vars(callee: F) -> F:
             tv = v.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
+            if tv.has_default():
+                # Point to fresh ids in case defaults depend on previous variables.
+                tv.default = expand_type(tv.default, tvmap)
         fresh = expand_type(callee, tvmap).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
@@ -182,7 +185,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         super().__init__()
         self.variables = variables
-        self.recursive_tvar_guard: dict[TypeVarId, Type | None] | None = None
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -245,16 +247,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
-        if isinstance(repl, TypeVarType) and repl.has_default():
-            if self.recursive_tvar_guard is None:
-                self.recursive_tvar_guard = {}
-            if (tvar_id := repl.id) in self.recursive_tvar_guard:
-                return self.recursive_tvar_guard[tvar_id] or repl
-            self.recursive_tvar_guard[tvar_id] = None
-            repl.default = repl.default.accept(self)
-            expanded = repl.accept(self)  # Note: `expanded is repl` may be true.
-            repl = repl if isinstance(expanded, TypeVarType) else expanded
-            self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:

@@ -5188,7 +5188,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -6892,7 +6892,7 @@ class C:
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"
+tmp/a.py:3: note: Revealed type is "TypedDict('b.Hidden@5', {'x': builtins.int})"
 
 [case testNoIncrementalCrashOnInvalidEnumMethod]
 import a
@@ -6916,7 +6916,7 @@ class TheClass:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.pyenum@6"
 
 -- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
@@ -8011,3 +8011,76 @@ x = "hello"
 [builtins fixtures/module.pyi]
 [stale b]
 [rechecked b]
+
+[case testNamedTupleInlineBaseClassNoNameCollision]
+import m
+[file m.py]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)
+reveal_type(b)
+[file m.py.2]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)  # touch
+reveal_type(b)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("Same", [('x', int)])): pass
+class B(NamedTuple("Same", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+[out2]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+
+[case testNamedTupleInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("N", [('x', int)])): pass
+class A(NamedTuple("N", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+[out2]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+
+[case testTypedDictInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import TypedDict
+class A(TypedDict("TD", {'x': int})):
+    pass
+class A(TypedDict("TD", {'x': str})):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+[out2]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
