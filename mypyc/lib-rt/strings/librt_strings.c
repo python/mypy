@@ -1153,50 +1153,11 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
-// Codepoint classification helpers. Inputs are signed i32 for compatibility
-// with mypyc's int32_rprimitive; negative values are non-codepoints and
-// return false. Mypyc-compiled callers reach these through the librt.strings
-// capsule API (see librt_strings_api.h); interpreted callers go through the
-// `cp_*` Python wrappers below.
-
-bool LibRTStrings_IsSpace(int32_t c) {
-    return c >= 0 && Py_UNICODE_ISSPACE((Py_UCS4)c);
-}
-
-bool LibRTStrings_IsDigit(int32_t c) {
-    return c >= 0 && Py_UNICODE_ISDIGIT((Py_UCS4)c);
-}
-
-bool LibRTStrings_IsAlnum(int32_t c) {
-    return c >= 0 && Py_UNICODE_ISALNUM((Py_UCS4)c);
-}
-
-bool LibRTStrings_IsAlpha(int32_t c) {
-    return c >= 0 && Py_UNICODE_ISALPHA((Py_UCS4)c);
-}
-
-// True if c could start a valid identifier (XID_Start, per PEP 3131).
-// ASCII fast path covers `[A-Za-z_]`; non-ASCII delegates to CPython's
-// PyUnicode_IsIdentifier on a 1-character string. Aborts via
-// CPyError_OutOfMemory on allocation failure to keep this ERR_NEVER.
-bool LibRTStrings_IsIdentifier(int32_t c) {
-    if (c < 0) return false;
-    if (c < 128) {
-        return (c >= 'a' && c <= 'z')
-            || (c >= 'A' && c <= 'Z')
-            || c == '_';
-    }
-    PyObject *s = PyUnicode_FromOrdinal((int)c);
-    if (s == NULL) {
-        CPyError_OutOfMemory();
-    }
-    int r = PyUnicode_IsIdentifier(s);
-    Py_DECREF(s);
-    return r == 1;
-}
-
 // Python-level wrappers (`cp_*`) for interpreted callers. The C-side names
 // are prefixed `cp_` to avoid colliding with libc's <ctype.h> isspace etc.
+// The LibRTStrings_Is* helpers themselves are static inline in librt_strings.h
+// so they compile directly into mypyc-emitted code with no capsule
+// indirection.
 
 // Parse a Python int as i32 codepoint. Returns 0 on success and writes
 // the value to *out; returns -1 on error with a Python exception set.
@@ -1351,11 +1312,6 @@ librt_strings_module_exec(PyObject *m)
         (void *)StringWriter_type_internal,
         (void *)StringWriter_write_internal,
         (void *)grow_string_buffer,
-        (void *)LibRTStrings_IsSpace,
-        (void *)LibRTStrings_IsDigit,
-        (void *)LibRTStrings_IsAlnum,
-        (void *)LibRTStrings_IsAlpha,
-        (void *)LibRTStrings_IsIdentifier,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

@@ -6,7 +6,6 @@ import_librt_strings(void);
 
 #include <Python.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include "librt_strings.h"
 
 extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
@@ -25,11 +24,6 @@ extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 #define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[11])
 #define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[12])
 #define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[13])
-#define LibRTStrings_IsSpace (*(bool (*)(int32_t c)) LibRTStrings_API[14])
-#define LibRTStrings_IsDigit (*(bool (*)(int32_t c)) LibRTStrings_API[15])
-#define LibRTStrings_IsAlnum (*(bool (*)(int32_t c)) LibRTStrings_API[16])
-#define LibRTStrings_IsAlpha (*(bool (*)(int32_t c)) LibRTStrings_API[17])
-#define LibRTStrings_IsIdentifier (*(bool (*)(int32_t c)) LibRTStrings_API[18])
 
 
 static inline bool CPyBytesWriter_Check(PyObject *obj) {
