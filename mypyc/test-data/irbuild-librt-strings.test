@@ -387,3 +387,17 @@ def is_a(c):
 L0:
     r0 = LibRTStrings_IsAlpha(c)
     return r0
+
+[case testLibrtStringsIsIdentifierIR]
+from librt.strings import isidentifier
+from mypy_extensions import i32
+
+def is_id(c: i32) -> bool:
+    return isidentifier(c)
+[out]
+def is_id(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsIdentifier(c)
+    return r0

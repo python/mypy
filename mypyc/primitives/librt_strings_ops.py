@@ -1,9 +1,4 @@
-from mypyc.ir.deps import (
-    BYTES_WRITER_EXTRA_OPS,
-    CODEPOINT_EXTRA_OPS,
-    LIBRT_STRINGS,
-    STRING_WRITER_EXTRA_OPS,
-)
+from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS, STRING_WRITER_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
@@ -402,7 +397,7 @@ function_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTStrings_IsSpace",
     error_kind=ERR_NEVER,
-    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+    dependencies=[LIBRT_STRINGS],
 )
 
 function_op(
@@ -411,7 +406,7 @@ function_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTStrings_IsDigit",
     error_kind=ERR_NEVER,
-    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+    dependencies=[LIBRT_STRINGS],
 )
 
 function_op(
@@ -420,7 +415,7 @@ function_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTStrings_IsAlnum",
     error_kind=ERR_NEVER,
-    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+    dependencies=[LIBRT_STRINGS],
 )
 
 function_op(
@@ -429,5 +424,17 @@ function_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTStrings_IsAlpha",
     error_kind=ERR_NEVER,
-    dependencies=[LIBRT_STRINGS, CODEPOINT_EXTRA_OPS],
+    dependencies=[LIBRT_STRINGS],
+)
+
+# isidentifier checks XID_Start semantics for a single codepoint, matching
+# str.isidentifier() on a 1-character string. The non-ASCII path allocates
+# and aborts via CPyError_OutOfMemory on failure, so this stays ERR_NEVER.
+function_op(
+    name="librt.strings.isidentifier",
+    arg_types=[int32_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="LibRTStrings_IsIdentifier",
+    error_kind=ERR_NEVER,
+    dependencies=[LIBRT_STRINGS],
 )
