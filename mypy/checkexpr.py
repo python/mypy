@@ -4938,10 +4938,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if tapp.expr.node.python_3_12_type_alias:
                 return self.type_alias_type_type()
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            item = instantiate_type_alias(
+            item, _ = instantiate_type_alias(
                 tapp.expr.node,
                 tapp.types,
                 self.chk.fail,
+                self.chk.note,
                 tapp.expr.node.no_args,
                 tapp,
                 self.chk.options,
@@ -5006,17 +5007,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
-        item = get_proper_type(
-            set_any_tvars(
-                alias,
-                [],
-                ctx.line,
-                ctx.column,
-                self.chk.options,
-                disallow_any=disallow_any,
-                fail=self.msg.fail,
-            )
+        item, _ = set_any_tvars(
+            alias,
+            [],
+            ctx.line,
+            ctx.column,
+            self.chk.options,
+            disallow_any=disallow_any,
+            fail=self.msg.fail,
         )
+        item = get_proper_type(item)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor

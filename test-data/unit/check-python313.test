@@ -365,3 +365,89 @@ type Result[T, E] = Ok[T, E] | Err[E, T]
 class Bar[U]:
     def foo(data: U, cond: bool) -> Result[U, str]:
         return Ok(data) if cond else Err("Error")
+
+[case testRecursiveTypeVarDefaultBasicNewStyle]
+class C[T: C = C]:
+    pass
+
+c: C
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
+
+[case testRecursiveTypeVarDefaultMutualNewStyle]
+class C[T = D]:
+    pass
+
+class D[S = C]:
+    pass
+
+c: C
+d: D
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.D[Any]]"
+reveal_type(d)  # N: Revealed type is "__main__.D[__main__.C[Any]]"
+
+[case testNonRecursiveSimpleTypeVarDefaultNewStyle]
+class Child[S = Parent]: ...
+
+class Parent[T = int]: ...
+
+reveal_type(Child())  # N: Revealed type is "__main__.Child[__main__.Parent[builtins.int]]"
+
+[case testNonRecursiveTypeVarDefaultImportCycleClassNewStyle]
+import exp
+[file exp.pyi]
+import ind
+
+class F[T: D = D]:
+    x: T
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+class Ind(F): ...
+x: Ind
+reveal_type(x.x)  # N: Revealed type is "exp.D"
+
+[case testNonRecursiveTypeVarDefaultImportCycleAliasNewStyle]
+import exp
+[file exp.pyi]
+import ind
+
+type F[T: D = D] = list[T]
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+type Ind = list[F]
+x: Ind
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[exp.D]]"
+
+[case testRecursiveTypeVarDefaultClassAndAliasNewStyle]
+class Trait[T = Pattern]:
+    pass
+
+class Pattern1(Trait):
+    pass
+class Pattern2(Trait):
+    pass
+
+type Pattern = Pattern1 | Pattern2
+
+reveal_type(Trait())  # N: Revealed type is "__main__.Trait[__main__.Pattern1 | __main__.Pattern2]"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTypeVarDefaultOnlyAliasNewStyle]
+type A[T = A] = list[T]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveAliasTypeVarDefaultNewStyle]
+type A[T = A] = int
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.int"

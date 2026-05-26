@@ -699,6 +699,7 @@ class TypeVarType(TypeVarLikeType):
             self.id == other.id
             and self.upper_bound == other.upper_bound
             and self.values == other.values
+            and self.default == other.default
         )
 
     def serialize(self) -> JsonDict:
@@ -854,7 +855,12 @@ class ParamSpecType(TypeVarLikeType):
         if not isinstance(other, ParamSpecType):
             return NotImplemented
         # Upper bound can be ignored, since it's determined by flavor.
-        return self.id == other.id and self.flavor == other.flavor and self.prefix == other.prefix
+        return (
+            self.id == other.id
+            and self.flavor == other.flavor
+            and self.prefix == other.prefix
+            and self.default == other.default
+        )
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -1003,7 +1009,9 @@ class TypeVarTupleType(TypeVarLikeType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarTupleType):
             return NotImplemented
-        return self.id == other.id and self.min_len == other.min_len
+        return (
+            self.id == other.id and self.min_len == other.min_len and self.default == other.default
+        )
 
     def copy_modified(
         self,

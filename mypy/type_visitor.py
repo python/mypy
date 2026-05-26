@@ -595,7 +595,15 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         elif t in self.seen_aliases:
             return self.default
         self.seen_aliases.add(t)
-        return get_proper_type(t).accept(self)
+        res = get_proper_type(t).accept(self)
+        # This is a weird edge case: if a type alias has unused type variables, we
+        # should visit arguments even if we didn't find anything in the expansion.
+        # As an optimization, do this only for new style type aliases.
+        assert t.alias is not None
+        if self.strategy == ANY_STRATEGY:
+            return res or (t.alias.python_3_12_type_alias and self.query_types(t.args))
+        else:
+            return res and (not t.alias.python_3_12_type_alias or self.query_types(t.args))
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:
         """Perform a query for a sequence of types using the strategy to combine the results."""
