@@ -884,7 +884,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.from_error)
 
         # Check type argument count.
+        old_args = instance.args
         instance.args = tuple(flatten_nested_tuples(instance.args))
+        if old_args and not instance.args:
+            empty_tuple_index = True
         if not (self.defining_alias and self.nesting_level == 0) and not validate_instance(
             instance, self.fail, empty_tuple_index
         ):
@@ -2192,7 +2195,10 @@ def instantiate_type_alias(
     # Type aliases are special, since they can be expanded during semantic analysis,
     # so we need to normalize them as soon as possible.
     # TODO: can this cause an infinite recursion?
+    old_args = args
     args = flatten_nested_tuples(args)
+    if old_args and not args:
+        empty_tuple_index = True
     if any(unknown_unpack(a) for a in args):
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
