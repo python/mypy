@@ -180,6 +180,7 @@ BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+NO_CYCLIC_DEFAULT: Final = "Cyclic type variable defaults are not supported"
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"

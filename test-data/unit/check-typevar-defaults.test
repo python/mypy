@@ -962,3 +962,107 @@ reveal_type(D)  # N: Revealed type is "def [T2 = Any, T1 = Any] () -> __main__.D
 d: D
 reveal_type(d)  # N: Revealed type is "__main__.D[Any, Any]"
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveTypeVarDefaultBasic]
+from typing import TypeVar, Generic
+
+class C(Generic["T"]):
+    pass
+
+T = TypeVar("T", bound=C, default=C)
+
+c: C
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
+
+[case testRecursiveTypeVarDefaultMutual]
+from typing import TypeVar, Generic
+
+class C(Generic["T"]):
+    pass
+
+class D(Generic["S"]):
+    pass
+
+T = TypeVar("T", default=D)
+S = TypeVar("S", default=C)
+
+c: C
+d: D
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.D[Any]]"
+reveal_type(d)  # N: Revealed type is "__main__.D[__main__.C[Any]]"
+
+[case testNonRecursiveSimpleTypeVarDefault]
+from typing import TypeVar, Generic
+
+S = TypeVar("S", default="Parent")
+class Child(Generic[S]): ...
+
+T = TypeVar("T", default=int)
+class Parent(Generic[T]): ...
+
+reveal_type(Child())  # N: Revealed type is "__main__.Child[__main__.Parent[builtins.int]]"
+
+[case testNonRecursiveTypeVarDefaultImportCycleClass]
+import exp
+[file exp.pyi]
+from typing import Generic, TypeVar
+import ind
+
+T = TypeVar("T", bound=D, default=D)
+class F(Generic[T]):
+    x: T
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+class Ind(F): ...
+x: Ind
+reveal_type(x.x)  # N: Revealed type is "exp.D"
+
+[case testNonRecursiveTypeVarDefaultImportCycleAlias]
+import exp
+[file exp.pyi]
+from typing import TypeVar
+import ind
+
+T = TypeVar("T", bound=D, default=D)
+F = list[T]
+
+class D(E): ...
+class E: ...
+
+[file ind.pyi]
+from exp import F
+
+Ind = list[F]
+x: Ind
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[exp.D]]"
+
+[case testRecursiveTypeVarDefaultClassAndAlias]
+from typing import Generic, TypeVar, Union
+
+T = TypeVar("T", default="Pattern")
+
+class Trait(Generic[T]):
+    pass
+
+class Pattern1(Trait):
+    pass
+
+Pattern = Union[Pattern1, None]
+
+reveal_type(Trait())  # N: Revealed type is "__main__.Trait[__main__.Pattern1 | None]"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTypeVarDefaultOnlyAlias]
+from typing import TypeVar
+
+T = TypeVar("T", default="A")
+
+A = list[T]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
+[builtins fixtures/tuple.pyi]

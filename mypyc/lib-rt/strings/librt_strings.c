@@ -4,7 +4,6 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
-#include "codepoint_extra_ops.h"
 #include "librt_strings.h"
 
 #define CPY_BOOL_ERROR 2
@@ -1154,15 +1153,11 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
-// Codepoint classification helpers exposed to interpreted callers.
-// The C-side names are prefixed `cp_` to avoid colliding with libc's
-// <ctype.h> isspace / isdigit / etc. Compiled callers go through the
-// LibRTStrings_* static inlines in codepoint_extra_ops.h instead.
-//
-// All wrappers parse a single int argument as i32 (codepoint) and
-// dispatch to the corresponding LibRTStrings_* function. The parse
-// step accepts any int but rejects values outside the i32 range with
-// OverflowError, matching the input domain of the compiled fast path.
+// Python-level wrappers (`cp_*`) for interpreted callers. The C-side names
+// are prefixed `cp_` to avoid colliding with libc's <ctype.h> isspace etc.
+// The LibRTStrings_Is* helpers themselves are static inline in librt_strings.h
+// so they compile directly into mypyc-emitted code with no capsule
+// indirection.
 
 // Parse a Python int as i32 codepoint. Returns 0 on success and writes
 // the value to *out; returns -1 on error with a Python exception set.
@@ -1194,6 +1189,7 @@ DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
 DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
 DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
 DEFINE_CP_BOOL_WRAPPER(isalpha, LibRTStrings_IsAlpha)
+DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
 
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
@@ -1267,6 +1263,9 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"isalpha", cp_isalpha, METH_O,
      PyDoc_STR("Test whether a codepoint (i32) is a Unicode letter.")
+    },
+    {"isidentifier", cp_isidentifier, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a valid identifier start (XID_Start).")
     },
     {NULL, NULL, 0, NULL}
 };

@@ -222,6 +222,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
         alias_type_params_names: list[str] | None = None,
+        analyzing_tvar_def: bool = False,
     ) -> None:
         self.api = api
         self.fail_func = api.fail
@@ -268,6 +269,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
+        # Set when we are analyzing a default of a type variable.
+        self.analyzing_tvar_def = analyzing_tvar_def
 
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -473,17 +476,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     an_args = self.pack_paramspec_args(an_args, t.empty_tuple_index)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
-                res = instantiate_type_alias(
+                res, used_default = instantiate_type_alias(
                     node,
                     an_args,
                     self.fail,
+                    self.note,
                     node.no_args,
                     t,
                     self.options,
                     unexpanded_type=t,
                     disallow_any=disallow_any,
                     empty_tuple_index=t.empty_tuple_index,
+                    analyzing_tvar_def=self.analyzing_tvar_def,
                 )
+                if self.analyzing_tvar_def and used_default and isinstance(res, TypeAliasType):
+                    assert res.alias is not None
+                    self.api.record_fixed_type(res.alias)
                 # The only case where instantiate_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
                 if (
@@ -492,7 +500,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     and not (self.defining_alias and self.nesting_level == 0)
                     and not validate_instance(res, self.fail, t.empty_tuple_index)
                 ):
-                    fix_instance(
+                    used_default = fix_instance(
                         res,
                         self.fail,
                         self.note,
@@ -500,7 +508,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         options=self.options,
                         use_generic_error=True,
                         unexpanded_type=t,
+                        analyzing_tvar_def=self.analyzing_tvar_def,
                     )
+                    if self.analyzing_tvar_def and used_default:
+                        self.api.record_fixed_type(res.type)
                 if node.eager:
                     res = get_proper_type(res)
                 return res
@@ -877,30 +888,40 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not (self.defining_alias and self.nesting_level == 0) and not validate_instance(
             instance, self.fail, empty_tuple_index
         ):
-            fix_instance(
+            used_default = fix_instance(
                 instance,
                 self.fail,
                 self.note,
                 disallow_any=self.options.disallow_any_generics and not self.is_typeshed_stub,
                 options=self.options,
+                analyzing_tvar_def=self.analyzing_tvar_def,
             )
+            if self.analyzing_tvar_def and used_default:
+                self.api.record_fixed_type(info)
 
         tup = info.tuple_type
         if tup is not None:
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
             if info.special_alias:
-                return instantiate_type_alias(
+                res, used_default = instantiate_type_alias(
                     info.special_alias,
                     # TODO: should we allow NamedTuples generic in ParamSpec?
                     self.anal_array(args, allow_unpack=True),
                     self.fail,
+                    self.note,
                     False,
                     ctx,
                     self.options,
                     use_standard_error=True,
                     empty_tuple_index=empty_tuple_index,
+                    analyzing_tvar_def=self.analyzing_tvar_def,
                 )
+                if self.analyzing_tvar_def and used_default:
+                    # For convenience, we make default depend on the original TypeInfo,
+                    # *not* on the special alias.
+                    self.api.record_fixed_type(info)
+                return res
             return tup.copy_modified(
                 items=self.anal_array(tup.items, allow_unpack=True), fallback=instance
             )
@@ -909,16 +930,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
             if info.special_alias:
-                return instantiate_type_alias(
+                res, used_default = instantiate_type_alias(
                     info.special_alias,
                     # TODO: should we allow TypedDicts generic in ParamSpec?
                     self.anal_array(args, allow_unpack=True),
                     self.fail,
+                    self.note,
                     False,
                     ctx,
                     self.options,
                     use_standard_error=True,
+                    analyzing_tvar_def=self.analyzing_tvar_def,
                 )
+                if self.analyzing_tvar_def and used_default:
+                    # For convenience, we make default depend on the original TypeInfo,
+                    # *not* on the special alias.
+                    self.api.record_fixed_type(info)
+                return res
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance
@@ -2027,6 +2055,7 @@ def get_omitted_any(
     options: Options,
     fullname: str | None = None,
     unexpanded_type: Type | None = None,
+    used_default: bool = False,
 ) -> AnyType:
     if disallow_any:
         typ = unexpanded_type or orig_type
@@ -2037,6 +2066,8 @@ def get_omitted_any(
             typ,
             code=codes.TYPE_ARG,
         )
+        if used_default:
+            note(message_registry.NO_CYCLIC_DEFAULT, typ, code=codes.TYPE_ARG)
 
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
@@ -2066,11 +2097,13 @@ def fix_instance(
     options: Options,
     use_generic_error: bool = False,
     unexpanded_type: Type | None = None,
-) -> None:
+    analyzing_tvar_def: bool = False,
+) -> bool:
     """Fix a malformed instance by replacing all type arguments with TypeVar default or Any.
 
     Also emit a suitable error if this is not due to implicit Any's.
     """
+    used_default = False
     arg_count = len(t.args)
     min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
     max_tv_count = len(t.type.type_vars)
@@ -2089,15 +2122,33 @@ def fix_instance(
         if tv is None:
             continue
         if arg is None:
+            use_any = False
             if tv.has_default():
                 arg = tv.default
+                if analyzing_tvar_def:
+                    # Record the use of default only when analyzing another default.
+                    used_default = True
+                    if is_typevar_default_recursive(tv.fullname, t.type):
+                        # If this results in infinite recursion, use Any instead.
+                        use_any = True
             else:
+                use_any = True
+            if use_any:
                 if any_type is None:
                     fullname = None if use_generic_error else t.type.fullname
                     any_type = get_omitted_any(
-                        disallow_any, fail, note, t, options, fullname, unexpanded_type
+                        disallow_any,
+                        fail,
+                        note,
+                        t,
+                        options,
+                        fullname,
+                        unexpanded_type,
+                        used_default,
                     )
                 arg = any_type
+            else:
+                assert arg is not None
             with state.strict_optional_set(options.strict_optional):
                 # Gradually expand defaults, as they may depend on previous variables.
                 if tv.has_default():
@@ -2108,12 +2159,14 @@ def fix_instance(
             env[tv.id] = arg
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
+    return used_default
 
 
 def instantiate_type_alias(
     node: TypeAlias,
     args: list[Type],
     fail: MsgCallback,
+    note: MsgCallback,
     no_args: bool,
     ctx: Context,
     options: Options,
@@ -2122,7 +2175,8 @@ def instantiate_type_alias(
     disallow_any: bool = False,
     use_standard_error: bool = False,
     empty_tuple_index: bool = False,
-) -> Type:
+    analyzing_tvar_def: bool = False,
+) -> tuple[Type, bool]:
     """Create an instance of a (generic) type alias from alias node and type arguments.
 
     We are following the rules outlined in TypeAlias docstring.
@@ -2169,15 +2223,17 @@ def instantiate_type_alias(
             options,
             disallow_any=disallow_any,
             fail=fail,
+            note=note,
             unexpanded_type=unexpanded_type,
+            analyzing_tvar_def=analyzing_tvar_def,
         )
     if max_tv_count == 0 and act_len == 0:
         if no_args:
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             # Note: this is the only case where we use an eager expansion. See more info about
             # no_args aliases like L = List in the docstring for TypeAlias class.
-            return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
-        return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
+            return Instance(node.target.type, [], line=ctx.line, column=ctx.column), False
+        return TypeAliasType(node, [], line=ctx.line, column=ctx.column), False
     if (
         max_tv_count == 0
         and act_len > 0
@@ -2189,7 +2245,7 @@ def instantiate_type_alias(
         tp.column = ctx.column
         tp.end_line = ctx.end_line
         tp.end_column = ctx.end_column
-        return tp
+        return tp, False
     if node.tvar_tuple_index is None:
         if any(isinstance(a, UnpackType) for a in args):
             # A variadic unpack in fixed size alias (fixed unpacks must be flattened by the caller)
@@ -2235,7 +2291,18 @@ def instantiate_type_alias(
                     )
             fail(msg, ctx, code=codes.TYPE_ARG)
             args = []
-        return set_any_tvars(node, args, ctx.line, ctx.column, options, from_error=True)
+        return set_any_tvars(
+            node,
+            args,
+            ctx.line,
+            ctx.column,
+            options,
+            disallow_any=disallow_any,
+            fail=fail,
+            note=note,
+            from_error=not correct,
+            analyzing_tvar_def=analyzing_tvar_def,
+        )
     elif node.tvar_tuple_index is not None:
         # We also need to check if we are not performing a type variable tuple split.
         unpack = find_unpack_in_list(args)
@@ -2262,8 +2329,8 @@ def instantiate_type_alias(
     ):
         exp = get_proper_type(typ)
         assert isinstance(exp, Instance)
-        return exp.args[-1]
-    return typ
+        return exp.args[-1], False
+    return typ, False
 
 
 def set_any_tvars(
@@ -2277,8 +2344,11 @@ def set_any_tvars(
     disallow_any: bool = False,
     special_form: bool = False,
     fail: MsgCallback | None = None,
+    note: MsgCallback | None = None,
     unexpanded_type: Type | None = None,
-) -> TypeAliasType:
+    analyzing_tvar_def: bool = False,
+) -> tuple[TypeAliasType, bool]:
+    used_default = False
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     elif special_form:
@@ -2295,6 +2365,12 @@ def set_any_tvars(
         if arg is None:
             if tv.has_default():
                 arg = tv.default
+                # Same as for instances, record and avoid infinite recursion.
+                if analyzing_tvar_def:
+                    used_default = True
+                    if is_typevar_default_recursive(tv.fullname, node):
+                        arg = any_type
+                        used_any_type = True
             else:
                 arg = any_type
                 used_any_type = True
@@ -2311,7 +2387,7 @@ def set_any_tvars(
             env[tv.id] = arg
     t = TypeAliasType(node, args, newline, newcolumn)
 
-    if used_any_type and disallow_any and node.alias_tvars:
+    if used_any_type and disallow_any and node.alias_tvars and not from_error:
         assert fail is not None
         if unexpanded_type:
             type_str = (
@@ -2327,7 +2403,34 @@ def set_any_tvars(
             Context(newline, newcolumn),
             code=codes.TYPE_ARG,
         )
-    return t
+        if used_default:
+            assert note is not None
+            note(
+                message_registry.NO_CYCLIC_DEFAULT,
+                Context(newline, newcolumn),
+                code=codes.TYPE_ARG,
+            )
+    return t, used_default
+
+
+def is_typevar_default_recursive(tv_fname: str, start: TypeInfo | TypeAlias) -> bool:
+    """Check if the type variable can lead to infinite recursion via defaults."""
+    if tv_fname not in start.default_depends:
+        return False
+    todo = start.default_depends[tv_fname].copy()
+    seen: set[TypeAlias | TypeInfo] = set()
+    while todo:
+        node = todo.pop()
+        if node is start:
+            return True
+        if node in seen:
+            # We don't return True here, since we are interested only in
+            # recursion via the original type variable.
+            continue
+        seen.add(node)
+        for dep_nodes in node.default_depends.values():
+            todo |= dep_nodes
+    return False
 
 
 class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
