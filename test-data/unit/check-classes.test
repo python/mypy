@@ -7669,6 +7669,37 @@ reveal_type(join(B, A))  # N: Revealed type is "def () -> __main__.Base"
 j = join(A, B)
 x: int = j  # E: Incompatible types in assignment (expression has type "type[Base2]", variable has type "int")
 
+[case testNewReturnTypeCallableInference]
+from typing import Callable, TypeVar
+
+class A:
+    def __new__(cls) -> int: ...  # type: ignore
+
+T = TypeVar("T")
+def foo(f: Callable[[], T]) -> T: ...
+
+ta: type[A]
+reveal_type(foo(A))  # N: Revealed type is "builtins.int"
+reveal_type(foo(ta))  # N: Revealed type is "builtins.int"
+
+[case testNewReturnTypeCallableNarrowing]
+from typing import Callable, TypeVar
+
+class A: ...
+
+class B(A):
+    more = 1
+    def __new__(cls) -> A: ...  # type: ignore
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+
+tx: type[A]
+if issubclass(tx, B):
+    reveal_type(tx)  # N: Revealed type is "type[__main__.B]"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
 from sympy.ops import AssocOp

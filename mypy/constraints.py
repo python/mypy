@@ -9,6 +9,7 @@ import mypy.subtypes
 import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
+from mypy.expandtype import expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
     ARG_OPT,
@@ -1221,6 +1222,20 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
         elif isinstance(self.actual, TypeType):
+            # This matches the corresponding logic in subtypes.py.
+            item = self.actual.item
+            if isinstance(item, TupleType):
+                item = mypy.typeops.tuple_fallback(item)
+            if isinstance(item, Instance):
+                constructor = mypy.typeops.type_object_type(item.type)
+                constructor = expand_type_by_instance(constructor, item)
+                # Only consider return type to match historic behavior (see below).
+                if isinstance(constructor, CallableType):
+                    return infer_constraints(
+                        template.ret_type, constructor.ret_type, self.direction
+                    )
+                elif isinstance(constructor, Overloaded):
+                    return self.infer_against_overloaded(constructor, template, ret_only=True)
             return infer_constraints(template.ret_type, self.actual.item, self.direction)
         elif isinstance(self.actual, Instance):
             # Instances with __call__ method defined are considered structural
@@ -1236,7 +1251,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             return []
 
     def infer_against_overloaded(
-        self, overloaded: Overloaded, template: CallableType
+        self, overloaded: Overloaded, template: CallableType, ret_only: bool = False
     ) -> list[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
@@ -1244,6 +1259,8 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # seems to work somewhat well, but we should really use a more
         # reliable technique.
         item = find_matching_overload_item(overloaded, template)
+        if ret_only:
+            return infer_constraints(template.ret_type, item.ret_type, self.direction)
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
