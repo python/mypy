@@ -233,7 +233,7 @@ class TypedDictAnalyzer:
 
         return info, valid_items
 
-    def field_sources_in_reverse_mro(
+    def field_sources_in_reverse_order(
         self,
         bases: list[tuple[TypeInfo, dict[str, Type]]],
         child_field_sources: dict[str, FieldSource],
@@ -260,9 +260,9 @@ class TypedDictAnalyzer:
         return result
 
     def primary_source(self, sources: list[FieldSource]) -> FieldSource:
-        """Select a primary source from a reverse-MRO-ordered list of sources.
+        """Select a primary source from a reverse-ordered list of sources.
 
-        The primary source will be the last in the MRO list, skipping readonly
+        The primary source will be the last in the list, skipping readonly
         base class sources unless they are the only available option.
         """
         if not sources[-1].base:
@@ -331,7 +331,7 @@ class TypedDictAnalyzer:
         ctx: Context,
     ) -> tuple[dict[str, Type], set[str], set[str], bool, dict[str, TypedDictFieldSource]]:
         """Determine field types, requiredness, readonlyness, and closedness."""
-        field_sources = self.field_sources_in_reverse_mro(bases, child_field_sources, ctx)
+        field_sources = self.field_sources_in_reverse_order(bases, child_field_sources, ctx)
         field_types: dict[str, Type] = {}
         chosen_sources: dict[str, TypedDictFieldSource] = {}
         required_keys: set[str] = set()
@@ -355,7 +355,7 @@ class TypedDictAnalyzer:
             # is unlikely to produce a tight enough result. We could check all the
             # candidates from the base classes, but it would be O(n^2) complexity
             # to find out which is a supertype of all the others. Instead, use the
-            # first definition in MRO order, and let the user provide the correct
+            # first definition we encounter, and let the user provide the correct
             # definition in the subclass if this fails.
             field_types[field_name] = primary_source.field_type
             chosen_sources[field_name] = TypedDictFieldSource(
