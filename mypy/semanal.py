@@ -541,7 +541,7 @@ class SemanticAnalyzer(
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
 
-        # Instances and type aliases that were fixed using default valuers of type
+        # Instances and type aliases that were fixed using default values of type
         # variables. This can be used on-demand by type analyzer. Use record_fixed_type()
         # to create the set lazily.
         self.types_fixed: set[TypeInfo | TypeAlias] | None = None
