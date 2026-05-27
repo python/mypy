@@ -2838,3 +2838,38 @@ def test(t: tuple[int, ...]) -> None: ...
 test(x)
 test(y)
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicGenericClassEmptyTupleUnpackIndex]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Blah(Generic[Unpack[Ts]]):
+    pass
+
+x: Blah[()]
+y: Blah[Unpack[tuple[()]]]
+
+Empty = tuple[()]
+z: Blah[Unpack[Empty]]
+
+reveal_type(x)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(y)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(z)  # N: Revealed type is "__main__.Blah[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicGenericAliasEmptyTupleUnpackIndex]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Blah = list[tuple[Unpack[Ts]]]
+
+x: Blah[()]
+y: Blah[Unpack[tuple[()]]]
+
+Empty = tuple[()]
+z: Blah[Unpack[Empty]]
+
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
+[builtins fixtures/tuple.pyi]

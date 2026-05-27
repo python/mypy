@@ -451,3 +451,32 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
 type A[T = A] = int
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[case testPEP695VariadicGenericClassEmptyTupleUnpackIndex]
+class Blah[*Ts]:
+    pass
+
+x: Blah[()]
+y: Blah[*tuple[()]]
+
+type Empty = tuple[()]
+z: Blah[*Empty]
+
+reveal_type(x)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(y)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(z)  # N: Revealed type is "__main__.Blah[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695VariadicGenericAliasEmptyTupleUnpackIndex]
+type Blah[*Ts] = list[tuple[*Ts]]
+
+x: Blah[()]
+y: Blah[*tuple[()]]
+
+type Empty = tuple[()]
+z: Blah[*Empty]
+
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
+[builtins fixtures/tuple.pyi]
