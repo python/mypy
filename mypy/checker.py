@@ -1806,9 +1806,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             and has_constrained_typevar
         )
 
-        if (
-            not skip_namedtuple_constrained_check
-            and not is_subtype(ref_type, erased, ignore_type_params=True)
+        if not skip_namedtuple_constrained_check and not is_subtype(
+            ref_type, erased, ignore_type_params=True
         ):
             if (
                 isinstance(erased, Instance)
