@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Final
 
 from mypy.nodes import (
+    ARG_POS,
     EXCLUDED_ENUM_ATTRIBUTES,
     TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
@@ -745,6 +746,20 @@ def find_attr_initializers(
 ) -> tuple[set[str], list[tuple[AssignmentStmt, str]]]:
     """Find initializers of attributes in a class body.
 
+    Under separate compilation, only this class's own body is walked, and
+    generate_attr_defaults_init emits a runtime call to the parent's
+    __mypyc_defaults_setup so inherited defaults are produced by chaining,
+    not by inlining. Walking the MRO here would break under separate=True
+    with mypy's incremental cache: a base class loaded from the cache has
+    an empty ClassDef.defs.body (mypy/nodes.py::ClassDef.serialize doesn't
+    serialize the class body), so inherited assignments would be silently
+    dropped and the subclass's __mypyc_defaults_setup would leave inherited
+    slots in the "undefined" state at runtime.
+
+    Without separate compilation, all modules are parsed in the same pass
+    and the MRO walk is safe; we keep the original inline-all behavior
+    there as an optimization (no chain call needed for instance creation).
+
     If provided, the skip arg should be a callable which will return whether
     to skip generating a default for an attribute.  It will be passed the name of
     the attribute and the corresponding AssignmentStmt.
@@ -758,7 +773,12 @@ def find_attr_initializers(
     # Pull out all assignments in classes in the mro so we can initialize them
     # TODO: Support nested statements
     default_assignments: list[tuple[AssignmentStmt, str]] = []
-    for info in reversed(cdef.info.mro):
+    if builder.options.separate:
+        infos: list[TypeInfo] = [cdef.info]
+    else:
+        infos = list(reversed(cdef.info.mro))
+
+    for info in infos:
         if info not in builder.mapper.type_to_ir:
             continue
         for stmt in info.defn.defs.body:
@@ -800,15 +820,44 @@ def find_attr_initializers(
 def generate_attr_defaults_init(
     builder: IRBuilder, cdef: ClassDef, default_assignments: list[tuple[AssignmentStmt, str]]
 ) -> None:
-    """Generate an initialization method for default attr values (from class vars)."""
-    if not default_assignments:
-        return
+    """Generate an initialization method for default attr values (from class vars).
+
+    Under separate compilation, the emitted __mypyc_defaults_setup chains to
+    the nearest ancestor that has the method (Python __init__ style), then
+    sets only this class's own defaults; inherited defaults are produced by
+    the chain at runtime. Without separate compilation, find_attr_initializers
+    has already collected the full MRO's defaults into default_assignments,
+    so we inline them all as before.
+    """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return
 
+    parent_with_defaults: ClassIR | None = None
+    if builder.options.separate:
+        for ancestor in cls.mro[1:]:
+            if "__mypyc_defaults_setup" in ancestor.method_decls:
+                parent_with_defaults = ancestor
+                break
+
+    if not default_assignments and parent_with_defaults is None:
+        return
+
     with builder.enter_method(cls, "__mypyc_defaults_setup", bool_rprimitive):
         self_var = builder.self()
+
+        # Chain to parent's setup so inherited defaults run first; propagate
+        # its False return so a parent default that raised still aborts
+        # instance creation rather than being silently swallowed here.
+        if parent_with_defaults is not None:
+            decl = parent_with_defaults.method_decl("__mypyc_defaults_setup")
+            parent_ok = builder.builder.call(decl, [self_var], [ARG_POS], [None], cdef.line)
+            fail_block, continue_block = BasicBlock(), BasicBlock()
+            builder.add(Branch(parent_ok, continue_block, fail_block, Branch.BOOL))
+            builder.activate_block(fail_block)
+            builder.add(Return(builder.false()))
+            builder.activate_block(continue_block)
+
         for stmt, origin_module in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr), lvalue
