@@ -725,15 +725,18 @@ Ts = TypeVarTuple("Ts")
 Us = TypeVarTuple("Us")
 class G(Generic[Unpack[Ts]]): ...
 
-A = Tuple[Unpack[Ts], Unpack[Us]]  # E: More than one variadic Unpack in a type is not allowed
+A = Tuple[Unpack[Ts], Unpack[Us]]  # E: Can only use one TypeVarTuple in a type alias \
+                                   # E: More than one variadic Unpack in a type is not allowed
 x: A[int, str]
 reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
-B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one variadic Unpack in a type is not allowed
+B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: Can only use one TypeVarTuple in a type alias \
+                                             # E: More than one variadic Unpack in a type is not allowed
 y: B[int, str]
 reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int"
 
-C = G[Unpack[Ts], Unpack[Us]]  # E: More than one variadic Unpack in a type is not allowed
+C = G[Unpack[Ts], Unpack[Us]]  # E: Can only use one TypeVarTuple in a type alias \
+                                  # E: More than one variadic Unpack in a type is not allowed
 z: C[int, str]
 reveal_type(z)  # N: Revealed type is "__main__.G[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
