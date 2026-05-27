@@ -485,11 +485,16 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
         else:
             arg_types = self.expand_types(t.arg_types)
+        instance_type = None
+        if t.instance_type is not None:
+            instance_type = t.instance_type.accept(self)
+            assert isinstance(instance_type, ProperType)
         expanded = t.copy_modified(
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
-            type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
-            type_is=(t.type_is.accept(self) if t.type_is is not None else None),
+            type_guard=t.type_guard.accept(self) if t.type_guard is not None else None,
+            type_is=t.type_is.accept(self) if t.type_is is not None else None,
+            instance_type=instance_type,
         )
         if needs_normalization:
             return expanded.with_normalized_var_args()

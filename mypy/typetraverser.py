@@ -93,6 +93,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         if t.type_is is not None:
             t.type_is.accept(self)
 
+        if t.instance_type is not None:
+            t.instance_type.accept(self)
+
     def visit_tuple_type(self, t: TupleType, /) -> None:
         self.traverse_type_list(t.items)
         t.partial_fallback.accept(self)

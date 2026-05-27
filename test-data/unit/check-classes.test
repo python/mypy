@@ -7317,18 +7317,25 @@ reveal_type(B())  # N: Revealed type is "__main__.B"
 [case testNewReturnType2]
 from typing import Any
 
-# make sure that __new__ method that return Any are ignored when
+# make sure that __new__ method that return implicit Any are ignored when
 # determining the return type
 class A:
     def __new__(cls):
         pass
 
 class B:
-    def __new__(cls) -> Any:
+    def __new__(cls, x: int = 0) -> Any:
+        pass
+
+class C:
+    def __new__(cls, x: int = 0):
         pass
 
 reveal_type(A())  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "__main__.B"
+reveal_type(B())  # N: Revealed type is "Any"
+reveal_type(B(1))  # N: Revealed type is "Any"
+reveal_type(C())  # N: Revealed type is "__main__.C"
+reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 [case testNewReturnType3]
 
@@ -7338,7 +7345,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is "__main__.A"
+reveal_type(A())  # N: Revealed type is "builtins.int"
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -7448,6 +7455,287 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+[case testNewReturnType13]
+from typing import Protocol
+
+class Foo(Protocol):
+    def foo(self) -> str: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # E: Incompatible return type for "__new__" (returns "Foo", but must return a subtype of "A")
+
+reveal_type(A())  # N: Revealed type is "__main__.Foo"
+reveal_type(A().foo())  # N: Revealed type is "builtins.str"
+
+[case testNewReturnType14]
+from __future__ import annotations
+
+class A:
+    def __new__(cls) -> int: raise  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
+
+class B(A):
+    @classmethod
+    def foo(cls) -> int: raise
+
+reveal_type(B.foo())  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType15]
+from typing import Generic, Type, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __new__(cls) -> B[int]: ...
+    @classmethod
+    def foo(cls: Type[A[T]]) -> T: ...
+
+class B(A[T]): ...
+
+# The Never without error is not ideal, but matches the behavior without custom __new__().
+reveal_type(B.foo())  # N: Revealed type is "Never"
+reveal_type(B[str].foo())  # N: Revealed type is "builtins.str"
+
+class C(A[str]): ...
+
+reveal_type(C.foo())  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType16]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> T:  # E: "__new__" must return a class instance (got "T")
+        ...
+
+class Model:
+    pass
+
+reveal_type(A[Model]())  # N: Revealed type is "__main__.Model"
+
+class B(A[Model]):
+    pass
+
+reveal_type(B())  # N: Revealed type is "__main__.Model"
+[builtins fixtures/dict.pyi]
+
+[case testNewReturnType17]
+class C:
+    def __new__(self) -> D:
+        return D()
+
+class D(C):
+    x: int
+
+C.x  # E: "type[C]" has no attribute "x"
+
+[case testNewReturnType18]
+class A:
+    def __new__(cls) -> A:
+        return A()
+
+class B(A):
+    def __new__(cls) -> A:  # E: Incompatible return type for "__new__" (returns "A", but must return a subtype of "B")
+        return super().__new__(cls)
+
+class C(B): ...
+
+# Always respect explicit return type after giving an error.
+reveal_type(B())  # N: Revealed type is "__main__.A"
+reveal_type(C())  # N: Revealed type is "__main__.A"
+
+# Ignore "implicit" return type to preserve backwards compatibility.
+class D(A): ...
+reveal_type(D())  # N: Revealed type is "__main__.D"
+
+[case testNewReturnType19]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def f(tp: type[T]) -> T: ...
+
+class C:
+    def __new__(cls) -> int: ...  # type: ignore[misc]
+
+reveal_type(f(C))  # N: Revealed type is "__main__.C"
+
+[case testNewReturnTypeCallableSubtyping]
+from typing import Callable, Protocol
+
+class Foo:
+    def foo(self) -> None: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+ta: type[A]
+tf: type[Foo]
+
+class PA(Protocol):
+    def __call__(self) -> A: ...
+
+class PFoo(Protocol):
+    def __call__(self) -> Foo: ...
+
+def f(x: Callable[[], A]) -> None: ...
+def g(x: Callable[[], Foo]) -> None: ...
+def fp(x: PA) -> None: ...
+def gp(x: PFoo) -> None: ...
+def h(x: type[A]) -> None: ...
+def i(x: type[Foo]) -> None: ...
+
+f(A)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(A)
+fp(A)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+       # N: "A" has constructor incompatible with "__call__" of "PA" \
+       # N: Following member(s) of "A" have conflicts: \
+       # N:     Expected: \
+       # N:         def __call__() -> A \
+       # N:     Got: \
+       # N:         def A() -> Foo \
+       # N: "PA.__call__" has type "Callable[[], A]"
+gp(A)
+h(A)
+i(A)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(Foo)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(Foo)
+fp(Foo)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(Foo)
+h(Foo)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(Foo)
+
+f(ta)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(ta)
+fp(ta)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+        # N: "A" has constructor incompatible with "__call__" of "PA" \
+        # N: Following member(s) of "A" have conflicts: \
+        # N:     Expected: \
+        # N:         def __call__() -> A \
+        # N:     Got: \
+        # N:         def A() -> Foo \
+        # N: "PA.__call__" has type "Callable[[], A]"
+gp(ta)
+h(ta)
+i(ta)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(tf)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(tf)
+fp(tf)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(tf)
+h(tf)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(tf)
+
+[case testNewReturnTypeCallableJoins]
+from typing import TypeVar
+
+class Base: ...
+class Foo(Base): ...
+class Bar(Base): ...
+
+class Base2: ...
+
+class A(Base2):
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+class B(Base2):
+    def __new__(cls) -> Bar: ...  # type: ignore
+
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
+reveal_type(join(A, Foo))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(Foo, A))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(A, B))  # N: Revealed type is "def () -> __main__.Base"
+reveal_type(join(B, A))  # N: Revealed type is "def () -> __main__.Base"
+
+# This tests the type repr in error messages.
+j = join(A, B)
+x: int = j  # E: Incompatible types in assignment (expression has type "type[Base2]", variable has type "int")
+
+[case testNewReturnTypeCallableInference]
+from typing import Callable, TypeVar
+
+class A:
+    def __new__(cls) -> int: ...  # type: ignore
+
+T = TypeVar("T")
+def foo(f: Callable[[], T]) -> T: ...
+def bar(t: type[T]) -> T: ...
+
+ta: type[A]
+reveal_type(foo(A))  # N: Revealed type is "builtins.int"
+reveal_type(foo(ta))  # N: Revealed type is "builtins.int"
+reveal_type(bar(A))  # N: Revealed type is "__main__.A"
+reveal_type(bar(ta))  # N: Revealed type is "__main__.A"
+
+[case testNewReturnTypeCallableNarrowing]
+from typing import Callable, TypeVar
+
+class A: ...
+
+class B(A):
+    more = 1
+    def __new__(cls) -> A: ...  # type: ignore
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+
+tx: type[A]
+if issubclass(tx, B):
+    reveal_type(tx)  # N: Revealed type is "type[__main__.B]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNewReturnTypeOverloadNarrowing]
+from typing import TypeVar, Generic, Union, overload
+
+T = TypeVar("T", int, str)
+
+class Series(Generic[T]):
+    @overload
+    def __new__(cls, dtype: int) -> IntSeries: ...
+    @overload
+    def __new__(cls, dtype: type[T]) -> Series[T]: ...
+    @overload
+    def __new__(cls, dtype=...) -> Series: ...
+    def __new__(cls, dtype=...) -> Series:
+        ...
+
+class IntSeries(Series[int]): ...
+
+class Index:
+    @overload
+    def __new__(cls, dtype: int) -> IntIndex: ...
+    @overload
+    def __new__(cls, dtype=...) -> Index: ...
+    def __new__(cls, dtype=...) -> Index:
+        ...
+
+class IntIndex(Index): ...
+
+def foo(x: Union[Series, int, Index]):
+    if isinstance(x, (Series, Index)):
+        reveal_type(x)  # N: Revealed type is "__main__.Series[Any] | __main__.Index"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
 
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties

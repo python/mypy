@@ -34,6 +34,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     PlaceholderType,
+    ProperType,
     RawExpressionType,
     TupleType,
     Type,
@@ -254,10 +255,15 @@ class TypeTranslator(TypeVisitor[Type]):
         return UnpackType(t.type.accept(self))
 
     def visit_callable_type(self, t: CallableType, /) -> Type:
+        instance_type = None
+        if t.instance_type is not None:
+            instance_type = t.instance_type.accept(self)
+            assert isinstance(instance_type, ProperType)
         return t.copy_modified(
             arg_types=self.translate_type_list(t.arg_types),
             ret_type=t.ret_type.accept(self),
             variables=self.translate_variables(t.variables),
+            instance_type=instance_type,
         )
 
     def visit_tuple_type(self, t: TupleType, /) -> Type:
@@ -415,7 +421,11 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_callable_type(self, t: CallableType, /) -> T:
         # FIX generics
-        return self.query_types(t.arg_types + [t.ret_type])
+        types = t.arg_types + [t.ret_type]
+        # Avoid double-counting when using queries in reports.
+        if t.instance_type is not None and t.instance_type != t.ret_type:
+            types.append(t.instance_type)
+        return self.query_types(types)
 
     def visit_tuple_type(self, t: TupleType, /) -> T:
         return self.query_types([t.partial_fallback] + t.items)
@@ -551,12 +561,11 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def visit_callable_type(self, t: CallableType, /) -> bool:
         # FIX generics
         # Avoid allocating any objects here as an optimization.
-        args = self.query_types(t.arg_types)
-        ret = t.ret_type.accept(self)
+        inst = t.instance_type.accept(self) if t.instance_type is not None else False
         if self.strategy == ANY_STRATEGY:
-            return args or ret
+            return self.query_types(t.arg_types) or t.ret_type.accept(self) or inst
         else:
-            return args and ret
+            return self.query_types(t.arg_types) and t.ret_type.accept(self) and inst
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
         return self.query_types([t.partial_fallback] + t.items)

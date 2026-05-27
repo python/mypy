@@ -124,7 +124,6 @@ from mypy.state import state
 from mypy.subtypes import (
     covers_at_runtime,
     find_member,
-    is_equivalent,
     is_same_type,
     is_subtype,
     non_method_protocol_members,
@@ -689,7 +688,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # For class method calls, object_type is a callable representing the class object.
             # We "unwrap" it to a regular type, as the class/instance method difference doesn't
             # affect the fully qualified name.
-            object_type = get_proper_type(object_type.ret_type)
+            object_type = object_type.get_instance_type()
         elif isinstance(object_type, TypeType):
             object_type = object_type.item
 
@@ -717,9 +716,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(typ, Instance):
                 info = typ.type
             elif isinstance(typ, CallableType) and typ.is_type_obj():
-                ret_type = get_proper_type(typ.ret_type)
-                if isinstance(ret_type, Instance):
-                    info = ret_type.type
+                instance_type = typ.get_instance_type(force_fallback=True)
+                if isinstance(instance_type, Instance):
+                    info = instance_type.type
                 else:
                     return False
             else:
@@ -1668,9 +1667,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
             callable_name = callee.name
-        ret_type = get_proper_type(callee.ret_type)
-        if callee.is_type_obj() and isinstance(ret_type, Instance):
-            callable_name = ret_type.type.fullname
+        if callee.is_type_obj():
+            instance_type = callee.get_instance_type(force_fallback=True)
+            if isinstance(instance_type, Instance):
+                callable_name = instance_type.type.fullname
         if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
@@ -1867,7 +1867,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if (
             callee.is_type_obj()
             and (len(arg_types) == 1)
-            and is_equivalent(callee.ret_type, self.named_type("builtins.type"))
+            and is_named_instance(callee.get_instance_type(), "builtins.type")
         ):
             callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 

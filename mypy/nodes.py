@@ -49,6 +49,7 @@ from mypy.cache import (
     WriteBuffer,
     read_bool,
     read_bytes,
+    read_flags,
     read_int,
     read_int_list,
     read_int_opt,
@@ -61,6 +62,7 @@ from mypy.cache import (
     read_tag,
     write_bool,
     write_bytes,
+    write_flags,
     write_int,
     write_int_list,
     write_int_opt,
@@ -5257,20 +5259,6 @@ def get_flags(node: Node, names: list[str]) -> list[str]:
 def set_flags(node: Node, flags: list[str]) -> None:
     for name in flags:
         setattr(node, name, True)
-
-
-def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
-    assert len(flags) <= 26, "This many flags not supported yet"
-    packed = 0
-    for i, flag in enumerate(flags):
-        if flag:
-            packed |= 1 << i
-    write_int(data, packed)
-
-
-def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
-    packed = read_int(data)
-    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
