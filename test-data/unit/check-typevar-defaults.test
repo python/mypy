@@ -402,7 +402,7 @@ def func_c3(
     m = ClassC3[int, Unpack[Tuple[float]]]()
     reveal_type(m)  # N: Revealed type is "__main__.ClassC3[builtins.int, builtins.float]"
 
-class ClassC4(Generic[T1, Unpack[Ts1], T3]):  # E: A type variable with default cannot follow TypVarTuple
+class ClassC4(Generic[T1, Unpack[Ts1], T3]):  # E: A type variable with default cannot follow TypeVarTuple
     x: T3
 
 reveal_type(ClassC4().x)  # N: Revealed type is "Any"
@@ -700,7 +700,7 @@ def func_c3(
     reveal_type(b)  # N: Revealed type is "tuple[builtins.int]"
     reveal_type(c)  # N: Revealed type is "tuple[builtins.int, builtins.float]"
 
-TC4 = Tuple[T1, Unpack[Ts1], T3]  # E: A type variable with default cannot follow TypVarTuple
+TC4 = Tuple[T1, Unpack[Ts1], T3]  # E: A type variable with default cannot follow TypeVarTuple
 
 def func_c4(
     a: TC4,  # E: Missing type arguments for generic type "TC4"
