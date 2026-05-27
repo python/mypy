@@ -1785,14 +1785,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # and incorrectly rejected.
         #
         # Skip this check for constrained generic NamedTuple tuple self types.
+        has_constrained_typevar = False
+        namedtuple_ref_type: TupleType | None = None
+
+        proper_ref_type = get_proper_type(ref_type)
+        proper_arg_type = get_proper_type(arg_type)
+
+        if isinstance(proper_ref_type, TupleType):
+            namedtuple_ref_type = proper_ref_type
+
+            for item in proper_ref_type.items:
+                if isinstance(item, TypeVarType) and item.values:
+                    has_constrained_typevar = True
+                    break
+
         skip_namedtuple_constrained_check = (
-            isinstance(ref_type, TupleType)
-            and isinstance(arg_type, TupleType)
-            and ref_type.partial_fallback.type.tuple_type is not None
-            and any(
-                isinstance(item, TypeVarType) and item.values
-                for item in ref_type.items
-            )
+            namedtuple_ref_type is not None
+            and isinstance(proper_arg_type, TupleType)
+            and namedtuple_ref_type.partial_fallback.type.is_named_tuple
+            and has_constrained_typevar
         )
 
         if (
