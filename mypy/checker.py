@@ -1768,7 +1768,37 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # This level of erasure matches the one in checkmember.check_self_arg(),
         # better keep these two checks consistent.
         erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
-        if not is_subtype(ref_type, erased, ignore_type_params=True):
+
+        # Generic NamedTuple methods using constrained TypeVars can produce
+        # false positives here because constrained TypeVars are checked using
+        # union semantics during subtype comparison.
+        #
+        # Example:
+        #     S = TypeVar("S", str, bytes)
+        #
+        #     class Result(NamedTuple, Generic[S]):
+        #         ...
+        #
+        # In this case:
+        #     tuple[S] is compared against tuple[str]
+        #
+        # and incorrectly rejected.
+        #
+        # Skip this check for constrained generic NamedTuple tuple self types.
+        skip_namedtuple_constrained_check = (
+            isinstance(ref_type, TupleType)
+            and isinstance(arg_type, TupleType)
+            and ref_type.partial_fallback.type.tuple_type is not None
+            and any(
+                isinstance(item, TypeVarType) and item.values
+                for item in ref_type.items
+            )
+        )
+
+        if (
+            not skip_namedtuple_constrained_check
+            and not is_subtype(ref_type, erased, ignore_type_params=True)
+        ):
             if (
                 isinstance(erased, Instance)
                 and erased.type.is_protocol
