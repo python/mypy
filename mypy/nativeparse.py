@@ -182,15 +182,22 @@ class State:
         )
 
     def check_min_version(
-        self, feature: str, min_version: tuple[int, int], line: int, column: int
+        self,
+        feature: str,
+        min_version: tuple[int, int],
+        line: int,
+        column: int,
+        *,
+        enforce_in_stubs: bool = False,
     ) -> None:
         """Report a non blocker syntax error if the target Python feature is older than min_version."""
-        if self.is_stub:
+        if self.is_stub and not enforce_in_stubs:
             return
         if self.options.python_version < min_version:
+            curr = self.options.python_version
             self.add_error(
-                f"{feature} are only supported in Python "
-                f"{min_version[0]}.{min_version[1]} and greater",
+                f"{feature}: requires Python {min_version[0]}.{min_version[1]} or newer "
+                f"(current target: Python {curr[0]}.{curr[1]})",
                 line,
                 column,
                 blocker=False,
@@ -705,7 +712,9 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         func_def.is_coroutine = True
     read_loc(data, func_def)
     if type_params:
-        state.check_min_version("Type parameter lists", (3, 12), func_def.line, func_def.column)
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
+        )
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
@@ -755,7 +764,9 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     class_def.decorators = decorators
     read_loc(data, class_def)
     if type_params:
-        state.check_min_version("Type parameter lists", (3, 12), class_def.line, class_def.column)
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
+        )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     return class_def
@@ -1003,6 +1014,10 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
+        if from_star_syntax:
+            state.check_min_version(
+                "Star unpack syntax", (3, 11), unpack.line, unpack.column
+            )
         expect_end_tag(data)
         return unpack
     elif tag == types.CALL_TYPE:
@@ -1510,7 +1525,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 titems.append(s)
         expr = TemplateStrExpr(titems)
         read_loc(data, expr)
-        state.check_min_version("t-strings", (3, 14), expr.line, expr.column)
+        state.check_min_version(
+            "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
+        )
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:
