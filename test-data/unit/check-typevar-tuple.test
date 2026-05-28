@@ -578,6 +578,7 @@ reveal_type(b)  # N: Revealed type is "def (*Any) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646CallableNewSyntax]
+# flags: --python-version 3.11
 from typing import Callable, Generic, Tuple
 from typing_extensions import ParamSpec
 
@@ -2155,6 +2156,7 @@ def f(x: int | None):
 [builtins fixtures/tuple.pyi]
 
 [case testJoinOfVariadicTupleCallablesNoCrash]
+# flags: --python-version 3.11
 from typing import Callable, Tuple
 
 f: Callable[[int, *Tuple[str, ...], int], None]
@@ -2608,6 +2610,7 @@ def test(xs: tuple[Unpack[Ts]], xsi: tuple[int, Unpack[Ts]]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleInferAgainstAnyCallableSuffix]
+# flags: --python-version 3.11
 from typing import Any, Callable, TypeVar, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
@@ -2620,6 +2623,7 @@ reveal_type(deco(untyped))  # N: Revealed type is "def (*Any) -> Any"
 [builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnNonNormalUnpackInCallable]
+# flags: --python-version 3.11
 from typing import Callable, Unpack, TypeVar
 
 T = TypeVar("T")

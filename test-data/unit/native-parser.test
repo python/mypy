@@ -1300,12 +1300,12 @@ try:
 except* ValueError:
     y
 [out]
+1:0: error: Exception groups: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   TryStmt:1(
     Block:2(
       ExpressionStmt:2(
         NameExpr(x)))
-    *
     NameExpr(ValueError)
     Block:4(
       ExpressionStmt:4(
@@ -1317,12 +1317,12 @@ try:
 except* Exception as e:
     y
 [out]
+1:0: error: Exception groups: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   TryStmt:1(
     Block:2(
       ExpressionStmt:2(
         NameExpr(x)))
-    *
     NameExpr(Exception)
     NameExpr(e)
     Block:4(
@@ -1337,12 +1337,12 @@ except* ValueError:
 except* KeyError as e:
     z
 [out]
+1:0: error: Exception groups: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   TryStmt:1(
     Block:2(
       ExpressionStmt:2(
         NameExpr(x)))
-    *
     NameExpr(ValueError)
     Block:4(
       ExpressionStmt:4(
@@ -1363,12 +1363,12 @@ else:
 finally:
     w
 [out]
+1:0: error: Exception groups: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   TryStmt:1(
     Block:2(
       ExpressionStmt:2(
         NameExpr(x)))
-    *
     NameExpr(ValueError)
     Block:4(
       ExpressionStmt:4(
@@ -2022,6 +2022,7 @@ MypyFile:1(
 def f(*args: *Ts) -> None:
     pass
 [out]
+1:13: error: Star unpack syntax: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   FuncDef:1(
     f
@@ -2034,6 +2035,7 @@ MypyFile:1(
 [case testUnpackTypeInTuple]
 x: tuple[int, *Ts, str]
 [out]
+1:14: error: Star unpack syntax: requires Python 3.11 or newer (current target: Python 3.10)
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x)
@@ -3190,6 +3192,7 @@ MypyFile:1(
 # comment
 type A[T] = C[T]
 [out]
+2:0: error: "type" statements: requires Python 3.12 or newer (current target: Python 3.10)
 MypyFile:1(
   TypeAliasStmt:2(
     NameExpr(A)
@@ -3209,6 +3212,9 @@ def f[T](): pass
 def g[T: str](): pass
 def h[T: (int, str)](): pass
 [out]
+3:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
+4:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
+5:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
 MypyFile:1(
   FuncDef:3(
     f
@@ -3239,6 +3245,8 @@ MypyFile:1(
 def f[**P](): pass
 class C[T: int, **P]: pass
 [out]
+3:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
+4:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
 MypyFile:1(
   FuncDef:3(
     f
@@ -3261,6 +3269,8 @@ MypyFile:1(
 def f[*Ts](): pass
 class C[T: int, *Ts]: pass
 [out]
+3:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
+4:0: error: Improved type parameter syntax: requires Python 3.12 or newer (current target: Python 3.10)
 MypyFile:1(
   FuncDef:3(
     f
