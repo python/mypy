@@ -1015,9 +1015,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
         if from_star_syntax:
-            state.check_min_version(
-                "Star unpack syntax", (3, 11), unpack.line, unpack.column
-            )
+            state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
     elif tag == types.CALL_TYPE:
