@@ -140,7 +140,7 @@ reveal_type(func_b1(callback1))  # N: Revealed type is "def (x: builtins.str)"
 reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 def func_c1[*Ts = *tuple[int, str]](x: int | Callable[[*Ts], None]) -> tuple[*Ts]: ...
-# reveal_type(func_c1(callback1))  # Revealed type is "Tuple[str]"  # TODO
+reveal_type(func_c1(callback1))  # N: Revealed type is "tuple[builtins.str]"
 reveal_type(func_c1(2))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
@@ -195,7 +195,7 @@ def func_c1(
     a: ClassC1,
     b: ClassC1[float],
 ) -> None:
-    # reveal_type(a)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
+    reveal_type(a)  # N: Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
     k = ClassC1()
@@ -250,7 +250,7 @@ def func_c1(
     a: TC1,
     b: TC1[float],
 ) -> None:
-    # reveal_type(a)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
+    reveal_type(a)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
     reveal_type(b)  # N: Revealed type is "tuple[builtins.float]"
 
 [builtins fixtures/tuple.pyi]

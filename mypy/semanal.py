@@ -546,8 +546,13 @@ class SemanticAnalyzer(
         # to create the set lazily.
         self.types_fixed: set[TypeInfo | TypeAlias] | None = None
 
+        # Stack of type variables that have been removed from current class because they
+        # cannot be bound unambiguously. This can happen if a (regular) type variable
+        # with a default follows a type variable tuple.
+        self.removed_type_vars: list[list[TypeVarType]] = [[]]
+
     # mypyc doesn't properly handle implementing an abstractproperty
-    # with a regular attribute so we make them properties
+    # with a regular attribute, so we make them properties
     @property
     def type(self) -> TypeInfo | None:
         return self._type
@@ -1836,8 +1841,9 @@ class SemanticAnalyzer(
             if self.push_type_args(defn.type_args, defn) is None:
                 self.mark_incomplete(defn.name, defn)
                 return
-
+            self.removed_type_vars.append([])
             self.analyze_class(defn)
+            self.removed_type_vars.pop()
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
 
@@ -2084,7 +2090,21 @@ class SemanticAnalyzer(
                 )
 
     def setup_type_vars(self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]) -> None:
-        defn.type_vars = tvar_defs
+        seen_tvt = False
+        valid_tvar_defs = []
+        for tv in tvar_defs:
+            if seen_tvt and isinstance(tv, TypeVarType) and tv.has_default():
+                self.fail(
+                    message_registry.NO_DEFAULT_AFTER_TYPEVAR_TUPLE, defn, code=codes.TYPE_VAR
+                )
+                # Remove the ambiguous type variable, and record it, so that we can replace
+                # all its uses with Any.
+                self.removed_type_vars[-1].append(tv)
+                continue
+            if isinstance(tv, TypeVarTupleType):
+                seen_tvt = True
+            valid_tvar_defs.append(tv)
+        defn.type_vars = valid_tvar_defs
         defn.info.type_vars = []
         # we want to make sure any additional logic in add_type_vars gets run
         defn.info.add_type_vars()
@@ -4017,6 +4037,28 @@ class SemanticAnalyzer(
                 with self.allow_unbound_tvars_set():
                     rvalue.accept(self)
 
+            new_tvar_defs = []
+            erase_tvar_defs = []
+            variadic = False
+            for td in tvar_defs:
+                if variadic and isinstance(td, TypeVarType) and td.has_default():
+                    self.fail(
+                        message_registry.NO_DEFAULT_AFTER_TYPEVAR_TUPLE,
+                        rvalue,
+                        code=codes.TYPE_VAR,
+                    )
+                    # Remove the ambiguous type variable, and record it, so that we can
+                    # replace all its uses with Any.
+                    erase_tvar_defs.append(td)
+                    continue
+                if isinstance(td, TypeVarTupleType):
+                    # There can be only one variadic variable at most,
+                    # the error is reported elsewhere.
+                    if variadic:
+                        continue
+                    variadic = True
+                new_tvar_defs.append(td)
+
             analyzed, depends_on = analyze_type_alias(
                 typ,
                 self,
@@ -4029,19 +4071,10 @@ class SemanticAnalyzer(
                 in_dynamic_func=dynamic,
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
+                erase_tvar_defs=erase_tvar_defs,
                 alias_type_params_names=all_declared_type_params_names,
                 python_3_12_type_alias=python_3_12_type_alias,
             )
-
-        # There can be only one variadic variable at most, the error is reported elsewhere.
-        new_tvar_defs = []
-        variadic = False
-        for td in tvar_defs:
-            if isinstance(td, TypeVarTupleType):
-                if variadic:
-                    continue
-                variadic = True
-            new_tvar_defs.append(td)
 
         indexed = bool(isinstance(typ, UnboundType) and (typ.args or typ.empty_tuple_index))
         default_depends = {}
@@ -7792,6 +7825,7 @@ class SemanticAnalyzer(
             prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
             analyzing_tvar_def=analyzing_tvar_def,
+            erase_tvar_defs=self.removed_type_vars[-1],
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
