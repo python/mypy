@@ -5771,7 +5771,10 @@ class SemanticAnalyzer(
                 res = make_any_non_unimported(res)
             eager = self.is_func_scope()
             if isinstance(res, ProperType) and isinstance(res, Instance):
-                fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
+                if not validate_instance(res, self.fail, indexed):
+                    fix_instance(
+                        res, self.fail, self.note, disallow_any=False, options=self.options
+                    )
             alias_node = TypeAlias(
                 res,
                 self.qualified_name(s.name.name),
