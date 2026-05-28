@@ -219,7 +219,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         current_type = self.type_context[-1]
         value: bool | None = o.value
         if isinstance(value, bool):
-            typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
+            typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool", o)
         elif value is None:
             typ = NoneType()
         else:
