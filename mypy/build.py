@@ -108,6 +108,7 @@ from mypy.ipc import (
 )
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
+    GDEF,
     Decorator,
     FileRawData,
     FuncDef,
@@ -118,6 +119,8 @@ from mypy.nodes import (
     MypyFile,
     OverloadedFuncDef,
     SymbolTable,
+    SymbolTableNode,
+    Var,
 )
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
@@ -169,7 +172,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import stub_distribution_name
-from mypy.types import Type, instance_cache
+from mypy.types import AnyType, Type, TypeOfAny, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
@@ -3185,6 +3188,34 @@ class State:
         )
         self.time_spent_us += time_spent_us(t0)
 
+    def _maybe_inject_synthetic_getattr_for_typed_subpackage(self) -> None:
+        """Give an untyped parent of a typed subpackage a fallback __getattr__.
+
+        Without this, attribute access on the parent raises ``attr-defined``
+        for any name that's defined in the parent's ``__init__.py`` -- because
+        that file is never read (the ns_ancestors fallback bound this State to
+        the package directory).
+        """
+        tree = self.tree
+        if tree is None or tree.is_stub or tree.defs or "__getattr__" in tree.names:
+            return
+        if self.id not in self.manager.find_module_cache.ns_ancestors:
+            return
+        # If path is a directory and `__init__.py` exists, we know the file
+        # wasn't read. If `--follow-untyped-imports` was used, path would be the
+        # `__init__.py` file itself, in which we don't want to interfere.
+        if not self.path or not self.manager.fscache.isdir(self.path):
+            return
+        if not (
+            self.manager.fscache.isfile(os_path_join(self.path, "__init__.py"))
+            or self.manager.fscache.isfile(os_path_join(self.path, "__init__.pyi"))
+        ):
+            return
+        var = Var("__getattr__", type=AnyType(TypeOfAny.from_unimported_type))
+        tree.names["__getattr__"] = SymbolTableNode(
+            GDEF, var, module_public=False, module_hidden=True
+        )
+
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
         """Parse file and run first pass of semantic analysis.
 
@@ -3311,6 +3342,7 @@ class State:
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
+        self._maybe_inject_synthetic_getattr_for_typed_subpackage()
         if not self.tree.is_stub:
             if not self.options.allow_redefinition:
                 # Perform some low-key variable renaming when assignments can't
