@@ -454,7 +454,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if self.is_literal_context() and var_type.last_known_value is not None:
                     return var_type.last_known_value
                 if var.name in {"True", "False"}:
-                    return self.infer_literal_expr_type(var.name == "True", "builtins.bool", context)
+                    return self.infer_literal_expr_type(
+                        var.name == "True", "builtins.bool", context
+                    )
             return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
