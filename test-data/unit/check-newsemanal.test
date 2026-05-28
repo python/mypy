@@ -3228,3 +3228,16 @@ def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
 
 @deco
 def defer() -> int: ...
+
+[case testNestedClassSelfNoPlaceholder]
+from typing import Generic, TypeVar
+
+def test() -> None:
+    T = TypeVar("T", bound="Model")
+
+    class Query(Generic[T]):
+        def filter(self, value: T) -> None:
+            ...
+
+    class Model:
+        pass
