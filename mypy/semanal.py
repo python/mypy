@@ -6433,7 +6433,7 @@ class SemanticAnalyzer(
             if i > 0:
                 sequence.accept(self)
             # Bind index variables.
-            self.analyze_lvalue(index)
+            self.analyze_lvalue(index, is_index_var=True)
             for cond in conditions:
                 cond.accept(self)
 

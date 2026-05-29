@@ -779,6 +779,17 @@ def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testCanGetItemOfTypedDictWithStringLiteralKeyInComprehension]
+from typing import TypedDict
+Data = TypedDict('Data', {'field1': int, 'field2': str, 'field3': str})
+data: Data
+def is_str(value: object) -> bool: ...
+filtered_keys1 = [data[key] for key in ("field1", "field2", "field3")]
+filtered_keys2 = [key for key in ("field1", "field2", "field3") if is_str(data[key])]
+reveal_type(filtered_keys1)    # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
+reveal_type(filtered_keys2)    # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/for.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Special Method: __setitem__
 
