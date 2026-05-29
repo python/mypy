@@ -1090,7 +1090,28 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
-                return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+                arg = self.s.args[0]
+                new_items: list[Type] = []
+                for it in t.items:
+                    # Unpack items need to be handled by the caller.
+                    if isinstance(it, UnpackType):
+                        unpacked = get_proper_type(it.type)
+                        if isinstance(unpacked, TypeVarTupleType):
+                            # We can't infer anything in this case.
+                            new_arg = UninhabitedType()
+                            instance = unpacked.tuple_fallback
+                        else:
+                            assert (
+                                isinstance(unpacked, Instance)
+                                and unpacked.type.fullname == "builtins.tuple"
+                            )
+                            new_arg = meet_types(unpacked.args[0], arg)
+                            instance = unpacked
+                        new_items.append(UnpackType(instance.copy_modified(args=[new_arg])))
+                    else:
+                        # All other items can be processed in a regular way.
+                        new_items.append(meet_types(it, arg))
+                return t.copy_modified(items=new_items)
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
                 return t
