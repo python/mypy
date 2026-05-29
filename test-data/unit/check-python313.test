@@ -480,3 +480,19 @@ reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695InferVarianceInFrozenDataclass]
+# On Python 3.13+ the dataclass plugin synthesizes a __replace__ method whose
+# keyword parameters reuse the field types. Being plugin-generated, it must not
+# drag the type variable into a contravariant position and make an otherwise
+# covariant frozen dataclass invariant.
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Covariant[T]:
+    x: T
+
+cov1: Covariant[float] = Covariant[int](1)
+cov2: Covariant[int] = Covariant[float](1)  # E: Incompatible types in assignment (expression has type "Covariant[float]", variable has type "Covariant[int]")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
