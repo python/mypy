@@ -2272,8 +2272,10 @@ _testNarrowingMappingAndAbstractSet.py:39: note: Revealed type is "set[str]"
 [case testNativeParserTStringRequiresPython314]
 # flags: --python-version=3.13 --native-parser --ignore-missing-imports
 x = t"hello {1}"
+reveal_type(x)
 [out]
 _testNativeParserTStringRequiresPython314.py:2: error: T-strings: requires Python 3.14 or newer (current target: Python 3.13)
+_testNativeParserTStringRequiresPython314.py:3: note: Revealed type is "Any"
 
 [case testNativeParserTStringRequiresPython314InStub]
 # flags: --python-version=3.13 --native-parser --ignore-missing-imports
@@ -2291,5 +2293,8 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 def f(x: tuple[Unpack[Ts]]) -> None: ...
 def g(x: tuple[*Ts]) -> None: ...
+reveal_type(g)
+g((1, 2))
 [out]
 _testNativeParserStarUnpackRequiresPython311.py:5: error: Star unpack syntax: requires Python 3.11 or newer (current target: Python 3.10)
+_testNativeParserStarUnpackRequiresPython311.py:6: note: Revealed type is "def [Ts] (x: tuple[*Ts])"

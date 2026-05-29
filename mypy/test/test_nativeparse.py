@@ -52,7 +52,11 @@ except ImportError:
 class NativeParserSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = ["native-parser.test"] if has_nativeparse else []
+    files = (
+        ["native-parser.test", "native-parser-python311.test", "native-parser-python312.test"]
+        if has_nativeparse
+        else []
+    )
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -77,6 +81,8 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     if testcase.file.endswith("python310.test"):
         options.python_version = (3, 10)
+    elif testcase.file.endswith("python311.test"):
+        options.python_version = (3, 11)
     elif testcase.file.endswith("python312.test"):
         options.python_version = (3, 12)
     elif testcase.file.endswith("python313.test"):
