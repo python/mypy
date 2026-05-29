@@ -38,6 +38,7 @@ Contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/2
 
 ### Mypyc Improvements
 
+- Enable incremental self-compilation (Vaggelis Danias, PR [21369](https://github.com/python/mypy/pull/21369))
 - Make compilation order with multiple files consistent (Piotr Sawicki, PR [21419](https://github.com/python/mypy/pull/21419))
 - Fix crash on accessing `StopAsyncIteration` (Piotr Sawicki, PR [21406](https://github.com/python/mypy/pull/21406))
 - Fix incremental compilation with `separate` flag (Vaggelis Danias, PR [21299](https://github.com/python/mypy/pull/21299))
@@ -54,7 +55,6 @@ Contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/2
 ### Other Notable Fixes and Improvements
 
 - Rely on typeshed stubs for `slice` typing (Ivan Levkivskyi, PR [21401](https://github.com/python/mypy/pull/21401))
-- Improve negative narrowing for membership checks on tuples (Shantanu, PR [21456](https://github.com/python/mypy/pull/21456))
 - Narrow match captures based on previous cases (Shantanu, PR [21405](https://github.com/python/mypy/pull/21405))
 - Fix nondeterminism in overload resolution (Shantanu, PR [21455](https://github.com/python/mypy/pull/21455))
 - Respect file config comments for stale modules (Adam Turner, PR [21444](https://github.com/python/mypy/pull/21444))
@@ -62,7 +62,6 @@ Contributed by Jukka Lehtosalo (PR [21433](https://github.com/python/mypy/pull/2
 - Fix type variable with values as a supertype (Ivan Levkivskyi, PR [21431](https://github.com/python/mypy/pull/21431))
 - Add support for configuring `--num-workers` with an environment variable (Kevin Kannammalil, PR [21407](https://github.com/python/mypy/pull/21407))
 - Respect JSON output mode for syntax errors (Adam Turner, PR [21386](https://github.com/python/mypy/pull/21386))
-- Analyze `TypedDict` decorators (Pranav Manglik, PR [21267](https://github.com/python/mypy/pull/21267))
 
 ### Typeshed Updates
 
