@@ -82,7 +82,11 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         self.traverse_type_tuple(t.args)
 
     def visit_callable_type(self, t: CallableType, /) -> None:
-        # FIX generics
+        for tv in t.variables:
+            tv.upper_bound.accept(self)
+            if isinstance(tv, TypeVarType):
+                for v in tv.values:
+                    v.accept(self)
         self.traverse_type_list(t.arg_types)
         t.ret_type.accept(self)
         t.fallback.accept(self)

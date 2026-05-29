@@ -2293,3 +2293,27 @@ reveal_type(x)  # N: Revealed type is "__main__.C[()]"
 y: T[bool]
 reveal_type(y)  # N: Revealed type is "__main__.C[()]"
 [builtins fixtures/tuple.pyi]
+
+[case testTupleBaseTupleTypeUnpack]
+class X(tuple[*tuple[int], *tuple[int]]):
+    pass
+x = X((1, 2))
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.X]"
+[builtins fixtures/tuple.pyi]
+
+[case testNewTypeTupleTypeUnpack]
+from typing import NewType
+
+T = NewType("T", tuple[*tuple[int], *tuple[int]])
+t = T((1, 2))
+reveal_type(t)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.T]"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTupleTypeUnpack]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: tuple[*tuple[int], *tuple[int]]
+n = N((1, 2))
+reveal_type(n)  # N: Revealed type is "tuple[tuple[builtins.int, builtins.int], fallback=__main__.N]"
+[builtins fixtures/tuple.pyi]
