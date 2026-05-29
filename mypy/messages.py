@@ -970,7 +970,7 @@ class MessageBuilder:
             msg = "Too many positional arguments"
         else:
             msg = "Too many positional arguments" + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
         self.maybe_note_about_special_args(callee, context)
         self.note_defined_here(callee, context)
 
