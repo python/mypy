@@ -48,11 +48,11 @@ class TestLowering(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    options = CompilerOptions()
+                    options = CompilerOptions(strict_traceback_checks=True)
                     # Lowering happens after exception handling and ref count opcodes have
                     # been added. Any changes must maintain reference counting semantics.
-                    insert_uninit_checks(fn)
-                    insert_exception_handling(fn)
+                    insert_uninit_checks(fn, True)
+                    insert_exception_handling(fn, True)
                     insert_ref_count_opcodes(fn)
                     lower_ir(fn, options)
                     do_flag_elimination(fn, options)

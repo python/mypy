@@ -126,7 +126,7 @@ For example:
             """Some docstring"""
             pass
 
-        # Error: Incompatible default for argument "foo" (default has
-        # type "ellipsis", argument has type "list[str]")
+        # Error: Incompatible default for parameter "foo" (default has
+        # type "ellipsis", parameter has type "list[str]")
         def not_ok(self, foo: list[str] = ...) -> None:
             print(foo)

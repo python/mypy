@@ -13,9 +13,11 @@ from mypy.expandtype import (
     expand_type_by_instance,
     freshen_all_functions_type_vars,
 )
+from mypy.lookup import lookup_stdlib_typeinfo
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types
 from mypy.messages import MessageBuilder
+from mypy.modules_state import modules_state
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
@@ -74,6 +76,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    instance_cache,
 )
 
 
@@ -404,15 +407,8 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items[0].ret_type
-    assert isinstance(ret_type, ProperType)
-    if isinstance(ret_type, TupleType):
-        ret_type = tuple_fallback(ret_type)
-    if isinstance(ret_type, TypedDictType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, LiteralType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, Instance):
+    instance_type = typ.items[0].get_instance_type(force_fallback=True)
+    if isinstance(instance_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
             # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
@@ -429,14 +425,18 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
+                instance_type,
+                name,
+                mx,
+                original_vars=typ.items[0].variables,
+                mcs_fallback=typ.fallback,
             )
             if result:
                 return result
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, f"Unexpected type {ret_type!r}"
+        assert False, f"Unexpected type {instance_type!r}"
 
 
 def analyze_type_type_member_access(
@@ -718,7 +718,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-        owner_type = instance_type.items[0].ret_type
+        owner_type = instance_type.items[0].get_instance_type()
         instance_type = NoneType()
     elif isinstance(instance_type, TypeType):
         owner_type = instance_type.item
@@ -1191,10 +1191,13 @@ def analyze_class_attribute_access(
     if info.slots and name in info.slots:
         mx.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name))
 
-    # If a final attribute was declared on `self` in `__init__`, then it
-    # can't be accessed on the class object.
-    if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        mx.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR.format(node.node.name))
+    if node.implicit and isinstance(node.node, Var):
+        if node.node.is_final:
+            # If a final attribute was declared on `self` in `__init__`, then it
+            # can't be accessed on the class object.
+            mx.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR.format(node.node.name))
+        elif not mx.is_lvalue and not defined_in_superclass(info, name):
+            mx.fail(message_registry.CANNOT_ACCESS_INSTANCE_ONLY_ATTR.format(node.node.name))
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
@@ -1349,9 +1352,6 @@ def analyze_enum_class_attribute_access(
     # Skip these since Enum will remove it
     if name in EXCLUDED_ENUM_ATTRIBUTES:
         return report_missing_attribute(mx.original_type, itype, name, mx)
-    # Dunders and private names are not Enum members
-    if name.startswith("__") and name.replace("_", "") != "":
-        return None
 
     node = itype.type.get(name)
     if node and node.type:
@@ -1363,6 +1363,9 @@ def analyze_enum_class_attribute_access(
             and proper.args
         ):
             return proper.args[0]
+
+    if name not in itype.type.enum_members:
+        return None
 
     enum_literal = LiteralType(name, fallback=itype)
     return itype.copy_modified(last_known_value=enum_literal)
@@ -1522,7 +1525,7 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
     )
 
 
-def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+def has_operator(typ: Type, op_method: str) -> bool:
     """Does type have operator with the given name?
 
     Note: this follows the rules for operator access, in particular:
@@ -1541,7 +1544,7 @@ def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance
     if isinstance(typ, AnyType):
         return True
     if isinstance(typ, UnionType):
-        return all(has_operator(x, op_method, named_type) for x in typ.relevant_items())
+        return all(has_operator(x, op_method) for x in typ.relevant_items())
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         return typ.fallback.type.has_readable_member(op_method)
     if isinstance(typ, TypeType):
@@ -1552,25 +1555,40 @@ def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance
         if isinstance(item, TypeVarType):
             item = item.values_or_bound()
         if isinstance(item, UnionType):
-            return all(meta_has_operator(x, op_method, named_type) for x in item.relevant_items())
-        return meta_has_operator(item, op_method, named_type)
-    return instance_fallback(typ, named_type).type.has_readable_member(op_method)
+            return all(meta_has_operator(x, op_method) for x in item.relevant_items())
+        return meta_has_operator(item, op_method)
+    return instance_fallback(typ).type.has_readable_member(op_method)
 
 
-def instance_fallback(typ: ProperType, named_type: Callable[[str], Instance]) -> Instance:
+def instance_fallback(typ: ProperType) -> Instance:
     if isinstance(typ, Instance):
         return typ
     if isinstance(typ, TupleType):
         return tuple_fallback(typ)
     if isinstance(typ, (LiteralType, TypedDictType)):
         return typ.fallback
-    return named_type("builtins.object")
+    if instance_cache.object_type is None:
+        object_typeinfo = lookup_stdlib_typeinfo("builtins.object", modules_state.modules)
+        instance_cache.object_type = Instance(object_typeinfo, [])
+    return instance_cache.object_type
 
 
-def meta_has_operator(item: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+def meta_has_operator(item: Type, op_method: str) -> bool:
     item = get_proper_type(item)
     if isinstance(item, AnyType):
         return True
-    item = instance_fallback(item, named_type)
-    meta = item.type.metaclass_type or named_type("builtins.type")
+    item = instance_fallback(item)
+    meta = item.type.metaclass_type
+    if meta is None:
+        type_type = lookup_stdlib_typeinfo("builtins.type", modules_state.modules)
+        meta = Instance(type_type, [])
     return meta.type.has_readable_member(op_method)
+
+
+def defined_in_superclass(info: TypeInfo, name: str) -> bool:
+    """Check if a variable has an explicit value at class level in any of superclasses."""
+    for base in info.mro[1:]:
+        if (node := base.names.get(name)) is not None:
+            if not node.implicit and isinstance(node.node, Var) and node.node.has_explicit_value:
+                return True
+    return False

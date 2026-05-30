@@ -68,6 +68,7 @@ from mypy.subtypes import (
     IS_VAR,
     find_member,
     get_member_flags,
+    get_protocol_member,
     is_same_type,
     is_subtype,
 )
@@ -229,81 +230,65 @@ class MessageBuilder:
         """
         return self.errors.prefer_simple_messages()
 
+    def span_from_context(self, ctx: Context) -> Iterable[int]:
+        """This determines where a type: ignore for a given context has effect."""
+        if not isinstance(ctx, Expression):
+            return [ctx.line]
+        return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+
     def report(
         self,
         msg: str,
-        context: Context | None,
+        context: Context,
         severity: str,
+        offset: int = 0,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
-        origin: Context | None = None,
-        offset: int = 0,
-        secondary_context: Context | None = None,
+        origin_context: Context | None,
         parent_error: ErrorInfo | None = None,
     ) -> ErrorInfo:
         """Report an error or note (unless disabled).
 
-        Note that context controls where error is reported, while origin controls
-        where # type: ignore comments have effect.
+        Note that context controls where error is reported, while origin_context
+        controls where # type: ignore comments have effect.
         """
 
-        def span_from_context(ctx: Context) -> Iterable[int]:
-            """This determines where a type: ignore for a given context has effect."""
-            if not isinstance(ctx, Expression):
-                return range(ctx.line, ctx.line + 1)
-            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
-
-        origin_span: Iterable[int] | None
-        if origin is not None:
-            origin_span = span_from_context(origin)
-        elif context is not None:
-            origin_span = span_from_context(context)
-        else:
-            origin_span = None
-
-        if secondary_context is not None:
-            assert origin_span is not None
-            origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
+        origin_span = self.span_from_context(context)
+        if origin_context is not None:
+            origin_span = itertools.chain(origin_span, self.span_from_context(origin_context))
 
         return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
             msg,
+            code=code,
             severity=severity,
-            file=file,
             offset=offset,
             origin_span=origin_span,
             end_line=context.end_line if context else -1,
             end_column=context.end_column if context else -1,
-            code=code,
             parent_error=parent_error,
         )
 
     def fail(
         self,
         msg: str,
-        context: Context | None,
+        context: Context,
         *,
         code: ErrorCode | None = None,
-        file: str | None = None,
-        secondary_context: Context | None = None,
+        origin_context: Context | None = None,
     ) -> ErrorInfo:
         """Report an error message (unless disabled)."""
-        return self.report(
-            msg, context, "error", code=code, file=file, secondary_context=secondary_context
-        )
+        return self.report(msg, context, "error", code=code, origin_context=origin_context)
 
     def note(
         self,
         msg: str,
         context: Context,
-        file: str | None = None,
-        origin: Context | None = None,
         offset: int = 0,
         *,
         code: ErrorCode | None = None,
-        secondary_context: Context | None = None,
+        origin_context: Context | None = None,
         parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report a note (unless disabled)."""
@@ -311,11 +296,9 @@ class MessageBuilder:
             msg,
             context,
             "note",
-            file=file,
-            origin=origin,
             offset=offset,
             code=code,
-            secondary_context=secondary_context,
+            origin_context=origin_context,
             parent_error=parent_error,
         )
 
@@ -323,22 +306,22 @@ class MessageBuilder:
         self,
         messages: str,
         context: Context,
-        file: str | None = None,
         offset: int = 0,
-        code: ErrorCode | None = None,
         *,
-        secondary_context: Context | None = None,
+        code: ErrorCode | None = None,
+        origin_context: Context | None = None,
+        parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
-        for msg in messages.splitlines():
+        for msg in dedent(messages.lstrip("\n")).splitlines():
             self.report(
                 msg,
                 context,
                 "note",
-                file=file,
-                offset=offset,
+                offset,
                 code=code,
-                secondary_context=secondary_context,
+                origin_context=origin_context,
+                parent_error=parent_error,
             )
 
     #
@@ -814,10 +797,10 @@ class MessageBuilder:
                     )
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
-                    expected_types = list(expected_type.items)
+                    expected_types = get_proper_types(expected_type.items)
                 else:
                     expected_types = [expected_type]
-                for type in get_proper_types(expected_types):
+                for type in expected_types:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)
@@ -959,6 +942,7 @@ class MessageBuilder:
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = f'Missing named argument "{name}"' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
+        self.note_defined_here(callee, context)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
@@ -1023,25 +1007,31 @@ class MessageBuilder:
                     matching_type_args.append(callee_arg_name)
                 else:
                     not_matching_type_args.append(callee_arg_name)
-        matches = best_matches(name, matching_type_args, n=3)
-        if not matches:
-            matches = best_matches(name, not_matching_type_args, n=3)
+        if not self.prefer_simple_messages():
+            matches = best_matches(name, matching_type_args, n=3)
+            if not matches:
+                matches = best_matches(name, not_matching_type_args, n=3)
+        else:
+            matches = []
         self.unexpected_keyword_argument_for_function(
             for_function(callee), name, context, matches=matches
         )
+        self.note_defined_here(callee, context)
+
+    def note_defined_here(self, callee: CallableType, context: Context) -> None:
         module = find_defining_module(self.modules, callee)
-        if module:
+        if (
+            module
+            and module.path != self.errors.file
+            and module.fullname not in ("builtins", "typing")
+        ):
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
                 fname = "Called function"
-            self.note(
-                f"{fname} defined here",
-                callee.definition,
-                file=module.path,
-                origin=context,
-                code=codes.CALL_ARG,
-            )
+            else:
+                fname = fname.split(" of ")[0]  # use short method names in the note
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(
@@ -1085,14 +1075,103 @@ class MessageBuilder:
         arg_types: list[Type],
         context: Context,
         *,
+        arg_names: Sequence[str | None] | None,
+        arg_kinds: list[ArgKind] | None = None,
         code: ErrorCode | None = None,
     ) -> None:
         code = code or codes.CALL_OVERLOAD
         name = callable_name(overload)
         if name:
             name_str = f" of {name}"
+            for_func = f" for overloaded function {name}"
         else:
             name_str = ""
+            for_func = ""
+
+        # For keyword argument errors
+        unexpected_kwargs: list[tuple[str, Type]] = []
+        if arg_names is not None and arg_kinds is not None:
+            all_valid_kwargs: set[str] = set()
+            for item in overload.items:
+                for i, arg_name in enumerate(item.arg_names):
+                    if arg_name is not None and item.arg_kinds[i] != ARG_STAR:
+                        all_valid_kwargs.add(arg_name)
+                if item.is_kw_arg:
+                    all_valid_kwargs.clear()
+                    break
+
+            if all_valid_kwargs:
+                for i, (arg_name, arg_kind) in enumerate(zip(arg_names, arg_kinds)):
+                    if arg_kind == ARG_NAMED and arg_name is not None:
+                        if arg_name not in all_valid_kwargs:
+                            unexpected_kwargs.append((arg_name, arg_types[i]))
+
+        if unexpected_kwargs:
+            all_kwargs_confident = True
+            kwargs_with_suggestions: list[tuple[str, list[str]]] = []
+            kwargs_without_suggestions: list[str] = []
+
+            # Find suggestions for each unexpected kwarg, prioritizing type-matching args
+            for kwarg_name, kwarg_type in unexpected_kwargs:
+                matching_type_args: list[str] = []
+                not_matching_type_args: list[str] = []
+                has_matching_variant = False
+
+                for item in overload.items:
+                    item_has_type_match = False
+                    for i, formal_type in enumerate(item.arg_types):
+                        formal_name = item.arg_names[i]
+                        if formal_name is not None and item.arg_kinds[i] != ARG_STAR:
+                            if is_subtype(kwarg_type, formal_type):
+                                if formal_name not in matching_type_args:
+                                    matching_type_args.append(formal_name)
+                                item_has_type_match = True
+                            elif formal_name not in not_matching_type_args:
+                                not_matching_type_args.append(formal_name)
+                    if item_has_type_match:
+                        has_matching_variant = True
+
+                if not self.prefer_simple_messages():
+                    matches = best_matches(kwarg_name, matching_type_args, n=3)
+                    if not matches:
+                        matches = best_matches(kwarg_name, not_matching_type_args, n=3)
+                else:
+                    matches = []
+
+                if matches:
+                    kwargs_with_suggestions.append((kwarg_name, matches))
+                else:
+                    kwargs_without_suggestions.append(kwarg_name)
+
+                if not has_matching_variant:
+                    all_kwargs_confident = False
+
+            for kwarg_name, matches in kwargs_with_suggestions:
+                self.fail(
+                    f'Unexpected keyword argument "{kwarg_name}"'
+                    f"{for_func}; did you mean {pretty_seq(matches, 'or')}?",
+                    context,
+                    code=code,
+                )
+
+            if kwargs_without_suggestions:
+                if len(kwargs_without_suggestions) == 1:
+                    self.fail(
+                        f'Unexpected keyword argument "{kwargs_without_suggestions[0]}"{for_func}',
+                        context,
+                        code=code,
+                    )
+                else:
+                    quoted_names = ", ".join(f'"{n}"' for n in kwargs_without_suggestions)
+                    self.fail(
+                        f"Unexpected keyword arguments {quoted_names}{for_func}",
+                        context,
+                        code=code,
+                    )
+
+            if all_kwargs_confident and len(unexpected_kwargs) == len(arg_types):
+                return
+
         arg_types_str = ", ".join(format_type(arg, self.options) for arg in arg_types)
         num_args = len(arg_types)
         if num_args == 0:
@@ -1259,7 +1338,7 @@ class MessageBuilder:
         arg_type_in_supertype: Type,
         supertype: str,
         context: Context,
-        secondary_context: Context,
+        origin_context: Context,
     ) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype, self.options)
@@ -1270,42 +1349,29 @@ class MessageBuilder:
             ),
             context,
             code=codes.OVERRIDE,
-            secondary_context=secondary_context,
+            origin_context=origin_context,
         )
         if name != "__post_init__":
             # `__post_init__` is special, it can be incompatible by design.
             # So, this note is misleading.
-            self.note(
-                "This violates the Liskov substitution principle",
-                context,
-                code=codes.OVERRIDE,
-                secondary_context=secondary_context,
-            )
-            self.note(
-                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-                context,
-                code=codes.OVERRIDE,
-                secondary_context=secondary_context,
-            )
-
-        if name == "__eq__" and type_name:
-            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
+            invariant_message = """
+            This violates the Liskov substitution principle
+            See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+            """
             self.note_multiline(
-                multiline_msg, context, code=codes.OVERRIDE, secondary_context=secondary_context
+                invariant_message, context, code=codes.OVERRIDE, origin_context=origin_context
             )
-
-    def comparison_method_example_msg(self, class_name: str) -> str:
-        return dedent(
-            """\
-        It is recommended for "__eq__" to work with arbitrary objects, for example:
-            def __eq__(self, other: object) -> bool:
-                if not isinstance(other, {class_name}):
-                    return NotImplemented
-                return <logic to compare two {class_name} instances>
-        """.format(
-                class_name=class_name
+        if name == "__eq__" and type_name:
+            eq_message = """
+            It is recommended for "__eq__" to work with arbitrary objects, for example:
+                def __eq__(self, other: object) -> bool:
+                    if not isinstance(other, {class_name}):
+                        return NotImplemented
+                    return <logic to compare two {class_name} instances>
+            """.format(class_name=type_name)
+            self.note_multiline(
+                eq_message, context, code=codes.OVERRIDE, origin_context=origin_context
             )
-        )
 
     def return_type_incompatible_with_supertype(
         self,
@@ -1686,10 +1752,10 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
+    def overloaded_signatures_param_specific(self, index: int, context: Context) -> None:
         self.fail(
             (
-                f"Overloaded function implementation does not accept all possible arguments "
+                f"Overloaded function implementation does not accept all possible parameters "
                 f"of signature {index}"
             ),
             context,
@@ -1802,7 +1868,7 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        source, target = format_type_distinctly(source_type, target_type, options=self.options)
         self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
@@ -2154,8 +2220,9 @@ class MessageBuilder:
         class_obj = False
         is_module = False
         skip = []
+        original_subtype = subtype
         if isinstance(subtype, TupleType):
-            subtype = subtype.partial_fallback
+            subtype = mypy.typeops.tuple_fallback(subtype)
         elif isinstance(subtype, TypedDictType):
             subtype = subtype.fallback
         elif isinstance(subtype, TypeType):
@@ -2165,18 +2232,20 @@ class MessageBuilder:
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
             if subtype.is_type_obj():
-                ret_type = get_proper_type(subtype.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = ret_type.partial_fallback
-                if not isinstance(ret_type, Instance):
+                instance_type = subtype.get_instance_type(force_fallback=True)
+                if not isinstance(instance_type, Instance):
                     return
                 class_obj = True
-                subtype = ret_type
+                subtype = instance_type
             else:
                 subtype = subtype.fallback
                 skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
+        if not isinstance(original_subtype, TupleType):
+            # Apart from instances, only tuples are supported by
+            # is_protocol_implementation() for now.
+            original_subtype = subtype
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
@@ -2208,7 +2277,7 @@ class MessageBuilder:
 
         # Report member type conflicts
         conflict_types = get_conflict_protocol_types(
-            subtype, supertype, class_obj=class_obj, options=self.options
+            subtype, original_subtype, supertype, class_obj=class_obj, options=self.options
         )
         if conflict_types and (
             not is_subtype(subtype, erase_type(supertype), options=self.options)
@@ -2761,9 +2830,7 @@ def format_type_inner(
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
-            # The type of a type object type can be derived from the
-            # return type (this always works).
-            return format(TypeType.make_normalized(func.items[0].ret_type))
+            return format(TypeType.make_normalized(func.items[0].get_instance_type()))
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
@@ -2997,11 +3064,20 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         if tp.arg_kinds[i] == ARG_STAR2:
             s += "**"
         name = tp.arg_names[i]
+        if not name and not options.reveal_verbose_types:
+            # Avoid ambiguous (and weird) formatting for anonymous args/kwargs.
+            if tp.arg_kinds[i] == ARG_STAR and isinstance(tp.arg_types[i], UnpackType):
+                name = "args"
+            elif tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
+                name = "kwargs"
         if name:
             s += name + ": "
         type_str = format_type_bare(tp.arg_types[i], options)
         if tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
-            type_str = f"Unpack[{type_str}]"
+            if options.reveal_verbose_types:
+                type_str = f"Unpack[{type_str}]"
+            else:
+                type_str = f"**{type_str}"
         s += type_str
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
@@ -3116,7 +3192,11 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 
 def get_conflict_protocol_types(
-    left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
+    left: Instance,
+    original_left: Type,
+    right: Instance,
+    class_obj: bool = False,
+    options: Options | None = None,
 ) -> list[tuple[str, Type, Type, bool]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
@@ -3128,7 +3208,7 @@ def get_conflict_protocol_types(
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
+        subtype = get_protocol_member(left, original_left, member, class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
@@ -3144,7 +3224,9 @@ def get_conflict_protocol_types(
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
-            set_subtype = mypy.typeops.get_protocol_member(left, member, class_obj, is_lvalue=True)
+            set_subtype = get_protocol_member(
+                left, original_left, member, class_obj, is_lvalue=True
+            )
             if set_subtype and not is_same_type(set_subtype, subtype):
                 different_setter = True
             subtype = set_subtype
@@ -3375,7 +3457,7 @@ def append_numbers_notes(
 ) -> list[str]:
     """Explain if an unsupported type from "numbers" is used in a subtype check."""
     if expected_type.type.fullname in UNSUPPORTED_NUMBERS_TYPES:
-        notes.append('Types from "numbers" aren\'t supported for static type checking')
+        notes.append('Types from "numbers" are not supported for static type checking')
         notes.append("See https://peps.python.org/pep-0484/#the-numeric-tower")
         notes.append("Consider using a protocol instead, such as typing.SupportsFloat")
     return notes

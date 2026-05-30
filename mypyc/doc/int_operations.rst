@@ -143,6 +143,13 @@ and the ``int`` operand is coerced to the native integer type::
       b = 1 - x
       # Similarly, type of "b" is "i64"
 
+Methods
+-------
+
+* ``n.bit_length()``
+* ``n.to_bytes(length: int, byteorder: str)``
+* ``n.to_bytes(length: int, byteorder: str, signed: bool)``
+
 Statements
 ----------
 

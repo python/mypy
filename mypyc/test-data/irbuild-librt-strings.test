@@ -1,4 +1,4 @@
-[case testLibrtStrings_experimental_64bit]
+[case testLibrtStrings_64bit]
 from librt.strings import BytesWriter
 from mypy_extensions import u8, i64
 
@@ -93,3 +93,311 @@ L1:
 L2:
     CPyBytesWriter_SetItem(b, r0, x)
     return 1
+
+[case testLibrtStrings_write_i16_le_64bit]
+from librt.strings import BytesWriter, write_i16_le
+from mypy_extensions import i16
+
+def test_write_i16_le(b: BytesWriter, n: i16) -> None:
+    write_i16_le(b, n)
+def test_write_i16_le_literal(b: BytesWriter) -> None:
+    write_i16_le(b, 1234)
+[out]
+def test_write_i16_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i16
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI16LE(b, n)
+    return 1
+def test_write_i16_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI16LE(b, 1234)
+    return 1
+
+[case testLibrtStrings_read_i16_le_64bit]
+from librt.strings import read_i16_le
+from mypy_extensions import i16, i64
+
+def test_read_i16_le(b: bytes, i: i64) -> i16:
+    return read_i16_le(b, i)
+def test_read_i16_le_literal(b: bytes) -> i16:
+    return read_i16_le(b, 0)
+[out]
+def test_read_i16_le(b, i):
+    b :: bytes
+    i :: i64
+    r0 :: i16
+L0:
+    r0 = CPyBytes_ReadI16LE(b, i)
+    return r0
+def test_read_i16_le_literal(b):
+    b :: bytes
+    r0 :: i16
+L0:
+    r0 = CPyBytes_ReadI16LE(b, 0)
+    return r0
+
+[case testLibrtStrings_i32_le_64bit]
+from librt.strings import BytesWriter, write_i32_le, read_i32_le
+from mypy_extensions import i32, i64
+
+def test_write_i32_le(b: BytesWriter, n: i32) -> None:
+    write_i32_le(b, n)
+def test_write_i32_le_literal(b: BytesWriter) -> None:
+    write_i32_le(b, 12345678)
+def test_read_i32_le(b: bytes, i: i64) -> i32:
+    return read_i32_le(b, i)
+def test_read_i32_le_literal(b: bytes) -> i32:
+    return read_i32_le(b, 0)
+[out]
+def test_write_i32_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i32
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI32LE(b, n)
+    return 1
+def test_write_i32_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI32LE(b, 12345678)
+    return 1
+def test_read_i32_le(b, i):
+    b :: bytes
+    i :: i64
+    r0 :: i32
+L0:
+    r0 = CPyBytes_ReadI32LE(b, i)
+    return r0
+def test_read_i32_le_literal(b):
+    b :: bytes
+    r0 :: i32
+L0:
+    r0 = CPyBytes_ReadI32LE(b, 0)
+    return r0
+
+[case testLibrtStrings_i64_le_64bit]
+from librt.strings import BytesWriter, write_i64_le, read_i64_le
+from mypy_extensions import i64
+
+def test_write_i64_le(b: BytesWriter, n: i64) -> None:
+    write_i64_le(b, n)
+def test_write_i64_le_literal(b: BytesWriter) -> None:
+    write_i64_le(b, 1234567890123456789)
+def test_read_i64_le(b: bytes, i: i64) -> i64:
+    return read_i64_le(b, i)
+def test_read_i64_le_literal(b: bytes) -> i64:
+    return read_i64_le(b, 0)
+[out]
+def test_write_i64_le(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i64
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI64LE(b, n)
+    return 1
+def test_write_i64_le_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI64LE(b, 1234567890123456789)
+    return 1
+def test_read_i64_le(b, i):
+    b :: bytes
+    i, r0 :: i64
+L0:
+    r0 = CPyBytes_ReadI64LE(b, i)
+    return r0
+def test_read_i64_le_literal(b):
+    b :: bytes
+    r0 :: i64
+L0:
+    r0 = CPyBytes_ReadI64LE(b, 0)
+    return r0
+
+[case testLibrtStrings_StringWriter_64bit]
+from librt.strings import StringWriter
+from mypy_extensions import i32, i64
+
+def string_writer_basics() -> str:
+    s = StringWriter()
+    s.append(65)
+    s.write('foo')
+    return s.getvalue()
+def string_writer_len(s: StringWriter) -> i64:
+    return len(s)
+def string_writer_get_item(s: StringWriter, i: i64) -> i32:
+    return s[i]
+[out]
+def string_writer_basics():
+    r0, s :: librt.strings.StringWriter
+    r1 :: None
+    r2 :: str
+    r3 :: None
+    r4 :: str
+L0:
+    r0 = LibRTStrings_StringWriter_internal()
+    s = r0
+    r1 = CPyStringWriter_Append(s, 65)
+    r2 = 'foo'
+    r3 = LibRTStrings_StringWriter_write_internal(s, r2)
+    r4 = LibRTStrings_StringWriter_getvalue_internal(s)
+    return r4
+def string_writer_len(s):
+    s :: librt.strings.StringWriter
+    r0 :: short_int
+    r1 :: i64
+L0:
+    r0 = CPyStringWriter_Len(s)
+    r1 = r0 >> 1
+    return r1
+def string_writer_get_item(s, i):
+    s :: librt.strings.StringWriter
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: i32
+L0:
+    r0 = CPyStringWriter_AdjustIndex(s, i)
+    r1 = CPyStringWriter_RangeCheck(s, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyStringWriter_GetItem(s, r0)
+    return r3
+
+[case testLibrtStringsIsSpaceIR]
+from librt.strings import isspace
+from mypy_extensions import i32
+
+def is_ws(c: i32) -> bool:
+    return isspace(c)
+[out]
+def is_ws(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsSpace(c)
+    return r0
+
+[case testLibrtStringsIsSpaceFromStrIndexIR_64bit]
+from librt.strings import isspace
+
+def is_ws_at(s: str, i: int) -> bool:
+    return isspace(ord(s[i]))
+[out]
+def is_ws_at(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+    r11, r12 :: bit
+    r13 :: native_int
+    r14, r15 :: i32
+    r16 :: bool
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    r11 = r10 < 4294967296 :: signed
+    if r11 goto L6 else goto L8 :: bool
+L6:
+    r12 = r10 >= -4294967296 :: signed
+    if r12 goto L7 else goto L8 :: bool
+L7:
+    r13 = r10 >> 1
+    r14 = truncate r13: native_int to i32
+    r15 = r14
+    goto L9
+L8:
+    CPyInt32_Overflow()
+    unreachable
+L9:
+    r16 = LibRTStrings_IsSpace(r15)
+    return r16
+
+[case testLibrtStringsIsDigitIR]
+from librt.strings import isdigit
+from mypy_extensions import i32
+
+def is_d(c: i32) -> bool:
+    return isdigit(c)
+[out]
+def is_d(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsDigit(c)
+    return r0
+
+[case testLibrtStringsIsAlnumIR]
+from librt.strings import isalnum
+from mypy_extensions import i32
+
+def is_an(c: i32) -> bool:
+    return isalnum(c)
+[out]
+def is_an(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsAlnum(c)
+    return r0
+
+[case testLibrtStringsIsAlphaIR]
+from librt.strings import isalpha
+from mypy_extensions import i32
+
+def is_a(c: i32) -> bool:
+    return isalpha(c)
+[out]
+def is_a(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsAlpha(c)
+    return r0
+
+[case testLibrtStringsIsIdentifierIR]
+from librt.strings import isidentifier
+from mypy_extensions import i32
+
+def is_id(c: i32) -> bool:
+    return isidentifier(c)
+[out]
+def is_id(c):
+    c :: i32
+    r0 :: bool
+L0:
+    r0 = LibRTStrings_IsIdentifier(c)
+    return r0

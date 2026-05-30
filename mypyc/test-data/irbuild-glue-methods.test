@@ -453,3 +453,59 @@ class EE(E):
 main:7: error: An argument with type "i64" cannot be given a default value in a method override
 main:13: error: Incompatible argument type "i64" (base class has type "int")
 main:18: error: Incompatible argument type "int" (base class has type "i64")
+
+[case testPropertySetterShadowGlue]
+import mypy_extensions
+
+@mypy_extensions.mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    _x: str = ""
+
+    @property
+    def x(self) -> str:
+        return self._x
+
+    @x.setter
+    def x(self, v: str) -> None:
+        self._x = v
+[out]
+def Base.x(self):
+    self :: __main__.Base
+    r0 :: str
+L0:
+    r0 = self._x
+    return r0
+def Base.x__Base_glue(__mypyc_self__):
+    __mypyc_self__ :: __main__.Base
+    r0 :: str
+    r1 :: object
+    r2 :: str
+L0:
+    r0 = 'x'
+    r1 = CPyObject_GetAttr(__mypyc_self__, r0)
+    r2 = cast(str, r1)
+    return r2
+def Base.__mypyc_setter__x(self, v):
+    self :: __main__.Base
+    v :: str
+    r0 :: bool
+L0:
+    self._x = v; r0 = is_error
+    return 1
+def Base.__mypyc_setter__x__Base_glue(self, v):
+    self :: __main__.Base
+    v, r0 :: str
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = 'x'
+    r1 = PyObject_SetAttr(self, r0, v)
+    r2 = r1 >= 0 :: signed
+    return 1
+def Base.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.Base
+    r0 :: str
+L0:
+    r0 = ''
+    __mypyc_self__._x = r0
+    return 1

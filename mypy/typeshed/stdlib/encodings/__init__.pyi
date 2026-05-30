@@ -1,6 +1,8 @@
 import sys
 from codecs import CodecInfo
 
+from . import aliases as aliases
+
 class CodecRegistryError(LookupError, SystemError): ...
 
 def normalize_encoding(encoding: str | bytes) -> str: ...

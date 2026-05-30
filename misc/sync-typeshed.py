@@ -143,6 +143,7 @@ def main() -> None:
         action="store_true",
         help="Whether to make a PR with the changes (default to no)",
     )
+    parser.add_argument("--no-branch", action="store_true", help="Skip creating a new branch")
     args = parser.parse_args()
 
     check_state()
@@ -158,7 +159,8 @@ def main() -> None:
         shutil.copytree(typeshed_patches, tmp_patches)
 
         branch_name = "mypybot/sync-typeshed"
-        subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
+        if not args.no_branch:
+            subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
 
         # Copy the stashed patches back
         shutil.rmtree(typeshed_patches, ignore_errors=True)
@@ -184,14 +186,12 @@ def main() -> None:
         assert commit
 
         # Create a commit
-        message = textwrap.dedent(
-            f"""\
+        message = textwrap.dedent(f"""\
             Sync typeshed
 
             Source commit:
             https://github.com/python/typeshed/commit/{commit}
-            """
-        )
+            """)
         subprocess.run(["git", "add", "--all", os.path.join("mypy", "typeshed")], check=True)
         subprocess.run(["git", "commit", "-m", message], check=True)
         print("Created typeshed sync commit.")

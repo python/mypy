@@ -20,6 +20,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -212,6 +213,9 @@ class IRTransform(OpVisitor[Value | None]):
     def visit_set_mem(self, op: SetMem) -> Value | None:
         return self.add(op)
 
+    def visit_get_element(self, op: GetElement) -> Value | None:
+        return self.add(op)
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> Value | None:
         return self.add(op)
 
@@ -353,6 +357,9 @@ class PatchVisitor(OpVisitor[None]):
 
     def visit_set_mem(self, op: SetMem) -> None:
         op.dest = self.fix_op(op.dest)
+        op.src = self.fix_op(op.src)
+
+    def visit_get_element(self, op: GetElement) -> None:
         op.src = self.fix_op(op.src)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:

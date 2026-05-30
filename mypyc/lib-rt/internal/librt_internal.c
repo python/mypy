@@ -341,13 +341,13 @@ read_bool_internal(PyObject *data) {
 }
 
 static PyObject*
-read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_bool", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_bool(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_bool() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     char res = read_bool_internal(data);
     if (unlikely(res == CPY_BOOL_ERROR))
@@ -365,14 +365,14 @@ write_bool_internal(PyObject *data, char value) {
 }
 
 static PyObject*
-write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_bool", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_bool(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_bool() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyBool_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
@@ -445,13 +445,13 @@ read_str_internal(PyObject *data) {
 }
 
 static PyObject*
-read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_str", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_str(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_str() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     return read_str_internal(data);
 }
@@ -506,14 +506,14 @@ write_str_internal(PyObject *data, PyObject *value) {
 }
 
 static PyObject*
-write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_str", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_str(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_str() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyUnicode_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a str");
@@ -561,13 +561,13 @@ read_bytes_internal(PyObject *data) {
 }
 
 static PyObject*
-read_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_bytes", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_bytes(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_bytes() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     return read_bytes_internal(data);
 }
@@ -596,14 +596,14 @@ write_bytes_internal(PyObject *data, PyObject *value) {
 }
 
 static PyObject*
-write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_bytes", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_bytes(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_bytes() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyBytes_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
@@ -633,13 +633,13 @@ read_float_internal(PyObject *data) {
 }
 
 static PyObject*
-read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_float", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_float(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_float() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     double retval = read_float_internal(data);
     if (unlikely(retval == CPY_FLOAT_ERROR && PyErr_Occurred())) {
@@ -660,14 +660,14 @@ write_float_internal(PyObject *data, double value) {
 }
 
 static PyObject*
-write_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_float", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_float(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_float() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyFloat_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a float");
@@ -735,13 +735,13 @@ read_int_internal(PyObject *data) {
 }
 
 static PyObject*
-read_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_int", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_int(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_int() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     CPyTagged retval = read_int_internal(data);
     if (unlikely(retval == CPY_INT_TAG)) {
@@ -804,7 +804,7 @@ _write_long_int(PyObject *data, CPyTagged value) {
     }
 
     // Write absolute integer value as byte array in a variable-length little endian format.
-    int i;
+    Py_ssize_t i;
     for (i = len; i > 1; i -= 2) {
         if (write_tag_internal(
                 data, hex_to_int(str[i - 1]) | (hex_to_int(str[i - 2]) << 4)) == CPY_NONE_ERROR)
@@ -841,14 +841,14 @@ write_int_internal(PyObject *data, CPyTagged value) {
 }
 
 static PyObject*
-write_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_int", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_int(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_int() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyLong_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be an int");
@@ -876,13 +876,13 @@ read_tag_internal(PyObject *data) {
 }
 
 static PyObject*
-read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", 0};
-    static CPyArg_Parser parser = {"O:read_tag", kwlist, 0};
-    PyObject *data;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+read_tag(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "read_tag() takes exactly 1 argument (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
     uint8_t retval = read_tag_internal(data);
     if (unlikely(retval == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
@@ -899,14 +899,14 @@ write_tag_internal(PyObject *data, uint8_t value) {
 }
 
 static PyObject*
-write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_tag", kwlist, 0};
-    PyObject *data;
-    PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+write_tag(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "write_tag() takes exactly 2 arguments (%zu given)", nargs);
         return NULL;
     }
+    PyObject *data = args[0];
+    PyObject *value = args[1];
     _CHECK_WRITE_BUFFER(data, NULL)
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
@@ -918,6 +918,275 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     }
     Py_INCREF(Py_None);
     return Py_None;
+}
+
+// All tags must be kept in sync with cache.py, nodes.py, and types.py.
+// Primitive types.
+#define LITERAL_FALSE 0
+#define LITERAL_TRUE 1
+#define LITERAL_NONE 2
+#define LITERAL_INT 3
+#define LITERAL_STR 4
+#define LITERAL_BYTES 5
+#define LITERAL_FLOAT 6
+#define LITERAL_COMPLEX 7
+
+// Supported builtin collections.
+#define LIST_GEN 20
+#define LIST_INT 21
+#define LIST_STR 22
+#define LIST_BYTES 23
+#define TUPLE_GEN 24
+#define DICT_STR_GEN 30
+
+// This is the smallest custom class tag.
+#define MYPY_FILE 50
+
+// Instance class has special formats.
+#define INSTANCE 80
+#define INSTANCE_SIMPLE 81
+#define INSTANCE_GENERIC 82
+#define INSTANCE_STR 83
+#define INSTANCE_FUNCTION 84
+#define INSTANCE_INT 85
+#define INSTANCE_BOOL 86
+#define INSTANCE_OBJECT 87
+
+#define RESERVED 254
+#define END_TAG 255
+
+// Forward declaration.
+static char _skip_object(PyObject *data, uint8_t tag);
+
+static inline char
+_skip(PyObject *data, Py_ssize_t size) {
+    // We are careful about error conditions, so all
+    // _skip_xxx() functions can return an error value.
+    _CHECK_READ(data, size, CPY_NONE_ERROR)
+    ((ReadBufferObject *)data)->ptr += size;
+    return CPY_NONE;
+}
+
+static inline char
+_skip_short_int(PyObject *data, uint8_t first) {
+    if ((first & TWO_BYTES_INT_BIT) == 0)
+       return CPY_NONE;
+    if ((first & FOUR_BYTES_INT_BIT) == 0)
+        return _skip(data, 1);
+    return _skip(data, 3);
+}
+
+static inline char
+_skip_int(PyObject *data) {
+    _CHECK_READ(data, 1, CPY_NONE_ERROR)
+
+    uint8_t first;
+    _READ(&first, data, uint8_t);
+    if (likely(first != LONG_INT_TRAILER)) {
+        return _skip_short_int(data, first);
+    }
+
+    _CHECK_READ(data, 1, CPY_NONE_ERROR)
+    _READ(&first, data, uint8_t);
+    Py_ssize_t size_and_sign = _read_short_int(data, first);
+    if (size_and_sign == CPY_INT_TAG)
+        return CPY_NONE_ERROR;
+    if ((Py_ssize_t)size_and_sign < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid int data");
+        return CPY_NONE_ERROR;
+    }
+    Py_ssize_t size = size_and_sign >> 2;
+    return _skip(data, size);
+}
+
+// This is essentially a wrapper around _read_short_int() that makes
+// sure the result is valid.
+static inline Py_ssize_t
+_read_size(PyObject *data) {
+    _CHECK_READ(data, 1, -1)
+    uint8_t first;
+    _READ(&first, data, uint8_t);
+    // We actually allow serializing lists/dicts with over 4 billion items,
+    // but we don't really need to, fail with ValueError just in case.
+    if (unlikely(first == LONG_INT_TRAILER)) {
+        PyErr_SetString(PyExc_ValueError, "unsupported size");
+        return -1;
+    }
+    CPyTagged tagged_size = _read_short_int(data, first);
+    if (tagged_size == CPY_INT_TAG)
+        return -1;
+    if ((Py_ssize_t)tagged_size < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid size");
+        return -1;
+    }
+    Py_ssize_t size = tagged_size >> 1;
+    return size;
+}
+
+static inline char
+_skip_str_bytes(PyObject *data) {
+    Py_ssize_t size = _read_size(data);
+    if (size < 0)
+        return CPY_NONE_ERROR;
+    return _skip(data, size);
+}
+
+// List/dict logic should be kept in sync with mypy/cache.py
+static inline char
+_skip_list_gen(PyObject *data) {
+    Py_ssize_t size = _read_size(data);
+    if (size < 0)
+        return CPY_NONE_ERROR;
+    Py_ssize_t i;
+    for (i = 0; i < size; i++) {
+        uint8_t tag = read_tag_internal(data);
+        if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+            return CPY_NONE_ERROR;
+        }
+        if (unlikely(_skip_object(data, tag) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+    }
+    return CPY_NONE;
+}
+
+static inline char
+_skip_list_int(PyObject *data) {
+    Py_ssize_t size = _read_size(data);
+    if (size < 0)
+        return CPY_NONE_ERROR;
+    Py_ssize_t i;
+    for (i = 0; i < size; i++) {
+        if (unlikely(_skip_int(data) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+    }
+    return CPY_NONE;
+}
+
+static inline char
+_skip_list_str_bytes(PyObject *data) {
+    Py_ssize_t size = _read_size(data);
+    if (size < 0)
+        return CPY_NONE_ERROR;
+    Py_ssize_t i;
+    for (i = 0; i < size; i++) {
+        if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+    }
+    return CPY_NONE;
+}
+
+static inline char
+_skip_dict_str_gen(PyObject *data) {
+    Py_ssize_t size = _read_size(data);
+    if (size < 0)
+        return CPY_NONE_ERROR;
+    Py_ssize_t i;
+    for (i = 0; i < size; i++) {
+        // Bare key followed by tagged value.
+        if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+        uint8_t tag = read_tag_internal(data);
+        if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+            return CPY_NONE_ERROR;
+        }
+        if (unlikely(_skip_object(data, tag) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+    }
+    return CPY_NONE;
+}
+
+// Similar to mypy/cache.py, the convention is that the caller reads
+// the opening tag for custom classes.
+static inline char
+_skip_class(PyObject *data) {
+    while (1) {
+        uint8_t tag = read_tag_internal(data);
+        if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+            return CPY_NONE_ERROR;
+        }
+        if (tag == END_TAG) {
+            return CPY_NONE;
+        }
+        if (unlikely(_skip_object(data, tag) == CPY_NONE_ERROR)) {
+            return CPY_NONE_ERROR;
+        }
+    }
+}
+
+// Instance has special compact layout (as an important optimization).
+static inline char
+_skip_instance(PyObject *data) {
+    uint8_t second_tag = read_tag_internal(data);
+    if (unlikely(second_tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+        return CPY_NONE_ERROR;
+    }
+    if (second_tag >= INSTANCE_STR && second_tag <= INSTANCE_OBJECT) {
+        return CPY_NONE;
+    }
+    if (second_tag == INSTANCE_SIMPLE) {
+        return _skip_str_bytes(data);
+    }
+    if (second_tag == INSTANCE_GENERIC) {
+        return _skip_class(data);
+    }
+    PyErr_Format(PyExc_ValueError, "Unexpected instance tag: %d", second_tag);
+    return CPY_NONE_ERROR;
+}
+
+// This is the main dispatch point. Branches are ordered manually
+// based roughly on frequency in self-check.
+static char
+_skip_object(PyObject *data, uint8_t tag) {
+    if (tag == LITERAL_STR || tag == LITERAL_BYTES)
+        return _skip_str_bytes(data);
+    if (tag == LITERAL_NONE || tag == LITERAL_FALSE || tag == LITERAL_TRUE)
+        return CPY_NONE;
+    if (tag == LIST_GEN || tag == TUPLE_GEN)
+        return _skip_list_gen(data);
+    if (tag == LITERAL_INT)
+        return _skip_int(data);
+    if (tag == INSTANCE)
+        return _skip_instance(data);
+    // We intentionally exclude MypyFile as a sanity check. Module symbols should
+    // be always handled via cross_ref, and never appear in a symbol table as is.
+    if (tag > MYPY_FILE && tag < RESERVED)
+        return _skip_class(data);
+    if (tag == LIST_INT)
+        return _skip_list_int(data);
+    if (tag == LIST_STR || tag == LIST_BYTES)
+        return _skip_list_str_bytes(data);
+    if (tag == DICT_STR_GEN)
+        return _skip_dict_str_gen(data);
+    if (tag == LITERAL_FLOAT)
+        return _skip(data, 8);
+    if (tag == LITERAL_COMPLEX)
+        return _skip(data, 16);
+    PyErr_Format(PyExc_ValueError, "Unsupported tag: %d", tag);
+    return CPY_NONE_ERROR;
+}
+
+static PyObject*
+extract_symbol_internal(PyObject *data) {
+    char *ptr = ((ReadBufferObject *)data)->ptr;
+    if (unlikely(_skip_class(data) == CPY_NONE_ERROR))
+        return NULL;
+    Py_ssize_t size = ((ReadBufferObject *)data)->ptr - ptr;
+    PyObject *res = PyBytes_FromStringAndSize(ptr, size);
+    if (unlikely(res == NULL))
+        return NULL;
+    return res;
+}
+
+static PyObject*
+extract_symbol(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "extract_symbol() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    PyObject *data = args[0];
+    _CHECK_READ_BUFFER(data, NULL)
+    return extract_symbol_internal(data);
 }
 
 static uint8_t
@@ -941,19 +1210,20 @@ WriteBuffer_type_internal(void) {
 };
 
 static PyMethodDef librt_internal_module_methods[] = {
-    {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
-    {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
-    {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
-    {"read_str", (PyCFunction)read_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a string")},
-    {"write_bytes", (PyCFunction)write_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
-    {"read_bytes", (PyCFunction)read_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read bytes")},
-    {"write_float", (PyCFunction)write_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a float")},
-    {"read_float", (PyCFunction)read_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a float")},
-    {"write_int", (PyCFunction)write_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write an int")},
-    {"read_int", (PyCFunction)read_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read an int")},
-    {"write_tag", (PyCFunction)write_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
-    {"read_tag", (PyCFunction)read_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a short int")},
+    {"write_bool", (PyCFunction)write_bool, METH_FASTCALL, PyDoc_STR("write a bool")},
+    {"read_bool", (PyCFunction)read_bool, METH_FASTCALL, PyDoc_STR("read a bool")},
+    {"write_str", (PyCFunction)write_str, METH_FASTCALL, PyDoc_STR("write a string")},
+    {"read_str", (PyCFunction)read_str, METH_FASTCALL, PyDoc_STR("read a string")},
+    {"write_bytes", (PyCFunction)write_bytes, METH_FASTCALL, PyDoc_STR("write bytes")},
+    {"read_bytes", (PyCFunction)read_bytes, METH_FASTCALL, PyDoc_STR("read bytes")},
+    {"write_float", (PyCFunction)write_float, METH_FASTCALL, PyDoc_STR("write a float")},
+    {"read_float", (PyCFunction)read_float, METH_FASTCALL, PyDoc_STR("read a float")},
+    {"write_int", (PyCFunction)write_int, METH_FASTCALL, PyDoc_STR("write an int")},
+    {"read_int", (PyCFunction)read_int, METH_FASTCALL, PyDoc_STR("read an int")},
+    {"write_tag", (PyCFunction)write_tag, METH_FASTCALL, PyDoc_STR("write a short int")},
+    {"read_tag", (PyCFunction)read_tag, METH_FASTCALL, PyDoc_STR("read a short int")},
     {"cache_version", (PyCFunction)cache_version, METH_NOARGS, PyDoc_STR("cache format version")},
+    {"extract_symbol", (PyCFunction)extract_symbol, METH_FASTCALL, PyDoc_STR("extract bytes for a mypy symbol")},
     {NULL, NULL, 0, NULL}
 };
 
@@ -1005,6 +1275,7 @@ librt_internal_module_exec(PyObject *m)
         (void *)ReadBuffer_type_internal,
         (void *)WriteBuffer_type_internal,
         (void *)NativeInternal_API_Version,
+        (void *)extract_symbol_internal
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

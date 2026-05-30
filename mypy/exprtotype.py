@@ -122,7 +122,7 @@ def expr_to_unanalyzed_type(
                 else:
                     base_fullname = expr.base.fullname
 
-                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES and args:
                     # TODO: this is not the optimal solution as we are basically getting rid
                     # of the Annotation definition and only returning the type information,
                     # losing all the annotations.
@@ -145,11 +145,7 @@ def expr_to_unanalyzed_type(
             return base
         else:
             raise TypeTranslationError()
-    elif (
-        isinstance(expr, OpExpr)
-        and expr.op == "|"
-        and ((options.python_version >= (3, 10)) or allow_new_syntax)
-    ):
+    elif isinstance(expr, OpExpr) and expr.op == "|":
         return UnionType(
             [
                 expr_to_unanalyzed_type(

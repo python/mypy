@@ -23,6 +23,7 @@ class RefInfoSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.export_ref_info = True  # This is the flag we are testing
+        options.sqlite_cache = False
 
         src = "\n".join(testcase.input)
         result = build.build(

@@ -1322,7 +1322,7 @@ main:2: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 from typing import Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x = None  # type: T
+    x: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
 [targets __main__]
@@ -1332,7 +1332,7 @@ from typing import Generic, List, TypeVar, Union
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x = None  # type: Union[T, List[U]]
+    x: Union[T, List[U]]
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/list.pyi]
@@ -3428,7 +3428,7 @@ C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int 
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
 class C:
-    def __new__(cls, foo):  # N: "C" defined here
+    def __new__(cls, foo):
         obj = object.__new__(cls)
         return obj
 
@@ -4562,7 +4562,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 
 [case testVariableSubclassAssignment]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
     def __init__(self) -> None:
         self.a = "a"
@@ -4571,9 +4571,9 @@ main:5: error: Incompatible types in assignment (expression has type "str", vari
 
 [case testVariableSubclassTypeOverwrite]
 class A:
-    a = None  # type: int
+    a: int
 class B(A):
-    a = None  # type: str
+    a: str
 class C(B):
     a = "a"
 [out]
@@ -4583,7 +4583,7 @@ main:4: error: Incompatible types in assignment (expression has type "str", base
 class A:
     a = 1
 class B(A):
-    a = None  # type: str
+    a: str
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
@@ -4600,7 +4600,7 @@ class C(B):
 [case testClassAllBases]
 from typing import Union
 class A:
-    a = None  # type: Union[int, str]
+    a: Union[int, str]
 class B(A):
     a = 1
 class C(B):
@@ -4614,7 +4614,7 @@ main:7: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = 1
 
@@ -4622,7 +4622,7 @@ class B(A[int]):
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     a = "abc"
 [out]
@@ -4632,7 +4632,7 @@ main:6: error: Incompatible types in assignment (expression has type "str", base
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: T
+    a: T
 class B(A[int]):
     pass
 class C(B):
@@ -4644,8 +4644,8 @@ main:8: error: Incompatible types in assignment (expression has type "str", base
 from typing import List, TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
-    a = None  # type: List[T]
-    b = None  # type: List[T]
+    a: List[T]
+    b: List[T]
 class B(A[int]):
     a = [1]
     b = ['']
@@ -4670,7 +4670,7 @@ class A:
     @property
     def a(self) -> bool: pass
 class B(A):
-    a = None  # type: bool
+    a: bool
 class C(A):
     a = True
 class D(A):
@@ -4751,7 +4751,7 @@ main:7: error: Incompatible types in assignment (expression has type "Callable[[
 [case testClassSpec]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: int) -> int: pass
     b = c
@@ -4761,7 +4761,7 @@ reveal_type(B().b)  # N: Revealed type is "def (a: builtins.int) -> builtins.int
 [case testClassSpecError]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[int], int]
+    b: Callable[[int], int]
 class B(A):
     def c(self, a: str) -> int: pass
     b = c  # E: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
@@ -6117,7 +6117,7 @@ class C(Any):
 
 [case testClassDecoratorIsTypeChecked]
 from typing import Callable, Type
-def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
+def decorate(x: int) -> Callable[[type], type]:
     ...
 def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
     ...
@@ -7180,7 +7180,22 @@ b = B(2) # E: Cannot instantiate abstract class "B" with abstract attribute "__i
 B.c # E: "type[B]" has no attribute "c"
 c = C(3)
 c.c
-C.c
+C.c  # E: Cannot access instance-only attribute "c" on class object
+
+[case testAccessInstanceVarOnClass]
+class A:
+    def __init__(self) -> None:
+        self.x = 0
+
+A.x  # E: Cannot access instance-only attribute "x" on class object
+A.x = 1  # We allow this, since it works at runtime, even though it is weird
+
+class B:
+    x = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x: int = 2
+C.x # Again, this works at runtime, so we don't prohibit this
 
 [case testDecoratedConstructors]
 from typing import TypeVar, Callable, Any
@@ -7302,18 +7317,25 @@ reveal_type(B())  # N: Revealed type is "__main__.B"
 [case testNewReturnType2]
 from typing import Any
 
-# make sure that __new__ method that return Any are ignored when
+# make sure that __new__ method that return implicit Any are ignored when
 # determining the return type
 class A:
     def __new__(cls):
         pass
 
 class B:
-    def __new__(cls) -> Any:
+    def __new__(cls, x: int = 0) -> Any:
+        pass
+
+class C:
+    def __new__(cls, x: int = 0):
         pass
 
 reveal_type(A())  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "__main__.B"
+reveal_type(B())  # N: Revealed type is "Any"
+reveal_type(B(1))  # N: Revealed type is "Any"
+reveal_type(C())  # N: Revealed type is "__main__.C"
+reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 [case testNewReturnType3]
 
@@ -7323,7 +7345,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is "__main__.A"
+reveal_type(A())  # N: Revealed type is "builtins.int"
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -7433,6 +7455,287 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+[case testNewReturnType13]
+from typing import Protocol
+
+class Foo(Protocol):
+    def foo(self) -> str: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # E: Incompatible return type for "__new__" (returns "Foo", but must return a subtype of "A")
+
+reveal_type(A())  # N: Revealed type is "__main__.Foo"
+reveal_type(A().foo())  # N: Revealed type is "builtins.str"
+
+[case testNewReturnType14]
+from __future__ import annotations
+
+class A:
+    def __new__(cls) -> int: raise  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
+
+class B(A):
+    @classmethod
+    def foo(cls) -> int: raise
+
+reveal_type(B.foo())  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType15]
+from typing import Generic, Type, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __new__(cls) -> B[int]: ...
+    @classmethod
+    def foo(cls: Type[A[T]]) -> T: ...
+
+class B(A[T]): ...
+
+# The Never without error is not ideal, but matches the behavior without custom __new__().
+reveal_type(B.foo())  # N: Revealed type is "Never"
+reveal_type(B[str].foo())  # N: Revealed type is "builtins.str"
+
+class C(A[str]): ...
+
+reveal_type(C.foo())  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType16]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> T:  # E: "__new__" must return a class instance (got "T")
+        ...
+
+class Model:
+    pass
+
+reveal_type(A[Model]())  # N: Revealed type is "__main__.Model"
+
+class B(A[Model]):
+    pass
+
+reveal_type(B())  # N: Revealed type is "__main__.Model"
+[builtins fixtures/dict.pyi]
+
+[case testNewReturnType17]
+class C:
+    def __new__(self) -> D:
+        return D()
+
+class D(C):
+    x: int
+
+C.x  # E: "type[C]" has no attribute "x"
+
+[case testNewReturnType18]
+class A:
+    def __new__(cls) -> A:
+        return A()
+
+class B(A):
+    def __new__(cls) -> A:  # E: Incompatible return type for "__new__" (returns "A", but must return a subtype of "B")
+        return super().__new__(cls)
+
+class C(B): ...
+
+# Always respect explicit return type after giving an error.
+reveal_type(B())  # N: Revealed type is "__main__.A"
+reveal_type(C())  # N: Revealed type is "__main__.A"
+
+# Ignore "implicit" return type to preserve backwards compatibility.
+class D(A): ...
+reveal_type(D())  # N: Revealed type is "__main__.D"
+
+[case testNewReturnType19]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def f(tp: type[T]) -> T: ...
+
+class C:
+    def __new__(cls) -> int: ...  # type: ignore[misc]
+
+reveal_type(f(C))  # N: Revealed type is "__main__.C"
+
+[case testNewReturnTypeCallableSubtyping]
+from typing import Callable, Protocol
+
+class Foo:
+    def foo(self) -> None: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+ta: type[A]
+tf: type[Foo]
+
+class PA(Protocol):
+    def __call__(self) -> A: ...
+
+class PFoo(Protocol):
+    def __call__(self) -> Foo: ...
+
+def f(x: Callable[[], A]) -> None: ...
+def g(x: Callable[[], Foo]) -> None: ...
+def fp(x: PA) -> None: ...
+def gp(x: PFoo) -> None: ...
+def h(x: type[A]) -> None: ...
+def i(x: type[Foo]) -> None: ...
+
+f(A)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(A)
+fp(A)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+       # N: "A" has constructor incompatible with "__call__" of "PA" \
+       # N: Following member(s) of "A" have conflicts: \
+       # N:     Expected: \
+       # N:         def __call__() -> A \
+       # N:     Got: \
+       # N:         def A() -> Foo \
+       # N: "PA.__call__" has type "Callable[[], A]"
+gp(A)
+h(A)
+i(A)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(Foo)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(Foo)
+fp(Foo)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(Foo)
+h(Foo)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(Foo)
+
+f(ta)  # E: Argument 1 to "f" has incompatible type "type[A]"; expected "Callable[[], A]"
+g(ta)
+fp(ta)  # E: Argument 1 to "fp" has incompatible type "type[A]"; expected "PA" \
+        # N: "A" has constructor incompatible with "__call__" of "PA" \
+        # N: Following member(s) of "A" have conflicts: \
+        # N:     Expected: \
+        # N:         def __call__() -> A \
+        # N:     Got: \
+        # N:         def A() -> Foo \
+        # N: "PA.__call__" has type "Callable[[], A]"
+gp(ta)
+h(ta)
+i(ta)  # E: Argument 1 to "i" has incompatible type "type[A]"; expected "type[Foo]"
+
+f(tf)  # E: Argument 1 to "f" has incompatible type "type[Foo]"; expected "Callable[[], A]"
+g(tf)
+fp(tf)  # E: Argument 1 to "fp" has incompatible type "type[Foo]"; expected "PA" \
+         # N: "Foo" has constructor incompatible with "__call__" of "PA" \
+         # N: Following member(s) of "Foo" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__() -> A \
+         # N:     Got: \
+         # N:         def Foo() -> Foo \
+         # N: "PA.__call__" has type "Callable[[], A]"
+gp(tf)
+h(tf)  # E: Argument 1 to "h" has incompatible type "type[Foo]"; expected "type[A]"
+i(tf)
+
+[case testNewReturnTypeCallableJoins]
+from typing import TypeVar
+
+class Base: ...
+class Foo(Base): ...
+class Bar(Base): ...
+
+class Base2: ...
+
+class A(Base2):
+    def __new__(cls) -> Foo: ...  # type: ignore
+
+class B(Base2):
+    def __new__(cls) -> Bar: ...  # type: ignore
+
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
+reveal_type(join(A, Foo))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(Foo, A))  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(join(A, B))  # N: Revealed type is "def () -> __main__.Base"
+reveal_type(join(B, A))  # N: Revealed type is "def () -> __main__.Base"
+
+# This tests the type repr in error messages.
+j = join(A, B)
+x: int = j  # E: Incompatible types in assignment (expression has type "type[Base2]", variable has type "int")
+
+[case testNewReturnTypeCallableInference]
+from typing import Callable, TypeVar
+
+class A:
+    def __new__(cls) -> int: ...  # type: ignore
+
+T = TypeVar("T")
+def foo(f: Callable[[], T]) -> T: ...
+def bar(t: type[T]) -> T: ...
+
+ta: type[A]
+reveal_type(foo(A))  # N: Revealed type is "builtins.int"
+reveal_type(foo(ta))  # N: Revealed type is "builtins.int"
+reveal_type(bar(A))  # N: Revealed type is "__main__.A"
+reveal_type(bar(ta))  # N: Revealed type is "__main__.A"
+
+[case testNewReturnTypeCallableNarrowing]
+from typing import Callable, TypeVar
+
+class A: ...
+
+class B(A):
+    more = 1
+    def __new__(cls) -> A: ...  # type: ignore
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+
+tx: type[A]
+if issubclass(tx, B):
+    reveal_type(tx)  # N: Revealed type is "type[__main__.B]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNewReturnTypeOverloadNarrowing]
+from typing import TypeVar, Generic, Union, overload
+
+T = TypeVar("T", int, str)
+
+class Series(Generic[T]):
+    @overload
+    def __new__(cls, dtype: int) -> IntSeries: ...
+    @overload
+    def __new__(cls, dtype: type[T]) -> Series[T]: ...
+    @overload
+    def __new__(cls, dtype=...) -> Series: ...
+    def __new__(cls, dtype=...) -> Series:
+        ...
+
+class IntSeries(Series[int]): ...
+
+class Index:
+    @overload
+    def __new__(cls, dtype: int) -> IntIndex: ...
+    @overload
+    def __new__(cls, dtype=...) -> Index: ...
+    def __new__(cls, dtype=...) -> Index:
+        ...
+
+class IntIndex(Index): ...
+
+def foo(x: Union[Series, int, Index]):
+    if isinstance(x, (Series, Index)):
+        reveal_type(x)  # N: Revealed type is "__main__.Series[Any] | __main__.Index"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
 
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
@@ -7683,12 +7986,11 @@ class Child(metaclass=M, thing=0):
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 
-[case testTooManyArgsForObject_no_parallel]
+[case testTooManyArgsForObject]
 class A(thing=5):
     pass
 [out]
 main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
-tmp/builtins.pyi:6: note: "__init_subclass__" of "object" defined here
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassWithImports]
@@ -7836,7 +8138,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 class A:
     def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
-    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def undecorated_not_self(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
 
@@ -7864,7 +8166,7 @@ class A:
     def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
     @to_same_callable
-    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @to_same_callable
     def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
@@ -7909,7 +8211,7 @@ class A:
         return 0
 
     @to_same_callable
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @to_same_callable
@@ -7931,7 +8233,7 @@ class B:
         return 0
 
     @remove_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @remove_first
@@ -7965,15 +8267,15 @@ reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins
 
 class D:
     @add_wrong_first
-    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn1() -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn2(_x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
     @add_wrong_first
-    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def fn3(self, _x: int) -> int:  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         return 0
 
 reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
@@ -7996,7 +8298,7 @@ def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
 def unchecked():
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         # TODO: would be nice to make this error, but now we see the func
         # being decorated as Any, not as a callable
@@ -8017,12 +8319,12 @@ def unchecked():
 def checked() -> None:
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
-        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def fn2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
         @to_same_callable
         def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         @to_same_callable
-        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+        def g2(x: int) -> None: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     class AlsoBad:
         def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
@@ -8922,31 +9224,31 @@ from numbers import Number, Complex, Real, Rational, Integral
 
 def f1(x: Number) -> None: pass
 f1(1)  # E: Argument 1 to "f1" has incompatible type "int"; expected "Number" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f2(x: Complex) -> None: pass
 f2(1)  # E: Argument 1 to "f2" has incompatible type "int"; expected "Complex" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f3(x: Real) -> None: pass
 f3(1)  # E: Argument 1 to "f3" has incompatible type "int"; expected "Real" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f4(x: Rational) -> None: pass
 f4(1)  # E: Argument 1 to "f4" has incompatible type "int"; expected "Rational" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
 def f5(x: Integral) -> None: pass
 f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" \
-       # N: Types from "numbers" aren't supported for static type checking \
+       # N: Types from "numbers" are not supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
 
@@ -9398,3 +9700,12 @@ from typ import NT
 def f() -> NT:
     return NT(x='')
 [builtins fixtures/tuple.pyi]
+
+[case testClassNestedInFunctionNotLeaking]
+from a import X  # E: Module "a" has no attribute "X"
+reveal_type(X)  # N: Revealed type is "Any"
+[file a.py]
+def f() -> None:
+    class X:
+        ...
+    undefined  # E: Name "undefined" is not defined

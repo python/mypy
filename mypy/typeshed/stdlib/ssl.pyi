@@ -83,36 +83,6 @@ class SSLCertVerificationError(SSLError, ValueError):
 
 CertificateError = SSLCertVerificationError
 
-if sys.version_info < (3, 12):
-    @deprecated("Deprecated since Python 3.7; removed in Python 3.12. Use `SSLContext.wrap_socket()` instead.")
-    def wrap_socket(
-        sock: socket.socket,
-        keyfile: StrOrBytesPath | None = None,
-        certfile: StrOrBytesPath | None = None,
-        server_side: bool = False,
-        cert_reqs: int = ...,
-        ssl_version: int = ...,
-        ca_certs: str | None = None,
-        do_handshake_on_connect: bool = True,
-        suppress_ragged_eofs: bool = True,
-        ciphers: str | None = None,
-    ) -> SSLSocket: ...
-    @deprecated("Deprecated since Python 3.7; removed in Python 3.12.")
-    def match_hostname(cert: _PeerCertRetDictType, hostname: str) -> None: ...
-
-def cert_time_to_seconds(cert_time: str) -> int: ...
-
-if sys.version_info >= (3, 10):
-    def get_server_certificate(
-        addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = None, timeout: float = ...
-    ) -> str: ...
-
-else:
-    def get_server_certificate(addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = None) -> str: ...
-
-def DER_cert_to_PEM_cert(der_cert_bytes: ReadableBuffer) -> str: ...
-def PEM_cert_to_DER_cert(pem_cert_string: str) -> bytes: ...
-
 class DefaultVerifyPaths(NamedTuple):
     cafile: str
     capath: str
@@ -133,14 +103,14 @@ CERT_OPTIONAL: Final = VerifyMode.CERT_OPTIONAL
 CERT_REQUIRED: Final = VerifyMode.CERT_REQUIRED
 
 class VerifyFlags(enum.IntFlag):
-    VERIFY_DEFAULT = 0
-    VERIFY_CRL_CHECK_LEAF = 4
-    VERIFY_CRL_CHECK_CHAIN = 12
-    VERIFY_X509_STRICT = 32
-    VERIFY_X509_TRUSTED_FIRST = 32768
+    VERIFY_DEFAULT = 0x00
+    VERIFY_CRL_CHECK_LEAF = 0x04
+    VERIFY_CRL_CHECK_CHAIN = 0x0C
+    VERIFY_X509_STRICT = 0x20
+    VERIFY_X509_TRUSTED_FIRST = 0x8000
     if sys.version_info >= (3, 10):
-        VERIFY_ALLOW_PROXY_CERTS = 64
-        VERIFY_X509_PARTIAL_CHAIN = 524288
+        VERIFY_ALLOW_PROXY_CERTS = 0x40
+        VERIFY_X509_PARTIAL_CHAIN = 0x80000
 
 VERIFY_DEFAULT: Final = VerifyFlags.VERIFY_DEFAULT
 VERIFY_CRL_CHECK_LEAF: Final = VerifyFlags.VERIFY_CRL_CHECK_LEAF
@@ -174,7 +144,7 @@ PROTOCOL_TLS_CLIENT: Final = _SSLMethod.PROTOCOL_TLS_CLIENT
 PROTOCOL_TLS_SERVER: Final = _SSLMethod.PROTOCOL_TLS_SERVER
 
 class Options(enum.IntFlag):
-    OP_ALL = 2147483728
+    OP_ALL: int
     OP_NO_SSLv2 = 0
     OP_NO_SSLv3 = 33554432
     OP_NO_TLSv1 = 67108864
@@ -321,7 +291,9 @@ class SSLSocket(socket.socket):
     @overload
     def sendto(self, data: ReadableBuffer, flags_or_addr: int, addr: socket._Address) -> int: ...
     def shutdown(self, how: int) -> None: ...
+    @deprecated("Deprecated since Python 3.6. Use `SSLSocket.recv` method instead.")
     def read(self, len: int = 1024, buffer: bytearray | None = None) -> bytes: ...
+    @deprecated("Deprecated since Python 3.6. Use `SSLSocket.send` method instead.")
     def write(self, data: ReadableBuffer) -> int: ...
     def do_handshake(self, block: bool = False) -> None: ...  # block is undocumented
     @overload
@@ -353,6 +325,40 @@ class SSLSocket(socket.socket):
     if sys.version_info >= (3, 13):
         def get_verified_chain(self) -> list[bytes]: ...
         def get_unverified_chain(self) -> list[bytes]: ...
+
+if sys.version_info < (3, 12):
+    @deprecated("Deprecated since Python 3.7; removed in Python 3.12. Use `SSLContext.wrap_socket()` instead.")
+    def wrap_socket(
+        sock: socket.socket,
+        keyfile: StrOrBytesPath | None = None,
+        certfile: StrOrBytesPath | None = None,
+        server_side: bool = False,
+        cert_reqs: int = VerifyMode.CERT_NONE,
+        ssl_version: int = _SSLMethod.PROTOCOL_TLS,
+        ca_certs: str | None = None,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        ciphers: str | None = None,
+    ) -> SSLSocket: ...
+    @deprecated("Deprecated since Python 3.7; removed in Python 3.12.")
+    def match_hostname(cert: _PeerCertRetDictType, hostname: str) -> None: ...
+
+def cert_time_to_seconds(cert_time: str) -> int: ...
+def DER_cert_to_PEM_cert(der_cert_bytes: ReadableBuffer) -> str: ...
+def PEM_cert_to_DER_cert(pem_cert_string: str) -> bytes: ...
+
+if sys.version_info >= (3, 10):
+    def get_server_certificate(
+        addr: tuple[str, int],
+        ssl_version: int = _SSLMethod.PROTOCOL_TLS_CLIENT,
+        ca_certs: str | None = None,
+        timeout: float = ...,
+    ) -> str: ...
+
+else:
+    def get_server_certificate(
+        addr: tuple[str, int], ssl_version: int = _SSLMethod.PROTOCOL_TLS_CLIENT, ca_certs: str | None = None
+    ) -> str: ...
 
 class TLSVersion(enum.IntEnum):
     MINIMUM_SUPPORTED = -2
@@ -446,7 +452,7 @@ if sys.version_info >= (3, 10):
     def _create_unverified_context(
         protocol: int | None = None,
         *,
-        cert_reqs: int = ...,
+        cert_reqs: int = VerifyMode.CERT_NONE,
         check_hostname: bool = False,
         purpose: Purpose = Purpose.SERVER_AUTH,
         certfile: StrOrBytesPath | None = None,
@@ -460,7 +466,7 @@ else:
     def _create_unverified_context(
         protocol: int = ...,
         *,
-        cert_reqs: int = ...,
+        cert_reqs: int = VerifyMode.CERT_NONE,
         check_hostname: bool = False,
         purpose: Purpose = Purpose.SERVER_AUTH,
         certfile: StrOrBytesPath | None = None,

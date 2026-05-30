@@ -1,11 +1,13 @@
 from _typeshed import SupportsLenAndGetItem
 from hmac import compare_digest as compare_digest
 from random import SystemRandom as SystemRandom
-from typing import TypeVar
+from typing import Final, TypeVar
 
 __all__ = ["choice", "randbelow", "randbits", "SystemRandom", "token_bytes", "token_hex", "token_urlsafe", "compare_digest"]
 
 _T = TypeVar("_T")
+
+DEFAULT_ENTROPY: Final[int]
 
 def randbelow(exclusive_upper_bound: int) -> int: ...
 def randbits(k: int) -> int: ...

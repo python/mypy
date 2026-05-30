@@ -18,30 +18,38 @@
        ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
 
-#ifdef MYPYC_EXPERIMENTAL
-
 static PyTypeObject BytesWriterType;
 
 static bool
 _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
-    Py_ssize_t target = data->len + n;
-    Py_ssize_t size = data->capacity;
-    do {
-        size *= 2;
-    } while (target >= size);
-    if (data->buf == data->data) {
-        // Move from embedded buffer to heap-allocated buffer
-        data->buf = PyMem_Malloc(size);
-        if (data->buf != NULL) {
-            memcpy(data->buf, data->data, WRITER_EMBEDDED_BUF_LEN);
-        }
-    } else {
-        data->buf = PyMem_Realloc(data->buf, size);
-    }
-    if (unlikely(data->buf == NULL)) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
         PyErr_NoMemory();
         return false;
     }
+    Py_ssize_t target = data->len + n;
+    Py_ssize_t size = data->capacity;
+    do {
+        if (unlikely(size > PY_SSIZE_T_MAX / 2)) {
+            PyErr_NoMemory();
+            return false;
+        }
+        size *= 2;
+    } while (target >= size);
+    char *new_buf;
+    if (data->buf == data->data) {
+        // Move from embedded buffer to heap-allocated buffer
+        new_buf = PyMem_Malloc(size);
+        if (new_buf != NULL) {
+            memcpy(new_buf, data->data, data->len);
+        }
+    } else {
+        new_buf = PyMem_Realloc(data->buf, size);
+    }
+    if (unlikely(new_buf == NULL)) {
+        PyErr_NoMemory();
+        return false;
+    }
+    data->buf = new_buf;
     data->capacity = size;
     return true;
 }
@@ -71,9 +79,8 @@ BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     BytesWriterObject *self = (BytesWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         BytesWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -99,6 +106,9 @@ BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
     BytesWriter_init_internal(self);
     return 0;
 }
@@ -396,8 +406,21 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     char old_kind = self->kind;
     Py_ssize_t new_capacity = self->capacity;
 
+    // Limit so that (new_capacity * 2) * new_kind stays within Py_ssize_t.
+    // new_kind is always 1, 2, or 4, so use a shift instead of division.
+    int shift = (new_kind == 4) ? 3 : (new_kind == 2 ? 2 : 1);
+    Py_ssize_t cap_limit = PY_SSIZE_T_MAX >> shift;
     while (target_capacity >= new_capacity) {
+        if (unlikely(new_capacity > cap_limit)) {
+            PyErr_NoMemory();
+            return false;
+        }
         new_capacity *= 2;
+    }
+
+    if (unlikely(new_capacity > cap_limit * 2)) {
+        PyErr_NoMemory();
+        return false;
     }
 
     Py_ssize_t size_bytes = new_capacity * new_kind;
@@ -433,6 +456,10 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
 }
 
 static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+    if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
+        PyErr_NoMemory();
+        return false;
+    }
     return grow_string_buffer_helper(data, data->len + n, data->kind);
 }
 
@@ -464,9 +491,8 @@ StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     StringWriterObject *self = (StringWriterObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
+    if (self != NULL)
         StringWriter_init_internal(self);
-    }
     return (PyObject *)self;
 }
 
@@ -492,6 +518,9 @@ StringWriter_init(StringWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    // Soft reset: free any heap buffer so re-initialization doesn't leak.
+    if (self->buf != self->data && self->buf != NULL)
+        PyMem_Free(self->buf);
     StringWriter_init_internal(self);
     return 0;
 }
@@ -619,7 +648,8 @@ check_string_writer(PyObject *data) {
 static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
 
 static char
-StringWriter_write_internal(StringWriterObject *self, PyObject *value) {
+StringWriter_write_internal(PyObject *obj, PyObject *value) {
+    StringWriterObject *self = (StringWriterObject *)obj;
     Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
     if (str_len == 0) {
         return CPY_NONE;
@@ -675,7 +705,7 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a str object");
         return NULL;
     }
-    if (unlikely(StringWriter_write_internal((StringWriterObject *)self, value) == CPY_NONE_ERROR)) {
+    if (unlikely(StringWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -706,6 +736,13 @@ static void convert_string_data_in_place(char *buf, Py_ssize_t len,
 }
 
 static char convert_string_buffer_kind(StringWriterObject *self, char old_kind, char new_kind) {
+    // new_kind is always 2 or 4, so the max representable len is PY_SSIZE_T_MAX >> {1,2}.
+    // Use a shift instead of a division for cheap overflow check.
+    Py_ssize_t max_len = PY_SSIZE_T_MAX >> (new_kind == 4 ? 2 : 1);
+    if (unlikely(self->len > max_len)) {
+        PyErr_NoMemory();
+        return CPY_NONE_ERROR;
+    }
     // Current buffer size in bytes
     Py_ssize_t current_buf_size = (self->buf == self->data) ? WRITER_EMBEDDED_BUF_LEN : (self->capacity * old_kind);
     // Needed buffer size in bytes for new kind
@@ -747,7 +784,7 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
 static char string_append_slow_path(StringWriterObject *self, int32_t value) {
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
-            // Kind stays the same
+            // Fast path - kind 2 stays the same
             if (!ensure_string_writer_size(self, 1))
                 return CPY_NONE_ERROR;
             // Copy 2-byte character to buffer
@@ -756,28 +793,35 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
             self->len++;
             return CPY_NONE;
         }
+        // Always validate code point range before promotion (but after fast path).
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     } else if (self->kind == 1) {
         // Check precondition -- this must only be used on slow path
         assert((uint32_t)value > 0xff);
+        if (unlikely((uint32_t)value > 0x10FFFF))
+            goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
         return string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
-    if ((uint32_t)value <= 0x10FFFF) {
-        if (!ensure_string_writer_size(self, 1))
-            return CPY_NONE_ERROR;
-        // Copy 4-byte character to buffer
-        uint32_t val32 = (uint32_t)value;
-        memcpy(self->buf + self->len * 4, &val32, 4);
-        self->len++;
-        return CPY_NONE;
-    }
-    // Code point is out of valid Unicode range
-    PyErr_Format(PyExc_ValueError, "code point %d is outside valid Unicode range (0-1114111)", value);
+    if (unlikely((uint32_t)value > 0x10FFFF))
+        goto fail_range;
+    if (!ensure_string_writer_size(self, 1))
+        return CPY_NONE_ERROR;
+    // Copy 4-byte character to buffer
+    uint32_t val32 = (uint32_t)value;
+    memcpy(self->buf + self->len * 4, &val32, 4);
+    self->len++;
+    return CPY_NONE;
+
+fail_range:
+    PyErr_Format(PyExc_ValueError,
+                "code point %d is outside valid Unicode range (0-1114111)", value);
     return CPY_NONE_ERROR;
 }
 
@@ -830,13 +874,401 @@ StringWriter_len_internal(PyObject *self) {
 
 // End of StringWriter
 
-#endif
+// Helper for write_*_le/be functions - validates args and returns BytesWriter
+static inline BytesWriterObject *
+parse_write_args(PyObject *const *args, size_t nargs, const char *func_name) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s() takes exactly 2 arguments (%zu given)", func_name, nargs);
+        return NULL;
+    }
+    PyObject *writer = args[0];
+    if (!check_bytes_writer(writer)) {
+        return NULL;
+    }
+    return (BytesWriterObject *)writer;
+}
+
+// Helper for read_*_le/be functions - validates args and returns data pointer
+// Returns NULL on error, sets *out_index to the validated index on success
+static inline const unsigned char *
+parse_read_args(PyObject *const *args, size_t nargs, const char *func_name,
+                    Py_ssize_t num_bytes, int64_t *out_index) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s() takes exactly 2 arguments (%zu given)", func_name, nargs);
+        return NULL;
+    }
+    PyObject *bytes_obj = args[0];
+    if (unlikely(!PyBytes_Check(bytes_obj))) {
+        PyErr_Format(PyExc_TypeError, "%s() argument 1 must be bytes", func_name);
+        return NULL;
+    }
+    int64_t index = CPyLong_AsInt64(args[1]);
+    if (unlikely(index == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        return NULL;
+    }
+    if (unlikely(index < 0)) {
+        PyErr_SetString(PyExc_ValueError, "index must be non-negative");
+        return NULL;
+    }
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index > size - num_bytes)) {
+        PyErr_Format(PyExc_IndexError,
+                     "index %lld out of range for bytes of length %zd",
+                     (long long)index, size);
+        return NULL;
+    }
+    *out_index = index;
+    return (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+}
+
+static PyObject*
+write_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i16_le");
+    if (bw == NULL)
+        return NULL;
+    int16_t unboxed = CPyLong_AsInt16(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2)))
+        return NULL;
+    BytesWriter_WriteI16LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i16_be");
+    if (bw == NULL)
+        return NULL;
+    int16_t unboxed = CPyLong_AsInt16(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 2)))
+        return NULL;
+    BytesWriter_WriteI16BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i16_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i16_le", 2, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI16LEUnsafe(data + index));
+}
+
+static PyObject*
+read_i16_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i16_be", 2, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI16BEUnsafe(data + index));
+}
+
+static PyObject*
+write_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i32_le");
+    if (bw == NULL)
+        return NULL;
+    int32_t unboxed = CPyLong_AsInt32(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteI32LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i32_be");
+    if (bw == NULL)
+        return NULL;
+    int32_t unboxed = CPyLong_AsInt32(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteI32BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i32_le", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI32LEUnsafe(data + index));
+}
+
+static PyObject*
+read_i32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i32_be", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLong(CPyBytes_ReadI32BEUnsafe(data + index));
+}
+
+static PyObject*
+write_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i64_le");
+    if (bw == NULL)
+        return NULL;
+    int64_t unboxed = CPyLong_AsInt64(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteI64LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_i64_be");
+    if (bw == NULL)
+        return NULL;
+    int64_t unboxed = CPyLong_AsInt64(args[1]);
+    if (unlikely(unboxed == CPY_LL_INT_ERROR && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteI64BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_i64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i64_le", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLongLong(CPyBytes_ReadI64LEUnsafe(data + index));
+}
+
+static PyObject*
+read_i64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_i64_be", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyLong_FromLongLong(CPyBytes_ReadI64BEUnsafe(data + index));
+}
+
+static PyObject*
+write_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f32_le");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteF32LEUnsafe(bw, (float)unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f32_be");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 4)))
+        return NULL;
+    BytesWriter_WriteF32BEUnsafe(bw, (float)unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_f32_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_f32_le", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32LEUnsafe(data + index));
+}
+
+static PyObject*
+read_f32_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_f32_be", 4, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble((double)CPyBytes_ReadF32BEUnsafe(data + index));
+}
+
+static PyObject*
+write_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f64_le");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteF64LEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+write_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    BytesWriterObject *bw = parse_write_args(args, nargs, "write_f64_be");
+    if (bw == NULL)
+        return NULL;
+    double unboxed = PyFloat_AsDouble(args[1]);
+    if (unlikely(unboxed == -1.0 && PyErr_Occurred()))
+        return NULL;
+    if (unlikely(!ensure_bytes_writer_size(bw, 8)))
+        return NULL;
+    BytesWriter_WriteF64BEUnsafe(bw, unboxed);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+read_f64_le(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_f64_le", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble(CPyBytes_ReadF64LEUnsafe(data + index));
+}
+
+static PyObject*
+read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
+    int64_t index;
+    const unsigned char *data = parse_read_args(args, nargs, "read_f64_be", 8, &index);
+    if (data == NULL)
+        return NULL;
+    return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
+}
+
+// Python-level wrappers (`cp_*`) for interpreted callers. The C-side names
+// are prefixed `cp_` to avoid colliding with libc's <ctype.h> isspace etc.
+// The LibRTStrings_Is* helpers themselves are static inline in librt_strings.h
+// so they compile directly into mypyc-emitted code with no capsule
+// indirection.
+
+// Parse a Python int as i32 codepoint. Returns 0 on success and writes
+// the value to *out; returns -1 on error with a Python exception set.
+static int
+cp_parse_i32(PyObject *arg, int32_t *out) {
+    int overflow;
+    long c = PyLong_AsLongAndOverflow(arg, &overflow);
+    if (c == -1 && PyErr_Occurred())
+        return -1;
+    if (overflow != 0 || c < INT32_MIN || c > INT32_MAX) {
+        PyErr_SetString(PyExc_OverflowError,
+                        "codepoint out of i32 range");
+        return -1;
+    }
+    *out = (int32_t)c;
+    return 0;
+}
+
+#define DEFINE_CP_BOOL_WRAPPER(name, fn)                                    \
+    static PyObject*                                                        \
+    cp_##name(PyObject *module, PyObject *arg) {                            \
+        int32_t c;                                                          \
+        if (cp_parse_i32(arg, &c) < 0)                                      \
+            return NULL;                                                    \
+        return PyBool_FromLong(fn(c));                                      \
+    }
+
+DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
+DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
+DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
+DEFINE_CP_BOOL_WRAPPER(isalpha, LibRTStrings_IsAlpha)
+DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
 
 static PyMethodDef librt_strings_module_methods[] = {
+    {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
+     PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"write_i16_be", (PyCFunction) write_i16_be, METH_FASTCALL,
+     PyDoc_STR("Write a 16-bit signed integer to BytesWriter in big-endian format")
+    },
+    {"read_i16_le", (PyCFunction) read_i16_le, METH_FASTCALL,
+     PyDoc_STR("Read a 16-bit signed integer from bytes in little-endian format")
+    },
+    {"read_i16_be", (PyCFunction) read_i16_be, METH_FASTCALL,
+     PyDoc_STR("Read a 16-bit signed integer from bytes in big-endian format")
+    },
+    {"write_i32_le", (PyCFunction) write_i32_le, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"write_i32_be", (PyCFunction) write_i32_be, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit signed integer to BytesWriter in big-endian format")
+    },
+    {"read_i32_le", (PyCFunction) read_i32_le, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit signed integer from bytes in little-endian format")
+    },
+    {"read_i32_be", (PyCFunction) read_i32_be, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit signed integer from bytes in big-endian format")
+    },
+    {"write_i64_le", (PyCFunction) write_i64_le, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit signed integer to BytesWriter in little-endian format")
+    },
+    {"write_i64_be", (PyCFunction) write_i64_be, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit signed integer to BytesWriter in big-endian format")
+    },
+    {"read_i64_le", (PyCFunction) read_i64_le, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit signed integer from bytes in little-endian format")
+    },
+    {"read_i64_be", (PyCFunction) read_i64_be, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit signed integer from bytes in big-endian format")
+    },
+    {"write_f32_le", (PyCFunction) write_f32_le, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit float to BytesWriter in little-endian format")
+    },
+    {"write_f32_be", (PyCFunction) write_f32_be, METH_FASTCALL,
+     PyDoc_STR("Write a 32-bit float to BytesWriter in big-endian format")
+    },
+    {"read_f32_le", (PyCFunction) read_f32_le, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit float from bytes in little-endian format")
+    },
+    {"read_f32_be", (PyCFunction) read_f32_be, METH_FASTCALL,
+     PyDoc_STR("Read a 32-bit float from bytes in big-endian format")
+    },
+    {"write_f64_le", (PyCFunction) write_f64_le, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit float to BytesWriter in little-endian format")
+    },
+    {"write_f64_be", (PyCFunction) write_f64_be, METH_FASTCALL,
+     PyDoc_STR("Write a 64-bit float to BytesWriter in big-endian format")
+    },
+    {"read_f64_le", (PyCFunction) read_f64_le, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit float from bytes in little-endian format")
+    },
+    {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
+     PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
+    },
+    {"isspace", cp_isspace, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is Unicode whitespace.")
+    },
+    {"isdigit", cp_isdigit, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a Unicode digit.")
+    },
+    {"isalnum", cp_isalnum, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is alphanumeric.")
+    },
+    {"isalpha", cp_isalpha, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a Unicode letter.")
+    },
+    {"isidentifier", cp_isidentifier, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a valid identifier start (XID_Start).")
+    },
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 strings_abi_version(void) {
@@ -848,12 +1280,9 @@ strings_api_version(void) {
     return LIBRT_STRINGS_API_VERSION;
 }
 
-#endif
-
 static int
 librt_strings_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
@@ -877,12 +1306,17 @@ librt_strings_module_exec(PyObject *m)
         (void *)_grow_buffer,
         (void *)BytesWriter_type_internal,
         (void *)BytesWriter_truncate_internal,
+        (void *)StringWriter_internal,
+        (void *)StringWriter_getvalue_internal,
+        (void *)string_append_slow_path,
+        (void *)StringWriter_type_internal,
+        (void *)StringWriter_write_internal,
+        (void *)grow_string_buffer,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 

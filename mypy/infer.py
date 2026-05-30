@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import NamedTuple
+from typing import Final
 
 from mypy.constraints import (
     SUBTYPE_OF,
@@ -16,7 +16,7 @@ from mypy.solve import solve_constraints
 from mypy.types import CallableType, Instance, Type, TypeVarLikeType
 
 
-class ArgumentInferContext(NamedTuple):
+class ArgumentInferContext:
     """Type argument inference context.
 
     We need this because we pass around ``Mapping`` and ``Iterable`` types.
@@ -26,8 +26,9 @@ class ArgumentInferContext(NamedTuple):
     https://github.com/python/mypy/issues/11144
     """
 
-    mapping_type: Instance
-    iterable_type: Instance
+    def __init__(self, mapping_type: Instance, iterable_type: Instance) -> None:
+        self.mapping_type: Final = mapping_type
+        self.iterable_type: Final = iterable_type
 
 
 def infer_function_type_arguments(
@@ -69,8 +70,11 @@ def infer_type_arguments(
     actual: Type,
     is_supertype: bool = False,
     skip_unsatisfied: bool = False,
+    erase_types: bool = True,
 ) -> list[Type | None]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
-    constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
+    constraints = infer_constraints(
+        template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF, erase_types=erase_types
+    )
     return solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]

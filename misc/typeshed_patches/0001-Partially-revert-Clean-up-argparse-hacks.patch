@@ -1,4 +1,4 @@
-From 84a9d586544a0408d4654f57f83a93cb048070fb Mon Sep 17 00:00:00 2001
+From b6d495c10e79fb56ff64f8fb90c87894090f9cbe Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 15 Feb 2025 20:11:06 +0100
 Subject: [PATCH] Partially revert Clean up argparse hacks
@@ -8,7 +8,7 @@ Subject: [PATCH] Partially revert Clean up argparse hacks
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/argparse.pyi b/mypy/typeshed/stdlib/argparse.pyi
-index b9fa31139..3c3ba116a 100644
+index ae99eb036..c87b8f4fc 100644
 --- a/mypy/typeshed/stdlib/argparse.pyi
 +++ b/mypy/typeshed/stdlib/argparse.pyi
 @@ -2,7 +2,7 @@ import sys
@@ -41,5 +41,5 @@ index b9fa31139..3c3ba116a 100644
          default: Any = ...,
          type: _ActionType = ...,
 -- 
-2.50.1
+2.52.0
 

@@ -142,7 +142,7 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testCanCreateTypedDictWithClassOldVersion]
+[case testCanCreateTypedDictWithClassFunctionBases]
 # Test that we can use class-syntax to merge function-based TypedDicts
 from typing import TypedDict
 
@@ -232,6 +232,20 @@ class D(TypedDict):
         pass
 d = D()
 reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictDecoratorUndefinedNames]
+from typing import TypedDict
+
+@abc  # E: Name "abc" is not defined
+@efg.hij  # E: Name "efg" is not defined
+@klm[nop]  # E: Name "klm" is not defined \
+           # E: Name "nop" is not defined
+@qrs.tuv[wxy]  # E: Name "qrs" is not defined \
+               # E: Name "wxy" is not defined
+class A(TypedDict):
+    x: int
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -765,6 +779,17 @@ def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testCanGetItemOfTypedDictWithStringLiteralKeyInComprehension]
+from typing import TypedDict
+Data = TypedDict('Data', {'field1': int, 'field2': str, 'field3': str})
+data: Data
+def is_str(value: object) -> bool: ...
+filtered_keys1 = [data[key] for key in ("field1", "field2", "field3")]
+filtered_keys2 = [key for key in ("field1", "field2", "field3") if is_str(data[key])]
+reveal_type(filtered_keys1)    # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
+reveal_type(filtered_keys2)    # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/for.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Special Method: __setitem__
 
@@ -927,6 +952,18 @@ c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}  # E: Type of TypedDict is
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictUnionWithNonTypedDictLiteralKey]
+from typing import Union, TypedDict
+
+class Foo(TypedDict):
+    some: str
+    name: str
+
+baz: Union[Foo, dict[int, float]] = {1: 5.2}
+baz2: Union[Foo, dict[int, float]] = {'some': 'x', 'name': 'y'}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 -- Use dict literals
 
 [case testTypedDictDictLiterals]
@@ -1007,7 +1044,7 @@ class D(TypedDict):
     b: NotRequired[str]
 
 def test(d: D) -> None:
-    reveal_type(d.get)  # N: Revealed type is "Overload(def (k: builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
+    reveal_type(d.get)  # N: Revealed type is "Overload(def (builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1151,12 +1188,12 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
         # N: Possible overload variants: \
-        # N:     def get(self, k: str) -> object \
+        # N:     def get(self, str, /) -> object \
         # N:     def get(self, str, object, /) -> object \
         # N:     def [V] get(self, str, V, /) -> object
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
                  # N: Possible overload variants: \
-                 # N:     def get(self, k: str) -> object \
+                 # N:     def get(self, str, /) -> object \
                  # N:     def get(self, str, object, /) -> object \
                  # N:     def [V] get(self, str, int | V, /) -> object
 x = d.get('z')
@@ -2515,6 +2552,17 @@ class ForwardDeclared: pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictCannotBeDisjointBase]
+from typing import TypedDict
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
+class A(TypedDict):
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict
 
@@ -3749,7 +3797,7 @@ B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfol
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithClassLevelKeywords]
+[case testTypedDictWithClassLevelKeywords_no_native_parse]
 from typing import TypedDict, Generic, TypeVar
 
 T = TypeVar('T')
@@ -3849,7 +3897,7 @@ def f(self, **kwargs: Unpack[TD]) -> None:
 def g(self, *, x: float) -> None: ...
 @overload
 def g(self, *, y: str) -> None: ...
-def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     z  # E: Name "z" is not defined
 
 class A:
@@ -4579,5 +4627,33 @@ ok({"x": "foo"})
 def bad(d: Union[TD, dict[str, int]]) -> None: ...
 bad({"x": "foo"})  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
 
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackImportCycle]
+import mre
+
+[file mre.py]
+from mre_pkg.model import Callback
+Callback(callback=1)  # E: Argument "callback" to "Callback" has incompatible type "int"; expected "Callback"
+
+[file mre_pkg/model.pyi]
+from typing_extensions import Unpack, TYPE_CHECKING, TypedDict
+from .callbacks import Callback as Callback
+
+class _ModelInit(TypedDict, total=False):
+    callback: Callback
+
+class Model:
+    def __init__(self, **kwargs: Unpack[_ModelInit]) -> None: ...
+
+[file mre_pkg/callbacks.pyi]
+from typing_extensions import Unpack, TYPE_CHECKING, TypedDict
+from .model import Model, _ModelInit
+
+class _CallbackInit(_ModelInit, total=False): ...
+
+class Callback(Model):
+    def __init__(self, **kwargs: Unpack[_CallbackInit]) -> None: ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

@@ -23,6 +23,7 @@ class FuncInfo:
         is_decorated: bool = False,
         in_non_ext: bool = False,
         add_nested_funcs_to_env: bool = False,
+        is_comprehension_scope: bool = False,
     ) -> None:
         self.fitem = fitem
         self.name = name
@@ -49,6 +50,11 @@ class FuncInfo:
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
         self.add_nested_funcs_to_env = add_nested_funcs_to_env
+        # Comprehension scopes are lightweight scope boundaries created when
+        # a comprehension body contains a lambda. The comprehension is still
+        # inlined (same basic blocks), but we push a new FuncInfo so the
+        # closure machinery can capture loop variables through env classes.
+        self.is_comprehension_scope = is_comprehension_scope
 
         # TODO: add field for ret_type: RType = none_rprimitive
 

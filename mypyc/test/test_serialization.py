@@ -55,10 +55,6 @@ def assert_blobs_same(x: Any, y: Any, trail: tuple[Any, ...]) -> None:
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):
             assert_blobs_same(xk, yk, trail + ("keys",))
             assert_blobs_same(xv, yv, trail + (xk,))
-    elif isinstance(x, dict):
-        assert x.keys() == y.keys(), f"Keys mismatch at {trail}"
-        for k in x.keys():
-            assert_blobs_same(x[k], y[k], trail + (k,))
     elif isinstance(x, Iterable) and not isinstance(x, (str, set)):
         # Special case iterables to generate better assert error messages.
         # We can't use this for sets since the ordering is unpredictable,
@@ -94,6 +90,8 @@ def assert_modules_same(ir1: ModuleIR, ir2: ModuleIR) -> None:
         assert_blobs_same(get_dict(fn1.decl), get_dict(fn2.decl), (ir1.fullname, fn1.fullname))
 
     assert_blobs_same(ir1.final_names, ir2.final_names, (ir1.fullname, "final_names"))
+
+    assert ir1.dependencies == ir2.dependencies
 
 
 def check_serialization_roundtrip(irs: dict[str, ModuleIR]) -> None:
