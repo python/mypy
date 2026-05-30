@@ -13,6 +13,7 @@ MypyFile:1(
   Import:2(typing)
   ClassDef:4(
     A
+    Keywords(metaclass=NameExpr(ABCMeta [abc.ABCMeta]))
     Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     Decorator:5(
       Var(g)
@@ -49,10 +50,12 @@ MypyFile:1(
   Import:2(typing)
   ClassDef:4(
     A
+    Keywords(metaclass=NameExpr(ABCMeta [abc.ABCMeta]))
     Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     PassStmt:4())
   ClassDef:5(
     B
+    Keywords(metaclass=NameExpr(ABCMeta [abc.ABCMeta]))
     Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     PassStmt:5())
   ClassDef:6(
@@ -106,6 +109,7 @@ MypyFile:1(
   Import:3(typing)
   ClassDef:5(
     A
+    Keywords(metaclass=NameExpr(ABCMeta [abc.ABCMeta]))
     Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     Decorator:6(
       Var(g)

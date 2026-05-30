@@ -55,6 +55,7 @@ intern_strings(void) {
     INTERN_STRING(endswith, "endswith");
     INTERN_STRING(get_type_hints, "get_type_hints");
     INTERN_STRING(keys, "keys");
+    INTERN_STRING(lower, "lower");
     INTERN_STRING(items, "items");
     INTERN_STRING(join, "join");
     INTERN_STRING(register_, "register");
@@ -66,6 +67,7 @@ intern_strings(void) {
     INTERN_STRING(throw_, "throw");
     INTERN_STRING(translate, "translate");
     INTERN_STRING(update, "update");
+    INTERN_STRING(upper, "upper");
     INTERN_STRING(values, "values");
     return 0;
 }

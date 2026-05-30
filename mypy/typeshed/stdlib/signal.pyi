@@ -9,7 +9,6 @@ from typing_extensions import Never, TypeAlias
 NSIG: int
 
 class Signals(IntEnum):
-    SIGABRT = 6
     SIGFPE = 8
     SIGILL = 4
     SIGINT = 2
@@ -17,10 +16,12 @@ class Signals(IntEnum):
     SIGTERM = 15
 
     if sys.platform == "win32":
+        SIGABRT = 22
         SIGBREAK = 21
         CTRL_C_EVENT = 0
         CTRL_BREAK_EVENT = 1
     else:
+        SIGABRT = 6
         SIGALRM = 14
         SIGBUS = 7
         SIGCHLD = 17

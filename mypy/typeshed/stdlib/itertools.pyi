@@ -341,7 +341,7 @@ if sys.version_info >= (3, 10):
 
 if sys.version_info >= (3, 12):
     @disjoint_base
-    class batched(Iterator[tuple[_T_co, ...]], Generic[_T_co]):
+    class batched(Iterator[_T_co], Generic[_T_co]):
         if sys.version_info >= (3, 13):
             @overload
             def __new__(cls, iterable: Iterable[_T], n: Literal[1], *, strict: Literal[True]) -> batched[tuple[_T]]: ...

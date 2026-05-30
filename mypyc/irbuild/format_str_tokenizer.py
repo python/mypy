@@ -25,7 +25,7 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.primitives.bytes_ops import bytes_build_op
-from mypyc.primitives.int_ops import int_to_str_op
+from mypyc.primitives.int_ops import int_to_ascii_op, int_to_str_op
 from mypyc.primitives.str_ops import str_build_op, str_op
 
 
@@ -225,8 +225,13 @@ def convert_format_expr_to_bytes(
                 var_bytes = builder.accept(x)
             else:
                 return None
-        else:
-            return None
+        elif format_op == FormatOp.INT:
+            if isinstance(folded := constant_fold_expr(builder, x), int):
+                var_bytes = builder.load_literal_value(str(folded).encode("ascii"))
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_bytes = builder.call_c(int_to_ascii_op, [builder.accept(x)], line)
+            else:
+                return None
         converted.append(var_bytes)
     return converted
 

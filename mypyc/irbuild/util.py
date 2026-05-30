@@ -39,6 +39,7 @@ MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
         "serializable",
         "supports_weakref",
         "free_list_len",
+        "acyclic",
     ]
 )
 
@@ -51,6 +52,7 @@ MypycAttr = Literal[
     "serializable",
     "supports_weakref",
     "free_list_len",
+    "acyclic",
 ]
 
 
@@ -60,6 +62,7 @@ class MypycAttrs(TypedDict):
     serializable: NotRequired[bool]
     supports_weakref: NotRequired[bool]
     free_list_len: NotRequired[int]
+    acyclic: NotRequired[bool]
 
 
 def is_final_decorator(d: Expression) -> bool:

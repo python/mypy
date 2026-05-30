@@ -228,9 +228,11 @@ def generate_class_reuse(
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
-    context.declarations[name] = HeaderDeclaration(
-        f"CPyThreadLocal {struct_name} *{name};", needs_export=True
-    )
+    # Not exported: the free-instance slot is only read/written by the class's
+    # own setup/dealloc code, which lives in the defining group. Exporting it
+    # also trips a C diagnostic under `Py_GIL_DISABLED`, where `CPyThreadLocal`
+    # expands to `__thread` and can't legally appear inside the exports struct.
+    context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};")
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -262,10 +264,12 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.builtin_base:
         fields["tp_new"] = new_name
 
-    if generate_full:
+    managed_dict = has_managed_dict(cl, emitter)
+    if generate_full or managed_dict:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
-        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+        if not cl.is_acyclic:
+            fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
+            fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
@@ -348,6 +352,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     else:
         fields["tp_basicsize"] = base_size
 
+    if generate_full or managed_dict:
+        if not cl.is_acyclic:
+            generate_traverse_for_class(cl, traverse_name, emitter)
+            emit_line()
+        generate_clear_for_class(cl, clear_name, emitter)
+        emit_line()
+        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
+        emit_line()
     if generate_full:
         assert cl.setup is not None
         emitter.emit_line(native_function_header(cl.setup, emitter) + ";")
@@ -357,12 +369,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         init_fn = cl.get_method("__init__")
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
-        emit_line()
-        generate_traverse_for_class(cl, traverse_name, emitter)
-        emit_line()
-        generate_clear_for_class(cl, clear_name, emitter)
-        emit_line()
-        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
         emit_line()
 
         if cl.allow_interpreted_subclasses:
@@ -392,7 +398,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if generate_full:
+    if (generate_full or managed_dict) and not cl.is_acyclic:
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -403,7 +409,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # This is just a placeholder to please CPython. It will be
             # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
-    if has_managed_dict(cl, emitter):
+    if managed_dict:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     if cl.supports_weakref and emitter.capi_version >= (3, 12):
         flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
@@ -638,7 +644,8 @@ def generate_setup_for_class(
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
         emitter.emit_line("Py_SET_REFCNT(self, 1);")
-        emitter.emit_line("PyObject_GC_Track(self);")
+        if not cl.is_acyclic:
+            emitter.emit_line("PyObject_GC_Track(self);")
         if defaults_fn is not None:
             emit_attr_defaults_func_call(defaults_fn, "self", emitter)
         emitter.emit_line("return (PyObject *)self;")
@@ -670,7 +677,7 @@ def generate_setup_for_class(
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
             if value != "NULL":
-                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
+                emitter.set_undefined_value(f"self->{emitter.attr(attr)}", rtype)
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -693,8 +700,8 @@ def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: E
     The code returns NULL on a raised exception.
     """
     emitter.emit_lines(
-        "if ({}{}((PyObject *){}) == 0) {{".format(
-            NATIVE_PREFIX, defaults_fn.cname(emitter.names), self_name
+        "if ({}((PyObject *){}) == 0) {{".format(
+            emitter.native_function_call(defaults_fn.decl), self_name
         ),
         "Py_DECREF(self);",
         "return NULL;",
@@ -719,11 +726,15 @@ def emit_setup_or_dunder_new_call(
         emitter.emit_line(f"PyObject *self = {setup_name}({type_arg});")
         emit_null_check()
         return
-    prefix = emitter.get_group_prefix(new_fn.decl) + NATIVE_PREFIX if native_prefix else PREFIX
+    call = (
+        emitter.native_function_call(new_fn.decl)
+        if native_prefix
+        else emitter.wrapper_function_call(new_fn.decl)
+    )
     all_args = type_arg
     if new_args != "":
         all_args += ", " + new_args
-    emitter.emit_line(f"PyObject *self = {prefix}{new_fn.cname(emitter.names)}({all_args});")
+    emitter.emit_line(f"PyObject *self = {call}({all_args});")
     emit_null_check()
 
     # skip __init__ if __new__ returns some other type
@@ -757,17 +768,13 @@ def generate_constructor_for_class(
 
     args = ", ".join(["self"] + fn_args)
     if init_fn is not None:
-        prefix = PREFIX if use_wrapper else NATIVE_PREFIX
-        cast = "!= NULL ? 0 : -1" if use_wrapper else ""
-        emitter.emit_line(
-            "char res = {}{}{}({}){};".format(
-                emitter.get_group_prefix(init_fn.decl),
-                prefix,
-                init_fn.cname(emitter.names),
-                args,
-                cast,
-            )
+        call = (
+            emitter.wrapper_function_call(init_fn.decl)
+            if use_wrapper
+            else emitter.native_function_call(init_fn.decl)
         )
+        cast = "!= NULL ? 0 : -1" if use_wrapper else ""
+        emitter.emit_line(f"char res = {call}({args}){cast};")
         emitter.emit_line("if (res == 2) {")
         emitter.emit_line("Py_DECREF(self);")
         emitter.emit_line("return NULL;")
@@ -800,9 +807,8 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("{")
     if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
         emitter.emit_line(
-            "return {}{}(self, args, kwds) != NULL ? 0 : -1;".format(
-                PREFIX, init_fn.cname(emitter.names)
-            )
+            f"return {emitter.wrapper_function_call(init_fn.decl)}"
+            "(self, args, kwds) != NULL ? 0 : -1;"
         )
     else:
         emitter.emit_line("return 0;")
@@ -848,9 +854,10 @@ def generate_new_for_class(
         # can enforce that instances are always properly initialized. This
         # is needed to support always defined attributes.
         emitter.emit_line(
-            f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
+            f"PyObject *ret = {emitter.wrapper_function_call(init_fn.decl)}(self, args, kwds);"
         )
-        emitter.emit_lines("if (ret == NULL)", "    return NULL;")
+        emitter.emit_lines("if (ret == NULL) {", "    Py_DECREF(self);", "    return NULL;", "}")
+        emitter.emit_line("Py_DECREF(ret);")
         emitter.emit_line("return self;")
     emitter.emit_line("}")
 
@@ -881,8 +888,14 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self, visit, arg"
+    emitter.emit_line("int rv = 0;")
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_traverse", base_args, prefix="rv = ")
+        emitter.emit_line("if (rv != 0) return rv;")
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line(f"rv = PyObject_VisitManagedDict({base_args});")
+        emitter.emit_line("if (rv != 0) return rv;")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -899,7 +912,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         emitter.emit_gc_visit(
             f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
         )
-    emitter.emit_line("return 0;")
+    emitter.emit_line("return rv;")
     emitter.emit_line("}")
 
 
@@ -910,8 +923,11 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
+    base_args = "(PyObject *)self"
+    if cl.builtin_base:
+        emitter.emit_base_tp_function_call(cl, "tp_clear", base_args)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -961,7 +977,20 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if not cl.is_acyclic:
+        emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if cl.builtin_base:
+        emitter.emit_line(f"{clear_func_name}(self);")
+        # For native subclasses of builtins such as dict, the base deallocator
+        # is responsible for tearing down base-owned storage and freeing memory.
+        # Re-track self if base is GC-aware to match cpython's subtype_dealloc.
+        base = f"{emitter.type_struct_name(cl)}->tp_base"
+        base_arg = "(PyObject *)self"
+        emitter.emit_line(f"if (PyType_IS_GC({base})) PyObject_GC_Track({base_arg});")
+        emitter.emit_base_tp_function_call(cl, "tp_dealloc", base_arg)
+        emitter.emit_line("done: ;")
+        emitter.emit_line("}")
+        return
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
@@ -1224,10 +1253,11 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
-        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line("} else {")
+        emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 

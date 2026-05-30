@@ -60,7 +60,10 @@ undef
 [out]
 dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+dir/a.py: note: Common resolutions include:
+dir/a.py: note:     a) using `--exclude` to avoid checking one of them,
+dir/a.py: note:     b) adding `__init__.py` somewhere,
+dir/a.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -114,7 +117,7 @@ sub.pkg contains __init__.py but is not a valid Python package name
 [file a.py]
 # coding: uft-8
 [out]
-mypy: can't decode file 'a.py': unknown encoding: uft-8
+a.py: error: Cannot decode file: unknown encoding: uft-8
 == Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
@@ -126,42 +129,11 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [out]
 two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+two/mod/__init__.py: note: Common resolutions include:
+two/mod/__init__.py: note:     a) using `--exclude` to avoid checking one of them,
+two/mod/__init__.py: note:     b) adding `__init__.py` somewhere,
+two/mod/__init__.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
-
--- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
-[case testFlagsFile]
-# cmd: mypy @flagsfile
-[file flagsfile]
-----always-true=FLAG
-main.py
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
-
-[case testConfigFile]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-always_true = FLAG
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
-
-[case testAltConfigFile]
-# cmd: mypy --config-file config.ini main.py
-[file config.ini]
-\[mypy]
-always_true = FLAG
-[file main.py]
-x: int
-FLAG = False
-if not FLAG:
-    x = "unreachable"
 
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
@@ -187,22 +159,6 @@ def g(a: int) -> int: return f(a)
 mypy.ini: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
-
-[case testMultipleGlobConfigSection]
-# cmd: mypy x.py y.py z.py
-[file mypy.ini]
-\[mypy]
-\[mypy-x.*,z.*]
-disallow_untyped_defs = True
-[file x.py]
-def f(a): pass
-[file y.py]
-def f(a): pass
-[file z.py]
-def f(a): pass
-[out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
 
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass
@@ -250,31 +206,6 @@ python_version = 3.11
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
-
-[case testConfigMypyPath]
-# cmd: mypy file.py
-[file mypy.ini]
-\[mypy]
-mypy_path =
-    foo_dir:bar_dir
-    , baz_dir
-[file foo_dir/foo.pyi]
-def foo(x: int) -> str: ...
-[file bar_dir/bar.pyi]
-def bar(x: str) -> list: ...
-[file baz_dir/baz.pyi]
-def baz(x: list) -> dict: ...
-[file file.py]
-import no_stubs
-from foo import foo
-from bar import bar
-from baz import baz
-baz(bar(foo(42)))
-baz(bar(foo('oof')))
-[out]
-file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
-file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testConfigFollowImportsSysPath]
 # cmd: mypy main.py
@@ -384,7 +315,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 \[tool.mypy]
 python_version = 3.10
 [out]
-pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.9 or higher). You may need to put quotes around your Python version
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.10 or higher). You may need to put quotes around your Python version
 == Return code: 0
 
 [case testPythonVersionTooOld10]
@@ -396,13 +327,13 @@ python_version = 1.0
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionTooOld38]
+[case testPythonVersionTooOld39]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.8
+python_version = 3.9
 [out]
-mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+mypy.ini: [mypy]: python_version: Python 3.9 is not supported (must be 3.10 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew40]
@@ -425,31 +356,31 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
 mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
-[case testPythonVersionAccepted39]
+[case testPythonVersionAccepted310]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.9
+python_version = 3.10
 [out]
 
-[case testPythonVersionAccepted314]
+[case testPythonVersionAccepted315]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.14
+python_version = 3.15
 [out]
 
 [case testPythonVersionFallback]
 # cmd: mypy main.py
 [file main.py]
 import sys
-if sys.version_info == (3, 9):  # Update here when bumping the min Python version!
+if sys.version_info < (3, 11):  # Update here when bumping the min Python version!
     reveal_type("good")
 [file mypy.ini]
 \[mypy]
-python_version = 3.8
+python_version = 3.9
 [out]
-mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+mypy.ini: [mypy]: python_version: Python 3.9 is not supported (must be 3.10 or higher)
 main.py:3: note: Revealed type is "Literal['good']?"
 == Return code: 0
 
@@ -472,78 +403,20 @@ reveal_type(a.__pow__(2))
 reveal_type(a.__pow__(a))
 [out]
 int_pow.py:3: note: Revealed type is "Literal[1]"
-int_pow.py:4: note: Revealed type is "builtins.int"
-int_pow.py:5: note: Revealed type is "builtins.int"
+int_pow.py:4: note: Revealed type is "int"
+int_pow.py:5: note: Revealed type is "int"
 int_pow.py:6: note: Revealed type is "Literal[1]"
-int_pow.py:7: note: Revealed type is "builtins.float"
-int_pow.py:8: note: Revealed type is "builtins.float"
+int_pow.py:7: note: Revealed type is "float"
+int_pow.py:8: note: Revealed type is "float"
 int_pow.py:9: note: Revealed type is "Any"
-int_pow.py:10: note: Revealed type is "builtins.int"
+int_pow.py:10: note: Revealed type is "int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
-
-[case testDisallowAnyGenericsBuiltinCollections]
-# cmd: mypy m.py
-[file mypy.ini]
-\[mypy]
-\[mypy-m]
-disallow_any_generics = True
-[file m.py]
-def j(s: frozenset) -> None: pass
-[out]
-m.py:1: error: Missing type arguments for generic type "frozenset"
-
-[case testDisallowAnyGenericsTypingCollections]
-# cmd: mypy m.py
-[file mypy.ini]
-\[mypy]
-\[mypy-m]
-disallow_any_generics = True
-[file m.py]
-from typing import FrozenSet
-def j(s: FrozenSet) -> None: pass
-[out]
-m.py:2: error: Missing type arguments for generic type "FrozenSet"
-
-[case testSectionInheritance]
-# cmd: mypy a
-[file a/__init__.py]
-0()
-[file a/foo.py]
-0()
-[file a/b/__init__.py]
-[file a/b/c/__init__.py]
-0()
-[file a/b/c/d/__init__.py]
-[file a/b/c/d/e/__init__.py]
-from typing import List
-def g(x: List) -> None: pass
-g(None)
-[file mypy.ini]
-\[mypy]
-allow_any_generics = True
-\[mypy-a.*]
-ignore_errors = True
-\[mypy-a.b.*]
-disallow_any_generics = True
-ignore_errors = True
-\[mypy-a.b.c.*]
-ignore_errors = True
-\[mypy-a.b.c.d.*]
-ignore_errors = True
-\[mypy-a.b.c.d.e.*]
-ignore_errors = True
-strict_optional = True
-\[mypy-a.b.c.d.e]
-ignore_errors = False
-[out]
-a/b/c/d/e/__init__.py:2: error: Missing type arguments for generic type "List"
-a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
 
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
-mypy: can't read file 'nope.py': No such file or directory
+mypy: error: Cannot read file 'nope.py': No such file or directory
 == Return code: 2
 
 [case testModulesAndPackages]
@@ -600,31 +473,6 @@ pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has typ
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a2/b/f.py:2: error: "str" not callable
 pkg/a1/b/f.py:2: error: "str" not callable
-
-[case testFollowImportStubs1]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-\[mypy-math.*]
-follow_imports = error
-follow_imports_for_stubs = True
-[file main.py]
-import math
-math.frobnicate()
-[out]
-main.py:1: error: Import of "math" ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-
-[case testFollowImportStubs2]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-\[mypy-math.*]
-follow_imports = skip
-follow_imports_for_stubs = True
-[file main.py]
-import math
-math.frobnicate()
 
 [case testShadowFile1]
 # cmd: mypy --shadow-file source.py shadow.py source.py
@@ -687,7 +535,6 @@ variable has type "bytes")
 [file mypy.ini]
 \[mypy]
 warn_unused_configs = True
-incremental = False
 \[mypy-bar]
 \[mypy-foo]
 \[mypy-baz.*]
@@ -707,40 +554,8 @@ incremental = False
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+mypy.ini: note: unused section(s): [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
-
-[case testConfigUnstructuredGlob]
-# cmd: mypy emarg foo
-[file mypy.ini]
-\[mypy]
-ignore_errors = true
-\[mypy-*.lol]
-ignore_errors = false
-\[mypy-emarg.*]
-ignore_errors = false
-\[mypy-emarg.*.villip.*]
-ignore_errors = true
-\[mypy-emarg.hatch.villip.mankangulisk]
-ignore_errors = false
-[file emarg/__init__.py]
-[file emarg/foo.py]
-fail
-[file emarg/villip.py]
-fail
-[file emarg/hatch/__init__.py]
-[file emarg/hatch/villip/__init__.py]
-[file emarg/hatch/villip/nus.py]
-fail
-[file emarg/hatch/villip/mankangulisk.py]
-fail
-[file foo/__init__.py]
-[file foo/lol.py]
-fail
-[out]
-foo/lol.py:1: error: Name "fail" is not defined
-emarg/foo.py:1: error: Name "fail" is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
 # cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
@@ -770,6 +585,14 @@ import d
 
 [case testPackageRootMultiple2]
 # cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testPackageRootMultipleParallel]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py --num-workers=2
 [file a/b/c.py]
 [file d.py]
 [file main.py]
@@ -815,7 +638,7 @@ c.py:1: error: Name "fail" is not defined
 \[mypy]
 files = config.py
 [out]
-mypy: can't read file 'override.py': No such file or directory
+mypy: error: Cannot read file 'override.py': No such file or directory
 == Return code: 2
 
 [case testErrorSummaryOnSuccess]
@@ -872,7 +695,8 @@ Found 2 errors in 2 files (checked 2 source files)
 [case testErrorSummaryOnBadUsage]
 # cmd: mypy --error-summary missing.py
 [out]
-mypy: can't read file 'missing.py': No such file or directory
+mypy: error: Cannot read file 'missing.py': No such file or directory
+Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
@@ -928,12 +752,26 @@ expected "str"
     test_between(1  +       1)
                  ^~~~~~~~~~~~
 
+[case testErrorMarkerSkipsLeftSpace]
+# cmd: mypy --pretty --show-error-codes imp.py
+[file imp.py]
+try:
+    import foobar
+except ValueError:
+    pass
+[out]
+imp.py:2: error: Cannot find implementation or library stub for module named
+"foobar"  [import-not-found]
+        import foobar
+        ^
+imp.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd
 [file a.pyd]
 # coding: uft-8
 [out]
-mypy: stubgen does not support .pyd files: 'a.pyd'
+a.pyd: error: Stubgen does not support .pyd files
 == Return code: 2
 
 [case testDuplicateModules]
@@ -950,7 +788,9 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
 src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewhere, b) using `--explicit-package-bases` or adjusting MYPYPATH
+src/foo/bar.py: note: Common resolutions include:
+src/foo/bar.py: note:     a) adding `__init__.py` somewhere,
+src/foo/bar.py: note:     b) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -1147,6 +987,27 @@ bpkg.*
 [out]
 c/cpkg.py:1: error: "int" not callable
 
+[case testCmdlineExcludeGitignoreOnlyWithinTree]
+# cmd: mypy --exclude-gitignore b
+[file .gitignore]
+b
+[file b/.git/config]
+[file b/bpkg.py]
+1()
+[out]
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineExcludeGitignoreWithGitInfoExclude]
+# cmd: mypy --exclude-gitignore .
+[file .git/info/exclude]
+abc
+[file abc/apkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
 [case testCmdlineCfgExclude]
 # cmd: mypy .
 [file mypy.ini]
@@ -1212,8 +1073,8 @@ except ValueError:
 from typing import *
 sys.path = path
 [out]
-mypy: "typing.py" shadows library module "typing"
-note: A user-defined top-level module with name "typing" is not supported
+typing.py: error: This file shadows library module "typing"
+typing.py: note: A user-defined top-level module with name "typing" is not supported
 == Return code: 2
 
 [case testCustomTypeshedDirWithRelativePathDoesNotCrash]
@@ -1230,7 +1091,7 @@ note: A user-defined top-level module with name "typing" is not supported
 [file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/VERSIONS]
 [out]
-Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+mypy: error: Failed to find builtin module "mypy_extensions", perhaps typeshed is broken?
 == Return code: 2
 
 [case testCustomTypeshedDirFilePassedExplicitly]
@@ -1405,3 +1266,29 @@ class CodecKey(NamedTuple):
 \[mypy-importlib.*]
 follow_imports = skip
 follow_imports_for_stubs = True
+
+[case testParallelRunWithSyntaxError]
+# cmd: mypy a.py --num-workers=2 --pretty
+[file a.py]
+1 2
+[out]
+a.py:1: error: Simple statements must be separated by newlines or semicolons
+    1 2
+       ^
+== Return code: 2
+
+[case testCannotDisableCacheInParallelMode]
+# cmd: mypy --cache-dir=/dev/null --num-workers=2 a.py
+[file a.py]
+pass
+[out]
+error: Cache must be enabled in parallel mode
+== Return code: 2
+
+[case testCheckingStubPackagesWorksInParallelMode]
+# cmd: mypy foo-stubs --num-workers=4
+[file foo-stubs/__init__.pyi]
+[file foo-stubs/api/__init__.pyi]
+from foo.api import bar as bar
+[file foo-stubs/api/bar.pyi]
+[out]
