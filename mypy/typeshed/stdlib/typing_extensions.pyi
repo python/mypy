@@ -30,7 +30,7 @@ from collections.abc import (
 from contextlib import AbstractAsyncContextManager as AsyncContextManager, AbstractContextManager as ContextManager
 from re import Match as Match, Pattern as Pattern
 from types import GenericAlias, ModuleType
-from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035
+from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035,RUF100
     IO as IO,
     TYPE_CHECKING as TYPE_CHECKING,
     AbstractSet as AbstractSet,
@@ -220,7 +220,7 @@ def runtime_checkable(cls: _TC) -> _TC: ...
 runtime = runtime_checkable
 Final: _SpecialForm
 
-def final(f: _F) -> _F: ...
+def final(f: _T) -> _T: ...
 def disjoint_base(cls: _TC) -> _TC: ...
 
 Literal: _SpecialForm

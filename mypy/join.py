@@ -773,10 +773,14 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    instance_type = None
+    if t.instance_type is not None and s.instance_type is not None:
+        instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )
@@ -827,10 +831,14 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    instance_type = None
+    if t.instance_type is not None and s.instance_type is not None:
+        instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )

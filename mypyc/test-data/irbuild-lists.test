@@ -286,6 +286,7 @@ L1:
     r3 = int_lt r2, r1
     if r3 goto L2 else goto L4 :: bool
 L2:
+    i = r2
     r4 = CPyList_GetItem(l, i)
     r5 = object 1
     r6 = PyNumber_InPlaceAdd(r4, r5)
@@ -293,7 +294,6 @@ L2:
 L3:
     r8 = r2 + 2
     r2 = r8
-    i = r8
     goto L1
 L4:
     return l

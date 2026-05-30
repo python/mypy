@@ -229,6 +229,7 @@ L1:
     r2 = int_lt r1, 12
     if r2 goto L2 else goto L4 :: bool
 L2:
+    x = r1
     r3 = f(x)
     r4 = box(int, r3)
     r5 = PySet_Add(r0, r4)
@@ -236,7 +237,6 @@ L2:
 L3:
     r7 = r1 + 4
     r1 = r7
-    x = r7
     goto L1
 L4:
     d = r0
@@ -260,6 +260,7 @@ L1:
     r2 = int_lt r1, 12
     if r2 goto L2 else goto L4 :: bool
 L2:
+    x = r1
     r3 = f(x)
     r4 = box(int, r3)
     r5 = PySet_Add(r0, r4)
@@ -267,7 +268,6 @@ L2:
 L3:
     r7 = r1 + 4
     r1 = r7
-    x = r7
     goto L1
 L4:
     e = r0

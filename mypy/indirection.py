@@ -123,10 +123,23 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
                 self._visit(t.type.typeddict_type)
             if t.type.tuple_type:
                 self._visit(t.type.tuple_type)
+            if t.type.is_protocol:
+                # For protocols, member types constitute the semantic meaning of the type.
+                # TODO: this doesn't cover some edge cases, like setter types and exotic nodes.
+                for m in t.type.protocol_members:
+                    node = t.type.names.get(m)
+                    if node and node.type:
+                        self._visit(node.type)
 
     def visit_callable_type(self, t: types.CallableType) -> None:
         self._visit_type_list(t.arg_types)
         self._visit(t.ret_type)
+        if t.type_guard is not None:
+            self._visit(t.type_guard)
+        if t.type_is is not None:
+            self._visit(t.type_is)
+        if t.instance_type is not None:
+            self._visit(t.instance_type)
         self._visit_type_tuple(t.variables)
 
     def visit_overloaded(self, t: types.Overloaded) -> None:

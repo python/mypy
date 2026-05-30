@@ -55,6 +55,7 @@ from mypyc.ir.rtypes import (
     RPrimitive,
     RTuple,
     RType,
+    RVec,
     bool_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
@@ -84,7 +85,7 @@ from mypyc.ir.rtypes import (
     string_writer_rprimitive,
     uint8_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
@@ -101,6 +102,15 @@ from mypyc.irbuild.format_str_tokenizer import (
     convert_format_expr_to_str,
     join_formatted_strings,
     tokenizer_format_call,
+)
+from mypyc.irbuild.vec import (
+    supports_vec_to_sequence,
+    vec_append,
+    vec_extend,
+    vec_pop,
+    vec_remove,
+    vec_to_list,
+    vec_to_tuple,
 )
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
@@ -133,6 +143,7 @@ from mypyc.primitives.librt_strings_ops import (
     string_writer_get_item_unsafe_op,
     string_writer_range_check_op,
 )
+from mypyc.primitives.librt_vecs_ops import isinstance_vec
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -199,7 +210,7 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
-    return _apply_specialization(builder, expr, callee, callee.fullname)
+    return _apply_specialization(builder, expr, callee, get_call_target_fullname(callee))
 
 
 def apply_method_specialization(
@@ -317,11 +328,27 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
         # NOTE (?) I'm not sure if my handling of can_borrow is correct here
-        obj = builder.accept(arg, can_borrow=is_list_rprimitive(expr_rtype))
+        obj = builder.accept(
+            arg, can_borrow=is_list_rprimitive(expr_rtype) or isinstance(expr_rtype, RVec)
+        )
         if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
             return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
-            return builder.builtin_len(obj, expr.line)
+            # TODO: Decide type of result based on context somehow?
+            if isinstance(obj.type, RVec):
+                return builder.builtin_len(obj, expr.line, use_pyssize_t=True)
+            else:
+                return builder.builtin_len(obj, expr.line)
+    return None
+
+
+@specialize_function("builtins.list")
+def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_list(builder.builder, vec, expr.line)
     return None
 
 
@@ -372,12 +399,26 @@ def translate_list_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+
+        def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+            builder.call_c(new_list_set_item_op, [x, y, z], line)
+
         return sequence_from_generator_preallocate_helper(
             builder,
             expr.args[0],
             empty_op_llbuilder=builder.builder.new_list_op_with_length,
-            set_item_op=new_list_set_item_op,
+            set_item_op=set_item,
         )
+    return None
+
+
+@specialize_function("builtins.tuple")
+def translate_vec_to_tuple(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_tuple(builder.builder, vec, expr.line)
     return None
 
 
@@ -397,11 +438,15 @@ def translate_tuple_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+
+        def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+            builder.call_c(new_tuple_set_item_op, [x, y, z], line)
+
         return sequence_from_generator_preallocate_helper(
             builder,
             expr.args[0],
             empty_op_llbuilder=builder.builder.new_tuple_with_length,
-            set_item_op=new_tuple_set_item_op,
+            set_item_op=set_item,
         )
     return None
 
@@ -579,8 +624,9 @@ def any_all_helper(
     modify: Callable[[Value], Value],
     new_value: Callable[[], Value],
 ) -> Value:
-    retval = Register(bool_rprimitive)
-    builder.assign(retval, initial_value(), -1)
+    init_val = initial_value()
+    retval = Register(bool_rprimitive, line=init_val.line)
+    builder.assign(retval, init_val, init_val.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
@@ -588,7 +634,8 @@ def any_all_helper(
         comparison = modify(builder.accept(gen.left_expr))
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(true_block)
-        builder.assign(retval, new_value(), -1)
+        new_val = new_value()
+        builder.assign(retval, new_val, new_val.line)
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
@@ -622,12 +669,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
 
     gen_expr = expr.args[0]
     target_type = builder.node_type(expr)
-    retval = Register(target_type)
-    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+    retval = Register(target_type, line=expr.line)
+    builder.assign(
+        retval, builder.coerce(builder.accept(start_expr), target_type, expr.line), expr.line
+    )
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
-        builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
+        builder.assign(
+            retval, builder.binary_op(retval, call_expr, "+", call_expr.line), call_expr.line
+        )
 
     loop_params = list(
         zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
@@ -710,6 +761,7 @@ isinstance_primitives: Final = {
     "builtins.set": isinstance_set,
     "builtins.str": isinstance_str,
     "builtins.tuple": isinstance_tuple,
+    "librt.vecs.vec": isinstance_vec,
 }
 
 
@@ -1527,3 +1579,57 @@ def translate_bytes_get_item(
         bytes_range_check_op,
         bytes_get_item_unsafe_op,
     )
+
+
+@specialize_function("librt.vecs.append")
+def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        item_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            arg_value = builder.accept(item_arg)
+            return vec_append(builder.builder, vec_value, arg_value, item_arg.line)
+    return None
+
+
+@specialize_function("librt.vecs.extend")
+def translate_vec_extend(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        iter_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            iter_value = builder.accept(iter_arg)
+            return vec_extend(builder.builder, vec_value, iter_value, iter_arg.line)
+    return None
+
+
+@specialize_function("librt.vecs.remove")
+def translate_vec_remove(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        item_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            arg_value = builder.accept(item_arg)
+            return vec_remove(builder.builder, vec_value, arg_value, item_arg.line)
+    return None
+
+
+@specialize_function("librt.vecs.pop")
+def translate_vec_pop(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if 1 <= len(expr.args) <= 2 and all(kind == ARG_POS for kind in expr.arg_kinds):
+        vec_arg = expr.args[0]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            if len(expr.args) == 2:
+                index_value = builder.accept(expr.args[1])
+            else:
+                index_value = Integer(-1, int64_rprimitive)
+            return vec_pop(builder.builder, vec_value, index_value, vec_arg.line)
+    return None

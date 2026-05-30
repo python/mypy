@@ -1,18 +1,11 @@
 #ifndef LIBRT_STRINGS_H
 #define LIBRT_STRINGS_H
 
-#ifndef MYPYC_EXPERIMENTAL
-
-static int
-import_librt_strings(void)
-{
-    // All librt.base64 features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else  // MYPYC_EXPERIMENTAL
-
 #include <Python.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include "CPy.h"
+#include "librt_strings_common.h"
 
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility
@@ -22,24 +15,11 @@ import_librt_strings(void)
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
- #define LIBRT_STRINGS_API_VERSION 4
+#define LIBRT_STRINGS_API_VERSION 4
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
 #define LIBRT_STRINGS_API_LEN 14
-
-static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
-
-// Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 256
-
-typedef struct {
-    PyObject_HEAD
-    char *buf;  // Beginning of the buffer
-    Py_ssize_t len;  // Current length (number of bytes written)
-    Py_ssize_t capacity;  // Total capacity of the buffer
-    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
-} BytesWriterObject;
 
 typedef struct {
     PyObject_HEAD
@@ -50,62 +30,47 @@ typedef struct {
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } StringWriterObject;
 
-#define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
-#define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
-#define LibRTStrings_BytesWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[2])
-#define LibRTStrings_BytesWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[3])
-#define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
-#define LibRTStrings_ByteWriter_grow_buffer_internal (*(bool (*)(BytesWriterObject *obj, Py_ssize_t size)) LibRTStrings_API[5])
-#define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
-#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[7])
-#define LibRTStrings_StringWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[8])
-#define LibRTStrings_StringWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[9])
-#define LibRTStrings_string_append_slow_path (*(char (*)(StringWriterObject *obj, int32_t value)) LibRTStrings_API[10])
-#define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[11])
-#define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[12])
-#define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[13])
+// Codepoint classification helpers. Inputs are signed i32 for compatibility
+// with mypyc's int32_rprimitive; negative values are non-codepoints and
+// return false. Defined `static inline` so they compile statically into
+// both the librt.strings module and any mypyc-compiled extension that
+// includes this header, avoiding the capsule indirection that would dwarf
+// the work of a single Py_UNICODE_IS* macro call.
 
-static int
-import_librt_strings(void)
-{
-    PyObject *mod = PyImport_ImportModule("librt.strings");
-    if (mod == NULL)
-        return -1;
-    Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    void *capsule = PyCapsule_Import("librt.strings._C_API", 0);
-    if (capsule == NULL)
-        return -1;
-    memcpy(LibRTStrings_API, capsule, sizeof(LibRTStrings_API));
-    if (LibRTStrings_ABIVersion() != LIBRT_STRINGS_ABI_VERSION) {
-        char err[128];
-        snprintf(err, sizeof(err), "ABI version conflict for librt.strings, expected %d, found %d",
-            LIBRT_STRINGS_ABI_VERSION,
-            LibRTStrings_ABIVersion()
-        );
-        PyErr_SetString(PyExc_ValueError, err);
-        return -1;
+static inline bool LibRTStrings_IsSpace(int32_t c) {
+    return c >= 0 && Py_UNICODE_ISSPACE((Py_UCS4)c);
+}
+
+static inline bool LibRTStrings_IsDigit(int32_t c) {
+    return c >= 0 && Py_UNICODE_ISDIGIT((Py_UCS4)c);
+}
+
+static inline bool LibRTStrings_IsAlnum(int32_t c) {
+    return c >= 0 && Py_UNICODE_ISALNUM((Py_UCS4)c);
+}
+
+static inline bool LibRTStrings_IsAlpha(int32_t c) {
+    return c >= 0 && Py_UNICODE_ISALPHA((Py_UCS4)c);
+}
+
+// True if c could start a valid identifier (XID_Start, per PEP 3131).
+// ASCII fast path covers `[A-Za-z_]`; non-ASCII delegates to CPython's
+// PyUnicode_IsIdentifier on a 1-character string. Aborts via
+// CPyError_OutOfMemory on allocation failure to keep this ERR_NEVER.
+static inline bool LibRTStrings_IsIdentifier(int32_t c) {
+    if (c < 0) return false;
+    if (c < 128) {
+        return (c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || c == '_';
     }
-    if (LibRTStrings_APIVersion() < LIBRT_STRINGS_API_VERSION) {
-        char err[128];
-        snprintf(err, sizeof(err),
-                 "API version conflict for librt.strings, expected %d or newer, found %d (hint: upgrade librt)",
-            LIBRT_STRINGS_API_VERSION,
-            LibRTStrings_APIVersion()
-        );
-        PyErr_SetString(PyExc_ValueError, err);
-        return -1;
+    PyObject *s = PyUnicode_FromOrdinal((int)c);
+    if (s == NULL) {
+        CPyError_OutOfMemory();
     }
-    return 0;
+    int r = PyUnicode_IsIdentifier(s);
+    Py_DECREF(s);
+    return r == 1;
 }
-
-static inline bool CPyBytesWriter_Check(PyObject *obj) {
-    return Py_TYPE(obj) == LibRTStrings_BytesWriter_type_internal();
-}
-
-static inline bool CPyStringWriter_Check(PyObject *obj) {
-    return Py_TYPE(obj) == LibRTStrings_StringWriter_type_internal();
-}
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_STRINGS_H

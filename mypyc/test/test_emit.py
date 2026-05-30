@@ -24,7 +24,7 @@ from mypyc.namegen import NameGenerator
 class TestEmitter(unittest.TestCase):
     def setUp(self) -> None:
         self.n = Register(int_rprimitive, "n")
-        self.context = EmitterContext(NameGenerator([["mod"]]))
+        self.context = EmitterContext(NameGenerator([["mod"]]), True)
         self.emitter = Emitter(self.context, {})
 
         ir = ClassIR("A", "mod")

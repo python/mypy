@@ -1799,3 +1799,144 @@ for i in range(10):
 from typing import Any, Generator
 
 def run(x: object) -> object: ...
+
+[case testNestedCoroutineCallsAnotherNestedFunction]
+import asyncio
+import functools
+import inspect
+from typing import Any, Callable, TypeVar, cast
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def mult_different_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper_async(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+            wrapper = wrapper_async
+        else:
+            @functools.wraps(fn)
+            def wrapper_non_async(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+            wrapper = wrapper_non_async
+
+        return cast(F, wrapper)
+
+    return decorate
+
+def mult_same_wrapper_names(x: int) -> Callable[[F], F]:
+    def decorate(fn: F) -> F:
+        def get_multiplier() -> int:
+            return x
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * await fn(*args, **kwargs)
+        else:
+            @functools.wraps(fn)
+            def wrapper(*args, **kwargs) -> Any:
+                return get_multiplier() * fn(*args, **kwargs)
+
+        return cast(F, wrapper)
+
+    return decorate
+
+@mult_different_wrapper_names(3)
+def identity(x: int):
+    return x
+
+@mult_different_wrapper_names(5)
+async def async_identity(x: int):
+    return x
+
+@mult_same_wrapper_names(2)
+def times_two(x: int):
+    return x * 2
+
+@mult_same_wrapper_names(4)
+async def async_times_two(x: int):
+    return x * 2
+
+def test_nested_coroutine_calls_another_nested_function():
+    assert identity(1) == 3
+    assert asyncio.run(async_identity(2)) == 10
+
+    assert times_two(3) == 12
+    assert asyncio.run(async_times_two(4)) == 32
+
+[file asyncio/__init__.pyi]
+from typing import Any, Generator
+
+def run(x: object) -> object: ...
+
+[case testRaiseStopAsyncIteration]
+from async_iter import async_iter
+from testutil import assertRaises
+
+class AsyncIter:
+    def __init__(self, vals: list[str]) -> None:
+        self._iter = iter(vals)
+
+    def __aiter__(self) -> AsyncIter:
+        return self
+
+    async def __anext__(self) -> str:
+        try:
+            return next(self._iter)
+        except StopIteration:
+            raise StopAsyncIteration
+
+async def test_iterator() -> None:
+    new_list: list[int] = []
+    async for v in async_iter([1, 2, 3]):
+        new_list.append(v)
+    assert new_list == [1, 2, 3]
+
+    new_list = []
+    iter = async_iter([1, 2, 3])
+    while True:
+        try:
+            v = await iter.__anext__()
+            new_list.append(v)
+        except StopAsyncIteration:
+            new_list.append(4)
+            break
+    assert new_list == [1, 2, 3, 4]
+
+    with assertRaises(StopAsyncIteration):
+        await async_iter([]).__anext__()
+
+async def test_wrapper() -> None:
+    new_list: list[str] = []
+    async for v in AsyncIter(['a', 'b', 'c']):
+        new_list.append(v)
+    assert new_list == ['a', 'b', 'c']
+
+    new_list = []
+    iter = AsyncIter(['a', 'b', 'c'])
+    while True:
+        try:
+            v = await iter.__anext__()
+            new_list.append(v)
+        except StopAsyncIteration:
+            new_list.append('d')
+            break
+    assert new_list == ['a', 'b', 'c', 'd']
+
+    with assertRaises(StopAsyncIteration):
+        await AsyncIter([]).__anext__()
+
+[file async_iter.py]
+from typing import AsyncIterator
+
+async def async_iter(vals: list[int]) -> AsyncIterator[int]:
+    for v in vals:
+        yield v
+
+[typing fixtures/typing-full.pyi]

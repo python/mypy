@@ -551,7 +551,7 @@ potentially problematic or redundant in some way.
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
-        inside any functions using :ref:`type-variable-value-restriction`.
+        inside any functions using :ref:`value-constrained type variables <value-constrained-type-variables>`.
 
         This limitation will be removed in future releases of mypy.
 
@@ -595,13 +595,13 @@ of the above sections.
     This flag causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-.. option:: --allow-redefinition-new
+.. option:: --allow-redefinition
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This *experimental* flag enables the redefinition of
-    unannotated variables with an arbitrary type. You will also need to enable
-    :option:`--local-partial-types <mypy --local-partial-types>`.
-    Example:
+    unrelated type. This flag enables the redefinition of *unannotated*
+    variables with an arbitrary type. This also requires
+    :option:`--local-partial-types <mypy --no-local-partial-types>`, which is
+    enabled by default starting from mypy 2.0. Example:
 
     .. code-block:: python
 
@@ -613,7 +613,7 @@ of the above sections.
             # Type of "x" is "int | str" here.
             return x
 
-    Without the new flag, mypy only supports inferring optional types
+    Without this flag, mypy only supports inferring optional types
     (``X | None``) from multiple assignments. With this option enabled,
     mypy can infer arbitrary union types.
 
@@ -631,21 +631,36 @@ of the above sections.
                 # Type of "x" is "str" here.
                 ...
 
+    Function arguments are special, changing their type within function body
+    is allowed even if they are annotated, but that annotation is used to infer
+    types of r.h.s. of all subsequent assignments. Such middle-ground semantics
+    provides good balance for majority of common use cases. For example:
+
+    .. code-block:: python
+
+        def process(values: list[float]) -> None:
+            if not values:
+                values = [0, 0, 0]
+            reveal_type(values)  # Revealed type is list[float]
+
     Note: We are planning to turn this flag on by default in a future mypy
-    release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
-    The feature is still experimental, and the semantics may still change.
+    release.
 
-.. option:: --allow-redefinition
+.. option:: --allow-redefinition-new
 
-    This is an older variant of
-    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`.
+    Deprecated alias for :option:`--allow-redefinition <mypy --allow-redefinition>`.
+
+.. option:: --allow-redefinition-old
+
+    This is an older, more limited variant of
+    :option:`--allow-redefinition <mypy --allow-redefinition>`.
     This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
 
-    We have no plans to remove this flag, but we expect that
-    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`
-    will replace this flag for new use cases eventually.
+    We have no plans to remove this flag, but
+    :option:`--allow-redefinition <mypy --allow-redefinition>`
+    is recommended for new use cases.
 
     Example where this can be useful:
 
@@ -666,30 +681,26 @@ of the above sections.
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
 
-.. option:: --local-partial-types
+.. option:: --no-local-partial-types
 
-    In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``X | None`` annotations. By default, mypy won't check partial types
-    spanning module top level or class top level. This flag changes the behavior to only allow
-    partial types at local level, therefore it disallows inferring variable type for ``None``
-    from two assignments in different scopes. For example:
+    Disable local partial types to enable legacy type inference mode for
+    containers.
+
+    Local partial types prevent inferring a container type for a variable, when
+    the initial assignment happens at module top level or in a class body, and
+    the container item type is only set in a function. Example:
 
     .. code-block:: python
 
-        a = None  # Need type annotation here if using --local-partial-types
-        b: int | None = None
+        a = []  # Need type annotation unless using --no-local-partial-types
 
-        class Foo:
-            bar = None  # Need type annotation here if using --local-partial-types
-            baz: int | None = None
+        def func() -> None:
+            a.append(1)
 
-            def __init__(self) -> None:
-                self.bar = 1
+        reveal_type(a)  # "list[int]" if using --no-local-partial-types
 
-        reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
-
-    Note: this option is always implicitly enabled in mypy daemon and will become
-    enabled by default for mypy in a future release.
+    Local partial types are enabled by default starting from mypy 2.0. The
+    mypy daemon requires local partial types.
 
 .. option:: --no-implicit-reexport
 
@@ -746,11 +757,11 @@ of the above sections.
     Note that :option:`--strict-equality-for-none <mypy --strict-equality-for-none>`
     only works in combination with :option:`--strict-equality <mypy --strict-equality>`.
 
-.. option:: --strict-bytes
+.. option:: --no-strict-bytes
 
-    By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
-    is not true at runtime. Use this flag to disable this behavior. ``--strict-bytes`` will
-    be enabled by default in *mypy 2.0*.
+    Treat ``bytearray`` and ``memoryview`` as subtypes of ``bytes``. This is not true
+    at runtime and can lead to unexpected behavior. This was the default behavior prior
+    to mypy 2.0.
 
     .. code-block:: python
 
@@ -759,10 +770,12 @@ of the above sections.
            with open("binary_file", "wb") as fp:
                fp.write(buf)
 
-       f(bytearray(b""))  # error: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
-       f(memoryview(b""))  # error: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+       # Using --no-strict-bytes disables the following errors
+       f(bytearray(b""))  # Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+       f(memoryview(b""))  # Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
 
-       # If `f` accepts any object that implements the buffer protocol, consider using:
+       # If `f` accepts any object that implements the buffer protocol,
+       # consider using Buffer instead:
        from collections.abc import Buffer  # "from typing_extensions" in Python 3.11 and earlier
 
        def f(buf: Buffer) -> None:
@@ -1000,9 +1013,10 @@ beyond what incremental mode can offer, try running mypy in
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
     or ``--cache-dir=nul`` (Windows).
 
-.. option:: --sqlite-cache
+.. option:: --no-sqlite-cache
 
-    Use an `SQLite`_ database to store the cache.
+    Avoid using `SQLite`_ database to store the cache, instead write cache data
+    out to individual files.
 
 .. option:: --cache-fine-grained
 
@@ -1016,6 +1030,43 @@ beyond what incremental mode can offer, try running mypy in
 .. option:: --skip-cache-mtime-checks
 
     Skip cache internal consistency checks based on mtime.
+
+
+.. _parallel:
+
+Parallel type-checking
+**********************
+
+By default, mypy checks all modules in the same Python process. This can be slow
+for large code bases. Mypy offers experimental parallel type-checking mode using
+multiple worker processes. In parallel mode, modules that do not depend om each
+other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
+used to manage most of the shared state. Parallel type-checking also requires
+:option:`--local-partial-types <mypy --no-local-partial-types>`, which is
+enabled by default starting from mypy 2.0.
+
+.. option:: -n NUMBER, --num-workers NUMBER
+
+    Use ``NUMBER`` parallel worker processes (in addition to the coordinator
+    process) to perform type-checking. Specifying ``--num-workers 0`` (default)
+    disables parallel checking. Automatic detection of the optimal number
+    of workers is not supported yet.
+
+    This setting will override the ``MYPY_NUM_WORKERS`` environment
+    variable if it is set.
+
+Notes:
+
+* An import cycle is always processed as a whole by a worker process. Thus,
+  avoiding large import cycles in your code will *significantly* improve
+  type-checking speed.
+
+* Specifying a number of workers that is larger than the number of *physical*
+  CPU cores is not beneficial, since mypy is usually CPU bound. Best way to
+  tune the number of workers on a given machine is to start from 3-4 workers
+  and increase the number while you see a performance improvement.
+
+* Parallel mode requires and automatically enables :option:`--native-parser`.
 
 
 Advanced options
@@ -1091,6 +1142,11 @@ in developing or debugging mypy internals.
     cause mypy to type check the contents of ``temp.py`` instead of  ``original.py``,
     but error messages will still reference ``original.py``.
 
+.. option:: --native-parser
+
+    This enables fast Rust-based parser that parses directly to mypy AST.
+    It will become the default parser in one of the next mypy releases.
+
 
 Report generation
 *****************
@@ -1155,7 +1211,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1210,8 +1266,6 @@ List of currently incomplete/experimental features:
      def test_values() -> {"width": int, "description": str}:
          return {"width": 42, "description": "test"}
 
-* ``TypeForm``: this feature enables ``TypeForm``, as described in
-  `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
 
 
 Miscellaneous

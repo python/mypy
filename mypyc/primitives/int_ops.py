@@ -105,6 +105,13 @@ for name in ("builtins.str", "builtins.repr"):
         priority=3,
     )
 
+int_to_ascii_op = custom_op(
+    arg_types=[int_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyTagged_AsciiBytes",
+    error_kind=ERR_MAGIC,
+)
+
 
 def int_binary_primitive(
     op: str, primitive_name: str, return_type: RType = int_rprimitive, error_kind: int = ERR_NEVER

@@ -1665,11 +1665,14 @@ def h() -> Tuple[int, int, int]:
     return f(1, *(2, 3))
 [out]
 def f(a, b, c):
-    a, b, c :: int
-    r0 :: tuple[int, int, int]
+    a, b, c, r0, r1, r2 :: int
+    r3 :: tuple[int, int, int]
 L0:
-    r0 = (a, b, c)
-    return r0
+    r0 = a
+    r1 = b
+    r2 = c
+    r3 = (r0, r1, r2)
+    return r3
 def g():
     r0 :: tuple[int, int, int]
     r1 :: dict
@@ -1724,11 +1727,14 @@ def h() -> Tuple[int, int, int]:
     return f(1, **{'b': 2, 'c': 3})
 [out]
 def f(a, b, c):
-    a, b, c :: int
-    r0 :: tuple[int, int, int]
+    a, b, c, r0, r1, r2 :: int
+    r3 :: tuple[int, int, int]
 L0:
-    r0 = (a, b, c)
-    return r0
+    r0 = a
+    r1 = b
+    r2 = c
+    r3 = (r0, r1, r2)
+    return r3
 def g():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
@@ -3458,18 +3464,18 @@ L1:
     r1 = int_lt r0, 24
     if r1 goto L2 else goto L4 :: bool
 L2:
+    i = r0
     r2 = CPyTagged_Add(sum, i)
     sum = r2
 L3:
     r3 = r0 + 4
     r0 = r3
-    i = r3
     goto L1
 L4:
     return 1
 
 [case testLocalRedefinition]
-# mypy: allow-redefinition
+# mypy: allow-redefinition-old
 def f() -> None:
     i = 0
     i += 1
