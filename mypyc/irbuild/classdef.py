@@ -867,7 +867,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     eq_sig = func_ir.decl.sig
     strict_typing = builder.options.strict_dunders_typing
     with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
-        rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
+        rhs_type = eq_sig.args[1].type if strict_typing else object_rprimitive
         rhs_arg = builder.add_argument("rhs", rhs_type)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
 
