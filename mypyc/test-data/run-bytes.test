@@ -412,6 +412,15 @@ def test_bytes_formatting() -> None:
     assert b'%4x' % val == b'   a'
     assert b'%#4x' % val == b' 0xa'
     assert b'%04X' % val == b'000A'
+    assert b'%d' % val == b'10'
+    assert b'%d' % (val + 2) == b'12'
+    assert b'%d' % 0 == b'0'
+    assert b'%d' % -3 == b'-3'
+    assert b'folded: %d' % (4 - 2) == b'folded: 2'
+
+    large_num = 2**65
+    assert b'number: %d' % large_num == b'number: 36893488147419103232'
+    assert b'negative integer: %d' % (-large_num) == b'negative integer: -36893488147419103232'
 
     assert b'%c' % 48 == b'0'
     assert b'%c' % b'a' == b'a'

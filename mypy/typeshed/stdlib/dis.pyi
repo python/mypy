@@ -2,8 +2,8 @@ import sys
 import types
 from collections.abc import Callable, Iterator
 from opcode import *  # `dis` re-exports it as a part of public API
-from typing import IO, Any, Final, NamedTuple
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing import IO, Any, Final, NamedTuple, overload
+from typing_extensions import Self, TypeAlias, deprecated, disjoint_base
 
 __all__ = [
     "code_info",
@@ -277,7 +277,14 @@ else:
     def distb(tb: types.TracebackType | None = None, *, file: IO[str] | None = None) -> None: ...
 
 if sys.version_info >= (3, 13):
-    # 3.13 made `show_cache` `None` by default
+    # 3.13 made `show_caches` `None` by default and has no effect
+    @overload
+    def get_instructions(x: _HaveCodeType, *, first_line: int | None = None, adaptive: bool = False) -> Iterator[Instruction]: ...
+    @overload
+    @deprecated(
+        "The `show_caches` parameter is deprecated since Python 3.13. "
+        "The iterator generates the `Instruction` instances with the `cache_info` field populated."
+    )
     def get_instructions(
         x: _HaveCodeType, *, first_line: int | None = None, show_caches: bool | None = None, adaptive: bool = False
     ) -> Iterator[Instruction]: ...

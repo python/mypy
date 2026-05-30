@@ -260,6 +260,45 @@ When run as interpreted, the first example will execute slower due to
 the extra namespace lookups. In interpreted code final attributes can
 also be modified.
 
+.. _free-threading:
+
+Free threading
+--------------
+
+Mypyc has basic support for free threading, but it doesn't provide the
+same memory safety guarantees as Python in compiled modules, since
+in current Python versions this would cause an unacceptable performance
+impact.
+
+The exact details of the memory safety in the presence of data races
+are likely to evolve in the future. Currently, compiled code must
+ensure that proper synchronization is used to prevent data races. In
+particular, these operations require explicit synchronization, such as
+via ``threading.Lock``, if there is a possibility of data races
+(the list is not exhaustive):
+
+* Reads or writes of non-final instance data attributes of native
+  classes.
+* List item access or iteration using a ``list`` static type (using
+  ``Sequence`` or ``MutableSequence`` as the type ensure correct
+  implicit synchronization).
+* Dict item access using a static ``dict`` type (using ``Mapping``
+  or ``MutableMapping`` ensures correct implicit synchronization).
+
+As libraries often won't be able to control the concurrent access by
+user code, we recommend that modules document that multi-threaded
+access is only supported via public interfaces that ensure correct
+synchronization. Marking attributes as internal using an underscore
+attribute prefix is another possibility, but this is not enforced at
+runtime. Another option is to document that multithreaded access is
+not supported, or that particular objects should not be used from
+multiple threads concurrently.
+
+It's always safe to perform read-only operations concurrently. Using
+objects with final attributes and tuple objects can help prevent
+race conditions without introducing extra overhead from explicit
+synchronization operations.
+
 Unsupported features
 --------------------
 
@@ -284,10 +323,8 @@ Dunder methods
 Native classes **cannot** use these dunders. If defined, they will not
 work as expected.
 
-* ``__del__``
 * ``__index__``
-* ``__getattr__``, ``__getattribute__``
-* ``__setattr__``
+* ``__getattribute__``
 * ``__delattr__``
 
 Generator expressions
@@ -318,7 +355,6 @@ non-exhaustive list of what won't work:
 - Compiled methods aren't considered methods by ``inspect.ismethod``
 - ``inspect.signature`` chokes on compiled functions with default arguments that
   are not simple literals
-- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************

@@ -377,24 +377,34 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
-        if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            if is_equivalent(t, self.s):
-                return combine_similar_callables(t, self.s)
-            result = join_similar_callables(t, self.s)
-            # We set the from_type_type flag to suppress error when a collection of
-            # concrete class objects gets inferred as their common abstract superclass.
-            if not (
-                (t.is_type_obj() and t.type_object().is_abstract)
-                or (self.s.is_type_obj() and self.s.type_object().is_abstract)
-            ):
-                result.from_type_type = True
-            if any(
-                isinstance(tp, (NoneType, UninhabitedType))
-                for tp in get_proper_types(result.arg_types)
-            ):
-                # We don't want to return unusable Callable, attempt fallback instead.
+        if isinstance(self.s, CallableType):
+            if is_similar_callables(t, self.s):
+                if is_equivalent(t, self.s):
+                    return combine_similar_callables(t, self.s)
+                result = join_similar_callables(t, self.s)
+                if any(
+                    isinstance(tp, (NoneType, UninhabitedType))
+                    for tp in get_proper_types(result.arg_types)
+                ):
+                    # We don't want to return unusable Callable, attempt fallback instead.
+                    return join_types(t.fallback, self.s)
+                # We set the from_type_type flag to suppress error when a collection of
+                # concrete class objects gets inferred as their common abstract superclass.
+                if not (
+                    (t.is_type_obj() and t.type_object().is_abstract)
+                    or (self.s.is_type_obj() and self.s.type_object().is_abstract)
+                ):
+                    result.from_type_type = True
+                return result
+            else:
+                s2, t2 = self.s, t
+                if t2.is_var_arg:
+                    s2, t2 = t2, s2
+                if is_subtype(s2, t2):
+                    return t2.copy_modified()
+                elif is_subtype(t2, s2):
+                    return s2.copy_modified()
                 return join_types(t.fallback, self.s)
-            return result
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
@@ -763,10 +773,14 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    instance_type = None
+    if t.instance_type is not None and s.instance_type is not None:
+        instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )
@@ -817,10 +831,14 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    instance_type = None
+    if t.instance_type is not None and s.instance_type is not None:
+        instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )

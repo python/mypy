@@ -3,8 +3,8 @@ import sys
 from _typeshed import SupportsLenAndGetItem
 from collections.abc import Callable, Iterable, MutableSequence, Sequence, Set as AbstractSet
 from fractions import Fraction
-from typing import Any, ClassVar, NoReturn, TypeVar
-from typing_extensions import Self
+from typing import Any, ClassVar, NoReturn, TypeVar, overload
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "Random",
@@ -67,6 +67,10 @@ class Random(_random.Random):
     if sys.version_info >= (3, 11):
         def shuffle(self, x: MutableSequence[Any]) -> None: ...
     else:
+        @overload
+        def shuffle(self, x: MutableSequence[Any]) -> None: ...
+        @overload
+        @deprecated("The `random` parameter is deprecated since Python 3.9; removed in Python 3.11.")
         def shuffle(self, x: MutableSequence[Any], random: Callable[[], float] | None = None) -> None: ...
     if sys.version_info >= (3, 11):
         def sample(self, population: Sequence[_T], k: int, *, counts: Iterable[int] | None = None) -> list[_T]: ...

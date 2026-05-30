@@ -192,7 +192,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncForTypeComments]
+[case testAsyncForTypeComments_no_native_parse]
 
 from typing import AsyncIterator, Union
 class C(AsyncIterator[int]):
@@ -342,7 +342,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncWithTypeComments]
+[case testAsyncWithTypeComments_no_native_parse]
 
 class C:
     async def __aenter__(self) -> int: pass
@@ -1089,5 +1089,37 @@ class Launcher(P):
                                        # E: "list[int]" has no attribute "__aiter__" (not async iterable)
 [{5: 5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
                                           # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorUntyped]
+import types
+
+@types.coroutine
+def f(x):
+    yield
+    1 + ""  # OK, in untyped function
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorPartiallyTyped]
+import types
+
+@types.coroutine
+def f(x: int):
+    yield
+    1 + ""  # E: Unsupported left operand type for + ("int")
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: builtins.int) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

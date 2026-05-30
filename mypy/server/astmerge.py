@@ -452,6 +452,12 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         # Fallback can be None for callable types that haven't been semantically analyzed.
         if typ.fallback is not None:
             typ.fallback.accept(self)
+        if typ.type_guard is not None:
+            typ.type_guard.accept(self)
+        if typ.type_is is not None:
+            typ.type_is.accept(self)
+        if typ.instance_type is not None:
+            typ.instance_type.accept(self)
         for tv in typ.variables:
             if isinstance(tv, TypeVarType):
                 tv.upper_bound.accept(self)
@@ -561,7 +567,7 @@ def replace_nodes_in_symbol_table(
                 new = replacements[node.node]
                 old = node.node
                 replace_object_state(new, old, skip_slots=_get_ignored_slots(new))
-                node.node = new
+                node._node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
                 node.node.accept(NodeReplaceVisitor(replacements))

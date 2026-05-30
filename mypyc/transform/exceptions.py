@@ -39,7 +39,7 @@ from mypyc.primitives.exc_ops import err_occurred_op
 from mypyc.primitives.registry import CFunctionDescription
 
 
-def insert_exception_handling(ir: FuncIR) -> None:
+def insert_exception_handling(ir: FuncIR, strict_traceback_checks: bool) -> None:
     # Generate error block if any ops may raise an exception. If an op
     # fails without its own error handler, we'll branch to this
     # block. The block just returns an error value.
@@ -49,7 +49,9 @@ def insert_exception_handling(ir: FuncIR) -> None:
         if error_label is None and any(op.can_raise() for op in block.ops):
             error_label = add_default_handler_block(ir)
     if error_label:
-        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name)
+        ir.blocks = split_blocks_at_errors(
+            ir.blocks, error_label, ir.traceback_name, strict_traceback_checks
+        )
 
 
 def add_default_handler_block(ir: FuncIR) -> BasicBlock:
@@ -62,7 +64,10 @@ def add_default_handler_block(ir: FuncIR) -> BasicBlock:
 
 
 def split_blocks_at_errors(
-    blocks: list[BasicBlock], default_error_handler: BasicBlock, func_name: str | None
+    blocks: list[BasicBlock],
+    default_error_handler: BasicBlock,
+    func_name: str | None,
+    strict_traceback_checks: bool,
 ) -> list[BasicBlock]:
     new_blocks: list[BasicBlock] = []
 
@@ -130,6 +135,10 @@ def split_blocks_at_errors(
                 )
                 branch.negated = negated
                 if op.line != NO_TRACEBACK_LINE_NO and func_name is not None:
+                    if strict_traceback_checks:
+                        assert (
+                            op.line >= 0
+                        ), f"Cannot add a traceback entry with a negative line number for op {op}"
                     branch.traceback_entry = (func_name, op.line)
                 cur_block.ops.append(branch)
                 cur_block = new_block

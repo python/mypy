@@ -173,7 +173,16 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared.copy_modified(
             upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
         )
-    elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
+    elif (
+        isinstance(narrowed, TypeVarType)
+        and not has_type_vars(original_declared)
+        and is_subtype(original_declared, narrowed.upper_bound)
+    ):
+        # This branch is a mirror image of the above one.
+        return narrowed.copy_modified(
+            upper_bound=narrow_declared_type(original_declared, narrowed.upper_bound)
+        )
+    elif not is_overlapping_types(declared, narrowed):
         if state.strict_optional:
             return UninhabitedType()
         else:
@@ -229,6 +238,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         ):
             return original_declared
         return meet_types(original_declared, original_narrowed)
+    elif (
+        isinstance(declared, CallableType)
+        and isinstance(narrowed, CallableType)
+        and has_type_vars(declared.ret_type)
+    ):
+        return narrowed.copy_modified(
+            ret_type=narrow_declared_type(declared.ret_type, narrowed.ret_type)
+        )
+
     return original_narrowed
 
 
@@ -308,10 +326,6 @@ def is_object(t: ProperType) -> bool:
     return isinstance(t, Instance) and t.type.fullname == "builtins.object"
 
 
-def is_none_typevarlike_overlap(t1: ProperType, t2: ProperType) -> bool:
-    return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
-
-
 def is_none_object_overlap(t1: ProperType, t2: ProperType) -> bool:
     return (
         isinstance(t1, NoneType)
@@ -337,15 +351,12 @@ def is_overlapping_types(
     left: Type,
     right: Type,
     ignore_promotions: bool = False,
-    prohibit_none_typevar_overlap: bool = False,
     overlap_for_overloads: bool = False,
     seen_types: set[tuple[Type, Type]] | None = None,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
     If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
-    If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
-    TypeVars (in both strict-optional and non-strict-optional mode).
     If 'overlap_for_overloads' is True, we check for overlaps more strictly (to avoid false
     positives), for example: None only overlaps with explicitly optional types, Any
     doesn't overlap with anything except object, we don't ignore positional argument names.
@@ -433,10 +444,6 @@ def is_overlapping_types(
     # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    if prohibit_none_typevar_overlap:
-        if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
-            return False
-
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         """Encode the kind of overlapping check to perform.
 
@@ -446,7 +453,6 @@ def is_overlapping_types(
             left,
             right,
             ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
             overlap_for_overloads=overlap_for_overloads,
             seen_types=seen_types.copy(),
         )
@@ -544,12 +550,23 @@ def is_overlapping_types(
         return False
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
+        # We run is_callable_compatible in both directions, similar to the logic
+        # in is_unsafe_overlapping_overload_signatures
+        # See comments in https://github.com/python/mypy/pull/5476
         return is_callable_compatible(
             left,
             right,
             is_compat=_is_overlapping_types,
             is_proper_subtype=False,
             ignore_pos_arg_names=not overlap_for_overloads,
+            allow_partial_overlap=True,
+        ) or is_callable_compatible(
+            right,
+            left,
+            is_compat=_is_overlapping_types,
+            is_proper_subtype=False,
+            ignore_pos_arg_names=not overlap_for_overloads,
+            check_args_covariantly=True,
             allow_partial_overlap=True,
         )
 
@@ -662,10 +679,7 @@ def is_overlapping_erased_types(
 ) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(
-        erase_type(left),
-        erase_type(right),
-        ignore_promotions=ignore_promotions,
-        prohibit_none_typevar_overlap=True,
+        erase_type(left), erase_type(right), ignore_promotions=ignore_promotions
     )
 
 
@@ -959,7 +973,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return result
         elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
             # In this case we are able to potentially produce a better meet.
-            res = meet_types(self.s.item, t.ret_type)
+            res = meet_types(self.s.item, t.get_instance_type())
             if not isinstance(res, (NoneType, UninhabitedType)):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
@@ -1076,7 +1090,28 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
-                return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+                arg = self.s.args[0]
+                new_items: list[Type] = []
+                for it in t.items:
+                    # Unpack items need to be handled by the caller.
+                    if isinstance(it, UnpackType):
+                        unpacked = get_proper_type(it.type)
+                        if isinstance(unpacked, TypeVarTupleType):
+                            # We can't infer anything in this case.
+                            new_arg = UninhabitedType()
+                            instance = unpacked.tuple_fallback
+                        else:
+                            assert (
+                                isinstance(unpacked, Instance)
+                                and unpacked.type.fullname == "builtins.tuple"
+                            )
+                            new_arg = meet_types(unpacked.args[0], arg)
+                            instance = unpacked
+                        new_items.append(UnpackType(instance.copy_modified(args=[new_arg])))
+                    else:
+                        # All other items can be processed in a regular way.
+                        new_items.append(meet_types(it, arg))
+                return t.copy_modified(items=new_items)
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
                 return t
@@ -1168,9 +1203,16 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    if t.instance_type is None:
+        instance_type = s.instance_type
+    elif s.instance_type is None:
+        instance_type = t.instance_type
+    else:
+        instance_type = meet_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         ret_type=meet_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )

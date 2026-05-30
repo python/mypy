@@ -113,6 +113,7 @@ from mypy.nodes import (
     StarExpr,
     Statement,
     StrExpr,
+    TemplateStrExpr,
     TempNode,
     TupleExpr,
     TypeAliasStmt,
@@ -372,6 +373,9 @@ class AliasPrinter(NodeVisitor[str]):
             assert isinstance(key, StrExpr)
             dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
         return f"{{{', '.join(dict_items)}}}"
+
+    def visit_template_str_expr(self, o: TemplateStrExpr) -> str:
+        return self.stubgen.add_name("_typeshed.Incomplete")
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
@@ -1741,7 +1745,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     source = mypy.util.decode_python_encoding(data)
     errors = Errors(mypy_options)
     mod.ast = mypy.parse.parse(
-        source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
+        source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options, eager=True
     )
     mod.ast._fullname = mod.module
     if errors.is_blockers():

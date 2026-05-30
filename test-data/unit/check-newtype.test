@@ -194,7 +194,7 @@ def func() -> None:
     A = NewType('A', str)
     B = NewType('B', str)
 
-    a = A(3)  # E: Argument 1 to "A@6" has incompatible type "int"; expected "str"
+    a = A(3)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
     a = A('xyz')
     b = B('xyz')
 
@@ -206,7 +206,6 @@ class MyClass:
 
 b = A(3)
 c = MyClass.C(3.5)
-[out]
 
 [case testNewTypeInMultipleFiles]
 import a
@@ -368,7 +367,7 @@ from typing import NewType
 T = NewType('T', int)
 d: object
 if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
-    reveal_type(d)     # N: Revealed type is "__main__.T"
+    reveal_type(d)     # N: Revealed type is "builtins.int"
 issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 [builtins fixtures/isinstancelist.pyi]
 

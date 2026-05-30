@@ -313,6 +313,20 @@ print(type(Eggs(obj1=pkg1.A.B())["obj1"]).__module__)
 B
 pkg2.mod2
 
+[case testCompilePackageOnlyInitPy]
+# cmd: pkg/__init__.py
+import os.path
+import pkg
+
+print(pkg.x)
+assert os.path.splitext(pkg.__file__)[1] != ".py"
+
+[file pkg/__init__.py]
+x: int = 1
+
+[out]
+1
+
 [case testStrictBytesRequired]
 # cmd: --no-strict-bytes a.py
 
@@ -321,4 +335,4 @@ def f(b: bytes) -> None: pass
 f(bytearray())
 
 [out]
-a.py:1: error: Option --strict-bytes cannot be disabled when using mypyc
+a.py: error: Option --strict-bytes cannot be disabled when using mypyc

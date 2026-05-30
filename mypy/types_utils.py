@@ -26,6 +26,7 @@ from mypy.types import (
     TypeAliasType,
     TypeType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     UnpackType,
     flatten_nested_unions,
@@ -134,6 +135,8 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union(
             [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
         )
+    elif isinstance(typ, NoneType):
+        return UninhabitedType()
     else:
         return typ
 

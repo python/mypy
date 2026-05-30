@@ -3,8 +3,6 @@
 
 #include "byteswriter_extra_ops.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     const char *data;
@@ -32,4 +30,12 @@ char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     return CPY_NONE;
 }
 
-#endif // MYPYC_EXPERIMENTAL
+void CPyBytes_ReadError(int64_t index, Py_ssize_t size) {
+    if (index < 0) {
+        PyErr_SetString(PyExc_ValueError, "index must be non-negative");
+    } else {
+        PyErr_Format(PyExc_IndexError,
+                     "index %lld out of range for bytes of length %zd",
+                     (long long)index, size);
+    }
+}
