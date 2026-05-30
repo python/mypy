@@ -273,8 +273,7 @@ def f(d):
     r6 :: object
     r7, key :: int
     r8, r9 :: object
-    r10 :: int
-    r11, r12 :: bit
+    r10, r11 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
@@ -291,12 +290,11 @@ L2:
     key = r7
     r8 = box(int, key)
     r9 = CPyDict_GetItem(d, r8)
-    r10 = unbox(int, r9)
 L3:
-    r11 = CPyDict_CheckSize(d, r1)
+    r10 = CPyDict_CheckSize(d, r1)
     goto L1
 L4:
-    r12 = CPy_NoErrOccurred()
+    r11 = CPy_NoErrOccurred()
 L5:
     return 1
 
