@@ -824,6 +824,20 @@ f(1, u)
 f('x', None)  # E: Value of type variable "T" of "f" cannot be "str" \
               # E: Value of type variable "S" of "f" cannot be "None"
 
+[case testPEP695UpperBoundTypeTypeConstructorReturnType]
+class A:
+    def __init__(self, value: str = "") -> None: pass
+class B:
+    def __init__(self, value: str = "") -> None: pass
+
+def make[T: A | B](ftype: type[T], value: str | None) -> T:
+    if value is None:
+        return ftype()
+    return ftype(value)
+
+reveal_type(make(A, "a"))  # N: Revealed type is "__main__.A"
+reveal_type(make(B, None))  # N: Revealed type is "__main__.B"
+
 [case testPEP695InferVarianceOfTupleType]
 class Cov[T](tuple[int, str]):
     def f(self) -> T: pass

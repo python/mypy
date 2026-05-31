@@ -3889,6 +3889,24 @@ def process(cls: Type[U]):
 [builtins fixtures/classmethod.pyi]
 [out]
 
+[case testTypeUsingTypeCConstructorReturnFromTypeVarUnionBound]
+from typing import Optional, Type, TypeVar, Union
+
+class A:
+    def __init__(self, value: str = "") -> None: pass
+class B:
+    def __init__(self, value: str = "") -> None: pass
+
+T = TypeVar("T", bound=Union[A, B])
+
+def make(ftype: Type[T], value: Optional[str]) -> T:
+    if value is None:
+        return ftype()
+    return ftype(value)
+
+reveal_type(make(A, "a"))  # N: Revealed type is "__main__.A"
+reveal_type(make(B, None))  # N: Revealed type is "__main__.B"
+
 [case testTypeUsingTypeCErrorUnsupportedType]
 from typing import Type, Tuple
 def foo(arg: Type[Tuple[int]]):
