@@ -350,11 +350,11 @@ class TypeAliasType(Type):
         self.args = args
         self.type_ref: str | None = None
 
-    def _expand_once(self) -> Type:
+    def expand_once(self, skip_normalization: bool = False) -> Type:
         """Expand to the target type exactly once.
 
         This doesn't do full expansion, i.e. the result can contain another
-        (or even this same) type alias. Use this internal helper only when really needed,
+        (or even this same) type alias. Use this helper only when needed,
         its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
@@ -381,7 +381,8 @@ class TypeAliasType(Type):
             ):
                 mapping[tvar.id] = sub
 
-        return self.alias.target.accept(InstantiateAliasVisitor(mapping))
+        visitor = InstantiateAliasVisitor(mapping, skip_normalization=skip_normalization)
+        return self.alias.target.accept(visitor)
 
     @property
     def is_recursive(self) -> bool:
@@ -3707,7 +3708,7 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
     if isinstance(typ, TypeGuardedType):
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
-        typ = typ._expand_once()
+        typ = typ.expand_once()
     # TODO: store the name of original type alias on this type, so we can show it in errors.
     return cast(ProperType, typ)
 

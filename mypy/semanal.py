@@ -4263,6 +4263,8 @@ class SemanticAnalyzer(
             # An alias gets updated.
             updated = False
             if isinstance(existing.node, TypeAlias):
+                # Invalidate recursive status cache in case it was previously set.
+                existing.node._is_recursive = None
                 if existing.node.target != res:
                     # Copy expansion to the existing alias, this matches how we update base classes
                     # for a TypeInfo _in place_ if there are nested placeholders.
@@ -4271,8 +4273,6 @@ class SemanticAnalyzer(
                     existing.node.alias_tvars = alias_tvars
                     existing.node.no_args = no_args
                     updated = True
-                    # Invalidate recursive status cache in case it was previously set.
-                    existing.node._is_recursive = None
             else:
                 # Otherwise just replace existing placeholder with type alias *in place*.
                 existing._node = alias_node
@@ -5830,6 +5830,8 @@ class SemanticAnalyzer(
             ):
                 updated = False
                 if isinstance(existing.node, TypeAlias):
+                    # Invalidate recursive status cache in case it was previously set.
+                    existing.node._is_recursive = None
                     if (
                         existing.node.target != res
                         or existing.node.alias_tvars != alias_node.alias_tvars
@@ -5840,8 +5842,6 @@ class SemanticAnalyzer(
                         existing.node.default_depends = default_depends
                         existing.node.alias_tvars = alias_tvars
                         updated = True
-                        # Invalidate recursive status cache in case it was previously set.
-                        existing.node._is_recursive = None
                 else:
                     # Otherwise just replace existing placeholder with type alias *in place*.
                     existing._node = alias_node

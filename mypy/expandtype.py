@@ -182,9 +182,16 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+    def __init__(
+        self, variables: Mapping[TypeVarId, Type], skip_normalization: bool = False
+    ) -> None:
         super().__init__()
         self.variables = variables
+        # This flag will skip normalizations that are semantically not needed, but
+        # require calling get_proper_type(). This is needed during very early stages
+        # to avoid infinite recursion when detecting invalid/divergent recursive
+        # type aliases.
+        self.skip_normalization = skip_normalization
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -228,11 +235,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
-            if isinstance(arg, UnpackType):
+            if not self.skip_normalization and isinstance(arg, UnpackType):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
-                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
-                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -535,7 +540,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
-            if isinstance(item, UnpackType):
+            if not self.skip_normalization and isinstance(item, UnpackType):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
                     # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.
