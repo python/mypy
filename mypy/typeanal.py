@@ -2528,7 +2528,7 @@ def detect_diverging_alias(node: TypeAlias, target: Type) -> bool:
         # Fast path: this is not a recursive alias at all.
         return False
     # Note we only cache positive case, caching negative case is risky, as this type alias
-    # (or importantly any other alias it uses) may be not ready yet.
+    # (or more importantly any other alias it uses) may be not ready yet.
     node._is_recursive = True
     visitor = DivergingAliasDetector({node})
     _ = target.accept(visitor)
