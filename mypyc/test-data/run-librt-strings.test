@@ -1490,3 +1490,52 @@ def test_codepoint_classifiers_via_any() -> None:
             f(1 << 40)
         with assertRaises(OverflowError, "codepoint out of i32 range"):
             f(-(1 << 40))
+
+[case testLibrtStringsCodepointCaseConversion_librt]
+from typing import Any
+from mypy_extensions import i32
+from librt.strings import toupper, tolower
+
+from testutil import assertRaises
+
+
+def _expect(c: str, method: str) -> int:
+    # The contract: i32 -> i32 when conversion yields exactly one codepoint,
+    # else return the input unchanged.
+    converted = getattr(c, method)()
+    if len(converted) == 1:
+        return ord(converted)
+    return ord(c)
+
+
+def test_codepoint_case_conversion() -> None:
+    # Negative inputs return unchanged.
+    for bad in (i32(-1), i32(-113)):
+        assert toupper(bad) == bad
+        assert tolower(bad) == bad
+    # Agree with str.upper / str.lower across the full Unicode range
+    # whenever the conversion is single-codepoint; otherwise return input.
+    for i in range(0x110000):
+        c = chr(i)
+        o = ord(c)
+        assert toupper(o) == _expect(c, "upper")
+        assert tolower(o) == _expect(c, "lower")
+
+
+def test_codepoint_case_conversion_via_any() -> None:
+    # Iterate to force generic dispatch through the PyMethodDef wrapper.
+    for fn, in_cp, out_cp in (
+        (toupper, ord("a"), ord("A")),
+        (toupper, ord("A"), ord("A")),
+        (tolower, ord("Z"), ord("z")),
+        (tolower, ord("z"), ord("z")),
+    ):
+        f: Any = fn
+        assert f(in_cp) == out_cp
+        # Negative values are valid i32, returned unchanged.
+        assert f(-1) == -1
+        # Inputs outside i32 range raise OverflowError through the wrapper.
+        with assertRaises(OverflowError, "codepoint out of i32 range"):
+            f(1 << 40)
+        with assertRaises(OverflowError, "codepoint out of i32 range"):
+            f(-(1 << 40))

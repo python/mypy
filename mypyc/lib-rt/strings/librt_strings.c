@@ -1191,6 +1191,18 @@ DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
 DEFINE_CP_BOOL_WRAPPER(isalpha, LibRTStrings_IsAlpha)
 DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
 
+#define DEFINE_CP_I32_WRAPPER(name, fn)                                     \
+    static PyObject*                                                        \
+    cp_##name(PyObject *module, PyObject *arg) {                            \
+        int32_t c;                                                          \
+        if (cp_parse_i32(arg, &c) < 0)                                      \
+            return NULL;                                                    \
+        return PyLong_FromLong((long) fn(c));                               \
+    }
+
+DEFINE_CP_I32_WRAPPER(toupper, LibRTStrings_ToUpper)
+DEFINE_CP_I32_WRAPPER(tolower, LibRTStrings_ToLower)
+
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
      PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
@@ -1266,6 +1278,12 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"isidentifier", cp_isidentifier, METH_O,
      PyDoc_STR("Test whether a codepoint (i32) is a valid identifier start (XID_Start).")
+    },
+    {"toupper", cp_toupper, METH_O,
+     PyDoc_STR("Single-codepoint uppercase mapping for a codepoint (i32). Returns the input unchanged if the Unicode uppercase expands to multiple codepoints (e.g. U+00DF uppercases to \"SS\"); use str.upper() for full Unicode case conversion.")
+    },
+    {"tolower", cp_tolower, METH_O,
+     PyDoc_STR("Single-codepoint lowercase mapping for a codepoint (i32). Returns the input unchanged if the Unicode lowercase expands to multiple codepoints; use str.lower() for full Unicode case conversion.")
     },
     {NULL, NULL, 0, NULL}
 };
