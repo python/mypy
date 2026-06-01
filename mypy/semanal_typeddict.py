@@ -286,7 +286,8 @@ class TypedDictAnalyzer:
                 )
             else:
                 self.fail(
-                    f'Field "{field_name}" is required in base class "{source.base.name}" but can be deleted in base class "{primary_source_base.name}"',
+                    f'Field "{field_name}" is required in base class "{source.base.name}" but can '
+                    f'be deleted in base class "{primary_source_base.name}"',
                     ctx,
                 )
         elif not source.is_required and not source.is_readonly and is_required:
@@ -296,7 +297,8 @@ class TypedDictAnalyzer:
                 )
             else:
                 self.fail(
-                    f'Field "{field_name}" is required in base class "{primary_source_base.name}" but can be deleted in base class "{source.base.name}"',
+                    f'Field "{field_name}" is required in base class "{primary_source_base.name}" '
+                    f'but can be deleted in base class "{source.base.name}"',
                     ctx,
                 )
 
@@ -313,12 +315,14 @@ class TypedDictAnalyzer:
 
             if primary_source_base:
                 self.fail(
-                    f'Cannot extend closed base class "{closed_base_type.name}" with field "{field_name}" from base class "{primary_source_base.name}"',
+                    f'Cannot extend closed base class "{closed_base_type.name}" with field '
+                    f'"{field_name}" from base class "{primary_source_base.name}"',
                     ctx,
                 )
             else:
                 self.fail(
-                    f'Cannot extend closed base class "{closed_base_type.name}" with new field "{field_name}"',
+                    f'Cannot extend closed base class "{closed_base_type.name}" with new field '
+                    f'"{field_name}"',
                     ctx,
                 )
 
@@ -344,7 +348,8 @@ class TypedDictAnalyzer:
         if child_is_closed is False and closed_bases:
             for base_info, _ in closed_bases:
                 self.fail(
-                    f'Open TypedDict class cannot subclass closed TypedDict class "{base_info.name}"',
+                    f"Open TypedDict class cannot subclass closed TypedDict class "
+                    f'"{base_info.name}"',
                     ctx,
                 )
 

@@ -3242,17 +3242,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     source = data.field_sources[field_name]
                     if source.base is None:
                         self.fail(
-                            f'Definition of field "{field_name}" incompatible with base class "{base.name}"',
+                            f'Definition of field "{field_name}" incompatible with base class '
+                            f'"{base.name}"',
                             source.ctx,
                         )
                     else:
                         self.fail(
-                            f'Incompatible definitions of field "{field_name}" in base classes "{base.name}" and "{source.base.name}"',
+                            f'Incompatible definitions of field "{field_name}" in base classes '
+                            f'"{base.name}" and "{source.base.name}"',
                             source.ctx,
                         )
                         if field_name in td.readonly_keys:
                             self.note(
-                                f'This can be resolved by redeclaring the field "{field_name}" with a mutually compatible type',
+                                f'This can be resolved by redeclaring the field "{field_name}" '
+                                f"with a mutually compatible type",
                                 source.ctx,
                             )
 
@@ -6458,14 +6461,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     elif key in bound.items and isinstance(
                         get_proper_type(bound.items[key]), UninhabitedType
                     ):
-                        # If an item is explicitly declared uninhabited, we can exclude it from if_types;
-                        # see testOperatorContainsNarrowsTypedDicts_closed
+                        # If an item is explicitly declared uninhabited, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
                         else_types.append(possible_iterable_type)
                     elif key not in bound.items and (bound.is_closed or bound.is_final):
-                        # If an item is missing and the type is closed, we can exclude it from if_types;
-                        # see testOperatorContainsNarrowsTypedDicts_closed
-                        # We also support "final" as a legacy way of expressing "closed" in this specific case;
-                        # see testOperatorContainsNarrowsTypedDicts_final
+                        # If an item is missing and the type is closed, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
+                        # We also support "final" as a legacy way of expressing "closed" in this
+                        # specific case; see testOperatorContainsNarrowsTypedDicts_final
                         else_types.append(possible_iterable_type)
                     else:
                         if_types.append(possible_iterable_type)
