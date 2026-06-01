@@ -99,6 +99,29 @@ to mypy build errors". In this case, you will need to mitigate those errors
 before stubtest will run. Despite potential overlap in errors here, stubtest is
 not intended as a substitute for running mypy directly.
 
+Private stub-only definitions
+*****************************
+
+Stubtest treats leading-underscore names as private. If a private helper
+definition is present in a stub but missing at runtime, stubtest will not report
+that absence for definitions such as ``TypeVar`` objects and type aliases that
+only exist to express types in the stub:
+
+.. code-block:: python
+
+    from collections.abc import Iterable
+    from typing import TypeVar
+
+    _T = TypeVar("_T")
+
+    def first(items: Iterable[_T]) -> _T: ...
+
+Public names in stubs are treated as runtime API. For a public stub-only name,
+either add the name at runtime, rename it to a private helper if it is only used
+by the stub, or use an allowlist if the mismatch is intentional. Private classes
+and other types that do not exist at runtime should normally be marked with
+:py:func:`@type_check_only <typing.type_check_only>`.
+
 Allowlist
 *********
 
