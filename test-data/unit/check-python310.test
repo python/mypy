@@ -3531,7 +3531,7 @@ def switch(choice: type[T_Choice]) -> None:
             reveal_type(choice())  # N: Revealed type is "b.Two"
         case _:
             reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
-            reveal_type(choice())  # N: Revealed type is "b.One | b.Two"
+            reveal_type(choice())  # N: Revealed type is "T_Choice`-1"
 
 [file b.py]
 class One: ...

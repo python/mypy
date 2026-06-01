@@ -1948,12 +1948,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
-            callee = get_proper_type(callee)
-            if isinstance(callee, CallableType):
-                callee = callee.copy_modified(ret_type=item)
-            elif isinstance(callee, Overloaded):
-                callee = Overloaded([c.copy_modified(ret_type=item) for c in callee.items])
-            return callee
+            return self.replace_type_type_callee_ret_type(callee, item)
         # We support Type of namedtuples but not of tuples in general
         if isinstance(item, TupleType) and tuple_fallback(item).type.fullname != "builtins.tuple":
             return self.analyze_type_type_callee(tuple_fallback(item), context)
@@ -1962,6 +1957,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
+
+    def replace_type_type_callee_ret_type(self, callee: Type, ret_type: Type) -> Type:
+        callee = get_proper_type(callee)
+        if isinstance(callee, CallableType):
+            return callee.copy_modified(ret_type=ret_type)
+        if isinstance(callee, Overloaded):
+            return Overloaded([c.copy_modified(ret_type=ret_type) for c in callee.items])
+        if isinstance(callee, UnionType):
+            return UnionType(
+                [
+                    self.replace_type_type_callee_ret_type(item, ret_type)
+                    for item in callee.relevant_items()
+                ],
+                line=callee.line,
+                column=callee.column,
+            )
+        return callee
 
     def infer_arg_types_in_empty_context(self, args: list[Expression]) -> list[Type]:
         """Infer argument expression types in an empty context.
