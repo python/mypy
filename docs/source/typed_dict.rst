@@ -276,6 +276,55 @@ vary :ref:`covariantly <variance-of-generics>`:
     m: Movie = {"name": "Jaws", "year": 1975}
     process_entry(m)  # OK
 
+You can override a read-only item with a compatible subtype, make a
+read-only item mutable, and inherit from multiple parents with compatible
+definitions:
+
+.. code-block:: python
+
+    from collections.abc import Collection, Sequence
+
+    class Competition(TypedDict):
+        hosts: ReadOnly[Collection[str]]
+        entries: ReadOnly[Sequence[Entry]]
+
+    class MovieShow(TypedDict):
+        entries: list[Movie]
+
+    class Oscars(Competition, MovieShow):
+        hosts: set[str]
+
+Defining ``hosts`` as a mutable ``set[str]`` item works as this is compatible
+with the read-only ``Collection[str]`` definition in ``Competition``.
+``entries`` will be of type ``list[Movie]``, taken from the ``MovieShow`` type,
+as it is the only non-readonly definition, and is compatible with the definition
+in ``Competition``.
+
+If an item is only defined in supertypes, and is always read-only, mypy takes
+the definition from the first parent in the inheritance order, and raises an
+error if any other parent definition is incompatible:
+
+.. code-block:: python
+
+    class NameIds(TypedDict):
+        ids: ReadOnly[Collection[str]]
+
+    class OrderedIds(TypedDict):
+        ids: ReadOnly[Sequence[int | str]]
+
+    class OrderedNameIds(NameIds, OrderedIds):
+        pass  # Error! Parent definitions incompatible
+
+In this example, the definition of ``ids`` will be taken from ``NameIds``,
+which would not be compatible with the definition in ``OrderedIds``; reordering
+the parents would not solve the problem. Instead, you will need to make a
+compatible definition explicitly:
+
+.. code-block:: python
+
+    class OrderedNameIds(NameIds, OrderedIds):
+        ids: ReadOnly[Sequence[str]]
+
 Closing
 -------
 
