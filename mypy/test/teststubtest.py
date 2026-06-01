@@ -3026,6 +3026,39 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "__init__.pyi" not in filtered_output
         assert "mod.py:1" in filtered_output
 
+    def test_reexported_submodule_in_all(self) -> None:
+        # A submodule that is bound on the package at runtime (here via
+        # `from . import submod` in __init__, and listed in `__all__`) and that
+        # has its own stub should not be reported as missing from the parent
+        # package's stub, nor as an `__all__` mismatch. See #21328.
+        with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
+            Path("builtins.pyi").write_text(stubtest_builtins_stub)
+            Path("typing.pyi").write_text(stubtest_typing_stub)
+            Path("enum.pyi").write_text(stubtest_enum_stub)
+
+            os.makedirs("test_module", exist_ok=True)
+            Path("test_module/__init__.py").write_text(
+                "from . import submod\n__all__ = ['submod']\n"
+            )
+            Path("test_module/__init__.pyi").write_text("__all__ = ['submod']\n")
+            Path("test_module/submod.py").write_text("x = 1\n")
+            Path("test_module/submod.pyi").write_text("x: int\n")
+
+            output = io.StringIO()
+            outerr = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
+                test_stubs(parse_options([TEST_MODULE_NAME]), use_builtins_fixtures=True)
+
+            filtered_output = remove_color_code(
+                output.getvalue()
+                .replace(os.path.realpath(tmp_dir) + os.sep, "")
+                .replace(tmp_dir + os.sep, "")
+            )
+
+        assert "submod is not present in stub" not in filtered_output
+        assert "names exported from the stub do not correspond" not in filtered_output
+        assert "Success" in filtered_output
+
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
             stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
