@@ -42,8 +42,12 @@
 // On older Python with Windows, this uses SRWLOCK (Slim Reader/Writer Lock),
 // a lightweight kernel primitive. A separate volatile flag tracks the locked state.
 //
-// On older Python with POSIX systems (macOS, Linux, etc.), this uses pthread_mutex
-// with a separate atomic flag for locked() and release-unlocked-lock detection.
+// On older Python with POSIX systems (macOS, Linux, etc.), this uses a
+// pthread mutex + condition variable guarding a `locked` flag (mirroring
+// CPython's portable POSIX lock). The mutex only protects the flag and is
+// never held across the user's critical section, so release() may be called
+// from a thread other than the one that acquired the lock, matching
+// threading.Lock semantics.
 //
 
 #ifdef MYPYC_EXPERIMENTAL
@@ -69,8 +73,15 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
-    pthread_mutex_t mutex;
-    _Atomic int locked;  // 0=unlocked, 1=locked (for locked() and error checking)
+    // The pthread mutex below does NOT represent the Python lock; it only
+    // guards the `locked` flag and the condition variable. The Python lock
+    // state is `locked` itself. This indirection (matching CPython's POSIX
+    // lock) is what allows release() from a thread other than the acquirer:
+    // `mut` is always locked and unlocked within a single call on a single
+    // thread, so pthread's same-thread-unlock rule is never violated.
+    pthread_mutex_t mut;
+    pthread_cond_t lock_released;
+    _Atomic int locked;  // 0=unlocked, 1=locked; protected by `mut`
 } LockObject;
 
 #endif
@@ -86,7 +97,8 @@ Lock_init_internal(LockObject *self)
     InitializeSRWLock(&self->lock);
     self->locked = 0;
 #else
-    pthread_mutex_init(&self->mutex, NULL);
+    pthread_mutex_init(&self->mut, NULL);
+    pthread_cond_init(&self->lock_released, NULL);
     atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
 #endif
 }
@@ -129,25 +141,39 @@ Lock_acquire_impl(LockObject *self, int blocking)
     return 1;
 
 #else  // POSIX fallback
+    // `mut` only guards `locked` and the condition variable; it is held just
+    // long enough to inspect/flip the flag, never across the user's critical
+    // section. This is what lets a different thread call release().
     if (!blocking) {
-        if (pthread_mutex_trylock(&self->mutex) == 0) {
+        pthread_mutex_lock(&self->mut);
+        if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
             atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            pthread_mutex_unlock(&self->mut);
             return 1;
         }
+        pthread_mutex_unlock(&self->mut);
         return 0;
     }
 
-    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
-    // overhead in the common uncontended case.
-    if (pthread_mutex_trylock(&self->mutex) == 0) {
+    // Fast path: grab the lock without releasing the GIL if it is free.
+    pthread_mutex_lock(&self->mut);
+    if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
         atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+        pthread_mutex_unlock(&self->mut);
         return 1;
     }
+    pthread_mutex_unlock(&self->mut);
 
+    // Slow path: wait for the lock to be released, with the GIL dropped so
+    // other Python threads can run (and release the lock).
     Py_BEGIN_ALLOW_THREADS
-    pthread_mutex_lock(&self->mutex);
-    Py_END_ALLOW_THREADS
+    pthread_mutex_lock(&self->mut);
+    while (atomic_load_explicit(&self->locked, memory_order_relaxed)) {
+        pthread_cond_wait(&self->lock_released, &self->mut);
+    }
     atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    pthread_mutex_unlock(&self->mut);
+    Py_END_ALLOW_THREADS
     return 1;
 #endif
 }
@@ -173,10 +199,16 @@ Lock_release_impl(LockObject *self)
     return 0;
 
 #else  // POSIX fallback
-    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
+    pthread_mutex_lock(&self->mut);
+    if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
+        pthread_mutex_unlock(&self->mut);
         return -1;
     }
-    pthread_mutex_unlock(&self->mutex);
+    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+    // Wake one waiter (if any). Signalling under `mut` is fine and avoids a
+    // lost-wakeup race.
+    pthread_cond_signal(&self->lock_released);
+    pthread_mutex_unlock(&self->mut);
     return 0;
 #endif
 }
@@ -230,7 +262,11 @@ static void
 Lock_dealloc(LockObject *self)
 {
 #ifdef LOCK_BACKEND_PTHREAD
-    pthread_mutex_destroy(&self->mutex);
+    // `mut` is only ever held transiently within a single call, so it is
+    // always unlocked here even if the Python lock is still "locked".
+    // Some pthread implementations require the cond to be destroyed first.
+    pthread_cond_destroy(&self->lock_released);
+    pthread_mutex_destroy(&self->mut);
 #endif
     Py_TYPE(self)->tp_free((PyObject *)self);
 }

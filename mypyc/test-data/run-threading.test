@@ -45,6 +45,32 @@ def test_contention() -> None:
         t.join()
     assert counter[0] == n_threads * n_increments
 
+def test_cross_thread_release() -> None:
+    # threading.Lock is unowned: a lock acquired on one thread may be
+    # released from another. A thread blocked in acquire() must then wake up.
+    import threading
+    lock = Lock()
+    assert lock.acquire()
+
+    started = threading.Event()
+    released = threading.Event()
+
+    def releaser() -> None:
+        started.set()
+        # Hand the lock off from a different thread than the acquirer.
+        lock.release()
+        released.set()
+
+    t = threading.Thread(target=releaser)
+    t.start()
+    started.wait()
+    # Blocks until releaser releases the lock on the other thread.
+    assert lock.acquire()
+    t.join()
+    assert released.is_set()
+    lock.release()
+    assert not lock.locked()
+
 def test_context_manager_exception() -> None:
     lock = Lock()
     try:
