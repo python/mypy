@@ -1831,3 +1831,33 @@ def _force_recompile() -> int:
 [file driver.py]
 from native import test
 test()
+
+[case testCrossModuleInheritedAttrDefaultsSameGroup]
+# separate: [(["native.py"], "grp1"), (["other_a.py", "other_b.py"], "grp2")]
+# Regression: with the subclass (other_a) and base (other_b) in the same
+# compilation group, IR build runs alphabetically within the group, so
+# the subclass is IR-built before the base. The decision to emit
+# __mypyc_defaults_setup (and a chained call to the ancestor's) must be
+# set up in the prepare phase, before any IR build runs; otherwise the
+# subclass's lookup of the parent's setup decl misses and inherited
+# defaults are lost on a fresh build.
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    assert c.x == 1
+    assert c.z is True
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+[file driver.py]
+from native import test
+test()
