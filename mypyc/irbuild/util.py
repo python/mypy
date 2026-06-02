@@ -24,7 +24,6 @@ from mypy.nodes import (
     NameExpr,
     OverloadedFuncDef,
     RefExpr,
-    Statement,
     StrExpr,
     TempNode,
     TupleExpr,
@@ -123,7 +122,7 @@ def defaults_skip(stmt: AssignmentStmt, cls_type: str | None) -> bool:
     return False
 
 
-def default_attr_name(stmt: Statement, ir: ClassIR, cls_type: str | None) -> str | None:
+def default_attr_name(stmt: AssignmentStmt, ir: ClassIR, cls_type: str | None) -> str | None:
     """Return the attribute name if `stmt` is a class-level default assignment
     that __mypyc_defaults_setup should emit; otherwise None.
 
@@ -131,8 +130,6 @@ def default_attr_name(stmt: Statement, ir: ClassIR, cls_type: str | None) -> str
     mypyc.irbuild.classdef.find_attr_initializers (IR build) and
     mypyc.irbuild.prepare._has_own_default_attrs (prepare-phase decl registration).
     """
-    if not isinstance(stmt, AssignmentStmt):
-        return None
     lvalue = stmt.lvalues[0]
     if not isinstance(lvalue, NameExpr) or is_class_var(lvalue):
         return None

@@ -21,6 +21,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
+    AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
@@ -432,7 +433,9 @@ def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
         return False
     cls_type = dataclass_type(cdef)
     return any(
-        default_attr_name(stmt, ir, cls_type) is not None for stmt in cdef.info.defn.defs.body
+        default_attr_name(stmt, ir, cls_type) is not None
+        for stmt in cdef.info.defn.defs.body
+        if isinstance(stmt, AssignmentStmt)
     )
 
 

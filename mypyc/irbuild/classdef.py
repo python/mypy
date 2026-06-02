@@ -764,11 +764,9 @@ def find_attr_initializers(
         if info_ir is None:
             continue
         for stmt in info.defn.defs.body:
-            if (
-                isinstance(stmt, AssignmentStmt)
-                and isinstance(stmt.lvalues[0], NameExpr)
-                and stmt.lvalues[0].name == "__deletable__"
-            ):
+            if not isinstance(stmt, AssignmentStmt):
+                continue
+            if isinstance(stmt.lvalues[0], NameExpr) and stmt.lvalues[0].name == "__deletable__":
                 check_deletable_declaration(builder, cls, stmt.line)
                 continue
             name = default_attr_name(stmt, info_ir, cls_type)
