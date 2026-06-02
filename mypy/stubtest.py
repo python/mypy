@@ -707,6 +707,16 @@ def verify_typeinfo(
             mangled_entry = f"_{stub.name.lstrip('_')}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
+        # A generic class is subscriptable at the type level via its type
+        # parameters; a runtime `__class_getitem__` is just the implementation
+        # detail backing that. Don't report it as missing from a stub that
+        # already declares the class as generic. See #21253.
+        if (
+            entry == "__class_getitem__"
+            and isinstance(stub_to_verify, Missing)
+            and stub.is_generic()
+        ):
+            continue
         try:
             try:
                 runtime_attr = getattr(runtime, mangled_entry)

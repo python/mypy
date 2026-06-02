@@ -293,6 +293,33 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_class_getitem_on_generic(self) -> Iterator[Case]:
+        # A runtime `__class_getitem__` backs subscriptability that a stub
+        # expresses via generic type parameters, so it should not be reported
+        # as missing from a generic stub. See #21253.
+        yield Case(
+            stub="""
+            from typing import Generic, TypeVar
+            _T = TypeVar("_T")
+            class GenericClassGetItem(Generic[_T]): ...
+            """,
+            runtime="""
+            class GenericClassGetItem:
+                def __class_getitem__(cls, item, /): return cls
+            """,
+            error=None,
+        )
+        # But a non-generic stub should still flag the extra runtime method.
+        yield Case(
+            stub="class PlainClassGetItem: ...",
+            runtime="""
+            class PlainClassGetItem:
+                def __class_getitem__(cls, item, /): return cls
+            """,
+            error="PlainClassGetItem.__class_getitem__",
+        )
+
+    @collect_cases
     def test_types(self) -> Iterator[Case]:
         yield Case(
             stub="def mistyped_class() -> None: ...",
