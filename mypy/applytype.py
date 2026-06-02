@@ -179,11 +179,17 @@ def apply_generic_arguments(
         assert isinstance(typ, TypeVarLikeType)
         remaining_tvars.append(typ)
 
+    instance_type = None
+    if callable.instance_type is not None:
+        instance_type = expand_type(callable.instance_type, id_to_type)
+        assert isinstance(instance_type, ProperType)
+
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
         type_is=type_is,
+        instance_type=instance_type,
     )
 
 

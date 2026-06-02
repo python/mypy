@@ -8084,3 +8084,35 @@ tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
 [out2]
 tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
 tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+
+[case testNewReturnTypeIncremental]
+import m
+[file m.py]
+from lib import C
+
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file m.py.2]
+from lib import C
+
+# touch
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file lib.py]
+class A:
+    x = "test"
+    def __new__(cls) -> int: ...  # type: ignore
+
+class C:
+    def __init__(self) -> None:
+        self.ta = A
+[out]
+tmp/m.py:3: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:5: note: Revealed type is "builtins.str"
+[out2]
+tmp/m.py:4: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:5: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:6: note: Revealed type is "builtins.str"

@@ -407,15 +407,8 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items[0].ret_type
-    assert isinstance(ret_type, ProperType)
-    if isinstance(ret_type, TupleType):
-        ret_type = tuple_fallback(ret_type)
-    if isinstance(ret_type, TypedDictType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, LiteralType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, Instance):
+    instance_type = typ.items[0].get_instance_type(force_fallback=True)
+    if isinstance(instance_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
             # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
@@ -432,14 +425,18 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
+                instance_type,
+                name,
+                mx,
+                original_vars=typ.items[0].variables,
+                mcs_fallback=typ.fallback,
             )
             if result:
                 return result
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, f"Unexpected type {ret_type!r}"
+        assert False, f"Unexpected type {instance_type!r}"
 
 
 def analyze_type_type_member_access(
@@ -721,7 +718,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-        owner_type = instance_type.items[0].ret_type
+        owner_type = instance_type.items[0].get_instance_type()
         instance_type = NoneType()
     elif isinstance(instance_type, TypeType):
         owner_type = instance_type.item

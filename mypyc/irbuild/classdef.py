@@ -862,12 +862,10 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method."""
-    func_ir = cls.get_method("__eq__")
-    assert func_ir
-    eq_sig = func_ir.decl.sig
+    eq_sig = cls.method_sig("__eq__")
     strict_typing = builder.options.strict_dunders_typing
     with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
-        rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
+        rhs_type = eq_sig.args[1].type
         rhs_arg = builder.add_argument("rhs", rhs_type)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
 

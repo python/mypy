@@ -2838,3 +2838,50 @@ def test(t: tuple[int, ...]) -> None: ...
 test(x)
 test(y)
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicGenericClassEmptyTupleUnpackIndex]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Blah(Generic[Unpack[Ts]]):
+    pass
+
+x: Blah[()]
+y: Blah[Unpack[tuple[()]]]
+
+Empty = tuple[()]
+z: Blah[Unpack[Empty]]
+
+reveal_type(x)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(y)  # N: Revealed type is "__main__.Blah[()]"
+reveal_type(z)  # N: Revealed type is "__main__.Blah[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicGenericAliasEmptyTupleUnpackIndex]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Blah = list[tuple[Unpack[Ts]]]
+
+x: Blah[()]
+y: Blah[Unpack[tuple[()]]]
+
+Empty = tuple[()]
+z: Blah[Unpack[Empty]]
+
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
+reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
+[builtins fixtures/tuple.pyi]
+
+[case testMeetTupleWithUnpackVsInstanceWorks_no_verbose_reveal]
+from typing import TypeVar, Unpack, Union
+
+K = TypeVar("K")
+Prefix = tuple[Union[K, list[int]], ...]
+
+def g(x: K) -> None:
+    d: Union[Prefix[K], tuple[Unpack[Prefix[int]], int], None] = None
+    assert d is not None
+    reveal_type(d)  # N: Revealed type is "tuple[K | list[int], ...] | tuple[*tuple[int | list[int], ...], int]"
+[builtins fixtures/tuple.pyi]

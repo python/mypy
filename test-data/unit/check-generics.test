@@ -3728,3 +3728,12 @@ reveal_type(ok3)  # N: Revealed type is "tuple[()]"
 bad1: list[()] = []  # E: "list" expects 1 type argument, but none given \
                      # E: Missing type arguments for generic type "list"
 [builtins fixtures/tuple.pyi]
+
+[case testGenericClassAsArgumentToType]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+def test(tp: type[T]) -> T: ...
+
+class C(Generic[T]): ...
+reveal_type(test(C))  # N: Revealed type is "__main__.C[Any]"

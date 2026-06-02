@@ -2232,13 +2232,11 @@ class MessageBuilder:
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
             if subtype.is_type_obj():
-                ret_type = get_proper_type(subtype.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = mypy.typeops.tuple_fallback(ret_type)
-                if not isinstance(ret_type, Instance):
+                instance_type = subtype.get_instance_type(force_fallback=True)
+                if not isinstance(instance_type, Instance):
                     return
                 class_obj = True
-                subtype = ret_type
+                subtype = instance_type
             else:
                 subtype = subtype.fallback
                 skip = ["__call__"]
@@ -2832,9 +2830,7 @@ def format_type_inner(
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
-            # The type of a type object type can be derived from the
-            # return type (this always works).
-            return format(TypeType.make_normalized(func.items[0].ret_type))
+            return format(TypeType.make_normalized(func.items[0].get_instance_type()))
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
