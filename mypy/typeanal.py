@@ -2503,7 +2503,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             return t
         new_nodes = self.seen_nodes | {t.alias}
         visitor = DivergingAliasDetector(new_nodes)
-        _ = t.expand_once(skip_normalization=True).accept(visitor)
+        _ = get_proper_type(t).accept(visitor)
         if visitor.diverging:
             self.diverging = True
         return t

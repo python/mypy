@@ -893,6 +893,21 @@ A = tuple[Unpack[B[Unpack[Ts]]]]  # E: Invalid recursive alias: a tuple item of 
 B = tuple[Unpack[A[Unpack[Ts]]]]
 [builtins fixtures/tuple.pyi]
 
+[case testNoCrashOnInvalidRecursiveUnpackOfUnion]
+from typing import Unpack
+
+A = tuple[int, str] | list[tuple[Unpack[A]]]  # E: "tuple[int, str] | list[tuple[Unpack[A]]]" cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnNonNormalRecursiveTuple]
+from typing import Unpack
+
+A = tuple[int, list[tuple[str, Unpack[A]]]]
+a: A
+x, y = a
+y[0] = 1  # E: Incompatible types in assignment (expression has type "int", target has type "tuple[str, Unpack[A]]")
+[builtins fixtures/list.pyi]
+
 [case testBanTypeVarTupleNotImmediatelyInsideUnpack]
 from typing import TypeVarTuple, Unpack
 

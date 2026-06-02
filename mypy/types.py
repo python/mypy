@@ -350,11 +350,11 @@ class TypeAliasType(Type):
         self.args = args
         self.type_ref: str | None = None
 
-    def expand_once(self, skip_normalization: bool = False) -> Type:
+    def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
 
         This doesn't do full expansion, i.e. the result can contain another
-        (or even this same) type alias. Use this helper only when needed,
+        (or even this same) type alias. Use this internal helper only when really needed,
         its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
@@ -381,8 +381,7 @@ class TypeAliasType(Type):
             ):
                 mapping[tvar.id] = sub
 
-        visitor = InstantiateAliasVisitor(mapping, skip_normalization=skip_normalization)
-        return self.alias.target.accept(visitor)
+        return self.alias.target.accept(InstantiateAliasVisitor(mapping))
 
     @property
     def is_recursive(self) -> bool:
@@ -3708,7 +3707,7 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
     if isinstance(typ, TypeGuardedType):
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
-        typ = typ.expand_once()
+        typ = typ._expand_once()
     # TODO: store the name of original type alias on this type, so we can show it in errors.
     return cast(ProperType, typ)
 
@@ -4252,12 +4251,12 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
             # Funky code here avoids mypyc narrowing the type of unpack_index.
             old_index = unpack_index
             assert old_index is None
-            # Don't return so that we can also sanity check there is only one.
+            # Don't return so that we can also sanity-check there is only one.
             unpack_index = i
     return unpack_index
 
 
-def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
+def flatten_nested_tuples(types: Iterable[Type], handle_recursive: bool = True) -> list[Type]:
     """Recursively flatten TupleTypes nested with Unpack.
 
     For example this will transform
@@ -4271,7 +4270,12 @@ def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
             res.append(typ)
             continue
         p_type = get_proper_type(typ.type)
-        if not isinstance(p_type, TupleType):
+        if (
+            not isinstance(p_type, TupleType)
+            or not handle_recursive
+            and isinstance(typ.type, TypeAliasType)
+            and typ.type.is_recursive
+        ):
             res.append(typ)
             continue
         if isinstance(typ.type, TypeAliasType):

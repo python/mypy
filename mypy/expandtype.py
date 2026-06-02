@@ -182,16 +182,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(
-        self, variables: Mapping[TypeVarId, Type], skip_normalization: bool = False
-    ) -> None:
+    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         super().__init__()
         self.variables = variables
-        # This flag will skip normalizations that are semantically not needed, but
-        # require calling get_proper_type(). This is needed during very early stages
-        # to avoid infinite recursion when detecting invalid/divergent recursive
-        # type aliases.
-        self.skip_normalization = skip_normalization
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -235,7 +228,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
-            if not self.skip_normalization and isinstance(arg, UnpackType):
+            if isinstance(arg, UnpackType) and not (
+                isinstance(arg.type, TypeAliasType) and arg.type.is_recursive
+            ):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
                     assert unpacked.type.fullname == "builtins.tuple"
@@ -540,7 +535,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
-            if not self.skip_normalization and isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and not (
+                isinstance(item.type, TypeAliasType) and item.type.is_recursive
+            ):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
                     # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.
