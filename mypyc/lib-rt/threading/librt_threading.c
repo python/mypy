@@ -23,10 +23,27 @@
 
 #else
 
-// Python <3.14 on POSIX: Use pthread mutex
+// Python <3.14 on POSIX.
+//
+// Prefer a POSIX unnamed semaphore when the platform supports it well, and
+// fall back to a pthread mutex + condition variable otherwise. We use the
+// same test CPython uses to pick its semaphore-based lock (see
+// Python/thread_pthread.h): an unnamed semaphore is only usable when
+// sem_init() actually works AND a timed wait is available. Notably this is
+// true on Linux but false on macOS (whose sem_init() is a non-functional
+// stub), so macOS uses the mutex+condvar fallback.
+#include <unistd.h>
+#if defined(_POSIX_SEMAPHORES) && (_POSIX_SEMAPHORES + 0) != -1 && \
+    (defined(HAVE_SEM_TIMEDWAIT) || defined(HAVE_SEM_CLOCKWAIT))
+#define LOCK_BACKEND_SEM
+#include <semaphore.h>
+#include <errno.h>
+#include <stdatomic.h>
+#else
 #define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
 #include <stdatomic.h>
+#endif
 
 #endif
 
@@ -42,12 +59,20 @@
 // On older Python with Windows, this uses SRWLOCK (Slim Reader/Writer Lock),
 // a lightweight kernel primitive. A separate volatile flag tracks the locked state.
 //
-// On older Python with POSIX systems (macOS, Linux, etc.), this uses a
-// pthread mutex + condition variable guarding a `locked` flag (mirroring
-// CPython's portable POSIX lock). The mutex only protects the flag and is
-// never held across the user's critical section, so release() may be called
-// from a thread other than the one that acquired the lock, matching
-// threading.Lock semantics.
+// On older Python with POSIX systems, there are two backends, both of which
+// allow release() from a thread other than the one that acquired the lock
+// (matching threading.Lock semantics):
+//
+//  - Where unnamed POSIX semaphores work well (e.g. Linux), this uses a
+//    sem_t initialized to 1: acquire is sem_wait, release is sem_post.
+//    Semaphores have no ownership concept, so cross-thread release is
+//    directly well-defined.
+//
+//  - Otherwise (e.g. macOS, whose sem_init() is a non-functional stub), this
+//    uses a pthread mutex + condition variable guarding a `locked` flag. The
+//    mutex only protects the flag and is never held across the user's
+//    critical section, so the OS mutex is always unlocked on the same thread
+//    that locked it.
 //
 
 #ifdef MYPYC_EXPERIMENTAL
@@ -69,7 +94,19 @@ typedef struct {
     volatile long locked;  // 0=unlocked, 1=locked (for locked() and error checking)
 } LockObject;
 
-#else  // POSIX fallback
+#elif defined(LOCK_BACKEND_SEM)
+
+typedef struct {
+    PyObject_HEAD
+    sem_t sem;          // counting semaphore, initialized to 1
+    // Tracks the locked state for locked() and release-unlocked detection.
+    // The semaphore itself is the source of truth for mutual exclusion; this
+    // flag is advisory bookkeeping. It is set after a successful acquire and
+    // cleared before sem_post in release.
+    _Atomic int locked;
+} LockObject;
+
+#else  // pthread mutex + condvar fallback
 
 typedef struct {
     PyObject_HEAD
@@ -96,6 +133,9 @@ Lock_init_internal(LockObject *self)
 #elif defined(LOCK_BACKEND_SRWLOCK)
     InitializeSRWLock(&self->lock);
     self->locked = 0;
+#elif defined(LOCK_BACKEND_SEM)
+    sem_init(&self->sem, 0, 1);
+    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
 #else
     pthread_mutex_init(&self->mut, NULL);
     pthread_cond_init(&self->lock_released, NULL);
@@ -140,7 +180,50 @@ Lock_acquire_impl(LockObject *self, int blocking)
     InterlockedExchange(&self->locked, 1);
     return 1;
 
-#else  // POSIX fallback
+#elif defined(LOCK_BACKEND_SEM)
+    // A semaphore has no ownership: any thread may sem_post a token that
+    // another thread consumed via sem_wait, so cross-thread release is
+    // directly well-defined. `locked` is advisory bookkeeping for locked()
+    // and for guarding against releasing an unheld lock.
+    if (!blocking) {
+        int status;
+        do {
+            status = sem_trywait(&self->sem);
+        } while (status == -1 && errno == EINTR);
+        if (status == 0) {
+            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            return 1;
+        }
+        return 0;  // EAGAIN: already held
+    }
+
+    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
+    // overhead in the common uncontended case.
+    {
+        int status;
+        do {
+            status = sem_trywait(&self->sem);
+        } while (status == -1 && errno == EINTR);
+        if (status == 0) {
+            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            return 1;
+        }
+    }
+
+    // Slow path: block with the GIL dropped so other Python threads can run
+    // (and release the lock). Retry on EINTR (signal).
+    Py_BEGIN_ALLOW_THREADS
+    {
+        int status;
+        do {
+            status = sem_wait(&self->sem);
+        } while (status == -1 && errno == EINTR);
+    }
+    Py_END_ALLOW_THREADS
+    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    return 1;
+
+#else  // pthread mutex + condvar fallback
     // `mut` only guards `locked` and the condition variable; it is held just
     // long enough to inspect/flip the flag, never across the user's critical
     // section. This is what lets a different thread call release().
@@ -198,7 +281,17 @@ Lock_release_impl(LockObject *self)
     ReleaseSRWLockExclusive(&self->lock);
     return 0;
 
-#else  // POSIX fallback
+#elif defined(LOCK_BACKEND_SEM)
+    // Atomically clear the flag; only the caller that observes the previous
+    // value as 1 actually owns the release and posts the semaphore. This
+    // prevents a double release from over-incrementing the semaphore.
+    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
+        return -1;
+    }
+    sem_post(&self->sem);
+    return 0;
+
+#else  // pthread mutex + condvar fallback
     pthread_mutex_lock(&self->mut);
     if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
         pthread_mutex_unlock(&self->mut);
@@ -261,7 +354,9 @@ Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
 static void
 Lock_dealloc(LockObject *self)
 {
-#ifdef LOCK_BACKEND_PTHREAD
+#if defined(LOCK_BACKEND_SEM)
+    sem_destroy(&self->sem);
+#elif defined(LOCK_BACKEND_PTHREAD)
     // `mut` is only ever held transiently within a single call, so it is
     // always unlocked here even if the Python lock is still "locked".
     // Some pthread implementations require the cond to be destroyed first.
