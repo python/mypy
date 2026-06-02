@@ -1710,6 +1710,41 @@ assert sum_range(0) == 0
 assert sum_range(1) == 0
 assert sum_range(5) == 10
 
+[case testPackageCycleInheritedEq]
+-- Regression test for generating __ne__ from an inherited __eq__ when the
+-- inherited method's declaration is available before its FuncIR body has been
+-- generated. This can happen in package import cycles where __init__ imports a
+-- child module before the subpackage that defines the base class.
+from other.other_child import Child
+
+def make_child() -> Child:
+    return Child()
+
+[file other/__init__.py]
+from other.other_child import Child as Child
+from other.other_subpkg import Base as Base
+
+[file other/other_child.py]
+from other.other_subpkg import Base
+
+class Child(Base):
+    pass
+
+[file other/other_subpkg/__init__.py]
+from other.other_subpkg.other_base import Base as Base
+
+[file other/other_subpkg/other_base.py]
+class Base:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+[file driver.py]
+from native import make_child
+left = make_child()
+right = make_child()
+assert left == right
+assert not (left != right)
+
 [case testSeparateCrossGroupInheritedInit]
 -- Under separate=True, a subclass whose __init__ is inherited from a
 -- different group must call the base's CPyPy_ wrapper through the exports

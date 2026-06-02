@@ -2873,3 +2873,15 @@ reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
 [builtins fixtures/tuple.pyi]
+
+[case testMeetTupleWithUnpackVsInstanceWorks_no_verbose_reveal]
+from typing import TypeVar, Unpack, Union
+
+K = TypeVar("K")
+Prefix = tuple[Union[K, list[int]], ...]
+
+def g(x: K) -> None:
+    d: Union[Prefix[K], tuple[Unpack[Prefix[int]], int], None] = None
+    assert d is not None
+    reveal_type(d)  # N: Revealed type is "tuple[K | list[int], ...] | tuple[*tuple[int | list[int], ...], int]"
+[builtins fixtures/tuple.pyi]

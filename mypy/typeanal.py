@@ -154,6 +154,7 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
+    erase_tvar_defs: list[TypeVarType] | None = None,
     alias_type_params_names: list[str] | None = None,
     python_3_12_type_alias: bool = False,
 ) -> tuple[Type, set[str]]:
@@ -174,6 +175,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
+        erase_tvar_defs=erase_tvar_defs,
         alias_type_params_names=alias_type_params_names,
         python_3_12_type_alias=python_3_12_type_alias,
     )
@@ -220,6 +222,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
+        erase_tvar_defs: list[TypeVarType] | None = None,
         allow_type_any: bool = False,
         alias_type_params_names: list[str] | None = None,
         analyzing_tvar_def: bool = False,
@@ -240,6 +243,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if allowed_alias_tvars is None:
             allowed_alias_tvars = []
         self.allowed_alias_tvars = allowed_alias_tvars
+        # Should we erase some type variables? This can be used to mass-erase type
+        # variables that were found to be invalid at the class/alias definition.
+        if erase_tvar_defs is None:
+            erase_tvar_defs = []
+        self.erase_tvar_defs = erase_tvar_defs
         self.alias_type_params_names = alias_type_params_names
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
@@ -402,6 +410,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 else:
                     msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
                 self.fail(msg, t, code=codes.VALID_TYPE)
+                return AnyType(TypeOfAny.from_error)
+            if (
+                isinstance(sym.node, TypeVarExpr)
+                and tvar_def is not None
+                and tvar_def in self.erase_tvar_defs
+            ):
+                # The caller should have already given a relevant error.
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
                 assert isinstance(tvar_def, TypeVarType)
@@ -2108,7 +2123,10 @@ def fix_instance(
     """
     used_default = False
     arg_count = len(t.args)
-    min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
+    min_tv_count = sum(
+        not tv.has_default() and not isinstance(tv, TypeVarTupleType)
+        for tv in t.type.defn.type_vars
+    )
     max_tv_count = len(t.type.type_vars)
     if arg_count < min_tv_count or arg_count > max_tv_count:
         # Don't use existing args if arg_count doesn't match
@@ -2117,9 +2135,10 @@ def fix_instance(
             disallow_any = False
         t.args = ()
 
-    args: list[Type] = [*(t.args[:max_tv_count])]
+    args: list[Type] = list(t.args)
     any_type: AnyType | None = None
     env: dict[TypeVarId, Type] = {}
+    tvt_no_default = False
 
     for tv, arg in itertools.zip_longest(t.type.defn.type_vars, t.args, fillvalue=None):
         if tv is None:
@@ -2152,16 +2171,27 @@ def fix_instance(
                 arg = any_type
             else:
                 assert arg is not None
-            with state.strict_optional_set(options.strict_optional):
-                # Gradually expand defaults, as they may depend on previous variables.
-                if tv.has_default():
-                    arg = expand_type(arg, env)
-                env[tv.id] = arg
-            args.append(arg)
+            if use_any and isinstance(tv, TypeVarTupleType):
+                tvt_no_default = True
+            # Default such as *tuple[int, str] should be unpacked into individual items.
+            if isinstance(arg, UnpackType) and isinstance(
+                unpack := get_proper_type(arg.type), TupleType
+            ):
+                unpacked = unpack.items
+            else:
+                unpacked = [arg]
+            for arg in unpacked:
+                with state.strict_optional_set(options.strict_optional):
+                    # Gradually expand defaults, as they may depend on previous variables.
+                    if tv.has_default():
+                        arg = expand_type(arg, env)
+                    env[tv.id] = arg
+                args.append(arg)
         else:
             env[tv.id] = arg
     t.args = tuple(args)
-    fix_type_var_tuple_argument(t)
+    if tvt_no_default:
+        fix_type_var_tuple_argument(t)
     return used_default
 
 
@@ -2380,15 +2410,22 @@ def set_any_tvars(
             else:
                 arg = any_type
                 used_any_type = True
-            if isinstance(tv, TypeVarTupleType):
-                # TODO Handle TypeVarTuple defaults
+            if used_any_type and isinstance(tv, TypeVarTupleType):
                 arg = UnpackType(Instance(tv.tuple_fallback.type, [any_type]))
-            with state.strict_optional_set(options.strict_optional):
-                # Gradually expand defaults, as they may depend on previous variables.
-                if tv.has_default():
-                    arg = expand_type(arg, env)
-                env[tv.id] = arg
-            args.append(arg)
+            # Default such as *tuple[int, str] should be unpacked into individual items.
+            if isinstance(arg, UnpackType) and isinstance(
+                unpack := get_proper_type(arg.type), TupleType
+            ):
+                unpacked = unpack.items
+            else:
+                unpacked = [arg]
+            for arg in unpacked:
+                with state.strict_optional_set(options.strict_optional):
+                    # Gradually expand defaults, as they may depend on previous variables.
+                    if tv.has_default():
+                        arg = expand_type(arg, env)
+                    env[tv.id] = arg
+                args.append(arg)
         else:
             env[tv.id] = arg
     t = TypeAliasType(node, args, newline, newcolumn)

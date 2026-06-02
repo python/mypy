@@ -73,4 +73,48 @@ static inline bool LibRTStrings_IsIdentifier(int32_t c) {
     return r == 1;
 }
 
+// Shared slow path for LibRTStrings_ToUpper / _ToLower. Round-trips the
+// codepoint through CPython's str.upper / str.lower on a 1-character
+// string. When the conversion expands to multiple codepoints (e.g.
+// 'ß'.upper() == 'SS') we return the input unchanged so the public
+// helpers stay i32 -> i32. Aborts via CPyError_OutOfMemory on allocation
+// failure.
+static inline int32_t LibRTStrings_ChangeCase_slow(int32_t c, const char *method) {
+    PyObject *s = PyUnicode_FromOrdinal((int)c);
+    if (s == NULL) {
+        CPyError_OutOfMemory();
+    }
+    PyObject *u = PyObject_CallMethod(s, method, NULL);
+    Py_DECREF(s);
+    if (u == NULL) {
+        CPyError_OutOfMemory();
+    }
+    int32_t result = c;
+    if (PyUnicode_GET_LENGTH(u) == 1) {
+        result = (int32_t)PyUnicode_READ_CHAR(u, 0);
+    }
+    Py_DECREF(u);
+    return result;
+}
+
+// Uppercase a codepoint. ASCII fast path is `a..z -> A..Z` (subtract 32);
+// non-ASCII delegates to str.upper on a 1-character string. Returns the
+// input unchanged when uppercasing expands to multiple codepoints.
+static inline int32_t LibRTStrings_ToUpper(int32_t c) {
+    if (c < 0) return c;
+    if (c >= 'a' && c <= 'z') return c - 32;
+    if (c < 128) return c;
+    return LibRTStrings_ChangeCase_slow(c, "upper");
+}
+
+// Lowercase a codepoint. ASCII fast path is `A..Z -> a..z` (add 32);
+// non-ASCII delegates to str.lower on a 1-character string. Returns the
+// input unchanged when lowercasing expands to multiple codepoints.
+static inline int32_t LibRTStrings_ToLower(int32_t c) {
+    if (c < 0) return c;
+    if (c >= 'A' && c <= 'Z') return c + 32;
+    if (c < 128) return c;
+    return LibRTStrings_ChangeCase_slow(c, "lower");
+}
+
 #endif  // LIBRT_STRINGS_H
