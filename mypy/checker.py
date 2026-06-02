@@ -2813,6 +2813,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.check_multiple_inheritance(typ)
                 self.check_metaclass_compatibility(typ)
                 self.check_final_deletable(typ)
+                if typ.typeddict_type:
+                    self.check_typeddict_inheritance(defn)
 
             if defn.decorators:
                 sig: Type = type_object_type(defn.info)
@@ -3218,6 +3220,44 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             explanation = typ.explain_metaclass_conflict()
             if explanation:
                 self.note(explanation, typ, code=codes.METACLASS)
+
+    def check_typeddict_inheritance(self, defn: ClassDef) -> None:
+        """Ensure that the final definition of a TypedDict is compatible with its base classes."""
+        assert defn.info.typeddict_type
+        td = defn.info.typeddict_type
+        data = defn.info.typeddict_data
+        if data is None or not data.ready:
+            return
+        for base, base_items in data.bases:
+            assert base.typeddict_type
+            for field_name, base_type in base_items.items():
+                field_type = td.items[field_name]
+                assert field_type
+                is_readonly = field_name in base.typeddict_type.readonly_keys
+                if is_readonly:
+                    is_compatible = is_subtype(field_type, base_type)
+                else:
+                    is_compatible = is_equivalent(field_type, base_type)
+                if not is_compatible:
+                    source = data.field_sources[field_name]
+                    if source.base is None:
+                        self.fail(
+                            f'Definition of field "{field_name}" incompatible with base class '
+                            f'"{base.name}"',
+                            source.ctx,
+                        )
+                    else:
+                        self.fail(
+                            f'Incompatible definitions of field "{field_name}" in base classes '
+                            f'"{base.name}" and "{source.base.name}"',
+                            source.ctx,
+                        )
+                        if field_name in td.readonly_keys:
+                            self.note(
+                                f'This can be resolved by redeclaring the field "{field_name}" '
+                                f"with a mutually compatible type",
+                                source.ctx,
+                            )
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
@@ -6393,7 +6433,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     ) -> tuple[Type, Type]:
         """
         Narrows the type of `iterable_type` based on the type of `item_type`.
-        For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
+        For now, we only support narrowing unions of TypedDicts, and TypeVars with TypedDict
+        bounds, based on left operand being literal string(s).
         """
         if_types: list[Type] = []
         else_types: list[Type] = []
@@ -6407,16 +6448,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         item_str_literals = try_getting_str_literals_from_type(item_type)
 
         for possible_iterable_type in possible_iterable_types:
-            if item_str_literals and isinstance(possible_iterable_type, TypedDictType):
+            bound = (
+                get_proper_type(possible_iterable_type.upper_bound)
+                if isinstance(possible_iterable_type, TypeVarType)
+                else possible_iterable_type
+            )
+
+            if item_str_literals and isinstance(bound, TypedDictType):
                 for key in item_str_literals:
-                    if key in possible_iterable_type.required_keys:
+                    if key in bound.required_keys:
                         if_types.append(possible_iterable_type)
-                    elif (
-                        key in possible_iterable_type.items or not possible_iterable_type.is_final
+                    elif key in bound.items and isinstance(
+                        get_proper_type(bound.items[key]), UninhabitedType
                     ):
-                        if_types.append(possible_iterable_type)
+                        # If an item is explicitly declared uninhabited, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
+                        else_types.append(possible_iterable_type)
+                    elif key not in bound.items and (bound.is_closed or bound.is_final):
+                        # If an item is missing and the type is closed, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
+                        # We also support "final" as a legacy way of expressing "closed" in this
+                        # specific case; see testOperatorContainsNarrowsTypedDicts_final
                         else_types.append(possible_iterable_type)
                     else:
+                        if_types.append(possible_iterable_type)
                         else_types.append(possible_iterable_type)
             else:
                 if_types.append(possible_iterable_type)

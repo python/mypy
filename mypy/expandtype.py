@@ -336,7 +336,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return dict_type
         kwargs = {}
         required_names = set()
-        extra_items: Type = UninhabitedType()
+        extra_items: Type | None = None
         for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
             if kind == ArgKind.ARG_NAMED and name is not None:
                 kwargs[name] = type
@@ -346,10 +346,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 extra_items = type
             elif not kind.is_star() and name is not None:
                 kwargs[name] = type
-        if not kwargs:
+        if not kwargs and extra_items is not None:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
-        # TODO: when PEP 728 is implemented, pass extra_items below.
-        return TypedDictType(kwargs, required_names, set(), fallback=dict_type)
+        # TODO: when PEP 728 `extra_items` is implemented, pass extra_items below.
+        is_closed = extra_items is None
+        return TypedDictType(kwargs, required_names, set(), is_closed, fallback=dict_type)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself

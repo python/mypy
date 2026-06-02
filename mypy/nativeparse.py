@@ -926,7 +926,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
                 extra_items_from.append(val)
             else:
                 td_items[key] = val
-        typeddict_type = TypedDictType(td_items, set(), set(), _dummy_fallback)
+        typeddict_type = TypedDictType(td_items, set(), set(), False, _dummy_fallback)
         typeddict_type.extra_items_from = extra_items_from
         read_loc(data, typeddict_type)
         expect_end_tag(data)

@@ -35,6 +35,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictItem,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
@@ -1121,26 +1122,71 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return t
         return self.default(self.s)
 
+    def resolve_typeddict_item_type(
+        self, name: str, s: TypedDictItem, t: TypedDictItem
+    ) -> tuple[Type | None, bool]:
+        """Return the type and readonlyness of a meet item.
+
+        If the parent constraints are mutually incompatible, the
+        returned type will be None; the overall meet type should
+        be UninhabitedType.
+        """
+        is_readonly = s.readonly and t.readonly
+
+        if t.typ is None:
+            assert s.typ is not None
+            meet_type = s.typ
+        elif s.typ is None:
+            meet_type = t.typ
+        else:
+            meet_type = meet_types(s.typ, t.typ)
+
+        if (
+            s.typ is not None
+            and s.mutable
+            and (not is_equivalent(meet_type, s.typ) or (t.required and not s.required))
+        ):
+            meet_type = None
+        elif (
+            t.typ is not None
+            and t.mutable
+            and (not is_equivalent(meet_type, t.typ) or (s.required and not t.required))
+        ):
+            meet_type = None
+        elif isinstance(get_proper_type(meet_type), UninhabitedType) and (
+            s.required or t.required
+        ):
+            meet_type = None
+
+        return (meet_type, is_readonly)
+
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            for name, l, r in self.s.zip(t):
-                if not is_equivalent(l, r) or (name in t.required_keys) != (
-                    name in self.s.required_keys
-                ):
+            is_closed = self.s.is_closed or t.is_closed
+            items: dict[str, Type] = {}
+            readonly_keys: set[str] = set()
+            for name, s_item, t_item in self.s.zipall(t):
+                meet_type, is_readonly = self.resolve_typeddict_item_type(name, s_item, t_item)
+
+                if meet_type is None:
                     return self.default(self.s)
-            item_list: list[tuple[str, Type]] = []
-            for item_name, s_item_type, t_item_type in self.s.zipall(t):
-                if s_item_type is not None:
-                    item_list.append((item_name, s_item_type))
-                else:
-                    # at least one of s_item_type and t_item_type is not None
-                    assert t_item_type is not None
-                    item_list.append((item_name, t_item_type))
-            items = dict(item_list)
+
+                if (
+                    is_closed
+                    and not is_readonly
+                    and isinstance(get_proper_type(meet_type), UninhabitedType)
+                ):
+                    # Simplify emitted type by omitting redundant Never keys from closed
+                    # TypedDicts
+                    continue
+
+                items[name] = meet_type
+                if is_readonly:
+                    readonly_keys.add(name)
+
             fallback = self.s.create_anonymous_fallback()
-            required_keys = t.required_keys | self.s.required_keys
-            readonly_keys = t.readonly_keys | self.s.readonly_keys
-            return TypedDictType(items, required_keys, readonly_keys, fallback)
+            required_keys = self.s.required_keys | t.required_keys
+            return TypedDictType(items, required_keys, readonly_keys, is_closed, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:

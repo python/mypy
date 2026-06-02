@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Final,
+    NamedTuple,
     NewType,
     TypeAlias as _TypeAlias,
     TypeGuard,
@@ -2984,6 +2985,26 @@ class TupleType(ProperType):
         return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
+class TypedDictItem(NamedTuple):
+    """Type, mutability and requiredness of an item in a TypedDict.
+
+    If typ is `None`, the item comes from a missing item in an open TypedDict, and
+    the type should be treated as if it were a `builtins.object`. (Missing items in
+    closed TypedDicts will have an uninhabited type.)
+
+    TODO: pass a `builtins.object` instead of None when TypedDictType gains a
+    proper extra_items field.
+    """
+
+    typ: Type | None
+    required: bool
+    readonly: bool
+
+    @property
+    def mutable(self) -> bool:
+        return not self.readonly
+
+
 class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
@@ -3008,6 +3029,7 @@ class TypedDictType(ProperType):
         "items",
         "required_keys",
         "readonly_keys",
+        "is_closed",
         "fallback",
         "extra_items_from",
         "to_be_mutated",
@@ -3026,6 +3048,7 @@ class TypedDictType(ProperType):
         items: dict[str, Type],
         required_keys: set[str],
         readonly_keys: set[str],
+        is_closed: bool,
         fallback: Instance,
         line: int = -1,
         column: int = -1,
@@ -3034,6 +3057,7 @@ class TypedDictType(ProperType):
         self.items = items
         self.required_keys = required_keys
         self.readonly_keys = readonly_keys
+        self.is_closed = is_closed
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
@@ -3050,6 +3074,7 @@ class TypedDictType(ProperType):
                 self.fallback,
                 frozenset(self.required_keys),
                 frozenset(self.readonly_keys),
+                self.is_closed,
             )
         )
 
@@ -3067,6 +3092,7 @@ class TypedDictType(ProperType):
             and self.fallback == other.fallback
             and self.required_keys == other.required_keys
             and self.readonly_keys == other.readonly_keys
+            and self.is_closed == other.is_closed
         )
 
     def serialize(self) -> JsonDict:
@@ -3076,6 +3102,7 @@ class TypedDictType(ProperType):
             "required_keys": sorted(self.required_keys),
             "readonly_keys": sorted(self.readonly_keys),
             "fallback": self.fallback.serialize(),
+            "is_closed": self.is_closed,
         }
 
     @classmethod
@@ -3085,6 +3112,7 @@ class TypedDictType(ProperType):
             {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             set(data["readonly_keys"]),
+            bool(data["is_closed"]),
             Instance.deserialize(data["fallback"]),
         )
 
@@ -3094,6 +3122,7 @@ class TypedDictType(ProperType):
         write_type_map(data, self.items)
         write_str_list(data, sorted(self.required_keys))
         write_str_list(data, sorted(self.readonly_keys))
+        write_bool(data, self.is_closed)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -3101,7 +3130,11 @@ class TypedDictType(ProperType):
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         ret = TypedDictType(
-            read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
+            read_type_map(data),
+            set(read_str_list(data)),
+            set(read_str_list(data)),
+            read_bool(data),
+            fallback,
         )
         assert read_tag(data) == END_TAG
         return ret
@@ -3127,6 +3160,7 @@ class TypedDictType(ProperType):
         item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
         readonly_keys: set[str] | None = None,
+        is_closed: bool | None = None,
     ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
@@ -3138,13 +3172,14 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         if readonly_keys is None:
             readonly_keys = self.readonly_keys
+        if is_closed is None:
+            is_closed = self.is_closed
         if item_names is not None:
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
-        return TypedDictType(items, required_keys, readonly_keys, fallback, self.line, self.column)
-
-    def names_are_wider_than(self, other: TypedDictType) -> bool:
-        return len(other.items.keys() - self.items.keys()) == 0
+        return TypedDictType(
+            items, required_keys, readonly_keys, is_closed, fallback, self.line, self.column
+        )
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
         left = self
@@ -3153,15 +3188,28 @@ class TypedDictType(ProperType):
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
-    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, Type | None, Type | None]]:
+    def item(self, item_name: str) -> TypedDictItem:
+        item_type = self.items.get(item_name)
+        if item_type is not None:
+            is_required = item_name in self.required_keys
+            is_readonly = item_name in self.readonly_keys
+        elif self.is_closed:
+            item_type = UninhabitedType()
+            is_required = False
+            is_readonly = False
+        else:
+            is_required = False
+            is_readonly = True
+        return TypedDictItem(item_type, is_required, is_readonly)
+
+    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, TypedDictItem, TypedDictItem]]:
         left = self
-        for item_name, left_item_type in left.items.items():
-            right_item_type = right.items.get(item_name)
-            yield (item_name, left_item_type, right_item_type)
-        for item_name, right_item_type in right.items.items():
+        for item_name in left.items:
+            yield (item_name, left.item(item_name), right.item(item_name))
+        for item_name in right.items:
             if item_name in left.items:
                 continue
-            yield (item_name, None, right_item_type)
+            yield (item_name, left.item(item_name), right.item(item_name))
 
 
 class RawExpressionType(ProperType):
@@ -4001,6 +4049,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             + ", ".join(item_str(name, typ.accept(self)) for name, typ in t.items.items())
             + "}"
         )
+        if t.is_closed:
+            s += ", closed=True"
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:

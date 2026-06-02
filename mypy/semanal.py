@@ -2143,7 +2143,7 @@ class SemanticAnalyzer(
         if (
             defn.info
             and defn.info.typeddict_type
-            and not has_placeholder(defn.info.typeddict_type)
+            and (defn.info.typeddict_data is None or defn.info.typeddict_data.ready)
         ):
             # Don't reprocess everything
             is_typeddict = True

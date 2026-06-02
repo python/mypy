@@ -1094,9 +1094,13 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if not isinstance(rvalue.args[0], StrExpr):
             self.annotate_as_incomplete(lvalue)
             return
+        if len(rvalue.args) > 2 and rvalue.arg_kinds[2] != ARG_NAMED:
+            self.annotate_as_incomplete(lvalue)
+            return
 
         items: list[tuple[str, Expression]] = []
         total: Expression | None = None
+        closed: Expression | None = None
         if len(rvalue.args) > 1 and rvalue.arg_kinds[1] == ARG_POS:
             if not isinstance(rvalue.args[1], DictExpr):
                 self.annotate_as_incomplete(lvalue)
@@ -1106,11 +1110,14 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                     self.annotate_as_incomplete(lvalue)
                     return
                 items.append((attr_name.value, attr_type))
-            if len(rvalue.args) > 2:
-                if rvalue.arg_kinds[2] != ARG_NAMED or rvalue.arg_names[2] != "total":
+            for arg_name, arg in zip(rvalue.arg_names[2:], rvalue.args[2:]):
+                if arg_name == "total":
+                    total = arg
+                elif arg_name == "closed":
+                    closed = arg
+                else:
                     self.annotate_as_incomplete(lvalue)
                     return
-                total = rvalue.args[2]
         else:
             for arg_name, arg in zip(rvalue.arg_names[1:], rvalue.args[1:]):
                 if not isinstance(arg_name, str):
@@ -1130,6 +1137,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             # TODO: Add support for generic TypedDicts. Requires `Generic` as base class.
             if total is not None:
                 bases += f", total={total.accept(p)}"
+            if closed is not None:
+                bases += f", closed={closed.accept(p)}"
             class_def = f"{self._indent}class {lvalue.name}({bases}):"
             if len(items) == 0:
                 self.add(f"{class_def} ...\n")
