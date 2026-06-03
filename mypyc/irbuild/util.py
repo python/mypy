@@ -107,7 +107,7 @@ def dataclass_type(cdef: ClassDef) -> str | None:
     return None
 
 
-def defaults_skip(stmt: AssignmentStmt, cls_type: str | None) -> bool:
+def _defaults_skip(stmt: AssignmentStmt, cls_type: str | None) -> bool:
     """Whether a class-level default assignment is skipped when emitting
     __mypyc_defaults_setup, based on class type.
 
@@ -138,7 +138,7 @@ def default_attr_name(stmt: AssignmentStmt, ir: ClassIR, cls_type: str | None) -
     name = lvalue.name
     if name in ("__slots__", "__deletable__") or name not in ir.attributes:
         return None
-    if defaults_skip(stmt, cls_type):
+    if _defaults_skip(stmt, cls_type):
         return None
     if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == "builtins.None":
         attr_type = ir.attributes[name]

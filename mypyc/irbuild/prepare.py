@@ -40,7 +40,13 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
+from mypyc.common import (
+    FAST_PREFIX,
+    MYPYC_DEFAULTS_SETUP,
+    PROPSET_PREFIX,
+    SELF_NAME,
+    get_id_from_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -144,6 +150,14 @@ def build_type_map(
         class_ir = mapper.type_to_ir[cdef.info]
         if class_ir.is_ext_class and _has_own_default_attrs(cdef, class_ir):
             _register_defaults_setup_decl(class_ir, module.fullname)
+
+    # Validate __deletable__ declarations. Done here so the compiler exits
+    # early on invalid input before any IR is built.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            with catch_errors(module.path, cdef.line):
+                _check_deletable_declarations(module.path, cdef, class_ir, errors)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
@@ -441,9 +455,47 @@ def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
 
 def _register_defaults_setup_decl(ir: ClassIR, module_name: str) -> None:
     sig = FuncSignature([RuntimeArg(SELF_NAME, RInstance(ir))], bool_rprimitive)
-    ir.method_decls["__mypyc_defaults_setup"] = FuncDecl(
-        "__mypyc_defaults_setup", ir.name, module_name, sig
+    ir.method_decls[MYPYC_DEFAULTS_SETUP] = FuncDecl(
+        MYPYC_DEFAULTS_SETUP, ir.name, module_name, sig
     )
+
+
+def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors: Errors) -> None:
+    """Validate that attributes listed in __deletable__ refer to definable
+    attributes on the class.
+
+    Runs in the prepare phase so we exit early on invalid programs before
+    any IR is built.
+    """
+    if not ir.deletable:
+        return
+    line = next(
+        (
+            stmt.line
+            for stmt in cdef.info.defn.defs.body
+            if isinstance(stmt, AssignmentStmt)
+            and isinstance(stmt.lvalues[0], NameExpr)
+            and stmt.lvalues[0].name == "__deletable__"
+        ),
+        cdef.line,
+    )
+    for attr in ir.deletable:
+        if attr not in ir.attributes:
+            if not ir.has_attr(attr):
+                errors.error(f'Attribute "{attr}" not defined', path, line)
+                continue
+            for base in ir.mro:
+                if attr in base.property_types:
+                    errors.error(f'Cannot make property "{attr}" deletable', path, line)
+                    break
+            else:
+                _, base = ir.attr_details(attr)
+                errors.error(
+                    f'Attribute "{attr}" not defined in "{ir.name}" '
+                    f'(defined in "{base.name}")',
+                    path,
+                    line,
+                )
 
 
 def prepare_class_def(

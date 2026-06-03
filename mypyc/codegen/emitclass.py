@@ -29,6 +29,7 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
@@ -285,7 +286,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # If the class has a method to initialize default attribute
     # values, we need to call it during initialization.
-    defaults_fn = cl.get_method("__mypyc_defaults_setup")
+    defaults_fn = cl.get_method(MYPYC_DEFAULTS_SETUP)
 
     # If there is a __init__ method, we'll use it in the native constructor.
     init_fn = cl.get_method("__init__")

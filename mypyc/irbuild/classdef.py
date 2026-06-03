@@ -29,7 +29,7 @@ from mypy.nodes import (
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
-from mypyc.common import PROPSET_PREFIX
+from mypyc.common import MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -342,9 +342,14 @@ class ExtClassBuilder(ClassBuilder):
         # Call __init_subclass__ after class attributes have been set
         self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
 
-        attrs_with_defaults, default_assignments = find_attr_initializers(self.builder, self.cdef)
-        ir.attrs_with_defaults.update(attrs_with_defaults)
-        generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
+        # The decl is pre-registered in prepare.py iff the class has its own
+        # default attribute assignments to emit; skip the body walk otherwise.
+        if MYPYC_DEFAULTS_SETUP in ir.method_decls:
+            attrs_with_defaults, default_assignments = find_attr_initializers(
+                self.builder, self.cdef
+            )
+            ir.attrs_with_defaults.update(attrs_with_defaults)
+            generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
         create_ne_from_eq(self.builder, self.cdef)
 
 
@@ -766,9 +771,6 @@ def find_attr_initializers(
         for stmt in info.defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 continue
-            if isinstance(stmt.lvalues[0], NameExpr) and stmt.lvalues[0].name == "__deletable__":
-                check_deletable_declaration(builder, cls, stmt.line)
-                continue
             name = default_attr_name(stmt, info_ir, cls_type)
             if name is None:
                 continue
@@ -802,21 +804,21 @@ def generate_attr_defaults_init(
     parent_with_defaults: ClassIR | None = None
     if builder.options.separate:
         for ancestor in cls.mro[1:]:
-            if "__mypyc_defaults_setup" in ancestor.method_decls:
+            if MYPYC_DEFAULTS_SETUP in ancestor.method_decls:
                 parent_with_defaults = ancestor
                 break
 
     if not default_assignments and parent_with_defaults is None:
         return
 
-    with builder.enter_method(cls, "__mypyc_defaults_setup", bool_rprimitive):
+    with builder.enter_method(cls, MYPYC_DEFAULTS_SETUP, bool_rprimitive):
         self_var = builder.self()
 
         # Chain to parent's setup so inherited defaults run first; propagate
         # its False return so a parent default that raised still aborts
         # instance creation rather than being silently swallowed here.
         if parent_with_defaults is not None:
-            decl = parent_with_defaults.method_decl("__mypyc_defaults_setup")
+            decl = parent_with_defaults.method_decl(MYPYC_DEFAULTS_SETUP)
             parent_ok = builder.builder.call(decl, [self_var], [ARG_POS], [None], cdef.line)
             fail_block, continue_block = BasicBlock(), BasicBlock()
             builder.add(Branch(parent_ok, continue_block, fail_block, Branch.BOOL))
@@ -846,26 +848,6 @@ def generate_attr_defaults_init(
             builder.add(init)
 
         builder.add(Return(builder.true()))
-
-
-def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
-    for attr in cl.deletable:
-        if attr not in cl.attributes:
-            if not cl.has_attr(attr):
-                builder.error(f'Attribute "{attr}" not defined', line)
-                continue
-            for base in cl.mro:
-                if attr in base.property_types:
-                    builder.error(f'Cannot make property "{attr}" deletable', line)
-                    break
-            else:
-                _, base = cl.attr_details(attr)
-                builder.error(
-                    ('Attribute "{}" not defined in "{}" ' + '(defined in "{}")').format(
-                        attr, cl.name, base.name
-                    ),
-                    line,
-                )
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
