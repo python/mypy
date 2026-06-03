@@ -20,7 +20,7 @@ lock_acquire_op = method_op(
     arg_types=[lock_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="LibRTThreading_Lock_acquire_internal",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
     experimental=True,
     dependencies=[LIBRT_THREADING],
 )
@@ -31,7 +31,7 @@ method_op(
     arg_types=[lock_rprimitive, bool_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="LibRTThreading_Lock_acquire_blocking_internal",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
     experimental=True,
     dependencies=[LIBRT_THREADING],
 )

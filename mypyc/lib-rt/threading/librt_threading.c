@@ -171,7 +171,8 @@ Lock_init_internal(LockObject *self)
 }
 
 // Try to acquire the lock. Returns 1 (true) on success, 0 (false) if
-// non-blocking and the lock is held.
+// non-blocking and the lock is held, or -1 if interrupted by an error-raising
+// signal handler.
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
@@ -183,7 +184,11 @@ Lock_acquire_impl(LockObject *self, int blocking)
     if (PyMutex_LockFast(&self->mutex)) {
         return 1;
     }
-    _PyMutex_LockTimed(&self->mutex, -1, _PY_LOCK_DETACH);
+    PyLockStatus r = _PyMutex_LockTimed(&self->mutex, -1,
+                                        _PY_LOCK_DETACH | _PY_LOCK_HANDLE_SIGNALS);
+    if (r == PY_LOCK_INTR) {
+        return -1;
+    }
     return 1;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
@@ -471,6 +476,9 @@ Lock_acquire(LockObject *self, PyObject *const *args, Py_ssize_t nargs,
     }
 
     int result = Lock_acquire_impl(self, blocking);
+    if (result < 0) {
+        return NULL;
+    }
     return PyBool_FromLong(result);
 }
 
@@ -549,18 +557,25 @@ Lock_new_internal(void) {
 }
 
 // Acquire the lock (blocking), for use from compiled code.
-// Returns true on success.
+// Returns true on success, sets error and returns 2 (ERR_MAGIC) on failure.
 static char
 Lock_acquire_internal(PyObject *self) {
     int result = Lock_acquire_impl((LockObject *)self, 1);
+    if (result < 0) {
+        return 2;
+    }
     return (char)result;
 }
 
 // Acquire the lock with explicit blocking arg, for use from compiled code.
-// Returns true if acquired, false otherwise.
+// Returns true if acquired, false otherwise. Sets error and returns 2
+// (ERR_MAGIC) on failure.
 static char
 Lock_acquire_blocking_internal(PyObject *self, char blocking) {
     int result = Lock_acquire_impl((LockObject *)self, blocking);
+    if (result < 0) {
+        return 2;
+    }
     return (char)result;
 }
 
