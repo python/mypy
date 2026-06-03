@@ -167,8 +167,8 @@ def run_benchmark(
     elif metric == "cpu":
         if sys.platform == "win32":
             raise NotImplementedError("--metric cpu is not implemented on Windows")
-        import resource
-        from resource import struct_rusage as rusage
+        import resource  # type: ignore[unreachable]
+        from resource import struct_rusage as rusage  # type: ignore[attr-defined]
 
         stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
             resource.RUSAGE_CHILDREN
