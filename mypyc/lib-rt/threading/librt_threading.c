@@ -19,18 +19,11 @@
 #define LOCK_BACKEND_SEM
 #include <semaphore.h>
 
-#elif CPY_3_14_FEATURES && defined(__linux__) && defined(Py_GIL_DISABLED)
-
-// Python 3.14+ on Linux without the GIL: Experiment with the pthread
-// mutex+condvar backend. It is free-threaded-safe because the `locked`
-// bookkeeping is protected by the pthread mutex, unlike the sem_t backend.
-#define LOCK_BACKEND_PTHREAD
-#include <pthread.h>
-
 #elif CPY_3_14_FEATURES
 
-// Python 3.14+ outside Linux builds: Use PyMutex (1-byte atomic lock with
-// parking lot). PyMutex gives better lock semantics on macOS and Windows.
+// Python 3.14+ Linux free-threaded and non-Linux builds: Use PyMutex (1-byte
+// atomic lock with parking lot). PyMutex gives better interruptibility than the
+// pthread fallback.
 // PyMutex_LockFast, _PyMutex_LockTimed, and _PY_LOCK_DETACH are internal
 // CPython APIs that might change across minor releases.
 #define LOCK_BACKEND_PYMUTEX
@@ -77,11 +70,10 @@
 //
 // On Python 3.14+ Linux builds with the GIL, this uses a sem_t initialized to
 // 1: acquire is sem_wait, release is sem_post. Semaphores have no ownership
-// concept, so cross-thread release is directly well-defined. On Python 3.14+
-// Linux free-threaded builds, this experimentally uses the pthread mutex +
-// condition variable backend described below. On other Python 3.14+ builds,
-// this uses CPython's PyMutex, a 1-byte atomic lock backed by a parking lot for
-// contended waits. PyMutex automatically releases the GIL when blocking.
+// concept, so cross-thread release is directly well-defined. On other Python
+// 3.14+ builds, this uses CPython's PyMutex, a 1-byte atomic lock backed by a
+// parking lot for contended waits. PyMutex automatically releases the GIL when
+// blocking.
 //
 // On Python 3.13 and earlier with Windows, this uses an SRWLOCK (Slim
 // Reader/Writer Lock) plus a CONDITION_VARIABLE guarding a `locked` flag. The SRWLOCK only
@@ -116,10 +108,6 @@
 typedef struct {
     PyObject_HEAD
     PyMutex mutex;
-    // Serializes the check-before-unlock path. Public PyMutex_Unlock() aborts
-    // if the mutex is unlocked, and PyMutex_IsLocked()+PyMutex_Unlock() is not
-    // atomic in free-threaded builds.
-    PyMutex release_guard;
 } LockObject;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
@@ -184,7 +172,6 @@ Lock_init_internal(LockObject *self)
 {
 #if defined(LOCK_BACKEND_PYMUTEX)
     self->mutex = (PyMutex){0};
-    self->release_guard = (PyMutex){0};
 #elif defined(LOCK_BACKEND_SRWLOCK)
     InitializeSRWLock(&self->srw);
     InitializeConditionVariable(&self->lock_released);
@@ -413,17 +400,15 @@ Lock_release_impl(LockObject *self)
 #if defined(LOCK_BACKEND_PYMUTEX)
     // threading.Lock is unowned, so release() may be called from a different
     // thread than acquire(). CPython's atomic _PyMutex_TryUnlock() is not part
-    // of the public API and is not exported by all CPython builds, so use a
-    // small guard mutex to keep the public PyMutex_Unlock() from seeing an
-    // already-unlocked mutex under concurrent release() calls in free-threaded
-    // builds.
-    PyMutex_Lock(&self->release_guard);
+    // of the public API and is not exported by all CPython builds. This fast
+    // partial-replacement path deliberately avoids a second guard mutex:
+    // ordinary release() of an unlocked lock raises RuntimeError, but racy
+    // erroneous release() calls are undefined behavior and may make
+    // PyMutex_Unlock() abort.
     if (!PyMutex_IsLocked(&self->mutex)) {
-        PyMutex_Unlock(&self->release_guard);
         return -1;
     }
     PyMutex_Unlock(&self->mutex);
-    PyMutex_Unlock(&self->release_guard);
     return 0;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
