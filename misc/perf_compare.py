@@ -23,7 +23,6 @@ import argparse
 import glob
 import os
 import random
-import resource
 import shutil
 import statistics
 import subprocess
@@ -31,7 +30,6 @@ import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from resource import struct_rusage as rusage
 
 
 def winsorized_paired_stats(
@@ -167,6 +165,10 @@ def run_benchmark(
         v1_w = stopwatch_func_w()  # capture
         return delta_func_w(v0_w, v1_w)
     elif metric == "cpu":
+        if sys.platform == 'win32':
+            raise NotImplementedError("--metric cpu is not implemented on Windows")
+        from resource import struct_rusage as rusage
+        import resource
         stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
             resource.RUSAGE_CHILDREN
         )
