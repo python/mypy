@@ -375,6 +375,52 @@ Tag: _TypeAlias = int
 # string literal as a type expression.
 _MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
 
+# Matches any valid Python identifier, including identifiers with Unicode characters.
+#
+# [^\d\W] = word character that is not a digit
+# \w = word character
+# \Z = match end of string; does not allow a trailing \n, unlike $
+_IDENTIFIER_RE = re.compile(r"^[^\d\W]\w*\Z", re.UNICODE)
+
+# Matches if the string contains at least one identifier-start character
+# (letter or underscore).
+_CONTAINS_IDENTIFIER_RE = re.compile(r"[^\W\d]", re.UNICODE)
+
+# Matches a dotted identifier (e.g. 'builtins.tuple', 'typing.Mapping', 'a.b.c').
+_DOTTED_IDENTIFIER_RE = re.compile(r"^[^\d\W]\w*(\.[^\d\W]\w*)+\Z", re.UNICODE)
+
+# Matches a dotted name (one or more identifier components joined by '.').
+# Accepts a bare identifier with zero dots. Used to extract every
+# dotted identifier from inside a stringified type expression.
+_CONTAINED_DOTTED_IDENTIFIER_RE = re.compile(r"[^\W\d]\w*(?:\.[^\W\d]\w*)*", re.UNICODE)
+
+# Matches several patterns that never appear in valid type expressions
+# NOTE: Allows '*' for (PEP 646 Unpack) and '+' for (Literal[+N])
+_NONTYPE_PATTERN_RE = re.compile(
+    # Characters never valid in a type expression
+    r"[!:/<>@%$^?;&~`\\]|"
+    # '-' not directly preceded by '[' (which can occur in Literal[-N])
+    # NOTE: Incorrectly rejects multi-element edge cases like Literal[-1, -2]
+    #       which appear in stringified type expressions, which are expected
+    #       to be rare in practice.
+    r"(?<!\[)-|"
+    # Leading '.' (incomplete dotted name, file extension, etc)
+    r"^\.|"
+    # Trailing '.' (incomplete dotted name, file extension, etc)
+    r"\.$"
+)
+
+# Matches if the first character of the string is invalid as the start of
+# a type expression
+_NONTYPE_FIRST_CHAR_RE = re.compile(
+    # Any non-word char other than '*' (which is reserved for PEP 646 Unpack:
+    # 'tuple[int, *Ts]') or whitespace
+    r"\A[^\s*\w]|"
+    # A digit
+    r"\A\d",
+    re.UNICODE,
+)
+
 
 class SemanticAnalyzer(
     NodeVisitor[None], SemanticAnalyzerInterface, SemanticAnalyzerPluginInterface, SplittingVisitor
@@ -8090,6 +8136,26 @@ class SemanticAnalyzer(
             return
         elif isinstance(maybe_type_expr, StrExpr):
             str_value = maybe_type_expr.value  # cache
+            # (TODO: Experiment with the ordering of all the following filters,
+            #        to frontload those most efficient at rejecting early.)
+            # Filter out string literals with no identifier-start characters
+            # (pure punctuation/digits/whitespace) which cannot be type expressions
+            if not _CONTAINS_IDENTIFIER_RE.search(str_value):
+                maybe_type_expr.as_type = None
+                return
+            # Filter out string literals whose first non-whitespace character
+            # cannot start a valid type expression (a digit, or punctuation
+            # other than '*').
+            if _NONTYPE_FIRST_CHAR_RE.match(str_value):
+                maybe_type_expr.as_type = None
+                return
+            # Filter out string literals with common patterns that could not
+            # possibly be in a type expression
+            if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
+                # A common pattern in string literals containing a sentence.
+                # But cannot be a type expression.
+                maybe_type_expr.as_type = None
+                return
             # Filter out string literals which look like an identifier but
             # cannot be a type expression, for a few common reasons
             if str_value.isidentifier():
@@ -8116,7 +8182,40 @@ class SemanticAnalyzer(
                         # 2. unbound_paramspec: f'ParamSpec "{name}" is unbound' [codes.VALID_TYPE]
                         maybe_type_expr.as_type = None
                         return
-            else:  # does not look like an identifier
+                    if (
+                        isinstance(node, Var)
+                        and isinstance(get_proper_type(node.type), Instance)
+                        and not self.var_is_typing_special_form(node)
+                    ):
+                        # Var whose declared type is a concrete instance: it is
+                        # a value (local, parameter, module-level constant),
+                        # not a type expression.
+                        maybe_type_expr.as_type = None
+                        return
+                    if isinstance(node, (FuncDef, OverloadedFuncDef, MypyFile)):
+                        # Functions and modules are never type expressions.
+                        maybe_type_expr.as_type = None
+                        return
+            elif _DOTTED_IDENTIFIER_RE.fullmatch(str_value):
+                # Dotted-name string (e.g. "builtins.tuple", "typing.Mapping").
+                # Look up the leftmost component; if it can't possibly be a
+                # type prefix, bail. Mirrors the IndexExpr-with-MemberExpr-base
+                # filter logic below.
+                leftmost = str_value.split(".", 1)[0]
+                sym = self.lookup(leftmost, UnboundType(leftmost), suppress_errors=True)
+                if sym is None:
+                    # Leftmost component does not refer to anything in scope
+                    maybe_type_expr.as_type = None
+                    return
+                node = sym.node  # cache
+                if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
+                    maybe_type_expr.as_type = None
+                    return
+                if isinstance(node, Var) and not self.var_is_typing_special_form(node):
+                    # Leftmost component is a Var: cannot be a type prefix
+                    maybe_type_expr.as_type = None
+                    return
+            else:  # does not look like an identifier or dotted identifier
                 if '"' in str_value or "'" in str_value:
                     # Only valid inside a Literal[...] or Annotated[..., ...] type
                     if "[" not in str_value:
@@ -8135,6 +8234,34 @@ class SemanticAnalyzer(
                     # But cannot be a type expression.
                     maybe_type_expr.as_type = None
                     return
+                # Skip some checks when a non-zero even number of single or double quotes
+                # signals a possible Literal[...] component, whose quoted content
+                # could contain anything: symbols or identifiers that would be
+                # incorrectly processed by some checks.
+                sq = str_value.count("'")
+                dq = str_value.count('"')
+                if not ((sq > 0 and sq % 2 == 0) or (dq > 0 and dq % 2 == 0)):
+                    # Filter out string literals containing characters or boundary
+                    # patterns that never appear in valid type expressions
+                    # (e.g. '/', ':', '<', '>', '@', leading/trailing '.').
+                    if _NONTYPE_PATTERN_RE.search(str_value):
+                        maybe_type_expr.as_type = None
+                        return
+                    # A string that can spell a valid type must contain 1+ dotted names,
+                    # all of whose leftmost identifiers must exist in the local scope.
+                    found = False
+                    for m in _CONTAINED_DOTTED_IDENTIFIER_RE.finditer(str_value):
+                        found = True
+                        leftmost = m.group().split(".", 1)[0]
+                        if (
+                            self.lookup(leftmost, UnboundType(leftmost), suppress_errors=True)
+                            is None
+                        ):
+                            maybe_type_expr.as_type = None
+                            return
+                    if not found:
+                        maybe_type_expr.as_type = None
+                        return
         elif isinstance(maybe_type_expr, IndexExpr):
             if isinstance(maybe_type_expr.base, NameExpr):
                 if isinstance(
@@ -8208,6 +8335,8 @@ class SemanticAnalyzer(
             "typing.Literal",
             "typing_extensions.Literal",
             "typing.Optional",
+            "typing.Self",
+            "typing_extensions.Self",
             "typing.TypeGuard",
             "typing_extensions.TypeGuard",
             "typing.TypeIs",
