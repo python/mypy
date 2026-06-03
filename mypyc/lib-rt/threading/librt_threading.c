@@ -334,16 +334,50 @@ Lock_acquire_impl(LockObject *self, int blocking)
     pthread_mutex_unlock(&self->mut);
 
     // Slow path: wait for the lock to be released, with the GIL dropped so
-    // other Python threads can run (and release the lock).
-    Py_BEGIN_ALLOW_THREADS
-    pthread_mutex_lock(&self->mut);
-    while (self->locked) {
-        pthread_cond_wait(&self->lock_released, &self->mut);
+    // other Python threads can run (and release the lock). If we wake but do
+    // not get the lock, give pending Python signal handlers a chance to run,
+    // matching CPython's pthread fallback.
+    for (;;) {
+        int acquired = 0;
+        int interrupted = 0;
+        int status;
+
+        Py_BEGIN_ALLOW_THREADS
+        status = pthread_mutex_lock(&self->mut);
+        if (status == 0) {
+            while (self->locked) {
+                status = pthread_cond_wait(&self->lock_released, &self->mut);
+                if (status != 0) {
+                    break;
+                }
+                if (self->locked) {
+                    interrupted = 1;
+                    break;
+                }
+            }
+            if (status == 0 && !interrupted) {
+                self->locked = 1;
+                acquired = 1;
+            }
+            int unlock_status = pthread_mutex_unlock(&self->mut);
+            if (status == 0) {
+                status = unlock_status;
+            }
+        }
+        Py_END_ALLOW_THREADS
+
+        if (status != 0) {
+            errno = status;
+            PyErr_SetFromErrno(PyExc_OSError);
+            return -1;
+        }
+        if (acquired) {
+            return 1;
+        }
+        if (interrupted && Py_MakePendingCalls() < 0) {
+            return -1;
+        }
     }
-    self->locked = 1;
-    pthread_mutex_unlock(&self->mut);
-    Py_END_ALLOW_THREADS
-    return 1;
 #endif
 }
 
