@@ -42,7 +42,6 @@
 #else
 #define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
-#include <stdatomic.h>
 #endif
 
 #endif
@@ -131,7 +130,10 @@ typedef struct {
     // thread, so pthread's same-thread-unlock rule is never violated.
     pthread_mutex_t mut;
     pthread_cond_t lock_released;
-    _Atomic int locked;  // 0=unlocked, 1=locked; protected by `mut`
+    // Always accessed while holding `mut` (including the locked() reader),
+    // so a plain int is sufficient -- the mutex provides the ordering.
+    // Matches CPython's pthread_lock.locked (a plain char).
+    int locked;  // 0=unlocked, 1=locked; protected by `mut`
 } LockObject;
 
 #endif
@@ -153,7 +155,7 @@ Lock_init_internal(LockObject *self)
 #else
     pthread_mutex_init(&self->mut, NULL);
     pthread_cond_init(&self->lock_released, NULL);
-    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+    self->locked = 0;
 #endif
 }
 
@@ -259,8 +261,8 @@ Lock_acquire_impl(LockObject *self, int blocking)
     // section. This is what lets a different thread call release().
     if (!blocking) {
         pthread_mutex_lock(&self->mut);
-        if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
-            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+        if (!self->locked) {
+            self->locked = 1;
             pthread_mutex_unlock(&self->mut);
             return 1;
         }
@@ -270,8 +272,8 @@ Lock_acquire_impl(LockObject *self, int blocking)
 
     // Fast path: grab the lock without releasing the GIL if it is free.
     pthread_mutex_lock(&self->mut);
-    if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
-        atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    if (!self->locked) {
+        self->locked = 1;
         pthread_mutex_unlock(&self->mut);
         return 1;
     }
@@ -281,10 +283,10 @@ Lock_acquire_impl(LockObject *self, int blocking)
     // other Python threads can run (and release the lock).
     Py_BEGIN_ALLOW_THREADS
     pthread_mutex_lock(&self->mut);
-    while (atomic_load_explicit(&self->locked, memory_order_relaxed)) {
+    while (self->locked) {
         pthread_cond_wait(&self->lock_released, &self->mut);
     }
-    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    self->locked = 1;
     pthread_mutex_unlock(&self->mut);
     Py_END_ALLOW_THREADS
     return 1;
@@ -329,11 +331,11 @@ Lock_release_impl(LockObject *self)
 
 #else  // pthread mutex + condvar fallback
     pthread_mutex_lock(&self->mut);
-    if (!atomic_load_explicit(&self->locked, memory_order_relaxed)) {
+    if (!self->locked) {
         pthread_mutex_unlock(&self->mut);
         return -1;
     }
-    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+    self->locked = 0;
     // Wake one waiter (if any). Signalling under `mut` is fine and avoids a
     // lost-wakeup race.
     pthread_cond_signal(&self->lock_released);
@@ -355,8 +357,17 @@ Lock_is_locked(LockObject *self)
     int result = self->locked;
     ReleaseSRWLockShared(&self->srw);
     return result;
-#else
+#elif defined(LOCK_BACKEND_SEM)
+    // The semaphore backend touches `locked` locklessly (no mutex), so the
+    // flag is genuinely atomic and read without locking here.
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
+#else  // pthread mutex + condvar fallback
+    // `locked` is only ever accessed under `mut`; take it for a clean read.
+    // locked() is not expected to be on a perf-critical path.
+    pthread_mutex_lock(&self->mut);
+    int result = self->locked;
+    pthread_mutex_unlock(&self->mut);
+    return result;
 #endif
 }
 
