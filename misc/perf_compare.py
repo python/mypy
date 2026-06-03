@@ -165,10 +165,11 @@ def run_benchmark(
         v1_w = stopwatch_func_w()  # capture
         return delta_func_w(v0_w, v1_w)
     elif metric == "cpu":
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             raise NotImplementedError("--metric cpu is not implemented on Windows")
-        from resource import struct_rusage as rusage
         import resource
+        from resource import struct_rusage as rusage
+
         stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
             resource.RUSAGE_CHILDREN
         )
