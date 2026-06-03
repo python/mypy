@@ -264,17 +264,33 @@ Lock_acquire_impl(LockObject *self, int blocking)
     }
 
     // Slow path: block with the GIL dropped so other Python threads can run
-    // (and release the lock). Retry on EINTR (signal).
-    Py_BEGIN_ALLOW_THREADS
-    {
+    // (and release the lock). If a signal interrupts sem_wait(), run pending
+    // Python signal handlers with the GIL held; retry unless a handler raises.
+    for (;;) {
         int status;
-        do {
-            status = sem_wait(&self->sem);
-        } while (status == -1 && errno == EINTR);
+        int err = 0;
+
+        Py_BEGIN_ALLOW_THREADS
+        status = sem_wait(&self->sem);
+        if (status == -1) {
+            err = errno;
+        }
+        Py_END_ALLOW_THREADS
+
+        if (status == 0) {
+            self->locked = 1;
+            return 1;
+        }
+
+        if (err != EINTR) {
+            PyErr_SetFromErrno(PyExc_OSError);
+            return -1;
+        }
+
+        if (Py_MakePendingCalls() < 0) {
+            return -1;
+        }
     }
-    Py_END_ALLOW_THREADS
-    self->locked = 1;
-    return 1;
 
 #else  // pthread mutex + condvar fallback
     // `mut` only guards `locked` and the condition variable; it is held just
