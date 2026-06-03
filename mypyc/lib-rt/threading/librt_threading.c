@@ -38,7 +38,6 @@
 #define LOCK_BACKEND_SEM
 #include <semaphore.h>
 #include <errno.h>
-#include <stdatomic.h>
 #else
 #define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
@@ -115,7 +114,13 @@ typedef struct {
     // The semaphore itself is the source of truth for mutual exclusion; this
     // flag is advisory bookkeeping. It is set after a successful acquire and
     // cleared before sem_post in release.
-    _Atomic int locked;
+    //
+    // Like CPython's semaphore lock, this flag is a plain int relying on the
+    // GIL for serialization: it is only ever touched with the GIL held (the
+    // blocking sem_wait drops the GIL, but the flag store happens after the
+    // GIL is reacquired). CPython keeps the same flag as a plain `char` in its
+    // _thread lock wrapper (Modules/_threadmodule.c) for exactly this purpose.
+    int locked;
 } LockObject;
 
 #else  // pthread mutex + condvar fallback
@@ -151,7 +156,7 @@ Lock_init_internal(LockObject *self)
     self->locked = 0;
 #elif defined(LOCK_BACKEND_SEM)
     sem_init(&self->sem, 0, 1);
-    atomic_store_explicit(&self->locked, 0, memory_order_relaxed);
+    self->locked = 0;
 #else
     pthread_mutex_init(&self->mut, NULL);
     pthread_cond_init(&self->lock_released, NULL);
@@ -223,7 +228,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
             status = sem_trywait(&self->sem);
         } while (status == -1 && errno == EINTR);
         if (status == 0) {
-            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            self->locked = 1;
             return 1;
         }
         return 0;  // EAGAIN: already held
@@ -237,7 +242,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
             status = sem_trywait(&self->sem);
         } while (status == -1 && errno == EINTR);
         if (status == 0) {
-            atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+            self->locked = 1;
             return 1;
         }
     }
@@ -252,7 +257,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
         } while (status == -1 && errno == EINTR);
     }
     Py_END_ALLOW_THREADS
-    atomic_store_explicit(&self->locked, 1, memory_order_relaxed);
+    self->locked = 1;
     return 1;
 
 #else  // pthread mutex + condvar fallback
@@ -320,12 +325,16 @@ Lock_release_impl(LockObject *self)
     return 0;
 
 #elif defined(LOCK_BACKEND_SEM)
-    // Atomically clear the flag; only the caller that observes the previous
-    // value as 1 actually owns the release and posts the semaphore. This
-    // prevents a double release from over-incrementing the semaphore.
-    if (!atomic_exchange_explicit(&self->locked, 0, memory_order_relaxed)) {
+    // Check-then-clear the flag, then post. This mirrors CPython's _thread
+    // lock release (a plain `if (!self->locked) error; self->locked = 0`
+    // guarded by the GIL): the flag is only touched with the GIL held, so the
+    // check and clear are serialized without an atomic. As in CPython, calling
+    // release() concurrently from multiple threads on the same lock is a usage
+    // error and is not defended against here.
+    if (!self->locked) {
         return -1;
     }
+    self->locked = 0;
     sem_post(&self->sem);
     return 0;
 
@@ -358,9 +367,9 @@ Lock_is_locked(LockObject *self)
     ReleaseSRWLockShared(&self->srw);
     return result;
 #elif defined(LOCK_BACKEND_SEM)
-    // The semaphore backend touches `locked` locklessly (no mutex), so the
-    // flag is genuinely atomic and read without locking here.
-    return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
+    // The flag is GIL-serialized (see the struct comment); locked() is a
+    // plain read, matching CPython's _thread lock.
+    return self->locked != 0;
 #else  // pthread mutex + condvar fallback
     // `locked` is only ever accessed under `mut`; take it for a clean read.
     // locked() is not expected to be on a perf-critical path.
