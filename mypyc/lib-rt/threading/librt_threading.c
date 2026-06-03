@@ -5,25 +5,48 @@
 #include "librt_threading.h"
 #include "mypyc_util.h"
 
-#if CPY_3_14_FEATURES
+#if CPY_3_13_FEATURES
 
-// Python 3.14+: Use PyMutex (1-byte atomic lock with parking lot).
+// Python 3.13+: Use PyMutex (1-byte atomic lock with parking lot). This is
+// the same primitive CPython's own threading.Lock uses on 3.13+, and it is
+// correct in both the default (GIL) and free-threaded builds.
+//
 // PyMutex_LockFast, _PyMutex_LockTimed, and _PY_LOCK_DETACH are internal
 // CPython APIs that might change across minor releases.
+#define LOCK_BACKEND_PYMUTEX
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
 #include "internal/pycore_lock.h"
 
+// PyMutex_LockFast's signature changed in 3.14: it takes a PyMutex* on 3.14+
+// but the raw bits pointer (uint8_t*) on 3.13. Normalize via a shim.
+//
+// For the blocking slow path we want a lock that detaches the GIL while
+// parked. On 3.14 the internal _PyMutex_LockTimed(..., _PY_LOCK_DETACH) is
+// exported and used directly. On 3.13 that symbol is declared in
+// pycore_lock.h but NOT exported from libpython, so we call the public
+// PyMutex_Lock() instead -- which is defined as exactly
+// _PyMutex_LockTimed(m, -1, _PY_LOCK_DETACH). Note cpython/lock.h #defines
+// PyMutex_Lock to an inline fast-path wrapper; calling it after a failed
+// CPY_LOCK_FAST just retries one CAS before parking, which is negligible.
+#if CPY_3_14_FEATURES
+#define CPY_LOCK_FAST(m) PyMutex_LockFast(&(m))
+#define CPY_LOCK_BLOCKING(m) _PyMutex_LockTimed(&(m), -1, _PY_LOCK_DETACH)
+#else
+#define CPY_LOCK_FAST(m) PyMutex_LockFast(&(m)._bits)
+#define CPY_LOCK_BLOCKING(m) PyMutex_Lock(&(m))
+#endif
+
 #elif defined(_WIN32)
 
-// Python <3.14 on Windows: Use Slim Reader/Writer Lock
+// Python <3.13 on Windows: Use Slim Reader/Writer Lock
 #define LOCK_BACKEND_SRWLOCK
 #include <windows.h>
 
 #else
 
-// Python <3.14 on POSIX.
+// Python <3.13 on POSIX.
 //
 // Prefer a POSIX unnamed semaphore when the platform supports it well, and
 // fall back to a pthread mutex + condition variable otherwise. We use the
@@ -50,21 +73,23 @@
 //
 // A fast mutex lock for use from mypyc-compiled code.
 //
-// On Python 3.14+, this uses CPython's PyMutex, a 1-byte atomic lock
+// On Python 3.13+, this uses CPython's PyMutex, a 1-byte atomic lock
 // backed by a parking lot for contended waits. PyMutex automatically
-// releases the GIL when blocking.
+// releases the GIL when blocking. This is the same primitive CPython's own
+// threading.Lock uses on 3.13+, and it is correct in both the default (GIL)
+// and free-threaded builds.
 //
-// On older Python with Windows, this uses an SRWLOCK (Slim Reader/Writer
-// Lock) plus a CONDITION_VARIABLE guarding a `locked` flag. The SRWLOCK only
+// On Python 3.12 and earlier with Windows, this uses an SRWLOCK (Slim
+// Reader/Writer Lock) plus a CONDITION_VARIABLE guarding a `locked` flag. The SRWLOCK only
 // protects the flag and is never held across the user's critical section, so
 // release() may be called from a thread other than the acquirer (matching
 // threading.Lock semantics). This mirrors CPython's Windows lock (NRMUTEX in
 // Python/thread_nt.h) and is the Windows twin of the POSIX pthread+condvar
 // backend below.
 //
-// On older Python with POSIX systems, there are two backends, both of which
-// allow release() from a thread other than the one that acquired the lock
-// (matching threading.Lock semantics):
+// On Python 3.12 and earlier with POSIX systems, there are two backends, both
+// of which allow release() from a thread other than the one that acquired the
+// lock (matching threading.Lock semantics):
 //
 //  - Where unnamed POSIX semaphores work well (e.g. Linux), this uses a
 //    sem_t initialized to 1: acquire is sem_wait, release is sem_post.
@@ -82,7 +107,7 @@
 
 // ---------- Platform-specific lock state ----------
 
-#if CPY_3_14_FEATURES
+#if defined(LOCK_BACKEND_PYMUTEX)
 
 typedef struct {
     PyObject_HEAD
@@ -148,7 +173,7 @@ typedef struct {
 static inline void
 Lock_init_internal(LockObject *self)
 {
-#if CPY_3_14_FEATURES
+#if defined(LOCK_BACKEND_PYMUTEX)
     self->mutex = (PyMutex){0};
 #elif defined(LOCK_BACKEND_SRWLOCK)
     InitializeSRWLock(&self->srw);
@@ -169,14 +194,14 @@ Lock_init_internal(LockObject *self)
 static int
 Lock_acquire_impl(LockObject *self, int blocking)
 {
-#if CPY_3_14_FEATURES
+#if defined(LOCK_BACKEND_PYMUTEX)
     if (!blocking) {
-        return PyMutex_LockFast(&self->mutex);
+        return CPY_LOCK_FAST(self->mutex);
     }
-    if (PyMutex_LockFast(&self->mutex)) {
+    if (CPY_LOCK_FAST(self->mutex)) {
         return 1;
     }
-    _PyMutex_LockTimed(&self->mutex, -1, _PY_LOCK_DETACH);
+    CPY_LOCK_BLOCKING(self->mutex);
     return 1;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
@@ -302,7 +327,7 @@ Lock_acquire_impl(LockObject *self, int blocking)
 static int
 Lock_release_impl(LockObject *self)
 {
-#if CPY_3_14_FEATURES
+#if defined(LOCK_BACKEND_PYMUTEX)
     // Note: check-then-unlock is not atomic, but this matches CPython's
     // threading.Lock semantics. Only the owning thread should call release().
     if (!PyMutex_IsLocked(&self->mutex)) {
@@ -356,7 +381,7 @@ Lock_release_impl(LockObject *self)
 static inline int
 Lock_is_locked(LockObject *self)
 {
-#if CPY_3_14_FEATURES
+#if defined(LOCK_BACKEND_PYMUTEX)
     return PyMutex_IsLocked(&self->mutex);
 #elif defined(LOCK_BACKEND_SRWLOCK)
     // locked() is not expected to be on a perf-critical path, so take the
