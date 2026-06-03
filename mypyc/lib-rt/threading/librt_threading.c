@@ -388,9 +388,10 @@ Lock_release_impl(LockObject *self)
 #if defined(LOCK_BACKEND_PYMUTEX)
     // threading.Lock is unowned, so release() may be called from a different
     // thread than acquire(). CPython's atomic _PyMutex_TryUnlock() is not part
-    // of the public API, so use a small guard mutex to keep the public
-    // PyMutex_Unlock() from seeing an already-unlocked mutex under concurrent
-    // release() calls in free-threaded builds.
+    // of the public API and is not exported by all CPython builds, so use a
+    // small guard mutex to keep the public PyMutex_Unlock() from seeing an
+    // already-unlocked mutex under concurrent release() calls in free-threaded
+    // builds.
     PyMutex_Lock(&self->release_guard);
     if (!PyMutex_IsLocked(&self->mutex)) {
         PyMutex_Unlock(&self->release_guard);
