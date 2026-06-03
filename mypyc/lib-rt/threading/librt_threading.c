@@ -36,12 +36,12 @@
 // mutex+condvar fallback because the semaphore backend's `locked` bookkeeping
 // relies on GIL serialization.
 #include <unistd.h>
+#include <errno.h>
 #if !defined(Py_GIL_DISABLED) && \
     defined(_POSIX_SEMAPHORES) && (_POSIX_SEMAPHORES + 0) != -1 && \
     (defined(HAVE_SEM_TIMEDWAIT) || defined(HAVE_SEM_CLOCKWAIT))
 #define LOCK_BACKEND_SEM
 #include <semaphore.h>
-#include <errno.h>
 #else
 #define LOCK_BACKEND_PTHREAD
 #include <pthread.h>
@@ -154,7 +154,7 @@ typedef struct {
 
 // ---------- Platform-specific init/acquire/release ----------
 
-static inline void
+static inline int
 Lock_init_internal(LockObject *self)
 {
 #if defined(LOCK_BACKEND_PYMUTEX)
@@ -165,13 +165,30 @@ Lock_init_internal(LockObject *self)
     InitializeConditionVariable(&self->lock_released);
     self->locked = 0;
 #elif defined(LOCK_BACKEND_SEM)
-    sem_init(&self->sem, 0, 1);
+    if (sem_init(&self->sem, 0, 1) != 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return -1;
+    }
     self->locked = 0;
 #else
-    pthread_mutex_init(&self->mut, NULL);
-    pthread_cond_init(&self->lock_released, NULL);
+    int status = pthread_mutex_init(&self->mut, NULL);
+    if (status != 0) {
+        errno = status;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return -1;
+    }
+
+    status = pthread_cond_init(&self->lock_released, NULL);
+    if (status != 0) {
+        pthread_mutex_destroy(&self->mut);
+        errno = status;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return -1;
+    }
+
     self->locked = 0;
 #endif
+    return 0;
 }
 
 // Try to acquire the lock. Returns 1 (true) on success, 0 (false) if
@@ -428,6 +445,10 @@ Lock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     LockObject *self = (LockObject *)type->tp_alloc(type, 0);
+    if (self != NULL && Lock_init_internal(self) < 0) {
+        type->tp_free((PyObject *)self);
+        return NULL;
+    }
     return (PyObject *)self;
 }
 
@@ -444,7 +465,6 @@ Lock_init(LockObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    Lock_init_internal(self);
     return 0;
 }
 
@@ -567,8 +587,9 @@ Lock_type_internal(void) {
 static PyObject *
 Lock_new_internal(void) {
     LockObject *self = (LockObject *)LockType.tp_alloc(&LockType, 0);
-    if (self != NULL) {
-        Lock_init_internal(self);
+    if (self != NULL && Lock_init_internal(self) < 0) {
+        LockType.tp_free((PyObject *)self);
+        return NULL;
     }
     return (PyObject *)self;
 }
