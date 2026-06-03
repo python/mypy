@@ -1813,3 +1813,86 @@ hello
 [out2]
 empty
 hello
+
+[case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
+# Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,
+# but the subclass adds an attribute of its own, so generate_attr_defaults_init
+# emits a __mypyc_defaults_setup for it. Before the fix, the recompiled
+# subclass walked the parent's ClassDef.defs.body to collect inherited
+# defaults; when the parent was loaded from mypy's incremental cache that
+# body was empty, so the inherited initialization was dropped and any
+# access to an inherited attribute through compiled code raised
+# "AttributeError: attribute '<name>' of '<base>' undefined".
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    # Inherited attributes must still be initialized after the subclass
+    # has been recompiled against a cache-loaded parent.
+    assert c.x == 1
+    assert c.y == "hello"
+    # Own override is set by the subclass's own __mypyc_defaults_setup.
+    assert c.z is True
+    # Method defined on the parent reads an inherited attribute through
+    # the compiled path; this is what crashes pre-fix.
+    assert c.use() == 1
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+    y: str = "hello"
+    z: bool = False
+
+    def use(self) -> int:
+        if self.x:
+            return 1
+        return 0
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+[file other_a.py.2]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+def _force_recompile() -> int:
+    return 1
+
+[file driver.py]
+from native import test
+test()
+
+[case testCrossModuleInheritedAttrDefaultsSameGroup]
+# separate: [(["native.py"], "grp1"), (["other_a.py", "other_b.py"], "grp2")]
+# Regression: with the subclass (other_a) and base (other_b) in the same
+# compilation group, IR build runs alphabetically within the group, so
+# the subclass is IR-built before the base. The decision to emit
+# __mypyc_defaults_setup (and a chained call to the ancestor's) must be
+# set up in the prepare phase, before any IR build runs; otherwise the
+# subclass's lookup of the parent's setup decl misses and inherited
+# defaults are lost on a fresh build.
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    assert c.x == 1
+    assert c.z is True
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+[file driver.py]
+from native import test
+test()
