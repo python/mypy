@@ -167,20 +167,21 @@ def run_benchmark(
     elif metric == "cpu":
         if sys.platform == "win32":
             raise NotImplementedError("--metric cpu is not implemented on Windows")
-        import resource  # type: ignore[unreachable]
-        from resource import struct_rusage as rusage  # type: ignore[attr-defined]
+        else:
+            import resource
+            from resource import struct_rusage as rusage
 
-        stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
-            resource.RUSAGE_CHILDREN
-        )
-        delta_func_c: Callable[[rusage, rusage], float] = lambda r0, r1: (
-            r1.ru_utime - r0.ru_utime
-        ) + (r1.ru_stime - r0.ru_stime)
+            stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
+                resource.RUSAGE_CHILDREN
+            )
+            delta_func_c: Callable[[rusage, rusage], float] = lambda r0, r1: (
+                r1.ru_utime - r0.ru_utime
+            ) + (r1.ru_stime - r0.ru_stime)
 
-        v0_c = stopwatch_func_c()  # capture
-        run()
-        v1_c = stopwatch_func_c()  # capture
-        return delta_func_c(v0_c, v1_c)
+            v0_c = stopwatch_func_c()  # capture
+            run()
+            v1_c = stopwatch_func_c()  # capture
+            return delta_func_c(v0_c, v1_c)
     else:
         raise AssertionError(f"Unrecognized metric: {metric!r}")
 
