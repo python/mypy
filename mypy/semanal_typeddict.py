@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from typing import Final
+from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
-from mypy.message_registry import TYPEDDICT_OVERRIDE_MERGE
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED,
@@ -31,7 +30,9 @@ from mypy.nodes import (
     TempNode,
     TupleExpr,
     TypeAlias,
+    TypedDictData,
     TypedDictExpr,
+    TypedDictFieldSource,
     TypeInfo,
     inline_base,
 )
@@ -58,6 +59,14 @@ from mypy.types import (
 TPDICT_CLASS_ERROR: Final = (
     'Invalid statement in TypedDict definition; expected "field_name: field_type"'
 )
+
+
+class FieldSource(NamedTuple):
+    field_type: Type
+    is_readonly: bool
+    is_required: bool
+    base: TypeInfo | None
+    ctx: Context
 
 
 class TypedDictAnalyzer:
@@ -102,20 +111,32 @@ class TypedDictAnalyzer:
         if isinstance(defn.analyzed, TypedDictExpr):
             existing_info = defn.analyzed.info
 
-        field_types: dict[str, Type] | None
+        is_closed: bool | None = None
+        if "closed" in defn.keywords:
+            is_closed = require_bool_literal_argument(
+                self.api, defn.keywords["closed"], "closed", False
+            )
+
         if (
             len(defn.base_type_exprs) == 1
             and isinstance(defn.base_type_exprs[0], RefExpr)
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
             # Building a new TypedDict
-            field_types, statements, required_keys, readonly_keys = (
-                self.analyze_typeddict_classdef_fields(defn)
-            )
-            if field_types is None:
+            field_sources, statements = self.analyze_typeddict_classdef_fields(defn)
+            if field_sources is None:
                 return True, None  # Defer
+            field_types = {key: source.field_type for (key, source) in field_sources.items()}
+            required_keys = {key for (key, source) in field_sources.items() if source.is_required}
+            readonly_keys = {key for (key, source) in field_sources.items() if source.is_readonly}
             info = self.build_typeddict_typeinfo(
-                defn.name, field_types, required_keys, readonly_keys, defn.line, existing_info
+                defn.name,
+                field_types,
+                required_keys,
+                readonly_keys,
+                is_closed or False,
+                defn.line,
+                existing_info,
             )
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
@@ -153,24 +174,27 @@ class TypedDictAnalyzer:
             else:
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
 
-        field_types = {}
-        required_keys = set()
-        readonly_keys = set()
-        # Iterate over bases in reverse order so that leftmost base class' keys take precedence
-        for base in reversed(typeddict_bases):
-            self.add_keys_and_types_from_base(
-                base, field_types, required_keys, readonly_keys, defn
-            )
-        new_field_types, new_statements, new_required_keys, new_readonly_keys = (
-            self.analyze_typeddict_classdef_fields(defn, oldfields=field_types)
-        )
-        if new_field_types is None:
+        bases_info: list[tuple[TypeInfo, dict[str, Type]]] = []
+        for base in typeddict_bases:
+            base_info = self.fetch_keys_and_types_from_base(base, defn)
+            if base_info is not None:
+                bases_info.append(base_info)
+        new_field_sources, new_statements = self.analyze_typeddict_classdef_fields(defn)
+        if new_field_sources is None:
             return True, None  # Defer
-        field_types.update(new_field_types)
-        required_keys.update(new_required_keys)
-        readonly_keys.update(new_readonly_keys)
+        field_types, required_keys, readonly_keys, is_closed, field_sources = (
+            self.resolve_field_inheritance(bases_info, new_field_sources, is_closed, defn)
+        )
+        typeddict_data = TypedDictData(True, bases_info, field_sources)
         info = self.build_typeddict_typeinfo(
-            defn.name, field_types, required_keys, readonly_keys, defn.line, existing_info
+            defn.name,
+            field_types,
+            required_keys,
+            readonly_keys,
+            is_closed,
+            defn.line,
+            existing_info,
+            typeddict_data=typeddict_data,
         )
         defn.analyzed = TypedDictExpr(info)
         defn.analyzed.line = defn.line
@@ -178,20 +202,15 @@ class TypedDictAnalyzer:
         defn.defs.body = new_statements
         return True, info
 
-    def add_keys_and_types_from_base(
-        self,
-        base: Expression,
-        field_types: dict[str, Type],
-        required_keys: set[str],
-        readonly_keys: set[str],
-        ctx: Context,
-    ) -> None:
+    def fetch_keys_and_types_from_base(
+        self, base: Expression, ctx: Context
+    ) -> tuple[TypeInfo, dict[str, Type]] | None:
         info = self._parse_typeddict_base(base, ctx)
         base_args: list[Type] = []
         if isinstance(base, IndexExpr):
             args = self.analyze_base_args(base, ctx)
             if args is None:
-                return
+                return None
             base_args = args
 
         assert info.typeddict_type is not None
@@ -210,13 +229,167 @@ class TypedDictAnalyzer:
 
         with state.strict_optional_set(self.options.strict_optional):
             valid_items = self.map_items_to_base(valid_items, tvars, base_args)
-        for key in base_items:
-            if key in field_types:
-                self.fail(TYPEDDICT_OVERRIDE_MERGE.format(key), ctx)
 
-        field_types.update(valid_items)
-        required_keys.update(base_typed_dict.required_keys)
-        readonly_keys.update(base_typed_dict.readonly_keys)
+        return info, valid_items
+
+    def field_sources_in_reverse_order(
+        self,
+        bases: list[tuple[TypeInfo, dict[str, Type]]],
+        child_field_sources: dict[str, FieldSource],
+        ctx: Context,
+    ) -> dict[str, list[FieldSource]]:
+        """Find all keys in bases and child, mapping them to a list of sources.
+
+        Iterate bases in reverse order to preserve key ordering for display.
+        """
+        result: dict[str, list[FieldSource]] = {}
+        for base_info, base_fields in reversed(bases):
+            assert base_info.typeddict_type is not None
+            for field_name, field_type in base_fields.items():
+                source = FieldSource(
+                    field_type=field_type,
+                    is_readonly=field_name in base_info.typeddict_type.readonly_keys,
+                    is_required=field_name in base_info.typeddict_type.required_keys,
+                    base=base_info,
+                    ctx=ctx,
+                )
+                result.setdefault(field_name, []).append(source)
+        for field_name, source in child_field_sources.items():
+            result.setdefault(field_name, []).append(source)
+        return result
+
+    def primary_source(self, sources: list[FieldSource]) -> FieldSource:
+        """Select a primary source from a reverse-ordered list of sources.
+
+        The primary source will be the last in the list, skipping readonly
+        base class sources unless they are the only available option.
+        """
+        if not sources[-1].base:
+            return sources[-1]
+        mutable_sources = (s for s in reversed(sources) if not s.is_readonly)
+        return next(mutable_sources, sources[-1])
+
+    def verify_requiredness_compatibility(
+        self,
+        field_name: str,
+        source: FieldSource,
+        is_required: bool,
+        primary_source_base: TypeInfo | None,
+        ctx: Context,
+    ) -> None:
+        """Verify requiredness compatibility of the final child type field with a base class source."""
+        assert source.base
+        if source.is_required and not is_required:
+            if primary_source_base is None:
+                self.fail(
+                    f'Field "{field_name}" is required in base class "{source.base.name}"', ctx
+                )
+            else:
+                self.fail(
+                    f'Field "{field_name}" is required in base class "{source.base.name}" but can '
+                    f'be deleted in base class "{primary_source_base.name}"',
+                    ctx,
+                )
+        elif not source.is_required and not source.is_readonly and is_required:
+            if primary_source_base is None:
+                self.fail(
+                    f'Field "{field_name}" can be deleted in base class "{source.base.name}"', ctx
+                )
+            else:
+                self.fail(
+                    f'Field "{field_name}" is required in base class "{primary_source_base.name}" '
+                    f'but can be deleted in base class "{source.base.name}"',
+                    ctx,
+                )
+
+    def verify_field_against_closed_bases(
+        self,
+        field_name: str,
+        closed_bases: Collection[tuple[TypeInfo, Collection[str]]],
+        primary_source_base: TypeInfo | None,
+        ctx: Context,
+    ) -> None:
+        for closed_base_type, closed_base_fields in closed_bases:
+            if field_name in closed_base_fields:
+                continue
+
+            if primary_source_base:
+                self.fail(
+                    f'Cannot extend closed base class "{closed_base_type.name}" with field '
+                    f'"{field_name}" from base class "{primary_source_base.name}"',
+                    ctx,
+                )
+            else:
+                self.fail(
+                    f'Cannot extend closed base class "{closed_base_type.name}" with new field '
+                    f'"{field_name}"',
+                    ctx,
+                )
+
+    def resolve_field_inheritance(
+        self,
+        bases: list[tuple[TypeInfo, dict[str, Type]]],
+        child_field_sources: dict[str, FieldSource],
+        child_is_closed: bool | None,
+        ctx: Context,
+    ) -> tuple[dict[str, Type], set[str], set[str], bool, dict[str, TypedDictFieldSource]]:
+        """Determine field types, requiredness, readonlyness, and closedness."""
+        field_sources = self.field_sources_in_reverse_order(bases, child_field_sources, ctx)
+        field_types: dict[str, Type] = {}
+        chosen_sources: dict[str, TypedDictFieldSource] = {}
+        required_keys: set[str] = set()
+        readonly_keys: set[str] = set()
+        closed_bases = [
+            (base_info, base_fields.keys())
+            for (base_info, base_fields) in bases
+            if base_info.typeddict_type and base_info.typeddict_type.is_closed
+        ]
+
+        if child_is_closed is False and closed_bases:
+            for base_info, _ in closed_bases:
+                self.fail(
+                    f"Open TypedDict class cannot subclass closed TypedDict class "
+                    f'"{base_info.name}"',
+                    ctx,
+                )
+
+        for field_name, sources in field_sources.items():
+            primary_source = self.primary_source(sources)
+            # If a read-only field is only defined in base classes, joining the types
+            # is unlikely to produce a tight enough result. We could check all the
+            # candidates from the base classes, but it would be O(n^2) complexity
+            # to find out which is a supertype of all the others. Instead, use the
+            # first definition we encounter, and let the user provide the correct
+            # definition in the subclass if this fails.
+            field_types[field_name] = primary_source.field_type
+            chosen_sources[field_name] = TypedDictFieldSource(
+                base=primary_source.base, ctx=primary_source.ctx
+            )
+
+            if primary_source.is_readonly:
+                # If the primary source is readonly, all sources are readonly
+                is_readonly = True
+                is_required = any(source.is_required for source in sources)
+            else:
+                is_readonly = False
+                is_required = primary_source.is_required
+
+            if is_required:
+                required_keys.add(field_name)
+            if is_readonly:
+                readonly_keys.add(field_name)
+
+            for source in sources:
+                if source is not primary_source:
+                    self.verify_requiredness_compatibility(
+                        field_name, source, is_required, primary_source.base, primary_source.ctx
+                    )
+            self.verify_field_against_closed_bases(
+                field_name, closed_bases, primary_source.base, primary_source.ctx
+            )
+
+        is_closed = bool(closed_bases) if child_is_closed is None else child_is_closed
+        return field_types, required_keys, readonly_keys, is_closed, chosen_sources
 
     def _parse_typeddict_base(self, base: Expression, ctx: Context) -> TypeInfo:
         if isinstance(base, RefExpr):
@@ -287,22 +460,19 @@ class TypedDictAnalyzer:
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
-        self, defn: ClassDef, oldfields: Collection[str] | None = None
-    ) -> tuple[dict[str, Type] | None, list[Statement], set[str], set[str]]:
+        self, defn: ClassDef
+    ) -> tuple[dict[str, FieldSource] | None, list[Statement]]:
         """Analyze fields defined in a TypedDict class definition.
 
         This doesn't consider inherited fields (if any). Also consider totality,
         if given.
 
         Return tuple with these items:
-         * Dict of key -> type (or None if found an incomplete reference -> deferral)
+         * Dict of key -> field source (or None if found an incomplete reference -> deferral)
          * List of statements from defn.defs.body that are legally allowed to be a
            part of a TypedDict definition
-         * Set of required keys
         """
-        fields: dict[str, Type] = {}
-        readonly_keys = set[str]()
-        required_keys = set[str]()
+        fields: dict[str, FieldSource] = {}
         statements: list[Statement] = []
 
         total: bool | None = True
@@ -311,6 +481,8 @@ class TypedDictAnalyzer:
                 total = require_bool_literal_argument(
                     self.api, defn.keywords["total"], "total", True
                 )
+                continue
+            elif key == "closed":
                 continue
             for_function = ' for "__init_subclass__" of "TypedDict"'
             self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
@@ -332,8 +504,6 @@ class TypedDictAnalyzer:
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
-                if name in (oldfields or []):
-                    self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
@@ -352,18 +522,19 @@ class TypedDictAnalyzer:
                         prohibit_special_class_field_types="TypedDict",
                     )
                     if analyzed is None:
-                        return None, [], set(), set()  # Need to defer
+                        return None, []  # Need to defer
                     field_type = analyzed
                     if not has_placeholder(analyzed):
                         stmt.type = self.extract_meta_info(analyzed, stmt)[0]
 
                 field_type, required, readonly = self.extract_meta_info(field_type)
-                fields[name] = field_type
-
-                if (total or required is True) and required is not False:
-                    required_keys.add(name)
-                if readonly:
-                    readonly_keys.add(name)
+                fields[name] = FieldSource(
+                    field_type=field_type,
+                    is_required=(total or required is True) and required is not False,
+                    is_readonly=readonly,
+                    base=None,
+                    ctx=stmt,
+                )
 
                 # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
@@ -372,7 +543,7 @@ class TypedDictAnalyzer:
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail("Right hand side values are not supported in TypedDict", stmt)
 
-        return fields, statements, required_keys, readonly_keys
+        return fields, statements
 
     def extract_meta_info(
         self, typ: Type, context: Context | None = None
@@ -433,10 +604,10 @@ class TypedDictAnalyzer:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
             return True, None, []
-        typename, items, types, total, tvar_defs, ok = res
+        typename, items, wrapped_types, total, closed, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo(name, {}, set(), set(), call.line, None)
+            info = self.build_typeddict_typeinfo(name, {}, set(), set(), False, call.line, None)
         else:
             if "@" not in name and name != typename:
                 self.fail(
@@ -446,18 +617,17 @@ class TypedDictAnalyzer:
                     node,
                     code=codes.NAME_MATCH,
                 )
-            required_keys = {
-                field
-                for (field, t) in zip(items, types)
-                if (total or (isinstance(t, RequiredType) and t.required))
-                and not (isinstance(t, RequiredType) and not t.required)
-            }
-            readonly_keys = {
-                field for (field, t) in zip(items, types) if isinstance(t, ReadOnlyType)
-            }
-            types = [  # unwrap Required[T] or ReadOnly[T] to just T
-                t.item if isinstance(t, (RequiredType, ReadOnlyType)) else t for t in types
-            ]
+            # Unwrap special forms (Required/NotRequired/ReadOnly)
+            types: list[Type] = []
+            required_keys: set[str] = set()
+            readonly_keys: set[str] = set()
+            for field, t in zip(items, wrapped_types):
+                unwrapped_type, is_required, is_readonly = self.extract_meta_info(t, node)
+                types.append(unwrapped_type)
+                if is_required is True or (is_required is None and total):
+                    required_keys.add(field)
+                if is_readonly:
+                    readonly_keys.add(field)
 
             # Perform various validations after unwrapping.
             for t in types:
@@ -478,6 +648,7 @@ class TypedDictAnalyzer:
                 dict(zip(items, types)),
                 required_keys,
                 readonly_keys,
+                closed,
                 call.line,
                 existing_info,
             )
@@ -492,25 +663,33 @@ class TypedDictAnalyzer:
 
     def parse_typeddict_args(
         self, call: CallExpr
-    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool] | None:
+    ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
-        Return names, types, totality, was there an error during parsing.
+        Return names, types, totality, open/closed, was there an error during parsing.
         If some type is not ready, return None.
         """
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
-        if len(args) > 3:
+        if len(args) > 4:
             return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
-        # TODO: Support keyword arguments
-        if call.arg_kinds not in ([ARG_POS, ARG_POS], [ARG_POS, ARG_POS, ARG_NAMED]):
+        if call.arg_kinds[:2] != [ARG_POS, ARG_POS] or any(
+            arg_kind != ARG_NAMED for arg_kind in call.arg_kinds[2:]
+        ):
             return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
-        if len(args) == 3 and call.arg_names[2] != "total":
-            return self.fail_typeddict_arg(
-                f'Unexpected keyword argument "{call.arg_names[2]}" for "TypedDict"', call
-            )
+        seen_arg_names = set()
+        for arg_name in call.arg_names[2:]:
+            if arg_name not in ("total", "closed"):
+                return self.fail_typeddict_arg(
+                    f'Unexpected keyword argument "{arg_name}" for "TypedDict"', call
+                )
+            if arg_name in seen_arg_names:
+                return self.fail_typeddict_arg(
+                    f'Repeated keyword argument "{arg_name}" for "TypedDict"', call
+                )
+            seen_arg_names.add(arg_name)
         if not isinstance(args[0], StrExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call
@@ -520,10 +699,16 @@ class TypedDictAnalyzer:
                 "TypedDict() expects a dictionary literal as the second argument", call
             )
         total: bool | None = True
-        if len(args) == 3:
-            total = require_bool_literal_argument(self.api, call.args[2], "total")
-            if total is None:
-                return "", [], [], True, [], False
+        closed: bool = False
+        for arg_name, arg in zip(call.arg_names[2:], call.args[2:]):
+            assert arg_name
+            value = require_bool_literal_argument(self.api, arg, arg_name)
+            if value is None:
+                return "", [], [], True, False, [], False
+            if arg_name == "closed":
+                closed = value
+            else:
+                total = value
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items)
@@ -532,7 +717,7 @@ class TypedDictAnalyzer:
             return None
         items, types, ok = res
         assert total is not None
-        return args[0].value, items, types, total, tvar_defs, ok
+        return args[0].value, items, types, total, closed, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
         self, dict_items: list[tuple[Expression | None, Expression]]
@@ -576,9 +761,9 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(
         self, message: str, context: Context
-    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool]:
+    ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool]:
         self.fail(message, context)
-        return "", [], [], True, [], False
+        return "", [], [], True, False, [], False
 
     def build_typeddict_typeinfo(
         self,
@@ -586,8 +771,10 @@ class TypedDictAnalyzer:
         item_types: dict[str, Type],
         required_keys: set[str],
         readonly_keys: set[str],
+        is_closed: bool,
         line: int,
         existing_info: TypeInfo | None,
+        typeddict_data: TypedDictData | None = None,
     ) -> TypeInfo:
         # Prefer typing then typing_extensions if available.
         fallback = (
@@ -597,12 +784,29 @@ class TypedDictAnalyzer:
         )
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
-        typeddict_type = TypedDictType(item_types, required_keys, readonly_keys, fallback)
-        if has_placeholder(typeddict_type):
+        typeddict_type = TypedDictType(
+            item_types, required_keys, readonly_keys, is_closed, fallback
+        )
+        any_placeholder = has_placeholder(typeddict_type)
+        if typeddict_data:
+            for _, base_fields in typeddict_data.bases:
+                for field_type in base_fields.values():
+                    if has_placeholder(field_type):
+                        any_placeholder = True
+        else:
+            typeddict_data = TypedDictData(True, [], {})
+        if any_placeholder:
+            typeddict_data.ready = False
+            force_progress = (
+                typeddict_type != info.typeddict_type
+                or info.typeddict_data is None
+                or typeddict_data.bases != info.typeddict_data.bases
+            )
             self.api.process_placeholder(
-                None, "TypedDict item", info, force_progress=typeddict_type != info.typeddict_type
+                None, "TypedDict item", info, force_progress=force_progress
             )
         info.update_typeddict_type(typeddict_type)
+        info.typeddict_data = typeddict_data
         return info
 
     # Helpers

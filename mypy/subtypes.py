@@ -938,45 +938,52 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypedDictType):
             if left == right:
                 return True  # Fast path
-            if not left.names_are_wider_than(right):
+
+            # A closed type must remain closed
+            if right.is_closed and not left.is_closed:
                 return False
-            for name, l, r in left.zip(right):
-                # TODO: should we pass on the full subtype_context here and below?
-                right_readonly = name in right.readonly_keys
-                if not right_readonly:
+
+            # Perform fast key-based checks before recursing into value types
+            for name, l, r in left.zipall(right):
+                # Required keys must remain required
+                if r.required and not l.required:
+                    return False
+                # Mutable keys must remain mutable
+                if r.mutable and not l.mutable:
+                    return False
+                # Mutable optional keys must also remain optional,
+                # to retain the ability to delete them
+                if r.mutable and not r.required and l.required:
+                    return False
+
+            for name, l, r in left.zipall(right):
+                if r.mutable:
+                    # None will only be used for missing ReadOnly[object] keys
+                    assert r.typ is not None
+                    # Guaranteed by "mutable keys must remain mutable" check
+                    assert l.typ is not None
+
+                    # TODO: should we pass on the full subtype_context here and below?
                     if self.proper_subtype:
-                        check = is_same_type(l, r)
+                        check = is_same_type(l.typ, r.typ)
                     else:
                         check = is_equivalent(
-                            l,
-                            r,
+                            l.typ,
+                            r.typ,
                             ignore_type_params=self.subtype_context.ignore_type_params,
                             options=self.options,
                         )
                 else:
                     # Read-only items behave covariantly
-                    check = self._is_subtype(l, r)
+                    if r.typ is None:
+                        check = True
+                    elif l.typ is None:
+                        # Keys cannot be dropped in an open subtype
+                        # as this would implicitly widen the type constraint
+                        check = False
+                    else:
+                        check = self._is_subtype(l.typ, r.typ)
                 if not check:
-                    return False
-                # Non-required key is not compatible with a required key since
-                # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-read-only non-required
-                # key since the prior doesn't support 'del' but the latter should
-                # support it.
-                # Required key is compatible with a read-only non-required key.
-                required_differ = (name in left.required_keys) != (name in right.required_keys)
-                if not right_readonly and required_differ:
-                    return False
-                # Readonly fields check:
-                #
-                # A = TypedDict('A', {'x': ReadOnly[int]})
-                # B = TypedDict('B', {'x': int})
-                # def reset_x(b: B) -> None:
-                #     b['x'] = 0
-                #
-                # So, `A` cannot be a subtype of `B`, while `B` can be a subtype of `A`,
-                # because you can use `B` everywhere you use `A`, but not the other way around.
-                if name in left.readonly_keys and name not in right.readonly_keys:
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True

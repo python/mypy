@@ -228,11 +228,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
-            if isinstance(arg, UnpackType):
+            if isinstance(arg, UnpackType) and not (
+                isinstance(arg.type, TypeAliasType) and arg.type.is_recursive
+            ):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
-                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
-                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -336,7 +336,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return dict_type
         kwargs = {}
         required_names = set()
-        extra_items: Type = UninhabitedType()
+        extra_items: Type | None = None
         for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
             if kind == ArgKind.ARG_NAMED and name is not None:
                 kwargs[name] = type
@@ -346,10 +346,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 extra_items = type
             elif not kind.is_star() and name is not None:
                 kwargs[name] = type
-        if not kwargs:
+        if not kwargs and extra_items is not None:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
-        # TODO: when PEP 728 is implemented, pass extra_items below.
-        return TypedDictType(kwargs, required_names, set(), fallback=dict_type)
+        # TODO: when PEP 728 `extra_items` is implemented, pass extra_items below.
+        is_closed = extra_items is None
+        return TypedDictType(kwargs, required_names, set(), is_closed, fallback=dict_type)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
@@ -535,7 +536,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and not (
+                isinstance(item.type, TypeAliasType) and item.type.is_recursive
+            ):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
                     # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.
