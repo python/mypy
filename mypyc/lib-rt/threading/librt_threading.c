@@ -112,6 +112,10 @@
 typedef struct {
     PyObject_HEAD
     PyMutex mutex;
+    // Serializes the check-before-unlock path. Public PyMutex_Unlock() aborts
+    // if the mutex is unlocked, and PyMutex_IsLocked()+PyMutex_Unlock() is not
+    // atomic in free-threaded builds.
+    PyMutex release_guard;
 } LockObject;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
@@ -175,6 +179,7 @@ Lock_init_internal(LockObject *self)
 {
 #if defined(LOCK_BACKEND_PYMUTEX)
     self->mutex = (PyMutex){0};
+    self->release_guard = (PyMutex){0};
 #elif defined(LOCK_BACKEND_SRWLOCK)
     InitializeSRWLock(&self->srw);
     InitializeConditionVariable(&self->lock_released);
@@ -328,12 +333,18 @@ static int
 Lock_release_impl(LockObject *self)
 {
 #if defined(LOCK_BACKEND_PYMUTEX)
-    // Note: check-then-unlock is not atomic, but this matches CPython's
-    // threading.Lock semantics. Only the owning thread should call release().
+    // threading.Lock is unowned, so release() may be called from a different
+    // thread than acquire(). CPython's atomic _PyMutex_TryUnlock() is not part
+    // of the public API, so use a small guard mutex to keep the public
+    // PyMutex_Unlock() from seeing an already-unlocked mutex under concurrent
+    // release() calls in free-threaded builds.
+    PyMutex_Lock(&self->release_guard);
     if (!PyMutex_IsLocked(&self->mutex)) {
+        PyMutex_Unlock(&self->release_guard);
         return -1;
     }
     PyMutex_Unlock(&self->mutex);
+    PyMutex_Unlock(&self->release_guard);
     return 0;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
