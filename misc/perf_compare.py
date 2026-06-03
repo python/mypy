@@ -31,7 +31,7 @@ import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from resource import struct_rusage as rusage
 
 
 def winsorized_paired_stats(
@@ -150,26 +150,36 @@ def run_benchmark(
             # Update a few files to force non-trivial incremental run
             edit_python_file(os.path.join(abschk, "mypy/__main__.py"))
             edit_python_file(os.path.join(abschk, "mypy/test/testcheck.py"))
-    stopwatch_func: Callable[[], Any]
-    delta_func: Callable[[Any, Any], Any]
+
+    def run() -> None:
+        # Ignore errors, since some commits being measured may generate additional errors.
+        if foreign:
+            subprocess.run(cmd, cwd=check_dir, env=env)
+        else:
+            subprocess.run(cmd, cwd=compiled_dir, env=env)
+
     if metric == "wall":
-        stopwatch_func = lambda: time.time()
-        delta_func = lambda t0, t1: t1 - t0
+        stopwatch_func_w: Callable[[], float] = lambda: time.time()
+        delta_func_w: Callable[[float, float], float] = lambda t0, t1: t1 - t0
+
+        v0_w = stopwatch_func_w()  # capture
+        run()
+        v1_w = stopwatch_func_w()  # capture
+        return delta_func_w(v0_w, v1_w)
     elif metric == "cpu":
-        # NOTE: CPU time (user+sys) is far less sensitive than wall-clock to
-        #       background interference
-        stopwatch_func = lambda: resource.getrusage(resource.RUSAGE_CHILDREN)
-        delta_func = lambda r0, r1: (r1.ru_utime - r0.ru_utime) + (r1.ru_stime - r0.ru_stime)
+        stopwatch_func_c: Callable[[], rusage] = lambda: resource.getrusage(
+            resource.RUSAGE_CHILDREN
+        )
+        delta_func_c: Callable[[rusage, rusage], float] = lambda r0, r1: (
+            r1.ru_utime - r0.ru_utime
+        ) + (r1.ru_stime - r0.ru_stime)
+
+        v0_c = stopwatch_func_c()  # capture
+        run()
+        v1_c = stopwatch_func_c()  # capture
+        return delta_func_c(v0_c, v1_c)
     else:
         raise AssertionError(f"Unrecognized metric: {metric!r}")
-    v0 = stopwatch_func()  # capture
-    # Ignore errors, since some commits being measured may generate additional errors.
-    if foreign:
-        subprocess.run(cmd, cwd=check_dir, env=env)
-    else:
-        subprocess.run(cmd, cwd=compiled_dir, env=env)
-    v1 = stopwatch_func()  # capture
-    return delta_func(v0, v1)
 
 
 def main() -> None:
