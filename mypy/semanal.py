@@ -50,10 +50,12 @@ Some important properties:
 
 from __future__ import annotations
 
+import os
 import re
+import time
 from collections.abc import Callable, Collection, Iterable, Iterator
 from contextlib import contextmanager
-from typing import Any, Final, TypeAlias as _TypeAlias, TypeGuard, TypeVar, cast
+from typing import Any, Final, TextIO, TypeAlias as _TypeAlias, TypeGuard, TypeVar, cast
 from typing_extensions import assert_never
 
 from mypy import errorcodes as codes, message_registry
@@ -320,11 +322,18 @@ from mypy.visitor import NodeVisitor
 T = TypeVar("T")
 
 
-# Whether to print diagnostic information for failed full parses
-# in SemanticAnalyzer.try_parse_as_type_expression().
+# Instrumentation: If non-None, every expression that reaches the expensive
+# full-parse block of SemanticAnalyzer.try_parse_as_type_expression()
+# is logged to a .tsv by log_typeform_full_parse().
 #
-# See also: misc/analyze_typeform_stats.py
-DEBUG_TYPE_EXPRESSION_FULL_PARSE_FAILURES: Final = False
+# See also:
+# - misc/analyze_typeform_full_parse_profile.py
+# - misc/analyze_typeform_stats.py
+_TYPEFORM_PROFILE_FULL_PARSE_PATH: Final = os.environ.get("MYPY_TYPEFORM_PROFILE_FULL_PARSE")
+_typeform_full_parse_log_file: TextIO | None = None
+
+# TSV column names for the full-parse profile log
+_TYPEFORM_PROFILE_FULL_PARSE_HEADER = "outcome\tkind\tsubkind\tdescriptor\tdur_ns\n"
 
 
 FUTURE_IMPORTS: Final = {
@@ -8164,6 +8173,9 @@ class SemanticAnalyzer(
         else:
             assert_never(maybe_type_expr)
 
+        full_parse_t0 = (
+            time.perf_counter_ns() if _TYPEFORM_PROFILE_FULL_PARSE_PATH is not None else 0
+        )
         with self.isolated_error_analysis():
             try:
                 t = self.expr_to_analyzed_type(maybe_type_expr)
@@ -8173,17 +8185,6 @@ class SemanticAnalyzer(
                 # Not a type expression
                 t = None
 
-            if DEBUG_TYPE_EXPRESSION_FULL_PARSE_FAILURES and t is None:
-                original_flushed_files = set(self.errors.flushed_files)  # save
-                try:
-                    errors = self.errors.new_messages()  # capture
-                finally:
-                    self.errors.flushed_files = original_flushed_files  # restore
-
-                print(
-                    f"SA.try_parse_as_type_expression: Full parse failure: {maybe_type_expr}, errors={errors!r}"
-                )
-
         # Count full parse attempts for profiling
         if t is not None:
             self.type_expression_full_parse_success_count += 1
@@ -8191,6 +8192,12 @@ class SemanticAnalyzer(
             self.type_expression_full_parse_failure_count += 1
 
         maybe_type_expr.as_type = t
+
+        if _TYPEFORM_PROFILE_FULL_PARSE_PATH is not None:
+            full_parse_t1 = time.perf_counter_ns()
+            self.log_typeform_full_parse(
+                maybe_type_expr, t is not None, full_parse_t1 - full_parse_t0
+            )
 
     @staticmethod
     def var_is_typing_special_form(var: Var) -> bool:
@@ -8207,6 +8214,92 @@ class SemanticAnalyzer(
             "typing_extensions.TypeIs",
             "typing.Union",
         ]
+
+    @staticmethod
+    def log_typeform_full_parse(expr: Expression, ok: bool, dur_ns: int) -> None:
+        """Log one entry into the full-parse block of try_parse_as_type_expression.
+
+        Active only when the MYPY_TYPEFORM_PROFILE_FULL_PARSE environment variable
+        is set to a file path. Each mypy process (worker) writes to its own file
+        named "<path>.<pid>" to avoid contention; concatenating those files yields
+        the complete profile. Aggregate with misc/analyze_typeform_full_parse_profile.py.
+
+        Output is tab-separated with one row per full-parse attempt:
+
+        outcome     "OK" if as_type was set, "FAIL" if the full parse rejected
+                    the expression (either by raising TypeTranslationError or by
+                    emitting errors during analysis).
+        kind        AST node kind: StrExpr | IndexExpr | OpExpr | (other).
+        subkind     For StrExpr: "ident", "dotident", or "other" (based on the
+                    string's shape). For IndexExpr: "Name" or "Member" (base
+                    kind). For OpExpr: always "|" (no other op reaches here).
+        descriptor  Short, type-specific identifier for the expression:
+                        StrExpr   -> the string value, truncated to 80 chars
+                                    (with " (N)" suffix when truncated).
+                        IndexExpr -> the full stringified expression (str(expr),
+                                    with tabs/newlines escaped).
+                        OpExpr    -> the full stringified expression (str(expr),
+                                    with tabs/newlines escaped).
+        dur_ns      Wall-clock nanoseconds spent in the full-parse block for
+                    this expression (measured around expr_to_analyzed_type
+                    plus the surrounding isolated_error_analysis ctx).
+
+        The first line of each file is the column header (same as above).
+        """
+        global _typeform_full_parse_log_file
+        if _typeform_full_parse_log_file is None:
+            assert _TYPEFORM_PROFILE_FULL_PARSE_PATH is not None
+            _typeform_full_parse_log_file = open(
+                f"{_TYPEFORM_PROFILE_FULL_PARSE_PATH}.{os.getpid()}", "a", buffering=1
+            )
+            _typeform_full_parse_log_file.write(_TYPEFORM_PROFILE_FULL_PARSE_HEADER)
+        outcome = "OK" if ok else "FAIL"
+        if isinstance(expr, StrExpr):
+            raw = expr.value
+            val = (
+                raw[:80]
+                .replace("\\", "\\\\")
+                .replace("\t", "\\t")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+            )
+            if len(raw) > 80:
+                val += f" ({len(raw)})"
+            if _IDENTIFIER_RE.fullmatch(raw):
+                subkind = "ident"
+            elif _DOTTED_IDENTIFIER_RE.fullmatch(raw):
+                subkind = "dotident"
+            else:
+                subkind = "other"
+            line = f"{outcome}\tStrExpr\t{subkind}\t{val}\t{dur_ns}\n"
+        elif isinstance(expr, IndexExpr):
+            base = expr.base
+            if isinstance(base, NameExpr):
+                subkind = "Name"
+            elif isinstance(base, MemberExpr):
+                subkind = "Member"
+            else:
+                subkind = type(base).__name__
+            desc = (
+                str(expr)
+                .replace("\\", "\\\\")
+                .replace("\t", "\\t")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+            )
+            line = f"{outcome}\tIndexExpr\t{subkind}\t{desc}\t{dur_ns}\n"
+        elif isinstance(expr, OpExpr):
+            desc = (
+                str(expr)
+                .replace("\\", "\\\\")
+                .replace("\t", "\\t")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+            )
+            line = f"{outcome}\tOpExpr\t|\t{desc}\t{dur_ns}\n"
+        else:
+            line = f"{outcome}\t{type(expr).__name__}\t\t\t{dur_ns}\n"
+        _typeform_full_parse_log_file.write(line)
 
     @contextmanager
     def isolated_error_analysis(self) -> Iterator[None]:
