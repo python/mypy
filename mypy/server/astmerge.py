@@ -340,6 +340,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_var(node)
 
     def visit_type_alias(self, node: TypeAlias) -> None:
+        # Updating alias target can invalidate its recursive status.
+        node._is_recursive = None
         self.fixup_type(node.target)
         for v in node.alias_tvars:
             self.fixup_type(v)

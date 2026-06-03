@@ -75,6 +75,7 @@ from mypy.types import (
     BoolTypeQuery,
     CallableArgument,
     CallableType,
+    CollectAliasesVisitor,
     DeletedType,
     EllipsisType,
     ErasedType,
@@ -275,7 +276,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.prohibit_special_class_field_types = prohibit_special_class_field_types
         # Allow variables typed as Type[Any] and type (useful for base classes).
         self.allow_type_any = allow_type_any
-        self.allow_type_var_tuple = False
+        # Level of nesting at which a TypeVarTuple is allowed. Note we specify exact level
+        # to prohibit things like Unpack[list[Ts]], which are not supported.
+        self.allow_type_var_tuple = -1
         self.allow_unpack = allow_unpack
         # Set when we are analyzing a default of a type variable.
         self.analyzing_tvar_def = analyzing_tvar_def
@@ -453,7 +456,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail(msg, t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, TypeVarTupleType)
-                if not self.allow_type_var_tuple:
+                if self.allow_type_var_tuple != self.nesting_level:
                     self.fail(
                         f'TypeVarTuple "{t.name}" is only valid with an unpack',
                         t,
@@ -808,9 +811,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if not self.allow_unpack:
                 self.fail(message_registry.INVALID_UNPACK_POSITION, t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
-            self.allow_type_var_tuple = True
+            self.allow_type_var_tuple = self.nesting_level + 1
             result = UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
-            self.allow_type_var_tuple = False
+            self.allow_type_var_tuple = -1
             return result
         elif fullname in SELF_TYPE_NAMES:
             if t.args:
@@ -1161,9 +1164,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not self.allow_unpack:
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
-        self.allow_type_var_tuple = True
+        self.allow_type_var_tuple = self.nesting_level + 1
         result = UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
-        self.allow_type_var_tuple = False
+        self.allow_type_var_tuple = -1
         return result
 
     def visit_parameters(self, t: Parameters) -> Type:
@@ -2523,6 +2526,15 @@ def detect_diverging_alias(node: TypeAlias, target: Type) -> bool:
     They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
     Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
     """
+    is_recursive = node._is_recursive
+    if is_recursive is None:
+        is_recursive = node in node.target.accept(CollectAliasesVisitor())
+    if not is_recursive:
+        # Fast path: this is not a recursive alias at all.
+        return False
+    # Note we only cache positive case, caching negative case is risky, as this type alias
+    # (or more importantly any other alias it uses) may be not ready yet.
+    node._is_recursive = True
     visitor = DivergingAliasDetector({node})
     _ = target.accept(visitor)
     return visitor.diverging

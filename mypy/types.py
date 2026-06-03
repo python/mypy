@@ -4301,12 +4301,12 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
             # Funky code here avoids mypyc narrowing the type of unpack_index.
             old_index = unpack_index
             assert old_index is None
-            # Don't return so that we can also sanity check there is only one.
+            # Don't return so that we can also sanity-check there is only one.
             unpack_index = i
     return unpack_index
 
 
-def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
+def flatten_nested_tuples(types: Iterable[Type], handle_recursive: bool = True) -> list[Type]:
     """Recursively flatten TupleTypes nested with Unpack.
 
     For example this will transform
@@ -4320,7 +4320,12 @@ def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
             res.append(typ)
             continue
         p_type = get_proper_type(typ.type)
-        if not isinstance(p_type, TupleType):
+        if (
+            not isinstance(p_type, TupleType)
+            or not handle_recursive
+            and isinstance(typ.type, TypeAliasType)
+            and typ.type.is_recursive
+        ):
             res.append(typ)
             continue
         if isinstance(typ.type, TypeAliasType):

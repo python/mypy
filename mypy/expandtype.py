@@ -228,11 +228,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
-            if isinstance(arg, UnpackType):
+            if isinstance(arg, UnpackType) and not (
+                isinstance(arg.type, TypeAliasType) and arg.type.is_recursive
+            ):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
-                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
-                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -536,7 +536,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and not (
+                isinstance(item.type, TypeAliasType) and item.type.is_recursive
+            ):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
                     # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.
