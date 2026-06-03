@@ -56,8 +56,13 @@
 // backed by a parking lot for contended waits. PyMutex automatically
 // releases the GIL when blocking.
 //
-// On older Python with Windows, this uses SRWLOCK (Slim Reader/Writer Lock),
-// a lightweight kernel primitive. A separate volatile flag tracks the locked state.
+// On older Python with Windows, this uses an SRWLOCK (Slim Reader/Writer
+// Lock) plus a CONDITION_VARIABLE guarding a `locked` flag. The SRWLOCK only
+// protects the flag and is never held across the user's critical section, so
+// release() may be called from a thread other than the acquirer (matching
+// threading.Lock semantics). This mirrors CPython's Windows lock (NRMUTEX in
+// Python/thread_nt.h) and is the Windows twin of the POSIX pthread+condvar
+// backend below.
 //
 // On older Python with POSIX systems, there are two backends, both of which
 // allow release() from a thread other than the one that acquired the lock
@@ -90,8 +95,16 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
-    SRWLOCK lock;
-    volatile long locked;  // 0=unlocked, 1=locked (for locked() and error checking)
+    // The SRWLOCK below does NOT represent the Python lock; like the pthread
+    // fallback's `mut`, it only guards `locked` and the condition variable,
+    // and is held just long enough to inspect/flip the flag -- never across
+    // the user's critical section. That is what allows release() from a
+    // thread other than the acquirer: SRWLOCK's same-thread-release rule is
+    // never violated, and clearing `locked` is just a guarded store. This
+    // mirrors CPython's Windows lock (NRMUTEX in Python/thread_nt.h).
+    SRWLOCK srw;
+    CONDITION_VARIABLE lock_released;
+    int locked;  // 0=unlocked, 1=locked; protected by `srw`
 } LockObject;
 
 #elif defined(LOCK_BACKEND_SEM)
@@ -131,7 +144,8 @@ Lock_init_internal(LockObject *self)
 #if CPY_3_14_FEATURES
     self->mutex = (PyMutex){0};
 #elif defined(LOCK_BACKEND_SRWLOCK)
-    InitializeSRWLock(&self->lock);
+    InitializeSRWLock(&self->srw);
+    InitializeConditionVariable(&self->lock_released);
     self->locked = 0;
 #elif defined(LOCK_BACKEND_SEM)
     sem_init(&self->sem, 0, 1);
@@ -159,25 +173,41 @@ Lock_acquire_impl(LockObject *self, int blocking)
     return 1;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
+    // `srw` only guards `locked` and the condition variable; it is held just
+    // long enough to inspect/flip the flag, never across the user's critical
+    // section. This is what lets a different thread call release().
     if (!blocking) {
-        if (TryAcquireSRWLockExclusive(&self->lock)) {
-            InterlockedExchange(&self->locked, 1);
+        AcquireSRWLockExclusive(&self->srw);
+        if (!self->locked) {
+            self->locked = 1;
+            ReleaseSRWLockExclusive(&self->srw);
             return 1;
         }
+        ReleaseSRWLockExclusive(&self->srw);
         return 0;
     }
 
-    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
-    // overhead in the common uncontended case.
-    if (TryAcquireSRWLockExclusive(&self->lock)) {
-        InterlockedExchange(&self->locked, 1);
+    // Fast path: grab the lock without releasing the GIL if it is free.
+    AcquireSRWLockExclusive(&self->srw);
+    if (!self->locked) {
+        self->locked = 1;
+        ReleaseSRWLockExclusive(&self->srw);
         return 1;
     }
+    ReleaseSRWLockExclusive(&self->srw);
 
+    // Slow path: wait for the lock to be released, with the GIL dropped so
+    // other Python threads can run (and release the lock).
+    // SleepConditionVariableSRW atomically releases the SRWLOCK while sleeping
+    // and reacquires it on wake, exactly like pthread_cond_wait.
     Py_BEGIN_ALLOW_THREADS
-    AcquireSRWLockExclusive(&self->lock);
+    AcquireSRWLockExclusive(&self->srw);
+    while (self->locked) {
+        SleepConditionVariableSRW(&self->lock_released, &self->srw, INFINITE, 0);
+    }
+    self->locked = 1;
+    ReleaseSRWLockExclusive(&self->srw);
     Py_END_ALLOW_THREADS
-    InterlockedExchange(&self->locked, 1);
     return 1;
 
 #elif defined(LOCK_BACKEND_SEM)
@@ -275,10 +305,16 @@ Lock_release_impl(LockObject *self)
     return 0;
 
 #elif defined(LOCK_BACKEND_SRWLOCK)
-    if (!InterlockedExchange(&self->locked, 0)) {
+    AcquireSRWLockExclusive(&self->srw);
+    if (!self->locked) {
+        ReleaseSRWLockExclusive(&self->srw);
         return -1;
     }
-    ReleaseSRWLockExclusive(&self->lock);
+    self->locked = 0;
+    // Wake one waiter (if any). Signalling under `srw` is fine and avoids a
+    // lost-wakeup race.
+    WakeConditionVariable(&self->lock_released);
+    ReleaseSRWLockExclusive(&self->srw);
     return 0;
 
 #elif defined(LOCK_BACKEND_SEM)
@@ -312,7 +348,13 @@ Lock_is_locked(LockObject *self)
 #if CPY_3_14_FEATURES
     return PyMutex_IsLocked(&self->mutex);
 #elif defined(LOCK_BACKEND_SRWLOCK)
-    return InterlockedCompareExchange(&self->locked, 0, 0) != 0;
+    // locked() is not expected to be on a perf-critical path, so take the
+    // SRWLOCK (shared) for a clean read of the guarded flag rather than
+    // relying on an atomic/volatile field.
+    AcquireSRWLockShared(&self->srw);
+    int result = self->locked;
+    ReleaseSRWLockShared(&self->srw);
+    return result;
 #else
     return atomic_load_explicit(&self->locked, memory_order_relaxed) != 0;
 #endif
