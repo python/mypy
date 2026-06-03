@@ -342,9 +342,13 @@ class ExtClassBuilder(ClassBuilder):
         # Call __init_subclass__ after class attributes have been set
         self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
 
-        # The decl is pre-registered in prepare.py iff the class has its own
-        # default attribute assignments to emit; skip the body walk otherwise.
-        if MYPYC_DEFAULTS_SETUP in ir.method_decls:
+        # Under separate compilation, prepare.py pre-registers the decl iff
+        # the class has its own default attribute assignments to emit, so we
+        # can skip the body walk entirely when it isn't present. Without
+        # separate compilation, find_attr_initializers walks the MRO so that
+        # inherited defaults are reflected in ir.attrs_with_defaults (relied
+        # on by the attribute-definedness analysis), so we always run it.
+        if not self.builder.options.separate or MYPYC_DEFAULTS_SETUP in ir.method_decls:
             attrs_with_defaults, default_assignments = find_attr_initializers(
                 self.builder, self.cdef
             )
