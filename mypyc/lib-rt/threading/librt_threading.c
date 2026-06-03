@@ -26,15 +26,18 @@
 
 // Python <3.14 on POSIX.
 //
-// Prefer a POSIX unnamed semaphore when the platform supports it well, and
-// fall back to a pthread mutex + condition variable otherwise. We use the
-// same test CPython uses to pick its semaphore-based lock (see
-// Python/thread_pthread.h): an unnamed semaphore is only usable when
-// sem_init() actually works AND a timed wait is available. Notably this is
-// true on Linux but false on macOS (whose sem_init() is a non-functional
-// stub), so macOS uses the mutex+condvar fallback.
+// Prefer a POSIX unnamed semaphore when the platform supports it well and the
+// GIL is enabled, and fall back to a pthread mutex + condition variable
+// otherwise. We use the same test CPython uses to pick its semaphore-based lock
+// (see Python/thread_pthread.h): an unnamed semaphore is only usable when
+// sem_init() actually works AND a timed wait is available. Notably this is true
+// on Linux but false on macOS (whose sem_init() is a non-functional stub), so
+// macOS uses the mutex+condvar fallback. Free-threaded builds also use the
+// mutex+condvar fallback because the semaphore backend's `locked` bookkeeping
+// relies on GIL serialization.
 #include <unistd.h>
-#if defined(_POSIX_SEMAPHORES) && (_POSIX_SEMAPHORES + 0) != -1 && \
+#if !defined(Py_GIL_DISABLED) && \
+    defined(_POSIX_SEMAPHORES) && (_POSIX_SEMAPHORES + 0) != -1 && \
     (defined(HAVE_SEM_TIMEDWAIT) || defined(HAVE_SEM_CLOCKWAIT))
 #define LOCK_BACKEND_SEM
 #include <semaphore.h>
@@ -67,16 +70,16 @@
 // of which allow release() from a thread other than the one that acquired the
 // lock (matching threading.Lock semantics):
 //
-//  - Where unnamed POSIX semaphores work well (e.g. Linux), this uses a
-//    sem_t initialized to 1: acquire is sem_wait, release is sem_post.
-//    Semaphores have no ownership concept, so cross-thread release is
-//    directly well-defined.
+//  - Where unnamed POSIX semaphores work well (e.g. Linux) and the GIL is
+//    enabled, this uses a sem_t initialized to 1: acquire is sem_wait, release
+//    is sem_post. Semaphores have no ownership concept, so cross-thread release
+//    is directly well-defined.
 //
-//  - Otherwise (e.g. macOS, whose sem_init() is a non-functional stub), this
-//    uses a pthread mutex + condition variable guarding a `locked` flag. The
-//    mutex only protects the flag and is never held across the user's
-//    critical section, so the OS mutex is always unlocked on the same thread
-//    that locked it.
+//  - Otherwise (e.g. macOS, whose sem_init() is a non-functional stub, and
+//    free-threaded builds), this uses a pthread mutex + condition variable
+//    guarding a `locked` flag. The mutex only protects the flag and is never
+//    held across the user's critical section, so the OS mutex is always
+//    unlocked on the same thread that locked it.
 //
 
 #ifdef MYPYC_EXPERIMENTAL
@@ -120,11 +123,12 @@ typedef struct {
     // flag is advisory bookkeeping. It is set after a successful acquire and
     // cleared before sem_post in release.
     //
-    // Like CPython's semaphore lock, this flag is a plain int relying on the
-    // GIL for serialization: it is only ever touched with the GIL held (the
-    // blocking sem_wait drops the GIL, but the flag store happens after the
-    // GIL is reacquired). CPython keeps the same flag as a plain `char` in its
-    // _thread lock wrapper (Modules/_threadmodule.c) for exactly this purpose.
+    // This backend is only selected when the GIL is enabled, so this flag is a
+    // plain int relying on the GIL for serialization: it is only ever touched
+    // with the GIL held (the blocking sem_wait drops the GIL, but the flag
+    // store happens after the GIL is reacquired). CPython keeps the same flag
+    // as a plain `char` in its _thread lock wrapper (Modules/_threadmodule.c)
+    // for exactly this purpose.
     int locked;
 } LockObject;
 
@@ -343,12 +347,9 @@ Lock_release_impl(LockObject *self)
     return 0;
 
 #elif defined(LOCK_BACKEND_SEM)
-    // Check-then-clear the flag, then post. This mirrors CPython's _thread
-    // lock release (a plain `if (!self->locked) error; self->locked = 0`
-    // guarded by the GIL): the flag is only touched with the GIL held, so the
-    // check and clear are serialized without an atomic. As in CPython, calling
-    // release() concurrently from multiple threads on the same lock is a usage
-    // error and is not defended against here.
+    // Check-then-clear the flag, then post. This backend is only selected when
+    // the GIL is enabled, so the check and clear are serialized without an
+    // atomic.
     if (!self->locked) {
         return -1;
     }
