@@ -104,3 +104,113 @@ def test_release_unlocked() -> None:
         pass
     else:
         assert False, "expected RuntimeError"
+
+[case testLockPerf_librt_experimental_benchmark]
+import threading
+from librt.threading import Lock
+
+N = 5000000
+
+def bench_librt_acquire_release() -> None:
+    lock = Lock()
+    n = N
+    i = 0
+    while i < n:
+        lock.acquire()
+        lock.release()
+        i += 1
+
+def bench_librt_with() -> None:
+    lock = Lock()
+    n = N
+    i = 0
+    while i < n:
+        with lock:
+            pass
+        i += 1
+
+def bench_stdlib_acquire_release() -> None:
+    lock = threading.Lock()
+    n = N
+    i = 0
+    while i < n:
+        lock.acquire()
+        lock.release()
+        i += 1
+
+def bench_stdlib_with() -> None:
+    lock = threading.Lock()
+    n = N
+    i = 0
+    while i < n:
+        with lock:
+            pass
+        i += 1
+
+[file driver.py]
+import time
+import threading
+import native
+
+N = native.N
+REPEAT = 5
+
+def bench_interp_acquire_release() -> None:
+    lock = threading.Lock()
+    n = N
+    i = 0
+    while i < n:
+        lock.acquire()
+        lock.release()
+        i += 1
+
+def bench_interp_with() -> None:
+    lock = threading.Lock()
+    n = N
+    i = 0
+    while i < n:
+        with lock:
+            pass
+        i += 1
+
+def best_of(func: object, repeat: int) -> float:
+    best = float("inf")
+    for r in range(repeat):
+        t0 = time.perf_counter()
+        func()  # type: ignore[operator]
+        dt = time.perf_counter() - t0
+        best = min(best, dt)
+    return best
+
+def ns_per(seconds: float) -> float:
+    return seconds / N * 1e9
+
+def run() -> None:
+    print(f"Lock acquire/release and with, {N} iterations, best of {REPEAT}")
+    print()
+
+    t1 = best_of(native.bench_librt_acquire_release, REPEAT)
+    print(f"  librt Lock acquire/release (compiled):   {ns_per(t1):.1f} ns")
+
+    t2 = best_of(native.bench_librt_with, REPEAT)
+    print(f"  librt Lock with (compiled):              {ns_per(t2):.1f} ns")
+
+    t3 = best_of(native.bench_stdlib_acquire_release, REPEAT)
+    print(f"  stdlib Lock acquire/release (compiled):  {ns_per(t3):.1f} ns")
+
+    t4 = best_of(native.bench_stdlib_with, REPEAT)
+    print(f"  stdlib Lock with (compiled):             {ns_per(t4):.1f} ns")
+
+    t5 = best_of(bench_interp_acquire_release, REPEAT)
+    print(f"  stdlib Lock acquire/release (interp):    {ns_per(t5):.1f} ns")
+
+    t6 = best_of(bench_interp_with, REPEAT)
+    print(f"  stdlib Lock with (interp):               {ns_per(t6):.1f} ns")
+
+    print()
+    print(f"  acquire/release: librt vs stdlib compiled: {t3/t1:.2f}x")
+    print(f"  acquire/release: librt vs interp:          {t5/t1:.2f}x")
+    print(f"  with:            librt vs stdlib compiled: {t4/t2:.2f}x")
+    print(f"  with:            librt vs interp:          {t6/t2:.2f}x")
+
+run()
