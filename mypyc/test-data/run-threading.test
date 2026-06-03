@@ -1,7 +1,13 @@
 # Test cases for librt.threading (compile and run)
 
 [case testLockBasics_librt_experimental]
+from typing import Any
+from testutil import assertRaises
 from librt.threading import Lock
+
+class BadBool:
+    def __bool__(self) -> bool:
+        raise RuntimeError("bad bool")
 
 def test_lock_basic() -> None:
     lock = Lock()
@@ -13,7 +19,8 @@ def test_lock_basic() -> None:
 
 def test_lock_context_manager() -> None:
     lock = Lock()
-    with lock:
+    with lock as acquired:
+        assert acquired is True
         assert lock.locked()
     assert not lock.locked()
 
@@ -87,23 +94,66 @@ def test_acquire_blocking_true() -> None:
     assert lock.locked()
     lock.release()
 
+def test_lock_constructor_errors() -> None:
+    lock_type: Any = Lock
+    make_type: Any = type
+    with assertRaises(TypeError):
+        lock_type(1)
+    with assertRaises(TypeError):
+        lock_type(foo=1)
+    with assertRaises(TypeError):
+        make_type("LockSubclass", (lock_type,), {})
+
+def test_lock_acquire_argument_errors() -> None:
+    lock: Any = Lock()
+    with assertRaises(TypeError):
+        lock.acquire(True, False)
+    with assertRaises(TypeError):
+        lock.acquire(foo=True)
+
+def test_lock_acquire_blocking_truthiness() -> None:
+    lock: Any = Lock()
+    assert lock.acquire(blocking=True)
+    assert lock.locked()
+    assert not lock.acquire(blocking=False)
+    lock.release()
+
+    assert lock.acquire(None)
+    assert lock.locked()
+    assert not lock.acquire(None)
+    lock.release()
+
+    assert lock.acquire(1)
+    lock.release()
+    assert lock.acquire(0)
+    lock.release()
+
+def test_lock_acquire_blocking_bool_error() -> None:
+    lock: Any = Lock()
+    with assertRaises(RuntimeError, "bad bool"):
+        lock.acquire(BadBool())
+    with assertRaises(RuntimeError, "bad bool"):
+        lock.acquire(blocking=BadBool())
+
+def test_lock_exit_manual_call() -> None:
+    lock: Any = Lock()
+    lock.acquire()
+    assert lock.__exit__(None, None, None) is None
+    assert not lock.locked()
+
+    lock.acquire()
+    assert lock.__exit__() is None
+    assert not lock.locked()
+
 def test_release_unlocked() -> None:
     lock = Lock()
-    try:
+    with assertRaises(RuntimeError):
         lock.release()
-    except RuntimeError:
-        pass
-    else:
-        assert False, "expected RuntimeError"
     # Also after acquire + release
     lock.acquire()
     lock.release()
-    try:
+    with assertRaises(RuntimeError):
         lock.release()
-    except RuntimeError:
-        pass
-    else:
-        assert False, "expected RuntimeError"
 
 [case testLockPerf_librt_experimental_benchmark]
 import threading
