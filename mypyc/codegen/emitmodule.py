@@ -56,6 +56,7 @@ from mypyc.common import (
     shared_lib_name,
     short_id_from_name,
 )
+from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.deps import (
     LIBRT_BASE64,
@@ -259,29 +260,31 @@ def compile_scc_to_ir(
                 env_user_functions[cls.env_user_function] = cls
 
     for module in modules.values():
+        module_path = result.graph[module.fullname].xpath
         for fn in module.functions:
-            # Insert checks for uninitialized values.
-            insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
-            # Insert exception handling.
-            insert_exception_handling(fn, compiler_options.strict_traceback_checks)
-            # Insert reference count handling.
-            insert_ref_count_opcodes(fn)
+            with catch_errors(module_path, fn.line):
+                # Insert checks for uninitialized values.
+                insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
+                # Insert exception handling.
+                insert_exception_handling(fn, compiler_options.strict_traceback_checks)
+                # Insert reference count handling.
+                insert_ref_count_opcodes(fn)
 
-            if fn in env_user_functions:
-                insert_spills(fn, env_user_functions[fn])
+                if fn in env_user_functions:
+                    insert_spills(fn, env_user_functions[fn])
 
-            if compiler_options.log_trace:
-                insert_event_trace_logging(fn, compiler_options)
+                if compiler_options.log_trace:
+                    insert_event_trace_logging(fn, compiler_options)
 
-            # Switch to lower abstraction level IR.
-            lower_ir(fn, compiler_options)
-            # Calculate implicit module dependencies (needed for librt)
-            deps = find_implicit_op_dependencies(fn)
-            if deps is not None:
-                module.dependencies.update(deps)
-            # Perform optimizations.
-            do_copy_propagation(fn, compiler_options)
-            do_flag_elimination(fn, compiler_options)
+                # Switch to lower abstraction level IR.
+                lower_ir(fn, compiler_options)
+                # Calculate implicit module dependencies (needed for librt)
+                deps = find_implicit_op_dependencies(fn)
+                if deps is not None:
+                    module.dependencies.update(deps)
+                # Perform optimizations.
+                do_copy_propagation(fn, compiler_options)
+                do_flag_elimination(fn, compiler_options)
 
         # Calculate implicit dependencies from class attribute types
         for cl in module.classes:
