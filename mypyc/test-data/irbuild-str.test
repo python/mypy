@@ -1026,7 +1026,7 @@ L0:
     r0 = CPyStr_IsDigit(x)
     return r0
 
-[case testStrIndexEqLiteral]
+[case testStrIndexEqLiteral_64bit]
 def is_comma(s: str, i: int) -> bool:
     return s[i] == ","
 def is_comma_swapped(s: str, i: int) -> bool:
