@@ -785,7 +785,7 @@ class TypedDictAnalyzer:
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         typeddict_type = TypedDictType(
-            item_types, required_keys, readonly_keys, is_closed, fallback
+            item_types, required_keys, readonly_keys, fallback, is_closed=is_closed
         )
         any_placeholder = has_placeholder(typeddict_type)
         if typeddict_data:

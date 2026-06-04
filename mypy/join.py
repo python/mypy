@@ -663,7 +663,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
             fallback = self.s.create_anonymous_fallback()
             is_closed = self.s.is_closed and t.is_closed
-            return TypedDictType(items, required_keys, readonly_keys, is_closed, fallback)
+            return TypedDictType(
+                items, required_keys, readonly_keys, fallback, is_closed=is_closed
+            )
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
         else:
