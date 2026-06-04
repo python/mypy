@@ -167,8 +167,9 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 
 class State:
-    def __init__(self, options: Options) -> None:
+    def __init__(self, options: Options, is_stub: bool = False) -> None:
         self.options = options
+        self.is_stub = is_stub
         self.errors: list[ParseError] = []
         self.num_funcs = 0
 
@@ -179,6 +180,29 @@ class State:
         self.errors.append(
             {"line": line, "column": column, "message": message, "blocker": blocker, "code": code}
         )
+
+    def check_min_version(
+        self,
+        feature: str,
+        min_version: tuple[int, int],
+        line: int,
+        column: int,
+        *,
+        enforce_in_stubs: bool = False,
+    ) -> None:
+        """Report a non blocker syntax error if the target Python feature is older than min_version."""
+        if self.is_stub and not enforce_in_stubs:
+            return
+        if self.options.python_version < min_version:
+            curr = self.options.python_version
+            self.add_error(
+                f"{feature}: requires Python {min_version[0]}.{min_version[1]} or newer "
+                f"(current target: Python {curr[0]}.{curr[1]})",
+                line,
+                column,
+                blocker=False,
+                code="syntax",
+            )
 
 
 def native_parse(
@@ -607,6 +631,13 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
     return arguments, has_ann
 
 
+def check_type_param_defaults(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    if any(p.default is not None for p in type_params):
+        state.check_min_version("Type parameter defaults", (3, 13), line, column)
+
+
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
     """Read type parameters (PEP 695 generics)."""
     type_params: list[TypeParam] = []
@@ -680,6 +711,11 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     if is_async:
         func_def.is_coroutine = True
     read_loc(data, func_def)
+    if type_params:
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
+        )
+        check_type_param_defaults(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -727,6 +763,11 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     )
     class_def.decorators = decorators
     read_loc(data, class_def)
+    if type_params:
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
+        )
+        check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     return class_def
 
@@ -781,6 +822,8 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
 
     stmt = TypeAliasStmt(name, type_params, lambda_expr)
     read_loc(data, stmt)
+    state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
+    check_type_param_defaults(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
@@ -832,6 +875,10 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
     stmt.is_star = is_star
     read_loc(data, stmt)
+    if is_star:
+        state.check_min_version("Exception groups", (3, 11), stmt.line, stmt.column)
+        if state.options.python_version < (3, 11):
+            stmt.is_star = False
     expect_end_tag(data)
     return stmt
 
@@ -967,6 +1014,8 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
+        if from_star_syntax:
+            state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
     elif tag == types.CALL_TYPE:
@@ -1474,6 +1523,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 titems.append(s)
         expr = TemplateStrExpr(titems)
         read_loc(data, expr)
+        state.check_min_version(
+            "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
+        )
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:
