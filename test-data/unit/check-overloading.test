@@ -1906,6 +1906,35 @@ a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
 
+[case testOverloadWithOverlappingItemsAndAnyArgumentNeverReturn]
+# Regression test for https://github.com/python/mypy/issues/21027
+# When one overload returns Never, it is always the most specific result and
+# should be chosen even when an argument contains Any that would otherwise
+# cause overload ambiguity.
+from typing import Any, Generic, Never, TypeVar, overload
+
+T = TypeVar('T')
+
+@overload
+def f(x: int) -> Never: ...
+@overload
+def f(x: str) -> int: ...
+def f(x): ...
+
+def test_plain(a: Any) -> None:
+    reveal_type(f(a))  # N: Revealed type is "Never"
+
+T2 = TypeVar('T2')
+class A(Generic[T2]):
+    @overload
+    def g(self, x: int) -> Never: ...
+    @overload
+    def g(self, x: str) -> T2: ...
+    def g(self, x): ...
+
+def test_generic(obj: A[Any], a: Any) -> None:
+    reveal_type(obj.g(a))  # N: Revealed type is "Never"
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt

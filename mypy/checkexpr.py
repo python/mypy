@@ -3092,6 +3092,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
+                # If exactly one match returns Never (uninhabited, non-ambiguous), it is the
+                # most specific result possible and there is no real ambiguity: Never is a
+                # subtype of every type, so the overload that returns Never is always the
+                # most precise answer regardless of which overload would otherwise be chosen.
+                never_indices = [
+                    i
+                    for i, t in enumerate(return_types)
+                    if isinstance(get_proper_type(t), UninhabitedType)
+                    and not get_proper_type(t).ambiguous  # type: ignore[union-attr]
+                ]
+                if len(never_indices) == 1:
+                    idx = never_indices[0]
+                    self.chk.store_types(type_maps[idx])
+                    return return_types[idx], inferred_types[idx]
                 return self.check_call(
                     callee=AnyType(TypeOfAny.special_form),
                     args=args,
