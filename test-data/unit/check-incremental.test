@@ -8116,3 +8116,26 @@ tmp/m.py:5: note: Revealed type is "builtins.str"
 tmp/m.py:4: note: Revealed type is "def () -> builtins.int"
 tmp/m.py:5: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
 tmp/m.py:6: note: Revealed type is "builtins.str"
+
+[case testTypeFormWorksInIncrementalMode]
+import b
+[file a.py]
+from typing import TypeVar
+from typing_extensions import TypeForm
+
+T = TypeVar("T")
+def test(arg: TypeForm[T]) -> T: ...
+
+[file b.py]
+from a import test
+test("int")
+
+[file b.py.2]
+from a import test
+reveal_type(test("int"))
+
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is "builtins.int"
