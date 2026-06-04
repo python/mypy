@@ -2298,3 +2298,15 @@ g((1, 2))
 [out]
 _testNativeParserStarUnpackRequiresPython311.py:5: error: Star unpack syntax: requires Python 3.11 or newer (current target: Python 3.10)
 _testNativeParserStarUnpackRequiresPython311.py:6: note: Revealed type is "def [Ts] (x: tuple[*Ts])"
+
+[case testNativeParserPEP695InStubNoVersionError]
+# flags: --python-version=3.11 --native-parser --ignore-missing-imports
+import m
+reveal_type(m.f)
+[file m.pyi]
+class C[T]: ...
+def f[T](x: T) -> T: ...
+type Alias[T] = list[T]
+def g[T = int](x: T) -> T: ...
+[out]
+_testNativeParserPEP695InStubNoVersionError.py:3: note: Revealed type is "def [T] (x: T) -> T"
