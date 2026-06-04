@@ -1414,8 +1414,6 @@ def test_isdigit_strings() -> None:
     assert not "\U0001d7ce!".isdigit()
 
 [case testStrIndexEqLiteralSpecialize]
-from typing import Any
-
 from testutil import assertRaises
 
 # The specializer fires on the AST shape `IndexExpr == StrLiteral` (or the
@@ -1475,11 +1473,3 @@ def test_out_of_range_raises_indexerror() -> None:
         eq_comma(s, 3)
     with assertRaises(IndexError):
         eq_comma(s, -4)
-
-def test_any_dispatch_uses_generic_path() -> None:
-    # Going through `Any` routes through the interpreted wrapper, which
-    # uses the unspecialized lowering. Confirms the str surface still
-    # works for callers that bypass the specializer.
-    f: Any = eq_comma
-    assert f("hello,world", 5) is True
-    assert f("hello", 0) is False

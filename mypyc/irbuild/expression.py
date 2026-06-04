@@ -992,7 +992,8 @@ def try_specialize_str_index_compare(
     """
     # Normalize so the IndexExpr is on the left.
     if isinstance(rhs, IndexExpr) and not isinstance(lhs, IndexExpr):
-        lhs, rhs = rhs, lhs
+        tmp = lhs
+        lhs, rhs = rhs, tmp
     # Shape: s[i] {==, !=} "x" where "x" is exactly one codepoint.
     if (
         not isinstance(lhs, IndexExpr)
