@@ -1025,3 +1025,153 @@ def is_digit(x):
 L0:
     r0 = CPyStr_IsDigit(x)
     return r0
+
+[case testStrIndexEqLiteral_64bit]
+def is_comma(s: str, i: int) -> bool:
+    return s[i] == ","
+def is_comma_swapped(s: str, i: int) -> bool:
+    return "," == s[i]
+def is_comma_ne(s: str, i: int) -> bool:
+    return s[i] != ","
+[out]
+def is_comma(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+    r11 :: bit
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    r11 = int_eq r10, 88
+    return r11
+def is_comma_swapped(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+    r11 :: bit
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    r11 = int_eq r10, 88
+    return r11
+def is_comma_ne(s, i):
+    s :: str
+    i :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: i64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6, r7 :: i64
+    r8, r9 :: bool
+    r10 :: short_int
+    r11 :: bit
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = i ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive i
+L3:
+    r7 = CPyStr_AdjustIndex(s, r3)
+    r8 = CPyStr_RangeCheck(s, r7)
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = raise IndexError('index out of range')
+    unreachable
+L5:
+    r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
+    r11 = int_ne r10, 88
+    return r11
+
+[case testStrIndexEqLiteralNoSpecialize]
+def two_char_literal(s: str, i: int) -> bool:
+    # Multi-char literals don't match the specialization; falls through to
+    # the generic str equality path.
+    return s[i] == "ab"
+def empty_literal(s: str, i: int) -> bool:
+    # Empty string literals also fall through; the generic path returns False.
+    return s[i] == ""
+[out]
+def two_char_literal(s, i):
+    s :: str
+    i :: int
+    r0, r1 :: str
+    r2 :: bool
+L0:
+    r0 = CPyStr_GetItem(s, i)
+    r1 = 'ab'
+    r2 = CPyStr_EqualLiteral(r0, r1, 2)
+    return r2
+def empty_literal(s, i):
+    s :: str
+    i :: int
+    r0, r1 :: str
+    r2 :: bool
+L0:
+    r0 = CPyStr_GetItem(s, i)
+    r1 = ''
+    r2 = CPyStr_EqualLiteral(r0, r1, 0)
+    return r2

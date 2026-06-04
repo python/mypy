@@ -93,9 +93,12 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     object_rprimitive,
     set_rprimitive,
+    short_int_rprimitive,
     vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
@@ -119,6 +122,7 @@ from mypyc.irbuild.specialize import (
     apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
+    translate_getitem_with_bounds_check,
     translate_object_new,
     translate_object_setattr,
 )
@@ -137,7 +141,12 @@ from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.str_ops import (
+    str_adjust_index_op,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
+    str_slice_op,
+)
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 # Name and attribute references
@@ -918,6 +927,16 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             return result
 
     if len(e.operators) == 1:
+        # s[i] == 'x' / s[i] != 'x' (and the symmetric RHS) -> int compare of
+        # codepoints. Skips the per-iteration 1-char str allocation/lookup and
+        # generic str equality call.
+        if first_op in ("==", "!="):
+            result = try_specialize_str_index_compare(
+                builder, first_op, e.operands[0], e.operands[1], e.line
+            )
+            if result is not None:
+                return result
+
         # Special some common simple cases
         if first_op in ("is", "is not"):
             right_expr = e.operands[1]
@@ -958,6 +977,50 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         )
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def try_specialize_str_index_compare(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    """Specialize `s[i] == 'x'` / `s[i] != 'x'` (and the symmetric form with
+    operands swapped) into an int compare of codepoints.
+
+    Returns None if the pattern doesn't match: the indexed base must be str,
+    the index must be an integer, and the literal must be a 1-character str.
+    Multi-character or empty literals fall through to the generic str compare
+    (which still returns False for them, matching today's behavior).
+    """
+    # Normalize so the IndexExpr is on the left.
+    if isinstance(rhs, IndexExpr) and not isinstance(lhs, IndexExpr):
+        tmp = lhs
+        lhs, rhs = rhs, tmp
+    # Shape: s[i] {==, !=} "x" where "x" is exactly one codepoint.
+    if (
+        not isinstance(lhs, IndexExpr)
+        or not isinstance(rhs, StrExpr)
+        or len(rhs.value) != 1
+        or not is_str_rprimitive(builder.node_type(lhs.base))
+    ):
+        return None
+    index_type = builder.node_type(lhs.index)
+    if not (is_tagged(index_type) or is_fixed_width_rtype(index_type)):
+        return None
+
+    # ord(s[i]) with bounds check; raises IndexError for out-of-range indices,
+    # matching the behavior of the generic s[i] path.
+    codepoint = translate_getitem_with_bounds_check(
+        builder,
+        lhs.base,
+        [lhs.index],
+        lhs,
+        str_adjust_index_op,
+        str_range_check_op,
+        str_get_item_unsafe_as_int_op,
+    )
+    if codepoint is None:
+        return None
+    literal_cp = Integer(ord(rhs.value), short_int_rprimitive, line)
+    return builder.binary_op(codepoint, literal_cp, op, line)
 
 
 def try_specialize_in_expr(
