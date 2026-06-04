@@ -35,6 +35,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictItem,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
@@ -172,6 +173,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         # Union[T(bound=A), T(bound=B)] that will be confusing for users.
         return declared.copy_modified(
             upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
+        )
+    elif (
+        isinstance(narrowed, TypeVarType)
+        and not has_type_vars(original_declared)
+        and is_subtype(original_declared, narrowed.upper_bound)
+    ):
+        # This branch is a mirror image of the above one.
+        return narrowed.copy_modified(
+            upper_bound=narrow_declared_type(original_declared, narrowed.upper_bound)
         )
     elif not is_overlapping_types(declared, narrowed):
         if state.strict_optional:
@@ -964,7 +974,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return result
         elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
             # In this case we are able to potentially produce a better meet.
-            res = meet_types(self.s.item, t.ret_type)
+            res = meet_types(self.s.item, t.get_instance_type())
             if not isinstance(res, (NoneType, UninhabitedType)):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
@@ -1081,7 +1091,28 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
-                return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+                arg = self.s.args[0]
+                new_items: list[Type] = []
+                for it in t.items:
+                    # Unpack items need to be handled by the caller.
+                    if isinstance(it, UnpackType):
+                        unpacked = get_proper_type(it.type)
+                        if isinstance(unpacked, TypeVarTupleType):
+                            # We can't infer anything in this case.
+                            new_arg = UninhabitedType()
+                            instance = unpacked.tuple_fallback
+                        else:
+                            assert (
+                                isinstance(unpacked, Instance)
+                                and unpacked.type.fullname == "builtins.tuple"
+                            )
+                            new_arg = meet_types(unpacked.args[0], arg)
+                            instance = unpacked
+                        new_items.append(UnpackType(instance.copy_modified(args=[new_arg])))
+                    else:
+                        # All other items can be processed in a regular way.
+                        new_items.append(meet_types(it, arg))
+                return t.copy_modified(items=new_items)
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
                 return t
@@ -1091,26 +1122,73 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return t
         return self.default(self.s)
 
+    def resolve_typeddict_item_type(
+        self, name: str, s: TypedDictItem, t: TypedDictItem
+    ) -> tuple[Type | None, bool]:
+        """Return the type and readonlyness of a meet item.
+
+        If the parent constraints are mutually incompatible, the
+        returned type will be None; the overall meet type should
+        be UninhabitedType.
+        """
+        is_readonly = s.readonly and t.readonly
+
+        if t.typ is None:
+            assert s.typ is not None
+            meet_type = s.typ
+        elif s.typ is None:
+            meet_type = t.typ
+        else:
+            meet_type = meet_types(s.typ, t.typ)
+
+        if (
+            s.typ is not None
+            and s.mutable
+            and (not is_equivalent(meet_type, s.typ) or (t.required and not s.required))
+        ):
+            meet_type = None
+        elif (
+            t.typ is not None
+            and t.mutable
+            and (not is_equivalent(meet_type, t.typ) or (s.required and not t.required))
+        ):
+            meet_type = None
+        elif isinstance(get_proper_type(meet_type), UninhabitedType) and (
+            s.required or t.required
+        ):
+            meet_type = None
+
+        return (meet_type, is_readonly)
+
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            for name, l, r in self.s.zip(t):
-                if not is_equivalent(l, r) or (name in t.required_keys) != (
-                    name in self.s.required_keys
-                ):
+            is_closed = self.s.is_closed or t.is_closed
+            items: dict[str, Type] = {}
+            readonly_keys: set[str] = set()
+            for name, s_item, t_item in self.s.zipall(t):
+                meet_type, is_readonly = self.resolve_typeddict_item_type(name, s_item, t_item)
+
+                if meet_type is None:
                     return self.default(self.s)
-            item_list: list[tuple[str, Type]] = []
-            for item_name, s_item_type, t_item_type in self.s.zipall(t):
-                if s_item_type is not None:
-                    item_list.append((item_name, s_item_type))
-                else:
-                    # at least one of s_item_type and t_item_type is not None
-                    assert t_item_type is not None
-                    item_list.append((item_name, t_item_type))
-            items = dict(item_list)
+
+                if (
+                    is_closed
+                    and not is_readonly
+                    and isinstance(get_proper_type(meet_type), UninhabitedType)
+                ):
+                    # Simplify emitted type by omitting redundant Never keys from closed
+                    # TypedDicts
+                    continue
+
+                items[name] = meet_type
+                if is_readonly:
+                    readonly_keys.add(name)
+
             fallback = self.s.create_anonymous_fallback()
-            required_keys = t.required_keys | self.s.required_keys
-            readonly_keys = t.readonly_keys | self.s.readonly_keys
-            return TypedDictType(items, required_keys, readonly_keys, fallback)
+            required_keys = self.s.required_keys | t.required_keys
+            return TypedDictType(
+                items, required_keys, readonly_keys, fallback, is_closed=is_closed
+            )
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:
@@ -1173,9 +1251,16 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
+    if t.instance_type is None:
+        instance_type = s.instance_type
+    elif s.instance_type is None:
+        instance_type = t.instance_type
+    else:
+        instance_type = meet_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
         ret_type=meet_types(t.ret_type, s.ret_type),
+        instance_type=instance_type,
         fallback=fallback,
         name=None,
     )

@@ -286,7 +286,7 @@ py_vectorcall_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Call method using positional and/or keyword arguments (Python 3.9+)
+# Call method using positional and/or keyword arguments.
 py_vectorcall_method_op = custom_op(
     arg_types=[
         object_rprimitive,  # Method name

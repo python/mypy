@@ -4,13 +4,16 @@
 --
 -- vec[i64] test cases are in run-vecs-i64.test.
 
-[case testVecMiscBasicOps_librt_experimental]
+[case testVecMiscBasicOps_librt]
 # mypy: allow-redefinition-old
 
-from typing import Any, cast
+from typing import Any, Iterable, cast
 from mypy_extensions import i64, i32, i16, u8
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 from testutil import assertRaises
+
+def vec_u8_from_any(x: Any) -> vec[u8]:
+    return vec[u8](x)
 
 def test_create_empty() -> None:
     assert str(vec[i32]()) == "vec[i32]([])"
@@ -236,3 +239,207 @@ def test_nested_misc() -> None:
     v[0][0] = 3.5
     assert v[0] == vec[float]([3.5])
     assert v[:5] == vec[vec[float]]([vec[float]([3.5])])
+
+def test_cap_misc() -> None:
+    v_f = vec[float](capacity=3)
+    assert len(v_f) == 0
+    v_f = append(v_f, 1.5)
+    assert v_f[0] == 1.5
+
+    v_u8 = vec[u8]([1, 2], capacity=5)
+    assert len(v_u8) == 2
+    assert v_u8[0] == 1
+
+    v_i16 = vec[i16](capacity=2)
+    v_i16 = append(v_i16, i16(10))
+    assert v_i16[0] == 10
+
+    v_i32 = vec[i32]([i32(7)], capacity=3)
+    assert v_i32[0] == 7
+
+    v_bool = vec[bool](capacity=4)
+    assert len(v_bool) == 0
+    v_bool = append(v_bool, True)
+    assert v_bool[0] == True
+
+    v_nested = vec[vec[float]](capacity=2)
+    assert len(v_nested) == 0
+    v_nested = append(v_nested, vec[float]([1.0]))
+    assert v_nested[0] == vec[float]([1.0])
+
+def extend_float(v: vec[float], it: Iterable[float]) -> vec[float]:
+    return extend(v, it)
+
+def extend_u8(v: vec[u8], it: Iterable[u8]) -> vec[u8]:
+    return extend(v, it)
+
+def extend_i32(v: vec[i32], it: Iterable[i32]) -> vec[i32]:
+    return extend(v, it)
+
+def test_extend_vec_float() -> None:
+    v = extend_float(vec[float]([1.0]), vec[float]([2.5, 3.5]))
+    assert v == vec[float]([1.0, 2.5, 3.5])
+
+def test_extend_from_array() -> None:
+    import array
+    v = extend_i32(vec[i32]([1, 2]), array.array('i', [3, 4, 5]))
+    assert v == vec[i32]([1, 2, 3, 4, 5])
+
+    v2 = extend_float(vec[float]([1.0]), array.array('d', [2.5, 3.5]))
+    assert v2 == vec[float]([1.0, 2.5, 3.5])
+
+def test_extend_from_array_empty() -> None:
+    import array
+    v = extend_i32(vec[i32]([1, 2]), array.array('i', []))
+    assert v == vec[i32]([1, 2])
+
+    v2 = extend_i32(vec[i32](), array.array('i', [10, 20]))
+    assert v2 == vec[i32]([10, 20])
+
+def test_extend_from_bytes() -> None:
+    v = extend_u8(vec[u8]([1, 2]), b'\x03\x04\x05')
+    assert v == vec[u8]([1, 2, 3, 4, 5])
+
+def test_extend_from_bytearray() -> None:
+    v = extend_u8(vec[u8]([10]), bytearray(b'\x14\x1e'))
+    assert v == vec[u8]([10, 20, 30])
+
+def test_extend_from_bytes_empty() -> None:
+    v = extend_u8(vec[u8]([1, 2]), b'')
+    assert v == vec[u8]([1, 2])
+
+    v2 = extend_u8(vec[u8](), b'\x01\x02')
+    assert v2 == vec[u8]([1, 2])
+
+def test_construct_from_array() -> None:
+    import array
+
+    # vec[i32]
+    a_i32 = array.array('i', [10, -20, 30])
+    v_i32 = vec[i32](a_i32)
+    assert len(v_i32) == 3
+    assert v_i32[0] == 10
+    assert v_i32[1] == -20
+    assert v_i32[2] == 30
+
+    # vec[i16]
+    a_i16 = array.array('h', [100, -200, 300])
+    v_i16 = vec[i16](a_i16)
+    assert len(v_i16) == 3
+    assert v_i16[0] == 100
+    assert v_i16[1] == -200
+    assert v_i16[2] == 300
+
+    # vec[u8]
+    a_u8 = array.array('B', [0, 127, 255])
+    v_u8 = vec[u8](a_u8)
+    assert len(v_u8) == 3
+    assert v_u8[0] == 0
+    assert v_u8[1] == 127
+    assert v_u8[2] == 255
+
+    # vec[float]
+    a_f = array.array('d', [1.5, -2.5, 3.0])
+    v_f = vec[float](a_f)
+    assert len(v_f) == 3
+    assert v_f[0] == 1.5
+    assert v_f[1] == -2.5
+    assert v_f[2] == 3.0
+
+    # Empty arrays
+    assert len(vec[i32](array.array('i'))) == 0
+    assert len(vec[i16](array.array('h'))) == 0
+    assert len(vec[u8](array.array('B'))) == 0
+    assert len(vec[float](array.array('d'))) == 0
+
+    # With capacity
+    v_cap = vec[i32](array.array('i', [1, 2]), capacity=100)
+    assert len(v_cap) == 2
+    assert v_cap[0] == 1
+    assert v_cap[1] == 2
+
+def test_construct_from_bytes() -> None:
+    # vec[u8] from bytes
+    v = vec[u8](b'\x00\x01\x7f\xff')
+    assert len(v) == 4
+    assert v[0] == 0
+    assert v[1] == 1
+    assert v[2] == 127
+    assert v[3] == 255
+
+    # vec[u8] from empty bytes
+    assert len(vec[u8](b'')) == 0
+
+    # vec[u8] from bytearray
+    v2 = vec[u8](bytearray(b'\x05\x0a\x0f'))
+    assert len(v2) == 3
+    assert v2[0] == 5
+    assert v2[1] == 10
+    assert v2[2] == 15
+
+    # vec[u8] from empty bytearray
+    assert len(vec[u8](bytearray())) == 0
+
+    # With capacity
+    v3 = vec[u8](b'\x01\x02', capacity=50)
+    assert len(v3) == 2
+    assert v3[0] == 1
+    assert v3[1] == 2
+
+    # Capacity is exact: appending at capacity reallocates.
+    v4 = vec[u8](b'\x01\x02', capacity=2)
+    old = v4
+    v4 = append(v4, 3)
+    v4[0] = 99
+    assert old[0] == 1
+
+    with assertRaises(ValueError):
+        vec[u8](b'\x01', capacity=-1)
+
+    memoryview_ = eval('memoryview')
+    view_2d = memoryview_(bytearray(b'\x01\x02\x03\x04')).cast('B', shape=(2, 2))
+    with assertRaises(NotImplementedError):
+        vec_u8_from_any(view_2d)
+
+def test_construct_from_array_type_mismatch() -> None:
+    import array
+
+    # Mismatched itemsize: falls back to element-wise iteration with
+    # value conversion. These all have compatible int types, just
+    # different widths.
+    v_i16 = vec[i16](array.array('i', [1, 2, -3]))
+    assert list(v_i16) == [1, 2, -3]
+
+    v_i32 = vec[i32](array.array('h', [10, -20]))
+    assert list(v_i32) == [10, -20]
+
+    v_u8 = vec[u8](array.array('h', [0, 127, 255]))
+    assert list(v_u8) == [0, 127, 255]
+
+    v_i64 = vec[i64](array.array('i', [5, 6, 7]))
+    assert list(v_i64) == [5, 6, 7]
+
+    # 32-bit float array -> vec[float] (64-bit double): itemsize
+    # mismatch, falls back to iter with float->double conversion
+    v_float = vec[float](array.array('f', [1.5, -2.5]))
+    assert v_float[0] == array.array('f', [1.5])[0]
+    assert v_float[1] == array.array('f', [-2.5])[0]
+
+def test_vec_u8_to_bytes() -> None:
+    assert bytes(vec[u8]([72, 101, 108, 108, 111])) == b"Hello"
+    assert bytes(vec[u8]()) == b""
+    assert bytes(vec[u8]([0, 255, 1])) == b"\x00\xff\x01"
+
+def u8_to_list(v: vec[u8]) -> list[u8]:
+    return list(v)
+
+def u8_to_tuple(v: vec[u8]) -> tuple[u8, ...]:
+    return tuple(v)
+
+def test_vec_u8_to_list() -> None:
+    assert u8_to_list(vec[u8]()) == []
+    assert u8_to_list(vec[u8]([0, 128, 255])) == [0, 128, 255]
+
+def test_vec_u8_to_tuple() -> None:
+    assert u8_to_tuple(vec[u8]()) == ()
+    assert u8_to_tuple(vec[u8]([0, 128, 255])) == (0, 128, 255)

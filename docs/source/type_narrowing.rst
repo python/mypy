@@ -225,7 +225,7 @@ The same example with ``TypeGuard``:
 
 .. code-block:: python
 
-  from typing import TypeGuard  # use `typing_extensions` for Python 3.9 and below
+  from typing import TypeGuard
 
   def is_str_list(val: list[object]) -> TypeGuard[list[str]]:
       """Determines whether all objects in the list are strings"""

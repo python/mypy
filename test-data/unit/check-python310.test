@@ -43,7 +43,7 @@ match m:
 def foo(m: bool, x: int):
     match m:
         case 1:
-            reveal_type(m)  # N: Revealed type is "Literal[1]"
+            reveal_type(m)  # N: Revealed type is "builtins.bool"
 
     match m:
         case x:
@@ -1705,6 +1705,36 @@ reveal_type(a)  # N: Revealed type is "builtins.bool"
 a = 3
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
+[case testMatchCapturePatternAfterPreviousCase]
+# flags: --strict-equality --warn-unreachable
+
+def f1(x: int | None, y: int):
+    match x:
+        case None:
+            pass
+        case y:
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
+def f2(x: int | None, y: int, cond: bool):
+    match x:
+        case None if cond:
+            pass
+        case y:  # E: Incompatible types in capture pattern (pattern captures type "int | None", variable has type "int")
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
+def f3(x: int | None, y: int):
+    match x:
+        case None if True:
+            pass
+        case y:
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    match x:
+        case None if False:
+            pass  # E: Statement is unreachable
+        case y:  # E: Incompatible types in capture pattern (pattern captures type "int | None", variable has type "int")
+            reveal_type(y)  # N: Revealed type is "builtins.int"
+
 [case testMatchCapturePatternPreexistingIncompatible]
 # flags: --strict-equality --warn-unreachable
 a: str
@@ -2979,7 +3009,7 @@ def match_stmt_error5(x: Optional[str]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSubjectRedefinition]
-# flags: --allow-redefinition --strict-equality --warn-unreachable
+# flags: --allow-redefinition-old --strict-equality --warn-unreachable
 def transform1(a: str) -> int:
     ...
 
@@ -3501,7 +3531,7 @@ def switch(choice: type[T_Choice]) -> None:
             reveal_type(choice())  # N: Revealed type is "b.Two"
         case _:
             reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
-            reveal_type(choice())  # N: Revealed type is "b.One | b.Two"
+            reveal_type(choice())  # N: Revealed type is "T_Choice`-1"
 
 [file b.py]
 class One: ...
@@ -3510,7 +3540,7 @@ class Two: ...
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineMatchBasics]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
+# flags: --allow-redefinition --strict-equality --warn-unreachable
 
 def f1(x: int | str | list[bytes]) -> None:
     match x:
@@ -3523,7 +3553,7 @@ def f1(x: int | str | list[bytes]) -> None:
     reveal_type(y) # N: Revealed type is "builtins.str | builtins.bytes"
 
 [case testNewRedefineLoopWithMatch]
-# flags: --allow-redefinition-new --local-partial-types --strict-equality --warn-unreachable
+# flags: --allow-redefinition --strict-equality --warn-unreachable
 
 def f1() -> None:
     while True:
@@ -3916,4 +3946,36 @@ def bar(cls: type[Types.A | Types.B]) -> None:
             reveal_type(cls)  # N: Revealed type is "type[__main__.Types.B]"
         case _:
             assert_never(cls)
+[builtins fixtures/tuple.pyi]
+
+
+[case testMatchEnumOrdering]
+# flags: --strict-equality --warn-unreachable
+# Regression test for https://github.com/python/mypy/issues/21187
+import enum
+from typing import Literal
+
+class DummyClass: ...
+
+class MyEnum(enum.StrEnum):
+    RELEVANT = "relevant"
+    IGNORED = "ignored"
+
+def dummy_class_then_enum(arg: DummyClass | Literal[MyEnum.RELEVANT]):
+    match arg:
+        case DummyClass():
+            reveal_type(arg)  # N: Revealed type is "__main__.DummyClass"
+        case MyEnum.RELEVANT:
+            reveal_type(arg)  # N: Revealed type is "Literal[__main__.MyEnum.RELEVANT]"
+        case _:
+            pass  # E: Statement is unreachable
+
+def enum_then_dummy_class(arg: DummyClass | Literal[MyEnum.RELEVANT]):
+    match arg:
+        case MyEnum.RELEVANT:
+            reveal_type(arg)  # N: Revealed type is "Literal[__main__.MyEnum.RELEVANT]"
+        case DummyClass():
+            reveal_type(arg)  # N: Revealed type is "__main__.DummyClass"
+        case _:
+            pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]

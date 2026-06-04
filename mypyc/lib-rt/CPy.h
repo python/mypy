@@ -3,8 +3,8 @@
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include <frameobject.h>
 #include <structmember.h>
 #include <assert.h>
@@ -967,6 +967,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  CPyModule **module_static,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
+int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
+                             PyObject *ext_suffix, Py_ssize_t is_package);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);

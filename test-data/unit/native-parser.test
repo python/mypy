@@ -261,11 +261,11 @@ MypyFile:1(
   ExpressionStmt:2(
     OpExpr:2(
       and
+      NameExpr(a)
       OpExpr:2(
         and
-        NameExpr(a)
-        NameExpr(b))
-      NameExpr(c))))
+        NameExpr(b)
+        NameExpr(c)))))
 
 [case testBoolOpOr]
 x or y
@@ -280,11 +280,11 @@ MypyFile:1(
   ExpressionStmt:2(
     OpExpr:2(
       or
+      IntExpr(1)
       OpExpr:2(
         or
-        IntExpr(1)
-        IntExpr(2))
-      IntExpr(3))))
+        IntExpr(2)
+        IntExpr(3)))))
 
 [case testComparisonSimple]
 a < b
@@ -1294,92 +1294,6 @@ MypyFile:1(
       ExpressionStmt:6(
         NameExpr(z)))))
 
-[case testTryExceptStar]
-try:
-    x
-except* ValueError:
-    y
-[out]
-MypyFile:1(
-  TryStmt:1(
-    Block:2(
-      ExpressionStmt:2(
-        NameExpr(x)))
-    *
-    NameExpr(ValueError)
-    Block:4(
-      ExpressionStmt:4(
-        NameExpr(y)))))
-
-[case testTryExceptStarWithVar]
-try:
-    x
-except* Exception as e:
-    y
-[out]
-MypyFile:1(
-  TryStmt:1(
-    Block:2(
-      ExpressionStmt:2(
-        NameExpr(x)))
-    *
-    NameExpr(Exception)
-    NameExpr(e)
-    Block:4(
-      ExpressionStmt:4(
-        NameExpr(y)))))
-
-[case testTryMultipleExceptStar]
-try:
-    x
-except* ValueError:
-    y
-except* KeyError as e:
-    z
-[out]
-MypyFile:1(
-  TryStmt:1(
-    Block:2(
-      ExpressionStmt:2(
-        NameExpr(x)))
-    *
-    NameExpr(ValueError)
-    Block:4(
-      ExpressionStmt:4(
-        NameExpr(y)))
-    NameExpr(KeyError)
-    NameExpr(e)
-    Block:6(
-      ExpressionStmt:6(
-        NameExpr(z)))))
-
-[case testTryExceptStarElseFinally]
-try:
-    x
-except* ValueError:
-    y
-else:
-    z
-finally:
-    w
-[out]
-MypyFile:1(
-  TryStmt:1(
-    Block:2(
-      ExpressionStmt:2(
-        NameExpr(x)))
-    *
-    NameExpr(ValueError)
-    Block:4(
-      ExpressionStmt:4(
-        NameExpr(y)))
-    Else(
-      ExpressionStmt:6(
-        NameExpr(z)))
-    Finally(
-      ExpressionStmt:8(
-        NameExpr(w)))))
-
 [case testConditionalExprSimple]
 x if y else z
 [out]
@@ -1980,6 +1894,7 @@ class Foo(metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
+    Keywords(metaclass=NameExpr(Bar))
     Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
@@ -2016,30 +1931,6 @@ MypyFile:1(
         NameExpr(x)
         y))
     PassStmt:5()))
-
-[case testUnpackTypeInSignature]
-def f(*args: *Ts) -> None:
-    pass
-[out]
-MypyFile:1(
-  FuncDef:1(
-    f
-    def (*args: *Ts?) -> None?
-    VarArg(
-      Var(args))
-    Block:2(
-      PassStmt:2())))
-
-[case testUnpackTypeInTuple]
-x: tuple[int, *Ts, str]
-[out]
-MypyFile:1(
-  AssignmentStmt:1(
-    NameExpr(x)
-    TempNode:1(
-      Any)
-    tuple?[int?, *Ts?, str?]))
-
 
 [case testLiteralStringType]
 from typing import Literal
@@ -3185,93 +3076,33 @@ MypyFile:1(
     Body(
       PassStmt:3())))
 
-[case testPEP695TypeAlias]
-# comment
-type A[T] = C[T]
+[case testTypeCommentLastLine]
+d = [
+   # Placeholder for items
+]  # type: list[int]
 [out]
 MypyFile:1(
-  TypeAliasStmt:2(
-    NameExpr(A)
-    TypeParam(
-      T)
-    LambdaExpr:2(
-      Block:-1(
-        ReturnStmt:2(
-          IndexExpr:2(
-            NameExpr(C)
-            NameExpr(T)))))))
+  AssignmentStmt:1(
+    NameExpr(d)
+    ListExpr:1()
+    list?[int?]))
 
-[case testPEP695GenericFunction]
-# comment
-
-def f[T](): pass
-def g[T: str](): pass
-def h[T: (int, str)](): pass
+[case testDebugFString]
+f"test {x=}"
 [out]
 MypyFile:1(
-  FuncDef:3(
-    f
-    TypeParam(
-      T)
-    Block:3(
-      PassStmt:3()))
-  FuncDef:4(
-    g
-    TypeParam(
-      T
-      str?)
-    Block:4(
-      PassStmt:4()))
-  FuncDef:5(
-    h
-    TypeParam(
-      T
-      Values(
-        int?
-        str?))
-    Block:5(
-      PassStmt:5())))
-
-[case testPEP695ParamSpec]
-# comment
-
-def f[**P](): pass
-class C[T: int, **P]: pass
-[out]
-MypyFile:1(
-  FuncDef:3(
-    f
-    TypeParam(
-      **P)
-    Block:3(
-      PassStmt:3()))
-  ClassDef:4(
-    C
-    TypeParam(
-      T
-      int?)
-    TypeParam(
-      **P)
-    PassStmt:4()))
-
-[case testPEP695TypeVarTuple]
-# comment
-
-def f[*Ts](): pass
-class C[T: int, *Ts]: pass
-[out]
-MypyFile:1(
-  FuncDef:3(
-    f
-    TypeParam(
-      *Ts)
-    Block:3(
-      PassStmt:3()))
-  ClassDef:4(
-    C
-    TypeParam(
-      T
-      int?)
-    TypeParam(
-      *Ts)
-    PassStmt:4()))
+  ExpressionStmt:1(
+    CallExpr:1(
+      MemberExpr:1(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:1(
+          StrExpr(test x=)
+          CallExpr:1(
+            MemberExpr:1(
+              StrExpr({!r:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))

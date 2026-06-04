@@ -21,11 +21,13 @@ from mypy.build import Graph
 from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
+    AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
     Expression,
     FuncDef,
+    IndexExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
@@ -38,7 +40,13 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
+from mypyc.common import (
+    FAST_PREFIX,
+    MYPYC_DEFAULTS_SETUP,
+    PROPSET_PREFIX,
+    SELF_NAME,
+    get_id_from_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -54,6 +62,7 @@ from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
+    bool_rprimitive,
     dict_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
@@ -62,6 +71,8 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
+    dataclass_type,
+    default_attr_name,
     get_func_def,
     get_mypyc_attrs,
     is_dataclass,
@@ -118,11 +129,35 @@ def build_type_map(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
 
+    # Validate cross-class properties after all ClassIR flags are populated.
+    for module, cdef in classes:
+        with catch_errors(module.path, cdef.line):
+            if mapper.type_to_ir[cdef.info].is_ext_class:
+                validate_acyclic_class_bases(module.path, cdef, errors, mapper)
+
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
         class_ir = mapper.type_to_ir[cdef.info]
         if class_ir.is_ext_class:
             prepare_implicit_property_accessors(cdef.info, class_ir, module.fullname, mapper)
+
+    # Register __mypyc_defaults_setup FuncDecls on classes that have their own
+    # class-level default attribute assignments. Done here, before any IR build
+    # runs, so that the cross-class lookup in generate_attr_defaults_init is
+    # order-independent: IR build within a compilation group proceeds in
+    # filename order, so a subclass may be IR-built before its base.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class and _has_own_default_attrs(cdef, class_ir):
+            _register_defaults_setup_decl(class_ir, module.fullname)
+
+    # Validate __deletable__ declarations. Done here so the compiler exits
+    # early on invalid input before any IR is built.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            with catch_errors(module.path, cdef.line):
+                _check_deletable_declarations(module.path, cdef, class_ir, errors)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
@@ -166,10 +201,21 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
                 and not node.node.is_named_tuple
                 and node.node.typeddict_type is None
             ):
-                ir = deser_ctx.classes[node.node.fullname]
+                # Some TypeInfo entries are mypy-synthetic (e.g. anonymous
+                # intersection classes like "<subclass of X and Y>") and have
+                # no corresponding mypyc ClassIR. Skip those rather than
+                # aborting the whole cache load.
+                ir = deser_ctx.classes.get(node.node.fullname)
+                if ir is None:
+                    continue
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
-                mapper.func_to_decl[node.node] = ir.ctor
+                # Trait/builtin-base classes have an ir.ctor FuncDecl
+                # but no emitted CPyDef_<ctor>, so a cross-group direct
+                # call would hit an undefined symbol. Mirror the skip
+                # in prepare_init_method.
+                if not ir.is_trait and not ir.builtin_base:
+                    mapper.func_to_decl[node.node] = ir.ctor
 
     for module in modules:
         for func in get_module_func_defs(module):
@@ -345,6 +391,113 @@ def can_subclass_builtin(builtin_base: str) -> bool:
     )
 
 
+def get_removed_base_fullname(expr: Expression) -> str | None:
+    if isinstance(expr, IndexExpr):
+        expr = expr.base
+    if isinstance(expr, RefExpr):
+        return expr.fullname
+    return None
+
+
+def find_non_acyclic_base(cdef: ClassDef, mapper: Mapper) -> str | None:
+    if cdef.type_args:
+        return "typing.Generic"
+
+    for expr in cdef.removed_base_type_exprs:
+        if fullname := get_removed_base_fullname(expr):
+            return fullname
+        return "a removed base class"
+
+    for base in cdef.info.mro[1:]:
+        if base.fullname == "builtins.object":
+            continue
+
+        base_ir = mapper.type_to_ir.get(base)
+        if base_ir is not None and base_ir.is_acyclic:
+            continue
+
+        return base.fullname
+
+    return None
+
+
+def validate_acyclic_class_bases(
+    path: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    if not ir.is_acyclic:
+        return
+
+    if fullname := find_non_acyclic_base(cdef, mapper):
+        errors.error(
+            f'"acyclic" can\'t be used in a class that inherits from non-acyclic type "{fullname}"',
+            path,
+            cdef.line,
+        )
+
+
+def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
+    """Whether this class's own body has any default attribute assignment
+    that would be emitted into __mypyc_defaults_setup.
+
+    Used during prepare to decide whether to register a
+    __mypyc_defaults_setup FuncDecl ahead of IR build.
+    """
+    if ir.builtin_base or ir.is_trait:
+        return False
+    cls_type = dataclass_type(cdef)
+    return any(
+        default_attr_name(stmt, ir, cls_type) is not None
+        for stmt in cdef.info.defn.defs.body
+        if isinstance(stmt, AssignmentStmt)
+    )
+
+
+def _register_defaults_setup_decl(ir: ClassIR, module_name: str) -> None:
+    sig = FuncSignature([RuntimeArg(SELF_NAME, RInstance(ir))], bool_rprimitive)
+    ir.method_decls[MYPYC_DEFAULTS_SETUP] = FuncDecl(
+        MYPYC_DEFAULTS_SETUP, ir.name, module_name, sig
+    )
+
+
+def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors: Errors) -> None:
+    """Validate that attributes listed in __deletable__ refer to definable
+    attributes on the class.
+
+    Runs in the prepare phase so we exit early on invalid programs before
+    any IR is built.
+    """
+    if not ir.deletable:
+        return
+    line = next(
+        (
+            stmt.line
+            for stmt in cdef.info.defn.defs.body
+            if isinstance(stmt, AssignmentStmt)
+            and isinstance(stmt.lvalues[0], NameExpr)
+            and stmt.lvalues[0].name == "__deletable__"
+        ),
+        cdef.line,
+    )
+    for attr in ir.deletable:
+        if attr not in ir.attributes:
+            if not ir.has_attr(attr):
+                errors.error(f'Attribute "{attr}" not defined', path, line)
+                continue
+            for base in ir.mro:
+                if attr in base.property_types:
+                    errors.error(f'Cannot make property "{attr}" deletable', path, line)
+                    break
+            else:
+                _, base = ir.attr_details(attr)
+                errors.error(
+                    f'Attribute "{attr}" not defined in "{ir.name}" '
+                    f'(defined in "{base.name}")',
+                    path,
+                    line,
+                )
+
+
 def prepare_class_def(
     path: str,
     module_name: str,
@@ -371,22 +524,6 @@ def prepare_class_def(
 
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
-
-    free_list_len = attrs.get("free_list_len")
-    if free_list_len is not None:
-        line = attrs_lines["free_list_len"]
-        if ir.is_trait:
-            errors.error('"free_list_len" can\'t be used with traits', path, line)
-        if ir.allow_interpreted_subclasses:
-            errors.error(
-                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
-                path,
-                line,
-            )
-        if free_list_len == 1:
-            ir.reuse_freed_instance = True
-        else:
-            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -415,6 +552,28 @@ def prepare_class_def(
                     path,
                     cdef.line,
                 )
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if ir.builtin_base:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that inherits from a built-in type',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]

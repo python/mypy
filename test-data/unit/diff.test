@@ -676,6 +676,24 @@ p = Point(dict(x=42, y=1337))
 __main__.Point
 __main__.p
 
+[case testTypedDict5]
+from typing import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from typing import TypedDict
+class Point(TypedDict, closed=True):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.p
+
 [case testTypeAliasSimple]
 A = int
 B = int

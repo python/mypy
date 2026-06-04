@@ -49,6 +49,7 @@ from mypy.cache import (
     WriteBuffer,
     read_bool,
     read_bytes,
+    read_flags,
     read_int,
     read_int_list,
     read_int_opt,
@@ -61,6 +62,7 @@ from mypy.cache import (
     read_tag,
     write_bool,
     write_bytes,
+    write_flags,
     write_int,
     write_int_list,
     write_int_opt,
@@ -360,6 +362,8 @@ class FileRawData:
         "ignored_lines",
         "is_partial_stub_package",
         "uses_template_strings",
+        "source_hash",
+        "mypy_comments",
     )
 
     defs: bytes
@@ -368,6 +372,8 @@ class FileRawData:
     ignored_lines: dict[int, list[str]]
     is_partial_stub_package: bool
     uses_template_strings: bool
+    source_hash: str
+    mypy_comments: list[tuple[int, str]]
 
     def __init__(
         self,
@@ -377,6 +383,8 @@ class FileRawData:
         ignored_lines: dict[int, list[str]],
         is_partial_stub_package: bool,
         uses_template_strings: bool,
+        source_hash: str = "",
+        mypy_comments: list[tuple[int, str]] | None = None,
     ) -> None:
         self.defs = defs
         self.imports = imports
@@ -384,6 +392,8 @@ class FileRawData:
         self.ignored_lines = ignored_lines
         self.is_partial_stub_package = is_partial_stub_package
         self.uses_template_strings = uses_template_strings
+        self.source_hash = source_hash
+        self.mypy_comments = mypy_comments if mypy_comments is not None else []
 
     def write(self, data: WriteBuffer) -> None:
         write_bytes(data, self.defs)
@@ -399,6 +409,12 @@ class FileRawData:
             write_str_list(data, codes)
         write_bool(data, self.is_partial_stub_package)
         write_bool(data, self.uses_template_strings)
+        write_str(data, self.source_hash)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.mypy_comments))
+        for line, text in self.mypy_comments:
+            write_int(data, line)
+            write_str(data, text)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> FileRawData:
@@ -408,8 +424,20 @@ class FileRawData:
         raw_errors = [read_parse_error(data) for _ in range(read_int_bare(data))]
         assert read_tag(data) == DICT_INT_GEN
         ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
+        is_partial_stub_package = read_bool(data)
+        uses_template_strings = read_bool(data)
+        source_hash = read_str(data)
+        assert read_tag(data) == LIST_GEN
+        mypy_comments = [(read_int(data), read_str(data)) for _ in range(read_int_bare(data))]
         return FileRawData(
-            defs, imports, raw_errors, ignored_lines, read_bool(data), read_bool(data)
+            defs,
+            imports,
+            raw_errors,
+            ignored_lines,
+            is_partial_stub_package,
+            uses_template_strings,
+            source_hash,
+            mypy_comments,
         )
 
 
@@ -1042,7 +1070,11 @@ class FuncItem(FuncBase):
         return self.max_pos
 
     def is_dynamic(self) -> bool:
-        return self.type is None
+        return (
+            self.type is None
+            or isinstance(self.type, mypy.types.CallableType)
+            and self.type.implicit
+        )
 
 
 FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
@@ -3115,7 +3147,15 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance", "is_new_style")
+    __slots__ = (
+        "_name",
+        "_fullname",
+        "upper_bound",
+        "default",
+        "variance",
+        "is_new_style",
+        "default_depends",
+    )
 
     _name: str
     _fullname: str
@@ -3130,6 +3170,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     # TypeVar(..., contravariant=True) defines a contravariant type
     # variable.
     variance: int
+    # Record instances and type aliases that appear bare/implicit in the default value
+    # of this type variable. This is needed to detect recursive type variable defaults.
+    default_depends: set[TypeInfo | TypeAlias] | None
 
     def __init__(
         self,
@@ -3148,6 +3191,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         self.default = default
         self.variance = variance
         self.is_new_style = is_new_style
+        self.default_depends = None
 
     @property
     def name(self) -> str:
@@ -3625,6 +3669,8 @@ class TypeInfo(SymbolNode):
         "is_type_check_only",
         "deprecated",
         "type_object_type",
+        "default_depends",
+        "typeddict_data",
     )
 
     _fullname: str  # Fully qualified name
@@ -3786,6 +3832,19 @@ class TypeInfo(SymbolNode):
     # appears in runtime context.
     type_object_type: mypy.types.FunctionLike | None
 
+    # Type variables whose defaults depend on defaults of type variables in other classes
+    # and type aliases. We keep track of this to safely handle situations like this one:
+    #     class C[T = D]: ...
+    #     class D[S = C]: ...
+    #     x: C
+    # Since we apply fix_instance() eagerly, inferring a precise type is quite tricky.
+    # Therefore, we infer the type of `x` as `C[D[Any]]` to avoid infinite recursion.
+    # Keys are type variable full names.
+    default_depends: dict[str, set[TypeAlias | TypeInfo]]
+
+    # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+    typeddict_data: TypedDictData | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3847,6 +3906,8 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         self.type_object_type = None
+        self.default_depends = {}
+        self.typeddict_data = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -4072,6 +4133,12 @@ class TypeInfo(SymbolNode):
             if cls.fullname == fullname:
                 return True
         return False
+
+    def get_base(self, fullname: str) -> TypeInfo:
+        for cls in self.mro:
+            if cls.fullname == fullname:
+                return cls
+        assert False, f"Missing base {fullname} for {self.fullname}"
 
     def direct_base_classes(self) -> list[TypeInfo]:
         """Return a direct base classes.
@@ -4512,6 +4579,7 @@ class TypeAlias(SymbolNode):
         "eager",
         "tvar_tuple_index",
         "python_3_12_type_alias",
+        "default_depends",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -4544,6 +4612,8 @@ class TypeAlias(SymbolNode):
         self.eager = eager
         self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
+        # This plays the same role as TypeInfo.default_depends attribute.
+        self.default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
                 self.tvar_tuple_index = i
@@ -5167,6 +5237,44 @@ class DataclassTransformSpec:
         return ret
 
 
+class TypedDictFieldSource:
+    """Source of a TypedDict field definition, used for forming error messages.
+
+    May be defined directly on the type, or on a base class.
+    """
+
+    __slots__ = ("base", "ctx")
+
+    base: TypeInfo | None
+    ctx: Context
+
+    def __init__(self, base: TypeInfo | None, ctx: Context) -> None:
+        self.base = base
+        self.ctx = ctx
+
+
+class TypedDictData:
+    """Stores information needed for delayed validation of TypedDict inheritance."""
+
+    __slots__ = ("ready", "bases", "field_sources")
+
+    # If False, the type definition referenced a placeholder
+    ready: bool
+
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    field_sources: dict[str, TypedDictFieldSource]
+
+    def __init__(
+        self,
+        ready: bool,
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        field_sources: dict[str, TypedDictFieldSource],
+    ) -> None:
+        self.ready = ready
+        self.bases = bases
+        self.field_sources = field_sources
+
+
 @trait
 class SplittingVisitor:
     # If True, process function definitions. If False, don't. This is used
@@ -5194,20 +5302,6 @@ def get_flags(node: Node, names: list[str]) -> list[str]:
 def set_flags(node: Node, flags: list[str]) -> None:
     for name in flags:
         setattr(node, name, True)
-
-
-def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
-    assert len(flags) <= 26, "This many flags not supported yet"
-    packed = 0
-    for i, flag in enumerate(flags):
-        if flag:
-            packed |= 1 << i
-    write_int(data, packed)
-
-
-def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
-    packed = read_int(data)
-    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -5329,9 +5423,14 @@ def local_definitions(
                     yield_node = False
                 else:
                     impl = node.func if isinstance(node, Decorator) else node
-                    # We never type-check generated methods. The generated classes however
-                    # need to be visited, so we don't skip them below.
-                    yield_node = not impl.def_or_infer_vars and not symnode.plugin_generated
+                    yield_node = not impl.def_or_infer_vars
+                    # This logic for plugin generated nodes preserves historical behavior.
+                    # On one hand, we generally type-check plugin generated nodes, since
+                    # some 3rd party plugins may rely on this behavior. On the other hand
+                    # we skip nodes generated by mypy itself, these nodes are not added to
+                    # the class AST (only to symbol table) as they often cut corners.
+                    if symnode.plugin_generated and info and node not in info.defn.defs.body:
+                        yield_node = False
             if isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)) and "@" in fullname:
                 yield_node = False
             if yield_node:
@@ -5353,6 +5452,16 @@ def set_info(node: SymbolNode, info: TypeInfo) -> None:
             set_info(item, info)
         if node.impl:
             set_info(node.impl, info)
+
+
+def func_scoped_name(name: str, line: int) -> str:
+    """Mangled name to use when storing function-scoped symbols in global symbol tables."""
+    return f"{name}@{line}"
+
+
+def inline_base(name: str, index: int) -> str:
+    """Synthetic name to use when storing inlined base classes in symbol tables."""
+    return f"{name}@base{index + 1}"
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.

@@ -46,6 +46,7 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
+    EXT_SUFFIX,
     IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
@@ -55,9 +56,11 @@ from mypyc.common import (
     shared_lib_name,
     short_id_from_name,
 )
+from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.deps import (
     LIBRT_BASE64,
+    LIBRT_RANDOM,
     LIBRT_STRINGS,
     LIBRT_TIME,
     LIBRT_VECS,
@@ -257,29 +260,31 @@ def compile_scc_to_ir(
                 env_user_functions[cls.env_user_function] = cls
 
     for module in modules.values():
+        module_path = result.graph[module.fullname].xpath
         for fn in module.functions:
-            # Insert checks for uninitialized values.
-            insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
-            # Insert exception handling.
-            insert_exception_handling(fn, compiler_options.strict_traceback_checks)
-            # Insert reference count handling.
-            insert_ref_count_opcodes(fn)
+            with catch_errors(module_path, fn.line):
+                # Insert checks for uninitialized values.
+                insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
+                # Insert exception handling.
+                insert_exception_handling(fn, compiler_options.strict_traceback_checks)
+                # Insert reference count handling.
+                insert_ref_count_opcodes(fn)
 
-            if fn in env_user_functions:
-                insert_spills(fn, env_user_functions[fn])
+                if fn in env_user_functions:
+                    insert_spills(fn, env_user_functions[fn])
 
-            if compiler_options.log_trace:
-                insert_event_trace_logging(fn, compiler_options)
+                if compiler_options.log_trace:
+                    insert_event_trace_logging(fn, compiler_options)
 
-            # Switch to lower abstraction level IR.
-            lower_ir(fn, compiler_options)
-            # Calculate implicit module dependencies (needed for librt)
-            deps = find_implicit_op_dependencies(fn)
-            if deps is not None:
-                module.dependencies.update(deps)
-            # Perform optimizations.
-            do_copy_propagation(fn, compiler_options)
-            do_flag_elimination(fn, compiler_options)
+                # Switch to lower abstraction level IR.
+                lower_ir(fn, compiler_options)
+                # Calculate implicit module dependencies (needed for librt)
+                deps = find_implicit_op_dependencies(fn)
+                if deps is not None:
+                    module.dependencies.update(deps)
+                # Perform optimizations.
+                do_copy_propagation(fn, compiler_options)
+                do_flag_elimination(fn, compiler_options)
 
         # Calculate implicit dependencies from class attribute types
         for cl in module.classes:
@@ -304,7 +309,7 @@ def compile_modules_to_ir(
 
     # Process the graph by SCC in topological order, like we do in mypy.build
     for scc in sorted_components(result.graph):
-        scc_states = [result.graph[id] for id in scc.mod_ids]
+        scc_states = [result.graph[id] for id in sorted(scc.mod_ids)]
         trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
 
         if not trees:
@@ -316,6 +321,14 @@ def compile_modules_to_ir(
         else:
             scc_ir = compile_scc_to_ir(trees, result, mapper, compiler_options, errors)
             modules.update(scc_ir)
+            # A later SCC loaded from cache may reference classes/functions
+            # defined in this freshly-built SCC; populate deser_ctx so the
+            # cached IR deserializer can resolve those cross-SCC references.
+            for module_ir in scc_ir.values():
+                for cl in module_ir.classes:
+                    deser_ctx.classes.setdefault(cl.fullname, cl)
+                for fn in module_ir.functions:
+                    deser_ctx.functions.setdefault(fn.decl.id, fn)
 
     return modules
 
@@ -353,7 +366,12 @@ def compile_ir_to_c(
             if source.module in modules
         }
         if not group_modules:
-            ctext[group_name] = []
+            # Fully-cached group (e.g. pip's second setup.py invoke for
+            # the wheel phase): no fresh IR was produced. Reuse the file
+            # list recorded in any module's IR cache so the linker still
+            # sees the previous run's outputs; empty content is a "do
+            # not rewrite" sentinel for mypyc_build.
+            ctext[group_name] = _load_cached_group_files(group_sources, result)
             continue
         generator = GroupGenerator(
             group_modules, source_paths, group_name, mapper.group_map, names, compiler_options
@@ -361,6 +379,32 @@ def compile_ir_to_c(
         ctext[group_name] = generator.generate_c_for_modules()
 
     return ctext
+
+
+def _load_cached_group_files(
+    group_sources: list[BuildSource], result: BuildResult
+) -> list[tuple[str, str]]:
+    """Read the .c/.h paths recorded for this group on the previous run.
+
+    All modules in a group share the same src_hashes map, so the first
+    readable IR cache is sufficient. Returns paths paired with empty
+    content so callers can distinguish "reuse on disk" from "newly
+    generated".
+    """
+    for source in group_sources:
+        state = result.graph.get(source.module)
+        if state is None:
+            continue
+        try:
+            ir_json = result.manager.metastore.read(get_state_ir_cache_name(state))
+        except (FileNotFoundError, OSError):
+            continue
+        try:
+            ir_data = json.loads(ir_json)
+        except json.JSONDecodeError:
+            continue
+        return [(path, "") for path in ir_data.get("src_hashes", {})]
+    return []
 
 
 def get_ir_cache_name(id: str, path: str, options: Options) -> str:
@@ -516,13 +560,16 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         f"{native_function_header(fn.decl, emitter)};", needs_export=True
     )
     if fn.name != TOP_LEVEL_NAME and not fn.internal:
+        # needs_export=True so Python-wrapper (CPyPy_) symbols are reachable from
+        # other groups via the export table — needed for cross-group inherited
+        # __init__ / __new__ slot dispatch under `separate=True`.
         if is_fastcall_supported(fn, emitter.capi_version):
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                f"{wrapper_function_header(fn, emitter.names)};"
+                f"{wrapper_function_header(fn, emitter.names)};", needs_export=True
             )
         else:
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                f"{legacy_wrapper_function_header(fn, emitter.names)};"
+                f"{legacy_wrapper_function_header(fn, emitter.names)};", needs_export=True
             )
 
 
@@ -602,16 +649,19 @@ class GroupGenerator:
 
         base_emitter = Emitter(self.context)
         # Optionally just include the runtime library c files to
-        # reduce the number of compiler invocations needed
+        # reduce the number of compiler invocations needed.
+        # Use <> form (only -I paths) so a shim file with the same
+        # basename as a runtime file can't shadow it. Triggered by
+        # mypyc/lower/int_ops.py vs lib-rt/int_ops.c on mypy self-compile.
         if self.compiler_options.include_runtime_files:
             for name in RUNTIME_C_FILES:
-                base_emitter.emit_line(f'#include "{name}"')
+                base_emitter.emit_line(f"#include <{name}>")
             # Include conditional source files
             source_deps = collect_source_dependencies(self.modules)
             for source_dep in sorted(source_deps, key=lambda d: d.path):
-                base_emitter.emit_line(f'#include "{source_dep.path}"')
+                base_emitter.emit_line(f"#include <{source_dep.path}>")
             if self.compiler_options.depends_on_librt_internal:
-                base_emitter.emit_line('#include "internal/librt_internal_api.c"')
+                base_emitter.emit_line("#include <internal/librt_internal_api.c>")
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
@@ -885,6 +935,21 @@ class GroupGenerator:
                 "goto fail;",
                 "}",
                 "",
+                # Expose ensure_deps_<short> as a capsule so the shim can call
+                # it before invoking the per-module init.
+                f"extern int ensure_deps_{short_name}(void);",
+                'capsule = PyCapsule_New((void *)ensure_deps_{sh}, "{lib}.ensure_deps", NULL);'.format(
+                    sh=short_name, lib=shared_lib_name(self.group_name)
+                ),
+                "if (!capsule) {",
+                "goto fail;",
+                "}",
+                'res = PyObject_SetAttrString(module, "ensure_deps", capsule);',
+                "Py_DECREF(capsule);",
+                "if (res < 0) {",
+                "goto fail;",
+                "}",
+                "",
             )
 
         for mod in self.modules:
@@ -916,25 +981,59 @@ class GroupGenerator:
                 "",
             )
 
-        for group in sorted(self.context.group_deps):
-            egroup = exported_name(group)
-            emitter.emit_lines(
-                'tmp = PyImport_ImportModule("{}"); if (!tmp) goto fail; Py_DECREF(tmp);'.format(
-                    shared_lib_name(group)
-                ),
-                'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
-                    egroup, egroup, shared_lib_name(group)
-                ),
-                f"if (!pexports_{egroup}) {{",
-                "goto fail;",
-                "}",
-                "memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));".format(
-                    group=egroup
-                ),
-                "",
-            )
-
+        # End of exec_<short_name>: only sets up capsules/module attributes.
+        # Cross-group imports (populating `exports_<dep>` tables) are split
+        # out into ensure_deps_<short_name>() below and run later, from the
+        # shim's PyInit. See generate_shared_lib_init for details.
         emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
+
+        if self.compiler_options.separate:
+            # ensure_deps_<short>(): populates cross-group exports tables. Run
+            # once, lazily, from the shim's PyInit just before invoking the
+            # per-module init capsule. This defers cross-group imports out of
+            # the shared-lib PyInit so they can't transitively trigger a
+            # sibling package's __init__.py while another package __init__.py
+            # is still mid-flight.
+            emitter.emit_lines(
+                "",
+                f"int ensure_deps_{short_name}(void)",
+                "{",
+                "static int done = 0;",
+                "if (done) return 0;",
+            )
+            if self.context.group_deps:
+                emitter.emit_lines(
+                    "static PyObject *_mypyc_fromlist = NULL;",
+                    "if (!_mypyc_fromlist) {",
+                    '_mypyc_fromlist = Py_BuildValue("(s)", "*");',
+                    "if (!_mypyc_fromlist) return -1;",
+                    "}",
+                    "PyObject *tmp;",
+                    "PyObject *caps;",
+                )
+            for group in sorted(self.context.group_deps):
+                egroup = exported_name(group)
+                # ImportModuleLevel with fromlist returns the leaf via
+                # sys.modules (no dotted getattr walk), and fetching the
+                # `exports` capsule directly off that module bypasses
+                # PyCapsule_Import (which would redo the attribute walk).
+                emitter.emit_lines(
+                    'tmp = PyImport_ImportModuleLevel("{}", NULL, NULL, _mypyc_fromlist, 0);'.format(
+                        shared_lib_name(group)
+                    ),
+                    "if (!tmp) return -1;",
+                    'caps = PyObject_GetAttrString(tmp, "exports");',
+                    "Py_DECREF(tmp);",
+                    "if (!caps) return -1;",
+                    "struct export_table_{g} *pexports_{g} = "
+                    '(struct export_table_{g} *)PyCapsule_GetPointer(caps, "{lib}.exports");'.format(
+                        g=egroup, lib=shared_lib_name(group)
+                    ),
+                    "Py_DECREF(caps);",
+                    f"if (!pexports_{egroup}) return -1;",
+                    "memcpy(&exports_{g}, pexports_{g}, sizeof(exports_{g}));".format(g=egroup),
+                )
+            emitter.emit_lines("done = 1;", "return 0;", "}")
 
         if self.multi_phase_init:
             emitter.emit_lines(
@@ -979,6 +1078,7 @@ class GroupGenerator:
                 "}",
                 f"if (exec_{short_name}(module) < 0) {{",
                 "Py_DECREF(module);",
+                "module = NULL;",
                 "return NULL;",
                 "}",
                 "return module;",
@@ -1162,6 +1262,10 @@ class GroupGenerator:
             emitter.emit_line("if (import_librt_vecs() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
+        if LIBRT_RANDOM in module.dependencies:
+            emitter.emit_line("if (import_librt_random() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
         if self.multi_phase_init:
             emitter.emit_line(f"{module_static} = module;")
@@ -1286,11 +1390,42 @@ class GroupGenerator:
             f"if (unlikely({module_static} == NULL))",
             "    goto fail;",
         )
+
+        emitter.emit_line(f'modname = PyUnicode_FromString("{module_name}");')
+        emitter.emit_line("if (modname == NULL) CPyError_OutOfMemory();")
+        emitter.emit_line("int rv = 0;")
+        if self.group_name:
+            shared_lib_mod_name = shared_lib_name(self.group_name)
+            emitter.emit_line("PyObject *mod_dict = PyImport_GetModuleDict();")
+            emitter.emit_line("PyObject *shared_lib = NULL;")
+            emitter.emit_line(
+                f'rv = PyDict_GetItemStringRef(mod_dict, "{shared_lib_mod_name}", &shared_lib);'
+            )
+            emitter.emit_line("if (rv < 0) goto fail;")
+            emitter.emit_line(
+                'PyObject *shared_lib_file = PyObject_GetAttrString(shared_lib, "__file__");'
+            )
+            emitter.emit_line("if (shared_lib_file == NULL) goto fail;")
+        else:
+            emitter.emit_line(
+                f'PyObject *shared_lib_file = PyUnicode_FromString("{module_name + EXT_SUFFIX}");'
+            )
+            emitter.emit_line("if (shared_lib_file == NULL) CPyError_OutOfMemory();")
+        emitter.emit_line(f'PyObject *ext_suffix = PyUnicode_FromString("{EXT_SUFFIX}");')
+        emitter.emit_line("if (ext_suffix == NULL) CPyError_OutOfMemory();")
+        is_pkg = int(self.source_paths[module_name].endswith("__init__.py"))
+        emitter.emit_line(f"Py_ssize_t is_pkg = {is_pkg};")
+
+        emitter.emit_line(
+            f"rv = CPyImport_SetDunderAttrs({module_static}, modname, shared_lib_file, ext_suffix, is_pkg);"
+        )
+        emitter.emit_line("Py_DECREF(ext_suffix);")
+        emitter.emit_line("Py_DECREF(shared_lib_file);")
+        emitter.emit_line("if (rv < 0) goto fail;")
+
         # Register in sys.modules early so that circular imports via
         # CPyImport_ImportNative can detect that this module is already
         # being initialized and avoid re-executing the module body.
-        emitter.emit_line(f'modname = PyUnicode_FromString("{module_name}");')
-        emitter.emit_line("if (modname == NULL) CPyError_OutOfMemory();")
         emitter.emit_line(
             f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
         )
@@ -1348,7 +1483,7 @@ class GroupGenerator:
             if decl.mark:
                 return
 
-            for child in decl.declaration.dependencies:
+            for child in sorted(decl.declaration.dependencies):
                 _toposort_visit(child)
 
             result.append(decl.declaration)

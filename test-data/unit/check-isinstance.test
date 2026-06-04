@@ -53,6 +53,71 @@ def f(x: Union[int, str, List]) -> None:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIsinstanceNarrowsSequenceParentFromElement]
+# flags: --warn-unreachable
+from __future__ import annotations
+
+def f1(x: list[str] | list[int]) -> None:
+    if isinstance(x[0], str):
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(x[0])  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+        reveal_type(x[0])  # N: Revealed type is "builtins.int"
+
+def f2(x: tuple[str, ...] | tuple[int, ...]) -> None:
+    if isinstance(x[0], str):
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+        reveal_type(x[0])  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+        reveal_type(x[0])  # N: Revealed type is "builtins.int"
+
+def f3(x: tuple[str, str] | tuple[int, int]) -> None:
+    if isinstance(x[0], str):
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+
+class A: ...
+class B: ...
+class C(A, B): ...
+
+def f4(x: list[A] | list[B]):
+    # Technically this is unsound in the presence of multiple inheritance,
+    # but we already do this kind of narrowing for tuples
+    if isinstance(x[0], A):
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.B]"
+
+def f5(x: tuple[A, ...] | tuple[B, ...]):
+    if isinstance(x[0], A):
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+
+def f6(x: tuple[A, A] | tuple[B, B]):
+    if isinstance(x[0], A):
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.A, __main__.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
+
+class AA(A): ...
+
+def f7(x: list[A] | list[AA]):
+    if isinstance(x[0], AA):
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.A] | builtins.list[__main__.AA]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.A] | builtins.list[__main__.AA]"
+
+def f8(x: list[str] | list[str | None]):
+    if x[0] is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.str | None]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str | None]"
+[builtins fixtures/tuple.pyi]
+
 [case testClassAttributeInitialization]
 # flags: --warn-unreachable
 class A:
@@ -1583,6 +1648,61 @@ def f(x: Union[int, str], typ: type) -> None:
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIsInstanceWithUnknownTypeMultipleNarrowing]
+# flags: --strict-equality --warn-unreachable --python-version 3.10
+from __future__ import annotations
+from typing import Iterable
+from typing_extensions import TypeAlias
+import types
+
+# Regression test for https://github.com/python/mypy/issues/21181
+# We don't have the same type context as with the real stubs, so sort of fake it
+_ClassInfoLike: TypeAlias = "type | tuple[_ClassInfoLike, ...]"
+
+class A: ...
+class B(A): ...
+
+def fake_type_context(ts: list[type[A]]) -> _ClassInfoLike:
+    return tuple(ts)  # E: Too many arguments for "tuple"
+
+
+def f1(x: A | None) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, object):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f2(x: A | None, ts: list[type[A]]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, fake_type_context(ts)):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f3(x: A | None, t: type | type[A]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f4(x: A | None, t: type) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if isinstance(x, t):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+
+
+def f5(x: object | None, ta: type[A], tb: type[B]) -> None:
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        if isinstance(x, ta):
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+            if isinstance(x, tb):
+                reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsInstanceWithBoundedType]
 # flags: --warn-unreachable
 from typing import Union, Type
@@ -2134,7 +2254,6 @@ if y not in x:
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListOfOptional]
 # flags: --warn-unreachable
@@ -2148,7 +2267,6 @@ if y not in x:
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
 # flags: --warn-unreachable
@@ -2174,18 +2292,16 @@ def f(x: Optional[int], lst: Optional[List[int]], nested_any: List[List[Any]]) -
 
 [case testNarrowTypeAfterInTuple]
 # flags: --warn-unreachable
-from typing import Optional
 class A: pass
 class B(A): pass
 class C(A): pass
 
-y: Optional[B]
-if y in (B(), C()):
-    reveal_type(y) # N: Revealed type is "__main__.B"
-else:
-    reveal_type(y) # N: Revealed type is "__main__.B | None"
+def f(y: B | None):
+    if y in (B(), C()):
+        reveal_type(y) # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(y) # N: Revealed type is "__main__.B | None"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNarrowTypeAfterInNamedTuple]
 # flags: --warn-unreachable
@@ -2201,7 +2317,6 @@ if y not in nt:
 else:
     reveal_type(y) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNarrowTypeAfterInDict]
 # flags: --warn-unreachable
@@ -2218,7 +2333,6 @@ if y not in x:
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNarrowTypeAfterInNoAnyOrObject]
 # flags: --warn-unreachable
@@ -2238,7 +2352,6 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInUserDefined]
 # flags: --warn-unreachable
@@ -2260,7 +2373,6 @@ else:
     reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNarrowTypeAfterInSet]
 # flags: --warn-unreachable
@@ -2277,7 +2389,6 @@ if y not in s:
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/set.pyi]
-[out]
 
 [case testNarrowTypeAfterInTypedDict]
 # flags: --warn-unreachable
@@ -2294,7 +2405,6 @@ def f() -> None:
     reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
-[out]
 
 [case testIsinstanceWidensWithAnyArg]
 # flags: --warn-unreachable
@@ -2317,6 +2427,17 @@ x: Union[A, B]
 reveal_type(x)  # N: Revealed type is "__main__.A | Any"
 assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNarrowsAfterNoneCheckWithAnyUnion]
+# flags: --warn-unreachable
+from typing import Any, Union
+
+def f(val: Union[Any, str]) -> None:
+    if val is None or isinstance(val, str):
+        reveal_type(val)  # N: Revealed type is "None | builtins.str"
+        return
+    reveal_type(val)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceIgnoredImport]

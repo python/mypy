@@ -1076,11 +1076,11 @@ class IRBuilder:
             items = target_type.items
             assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = set(map(self.mapper.type_to_rtype, items))
+            rtypes = list(dict.fromkeys(self.mapper.type_to_rtype(item) for item in items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:
-                return RUnion.make_simplified_union(list(rtypes))
+                return RUnion.make_simplified_union(rtypes)
         assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
@@ -1553,8 +1553,7 @@ class IRBuilder:
         return (
             isinstance(obj_rtype, RInstance)
             and obj_rtype.class_ir.is_ext_class
-            and obj_rtype.class_ir.has_attr(expr.name)
-            and not obj_rtype.class_ir.get_method(expr.name)
+            and any(expr.name in ir.attributes for ir in obj_rtype.class_ir.mro)
         )
 
     def mark_block_unreachable(self) -> None:
@@ -1603,6 +1602,9 @@ class IRBuilder:
                 obj.line,
             )
         )
+
+    def load_builtin(self, name: str, line: int) -> Value | None:
+        return self.builder.load_builtin(name, line)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

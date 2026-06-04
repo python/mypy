@@ -1,5 +1,4 @@
 # builtins stub used in NotImplemented related cases.
-from typing import Any
 
 class object:
     def __init__(self) -> None: pass
@@ -14,13 +13,7 @@ class tuple: pass
 class ellipsis: pass
 class list: pass
 
-import sys
-
-if sys.version_info >= (3, 10):  # type: ignore
-    from types import NotImplementedType
-    NotImplemented: NotImplementedType
-else:
-    class _NotImplementedType(Any): ...
-    NotImplemented: _NotImplementedType
+from types import NotImplementedType
+NotImplemented: NotImplementedType
 
 class BaseException: pass

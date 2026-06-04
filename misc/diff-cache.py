@@ -19,13 +19,14 @@ from librt import base64
 from librt.internal import ReadBuffer, WriteBuffer
 
 from mypy.cache import CacheMeta, CacheMetaEx
+from mypy.defaults import SQLITE_NUM_SHARDS
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.util import json_dumps, json_loads
 
 
-def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
+def make_cache(input_dir: str, sqlite: bool, num_shards: int = SQLITE_NUM_SHARDS) -> MetadataStore:
     if sqlite:
-        return SqliteMetadataStore(input_dir)
+        return SqliteMetadataStore(input_dir, num_shards=num_shards)
     else:
         return FilesystemMetadataStore(input_dir)
 
@@ -154,13 +155,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action="store_true", default=False, help="Increase verbosity")
     parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
+    parser.add_argument(
+        "--num-shards", type=int, default=SQLITE_NUM_SHARDS, help=argparse.SUPPRESS
+    )
     parser.add_argument("input_dir1", help="Input directory for the original cache")
     parser.add_argument("input_dir2", help="Input directory for the target cache")
     parser.add_argument("output", help="Output file with the diff from original cache")
     args = parser.parse_args()
 
-    cache1 = make_cache(args.input_dir1, args.sqlite)
-    cache2 = make_cache(args.input_dir2, args.sqlite)
+    cache1 = make_cache(args.input_dir1, args.sqlite, num_shards=args.num_shards)
+    cache2 = make_cache(args.input_dir2, args.sqlite, num_shards=args.num_shards)
 
     type_misses: dict[str, int] = defaultdict(int)
     type_hits: dict[str, int] = defaultdict(int)

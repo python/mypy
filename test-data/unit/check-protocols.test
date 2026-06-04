@@ -4779,3 +4779,33 @@ class A(Protocol):
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testTupleTypeSelfTypeProto]
+from typing import Protocol, TypeVar
+
+R = TypeVar("R", covariant=True)
+
+class P(Protocol[R]):
+    def rep(self) -> R: ...
+
+T = TypeVar("T")
+def rep(x: P[T]) -> T: ...
+
+class C(tuple[int, str]):
+    def rep(self: T) -> T: ...
+
+t: C
+reveal_type(t)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(rep(t))  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+
+def ok_rep(x: P[tuple[int, str]]) -> None: ...
+ok_rep(t)
+
+def bad_rep(x: P[tuple[str, int]]) -> None: ...
+bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[tuple[str, int]]" \
+            # N: Following member(s) of "C" have conflicts: \
+            # N:     Expected: \
+            # N:         def rep(self) -> tuple[str, int] \
+            # N:     Got: \
+            # N:         def rep(self) -> C
+[builtins fixtures/tuple.pyi]

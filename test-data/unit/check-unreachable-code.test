@@ -888,7 +888,7 @@ def baz(x: int) -> int:
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable_no_native_parse]
-# flags: --warn-unreachable --python-version 3.9 --platform win32 --always-false FOOBAR
+# flags: --warn-unreachable --python-version 3.10 --platform win32 --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
 
@@ -923,12 +923,12 @@ def f5(x: int) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 
 def f6(x: int) -> None:
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 10):
         reveal_type(x)  # N: Revealed type is "builtins.int"
     else:
         reveal_type(x)
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 11):
         reveal_type(x)
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
@@ -1701,3 +1701,46 @@ def main(contents: Any, commit: str | None) -> None:
 
 main({"commit": None}, None)
 [builtins fixtures/tuple.pyi]
+
+[case testUnreachableFunctionAfterTopLevelAssert]
+def foo() -> int:
+    ...
+
+raise Exception
+
+x = foo()
+
+def test() -> None:
+    # It is questionable to allow this, this test exists to check 1:1
+    # behavior match of parallel checking with sequential checking.
+    x + "hm..."
+
+class C:
+    def test(self) -> None:
+        x + "same here..."
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFunctionAfterClassLevelAssert]
+def foo() -> int:
+    ...
+
+class C:
+    x = foo()
+    raise Exception
+    def test(self) -> None:
+        # It is questionable to allow this, this test exists to check 1:1
+        # behavior match of parallel checking with sequential checking.
+        C.x + "hm..."
+
+def test_outer() -> None:
+    C.x + "no way"  # E: Unsupported left operand type for + ("int")
+[builtins fixtures/exception.pyi]
+
+[case testIgnoreInPlatformSpecificCodeUsed]
+# flags: --warn-unused-ignores --platform unknown
+
+import sys
+assert sys.platform == "win32"
+
+42 + "no way"  # type: ignore[operator]
+[builtins fixtures/isinstancelist.pyi]

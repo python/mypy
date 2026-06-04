@@ -1057,7 +1057,7 @@ class B(A):
     y = LOL
     z: Optional[str] = None
     b = True
-    bogus = None  # type: int
+    bogus = None  # type: int  # type: ignore
 [out]
 def A.lol(self):
     self :: __main__.A
@@ -1135,7 +1135,7 @@ class Ok2:
     __deletable__ = ['x']
     x: int
 
-[case testInvalidDeletableAttribute]
+[case testDeleteNonDeletableAttribute]
 class NotDeletable:
     __deletable__ = ['x']
     x: int
@@ -1146,6 +1146,7 @@ def g(o: NotDeletable) -> None:
     del o.y  # E: "y" cannot be deleted \
              # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
 
+[case testInvalidDeletableAttribute]
 class Base:
     x: int
 
@@ -2136,6 +2137,51 @@ class NonNative:
 
 @mypyc_attr(free_list_len=1, allow_interpreted_subclasses=True)  # E: "free_list_len" can't be used in a class that allows interpreted subclasses
 class InterpSub:
+    pass
+
+@mypyc_attr(free_list_len=1)  # E: "free_list_len" can't be used in a class that inherits from a built-in type
+class InheritsBuiltIn(dict):
+    pass
+
+[case testAcyclicClassRequiresAcyclicBases]
+from typing import Generic, TypeVar
+from mypy_extensions import mypyc_attr, trait
+
+T = TypeVar("T")
+
+class NonAcyclicBase:
+    pass
+
+@trait
+class TraitBase:
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNativeBase:
+    pass
+
+@mypyc_attr(acyclic=True)
+class AcyclicBase:
+    pass
+
+@mypyc_attr(acyclic=True)
+class GoodDerived(AcyclicBase):
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadDerived(NonAcyclicBase):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "__main__.NonAcyclicBase"
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadGeneric(Generic[T]):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "typing.Generic"
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadDerivedTrait(TraitBase):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "__main__.TraitBase"
+    pass
+
+@mypyc_attr(acyclic=True)
+class BadDerivedNonNative(NonNativeBase):  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "__main__.NonNativeBase"
     pass
 
 [case testUnsupportedGetAttr]

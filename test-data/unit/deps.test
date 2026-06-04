@@ -516,7 +516,7 @@ class A:
 from n import A
 
 class B:
-    x = None  # type: A
+    x = None  # type: A  # type: ignore
 [file n.py]
 class A: pass
 [out]
@@ -1373,39 +1373,7 @@ def h() -> None:
 <m.D.__new__> -> m.h
 <m.D> -> m.D, m.h
 
-[case testDataclassDepsOldVersion]
-from dataclasses import dataclass
-
-Z = int
-
-@dataclass
-class A:
-    x: Z
-
-@dataclass
-class B(A):
-    y: int
-[builtins fixtures/dataclasses.pyi]
-
-[out]
-<m.A.(abstract)> -> <m.B.__init__>, m
-<m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
-<m.A.__init__> -> <m.B.__init__>, m.B.__init__
-<m.A.__mypy-replace> -> <m.B.__mypy-replace>, m, m.B.__mypy-replace
-<m.A.__new__> -> <m.B.__new__>
-<m.A.x> -> <m.B.x>
-<m.A.y> -> <m.B.y>
-<m.A> -> m, m.A, m.B
-<m.A[wildcard]> -> m
-<m.B.__mypy-replace> -> m
-<m.B.y> -> m
-<m.B> -> m.B
-<m.Z> -> m
-<dataclasses.dataclass> -> m
-<dataclasses> -> m
-
 [case testDataclassDeps]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 Z = int
