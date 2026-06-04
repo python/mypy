@@ -1416,7 +1416,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = t.fallback
             is_closed = t.is_closed
         return TypedDictType(
-            items, required_keys, readonly_keys, is_closed, fallback, t.line, t.column
+            items, required_keys, readonly_keys, fallback, t.line, t.column, is_closed=is_closed
         )
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:

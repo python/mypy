@@ -350,7 +350,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
         # TODO: when PEP 728 `extra_items` is implemented, pass extra_items below.
         is_closed = extra_items is None
-        return TypedDictType(kwargs, required_names, set(), is_closed, fallback=dict_type)
+        return TypedDictType(kwargs, required_names, set(), dict_type, is_closed=is_closed)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself

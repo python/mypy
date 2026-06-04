@@ -3048,10 +3048,11 @@ class TypedDictType(ProperType):
         items: dict[str, Type],
         required_keys: set[str],
         readonly_keys: set[str],
-        is_closed: bool,
         fallback: Instance,
         line: int = -1,
         column: int = -1,
+        *,
+        is_closed: bool = False,
     ) -> None:
         super().__init__(line, column)
         self.items = items
@@ -3112,8 +3113,8 @@ class TypedDictType(ProperType):
             {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             set(data["readonly_keys"]),
-            bool(data["is_closed"]),
             Instance.deserialize(data["fallback"]),
+            is_closed=bool(data["is_closed"]),
         )
 
     def write(self, data: WriteBuffer) -> None:
@@ -3133,8 +3134,8 @@ class TypedDictType(ProperType):
             read_type_map(data),
             set(read_str_list(data)),
             set(read_str_list(data)),
-            read_bool(data),
             fallback,
+            is_closed=read_bool(data),
         )
         assert read_tag(data) == END_TAG
         return ret
@@ -3178,7 +3179,13 @@ class TypedDictType(ProperType):
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
         return TypedDictType(
-            items, required_keys, readonly_keys, is_closed, fallback, self.line, self.column
+            items,
+            required_keys,
+            readonly_keys,
+            fallback,
+            self.line,
+            self.column,
+            is_closed=is_closed,
         )
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
