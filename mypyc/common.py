@@ -24,6 +24,7 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
