@@ -8116,6 +8116,16 @@ class SemanticAnalyzer(
                         # 2. unbound_paramspec: f'ParamSpec "{name}" is unbound' [codes.VALID_TYPE]
                         maybe_type_expr.as_type = None
                         return
+                    if (
+                        isinstance(node, Var)
+                        and isinstance(get_proper_type(node.type), Instance)
+                        and not self.var_is_typing_special_form(node)
+                    ):
+                        # Var whose declared type is a concrete instance: it is
+                        # a value (local, parameter, module-level constant),
+                        # not a type expression.
+                        maybe_type_expr.as_type = None
+                        return
             else:  # does not look like an identifier
                 if '"' in str_value or "'" in str_value:
                     # Only valid inside a Literal[...] or Annotated[..., ...] type
@@ -8208,6 +8218,8 @@ class SemanticAnalyzer(
             "typing.Literal",
             "typing_extensions.Literal",
             "typing.Optional",
+            "typing.Self",
+            "typing_extensions.Self",
             "typing.TypeGuard",
             "typing_extensions.TypeGuard",
             "typing.TypeIs",
