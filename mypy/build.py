@@ -231,7 +231,7 @@ class SCC:
         # Direct dependencies, should be populated by the caller.
         self.deps: set[int] = set(deps) if deps is not None else set()
         # Count of direct dependencies that have not been processed yet.
-        # Populated by the caller (from len(deps)); decremented during graph
+        # Populated by the caller from len(deps); decremented during graph
         # processing as each dep completes. self.deps above stays constant.
         self.not_ready_count: int = 0
         # SCCs that (directly) depend on this SCC. Note this is a list to
@@ -4632,7 +4632,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             for dependent in done_scc.direct_dependents:
                 dep_scc = scc_by_id[dependent]
                 dep_scc.not_ready_count -= 1
-                if dep_scc.not_ready_count == 0:
+                if not dep_scc.not_ready_count:
                     not_ready.remove(dep_scc)
                     ready.append(dep_scc)
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
