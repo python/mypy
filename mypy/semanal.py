@@ -8100,13 +8100,13 @@ class SemanticAnalyzer(
                     return
                 else:  # sym is not None
                     node = sym.node  # cache
-                    # The following early-reject checks are mutually exclusive
-                    # (a node is at most one of an unbound type variable, a value
-                    # Var, or a placeholder), so their order never affects which
-                    # expressions are rejected. They are ordered by descending
-                    # rejection frequency (measured on mypy's self-check) so the
-                    # commonest rejections exit first: unbound type variables
-                    # (~951) >> value Vars (~157) > placeholders (~23).
+                    # The following early-reject checks are mutually exclusive,
+                    # ordered by decreasing rejection frequency (measured on
+                    # mypy's self-check) so the commonest rejections exit first.
+                    # - TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr (~951)
+                    # - Var (~157)
+                    # - FuncDef, OverloadedFuncDef, MypyFile (~48)
+                    # - PlaceholderNode (~23)
                     unbound_tvar_or_paramspec = (
                         isinstance(node, (TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr))
                         and self.tvar_scope.get_binding(sym) is None
@@ -8125,6 +8125,10 @@ class SemanticAnalyzer(
                         # Var whose declared type is a concrete instance: it is
                         # a value (local, parameter, module-level constant),
                         # not a type expression.
+                        maybe_type_expr.as_type = None
+                        return
+                    if isinstance(node, (FuncDef, OverloadedFuncDef, MypyFile)):
+                        # Functions and modules are never type expressions.
                         maybe_type_expr.as_type = None
                         return
                     if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
