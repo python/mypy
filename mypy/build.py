@@ -230,10 +230,10 @@ class SCC:
         self.mod_ids = ids
         # Direct dependencies, should be populated by the caller.
         self.deps: set[int] = set(deps) if deps is not None else set()
-        # Direct dependencies that have not been processed yet.
-        # Should be populated by the caller. This set may change during graph
-        # processing, while the above stays constant.
-        self.not_ready_deps: set[int] = set()
+        # Count of direct dependencies that have not been processed yet.
+        # Populated by the caller from len(deps); decremented during graph
+        # processing as each dep completes. self.deps above stays constant.
+        self.not_ready_count: int = 0
         # SCCs that (directly) depend on this SCC. Note this is a list to
         # make processing order more predictable. Dependents will be notified
         # that they may be ready in the order in this list.
@@ -4619,10 +4619,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
-                scc_by_id[dependent].not_ready_deps.discard(done_scc.id)
-                if not scc_by_id[dependent].not_ready_deps:
-                    not_ready.remove(scc_by_id[dependent])
-                    ready.append(scc_by_id[dependent])
+                dep_scc = scc_by_id[dependent]
+                dep_scc.not_ready_count -= 1
+                if not dep_scc.not_ready_count:
+                    not_ready.remove(dep_scc)
+                    ready.append(dep_scc)
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
 
 
@@ -5003,9 +5004,10 @@ def prepare_sccs_full(
     for scc in sccs:
         # Remove trivial dependency on itself.
         scc_deps_map[scc].discard(scc)
-        for dep_scc in scc_deps_map[scc]:
+        dep_sccs = scc_deps_map[scc]
+        for dep_scc in dep_sccs:
             scc.deps.add(dep_scc.id)
-            scc.not_ready_deps.add(dep_scc.id)
+        scc.not_ready_count = len(dep_sccs)
     return scc_deps_map
 
 
