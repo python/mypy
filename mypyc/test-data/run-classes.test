@@ -1113,6 +1113,24 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testClassVarDoesNotShadowMethodGlobal]
+from typing import ClassVar
+from testutil import assertRaises
+
+class E(Exception):
+    pass
+
+class C:
+    E: ClassVar[type[E]] = E
+
+    def m(self, b: bytes) -> None:
+        if not b:
+            raise E()
+
+def test_class_var_does_not_shadow_method_global() -> None:
+    with assertRaises(E):
+        C().m(b"")
+
 [case testInitSubclassWithClassVar]
 from typing import ClassVar
 

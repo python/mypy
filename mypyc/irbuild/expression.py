@@ -232,7 +232,11 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     # If we're evaluating a class body and this name is a ClassVar defined earlier
     # in the same class, load it from the class being built (type object for ext classes,
     # class dict for non-ext classes) instead of module globals.
-    if builder.class_body_obj is not None and expr.name in builder.class_body_classvars:
+    if (
+        builder.class_body_obj is not None
+        and isinstance(expr.node, Var)
+        and expr.node in builder.class_body_classvars
+    ):
         if builder.class_body_ir is not None and builder.class_body_ir.is_ext_class:
             return builder.py_get_attr(builder.class_body_obj, expr.name, expr.line)
         else:
