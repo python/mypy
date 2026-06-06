@@ -1135,7 +1135,7 @@ class Ok2:
     __deletable__ = ['x']
     x: int
 
-[case testInvalidDeletableAttribute]
+[case testDeleteNonDeletableAttribute]
 class NotDeletable:
     __deletable__ = ['x']
     x: int
@@ -1146,6 +1146,7 @@ def g(o: NotDeletable) -> None:
     del o.y  # E: "y" cannot be deleted \
              # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
 
+[case testInvalidDeletableAttribute]
 class Base:
     x: int
 

@@ -21,6 +21,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
+    AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
@@ -39,7 +40,13 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
+from mypyc.common import (
+    FAST_PREFIX,
+    MYPYC_DEFAULTS_SETUP,
+    PROPSET_PREFIX,
+    SELF_NAME,
+    get_id_from_name,
+)
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -55,6 +62,7 @@ from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
+    bool_rprimitive,
     dict_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
@@ -63,6 +71,8 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
+    dataclass_type,
+    default_attr_name,
     get_func_def,
     get_mypyc_attrs,
     is_dataclass,
@@ -130,6 +140,24 @@ def build_type_map(
         class_ir = mapper.type_to_ir[cdef.info]
         if class_ir.is_ext_class:
             prepare_implicit_property_accessors(cdef.info, class_ir, module.fullname, mapper)
+
+    # Register __mypyc_defaults_setup FuncDecls on classes that have their own
+    # class-level default attribute assignments. Done here, before any IR build
+    # runs, so that the cross-class lookup in generate_attr_defaults_init is
+    # order-independent: IR build within a compilation group proceeds in
+    # filename order, so a subclass may be IR-built before its base.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class and _has_own_default_attrs(cdef, class_ir):
+            _register_defaults_setup_decl(class_ir, module.fullname)
+
+    # Validate __deletable__ declarations. Done here so the compiler exits
+    # early on invalid input before any IR is built.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            with catch_errors(module.path, cdef.line):
+                _check_deletable_declarations(module.path, cdef, class_ir, errors)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
@@ -406,6 +434,68 @@ def validate_acyclic_class_bases(
             path,
             cdef.line,
         )
+
+
+def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
+    """Whether this class's own body has any default attribute assignment
+    that would be emitted into __mypyc_defaults_setup.
+
+    Used during prepare to decide whether to register a
+    __mypyc_defaults_setup FuncDecl ahead of IR build.
+    """
+    if ir.builtin_base or ir.is_trait:
+        return False
+    cls_type = dataclass_type(cdef)
+    return any(
+        default_attr_name(stmt, ir, cls_type) is not None
+        for stmt in cdef.info.defn.defs.body
+        if isinstance(stmt, AssignmentStmt)
+    )
+
+
+def _register_defaults_setup_decl(ir: ClassIR, module_name: str) -> None:
+    sig = FuncSignature([RuntimeArg(SELF_NAME, RInstance(ir))], bool_rprimitive)
+    ir.method_decls[MYPYC_DEFAULTS_SETUP] = FuncDecl(
+        MYPYC_DEFAULTS_SETUP, ir.name, module_name, sig
+    )
+
+
+def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors: Errors) -> None:
+    """Validate that attributes listed in __deletable__ refer to definable
+    attributes on the class.
+
+    Runs in the prepare phase so we exit early on invalid programs before
+    any IR is built.
+    """
+    if not ir.deletable:
+        return
+    line = next(
+        (
+            stmt.line
+            for stmt in cdef.info.defn.defs.body
+            if isinstance(stmt, AssignmentStmt)
+            and isinstance(stmt.lvalues[0], NameExpr)
+            and stmt.lvalues[0].name == "__deletable__"
+        ),
+        cdef.line,
+    )
+    for attr in ir.deletable:
+        if attr not in ir.attributes:
+            if not ir.has_attr(attr):
+                errors.error(f'Attribute "{attr}" not defined', path, line)
+                continue
+            for base in ir.mro:
+                if attr in base.property_types:
+                    errors.error(f'Cannot make property "{attr}" deletable', path, line)
+                    break
+            else:
+                _, base = ir.attr_details(attr)
+                errors.error(
+                    f'Attribute "{attr}" not defined in "{ir.name}" '
+                    f'(defined in "{base.name}")',
+                    path,
+                    line,
+                )
 
 
 def prepare_class_def(
