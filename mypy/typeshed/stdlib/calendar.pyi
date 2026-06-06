@@ -2,7 +2,7 @@ import datetime
 import enum
 import sys
 from _typeshed import Unused
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from time import struct_time
 from typing import ClassVar, Final, TypeAlias, overload
 
@@ -170,6 +170,7 @@ class _localized_month:
     def __getitem__(self, i: slice) -> list[str]: ...
 
     def __len__(self) -> int: ...
+    def __iter__(self) -> Iterator[str]: ...
 
 class _localized_day:
     format: str
@@ -181,6 +182,7 @@ class _localized_day:
     def __getitem__(self, i: slice) -> list[str]: ...
 
     def __len__(self) -> int: ...
+    def __iter__(self) -> Iterator[str]: ...
 
 day_name: _localized_day
 day_abbr: _localized_day

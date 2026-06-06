@@ -3,7 +3,6 @@ import enum
 import sys
 import types
 from _typeshed import AnnotationForm, StrPath
-from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
     AsyncGeneratorType,
@@ -196,8 +195,8 @@ if sys.version_info >= (3, 14):
 
 modulesbyfile: dict[str, Any]
 
-_GetMembersPredicateTypeGuard = Callable[[Any], TypeGuard[_T]]
-_GetMembersPredicateTypeIs = Callable[[Any], TypeIs[_T]]
+_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
+_GetMembersPredicateTypeIs: TypeAlias = Callable[[Any], TypeIs[_T]]
 _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
 _GetMembersReturn: TypeAlias = list[tuple[str, _T]]
 
@@ -468,14 +467,14 @@ class Parameter:
 
 class BoundArguments:
     __slots__ = ("arguments", "_signature", "__weakref__")
-    arguments: OrderedDict[str, Any]
+    arguments: dict[str, Any]
     @property
     def args(self) -> tuple[Any, ...]: ...
     @property
     def kwargs(self) -> dict[str, Any]: ...
     @property
     def signature(self) -> Signature: ...
-    def __init__(self, signature: Signature, arguments: OrderedDict[str, Any]) -> None: ...
+    def __init__(self, signature: Signature, arguments: dict[str, Any]) -> None: ...
     def apply_defaults(self) -> None: ...
     def __eq__(self, other: object) -> bool: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]

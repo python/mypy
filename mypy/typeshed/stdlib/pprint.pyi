@@ -6,13 +6,15 @@ from typing import IO
 __all__ = ["pprint", "pformat", "isreadable", "isrecursive", "saferepr", "PrettyPrinter", "pp"]
 
 if sys.version_info >= (3, 15):
+    # The `expand` parameter was added in Python 3.15.
     def pformat(
         object: object,
-        indent: int = 4,
-        width: int = 88,
+        indent: int = 1,
+        width: int = 80,
         depth: int | None = None,
         *,
         compact: bool = False,
+        expand: bool = False,
         sort_dicts: bool = True,
         underscore_numbers: bool = False,
     ) -> str: ...
@@ -30,14 +32,16 @@ else:
     ) -> str: ...
 
 if sys.version_info >= (3, 15):
+    # The `expand` parameter was added in Python 3.15.
     def pp(
         object: object,
         stream: IO[str] | None = None,
-        indent: int = 4,
-        width: int = 88,
+        indent: int = 1,
+        width: int = 80,
         depth: int | None = None,
         *,
         compact: bool = False,
+        expand: bool = False,
         sort_dicts: bool = False,
         underscore_numbers: bool = False,
     ) -> None: ...
@@ -56,14 +60,16 @@ else:
     ) -> None: ...
 
 if sys.version_info >= (3, 15):
+    # The `expand` parameter was added in Python 3.15.
     def pprint(
         object: object,
         stream: IO[str] | None = None,
-        indent: int = 4,
-        width: int = 88,
+        indent: int = 1,
+        width: int = 80,
         depth: int | None = None,
         *,
         compact: bool = False,
+        expand: bool = False,
         sort_dicts: bool = True,
         underscore_numbers: bool = False,
     ) -> None: ...
@@ -87,14 +93,16 @@ def saferepr(object: object) -> str: ...
 
 class PrettyPrinter:
     if sys.version_info >= (3, 15):
+        # The `expand` parameter was added in Python 3.15.
         def __init__(
             self,
-            indent: int = 4,
-            width: int = 88,
+            indent: int = 1,
+            width: int = 80,
             depth: int | None = None,
             stream: IO[str] | None = None,
             *,
             compact: bool = False,
+            expand: bool = False,
             sort_dicts: bool = True,
             underscore_numbers: bool = False,
         ) -> None: ...

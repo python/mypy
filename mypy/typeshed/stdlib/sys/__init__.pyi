@@ -53,7 +53,7 @@ maxunicode: int
 meta_path: list[MetaPathFinderProtocol]
 modules: dict[str, ModuleType]
 if sys.version_info >= (3, 15):
-    lazy_modules: dict[str, set[str]]
+    lazy_modules: set[str]
 orig_argv: list[str]
 path: list[str]
 path_hooks: list[Callable[[str], PathEntryFinderProtocol]]

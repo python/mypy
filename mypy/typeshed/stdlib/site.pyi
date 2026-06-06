@@ -12,22 +12,17 @@ def abs_paths() -> None: ...  # undocumented
 def addpackage(sitedir: StrPath, name: StrPath, known_paths: set[str] | None) -> set[str] | None: ...  # undocumented
 
 if sys.version_info >= (3, 15):
-    def process_startup_files() -> None: ...  # undocumented
-    def addsitedir(sitedir: str, known_paths: set[str] | None = None, *, defer_processing_start_files: bool = False) -> None: ...
-    def addsitepackages(
-        known_paths: set[str] | None, prefixes: Iterable[str] | None = None, *, defer_processing_start_files: bool = False
-    ) -> set[str] | None: ...  # undocumented
-    def addusersitepackages(
-        known_paths: set[str] | None, *, defer_processing_start_files: bool = False
-    ) -> set[str] | None: ...  # undocumented
+    class StartupState:
+        __slots__ = ("_known_paths", "_processed_sitedirs", "_path_entries", "_importexecs", "_entrypoints")
+        def __init__(self, known_paths: set[str] | None = None) -> None: ...
+        def addsitedir(self, sitedir: str) -> None: ...
+        def addusersitepackages(self) -> None: ...
+        def addsitepackages(self, prefixes: Iterable[str] | None = None) -> None: ...
+        def process(self) -> None: ...
 
-else:
-    def addsitedir(sitedir: str, known_paths: set[str] | None = None) -> None: ...
-    def addsitepackages(
-        known_paths: set[str] | None, prefixes: Iterable[str] | None = None
-    ) -> set[str] | None: ...  # undocumented
-    def addusersitepackages(known_paths: set[str] | None) -> set[str] | None: ...  # undocumented
-
+def addsitedir(sitedir: str, known_paths: set[str] | None = None) -> None: ...
+def addsitepackages(known_paths: set[str] | None, prefixes: Iterable[str] | None = None) -> set[str] | None: ...  # undocumented
+def addusersitepackages(known_paths: set[str] | None) -> set[str] | None: ...  # undocumented
 def check_enableusersite() -> bool | None: ...  # undocumented
 
 if sys.version_info >= (3, 13):
