@@ -4281,3 +4281,12 @@ def func(y: H) -> H:
     else:
         return y
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowTupleOfSingletons]
+# flags: --strict-equality --warn-unreachable
+def f(a: tuple[int, str] | tuple[None, None]):
+    if a != (None, None):
+        reveal_type(a)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+    else:
+        reveal_type(a)  # N: Revealed type is "tuple[None, None]"
+[builtins fixtures/primitives.pyi]

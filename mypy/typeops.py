@@ -1071,7 +1071,11 @@ def is_singleton_equality_type(typ: ProperType) -> bool:
     Returns True if every value of this type compares equal to every other value of this type,
     as judged by the `==` operator.
     """
-    return isinstance(typ, LiteralType) or is_singleton_identity_type(typ)
+    return (
+        isinstance(typ, LiteralType)
+        or is_singleton_identity_type(typ)
+        or (isinstance(typ, TupleType) and all(is_singleton_equality_type(get_proper_type(t)) for t in typ.items))
+    )
 
 
 def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
