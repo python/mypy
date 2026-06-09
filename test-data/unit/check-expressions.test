@@ -395,7 +395,7 @@ if int():
 if int():
     c = a in b  # E: Unsupported right operand type for in ("B")
 if int():
-    c = b in d  # E: Unsupported operand types for in ("B" and "D")
+    c = b in d
 if int():
     c = b in a
 if int():
@@ -2814,3 +2814,18 @@ class A:
 
 A().f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f" of "A"; did you mean "foobar"?
 [builtins fixtures/list.pyi]
+[case testInOperatorGeneratorOverlap_issue21601]
+from typing import Generator
+class Signals(int): pass
+def f(gen: Generator[Signals, None, None]) -> None:
+    # This shouldn't be an error since Signals and int overlap.
+    1 in gen
+    # This shouldn't be an error since float and int overlap.
+    1.5 in gen
+
+[case testInOperatorIterableUnion_issue21595]
+from typing import Union, List
+def f(var: Union[List[int], str]) -> None:
+    # 2 in str throws TypeError at runtime, so mypy MUST catch this
+    # and not silence it just because list[int] accepts it.
+    2 in var  # E: Unsupported right operand type for in ("list[int] | str")
