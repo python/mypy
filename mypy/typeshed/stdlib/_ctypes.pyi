@@ -6,8 +6,8 @@ from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
 from types import GenericAlias
-from typing import Any, ClassVar, Final, Generic, Literal, SupportsIndex, TypeVar, final, overload, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import Any, ClassVar, Final, Generic, Literal, SupportsIndex, TypeAlias, TypeVar, final, overload, type_check_only
+from typing_extensions import Self
 
 _T = TypeVar("_T")
 _CT = TypeVar("_CT", bound=_CData)
@@ -127,14 +127,17 @@ class _PyCPointerType(_CTypeBaseType):
 class _Pointer(_PointerLike, _CData, Generic[_CT], metaclass=_PyCPointerType):
     _type_: type[_CT]
     contents: _CT
+
     @overload
     def __init__(self) -> None: ...
     @overload
     def __init__(self, arg: _CT) -> None: ...
+
     @overload
     def __getitem__(self, key: int, /) -> Any: ...
     @overload
     def __getitem__(self, key: slice[SupportsIndex | None], /) -> list[Any]: ...
+
     def __setitem__(self, key: int, value: Any, /) -> None: ...
 
 if sys.version_info < (3, 14):
@@ -142,6 +145,7 @@ if sys.version_info < (3, 14):
     def POINTER(type: None, /) -> type[c_void_p]: ...
     @overload
     def POINTER(type: type[_CT], /) -> type[_Pointer[_CT]]: ...
+
     def pointer(obj: _CT, /) -> _Pointer[_CT]: ...
 
 # This class is not exposed. It calls itself _ctypes.CArgObject.
@@ -177,6 +181,7 @@ class CFuncPtr(_PointerLike, _CData, metaclass=_PyCFuncPtrType):
     errcheck: _ECT
     # Abstract attribute that must be defined on subclasses
     _flags_: ClassVar[int]
+
     @overload
     def __new__(cls) -> Self: ...
     @overload
@@ -209,10 +214,12 @@ if sys.version_info >= (3, 14):
         bit_offset: int
         bit_size: int
         is_anonymous: bool
+
         @overload
         def __get__(self, instance: None, owner: builtins.type[Any] | None = None, /) -> Self: ...
         @overload
         def __get__(self, instance: Any, owner: builtins.type[Any] | None = None, /) -> _GetT: ...
+
         def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
     _CField = CField
@@ -223,16 +230,11 @@ else:
     class _CField(Generic[_CT, _GetT, _SetT]):
         offset: int
         size: int
-        if sys.version_info >= (3, 10):
-            @overload
-            def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
-            @overload
-            def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
-        else:
-            @overload
-            def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
-            @overload
-            def __get__(self, instance: Any, owner: type[Any] | None, /) -> _GetT: ...
+
+        @overload
+        def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+        @overload
+        def __get__(self, instance: Any, owner: type[Any] | None = None, /) -> _GetT: ...
 
         def __set__(self, instance: Any, value: _SetT, /) -> None: ...
 
@@ -315,11 +317,13 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     def _length_(self) -> int: ...
     @_length_.setter
     def _length_(self, value: int) -> None: ...
+
     @property
     @abstractmethod
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
+
     raw: bytes  # Note: only available if _CT == c_char
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO: These methods cannot be annotated correctly at the moment.
@@ -335,14 +339,17 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     # This special behavior is not easy to model in a stub, so for now all places where
     # the array element type would belong are annotated with Any instead.
     def __init__(self, *args: Any) -> None: ...
+
     @overload
     def __getitem__(self, key: int, /) -> Any: ...
     @overload
     def __getitem__(self, key: slice[SupportsIndex | None], /) -> list[Any]: ...
+
     @overload
     def __setitem__(self, key: int, value: Any, /) -> None: ...
     @overload
     def __setitem__(self, key: slice[SupportsIndex | None], value: Iterable[Any], /) -> None: ...
+
     def __iter__(self) -> Iterator[Any]: ...
     # Can't inherit from Sized because the metaclass conflict between
     # Sized and _CData prevents using _CDataMeta.

@@ -18,17 +18,15 @@ from types import (
     MethodWrapperType,
     ModuleType,
     TracebackType,
+    UnionType,
     WrapperDescriptorType,
 )
-from typing_extensions import Never as _Never, ParamSpec as _ParamSpec, deprecated
+from typing_extensions import Never as _Never, deprecated
 
 if sys.version_info >= (3, 14):
     from _typeshed import EvaluateFunc
 
     from annotationlib import Format
-
-if sys.version_info >= (3, 10):
-    from types import UnionType
 
 __all__ = [
     "AbstractSet",
@@ -41,11 +39,11 @@ __all__ = [
     "AsyncIterator",
     "Awaitable",
     "BinaryIO",
-    "ByteString",
     "Callable",
     "ChainMap",
     "ClassVar",
     "Collection",
+    "Concatenate",
     "Container",
     "ContextManager",
     "Coroutine",
@@ -77,6 +75,9 @@ __all__ = [
     "NoReturn",
     "Optional",
     "OrderedDict",
+    "ParamSpec",
+    "ParamSpecArgs",
+    "ParamSpecKwargs",
     "Pattern",
     "Protocol",
     "Reversible",
@@ -94,6 +95,8 @@ __all__ = [
     "TextIO",
     "Tuple",
     "Type",
+    "TypeAlias",
+    "TypeGuard",
     "TypeVar",
     "TypedDict",
     "Union",
@@ -104,17 +107,20 @@ __all__ = [
     "get_args",
     "get_origin",
     "get_type_hints",
+    "is_typeddict",
     "no_type_check",
-    "no_type_check_decorator",
     "overload",
     "runtime_checkable",
 ]
 
+if sys.version_info < (3, 15):
+    __all__ += ["ByteString", "no_type_check_decorator"]
+
 if sys.version_info >= (3, 14):
     __all__ += ["evaluate_forward_ref"]
 
-if sys.version_info >= (3, 10):
-    __all__ += ["Concatenate", "ParamSpec", "ParamSpecArgs", "ParamSpecKwargs", "TypeAlias", "TypeGuard", "is_typeddict"]
+if sys.version_info >= (3, 15):
+    __all__ += ["NoExtraItems", "TypeForm", "disjoint_base"]
 
 if sys.version_info >= (3, 11):
     __all__ += [
@@ -149,6 +155,7 @@ class _Final:
     __slots__ = ("__weakref__",)
 
 def final(f: _T) -> _T: ...
+
 @final
 class TypeVar:
     @property
@@ -206,9 +213,9 @@ class TypeVar:
             covariant: bool = False,
             contravariant: bool = False,
         ) -> None: ...
-    if sys.version_info >= (3, 10):
-        def __or__(self, right: Any, /) -> _SpecialForm: ...  # AnnotationForm
-        def __ror__(self, left: Any, /) -> _SpecialForm: ...  # AnnotationForm
+
+    def __or__(self, right: Any, /) -> _SpecialForm: ...  # AnnotationForm
+    def __ror__(self, left: Any, /) -> _SpecialForm: ...  # AnnotationForm
     if sys.version_info >= (3, 11):
         def __typing_subst__(self, arg: Any, /) -> Any: ...
     if sys.version_info >= (3, 13):
@@ -227,9 +234,8 @@ class TypeVar:
 class _SpecialForm(_Final):
     __slots__ = ("_name", "__doc__", "_getitem")
     def __getitem__(self, parameters: Any) -> object: ...
-    if sys.version_info >= (3, 10):
-        def __or__(self, other: Any) -> _SpecialForm: ...
-        def __ror__(self, other: Any) -> _SpecialForm: ...
+    def __or__(self, other: Any) -> _SpecialForm: ...
+    def __ror__(self, other: Any) -> _SpecialForm: ...
 
 Union: _SpecialForm
 Protocol: _SpecialForm
@@ -257,11 +263,31 @@ if sys.version_info >= (3, 11):
     class TypeVarTuple:
         @property
         def __name__(self) -> str: ...
+        if sys.version_info >= (3, 15):
+            @property
+            def __bound__(self) -> Any | None: ...  # AnnotationForm
+            @property
+            def __covariant__(self) -> bool: ...
+            @property
+            def __contravariant__(self) -> bool: ...
+            @property
+            def __infer_variance__(self) -> bool: ...
         if sys.version_info >= (3, 13):
             @property
             def __default__(self) -> Any: ...  # AnnotationForm
             def has_default(self) -> bool: ...
-        if sys.version_info >= (3, 13):
+        if sys.version_info >= (3, 15):
+            def __new__(
+                cls,
+                name: str,
+                *,
+                bound: Any | None = None,  # AnnotationForm
+                covariant: bool = False,
+                contravariant: bool = False,
+                default: Any = ...,  # AnnotationForm
+                infer_variance: bool = False,
+            ) -> Self: ...
+        elif sys.version_info >= (3, 13):
             def __new__(cls, name: str, *, default: Any = ...) -> Self: ...  # AnnotationForm
         elif sys.version_info >= (3, 12):
             def __new__(cls, name: str) -> Self: ...
@@ -275,125 +301,111 @@ if sys.version_info >= (3, 11):
             @property
             def evaluate_default(self) -> EvaluateFunc | None: ...
 
-if sys.version_info >= (3, 10):
-    @final
-    class ParamSpecArgs:
+@final
+class ParamSpecArgs:
+    @property
+    def __origin__(self) -> ParamSpec: ...
+    if sys.version_info >= (3, 12):
+        def __new__(cls, origin: ParamSpec) -> Self: ...
+    else:
+        def __init__(self, origin: ParamSpec) -> None: ...
+
+    def __eq__(self, other: object, /) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+
+@final
+class ParamSpecKwargs:
+    @property
+    def __origin__(self) -> ParamSpec: ...
+    if sys.version_info >= (3, 12):
+        def __new__(cls, origin: ParamSpec) -> Self: ...
+    else:
+        def __init__(self, origin: ParamSpec) -> None: ...
+
+    def __eq__(self, other: object, /) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+
+@final
+class ParamSpec:
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...  # AnnotationForm
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    if sys.version_info >= (3, 12):
         @property
-        def __origin__(self) -> ParamSpec: ...
-        if sys.version_info >= (3, 12):
-            def __new__(cls, origin: ParamSpec) -> Self: ...
-        else:
-            def __init__(self, origin: ParamSpec) -> None: ...
-
-        def __eq__(self, other: object, /) -> bool: ...
-        __hash__: ClassVar[None]  # type: ignore[assignment]
-
-    @final
-    class ParamSpecKwargs:
+        def __infer_variance__(self) -> bool: ...
+    if sys.version_info >= (3, 13):
         @property
-        def __origin__(self) -> ParamSpec: ...
-        if sys.version_info >= (3, 12):
-            def __new__(cls, origin: ParamSpec) -> Self: ...
-        else:
-            def __init__(self, origin: ParamSpec) -> None: ...
+        def __default__(self) -> Any: ...  # AnnotationForm
+    if sys.version_info >= (3, 13):
+        def __new__(
+            cls,
+            name: str,
+            *,
+            bound: Any | None = None,  # AnnotationForm
+            contravariant: bool = False,
+            covariant: bool = False,
+            infer_variance: bool = False,
+            default: Any = ...,  # AnnotationForm
+        ) -> Self: ...
+    elif sys.version_info >= (3, 12):
+        def __new__(
+            cls,
+            name: str,
+            *,
+            bound: Any | None = None,  # AnnotationForm
+            contravariant: bool = False,
+            covariant: bool = False,
+            infer_variance: bool = False,
+        ) -> Self: ...
+    elif sys.version_info >= (3, 11):
+        def __new__(
+            cls, name: str, *, bound: Any | None = None, contravariant: bool = False, covariant: bool = False  # AnnotationForm
+        ) -> Self: ...
+    else:
+        def __init__(
+            self, name: str, *, bound: Any | None = None, contravariant: bool = False, covariant: bool = False  # AnnotationForm
+        ) -> None: ...
 
-        def __eq__(self, other: object, /) -> bool: ...
-        __hash__: ClassVar[None]  # type: ignore[assignment]
+    @property
+    def args(self) -> ParamSpecArgs: ...
+    @property
+    def kwargs(self) -> ParamSpecKwargs: ...
+    if sys.version_info >= (3, 11):
+        def __typing_subst__(self, arg: Any, /) -> Any: ...
+        def __typing_prepare_subst__(self, alias: Any, args: Any, /) -> tuple[Any, ...]: ...
 
-    @final
-    class ParamSpec:
+    def __or__(self, right: Any, /) -> _SpecialForm: ...
+    def __ror__(self, left: Any, /) -> _SpecialForm: ...
+    if sys.version_info >= (3, 13):
+        def has_default(self) -> bool: ...
+    if sys.version_info >= (3, 14):
         @property
-        def __name__(self) -> str: ...
-        @property
-        def __bound__(self) -> Any | None: ...  # AnnotationForm
-        @property
-        def __covariant__(self) -> bool: ...
-        @property
-        def __contravariant__(self) -> bool: ...
-        if sys.version_info >= (3, 12):
-            @property
-            def __infer_variance__(self) -> bool: ...
-        if sys.version_info >= (3, 13):
-            @property
-            def __default__(self) -> Any: ...  # AnnotationForm
-        if sys.version_info >= (3, 13):
-            def __new__(
-                cls,
-                name: str,
-                *,
-                bound: Any | None = None,  # AnnotationForm
-                contravariant: bool = False,
-                covariant: bool = False,
-                infer_variance: bool = False,
-                default: Any = ...,  # AnnotationForm
-            ) -> Self: ...
-        elif sys.version_info >= (3, 12):
-            def __new__(
-                cls,
-                name: str,
-                *,
-                bound: Any | None = None,  # AnnotationForm
-                contravariant: bool = False,
-                covariant: bool = False,
-                infer_variance: bool = False,
-            ) -> Self: ...
-        elif sys.version_info >= (3, 11):
-            def __new__(
-                cls,
-                name: str,
-                *,
-                bound: Any | None = None,  # AnnotationForm
-                contravariant: bool = False,
-                covariant: bool = False,
-            ) -> Self: ...
-        else:
-            def __init__(
-                self,
-                name: str,
-                *,
-                bound: Any | None = None,  # AnnotationForm
-                contravariant: bool = False,
-                covariant: bool = False,
-            ) -> None: ...
+        def evaluate_default(self) -> EvaluateFunc | None: ...
 
-        @property
-        def args(self) -> ParamSpecArgs: ...
-        @property
-        def kwargs(self) -> ParamSpecKwargs: ...
-        if sys.version_info >= (3, 11):
-            def __typing_subst__(self, arg: Any, /) -> Any: ...
-            def __typing_prepare_subst__(self, alias: Any, args: Any, /) -> tuple[Any, ...]: ...
+Concatenate: _SpecialForm
+TypeAlias: _SpecialForm
+TypeGuard: _SpecialForm
 
-        def __or__(self, right: Any, /) -> _SpecialForm: ...
-        def __ror__(self, left: Any, /) -> _SpecialForm: ...
-        if sys.version_info >= (3, 13):
-            def has_default(self) -> bool: ...
-        if sys.version_info >= (3, 14):
-            @property
-            def evaluate_default(self) -> EvaluateFunc | None: ...
+class NewType:
+    def __init__(self, name: str, tp: Any) -> None: ...  # AnnotationForm
+    if sys.version_info >= (3, 11):
+        @staticmethod
+        def __call__(x: _T, /) -> _T: ...
+    else:
+        def __call__(self, x: _T) -> _T: ...
 
-    Concatenate: _SpecialForm
-    TypeAlias: _SpecialForm
-    TypeGuard: _SpecialForm
-
-    class NewType:
-        def __init__(self, name: str, tp: Any) -> None: ...  # AnnotationForm
-        if sys.version_info >= (3, 11):
-            @staticmethod
-            def __call__(x: _T, /) -> _T: ...
-        else:
-            def __call__(self, x: _T) -> _T: ...
-
-        def __or__(self, other: Any) -> _SpecialForm: ...
-        def __ror__(self, other: Any) -> _SpecialForm: ...
-        __supertype__: type | NewType
-        __name__: str
-
-else:
-    def NewType(name: str, tp: Any) -> Any: ...
+    def __or__(self, other: Any) -> _SpecialForm: ...
+    def __ror__(self, other: Any) -> _SpecialForm: ...
+    __supertype__: type | NewType
+    __name__: str
 
 _F = TypeVar("_F", bound=Callable[..., Any])
-_P = _ParamSpec("_P")
+_P = ParamSpec("_P")
 _T = TypeVar("_T")
 
 _FT = TypeVar("_FT", bound=Callable[..., Any] | type)
@@ -410,12 +422,12 @@ _TC = TypeVar("_TC", bound=type[object])
 def overload(func: _F) -> _F: ...
 def no_type_check(arg: _F) -> _F: ...
 
-if sys.version_info >= (3, 13):
+if sys.version_info < (3, 15):
     @deprecated("Deprecated since Python 3.13; removed in Python 3.15.")
     def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
 
-else:
-    def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
+if sys.version_info >= (3, 15):
+    def disjoint_base(cls: _TC) -> _TC: ...
 
 # This itself is only available during type checking
 def type_check_only(func_or_cls: _FT) -> _FT: ...
@@ -439,6 +451,13 @@ ChainMap = _Alias()
 OrderedDict = _Alias()
 
 Annotated: _SpecialForm
+if sys.version_info >= (3, 15):
+    @type_check_only
+    class _NoExtraItemsType: ...
+
+    NoExtraItems: _NoExtraItemsType
+
+    TypeForm: _SpecialForm
 
 # Predefined type variables.
 AnyStr = TypeVar("AnyStr", str, bytes)  # noqa: Y001
@@ -448,12 +467,8 @@ class _Generic:
     if sys.version_info < (3, 12):
         __slots__ = ()
 
-    if sys.version_info >= (3, 10):
-        @classmethod
-        def __class_getitem__(cls, args: TypeVar | ParamSpec | tuple[TypeVar | ParamSpec, ...]) -> _Final: ...
-    else:
-        @classmethod
-        def __class_getitem__(cls, args: TypeVar | tuple[TypeVar, ...]) -> _Final: ...
+    @classmethod
+    def __class_getitem__(cls, args: TypeVar | ParamSpec | tuple[TypeVar | ParamSpec, ...]) -> _Final: ...
 
 Generic: type[_Generic]
 
@@ -464,6 +479,7 @@ class _ProtocolMeta(ABCMeta):
 # Abstract base classes.
 
 def runtime_checkable(cls: _TC) -> _TC: ...
+
 @runtime_checkable
 class SupportsInt(Protocol, metaclass=ABCMeta):
     __slots__ = ()
@@ -503,6 +519,7 @@ class SupportsAbs(Protocol[_T_co]):
 @runtime_checkable
 class SupportsRound(Protocol[_T_co]):
     __slots__ = ()
+
     @overload
     @abstractmethod
     def __round__(self) -> int: ...
@@ -548,6 +565,7 @@ class Generator(Iterator[_YieldT_co], Protocol[_YieldT_co, _SendT_contra, _Retur
     def __next__(self) -> _YieldT_co: ...
     @abstractmethod
     def send(self, value: _SendT_contra, /) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
     def throw(
@@ -556,6 +574,7 @@ class Generator(Iterator[_YieldT_co], Protocol[_YieldT_co, _SendT_contra, _Retur
     @overload
     @abstractmethod
     def throw(self, typ: BaseException, val: None = None, tb: TracebackType | None = None, /) -> _YieldT_co: ...
+
     if sys.version_info >= (3, 13):
         def close(self) -> _ReturnT_co | None: ...
     else:
@@ -590,6 +609,7 @@ class Coroutine(Awaitable[_ReturnT_nd_co], Generic[_YieldT_co, _SendT_nd_contra,
 
     @abstractmethod
     def send(self, value: _SendT_nd_contra, /) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
     def throw(
@@ -598,6 +618,7 @@ class Coroutine(Awaitable[_ReturnT_nd_co], Generic[_YieldT_co, _SendT_nd_contra,
     @overload
     @abstractmethod
     def throw(self, typ: BaseException, val: None = None, tb: TracebackType | None = None, /) -> _YieldT_co: ...
+
     @abstractmethod
     def close(self) -> None: ...
 
@@ -628,6 +649,7 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
     def __anext__(self) -> Coroutine[Any, Any, _YieldT_co]: ...
     @abstractmethod
     def asend(self, value: _SendT_contra, /) -> Coroutine[Any, Any, _YieldT_co]: ...
+
     @overload
     @abstractmethod
     def athrow(
@@ -638,6 +660,7 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
     def athrow(
         self, typ: BaseException, val: None = None, tb: TracebackType | None = None, /
     ) -> Coroutine[Any, Any, _YieldT_co]: ...
+
     def aclose(self) -> Coroutine[Any, Any, None]: ...
 
 @runtime_checkable
@@ -659,6 +682,7 @@ class Sequence(Reversible[_T_co], Collection[_T_co]):
     @overload
     @abstractmethod
     def __getitem__(self, index: slice[int | None], /) -> Sequence[_T_co]: ...
+
     # Mixin methods
     def index(self, value: Any, start: int = 0, stop: int = ..., /) -> int: ...
     def count(self, value: Any, /) -> int: ...
@@ -669,24 +693,28 @@ class Sequence(Reversible[_T_co], Collection[_T_co]):
 class MutableSequence(Sequence[_T]):
     @abstractmethod
     def insert(self, index: int, value: _T, /) -> None: ...
+
     @overload
     @abstractmethod
     def __getitem__(self, index: int, /) -> _T: ...
     @overload
     @abstractmethod
     def __getitem__(self, index: slice[int | None], /) -> MutableSequence[_T]: ...
+
     @overload
     @abstractmethod
     def __setitem__(self, index: int, value: _T, /) -> None: ...
     @overload
     @abstractmethod
     def __setitem__(self, index: slice[int | None], value: Iterable[_T], /) -> None: ...
+
     @overload
     @abstractmethod
     def __delitem__(self, index: int, /) -> None: ...
     @overload
     @abstractmethod
     def __delitem__(self, index: slice[int | None], /) -> None: ...
+
     # Mixin methods
     def append(self, value: _T, /) -> None: ...
     def clear(self) -> None: ...
@@ -778,6 +806,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     # see discussion in https://github.com/python/typing/pull/273.
     @abstractmethod
     def __getitem__(self, key: _KT, /) -> _VT_co: ...
+
     # Mixin methods
     @overload
     def get(self, key: _KT, /) -> _VT_co | None: ...
@@ -785,6 +814,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     def get(self, key: _KT, default: _VT_co, /) -> _VT_co: ...  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
     @overload
     def get(self, key: _KT, default: _T, /) -> _VT_co | _T: ...
+
     def items(self) -> ItemsView[_KT, _VT_co]: ...
     def keys(self) -> KeysView[_KT]: ...
     def values(self) -> ValuesView[_VT_co]: ...
@@ -797,13 +827,16 @@ class MutableMapping(Mapping[_KT, _VT]):
     @abstractmethod
     def __delitem__(self, key: _KT, /) -> None: ...
     def clear(self) -> None: ...
+
     @overload
     def pop(self, key: _KT, /) -> _VT: ...
     @overload
     def pop(self, key: _KT, default: _VT, /) -> _VT: ...
     @overload
     def pop(self, key: _KT, default: _T, /) -> _VT | _T: ...
+
     def popitem(self) -> tuple[_KT, _VT]: ...
+
     # This overload should be allowed only if the value type is compatible with None.
     #
     # Keep the following methods in line with MutableMapping.setdefault, modulo positional-only differences:
@@ -814,6 +847,7 @@ class MutableMapping(Mapping[_KT, _VT]):
     def setdefault(self: MutableMapping[_KT, _T | None], key: _KT, default: None = None, /) -> _T | None: ...
     @overload
     def setdefault(self, key: _KT, default: _VT, /) -> _VT: ...
+
     # 'update' used to take a Union, but using overloading is better.
     # The second overloaded type here is a bit too general, because
     # Mapping[tuple[_KT, _VT], W] is a subclass of Iterable[tuple[_KT, _VT]],
@@ -891,18 +925,21 @@ class IO(Generic[AnyStr]):
     def truncate(self, size: int | None = None, /) -> int: ...
     @abstractmethod
     def writable(self) -> bool: ...
+
     @abstractmethod
     @overload
     def write(self: IO[bytes], s: ReadableBuffer, /) -> int: ...
     @abstractmethod
     @overload
     def write(self, s: AnyStr, /) -> int: ...
+
     @abstractmethod
     @overload
     def writelines(self: IO[bytes], lines: Iterable[ReadableBuffer], /) -> None: ...
     @abstractmethod
     @overload
     def writelines(self, lines: Iterable[AnyStr], /) -> None: ...
+
     @abstractmethod
     def __next__(self) -> AnyStr: ...
     @abstractmethod
@@ -971,16 +1008,15 @@ else:
 
 def get_args(tp: Any) -> tuple[Any, ...]: ...  # AnnotationForm
 
-if sys.version_info >= (3, 10):
-    @overload
-    def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
-    @overload
-    def get_origin(tp: UnionType) -> type[UnionType]: ...
-
+@overload
+def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+@overload
+def get_origin(tp: UnionType) -> type[UnionType]: ...
 @overload
 def get_origin(tp: GenericAlias) -> type: ...
 @overload
 def get_origin(tp: Any) -> Any | None: ...  # AnnotationForm
+
 @overload
 def cast(typ: type[_T], val: Any) -> _T: ...
 @overload
@@ -1020,6 +1056,7 @@ class NamedTuple(tuple[Any, ...]):
     @overload
     @deprecated("Creating a typing.NamedTuple using keyword arguments is deprecated and support will be removed in Python 3.15")
     def __init__(self, typename: str, fields: None = None, /, **kwargs: Any) -> None: ...
+
     @classmethod
     def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
     def _asdict(self) -> dict[str, Any]: ...
@@ -1054,14 +1091,17 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def items(self) -> dict_items[str, object]: ...
     def keys(self) -> dict_keys[str, object]: ...
     def values(self) -> dict_values[str, object]: ...
+
     @overload
     def __or__(self, value: typing_extensions.Self, /) -> typing_extensions.Self: ...
     @overload
     def __or__(self, value: dict[str, Any], /) -> dict[str, object]: ...
+
     @overload
     def __ror__(self, value: typing_extensions.Self, /) -> typing_extensions.Self: ...
     @overload
     def __ror__(self, value: dict[str, Any], /) -> dict[str, object]: ...
+
     # supposedly incompatible definitions of __or__ and __ior__
     def __ior__(self, value: typing_extensions.Self, /) -> typing_extensions.Self: ...  # type: ignore[misc]
 
@@ -1139,9 +1179,7 @@ else:
             def __or__(self, other: Any) -> _SpecialForm: ...
             def __ror__(self, other: Any) -> _SpecialForm: ...
 
-if sys.version_info >= (3, 10):
-    def is_typeddict(tp: object) -> bool: ...
-
+def is_typeddict(tp: object) -> bool: ...
 def _type_repr(obj: object) -> str: ...
 
 if sys.version_info >= (3, 12):
@@ -1155,6 +1193,7 @@ if sys.version_info >= (3, 12):
     )
 
     def override(method: _F, /) -> _F: ...
+
     @final
     class TypeAliasType:
         def __new__(cls, name: str, value: Any, *, type_params: tuple[_TypeParameter, ...] = ()) -> Self: ...
@@ -1166,6 +1205,9 @@ if sys.version_info >= (3, 12):
         def __parameters__(self) -> tuple[Any, ...]: ...  # AnnotationForm
         @property
         def __name__(self) -> str: ...
+        if sys.version_info >= (3, 15):
+            @property
+            def __qualname__(self) -> str: ...
         # It's writable on types, but not on instances of TypeAliasType.
         @property
         def __module__(self) -> str | None: ...  # type: ignore[override]
@@ -1173,12 +1215,14 @@ if sys.version_info >= (3, 12):
         def __or__(self, right: Any, /) -> _SpecialForm: ...
         def __ror__(self, left: Any, /) -> _SpecialForm: ...
         if sys.version_info >= (3, 14):
+            def __iter__(self) -> Any: ...  # Unpack[Self]
             @property
             def evaluate_value(self) -> EvaluateFunc: ...
 
 if sys.version_info >= (3, 13):
     def is_protocol(tp: type, /) -> bool: ...
     def get_protocol_members(tp: type, /) -> frozenset[str]: ...
+
     @final
     @type_check_only
     class _NoDefaultType: ...

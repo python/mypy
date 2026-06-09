@@ -1,7 +1,7 @@
 import types
 from collections.abc import Callable
-from typing import Any, Final, Literal, SupportsIndex, TypeVar, overload
-from typing_extensions import TypeAlias, disjoint_base
+from typing import Any, Final, Literal, SupportsIndex, TypeAlias, TypeVar, overload
+from typing_extensions import disjoint_base
 
 _R = TypeVar("_R")
 
@@ -47,6 +47,7 @@ def set___main___attrs(id: SupportsIndex, updates: _SharedDict, *, restrict: boo
 def incref(id: SupportsIndex, *, implieslink: bool = False, restrict: bool = False) -> None: ...
 def decref(id: SupportsIndex, *, restrict: bool = False) -> None: ...
 def is_shareable(obj: object) -> bool: ...
+
 @overload
 def capture_exception(exc: BaseException) -> types.SimpleNamespace: ...
 @overload

@@ -7,8 +7,21 @@ from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Se
 from contextlib import AbstractContextManager
 from re import Pattern
 from types import GenericAlias, TracebackType
-from typing import Any, AnyStr, Final, Generic, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload, type_check_only
-from typing_extensions import Never, ParamSpec, Self
+from typing import (
+    Any,
+    AnyStr,
+    Final,
+    Generic,
+    NoReturn,
+    ParamSpec,
+    Protocol,
+    SupportsAbs,
+    SupportsRound,
+    TypeVar,
+    overload,
+    type_check_only,
+)
+from typing_extensions import Never, Self
 from unittest._log import _AssertLogsContext, _LoggingWatcher
 from warnings import WarningMessage
 
@@ -54,7 +67,7 @@ def skipIf(condition: object, reason: str) -> Callable[[_FT], _FT]: ...
 def skipUnless(condition: object, reason: str) -> Callable[[_FT], _FT]: ...
 
 class SkipTest(Exception):
-    def __init__(self, reason: str) -> None: ...
+    def __init__(self, reason: str, /) -> None: ...
 
 @type_check_only
 class _SupportsAbsAndDunderGE(SupportsDunderGE[Any], SupportsAbs[Any], Protocol): ...
@@ -96,22 +109,27 @@ class TestCase:
     def assertNotIn(self, member: Any, container: Iterable[Any] | Container[Any], msg: Any = None) -> None: ...
     def assertIsInstance(self, obj: object, cls: _ClassInfo, msg: Any = None) -> None: ...
     def assertNotIsInstance(self, obj: object, cls: _ClassInfo, msg: Any = None) -> None: ...
+
     @overload
     def assertGreater(self, a: SupportsDunderGT[_T], b: _T, msg: Any = None) -> None: ...
     @overload
     def assertGreater(self, a: _T, b: SupportsDunderLT[_T], msg: Any = None) -> None: ...
+
     @overload
     def assertGreaterEqual(self, a: SupportsDunderGE[_T], b: _T, msg: Any = None) -> None: ...
     @overload
     def assertGreaterEqual(self, a: _T, b: SupportsDunderLE[_T], msg: Any = None) -> None: ...
+
     @overload
     def assertLess(self, a: SupportsDunderLT[_T], b: _T, msg: Any = None) -> None: ...
     @overload
     def assertLess(self, a: _T, b: SupportsDunderGT[_T], msg: Any = None) -> None: ...
+
     @overload
     def assertLessEqual(self, a: SupportsDunderLE[_T], b: _T, msg: Any = None) -> None: ...
     @overload
     def assertLessEqual(self, a: _T, b: SupportsDunderGE[_T], msg: Any = None) -> None: ...
+
     # `assertRaises`, `assertRaisesRegex`, and `assertRaisesRegexp`
     # are not using `ParamSpec` intentionally,
     # because they might be used with explicitly wrong arg types to raise some error in tests.
@@ -127,6 +145,7 @@ class TestCase:
     def assertRaises(
         self, expected_exception: type[_E] | tuple[type[_E], ...], *, msg: Any = ...
     ) -> _AssertRaisesContext[_E]: ...
+
     @overload
     def assertRaisesRegex(
         self,
@@ -140,6 +159,7 @@ class TestCase:
     def assertRaisesRegex(
         self, expected_exception: type[_E] | tuple[type[_E], ...], expected_regex: str | Pattern[str], *, msg: Any = ...
     ) -> _AssertRaisesContext[_E]: ...
+
     @overload
     def assertWarns(
         self,
@@ -152,6 +172,7 @@ class TestCase:
     def assertWarns(
         self, expected_warning: type[Warning] | tuple[type[Warning], ...], *, msg: Any = ...
     ) -> _AssertWarnsContext: ...
+
     @overload
     def assertWarnsRegex(
         self,
@@ -165,13 +186,22 @@ class TestCase:
     def assertWarnsRegex(
         self, expected_warning: type[Warning] | tuple[type[Warning], ...], expected_regex: str | Pattern[str], *, msg: Any = ...
     ) -> _AssertWarnsContext: ...
-    def assertLogs(
-        self, logger: str | logging.Logger | None = None, level: int | str | None = None
-    ) -> _AssertLogsContext[_LoggingWatcher]: ...
-    if sys.version_info >= (3, 10):
-        def assertNoLogs(
+
+    if sys.version_info >= (3, 15):
+        def assertLogs(
+            self,
+            logger: str | logging.Logger | None = None,
+            level: int | str | None = None,
+            formatter: logging.Formatter | None = None,
+        ) -> _AssertLogsContext[_LoggingWatcher]: ...
+    else:
+        def assertLogs(
             self, logger: str | logging.Logger | None = None, level: int | str | None = None
-        ) -> _AssertLogsContext[None]: ...
+        ) -> _AssertLogsContext[_LoggingWatcher]: ...
+
+    def assertNoLogs(
+        self, logger: str | logging.Logger | None = None, level: int | str | None = None
+    ) -> _AssertLogsContext[None]: ...
 
     @overload
     def assertAlmostEqual(self, first: _S, second: _S, places: None, msg: Any, delta: _SupportsAbsAndDunderGE) -> None: ...
@@ -197,6 +227,7 @@ class TestCase:
         msg: Any = None,
         delta: None = None,
     ) -> None: ...
+
     @overload
     def assertNotAlmostEqual(self, first: _S, second: _S, places: None, msg: Any, delta: _SupportsAbsAndDunderGE) -> None: ...
     @overload
@@ -221,6 +252,7 @@ class TestCase:
         msg: Any = None,
         delta: None = None,
     ) -> None: ...
+
     def assertRegex(self, text: AnyStr, expected_regex: AnyStr | Pattern[AnyStr], msg: Any = None) -> None: ...
     def assertNotRegex(self, text: AnyStr, unexpected_regex: AnyStr | Pattern[AnyStr], msg: Any = None) -> None: ...
     def assertCountEqual(self, first: Iterable[Any], second: Iterable[Any], msg: Any = None) -> None: ...
@@ -277,9 +309,8 @@ class TestCase:
             self, subset: Mapping[Any, Any], dictionary: Mapping[Any, Any], msg: object = None
         ) -> None: ...
 
-    if sys.version_info >= (3, 10):
-        # Runtime has *args, **kwargs, but will error if any are supplied
-        def __init_subclass__(cls, *args: Never, **kwargs: Never) -> None: ...
+    # Runtime has *args, **kwargs, but will error if any are supplied
+    def __init_subclass__(cls, *args: Never, **kwargs: Never) -> None: ...
 
     if sys.version_info >= (3, 14):
         def assertIsSubclass(self, cls: type, superclass: type | tuple[type, ...], msg: Any = None) -> None: ...
