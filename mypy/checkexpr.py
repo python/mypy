@@ -3811,9 +3811,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             prefer_literal=False,
                         ):
                             kind = "container" if container_types else "iterable"
-                            self.msg.dangerous_comparison(
-                                left_type, combined_type, kind, e
-                            )
+                            self.msg.dangerous_comparison(left_type, combined_type, kind, e)
 
             elif operator in operators.op_methods:
                 method = operators.op_methods[operator]
