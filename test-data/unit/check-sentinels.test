@@ -1,0 +1,155 @@
+[case testSentinelTypeExpressionsAndNarrowing]
+from typing_extensions import Sentinel, assert_type, sentinel
+
+MISSING = Sentinel("<MISSING>", repr="missing")
+SPECIAL = sentinel("SPECIAL")
+
+class Cls:
+    IN_CLASS = Sentinel("Cls.IN_CLASS")
+
+def func2(x: int | MISSING | SPECIAL = MISSING) -> None:
+    if x is MISSING:
+        assert_type(x, MISSING)
+    else:
+        assert_type(x, int | SPECIAL)
+
+def func3(x: int | Cls.IN_CLASS = Cls.IN_CLASS) -> None:
+    if x is Cls.IN_CLASS:
+        assert_type(x, Cls.IN_CLASS)
+    else:
+        assert_type(x, int)
+
+func2(1)
+func2(MISSING)
+func2(SPECIAL)
+func2(Cls.IN_CLASS)  # E: Argument 1 to "func2" has incompatible type "Cls.IN_CLASS"; expected "int | MISSING | SPECIAL"
+
+func3(1)
+func3(MISSING)  # E: Argument 1 to "func3" has incompatible type "MISSING"; expected "int | Cls.IN_CLASS"
+func3(Cls.IN_CLASS)
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelEqualityNarrowingCurrentBehavior]
+from typing_extensions import Sentinel, assert_type
+
+MISSING = Sentinel("MISSING")
+SPECIAL = Sentinel("SPECIAL")
+
+def func(x: int | MISSING | SPECIAL) -> None:
+    # We could reasonably do narrowing here, but currently we're pretty conservative
+    # about narrowing on ==.
+    if x == MISSING:
+        assert_type(x, int | MISSING | SPECIAL)
+    else:
+        assert_type(x, int | MISSING | SPECIAL)
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelSameReprDistinctTypes]
+from typing_extensions import Sentinel
+
+FIRST = Sentinel("DUPLICATE")
+SECOND = Sentinel("DUPLICATE")
+
+def takes_first(x: FIRST) -> None: ...
+
+takes_first(FIRST)
+takes_first(SECOND)  # E: Argument 1 to "takes_first" has incompatible type "SECOND"; expected "FIRST"
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelFunctionLocalNotTypeExpression]
+from typing_extensions import Sentinel
+
+def outer() -> None:
+    LOCAL = Sentinel("LOCAL")
+    def inner(x: LOCAL) -> None: ...  # E: Variable "LOCAL" is not valid as a type \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelImplicitlyFinal]
+from typing_extensions import Sentinel
+
+MISSING = Sentinel("MISSING")
+MISSING = Sentinel("OTHER")  # E: Cannot redefine an existing name as final
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelImplicitlyFinalWithLaterReference]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+def func(x: int | _SENTINEL = _SENTINEL) -> int:
+    if x is _SENTINEL:
+        return 0
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testBuiltinsSentinelTypeExpression]
+# flags: --python-version 3.15
+from typing import assert_type
+
+MISSING = sentinel("MISSING")
+
+def func(x: int | MISSING = MISSING) -> None:
+    if x is not MISSING:
+        assert_type(x, int)
+    else:
+        assert_type(x, MISSING)
+
+[builtins fixtures/sentinel.pyi]
+
+[case testPrivateSentinelNameCanBeReusedAcrossModules]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+[builtins fixtures/tuple.pyi]
+
+[case testPrivateSentinelNameCanBeReusedAfterStarImport]
+from other import *
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+[builtins fixtures/tuple.pyi]
+
+[case testPrivateSentinelNameCanBeReusedAfterStarImportWithAll]
+from other import *
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+
+[file other.py]
+from typing_extensions import Sentinel
+
+_SENTINEL = Sentinel("_SENTINEL")
+__all__ = ("public",)
+public = 1
+[builtins fixtures/tuple.pyi]
+
+[case testIsinstanceSentinel]
+# flags: --python-version 3.15
+from typing import assert_type
+from typing_extensions import Sentinel
+
+BUILTIN = sentinel("BUILTIN")
+TYPEXT = Sentinel("TYPEXT")
+
+def func(x: int | BUILTIN | TYPEXT) -> None:
+    if isinstance(x, sentinel):
+        assert_type(x, BUILTIN)
+    else:
+        assert_type(x, int | TYPEXT)
+        if isinstance(x, Sentinel):
+            assert_type(x, TYPEXT)
+        else:
+            assert_type(x, int)
+
+[builtins fixtures/sentinel.pyi]

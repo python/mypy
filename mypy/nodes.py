@@ -1416,6 +1416,7 @@ VAR_FLAGS: Final = [
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
+    "is_sentinel",
 ]
 
 
@@ -1454,6 +1455,7 @@ class Var(SymbolNode):
         "allow_incompatible_override",
         "invalid_partial_type",
         "is_argument",
+        "is_sentinel",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1516,6 +1518,8 @@ class Var(SymbolNode):
         self.invalid_partial_type = False
         # Is it a variable symbol for a function argument?
         self.is_argument = False
+        # Was this variable created by PEP 661 sentinel()/Sentinel() syntax?
+        self.is_sentinel = False
 
     @property
     def name(self) -> str:
@@ -1598,6 +1602,7 @@ class Var(SymbolNode):
                 self.from_module_getattr,
                 self.has_explicit_value,
                 self.allow_incompatible_override,
+                self.is_sentinel,
             ],
         )
         write_literal(data, self.final_value)
@@ -1635,7 +1640,8 @@ class Var(SymbolNode):
             v.from_module_getattr,
             v.has_explicit_value,
             v.allow_incompatible_override,
-        ) = read_flags(data, num_flags=19)
+            v.is_sentinel,
+        ) = read_flags(data, num_flags=20)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))

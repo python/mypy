@@ -308,6 +308,7 @@ LITERAL_STR: Final[Tag] = 4
 LITERAL_BYTES: Final[Tag] = 5
 LITERAL_FLOAT: Final[Tag] = 6
 LITERAL_COMPLEX: Final[Tag] = 7
+LITERAL_SENTINEL: Final[Tag] = 8
 
 # Collections.
 LIST_GEN: Final[Tag] = 20
