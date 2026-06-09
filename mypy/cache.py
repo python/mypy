@@ -69,7 +69,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 9
+CACHE_VERSION: Final = 10
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -478,7 +478,7 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-Value: _TypeAlias = None | int | str | bool
+Value: _TypeAlias = None | int | float | str | bool
 
 # Our JSON format is somewhat non-standard as we distinguish lists and tuples.
 # This is convenient for some internal things, like mypyc plugin and error serialization.
@@ -508,6 +508,8 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
     if tag == DICT_STR_GEN:
         size = read_int_bare(data)
         return {read_str_bare(data): read_json_value(data) for _ in range(size)}
+    if tag == LITERAL_FLOAT:
+        return read_float_bare(data)
     assert False, f"Invalid JSON tag: {tag}"
 
 
@@ -538,6 +540,9 @@ def write_json_value(data: WriteBuffer, value: JsonValue) -> None:
         for key in sorted(value):
             write_str_bare(data, key)
             write_json_value(data, value[key])
+    elif isinstance(value, float):
+        write_tag(data, LITERAL_FLOAT)
+        write_float_bare(data, value)
     else:
         assert False, f"Invalid JSON value: {value}"
 

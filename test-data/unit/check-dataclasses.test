@@ -1252,6 +1252,26 @@ class Person:
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesFloatSerializationIncremental]
+import m
+[file m.py]
+from lib import MyDataClass
+[file m.py.2]
+from lib import MyDataClass
+
+reveal_type(MyDataClass.MY_CONSTANT)
+[file lib.py]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass(kw_only=True, repr=False)
+class MyDataClass:
+    MY_CONSTANT: Final = 1.234
+[builtins fixtures/dataclasses.pyi]
+[out]
+[out2]
+tmp/m.py:3: note: Revealed type is "Literal[1.234]?"
+
 [case testDataclassesDefaultsMroOtherFile]
 import a
 
