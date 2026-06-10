@@ -1030,7 +1030,9 @@ class BuildManager:
 
         parallel_states = []
         for state in states:
-            if not self.fscache.exists(state.xpath, real_only=True):
+            if not self.fscache.exists(state.xpath, real_only=True) or (
+                self.shadow_map and self.maybe_swap_for_shadow_path(state.xpath) != state.xpath
+            ):
                 state.source = state.get_source()
             if state.tree is not None:
                 # The file was already parsed.
