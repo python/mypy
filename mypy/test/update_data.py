@@ -67,6 +67,7 @@ def _iter_fixes(
             comment_match = re.search(r"(?P<indent>\s+)(?P<comment># [EWN]: .+)$", source_line)
             if comment_match:
                 source_line = source_line[: comment_match.start("indent")]  # strip old comment
+            source_line = _escape_test_data_line(source_line)
             if reports:
                 indent = comment_match.group("indent") if comment_match else "  "
                 # multiline comments are on the first line and then on subsequent lines empty lines
@@ -85,3 +86,11 @@ def _iter_fixes(
             end_lineno=testcase.line + test_item.end_line - 1,
             lines=fix_lines + [""] * test_item.trimmed_newlines,
         )
+
+
+def _escape_test_data_line(line: str) -> str:
+    if line.startswith("["):
+        return "\\" + line
+    if line.startswith("--"):
+        return "--" + line
+    return line
