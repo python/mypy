@@ -2,12 +2,18 @@ import datetime
 import enum
 import sys
 from _typeshed import Unused
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator
 from time import struct_time
-from typing import ClassVar, Final
-from typing_extensions import TypeAlias
+from typing import ClassVar, Final, TypeAlias, overload
 
 __all__ = [
+    "FRIDAY",
+    "MONDAY",
+    "SATURDAY",
+    "SUNDAY",
+    "THURSDAY",
+    "TUESDAY",
+    "WEDNESDAY",
     "IllegalMonthError",
     "IllegalWeekdayError",
     "setfirstweekday",
@@ -34,8 +40,6 @@ __all__ = [
     "weekheader",
 ]
 
-if sys.version_info >= (3, 10):
-    __all__ += ["FRIDAY", "MONDAY", "SATURDAY", "SUNDAY", "THURSDAY", "TUESDAY", "WEDNESDAY"]
 if sys.version_info >= (3, 12):
     __all__ += [
         "Day",
@@ -53,6 +57,8 @@ if sys.version_info >= (3, 12):
         "NOVEMBER",
         "DECEMBER",
     ]
+if sys.version_info >= (3, 15):
+    __all__ += ["standalone_month_name", "standalone_month_abbr"]
 
 _LocaleType: TypeAlias = tuple[str | None, str | None]
 
@@ -88,9 +94,9 @@ class Calendar:
     def itermonthdays4(self, year: int, month: int) -> Iterable[tuple[int, int, int, int]]: ...
 
 class TextCalendar(Calendar):
-    def prweek(self, theweek: int, width: int) -> None: ...
+    def prweek(self, theweek: Iterable[tuple[int, int]], width: int) -> None: ...
     def formatday(self, day: int, weekday: int, width: int) -> str: ...
-    def formatweek(self, theweek: int, width: int) -> str: ...
+    def formatweek(self, theweek: Iterable[tuple[int, int]], width: int) -> str: ...
     def formatweekday(self, day: int, width: int) -> str: ...
     def formatweekheader(self, width: int) -> str: ...
     def formatmonthname(self, theyear: int, themonth: int, width: int, withyear: bool = True) -> str: ...
@@ -123,6 +129,11 @@ class HTMLCalendar(Calendar):
     def formatweekheader(self) -> str: ...
     def formatmonthname(self, theyear: int, themonth: int, withyear: bool = True) -> str: ...
     def formatmonth(self, theyear: int, themonth: int, withyear: bool = True) -> str: ...
+    if sys.version_info >= (3, 15):
+        def formatmonthpage(
+            self, theyear: int, themonth: int, width: int = 3, css: str | None = "calendar.css", encoding: str | None = None
+        ) -> bytes: ...
+
     def formatyear(self, theyear: int, width: int = 3) -> str: ...
     def formatyearpage(
         self, theyear: int, width: int = 3, css: str | None = "calendar.css", encoding: str | None = None
@@ -145,14 +156,38 @@ c: TextCalendar
 
 def setfirstweekday(firstweekday: int) -> None: ...
 def format(cols: int, colwidth: int = 20, spacing: int = 6) -> str: ...
-def formatstring(cols: int, colwidth: int = 20, spacing: int = 6) -> str: ...
+def formatstring(cols: Iterable[str], colwidth: int = 20, spacing: int = 6) -> str: ...
 def timegm(tuple: tuple[int, ...] | struct_time) -> int: ...
 
 # Data attributes
-day_name: Sequence[str]
-day_abbr: Sequence[str]
-month_name: Sequence[str]
-month_abbr: Sequence[str]
+class _localized_month:
+    format: str
+    def __init__(self, format: str) -> None: ...
+
+    @overload
+    def __getitem__(self, i: int) -> str: ...
+    @overload
+    def __getitem__(self, i: slice) -> list[str]: ...
+
+    def __len__(self) -> int: ...
+    def __iter__(self) -> Iterator[str]: ...
+
+class _localized_day:
+    format: str
+    def __init__(self, format: str) -> None: ...
+
+    @overload
+    def __getitem__(self, i: int) -> str: ...
+    @overload
+    def __getitem__(self, i: slice) -> list[str]: ...
+
+    def __len__(self) -> int: ...
+    def __iter__(self) -> Iterator[str]: ...
+
+day_name: _localized_day
+day_abbr: _localized_day
+month_name: _localized_month
+month_abbr: _localized_month
 
 if sys.version_info >= (3, 12):
     class Month(enum.IntEnum):
@@ -208,3 +243,7 @@ else:
     SUNDAY: Final = 6
 
 EPOCH: Final = 1970
+
+if sys.version_info >= (3, 15):
+    standalone_month_name: _localized_month
+    standalone_month_abbr: _localized_month

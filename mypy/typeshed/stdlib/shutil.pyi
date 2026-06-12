@@ -3,8 +3,8 @@ import sys
 from _typeshed import BytesPath, ExcInfo, FileDescriptorOrPath, MaybeNone, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
 from tarfile import _TarfileFilter
-from typing import Any, AnyStr, NamedTuple, NoReturn, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import TypeAlias, deprecated
+from typing import Any, AnyStr, NamedTuple, NoReturn, Protocol, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import deprecated
 
 __all__ = [
     "copyfileobj",
@@ -57,14 +57,17 @@ def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr], length:
 def copyfile(src: StrOrBytesPath, dst: _StrOrBytesPathT, *, follow_symlinks: bool = True) -> _StrOrBytesPathT: ...
 def copymode(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
 def copystat(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
+
 @overload
 def copy(src: StrPath, dst: _StrPathT, *, follow_symlinks: bool = True) -> _StrPathT | str: ...
 @overload
 def copy(src: BytesPath, dst: _BytesPathT, *, follow_symlinks: bool = True) -> _BytesPathT | bytes: ...
+
 @overload
 def copy2(src: StrPath, dst: _StrPathT, *, follow_symlinks: bool = True) -> _StrPathT | str: ...
 @overload
 def copy2(src: BytesPath, dst: _BytesPathT, *, follow_symlinks: bool = True) -> _BytesPathT | bytes: ...
+
 def ignore_patterns(*patterns: StrPath) -> Callable[[Any, list[str]], set[str]]: ...
 def copytree(
     src: StrPath,
@@ -175,7 +178,6 @@ if sys.version_info >= (3, 13):
     def chown(
         path: FileDescriptorOrPath, user: str | int, group: str | int, *, dir_fd: int | None = None, follow_symlinks: bool = True
     ) -> None: ...
-
 else:
     @overload
     def chown(path: FileDescriptorOrPath, user: str | int, group: None = None) -> None: ...
@@ -195,6 +197,7 @@ if sys.platform == "win32" and sys.version_info < (3, 12):
 def which(cmd: StrPath, mode: int = 1, path: StrPath | None = None) -> str | None: ...
 @overload
 def which(cmd: bytes, mode: int = 1, path: StrPath | None = None) -> bytes | None: ...
+
 def make_archive(
     base_name: str,
     format: str,
@@ -207,6 +210,7 @@ def make_archive(
     logger: Any | None = None,
 ) -> str: ...
 def get_archive_formats() -> list[tuple[str, str]]: ...
+
 @overload
 def register_archive_format(
     name: str, function: Callable[..., object], extra_args: Sequence[tuple[str, Any] | list[Any]], description: str = ""
@@ -215,10 +219,12 @@ def register_archive_format(
 def register_archive_format(
     name: str, function: Callable[[str, str], object], extra_args: None = None, description: str = ""
 ) -> None: ...
+
 def unregister_archive_format(name: str) -> None: ...
 def unpack_archive(
     filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None, *, filter: _TarfileFilter | None = None
 ) -> None: ...
+
 @overload
 def register_unpack_format(
     name: str,
@@ -231,6 +237,7 @@ def register_unpack_format(
 def register_unpack_format(
     name: str, extensions: list[str], function: Callable[[str, str], object], extra_args: None = None, description: str = ""
 ) -> None: ...
+
 def unregister_unpack_format(name: str) -> None: ...
 def get_unpack_formats() -> list[tuple[str, list[str], str]]: ...
 def get_terminal_size(fallback: tuple[int, int] = (80, 24)) -> os.terminal_size: ...

@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecU8
 #define VEC_TYPE VecU8Type
 #define VEC_OBJECT VecU8Object
@@ -18,5 +17,3 @@
 #define BUFFER_FORMAT "B"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

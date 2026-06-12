@@ -3135,7 +3135,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
         assert "graphlib" not in stdlib
-        assert "formatter" in stdlib
         assert "contextvars" in stdlib  # 3.7+
         assert "importlib.metadata" not in stdlib
 

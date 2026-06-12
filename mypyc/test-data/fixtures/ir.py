@@ -374,6 +374,9 @@ class ReferenceError(Exception): pass
 class StopIteration(Exception):
     value: Any
 
+class StopAsyncIteration(Exception):
+    value: Any
+
 class ArithmeticError(Exception): pass
 class ZeroDivisionError(ArithmeticError): pass
 class OverflowError(ArithmeticError): pass

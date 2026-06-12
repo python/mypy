@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecFloat
 #define VEC_TYPE VecFloatType
 #define VEC_OBJECT VecFloatObject
@@ -18,5 +17,3 @@
 #define BUFFER_FORMAT "d"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

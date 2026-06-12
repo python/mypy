@@ -393,7 +393,8 @@ command line flags. For more details, see:
 
 FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
+  Define MYPY_CACHE_DIR to override configuration cache_dir path.
+  Define MYPY_NUM_WORKERS to override configuration num_workers value."""
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -1464,6 +1465,14 @@ def process_options(
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
     options.cache_dir = os.path.expanduser(options.cache_dir)
+
+    # Override num_workers if provided in the environment
+    environ_num_workers = os.getenv("MYPY_NUM_WORKERS", "")
+    if environ_num_workers.strip():
+        try:
+            options.num_workers = int(environ_num_workers)
+        except ValueError:
+            parser.error(f"MYPY_NUM_WORKERS must be an integer, got {environ_num_workers!r}")
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()

@@ -60,16 +60,14 @@ def create_i32() -> vec[i32]:
 [out]
 def create_i32():
     r0 :: vec[i32]
-    r1 :: object
-    r2, r3, r4 :: ptr
+    r1, r2, r3 :: ptr
 L0:
     r0 = VecI32Api.alloc(2, 2)
-    r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecI32BufObject
-    set_mem r2, 1 :: i32*
+    r1 = r0.items
+    set_mem r1, 1 :: i32*
+    r2 = r1 + 4
+    set_mem r2, -5 :: i32*
     r3 = r2 + 4
-    set_mem r3, -5 :: i32*
-    r4 = r3 + 4
     keep_alive r0
     return r0
 
@@ -127,11 +125,10 @@ def get_item_bool(v, i):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: bool
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: bool
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -149,13 +146,12 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecBoolBufObject
-    r8 = r5 * 1
-    r9 = r7 + r8
-    r10 = load_mem r9 :: builtins.bool*
+    r6 = v.items
+    r7 = r5 * 1
+    r8 = r6 + r7
+    r9 = load_mem r8 :: builtins.bool*
     keep_alive v
-    return r10
+    return r9
 
 [case testVecMiscPop]
 from librt.vecs import vec, pop
@@ -229,12 +225,11 @@ def for_bool(v):
     s :: i16
     r0, r1 :: native_int
     r2 :: bit
-    r3 :: object
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: ptr
-    r7, x, r8 :: i16
-    r9 :: native_int
+    r3 :: ptr
+    r4 :: native_int
+    r5 :: ptr
+    r6, x, r7 :: i16
+    r8 :: native_int
 L0:
     s = 0
     r0 = 0
@@ -243,18 +238,17 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = v.buf
-    r4 = get_element_ptr r3 items :: VecI16BufObject
-    r5 = r0 * 2
-    r6 = r4 + r5
-    r7 = load_mem r6 :: i16*
-    x = r7
+    r3 = v.items
+    r4 = r0 * 2
+    r5 = r3 + r4
+    r6 = load_mem r5 :: i16*
+    x = r6
     keep_alive v
-    r8 = s + x
-    s = r8
+    r7 = s + x
+    s = r7
 L3:
-    r9 = r0 + 1
-    r0 = r9
+    r8 = r0 + 1
+    r0 = r8
     goto L1
 L4:
     return s
@@ -276,11 +270,10 @@ def get_item_nested(v, i):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: object
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: vec[i32]
+    r6 :: ptr
+    r7 :: i64
+    r8 :: ptr
+    r9 :: vec[i32]
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -298,13 +291,12 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecNestedBufObject
-    r8 = r5 * 16
-    r9 = r7 + r8
-    r10 = load_mem r9 :: vec[i32]*
+    r6 = v.items
+    r7 = r5 * 16
+    r8 = r6 + r7
+    r9 = load_mem r8 :: vec[i32]*
     keep_alive v
-    return r10
+    return r9
 
 [case testVecMiscNestedPop_64bit]
 from librt.vecs import vec, pop
@@ -318,34 +310,39 @@ def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
 def get_item_nested(v, i):
     v :: vec[vec[i32]]
     i :: i64
-    r0 :: tuple[vec[vec[i32]], VecNestedBufItem{len:native_int, buf:object_nrc}]
+    r0 :: tuple[vec[vec[i32]], VecNestedBufItem{len:native_int, items:ptr}]
     r1, r2 :: vec[vec[i32]]
-    r3, r4 :: VecNestedBufItem{len:native_int, buf:object_nrc}
-    r5 :: vec[i32]
-    r6 :: tuple[vec[vec[i32]], vec[i32]]
-    r7 :: vec[vec[i32]]
-    r8 :: vec[i32]
-    r9 :: vec[vec[i32]]
-    r10, x :: vec[i32]
+    r3, r4 :: VecNestedBufItem{len:native_int, items:ptr}
+    r5 :: native_int
+    r6 :: ptr
+    r7, r8 :: vec[i32]
+    r9 :: tuple[vec[vec[i32]], vec[i32]]
+    r10 :: vec[vec[i32]]
+    r11 :: vec[i32]
+    r12 :: vec[vec[i32]]
+    r13, x :: vec[i32]
 L0:
     r0 = VecNestedApi.pop(v, i)
     r1 = borrow r0[0]
     r2 = unborrow r1
     r3 = borrow r0[1]
     r4 = unborrow r3
-    r5 = VecI32Api.convert_from_nested(r4)
-    r6 = (r2, r5)
+    r5 = r4.len
+    r6 = r4.items
+    r7 = set_element undef vec[i32], len, r5
+    r8 = set_element r7, items, r6
+    r9 = (r2, r8)
     keep_alive steal r0
-    r7 = borrow r6[0]
-    r8 = borrow r6[1]
-    keep_alive steal r6
-    r9 = unborrow r7
-    v = r9
-    r10 = unborrow r8
-    x = r10
+    r10 = borrow r9[0]
+    r11 = borrow r9[1]
+    keep_alive steal r9
+    r12 = unborrow r10
+    v = r12
+    r13 = unborrow r11
+    x = r13
     return x
 
-[case testVecU8ToBytes_experimental]
+[case testVecU8ToBytes]
 from librt.vecs import vec
 from mypy_extensions import u8
 

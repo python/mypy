@@ -16,7 +16,6 @@ isinstance_vec = function_op(
     return_type=bit_rprimitive,
     c_function_name="CPyVec_Check",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[LIBRT_VECS, VECS_EXTRA_OPS],
 )
 
@@ -27,6 +26,5 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="CPyVecU8_ToBytes",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_VECS, VECS_EXTRA_OPS],
 )

@@ -1,4 +1,4 @@
-From 274a77fe74d961e9885036ed31e5ed46f8d91daa Mon Sep 17 00:00:00 2001
+From 1b131f8f39532078597f51143e74e07e6cc95dec Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Mon, 23 Feb 2026 12:00:18 +0100
 Subject: [PATCH] Revert Use contravariant type variable in Container
@@ -8,11 +8,11 @@ Subject: [PATCH] Revert Use contravariant type variable in Container
  1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/typing.pyi b/mypy/typeshed/stdlib/typing.pyi
-index 83e114aac..e9f67877c 100644
+index 2018a835c..2379bec34 100644
 --- a/mypy/typeshed/stdlib/typing.pyi
 +++ b/mypy/typeshed/stdlib/typing.pyi
-@@ -640,17 +640,14 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
-     ) -> Coroutine[Any, Any, _YieldT_co]: ...
+@@ -663,17 +663,14 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
+ 
      def aclose(self) -> Coroutine[Any, Any, None]: ...
  
 -_ContainerT_contra = TypeVar("_ContainerT_contra", contravariant=True, default=Any)
@@ -33,5 +33,5 @@ index 83e114aac..e9f67877c 100644
      @abstractmethod
      def __len__(self) -> int: ...
 -- 
-2.53.0
+2.54.0
 

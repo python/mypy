@@ -66,7 +66,6 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
             module="__main__",
             errors=errors,
             options=options,
-            file_exists=False,
             eager=True,
         )
         if errors.is_errors():
@@ -108,7 +107,6 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             "__main__",
             errors=errors,
             options=options,
-            file_exists=False,
             eager=True,
         )
         if errors.is_errors():

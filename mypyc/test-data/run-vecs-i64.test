@@ -1,7 +1,7 @@
 -- Test cases for vec[i64]. These also partially cover other unboxed item types,
 -- which use a similar runtime representation.
 
-[case testVecI64BasicOps_librt_experimental]
+[case testVecI64BasicOps_librt]
 from typing import Final, Any, Iterable, Tuple
 
 from mypy_extensions import i64, i32

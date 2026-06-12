@@ -3745,6 +3745,83 @@ b.py:4: error: ReadOnly TypedDict key "y" TypedDict is mutated
 ==
 b.py:3: error: ReadOnly TypedDict key "x" TypedDict is mutated
 
+[case testTypedDictUpdateClosed]
+import b
+[file a.py]
+from typing import TypedDict, Union
+class A(TypedDict):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file a.py.2]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict):
+  b: int
+C = Union[A, B]
+[file a.py.3]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file b.py]
+from a import C
+def foo(x: C) -> int:
+    if "b" in x:
+       return x["b"]
+    else:
+       return x["a"]
+def bar(x: C) -> int:
+    if "a" in x:
+       return x["a"]
+    else:
+       return x["b"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+b.py:4: error: TypedDict "A" has no key "b"
+==
+b.py:9: error: TypedDict "B" has no key "a"
+==
+
+[case testTypedDictUpdateClosedPassingToFailing]
+import b
+[file a.py]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file a.py.2]
+from typing import TypedDict, Union
+class A(TypedDict):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file b.py]
+from a import C
+def foo(x: C) -> int:
+    if "b" in x:
+       return x["b"]
+    else:
+       return x["a"]
+def bar(x: C) -> int:
+    if "a" in x:
+       return x["a"]
+    else:
+       return x["b"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+==
+b.py:4: error: TypedDict "A" has no key "b"
+
 [case testBasicAliasUpdate]
 import b
 [file a.py]
