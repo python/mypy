@@ -35,6 +35,7 @@ from mypyc.ir.rtypes import (
     bytearray_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     float_rprimitive,
     frozenset_rprimitive,
     int16_rprimitive,
@@ -175,7 +176,7 @@ class Mapper:
         if kind == ARG_STAR:
             return tuple_rprimitive
         elif kind == ARG_STAR2:
-            return dict_rprimitive
+            return exact_dict_rprimitive
         else:
             return self.type_to_rtype(typ)
 
