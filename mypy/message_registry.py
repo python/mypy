@@ -121,7 +121,7 @@ FUNCTION_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation", codes.NO_UNTYPED_DEF
 )
 ONLY_CLASS_APPLICATION: Final = ErrorMessage(
-    "Type application is only supported for generic classes"
+    "Type application is only supported for generic classes and type aliases"
 )
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
