@@ -333,6 +333,18 @@ def f3() -> None:
         reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
+def f4(x: str | None) -> None:
+    if y := x:
+        reveal_type(y) # N: Revealed type is "builtins.str"
+    y = 1
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+def f5() -> None:
+    if z := 1:
+        reveal_type(z) # N: Revealed type is "builtins.int"
+    z = "s"
+    reveal_type(z) # N: Revealed type is "builtins.str"
+
 [case testNewRedefineOperatorAssignment]
 # flags: --allow-redefinition
 class D: pass
