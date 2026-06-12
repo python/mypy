@@ -137,11 +137,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             narrowed_items = narrowed.relevant_items()
         else:
             narrowed_items = [narrowed]
-        return make_simplified_union(
-            [
-                narrow_declared_type(d, n)
-                for d in declared_items
-                for n in narrowed_items
+        results = []
+        for d in declared_items:
+            for n in narrowed_items:
                 # This (ugly) special-casing is needed to support checking
                 # branches like this:
                 # x: Union[float, complex]
@@ -151,12 +149,31 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                 # x: float | None
                 # y: int | None
                 # x = y
-                if (
+                if not (
                     is_overlapping_types(d, n, ignore_promotions=True)
                     or is_subtype(n, d, ignore_promotions=False)
-                )
-            ]
-        )
+                ):
+                    continue
+                result = narrow_declared_type(d, n)
+                # If narrowing a union member d to n returned d unchanged,
+                # but d is not nominally related to n (only structurally,
+                # e.g. via __getattr__ returning Any), exclude it.
+                # Otherwise a class with __getattr__ -> Any leaks back into
+                # a union narrowed to a protocol it only structurally satisfies.
+                # See https://github.com/python/mypy/issues/16590
+                d_proper = get_proper_type(d)
+                n_proper = get_proper_type(n)
+                if (
+                    result == d
+                    and d != n
+                    and isinstance(d_proper, Instance)
+                    and isinstance(n_proper, Instance)
+                    and n_proper.type.is_protocol
+                    and not d_proper.type.has_base(n_proper.type.fullname)
+                ):
+                    continue
+                results.append(result)
+        return make_simplified_union(results)
     if is_enum_overlapping_union(declared, narrowed):
         # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
         # avoid full expansion and make it faster.
