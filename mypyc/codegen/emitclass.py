@@ -32,6 +32,7 @@ from mypyc.common import (
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
+    PROPCACHE_PREFIX,
     REG_PREFIX,
     short_id_from_name,
 )
@@ -1268,6 +1269,34 @@ def generate_property_setter(
         )
     )
     emitter.emit_line("{")
+    # A NULL value means that the attribute is being deleted.
+    if cl.is_cached_property(attr):
+        # Deleting a functools.cached_property clears the cached value, so that
+        # it is recomputed on the next read. This matches CPython semantics,
+        # including raising AttributeError if there is no cached value.
+        slot_attr = PROPCACHE_PREFIX + attr
+        slot_expr = f"self->{emitter.attr(slot_attr)}"
+        slot_type = cl.attr_type(slot_attr)
+        emitter.emit_line("if (value == NULL) {")
+        emitter.emit_line(f"if ({slot_expr} == NULL) {{")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line("return -1;")
+        emitter.emit_line("}")
+        emitter.emit_dec_ref(slot_expr, slot_type)
+        emitter.emit_line(f"{slot_expr} = NULL;")
+        emitter.emit_line("return 0;")
+        emitter.emit_line("}")
+    else:
+        # Properties otherwise have no deleter, so raise AttributeError
+        # (instead of calling the setter with a NULL value).
+        emitter.emit_line("if (value == NULL) {")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(
+            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
+        )
+        emitter.emit_line("return -1;")
+        emitter.emit_line("}")
     if arg_type.is_unboxed:
         emitter.emit_unbox("value", "tmp", arg_type, error=ReturnHandler("-1"), declare_dest=True)
         emitter.emit_line(
