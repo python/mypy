@@ -5,16 +5,18 @@ from __future__ import annotations
 import sys
 import sysconfig
 import textwrap
+from types import ModuleType
 
 from mypy.report import CoberturaPackage, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
+lxml: ModuleType | None  # lxml is an optional dependency
 try:
     if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         lxml = None
     else:
-        import lxml  # type: ignore[import-untyped]
+        import lxml
 except ImportError:
     lxml = None
 
@@ -29,7 +31,7 @@ class CoberturaReportSuite(Suite):
 
     @pytest.mark.skipif(lxml is None, reason="Cannot import lxml. Is it installed?")
     def test_as_xml(self) -> None:
-        import lxml.etree as etree  # type: ignore[import-untyped]
+        import lxml.etree as etree
 
         cobertura_package = CoberturaPackage("foobar")
         cobertura_package.covered_lines = 21
