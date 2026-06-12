@@ -1539,6 +1539,17 @@ f(C()) # E: No overload variant of "f" matches argument type "C" \
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testProtocolReversePowWithModulo]
+from typing import overload, Protocol
+
+class PowableProto(Protocol):
+    @overload
+    def __rpow__(self, other: "PowableProto") -> "PowableProto": ...
+    @overload
+    def __rpow__(
+        self, other: "PowableProto", modulo: "PowableProto"
+    ) -> "PowableProto": ...
+
 -- Unions of protocol types
 -- ------------------------
 
