@@ -68,6 +68,62 @@ z = Any
 def f(q: Union[x, y, z]) -> None:
     cast(Union[x, y], q)
 
+-- Redundant annotation
+-- --------------------
+
+[case testRedundantAnnotation]
+# flags: --warn-redundant-annotation
+from typing import Literal
+a = 1
+b: int = a
+c: Literal[1] = 1
+d: list[str] = []
+def f() -> None:
+    a = 1
+    b: int = a  # E: Annotation "int" is redundant (inferred type is the same)
+    c: Literal[1] = 1  # E: Annotation "Literal[1]" is redundant (inferred type is the same)
+    d: list[str] = []
+
+class x:
+    def __init__(self) -> None:
+        self.a: int = 1
+
+    def f(self) -> None:
+        a = 1
+        b: int = a  # E: Annotation "int" is redundant (inferred type is the same)
+        c: Literal[1] = 1  # E: Annotation "Literal[1]" is redundant (inferred type is the same)
+        d: list[str] = []
+
+[case testRedundantAnnotationTypeVar]
+# flags: --warn-redundant-annotation
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+def f(x: T) -> T:
+  return x
+
+def g() -> None:
+    x: Literal[1] = f(1)
+    y: list[str] = f([])
+
+[case testRedundantAnnotationSkips]
+# flags: --warn-redundant-annotation
+from dataclasses import dataclass
+from typing import ClassVar, NamedTuple
+
+class a:
+    b: ClassVar[int] = 1
+    c: ClassVar = "test"
+
+class d(NamedTuple):
+    e: int = 1
+
+@dataclass
+class f:
+    g: int = 1
+[builtins fixtures/tuple.pyi]
+
 -- Unused 'type: ignore' comments
 -- ------------------------------
 

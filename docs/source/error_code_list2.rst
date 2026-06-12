@@ -66,6 +66,23 @@ Example:
          def __init__(self) -> None:
              self.value = 0
 
+.. _code-redundant-annotation:
+
+Check that annotation is not redundant [redundant-annotation]
+-------------------------------------------------------------
+
+If you use :option:`--warn-redundant-annotation <mypy --warn-redundant-annotation>`, mypy will generate an error if a
+function local annotation type is the same as the inferred type.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: warn-redundant-annotation
+
+    # Error: Annotation "int" is redundant  [redundant-annotation]
+    count: int = 4
+
 .. _code-redundant-cast:
 
 Check that cast is not redundant [redundant-cast]
