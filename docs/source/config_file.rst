@@ -435,6 +435,11 @@ Platform configuration
     for example ``3.10``.  The default is the version of the Python
     interpreter used to run mypy.
 
+    This setting affects type checking behavior such as version and platform
+    checks, but mypy still uses the parser from the Python interpreter running
+    mypy. To type check code using syntax from a newer Python version, run mypy
+    with an interpreter that supports that syntax.
+
     This option may only be set in the global section (``[mypy]``).
 
 .. confval:: platform

@@ -267,6 +267,11 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
     run under Python version X.Y. Without this option, mypy will default to using
     whatever version of Python is running mypy.
 
+    This flag affects type checking behavior such as version and platform
+    checks, but mypy still uses the parser from the Python interpreter running
+    mypy. To type check code using syntax from a newer Python version, run mypy
+    with an interpreter that supports that syntax.
+
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
