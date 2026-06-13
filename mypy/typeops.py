@@ -1074,7 +1074,10 @@ def is_singleton_equality_type(typ: ProperType) -> bool:
     return (
         isinstance(typ, LiteralType)
         or is_singleton_identity_type(typ)
-        or (isinstance(typ, TupleType) and all(is_singleton_equality_type(get_proper_type(t)) for t in typ.items))
+        or (
+            isinstance(typ, TupleType)
+            and all(is_singleton_equality_type(get_proper_type(t)) for t in typ.items)
+        )
     )
 
 
