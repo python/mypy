@@ -479,6 +479,16 @@ match m, (n, o), (p, (q, r)):
         reveal_type(r)  # N: Revealed type is "Literal[5]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternSubjectWithStarExprNoCrash]
+# flags: --strict-equality --warn-unreachable
+foo: int
+bar: tuple[int, int]
+
+match foo, *bar:
+    case _:
+        pass
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequencePatternSequencesLengthMismatchNoNarrowing]
 # flags: --strict-equality --warn-unreachable
 m: int

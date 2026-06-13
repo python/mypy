@@ -6073,6 +6073,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         typ_ = get_proper_type(typ)
         if isinstance(expr, TupleExpr) and isinstance(typ_, TupleType):
             # When matching a tuple expression with a sequence pattern, narrow individual tuple items
+            if any(isinstance(item, StarExpr) for item in expr.items):
+                return sub_patterns_map
             assert len(expr.items) == len(typ_.items)
             for item_expr, item_typ in zip(expr.items, typ_.items):
                 sub_patterns_map[item_expr] = item_typ
