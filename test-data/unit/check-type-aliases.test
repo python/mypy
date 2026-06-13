@@ -551,12 +551,7 @@ def take_id(x: Id[int]) -> None:
 def id(x: Id[T]) -> T:
     return x
 
-# TODO: This doesn't work and maybe it should?
-# Indirection = AnInt[T]
-# y: Indirection[str]
-# reveal_type(y)  # E : Revealed type is "builtins.int"
-
-# But this does
+# Contrast with the TODO below
 Indirection2 = FlexibleAlias[T, AnInt[T]]
 z: Indirection2[str]
 reveal_type(z)  # N: Revealed type is "builtins.int"
@@ -566,6 +561,16 @@ w: Indirection3[str, int]
 reveal_type(w)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
+
+[case testFlexibleAlias1Todo-xfail]
+# TODO: This doesn't work and maybe it should?
+# Contrast with the example above that mentions this todo
+T = TypeVar('T')
+AnInt = FlexibleAlias[T, int]
+Indirection = AnInt[T]
+y: Indirection[str]
+reveal_type(y)  # N : Revealed type is "builtins.int"
+
 
 [case testFlexibleAlias2]
 # flags: --always-true=BOGUS
