@@ -306,6 +306,24 @@ if int():
 if int():
     reveal_type(1) # N:17: Revealed type is "Literal[1]?"
 
+[case testColumnLiteralExprTypeContext]
+# flags: --config-file tmp/mypy.ini
+def print_literal_context(x: object) -> None: ...
+
+print_literal_context(1)
+print_literal_context("x")
+print_literal_context(True)
+print_literal_context(False)
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/literal_context.py
+[out]
+main:4:23: note: literal type Literal[1]? has line and column context
+main:5:23: note: literal type Literal['x']? has line and column context
+main:6:23: note: literal type Literal[True]? has line and column context
+main:7:23: note: literal type Literal[False]? has line and column context
+
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
 if 1 == '': # E:4: Non-overlapping equality check (left operand type: "Literal[1]", right operand type: "Literal['']")

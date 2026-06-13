@@ -116,7 +116,9 @@ class ExpressionCheckerSharedApi:
         raise NotImplementedError
 
     @abstractmethod
-    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
+    def infer_literal_expr_type(
+        self, value: LiteralValue, fallback_name: str, context: Context
+    ) -> Type:
         raise NotImplementedError
 
     @abstractmethod
