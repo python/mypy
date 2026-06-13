@@ -1835,6 +1835,7 @@ inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # 
 [case testTuplePassedParameters]
 from typing_extensions import Concatenate
 
-def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for tuple, only for ParamSpec
+def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Invalid location for Concatenate \
+                                                # N: You can use Concatenate as the first argument to Callable
     reveal_type(t)  # N: Revealed type is "tuple[Any]"
 [builtins fixtures/tuple.pyi]
