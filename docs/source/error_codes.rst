@@ -50,6 +50,10 @@ and :option:`--disable-error-code <mypy --disable-error-code>`
 to enable or disable specific error codes that don't have a dedicated
 command-line flag or config file setting.
 
+:option:`--enable-all-error-codes <mypy --enable-all-error-codes>` enables
+all optional error codes. (Unlike the other flag for error code enablement,
+these can be countermanded with :option:`--disable-error-code <mypy --disable-error-code>`.)
+
 Per-module enabling/disabling error codes
 -----------------------------------------
 
