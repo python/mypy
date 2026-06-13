@@ -3770,6 +3770,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         pass
                     elif (
                         container_errors.has_new_errors()
+                        and not has_operator(item_type, "__contains__")
                         and
                         # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(item_type)
@@ -3800,21 +3801,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         failed_out = True
 
                 if not encountered_partial_type and not failed_out:
-                    iterable_type = UnionType.make_union(iterable_types)
-                    if not is_subtype(left_type, iterable_type):
-                        if not container_types:
-                            self.msg.unsupported_operand_types("in", left_type, right_type, e)
-                        else:
-                            container_type = UnionType.make_union(container_types)
-                            if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
-                                left_type,
-                                container_type,
-                                original_container=right_type,
-                                prefer_literal=False,
-                            ):
-                                self.msg.dangerous_comparison(
-                                    left_type, container_type, "container", e
-                                )
+                    all_item_types = container_types + iterable_types
+                    if all_item_types:
+                        combined_type = UnionType.make_union(all_item_types)
+                        if not self.chk.can_skip_diagnostics and self.dangerous_comparison(
+                            left_type,
+                            combined_type,
+                            original_container=right_type,
+                            prefer_literal=False,
+                        ):
+                            kind = "container" if container_types else "iterable"
+                            self.msg.dangerous_comparison(left_type, combined_type, kind, e)
 
             elif operator in operators.op_methods:
                 method = operators.op_methods[operator]
