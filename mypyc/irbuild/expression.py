@@ -62,8 +62,10 @@ from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
+    ERR_MAGIC,
     Assign,
     BasicBlock,
+    CallC,
     ComparisonOp,
     Integer,
     LoadAddress,
@@ -80,16 +82,24 @@ from mypyc.ir.rtypes import (
     RTuple,
     RVec,
     bool_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bytearray_rprimitive,
+    is_bytes_rprimitive,
     is_fixed_width_rtype,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
+    is_tuple_rprimitive,
     object_rprimitive,
     set_rprimitive,
+    short_int_rprimitive,
+    vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
@@ -112,14 +122,17 @@ from mypyc.irbuild.specialize import (
     apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
+    translate_getitem_with_bounds_check,
     translate_object_new,
     translate_object_setattr,
 )
 from mypyc.irbuild.vec import (
+    as_platform_int,
     vec_append,
     vec_create,
     vec_create_from_values,
     vec_create_initialized,
+    vec_item_type,
     vec_slice,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
@@ -127,9 +140,13 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
-from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.str_ops import (
+    str_adjust_index_op,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
+    str_slice_op,
+)
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 # Name and attribute references
@@ -148,9 +165,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         )
         return builder.none(expr.line)
     fullname = expr.node.fullname
-    if fullname in builtin_names:
-        typ, src = builtin_names[fullname]
-        return builder.add(LoadAddress(typ, src, expr.line))
+    if builtin := builder.load_builtin(fullname, expr.line):
+        return builtin
     # special cases
     if fullname == "builtins.None":
         return builder.none(expr.line)
@@ -216,7 +232,11 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     # If we're evaluating a class body and this name is a ClassVar defined earlier
     # in the same class, load it from the class being built (type object for ext classes,
     # class dict for non-ext classes) instead of module globals.
-    if builder.class_body_obj is not None and expr.name in builder.class_body_classvars:
+    if (
+        builder.class_body_obj is not None
+        and isinstance(expr.node, Var)
+        and expr.node in builder.class_body_classvars
+    ):
         if builder.class_body_ir is not None and builder.class_body_ir.is_ext_class:
             return builder.py_get_attr(builder.class_body_obj, expr.name, expr.line)
         else:
@@ -364,10 +384,17 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         ):
             item_type = builder.type_to_rtype(analyzed.types[0])
             vec_type = RVec(item_type)
-            if len(expr.args) == 0:
-                return vec_create(builder.builder, vec_type, 0, expr.line)
-            elif len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-                return translate_vec_create_from_iterable(builder, vec_type, expr.args[0])
+            capacity = _get_vec_capacity(builder, expr)
+            if len(expr.args) == 0 or (len(expr.args) == 1 and expr.arg_kinds == [ARG_NAMED]):
+                # vec[T]() or vec[T](capacity=N)
+                return vec_create(builder.builder, vec_type, 0, expr.line, capacity=capacity)
+            elif (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]) or (
+                len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_NAMED]
+            ):
+                # vec[T](items) or vec[T](items, capacity=N)
+                return translate_vec_create_from_iterable(
+                    builder, vec_type, expr.args[0], capacity=capacity
+                )
         callee = analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
@@ -561,8 +588,16 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
 
+def _get_vec_capacity(builder: IRBuilder, expr: CallExpr) -> Value | None:
+    """Extract the 'capacity' keyword argument value from a vec() call, or None."""
+    for i, (kind, name) in enumerate(zip(expr.arg_kinds, expr.arg_names)):
+        if kind == ARG_NAMED and name == "capacity":
+            return builder.accept(expr.args[i])
+    return None
+
+
 def translate_vec_create_from_iterable(
-    builder: IRBuilder, vec_type: RVec, arg: Expression
+    builder: IRBuilder, vec_type: RVec, arg: Expression, *, capacity: Value | None = None
 ) -> Value:
     line = arg.line
     item_type = vec_type.item_type
@@ -581,28 +616,77 @@ def translate_vec_create_from_iterable(
         if is_int64_rprimitive(other_type) or is_int_rprimitive(other_type):
             length = builder.accept(other)
             init = builder.accept(lst.items[0])
-            return vec_create_initialized(builder.builder, vec_type, length, init, line)
+            return vec_create_initialized(
+                builder.builder, vec_type, length, init, line, capacity=capacity
+            )
         assert False, other_type
     if isinstance(arg, ListExpr):
         items = []
         for item in arg.items:
             value = builder.accept(item)
             items.append(builder.coerce(value, item_type, line))
-        return vec_create_from_values(builder.builder, vec_type, items, line)
+        return vec_create_from_values(builder.builder, vec_type, items, line, capacity=capacity)
     if isinstance(arg, ListComprehension):
-        return translate_vec_comprehension(builder, vec_type, arg.generator)
-    return vec_from_iterable(builder, vec_type, arg, line)
+        return translate_vec_comprehension(builder, vec_type, arg.generator, capacity=capacity)
+    return vec_from_iterable(builder, vec_type, arg, line, capacity=capacity)
 
 
 def vec_from_iterable(
-    builder: IRBuilder, vec_type: RVec, iterable: Expression, line: int
+    builder: IRBuilder,
+    vec_type: RVec,
+    iterable: Expression,
+    line: int,
+    *,
+    capacity: Value | None = None,
 ) -> Value:
     """Construct a vec from an arbitrary iterable."""
-    # Translate it as a vec comprehension vec[t]([<name> for <name> in
-    # iterable]). This way we can use various special casing supported
-    # by for loops and comprehensions.
+    item_type = vec_type.item_type
+    api_name = vec_api_by_item_type.get(item_type)
+    iterable_rtype = builder.node_type(iterable)
+    use_c_from_iterable = (
+        is_object_rprimitive(iterable_rtype)
+        or is_list_rprimitive(iterable_rtype)
+        or is_tuple_rprimitive(iterable_rtype)
+    )
+    if api_name is not None and (
+        use_c_from_iterable
+        or is_bytes_rprimitive(iterable_rtype)
+        or is_bytearray_rprimitive(iterable_rtype)
+    ):
+        # For generic iterables (typed as object) and bytes/bytearray
+        # (which support the buffer protocol for fast memcpy), call the
+        # C-level from_iterable. For concrete types like range, list,
+        # vec, etc., the for-loop desugaring below produces better IR.
+        name = f"{api_name}.from_iterable"
+        extra_args: list[Value] = []
+    elif api_name is None and vec_type.depth() == 0 and use_c_from_iterable:
+        name = "VecTApi.from_iterable"
+        extra_args = [vec_item_type(builder.builder, item_type, line)]
+    else:
+        name = None
+    if name is not None:
+        iterable_val = builder.accept(iterable)
+        cap = (
+            as_platform_int(builder.builder, capacity, line)
+            if capacity is not None
+            else Integer(0, int64_rprimitive)
+        )
+        args = extra_args + [iterable_val, cap]
+        call = CallC(
+            name,
+            args,
+            vec_type,
+            steals=[False] * len(args),
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
+        return builder.add(call)
+
+    # Use a for loop with vec_append. The comprehension helper
+    # special-cases range, list, vec, etc. for efficient iteration.
     vec = Register(vec_type)
-    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line), line)
+    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line, capacity=capacity), line)
     name = f"___tmp_{line}"
     var = Var(name)
     reg = builder.add_local(var, vec_type.item_type)
@@ -847,6 +931,16 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             return result
 
     if len(e.operators) == 1:
+        # s[i] == 'x' / s[i] != 'x' (and the symmetric RHS) -> int compare of
+        # codepoints. Skips the per-iteration 1-char str allocation/lookup and
+        # generic str equality call.
+        if first_op in ("==", "!="):
+            result = try_specialize_str_index_compare(
+                builder, first_op, e.operands[0], e.operands[1], e.line
+            )
+            if result is not None:
+                return result
+
         # Special some common simple cases
         if first_op in ("is", "is not"):
             right_expr = e.operands[1]
@@ -887,6 +981,50 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         )
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def try_specialize_str_index_compare(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    """Specialize `s[i] == 'x'` / `s[i] != 'x'` (and the symmetric form with
+    operands swapped) into an int compare of codepoints.
+
+    Returns None if the pattern doesn't match: the indexed base must be str,
+    the index must be an integer, and the literal must be a 1-character str.
+    Multi-character or empty literals fall through to the generic str compare
+    (which still returns False for them, matching today's behavior).
+    """
+    # Normalize so the IndexExpr is on the left.
+    if isinstance(rhs, IndexExpr) and not isinstance(lhs, IndexExpr):
+        tmp = lhs
+        lhs, rhs = rhs, tmp
+    # Shape: s[i] {==, !=} "x" where "x" is exactly one codepoint.
+    if (
+        not isinstance(lhs, IndexExpr)
+        or not isinstance(rhs, StrExpr)
+        or len(rhs.value) != 1
+        or not is_str_rprimitive(builder.node_type(lhs.base))
+    ):
+        return None
+    index_type = builder.node_type(lhs.index)
+    if not (is_tagged(index_type) or is_fixed_width_rtype(index_type)):
+        return None
+
+    # ord(s[i]) with bounds check; raises IndexError for out-of-range indices,
+    # matching the behavior of the generic s[i] path.
+    codepoint = translate_getitem_with_bounds_check(
+        builder,
+        lhs.base,
+        [lhs.index],
+        lhs,
+        str_adjust_index_op,
+        str_range_check_op,
+        str_get_item_unsafe_as_int_op,
+    )
+    if codepoint is None:
+        return None
+    literal_cp = Integer(ord(rhs.value), short_int_rprimitive, line)
+    return builder.binary_op(codepoint, literal_cp, op, line)
 
 
 def try_specialize_in_expr(
@@ -1113,7 +1251,12 @@ def transform_tuple_expr(builder: IRBuilder, expr: TupleExpr) -> Value:
     items = []
     for item_expr, item_type in zip(expr.items, types):
         reg = builder.accept(item_expr)
-        items.append(builder.coerce(reg, item_type, item_expr.line))
+        item = builder.coerce(reg, item_type, item_expr.line)
+        if isinstance(item, Register):
+            temp = Register(item.type)
+            builder.assign(temp, item, item_expr.line)
+            item = temp
+        items.append(item)
     return builder.add(TupleSet(items, expr.line))
 
 

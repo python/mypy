@@ -470,6 +470,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.is_ellipsis_args,
             snapshot_types(typ.variables),
             typ.is_bound,
+            snapshot_optional_type(typ.type_guard),
+            snapshot_optional_type(typ.type_is),
+            snapshot_optional_type(typ.instance_type),
         )
 
     def normalize_callable_variables(self, typ: CallableType) -> CallableType:
@@ -497,7 +500,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         items = tuple((key, snapshot_type(item_type)) for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
         readonly = tuple(sorted(typ.readonly_keys))
-        return ("TypedDictType", items, required, readonly)
+        return ("TypedDictType", items, required, readonly, typ.is_closed)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
         return ("LiteralType", snapshot_type(typ.fallback), typ.value)

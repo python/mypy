@@ -5543,7 +5543,7 @@ reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
 reveal_type(f5(D()))  # N: Revealed type is "__main__.D"
 
 [case testOverloadIfSysVersion]
-# flags: --python-version 3.9
+# flags: --python-version 3.10
 from typing import overload
 import sys
 
@@ -5558,7 +5558,7 @@ class C: ...
 
 @overload
 def f1(g: A) -> A: ...
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     @overload
     def f1(g: B) -> B: ...
 def f1(g): ...
@@ -5569,7 +5569,7 @@ reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
 def f2(g: A) -> A: ...
 @overload
 def f2(g: B) -> B: ...
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
     @overload
     def f2(g: C) -> C: ...
 def f2(g): ...

@@ -2334,7 +2334,7 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [delete nonexistent.py.2]
 [out]
 [out2]
-mypy: error: cannot read file 'tmp/nonexistent.py': No such file or directory
+mypy: error: Cannot read file 'tmp/nonexistent.py': No such file or directory
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -3739,8 +3739,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = True
-[rechecked _typeshed, a, builtins, typing]
-[stale _typeshed, a, builtins, typing]
+[rechecked _typeshed, a, builtins, types, typing]
+[stale _typeshed, a, builtins, types, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
@@ -3781,7 +3781,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with mtime mismatches.
-[file ../.mypy_cache/3.9/@deps.meta.json.2]
+[file ../.mypy_cache/3.10/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 [file ../.mypy_cache/.gitignore]
 # Another hack to not trigger a .gitignore creation failure "false positive"
@@ -3791,8 +3791,8 @@ Signature: 8a477f597d28d172789f06886806bc55
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, types, typing]
+[rechecked _typeshed, a, b, builtins, types, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
@@ -3804,8 +3804,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, types, typing]
+[rechecked _typeshed, a, b, builtins, types, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
@@ -3816,12 +3816,12 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by deleting
 -- the proto deps file.
-[delete ../.mypy_cache/3.9/@deps.meta.json.2]
+[delete ../.mypy_cache/3.10/@deps.meta.json.2]
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, types, typing]
+[rechecked _typeshed, a, b, builtins, types, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
@@ -5188,7 +5188,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -6892,7 +6892,7 @@ class C:
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"
+tmp/a.py:3: note: Revealed type is "TypedDict('b.Hidden@5', {'x': builtins.int})"
 
 [case testNoIncrementalCrashOnInvalidEnumMethod]
 import a
@@ -6916,7 +6916,7 @@ class TheClass:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.pyenum@6"
 
 -- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
@@ -7055,7 +7055,6 @@ def guard(x: object) -> TypeIs[int]:
 [builtins fixtures/tuple.pyi]
 
 [case testStartUsingPEP604Union]
-# flags: --python-version 3.10
 import a
 [file a.py]
 import lib
@@ -7117,9 +7116,9 @@ from .lib import NT
 [out2]
 
 [case testNewRedefineAffectsCache]
-# flags: --local-partial-types --allow-redefinition-new
+# flags: --local-partial-types --allow-redefinition
 # flags2: --local-partial-types
-# flags3: --local-partial-types --allow-redefinition-new
+# flags3: --local-partial-types --allow-redefinition
 x = 0
 if int():
     x = ""
@@ -7996,3 +7995,147 @@ import mod
 [out2]
 main:2: error: Cannot find implementation or library stub for module named "mod"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testIncrementalFileConfigCommentsStale]
+-- When a dependency changes, the importing module becomes stale and is
+-- reprocessed via process_stale_scc. As inline config comments are not cached
+-- (by design), moving the order of processing the stale SCC can accidentally
+-- break file config comments on subsequent runs.
+# mypy: disable-error-code="import-not-found"
+import nonexistent
+import b
+[file b.py]
+x = 1
+[file b.py.2]
+x = "hello"
+[builtins fixtures/module.pyi]
+[stale b]
+[rechecked b]
+
+[case testNamedTupleInlineBaseClassNoNameCollision]
+import m
+[file m.py]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)
+reveal_type(b)
+[file m.py.2]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)  # touch
+reveal_type(b)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("Same", [('x', int)])): pass
+class B(NamedTuple("Same", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+[out2]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+
+[case testNamedTupleInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("N", [('x', int)])): pass
+class A(NamedTuple("N", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+[out2]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+
+[case testTypedDictInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import TypedDict
+class A(TypedDict("TD", {'x': int})):
+    pass
+class A(TypedDict("TD", {'x': str})):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+[out2]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+
+[case testNewReturnTypeIncremental]
+import m
+[file m.py]
+from lib import C
+
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file m.py.2]
+from lib import C
+
+# touch
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file lib.py]
+class A:
+    x = "test"
+    def __new__(cls) -> int: ...  # type: ignore
+
+class C:
+    def __init__(self) -> None:
+        self.ta = A
+[out]
+tmp/m.py:3: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:5: note: Revealed type is "builtins.str"
+[out2]
+tmp/m.py:4: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:5: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:6: note: Revealed type is "builtins.str"
+
+[case testTypeFormWorksInIncrementalMode]
+import b
+[file a.py]
+from typing import TypeVar
+from typing_extensions import TypeForm
+
+T = TypeVar("T")
+def test(arg: TypeForm[T]) -> T: ...
+
+[file b.py]
+from a import test
+test("int")
+
+[file b.py.2]
+from a import test
+reveal_type(test("int"))
+
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is "builtins.int"

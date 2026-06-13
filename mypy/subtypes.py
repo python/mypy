@@ -312,6 +312,8 @@ def _is_subtype(
         # ErasedType as we do for non-proper subtyping.
         return True
 
+    # Cases specific w.r.t. right type are easier to handle before entering the SubtypeVisitor.
+    # Currently, these include Union types and TypeVarType with values.
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
@@ -360,6 +362,17 @@ def _is_subtype(
         elif is_subtype_of_item:
             return True
         # otherwise, fall through
+
+    if isinstance(right, TypeVarType) and right.values and not isinstance(left, TypeVarType):
+        if proper_subtype:
+            if all(
+                is_proper_subtype(orig_left, v, subtype_context=subtype_context)
+                for v in right.values
+            ):
+                return True
+        elif all(is_subtype(orig_left, v, subtype_context=subtype_context) for v in right.values):
+            return True
+
     return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 
@@ -749,17 +762,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
                         return True
             if right.type.is_protocol and left.is_type_obj():
-                ret_type = get_proper_type(left.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = mypy.typeops.tuple_fallback(ret_type)
-                if isinstance(ret_type, Instance) and is_protocol_implementation(
-                    ret_type, right, proper_subtype=self.proper_subtype, class_obj=True
+                instance_type = left.get_instance_type(force_fallback=True)
+                if isinstance(instance_type, Instance) and is_protocol_implementation(
+                    instance_type, right, proper_subtype=self.proper_subtype, class_obj=True
                 ):
                     return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
-            return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
+            return left.is_type_obj() and self._is_subtype(left.get_instance_type(), right.item)
         else:
             return False
 
@@ -797,6 +808,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
                 mypy.typeops.tuple_fallback(left), right
             ):
+                return True
+            elif right.type.is_protocol and is_protocol_implementation(
+                left, right, proper_subtype=self.proper_subtype
+            ):
+                # Special-case protocols to get precise binding of self type for
+                # custom tuple types like NamedTuples.
                 return True
             return False
         elif isinstance(right, TupleType):
@@ -921,45 +938,52 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypedDictType):
             if left == right:
                 return True  # Fast path
-            if not left.names_are_wider_than(right):
+
+            # A closed type must remain closed
+            if right.is_closed and not left.is_closed:
                 return False
-            for name, l, r in left.zip(right):
-                # TODO: should we pass on the full subtype_context here and below?
-                right_readonly = name in right.readonly_keys
-                if not right_readonly:
+
+            # Perform fast key-based checks before recursing into value types
+            for name, l, r in left.zipall(right):
+                # Required keys must remain required
+                if r.required and not l.required:
+                    return False
+                # Mutable keys must remain mutable
+                if r.mutable and not l.mutable:
+                    return False
+                # Mutable optional keys must also remain optional,
+                # to retain the ability to delete them
+                if r.mutable and not r.required and l.required:
+                    return False
+
+            for name, l, r in left.zipall(right):
+                if r.mutable:
+                    # None will only be used for missing ReadOnly[object] keys
+                    assert r.typ is not None
+                    # Guaranteed by "mutable keys must remain mutable" check
+                    assert l.typ is not None
+
+                    # TODO: should we pass on the full subtype_context here and below?
                     if self.proper_subtype:
-                        check = is_same_type(l, r)
+                        check = is_same_type(l.typ, r.typ)
                     else:
                         check = is_equivalent(
-                            l,
-                            r,
+                            l.typ,
+                            r.typ,
                             ignore_type_params=self.subtype_context.ignore_type_params,
                             options=self.options,
                         )
                 else:
                     # Read-only items behave covariantly
-                    check = self._is_subtype(l, r)
+                    if r.typ is None:
+                        check = True
+                    elif l.typ is None:
+                        # Keys cannot be dropped in an open subtype
+                        # as this would implicitly widen the type constraint
+                        check = False
+                    else:
+                        check = self._is_subtype(l.typ, r.typ)
                 if not check:
-                    return False
-                # Non-required key is not compatible with a required key since
-                # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-read-only non-required
-                # key since the prior doesn't support 'del' but the latter should
-                # support it.
-                # Required key is compatible with a read-only non-required key.
-                required_differ = (name in left.required_keys) != (name in right.required_keys)
-                if not right_readonly and required_differ:
-                    return False
-                # Readonly fields check:
-                #
-                # A = TypedDict('A', {'x': ReadOnly[int]})
-                # B = TypedDict('B', {'x': int})
-                # def reset_x(b: B) -> None:
-                #     b['x'] = 0
-                #
-                # So, `A` cannot be a subtype of `B`, while `B` can be a subtype of `A`,
-                # because you can use `B` everywhere you use `A`, but not the other way around.
-                if name in left.readonly_keys and name not in right.readonly_keys:
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
@@ -1135,6 +1159,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
                     # since this will break transitivity of subtyping.
                     return False
+                item = left.item
+                # Note: self-types are special since returning `Self` is more precise
+                # than its upper bound, so we don't unwrap TypeVar to its bound here.
+                if isinstance(item, TupleType):
+                    item = mypy.typeops.tuple_fallback(item)
+                if isinstance(item, Instance):
+                    constructor = mypy.typeops.type_object_type(item.type)
+                    constructor = expand_type_by_instance(constructor, item)
+                    if isinstance(constructor, CallableType):
+                        # Only consider return type to match historic behavior (see below).
+                        return self._is_subtype(constructor.ret_type, right.ret_type)
+                    elif isinstance(constructor, Overloaded):
+                        return all(
+                            self._is_subtype(c.ret_type, right.ret_type) for c in constructor.items
+                        )
                 # This is unsound, we don't check the __init__ signature.
                 return self._is_subtype(left.item, right.ret_type)
 
@@ -1172,7 +1211,7 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance,
+    left: Instance | TupleType,
     right: Instance,
     proper_subtype: bool = False,
     class_obj: bool = False,
@@ -1199,6 +1238,11 @@ def is_protocol_implementation(
     assert right.type.is_protocol
     if skip is None:
         skip = []
+    # Preserve original left type for precise self-type binding. Only tuple types are
+    # supported for now.
+    original_left = left
+    if isinstance(left, TupleType):
+        left = mypy.typeops.tuple_fallback(left)
     # We need to record this check to generate protocol fine-grained dependencies.
     type_state.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
@@ -1221,10 +1265,10 @@ def is_protocol_implementation(
             ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = find_member(member, right, left)
+            supertype = find_member(member, right, original_left)
             assert supertype is not None
 
-            subtype = get_protocol_member(left, member, class_obj)
+            subtype = get_protocol_member(left, original_left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1251,9 +1295,11 @@ def is_protocol_implementation(
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if IS_EXPLICIT_SETTER in superflags:
-                    supertype = find_member(member, right, left, is_lvalue=True)
+                    supertype = find_member(member, right, original_left, is_lvalue=True)
                 if IS_EXPLICIT_SETTER in subflags:
-                    subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
+                    subtype = get_protocol_member(
+                        left, original_left, member, class_obj, is_lvalue=True
+                    )
                 # At this point we know attribute is present on subtype, otherwise we
                 # would return False above.
                 assert supertype is not None and subtype is not None
@@ -1292,7 +1338,7 @@ def is_protocol_implementation(
 
 
 def get_protocol_member(
-    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+    left: Instance, original_left: Type, member: str, class_obj: bool, is_lvalue: bool = False
 ) -> Type | None:
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
@@ -1303,7 +1349,7 @@ def get_protocol_member(
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
-    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    subtype = find_member(member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue)
     if isinstance(subtype, PartialType):
         subtype = (
             NoneType()

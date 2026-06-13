@@ -1,11 +1,11 @@
 -- Test cases for vec[i64]. These also partially cover other unboxed item types,
 -- which use a similar runtime representation.
 
-[case testVecI64BasicOps_librt_experimental]
+[case testVecI64BasicOps_librt]
 from typing import Final, Any, Iterable, Tuple
 
 from mypy_extensions import i64, i32
-from librt.vecs import vec, append, remove, pop
+from librt.vecs import vec, append, extend, remove, pop
 
 from testutil import assertRaises
 
@@ -271,6 +271,20 @@ def test_construct_from_iterable() -> None:
         for j in range(i):
             assert v[j] == j * j
 
+def test_construct_from_array() -> None:
+    import array
+    a = array.array('q', [1, 2, 3, 100, -50])
+    v = vec[i64](a)
+    assert len(v) == 5
+    assert v[0] == 1
+    assert v[1] == 2
+    assert v[2] == 3
+    assert v[3] == 100
+    assert v[4] == -50
+    a2 = array.array('q')
+    v2 = vec[i64](a2)
+    assert len(v2) == 0
+
 def test_equality() -> None:
     v0 = vec[i64]()
     v0b = vec[i64]()
@@ -488,3 +502,202 @@ def test_tuple() -> None:
     assert b == t[1]
     with assertRaises(RuntimeError):
         ftuple(True)
+
+def test_cap_empty() -> None:
+    v = vec[i64](capacity=3)
+    assert len(v) == 0
+    assert v == vec[i64]()
+
+def test_cap_with_initializer() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    assert len(v) == 2
+    assert v[0] == 1
+    assert v[1] == 2
+
+def test_cap_from_range() -> None:
+    v = vec[i64](range(7), capacity=10)
+    old = v
+    v = append(v, 7)
+    v = append(v, 8)
+    v = append(v, 9)
+    v[0] = 99
+    assert old[0] == 99
+    assert v == vec[i64]([99, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+def test_cap_variable(n: i64 = 3) -> None:
+    v = vec[i64](capacity=n)
+    assert len(v) == 0
+    v = append(v, 5)
+    assert v[0] == 5
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    old = v
+    v = append(v, 3)
+    v[0] = 99
+    assert old[0] == 99  # shared buffer
+
+def test_cap_below_initializer_length() -> None:
+    v = vec[i64]([10, 20, 30], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 10
+    assert v[1] == 20
+    assert v[2] == 30
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[i64](capacity=-1)
+    with assertRaises(ValueError):
+        vec[i64]([1], capacity=-1)
+
+def extend_vec(v: vec[i64], v2: vec[i64]) -> vec[i64]:
+    return extend(v, v2)
+
+def extend_iterable(v: vec[i64], it: Iterable[i64]) -> vec[i64]:
+    return extend(v, it)
+
+def test_extend_vec() -> None:
+    v = extend_vec(vec[i64]([1, 2]), vec[i64]([3, 4, 5]))
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_vec_empty_src() -> None:
+    v = extend_vec(vec[i64]([1, 2]), vec[i64]())
+    assert v == vec[i64]([1, 2])
+
+def test_extend_vec_empty_dst() -> None:
+    v = extend_vec(vec[i64](), vec[i64]([10, 20]))
+    assert v == vec[i64]([10, 20])
+
+def test_extend_vec_both_empty() -> None:
+    v = extend_vec(vec[i64](), vec[i64]())
+    assert v == vec[i64]()
+
+def test_extend_iterable() -> None:
+    v = extend_iterable(vec[i64]([1]), [2, 3])
+    assert v == vec[i64]([1, 2, 3])
+
+def test_extend_vec_fits_in_capacity() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    v = extend_vec(v, vec[i64]([3]))
+    assert v == vec[i64]([1, 2, 3])
+
+def test_extend_vec_exceeds_capacity() -> None:
+    v = vec[i64]([1, 2], capacity=3)
+    v = extend_vec(v, vec[i64]([3, 4, 5]))
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_vec_multiple_doublings() -> None:
+    v = vec[i64]([1], capacity=1)
+    src = vec[i64]()
+    for i in range(2, 22):
+        src = append(src, i)
+    v = extend_vec(v, src)
+    assert len(v) == 21
+    assert v[0] == 1
+    assert v[20] == 21
+
+def test_extend_vec_self() -> None:
+    v = vec[i64]()
+    v = append(v, 1)
+    v = append(v, 2)
+    v = append(v, 3)
+    v = extend_vec(v, v)
+    assert v == vec[i64]([1, 2, 3, 1, 2, 3])
+
+def test_extend_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[i64]()
+    v0 = append(v0, 10)
+    v0 = append(v0, 20)
+    v0 = append(v0, 30)
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer; v1.len=2, v0.len=3
+    v = extend_vec(v1, v0)
+    assert v == vec[i64]([10, 20, 10, 20, 30])
+    # src (v0) must not be corrupted
+    assert v0 == vec[i64]([10, 20, 30])
+
+def test_extend_vec_shared_buffer_spare_capacity_after_pop() -> None:
+    v0 = vec[i64]([10, 20, 30], capacity=8)
+    v1, _ = pop(v0)
+    # v1 and v0 share a buffer with enough spare capacity for an in-place extend.
+    v = extend_vec(v1, v0)
+    assert v == vec[i64]([10, 20, 10, 20, 30])
+    assert v0 == vec[i64]([10, 20, 30])
+
+def test_extend_iterable_runtime_vec_shared_buffer_after_pop() -> None:
+    v0 = vec[i64]()
+    v0 = append(v0, 10)
+    v0 = append(v0, 20)
+    v0 = append(v0, 30)
+    v1, _ = pop(v0)
+    # Statically this uses VecI64Api.extend, but at runtime the iterable is a vec.
+    it: Iterable[i64] = v0
+    v = extend_iterable(v1, it)
+    assert v == vec[i64]([10, 20, 10, 20, 30])
+    assert v0 == vec[i64]([10, 20, 30])
+
+def test_extend_from_array() -> None:
+    import array
+    v = extend_iterable(vec[i64]([1, 2]), array.array('q', [3, 4, 5]))
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_from_array_empty_src() -> None:
+    import array
+    v = extend_iterable(vec[i64]([1, 2]), array.array('q', []))
+    assert v == vec[i64]([1, 2])
+
+def test_extend_from_array_empty_dst() -> None:
+    import array
+    v = extend_iterable(vec[i64](), array.array('q', [10, 20]))
+    assert v == vec[i64]([10, 20])
+
+def test_extend_from_bytes() -> None:
+    v = vec[i64]([1])
+    v = extend_iterable(v, b'\x02\x03')
+    assert v == vec[i64]([1, 2, 3])
+
+def to_list(v: vec[i64]) -> list[i64]:
+    return list(v)
+
+def test_to_list_empty() -> None:
+    assert to_list(vec[i64]()) == []
+
+def test_to_list_single() -> None:
+    assert to_list(vec[i64]([5])) == [5]
+
+def test_to_list_multiple() -> None:
+    assert to_list(vec[i64]([1, 2, 3])) == [1, 2, 3]
+
+def test_to_list_large_values() -> None:
+    v = vec[i64]([-(2**63), 0, 2**63 - 1])
+    result = to_list(v)
+    assert result == [-(2**63), 0, 2**63 - 1]
+
+def test_to_list_does_not_consume() -> None:
+    v = vec[i64]([1, 2, 3])
+    l1 = to_list(v)
+    l2 = to_list(v)
+    assert l1 == l2 == [1, 2, 3]
+
+def to_tuple(v: vec[i64]) -> Tuple[i64, ...]:
+    return tuple(v)
+
+def test_to_tuple_empty() -> None:
+    assert to_tuple(vec[i64]()) == ()
+
+def test_to_tuple_single() -> None:
+    assert to_tuple(vec[i64]([5])) == (5,)
+
+def test_to_tuple_multiple() -> None:
+    assert to_tuple(vec[i64]([1, 2, 3])) == (1, 2, 3)
+
+def test_to_tuple_large_values() -> None:
+    v = vec[i64]([-(2**63), 0, 2**63 - 1])
+    result = to_tuple(v)
+    assert result == (-(2**63), 0, 2**63 - 1)
+
+def test_to_tuple_does_not_consume() -> None:
+    v = vec[i64]([1, 2, 3])
+    t1 = to_tuple(v)
+    t2 = to_tuple(v)
+    assert t1 == t2 == (1, 2, 3)

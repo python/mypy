@@ -10,18 +10,11 @@ from ssl import Purpose, SSLContext
 from typing import Any, AnyStr, BinaryIO, ClassVar, Protocol, type_check_only
 from typing_extensions import Self, deprecated
 
+__all__ = ["HTTPServer", "ThreadingHTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler"]
+if sys.version_info < (3, 15):
+    __all__ += ["CGIHTTPRequestHandler"]
 if sys.version_info >= (3, 14):
-    __all__ = [
-        "HTTPServer",
-        "ThreadingHTTPServer",
-        "HTTPSServer",
-        "ThreadingHTTPSServer",
-        "BaseHTTPRequestHandler",
-        "SimpleHTTPRequestHandler",
-        "CGIHTTPRequestHandler",
-    ]
-else:
-    __all__ = ["HTTPServer", "ThreadingHTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler", "CGIHTTPRequestHandler"]
+    __all__ = ["HTTPSServer", "ThreadingHTTPSServer"]
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
@@ -77,6 +70,8 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     protocol_version: str
     MessageClass: type
     responses: Mapping[int, tuple[str, str]]
+    if sys.version_info >= (3, 15):
+        default_content_type: str
     default_request_version: str  # undocumented
     weekdayname: ClassVar[Sequence[str]]  # undocumented
     monthname: ClassVar[Sequence[str | None]]  # undocumented
@@ -102,14 +97,26 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     if sys.version_info >= (3, 12):
         index_pages: ClassVar[tuple[str, ...]]
     directory: str
-    def __init__(
-        self,
-        request: socketserver._RequestType,
-        client_address: _socket._RetAddress,
-        server: socketserver.BaseServer,
-        *,
-        directory: StrPath | None = None,
-    ) -> None: ...
+    if sys.version_info >= (3, 15):
+        def __init__(
+            self,
+            request: socketserver._RequestType,
+            client_address: _socket._RetAddress,
+            server: socketserver.BaseServer,
+            *,
+            directory: StrPath | None = None,
+            extra_response_headers: Mapping[str, str] | None = None,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            request: socketserver._RequestType,
+            client_address: _socket._RetAddress,
+            server: socketserver.BaseServer,
+            *,
+            directory: StrPath | None = None,
+        ) -> None: ...
+
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
     def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented
@@ -120,18 +127,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 def executable(path: StrPath) -> bool: ...  # undocumented
 
-if sys.version_info >= (3, 13):
+if sys.version_info < (3, 15):
     @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
-    class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
-        cgi_directories: list[str]
-        have_fork: bool  # undocumented
-        def do_POST(self) -> None: ...
-        def is_cgi(self) -> bool: ...  # undocumented
-        def is_executable(self, path: StrPath) -> bool: ...  # undocumented
-        def is_python(self, path: StrPath) -> bool: ...  # undocumented
-        def run_cgi(self) -> None: ...  # undocumented
-
-else:
     class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
         cgi_directories: list[str]
         have_fork: bool  # undocumented

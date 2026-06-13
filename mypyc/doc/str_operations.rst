@@ -15,6 +15,11 @@ Construction
 * ``repr(x: int)``
 * ``repr(x: object)``
 
+.. note::
+
+    :ref:`librt.strings.StringWriter <librt-string-writer>` can be used to efficiently
+    construct strings in compiled code.
+
 Operators
 ---------
 
@@ -89,3 +94,6 @@ Functions
 
 * ``len(s: str)``
 * ``ord(s: str)``
+
+  * Calls with a literal argument are treated as compile-time integer constants (e.g.
+    ``ord("A")`` is equivalent to 65).

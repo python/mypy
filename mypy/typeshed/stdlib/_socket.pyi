@@ -2,8 +2,8 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
 from socket import error as error, gaierror as gaierror, herror as herror, timeout as timeout
-from typing import Any, Final, SupportsIndex, overload
-from typing_extensions import CapsuleType, TypeAlias, disjoint_base
+from typing import Any, Final, SupportsIndex, TypeAlias, overload
+from typing_extensions import CapsuleType, disjoint_base
 
 _CMSG: TypeAlias = tuple[int, int, bytes]
 _CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
@@ -195,7 +195,7 @@ if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "lin
 if sys.platform == "linux":
     # Availability: Linux >= 2.6.20, FreeBSD >= 10.1
     IPPROTO_UDPLITE: Final[int]
-if sys.version_info >= (3, 10) and sys.platform == "linux":
+if sys.platform == "linux":
     IPPROTO_MPTCP: Final[int]
 
 IPPORT_RESERVED: Final[int]
@@ -218,8 +218,7 @@ IP_MULTICAST_TTL: Final[int]
 IP_OPTIONS: Final[int]
 if sys.platform != "linux":
     IP_RECVDSTADDR: Final[int]
-if sys.version_info >= (3, 10):
-    IP_RECVTOS: Final[int]
+IP_RECVTOS: Final[int]
 IP_TOS: Final[int]
 IP_TTL: Final[int]
 if sys.platform != "win32":
@@ -231,6 +230,9 @@ if sys.platform != "win32":
     IP_RETOPTS: Final[int]
 if sys.version_info >= (3, 13) and sys.platform == "linux":
     CAN_RAW_ERR_FILTER: Final[int]
+if sys.version_info >= (3, 15):
+    if sys.platform == "win32" or sys.platform == "linux":
+        IPV6_HDRINCL: Final[int]
 if sys.version_info >= (3, 14):
     IP_RECVTTL: Final[int]
 
@@ -343,7 +345,7 @@ if sys.platform != "win32":
     TCP_NOTSENT_LOWAT: Final[int]
 if sys.platform != "darwin":
     TCP_KEEPIDLE: Final[int]
-if sys.version_info >= (3, 10) and sys.platform == "darwin":
+if sys.platform == "darwin":
     TCP_KEEPALIVE: Final[int]
 if sys.version_info >= (3, 11) and sys.platform == "darwin":
     TCP_CONNECTION_INFO: Final[int]
@@ -438,6 +440,35 @@ if sys.platform == "linux":
     CAN_RAW_JOIN_FILTERS: Final[int]
     # Availability: Linux >= 2.6.25
     CAN_ISOTP: Final[int]
+    if sys.version_info >= (3, 15):
+        CAN_ISOTP_CHK_PAD_DATA: Final[int]
+        CAN_ISOTP_CHK_PAD_LEN: Final[int]
+        CAN_ISOTP_DEFAULT_EXT_ADDRESS: Final[int]
+        CAN_ISOTP_DEFAULT_FLAGS: Final[int]
+        CAN_ISOTP_DEFAULT_FRAME_TXTIME: Final[int]
+        CAN_ISOTP_DEFAULT_LL_MTU: Final[int]
+        CAN_ISOTP_DEFAULT_LL_TX_DL: Final[int]
+        CAN_ISOTP_DEFAULT_LL_TX_FLAGS: Final[int]
+        CAN_ISOTP_DEFAULT_PAD_CONTENT: Final[int]
+        CAN_ISOTP_DEFAULT_RECV_BS: Final[int]
+        CAN_ISOTP_DEFAULT_RECV_STMIN: Final[int]
+        CAN_ISOTP_DEFAULT_RECV_WFTMAX: Final[int]
+        CAN_ISOTP_EXTEND_ADDR: Final[int]
+        CAN_ISOTP_FORCE_RXSTMIN: Final[int]
+        CAN_ISOTP_FORCE_TXSTMIN: Final[int]
+        CAN_ISOTP_HALF_DUPLEX: Final[int]
+        CAN_ISOTP_LL_OPTS: Final[int]
+        CAN_ISOTP_LISTEN_MODE: Final[int]
+        CAN_ISOTP_OPTS: Final[int]
+        CAN_ISOTP_RECV_FC: Final[int]
+        CAN_ISOTP_RX_EXT_ADDR: Final[int]
+        CAN_ISOTP_RX_PADDING: Final[int]
+        CAN_ISOTP_RX_STMIN: Final[int]
+        CAN_ISOTP_SF_BROADCAST: Final[int]
+        CAN_ISOTP_TX_PADDING: Final[int]
+        CAN_ISOTP_TX_STMIN: Final[int]
+        CAN_ISOTP_WAIT_TX_DONE: Final[int]
+        SOL_CAN_ISOTP: Final[int]
     # Availability: Linux >= 5.4
     CAN_J1939: Final[int]
 
@@ -741,7 +772,7 @@ class socket:
     def proto(self) -> int: ...
     # F811: "Redefinition of unused `timeout`"
     @property
-    def timeout(self) -> float | None: ...  # noqa: F811
+    def timeout(self) -> float | None: ...
     if sys.platform == "win32":
         def __init__(
             self, family: int = ..., type: int = ..., proto: int = ..., fileno: SupportsIndex | bytes | None = None
@@ -757,10 +788,12 @@ class socket:
     def fileno(self) -> int: ...
     def getpeername(self) -> _RetAddress: ...
     def getsockname(self) -> _RetAddress: ...
+
     @overload
     def getsockopt(self, level: int, optname: int, /) -> int: ...
     @overload
     def getsockopt(self, level: int, optname: int, buflen: int, /) -> bytes: ...
+
     def getblocking(self) -> bool: ...
     def gettimeout(self) -> float | None: ...
     if sys.platform == "win32":
@@ -779,10 +812,12 @@ class socket:
     def recv_into(self, buffer: WriteableBuffer, nbytes: int = 0, flags: int = 0) -> int: ...
     def send(self, data: ReadableBuffer, flags: int = 0, /) -> int: ...
     def sendall(self, data: ReadableBuffer, flags: int = 0, /) -> None: ...
+
     @overload
     def sendto(self, data: ReadableBuffer, address: _Address, /) -> int: ...
     @overload
     def sendto(self, data: ReadableBuffer, flags: int, address: _Address, /) -> int: ...
+
     if sys.platform != "win32":
         def sendmsg(
             self,
@@ -799,10 +834,12 @@ class socket:
 
     def setblocking(self, flag: bool, /) -> None: ...
     def settimeout(self, value: float | None, /) -> None: ...
+
     @overload
     def setsockopt(self, level: int, optname: int, value: int | ReadableBuffer, /) -> None: ...
     @overload
     def setsockopt(self, level: int, optname: int, value: None, optlen: int, /) -> None: ...
+
     if sys.platform == "win32":
         def share(self, process_id: int, /) -> bytes: ...
 
@@ -838,7 +875,7 @@ def inet_ntop(address_family: int, packed_ip: ReadableBuffer, /) -> str: ...
 def getdefaulttimeout() -> float | None: ...
 
 # F811: "Redefinition of unused `timeout`"
-def setdefaulttimeout(timeout: float | None, /) -> None: ...  # noqa: F811
+def setdefaulttimeout(timeout: float | None, /) -> None: ...
 
 if sys.platform != "win32":
     def sethostname(name: str, /) -> None: ...

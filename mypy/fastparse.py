@@ -1958,7 +1958,10 @@ class TypeConverter:
         if not isinstance(self.parent(), ast3.List):
             note = None
             if constructor:
-                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+                if e.keywords:
+                    note = "Cannot use a function call in a type annotation"
+                else:
+                    note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
             self.fail(message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED, e.lineno, e.col_offset)

@@ -636,13 +636,13 @@ else:
 4: import reachable_exactly_310
 
 [case testVersionInfoNotEquals]
-# sys.version_info != (3, 9) should be always true for Python 3.10
+# sys.version_info != (3, 11) should be always true for Python 3.10
 import sys
-if sys.version_info != (3, 9):
-    import reachable_not_39
+if sys.version_info != (3, 11):
+    import reachable_not_311
 [out]
 2: import sys
-4: import reachable_not_39
+4: import reachable_not_311
 
 [case testVersionInfoNotEqualsExact]
 # sys.version_info != (3, 10) should be always false for Python 3.10

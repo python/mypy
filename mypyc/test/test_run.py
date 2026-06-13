@@ -81,6 +81,7 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-librt-time.test",
+    "run-librt-random.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",
@@ -278,6 +279,7 @@ class TestRun(MypycDataSuite):
         librt = has_test_name_tag(testcase.name, "librt")
         # Enable experimental features (local librt build also includes experimental features)
         experimental_features = has_test_name_tag(testcase.name, "experimental")
+        result = None
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
@@ -313,7 +315,8 @@ class TestRun(MypycDataSuite):
                 print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, "Compile error"
         finally:
-            result.manager.metastore.close()
+            if result is not None:
+                result.manager.metastore.close()
 
         # Check that serialization works on this IR. (Only on the first
         # step because the returned ir only includes updated code.)
