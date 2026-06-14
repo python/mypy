@@ -597,8 +597,14 @@ def get_header_deps(cfiles: list[tuple[str, str]]) -> list[tuple[bool, str]]:
     the on-disk headers after every group has written its files.
 
     Arguments:
-        cfiles: A list of (file name, file contents) pairs.
+        cfiles: A list of (file name, file contents) pairs. Contents must be
+            non-empty; callers handling cached groups must re-read the .c
+            from disk before calling, otherwise direct includes are missed
+            and Extension.depends ends up empty.
     """
+    assert all(
+        contents for _, contents in cfiles
+    ), "get_header_deps requires non-empty file contents"
     headers: set[tuple[bool, str]] = set()
     for _, contents in cfiles:
         headers.update(_extract_includes(contents))
@@ -737,7 +743,18 @@ def mypyc_build(
                 write_file(cfile_full, ctext)
             if os.path.splitext(cfile_full)[1] == ".c":
                 cfilenames.append(cfile_full)
-            per_cfile_deps.append((cfile_full, get_header_deps([(cfile, ctext)])))
+            # For fully-cached groups ctext is empty; read the on-disk .c so the dep resolver
+            # can walk its transitive header chain and populate Extension.depends. Otherwise,
+            # cross-group export-table header changes (e.g. a new class shifting struct offsets)
+            # won't trigger a recompile of this cached consumer's .o.
+            if not ctext and os.path.exists(cfile_full):
+                try:
+                    with open(cfile_full, encoding="utf-8") as _f:
+                        ctext = _f.read()
+                except OSError:
+                    pass
+            if ctext:
+                per_cfile_deps.append((cfile_full, get_header_deps([(cfile, ctext)])))
 
         # Fully-cached mypy build (typical of pip's second setup.py invocation
         # for the wheel-build phase): mypyc returns an empty ctext for the
@@ -758,9 +775,10 @@ def mypyc_build(
                         existing_text = _f.read()
                 except OSError:
                     existing_text = ""
-                per_cfile_deps.append(
-                    (existing, get_header_deps([(os.path.basename(existing), existing_text)]))
-                )
+                if existing_text:
+                    per_cfile_deps.append(
+                        (existing, get_header_deps([(os.path.basename(existing), existing_text)]))
+                    )
 
         pending.append(per_cfile_deps)
         group_cfilenames.append((cfilenames, []))

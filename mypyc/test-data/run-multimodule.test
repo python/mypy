@@ -1391,6 +1391,60 @@ def translate(b: bytes) -> bytes:
 import native
 assert native.translate(b'ABCD') == b'BBCD'
 
+[case testIncrementalCrossGroupExportTableOffsets]
+# Regression: under separate=True, each consumer module's IR is
+# compiled against the positional layout of its deps'
+# `exports_<group>` struct. Reordering the dep's classes keeps the
+# same set of public names, so mypy's interface hash for the dep is
+# unchanged -- the consumer is not invalidated and stays fully
+# cached, which causes `_load_cached_group_files` to return empty
+# cfile content for the consumer's group.
+#
+# Before the fix, `get_header_deps` over empty content returned no
+# includes, so `Extension.depends` for the consumer ended up empty
+# and setuptools never recompiled the consumer's .o when the dep's
+# `__native_<dep>.h` shifted struct offsets. The stale .o kept the
+# old offsets and silently resolved cross-group calls to the wrong
+# class.
+from other_classes import Gamma, Delta
+
+def make_gamma() -> Gamma:
+    return Gamma()
+
+def make_delta() -> Delta:
+    return Delta()
+
+[file other_classes.py]
+class Alpha:
+    a: int = 1
+
+class Beta:
+    b: int = 2
+
+class Gamma:
+    g: int = 3
+
+class Delta:
+    d: int = 4
+
+[file other_classes.py.2]
+class Delta:
+    d: int = 4
+
+class Alpha:
+    a: int = 1
+
+class Beta:
+    b: int = 2
+
+class Gamma:
+    g: int = 3
+
+[file driver.py]
+import native
+assert type(native.make_gamma()).__name__ == "Gamma"
+assert type(native.make_delta()).__name__ == "Delta"
+
 [case testCrossModuleAttrDefaults]
 from other import Parent
 
