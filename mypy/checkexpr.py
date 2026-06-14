@@ -3046,7 +3046,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         matches: list[CallableType] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
-        args_contain_any = any(map(has_any_type, arg_types))
+        args_contain_any = any(has_any_type_for_overload(arg_type) for arg_type in arg_types)
         type_maps: list[dict[Expression, Type]] = []
 
         for typ in plausible_targets:
@@ -6635,13 +6635,26 @@ def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     return t.accept(HasAnyType(ignore_in_type_obj))
 
 
+def has_any_type_for_overload(t: Type, ignore_in_type_obj: bool = False) -> bool:
+    """Like has_any_type, but also counts a top-level alias-to-Any.
+
+    has_any_type ignores TypeOfAny.from_alias_target so use sites don't trigger
+    --disallow-any-explicit, but for overload ambiguity we want an actual argument
+    that *is* an alias-to-Any to count (without making nested alias-to-Any count).
+    """
+    proper_t = get_proper_type(t)
+    if isinstance(proper_t, AnyType) and proper_t.type_of_any == TypeOfAny.from_alias_target:
+        return True
+    return has_any_type(t, ignore_in_type_obj=ignore_in_type_obj)
+
+
 class HasAnyType(types.BoolTypeQuery):
     def __init__(self, ignore_in_type_obj: bool) -> None:
         super().__init__(types.ANY_STRATEGY)
         self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+        return t.type_of_any not in (TypeOfAny.special_form, TypeOfAny.from_alias_target)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
@@ -6880,7 +6893,7 @@ def any_causes_overload_ambiguity(
         # We ignore Anys in type object callables as ambiguity
         # creators, since that can lead to falsely claiming ambiguity
         # for overloads between Type and Callable.
-        if has_any_type(arg_type, ignore_in_type_obj=True):
+        if has_any_type_for_overload(arg_type, ignore_in_type_obj=True):
             matching_formals_unfiltered = [
                 (item_idx, lookup[arg_idx])
                 for item_idx, lookup in enumerate(actual_to_formal)
