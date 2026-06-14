@@ -128,6 +128,13 @@ def main(
             options,
         )
 
+    if options.install_types and options.list_install_types:
+        fail(
+            "error: --install-types and --list-install-types cannot be used together",
+            stderr,
+            options,
+        )
+
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
         fail("error: --install-types not supported in this mode of running mypy", stderr, options)
@@ -147,11 +154,26 @@ def main(
             options,
         )
 
+    if options.list_install_types and not options.incremental:
+        fail(
+            "error: --list-install-types not supported with incremental mode disabled",
+            stderr,
+            options,
+        )
+
     if options.install_types and not sources:
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
-    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+    if options.list_install_types and not sources:
+        list_install_types(options, out=stdout)
+        return
+
+    # When --list-install-types is active, route all mypy diagnostic output to
+    # stderr so that only the package names end up on stdout (enabling pipe usage
+    # like: mypy --list-install-types src/ | xargs uv pip install).
+    build_stdout = stderr if options.list_install_types else stdout
+    res, messages, blockers = run_build(sources, options, fscache, t0, build_stdout, stderr)
 
     if options.non_interactive:
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
@@ -177,11 +199,14 @@ def main(
             summary = formatter.format_error(
                 n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
             )
-            stdout.write(summary + "\n")
+            build_stdout.write(summary + "\n")
         # Only notes should also output success
         elif not messages or n_notes == len(messages):
-            stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
-        stdout.flush()
+            build_stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
+        build_stdout.flush()
+
+    if options.list_install_types:
+        list_install_types(options, after_run=True, out=stdout)
 
     if options.install_types and not options.non_interactive:
         result = install_types(formatter, options, after_run=True, non_interactive=False)
@@ -1251,6 +1276,13 @@ def define_options(
         group=misc_group,
         inverse="--interactive",
     )
+    add_invertible_flag(
+        "--list-install-types",
+        default=False,
+        strict_flag=False,
+        help="Print detected missing library stub packages (one per line) without installing",
+        group=misc_group,
+    )
 
     if server_options:
         misc_group.add_argument(
@@ -1514,7 +1546,7 @@ def process_options(
                 special_opts.files,
             ]
         )
-        if code_methods == 0 and not options.install_types:
+        if code_methods == 0 and not options.install_types and not options.list_install_types:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
@@ -1739,6 +1771,19 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         return []
     with open(fnam) as f:
         return [line.strip() for line in f]
+
+
+def list_install_types(options: Options, *, after_run: bool = False, out: TextIO) -> None:
+    """Print missing stub packages one per line to *out*.
+
+    Callers should pass stdout here; mypy diagnostic output is routed to stderr
+    by the caller so that only package names reach stdout, making pipe usage
+    possible: mypy --list-install-types src/ | xargs uv pip install
+    """
+    packages = read_types_packages_to_install(options.cache_dir, after_run)
+    for pkg in packages:
+        out.write(pkg + "\n")
+    out.flush()
 
 
 def install_types(
