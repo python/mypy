@@ -91,12 +91,18 @@ int CPyFunction_set_name(PyObject *op, PyObject *value, void *context) {
     }
 
     Py_INCREF(value);
-    // The critical section serializes the store against a concurrent getter or
-    // setter on free-threaded builds, preventing a torn store or double-decref.
+    // Store the new name and capture the old one under the critical section,
+    // which serializes the store against a concurrent getter or setter on
+    // free-threaded builds. Decref the old name only after the new one is
+    // stored and we've left the section: the slot then never points at a
+    // half-torn-down object, and an arbitrary finalizer (e.g. a str subclass
+    // __del__) won't run under the lock where it could reenter or deadlock.
+    PyObject *old;
     Py_BEGIN_CRITICAL_SECTION(op);
-    Py_XDECREF(func->func_name);
+    old = func->func_name;
     func->func_name = value;
     Py_END_CRITICAL_SECTION();
+    Py_XDECREF(old);
     return 0;
 }
 
