@@ -267,12 +267,13 @@ PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *fu
         PyMutex_Lock(&type_init_mutex);
         if (!CPyFunctionType) {
             PyTypeObject *type = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
+            if (unlikely(!type)) {
+                PyMutex_Unlock(&type_init_mutex);
+                goto err;
+            }
             _Py_atomic_store_ptr_release(&CPyFunctionType, type);
         }
         PyMutex_Unlock(&type_init_mutex);
-        if (unlikely(!CPyFunctionType)) {
-            goto err;
-        }
     }
 #else
     if (!CPyFunctionType) {
