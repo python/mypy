@@ -29,7 +29,16 @@ static void CPyFunction_dealloc(CPyFunction *m) {
 }
 
 static PyObject* CPyFunction_repr(CPyFunction *op) {
-    return PyUnicode_FromFormat("<function %U at %p>", op->func_name, (void *)op);
+    // Take a strong ref to the name via the getter, which guards against a
+    // concurrent CPyFunction_set_name freeing func_name from under us on
+    // free-threaded builds. It also handles lazy initialization of func_name.
+    PyObject *name = CPyFunction_get_name((PyObject *)op, NULL);
+    if (unlikely(name == NULL)) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("<function %U at %p>", name, (void *)op);
+    Py_DECREF(name);
+    return result;
 }
 
 static PyObject* CPyFunction_call(PyObject *func, PyObject *args, PyObject *kw) {
