@@ -236,7 +236,7 @@ class TypesSuite(Suite):
         assert closed.is_closed
 
         with self.assertRaises(TypeError):
-            TypedDictType(  # type: ignore[misc]
+            TypedDictType(  # type: ignore[call-arg]
                 {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, True
             )
 
