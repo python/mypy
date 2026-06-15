@@ -663,14 +663,17 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
 
     def aclose(self) -> Coroutine[Any, Any, None]: ...
 
-@runtime_checkable
-class Container(Protocol[_T_co]):
-    # This is generic more on vibes than anything else
-    @abstractmethod
-    def __contains__(self, x: object, /) -> bool: ...
+_ContainerT_contra = TypeVar("_ContainerT_contra", contravariant=True, default=Any)
 
 @runtime_checkable
-class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
+class Container(Protocol[_ContainerT_contra]):
+    # This is generic more on vibes than anything else
+    @abstractmethod
+    def __contains__(self, x: _ContainerT_contra, /) -> bool: ...
+
+@runtime_checkable
+class Collection(Iterable[_T_co], Container[Any], Protocol[_T_co]):
+    # Note: need to use Container[Any] instead of Container[_T_co] to ensure covariance.
     # Implement Sized (but don't have it as a base class).
     @abstractmethod
     def __len__(self) -> int: ...
@@ -1046,6 +1049,7 @@ if sys.version_info >= (3, 11):
 class NamedTuple(tuple[Any, ...]):
     _field_defaults: ClassVar[dict[str, Any]]
     _fields: ClassVar[tuple[str, ...]]
+    __match_args__: ClassVar[tuple[str, ...]] = ...
     # __orig_bases__ sometimes exists on <3.12, but not consistently
     # So we only add it to the stub on 3.12+.
     if sys.version_info >= (3, 12):
@@ -1057,9 +1061,12 @@ class NamedTuple(tuple[Any, ...]):
     @deprecated("Creating a typing.NamedTuple using keyword arguments is deprecated and support will be removed in Python 3.15")
     def __init__(self, typename: str, fields: None = None, /, **kwargs: Any) -> None: ...
 
+    @final
     @classmethod
     def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
+    @final
     def _asdict(self) -> dict[str, Any]: ...
+    @final
     def _replace(self, **kwargs: Any) -> typing_extensions.Self: ...
     if sys.version_info >= (3, 13):
         def __replace__(self, **kwargs: Any) -> typing_extensions.Self: ...
@@ -1079,6 +1086,10 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     if sys.version_info >= (3, 13):
         __readonly_keys__: ClassVar[frozenset[str]]
         __mutable_keys__: ClassVar[frozenset[str]]
+    if sys.version_info >= (3, 15):
+        # PEP 728
+        __closed__: ClassVar[bool | None]
+        __extra_items__: ClassVar[Any]  # AnnotationForm
 
     def copy(self) -> typing_extensions.Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature

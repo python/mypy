@@ -65,7 +65,7 @@ from typing import (  # noqa: Y022,UP035
 )
 
 # we can't import `Literal` from typing or mypy crashes: see #11247
-from typing_extensions import Literal, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023, UP035
+from typing_extensions import Literal, LiteralString, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023, UP035
 
 if sys.version_info >= (3, 14):
     from _typeshed import AnnotateFunc
@@ -489,8 +489,20 @@ class str(Sequence[str]):
     def __new__(cls, object: object = "") -> Self: ...
     @overload
     def __new__(cls, object: ReadableBuffer, encoding: str = "utf-8", errors: str = "strict") -> Self: ...
+
+    @overload
+    def capitalize(self: LiteralString) -> LiteralString: ...
+    @overload
     def capitalize(self) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def casefold(self: LiteralString) -> LiteralString: ...
+    @overload
     def casefold(self) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def center(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def center(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
 
     def count(self, sub: str, start: SupportsIndex | None = None, end: SupportsIndex | None = None, /) -> int: ...
@@ -498,9 +510,17 @@ class str(Sequence[str]):
     def endswith(
         self, suffix: str | tuple[str, ...], start: SupportsIndex | None = None, end: SupportsIndex | None = None, /
     ) -> bool: ...
+
+    @overload
+    def expandtabs(self: LiteralString, tabsize: SupportsIndex = 8) -> LiteralString: ...
+    @overload
     def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
 
     def find(self, sub: str, start: SupportsIndex | None = None, end: SupportsIndex | None = None, /) -> int: ...
+
+    @overload
+    def format(self: LiteralString, *args: LiteralString, **kwargs: LiteralString) -> LiteralString: ...
+    @overload
     def format(self, *args: object, **kwargs: object) -> str: ...
 
     def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
@@ -517,38 +537,119 @@ class str(Sequence[str]):
     def isspace(self) -> bool: ...
     def istitle(self) -> bool: ...
     def isupper(self) -> bool: ...
+
+    @overload
+    def join(self: LiteralString, iterable: Iterable[LiteralString], /) -> LiteralString: ...
+    @overload
     def join(self, iterable: Iterable[str], /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def ljust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def ljust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def lower(self: LiteralString) -> LiteralString: ...
+    @overload
     def lower(self) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def lstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def lstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def partition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def partition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
 
     if sys.version_info >= (3, 13):
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, /, count: SupportsIndex = -1
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, /, count: SupportsIndex = -1) -> str: ...  # type: ignore[misc]
     else:
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, count: SupportsIndex = -1, /
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
 
+    @overload
+    def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
+    @overload
     def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def removesuffix(self: LiteralString, suffix: LiteralString, /) -> LiteralString: ...
+    @overload
     def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
 
     def rfind(self, sub: str, start: SupportsIndex | None = None, end: SupportsIndex | None = None, /) -> int: ...
     def rindex(self, sub: str, start: SupportsIndex | None = None, end: SupportsIndex | None = None, /) -> int: ...
+
+    @overload
+    def rjust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def rjust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def rpartition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def rpartition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
+
+    @overload
+    def rsplit(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def rsplit(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+
+    @overload
+    def rstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def rstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def split(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def split(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+
+    @overload
+    def splitlines(self: LiteralString, keepends: bool = False) -> list[LiteralString]: ...
+    @overload
     def splitlines(self, keepends: bool = False) -> list[str]: ...  # type: ignore[misc]
 
     def startswith(
         self, prefix: str | tuple[str, ...], start: SupportsIndex | None = None, end: SupportsIndex | None = None, /
     ) -> bool: ...
+
+    @overload
+    def strip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def strip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def swapcase(self: LiteralString) -> LiteralString: ...
+    @overload
     def swapcase(self) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def title(self: LiteralString) -> LiteralString: ...
+    @overload
     def title(self) -> str: ...  # type: ignore[misc]
 
     def translate(self, table: _TranslateTable, /) -> str: ...
+
+    @overload
+    def upper(self: LiteralString) -> LiteralString: ...
+    @overload
     def upper(self) -> str: ...  # type: ignore[misc]
+
+    @overload
+    def zfill(self: LiteralString, width: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
 
     if sys.version_info >= (3, 15):
@@ -576,25 +677,49 @@ class str(Sequence[str]):
     @staticmethod
     @overload
     def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
+
+    @overload
+    def __add__(self: LiteralString, value: LiteralString, /) -> LiteralString: ...
+    @overload
     def __add__(self, value: str, /) -> str: ...  # type: ignore[misc]
 
     # Incompatible with Sequence.__contains__
     def __contains__(self, key: str, /) -> bool: ...  # type: ignore[override]
     def __eq__(self, value: object, /) -> bool: ...
     def __ge__(self, value: str, /) -> bool: ...
+
+    @overload
+    def __getitem__(self: LiteralString, key: SupportsIndex | slice[SupportsIndex | None], /) -> LiteralString: ...
+    @overload
     def __getitem__(self, key: SupportsIndex | slice[SupportsIndex | None], /) -> str: ...  # type: ignore[misc]
 
     def __gt__(self, value: str, /) -> bool: ...
     def __hash__(self) -> int: ...
+
+    @overload
+    def __iter__(self: LiteralString) -> Iterator[LiteralString]: ...
+    @overload
     def __iter__(self) -> Iterator[str]: ...  # type: ignore[misc]
 
     def __le__(self, value: str, /) -> bool: ...
     def __len__(self) -> int: ...
     def __lt__(self, value: str, /) -> bool: ...
+
+    @overload
+    def __mod__(self: LiteralString, value: LiteralString | tuple[LiteralString, ...], /) -> LiteralString: ...
+    @overload
     def __mod__(self, value: Any, /) -> str: ...
+
+    @overload
+    def __mul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __mul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
 
     def __ne__(self, value: object, /) -> bool: ...
+
+    @overload
+    def __rmul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __rmul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
 
     def __getnewargs__(self) -> tuple[str]: ...
@@ -1228,27 +1353,14 @@ class dict(MutableMapping[_KT, _VT]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
     if sys.version_info >= (3, 15):
-        @overload
-        def __or__(self, value: dict[_KT, _VT] | frozendict[_KT, _VT], /) -> dict[_KT, _VT]: ...
-        @overload
         def __or__(self, value: dict[_T1, _T2] | frozendict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
 
         @overload
-        def __ror__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
-        @overload
         def __ror__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
-        @overload
-        def __ror__(self, value: frozendict[_KT, _VT], /) -> frozendict[_KT, _VT]: ...
         @overload
         def __ror__(self, value: frozendict[_T1, _T2], /) -> frozendict[_KT | _T1, _VT | _T2]: ...
     else:
-        @overload
-        def __or__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
-        @overload
         def __or__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
-        @overload
-        def __ror__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
-        @overload
         def __ror__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
 
     # dict.__ior__ should be kept roughly in line with MutableMapping.update()
@@ -1303,17 +1415,10 @@ if sys.version_info >= (3, 15):
         def __iter__(self) -> Iterator[_KT]: ...
         def __hash__(self) -> int: ...
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
-        @overload
-        def __or__(self, value: dict[_KT, _VT] | frozendict[_KT, _VT], /) -> frozendict[_KT, _VT]: ...
-        @overload
         def __or__(self, value: dict[_T1, _T2] | frozendict[_T1, _T2], /) -> frozendict[_KT | _T1, _VT | _T2]: ...
 
         @overload
-        def __ror__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
-        @overload
         def __ror__(self, value: dict[_T1, _T2], /) -> dict[_KT | _T1, _VT | _T2]: ...
-        @overload
-        def __ror__(self, value: frozendict[_KT, _VT], /) -> frozendict[_KT, _VT]: ...
         @overload
         def __ror__(self, value: frozendict[_T1, _T2], /) -> frozendict[_KT | _T1, _VT | _T2]: ...
 
@@ -1389,7 +1494,7 @@ class frozenset(AbstractSet[_T_co]):
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @disjoint_base
-class enumerate(Iterator[tuple[int, _T]]):
+class enumerate(Generic[_T]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1655,7 +1760,7 @@ else:
 exit: _sitebuiltins.Quitter
 
 @disjoint_base
-class filter(Iterator[_T]):
+class filter(Generic[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1726,7 +1831,7 @@ license: _sitebuiltins._Printer
 def locals() -> dict[str, Any]: ...
 
 @disjoint_base
-class map(Iterator[_S]):
+class map(Generic[_S]):
     # 3.14 adds `strict` argument.
     if sys.version_info >= (3, 14):
         @overload
@@ -2042,7 +2147,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 quit: _sitebuiltins.Quitter
 
 @disjoint_base
-class reversed(Iterator[_T]):
+class reversed(Generic[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -2106,7 +2211,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
 @overload
-def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
+def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...
 @overload
 def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
 @overload
@@ -2120,7 +2225,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
 @disjoint_base
-class zip(Iterator[_T_co]):
+class zip(Generic[_T_co]):
     @overload
     def __new__(cls, *, strict: bool = False) -> zip[Any]: ...
     @overload
