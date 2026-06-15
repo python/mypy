@@ -15,13 +15,10 @@
 // some indirections.
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
-        PyObject *res = PyDict_GetItemWithError(dict, key);
-        if (!res) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetObject(PyExc_KeyError, key);
-            }
-        } else {
-            Py_INCREF(res);
+        PyObject *res;
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found == 0) {
+            PyErr_SetObject(PyExc_KeyError, key);
         }
         return res;
     } else {
@@ -56,14 +53,15 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     // We are dodgily assuming that get on a subclass doesn't have
     // different behavior.
-    PyObject *res = PyDict_GetItemWithError(dict, key);
-    if (!res) {
-        if (PyErr_Occurred()) {
-            return NULL;
-        }
-        res = fallback;
+    PyObject *res;
+    int found = PyDict_GetItemRef(dict, key, &res);
+    if (found < 0) {
+        return NULL;
     }
-    Py_INCREF(res);
+    if (found == 0) {
+        Py_INCREF(fallback);
+        return fallback;
+    }
     return res;
 }
 
@@ -100,17 +98,19 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
         } else if (data_type == 3) {
             new_obj = PySet_New(NULL);
         } else {
-            return NULL;
+            new_obj = NULL;
         }
 
-        if (CPyDict_SetItem(dict, key, new_obj) == -1) {
-            return NULL;
+        if (new_obj == NULL) {
+            res = NULL;
+        } else if (CPyDict_SetItem(dict, key, new_obj) == -1) {
+            Py_DECREF(new_obj);
+            res = NULL;
         } else {
-            return new_obj;
+            res = new_obj;
         }
-    } else {
-        return res;
     }
+    return res;
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
