@@ -424,7 +424,16 @@ def _infer_constraints(
         )
         if result:
             return result
-        elif has_recursive_types(template) and not has_recursive_types(actual):
+        elif (
+            has_recursive_types(template)
+            or (
+                any(isinstance(t, TypeVarType) for t in template.items)
+                and any(
+                    not isinstance(t, TypeVarType) and has_type_vars(t)
+                    for t in template.items
+                )
+            )
+        ) and not has_recursive_types(actual):
             return handle_recursive_union(template, actual, direction)
         return []
 
@@ -504,11 +513,13 @@ def merge_with_any(constraint: Constraint) -> Constraint:
 
 
 def handle_recursive_union(template: UnionType, actual: Type, direction: int) -> list[Constraint]:
-    # This is a hack to special-case things like Union[T, Inst[T]] in recursive types. Although
-    # it is quite arbitrary, it is a relatively common pattern, so we should handle it well.
-    # This function may be called when inferring against such union resulted in different
-    # constraints for each item. Normally we give up in such case, but here we instead split
-    # the union in two parts, and try inferring sequentially.
+    # Special-case unions of the form ``T | Wrapper[T]``, both in recursive type aliases and
+    # in plain generic function signatures (e.g. ``def f[T](x: T | list[T])``).
+    # When any_constraints() infers against each union branch independently it may yield
+    # conflicting results — e.g. ``T >= list[int]`` from the bare-T branch and ``T = int``
+    # from the ``list[T]`` branch — and gives up, leaving T unconstrained.  Instead, we
+    # split the union into non-TypeVar parts (tried first, since they give precise bounds
+    # like ``T = int``) and TypeVar parts (used as a fallback).
     non_type_var_items = [t for t in template.items if not isinstance(t, TypeVarType)]
     type_var_items = [t for t in template.items if isinstance(t, TypeVarType)]
     return infer_constraints(

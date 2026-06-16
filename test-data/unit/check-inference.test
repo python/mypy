@@ -873,13 +873,7 @@ def g(x: Union[T, List[T]]) -> List[T]: pass
 def h(x: List[str]) -> None: pass
 g('a')() # E: "list[str]" not callable
 
-# The next line is a case where there are multiple ways to satisfy a constraint
-# involving a Union. Either T = list[str] or T = str would turn out to be valid,
-# but mypy doesn't know how to branch on these two options (and potentially have
-# to backtrack later) and defaults to T = Never. The result is an
-# awkward error message. Either a better error message, or simply accepting the
-# call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type "list[str]"; expected "list[Never]"
+g(['a'])
 
 h(g(['a']))
 
@@ -890,6 +884,20 @@ i(a, a, b)
 i(b, a, b)
 i(a, b, b) # E: Argument 1 to "i" has incompatible type "list[int]"; expected "list[str]"
 [builtins fixtures/list.pyi]
+
+[case testUnionInferenceTypeVarWrapper]
+# Regression test for https://github.com/python/mypy/issues/21615
+# T | Wrapper[T] should infer T from the wrapped branch when the argument matches it.
+from typing import TypeVar, Union, List, Dict
+T = TypeVar('T')
+def f(x: Union[T, List[T]]) -> List[T]: pass
+def g(x: Union[T, Dict[str, T]]) -> T: pass
+
+reveal_type(f(1))      # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f([1]))    # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f(['a']))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(g({'k': 1}))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
 
 [case testCallableListJoinInference]
 from typing import Any, Callable
