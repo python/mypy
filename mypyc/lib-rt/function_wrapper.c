@@ -29,9 +29,7 @@ static void CPyFunction_dealloc(CPyFunction *m) {
 }
 
 static PyObject* CPyFunction_repr(CPyFunction *op) {
-    // Take a strong ref to the name via the getter, which guards against a
-    // concurrent CPyFunction_set_name freeing func_name from under us on
-    // free-threaded builds. It also handles lazy initialization of func_name.
+    // Use helper to get name for free threading safety.
     PyObject *name = CPyFunction_get_name((PyObject *)op, NULL);
     if (unlikely(name == NULL)) {
         return NULL;
@@ -69,9 +67,6 @@ PyObject* CPyFunction_get_name(PyObject *op, void *context) {
     (void)context;
     CPyFunction *func = (CPyFunction *)op;
     PyObject *result;
-    // The critical section makes the lazy init and the incref atomic with
-    // respect to a concurrent CPyFunction_set_name on free-threaded builds,
-    // which would otherwise free func_name from under us.
     Py_BEGIN_CRITICAL_SECTION(op);
     if (unlikely(func->func_name == NULL)) {
         func->func_name = PyUnicode_InternFromString(((PyCFunctionObject *)func)->m_ml->ml_name);
@@ -91,12 +86,7 @@ int CPyFunction_set_name(PyObject *op, PyObject *value, void *context) {
     }
 
     Py_INCREF(value);
-    // Store the new name and capture the old one under the critical section,
-    // which serializes the store against a concurrent getter or setter on
-    // free-threaded builds. Decref the old name only after the new one is
-    // stored and we've left the section: the slot then never points at a
-    // half-torn-down object, and an arbitrary finalizer (e.g. a str subclass
-    // __del__) won't run under the lock where it could reenter or deadlock.
+    // Decref outside critical section, since it could run arbitrary code.
     PyObject *old;
     Py_BEGIN_CRITICAL_SECTION(op);
     old = func->func_name;
@@ -259,9 +249,7 @@ PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *fu
 #ifdef Py_GIL_DISABLED
     // Double-checked locking: the common case (type already created) is a
     // lock-free atomic load. Only the first-time initialization takes the
-    // mutex, which serializes concurrent creators so we don't leak a type or
-    // race on the store. The release/acquire pairing ensures a thread that
-    // observes a non-NULL pointer also sees the fully initialized type.
+    // mutex, which serializes concurrent creators.
     if (!_Py_atomic_load_ptr_acquire(&CPyFunctionType)) {
         static PyMutex type_init_mutex = {0};
         PyMutex_Lock(&type_init_mutex);
