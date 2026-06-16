@@ -429,8 +429,7 @@ def _infer_constraints(
             or (
                 any(isinstance(t, TypeVarType) for t in template.items)
                 and any(
-                    not isinstance(t, TypeVarType) and has_type_vars(t)
-                    for t in template.items
+                    not isinstance(t, TypeVarType) and has_type_vars(t) for t in template.items
                 )
             )
         ) and not has_recursive_types(actual):
