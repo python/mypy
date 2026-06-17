@@ -10,20 +10,11 @@
 #include <errno.h>
 #endif
 
-#if CPY_3_14_FEATURES && defined(__linux__) && !defined(Py_GIL_DISABLED) && \
-    defined(_POSIX_SEMAPHORES) && (_POSIX_SEMAPHORES + 0) != -1 && \
-    (defined(HAVE_SEM_TIMEDWAIT) || defined(HAVE_SEM_CLOCKWAIT))
+#if CPY_3_14_FEATURES
 
-// Python 3.14+ on Linux with the GIL: Use a POSIX unnamed semaphore. On Linux
-// this is faster than PyMutex, and the GIL serializes the bookkeeping flag.
-#define LOCK_BACKEND_SEM
-#include <semaphore.h>
-
-#elif CPY_3_14_FEATURES
-
-// Python 3.14+ Linux free-threaded and non-Linux builds: Use PyMutex (1-byte
+// Python 3.14+ (all platforms, with or without the GIL): Use PyMutex (1-byte
 // atomic lock with parking lot). PyMutex gives better interruptibility than the
-// pthread fallback.
+// pthread fallback, and its fast release path is competitive with sem_t.
 // PyMutex_LockFast, _PyMutex_LockTimed, and _PY_LOCK_DETACH are internal
 // CPython APIs that might change across minor releases.
 #define LOCK_BACKEND_PYMUTEX
@@ -68,12 +59,9 @@
 //
 // A fast mutex lock for use from mypyc-compiled code.
 //
-// On Python 3.14+ Linux builds with the GIL, this uses a sem_t initialized to
-// 1: acquire is sem_wait, release is sem_post. Semaphores have no ownership
-// concept, so cross-thread release is directly well-defined. On other Python
-// 3.14+ builds, this uses CPython's PyMutex, a 1-byte atomic lock backed by a
-// parking lot for contended waits. PyMutex automatically releases the GIL when
-// blocking.
+// On Python 3.14+ (all platforms), this uses CPython's PyMutex, a 1-byte atomic
+// lock backed by a parking lot for contended waits. PyMutex automatically
+// releases the GIL when blocking.
 //
 // On Python 3.13 and earlier with Windows, this uses an SRWLOCK (Slim
 // Reader/Writer Lock) plus a CONDITION_VARIABLE guarding a `locked` flag. The SRWLOCK only
