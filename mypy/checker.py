@@ -6599,6 +6599,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if (
                         self.binder.get(expr) is not None
                         and yes_type is not None
+                        and not isinstance(get_proper_type(current_type), AnyType)
                         and is_subtype(current_type, yes_type, ignore_promotions=True)
                     ):
                         yes_type = current_type
