@@ -72,6 +72,14 @@ class UpdateDataSuite(Suite):
             s1: str = 42  # E: bar
             [file b.py]
             s2: str = 43  # E: baz
+
+            [case testEscapedBracketInFile]
+            # flags: --config-file tmp/mypy.ini
+            s: str = 42  # E: foo
+            [file mypy.ini]
+            \\[mypy]
+            warn_unused_ignores = True
+
             [builtins fixtures/list.pyi]
             """)
 
@@ -126,6 +134,14 @@ class UpdateDataSuite(Suite):
         s1: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         [file b.py]
         s2: str = 43  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+        [case testEscapedBracketInFile]
+        # flags: --config-file tmp/mypy.ini
+        s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        [file mypy.ini]
+        \\[mypy]
+        warn_unused_ignores = True
+
         [builtins fixtures/list.pyi]
         """)
         assert result.input_updated == expected
