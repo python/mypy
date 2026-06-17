@@ -26,6 +26,25 @@ def main(a: Union[Point, Line, int]) -> None:
 
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsAndIsinstanceWithGenericAlias]
+from typing import Any, Generic, TypeVar
+from typing_extensions import TypeAlias, TypeIs
+
+T = TypeVar("T")
+class Slice(Generic[T]): pass
+
+SliceInt: TypeAlias = Slice[int | None]
+SliceStr: TypeAlias = Slice[str | None]
+
+def is_slice_int(obj: Any) -> TypeIs[SliceInt]: pass
+
+def main(obj: SliceInt | SliceStr) -> None:
+    if is_slice_int(obj):
+        pass
+    elif isinstance(obj, Slice):
+        reveal_type(obj)  # N: Revealed type is "__main__.Slice[builtins.str | None]"
+[builtins fixtures/isinstance.pyi]
+
 [case testTypeIsTypeArgsNone]
 from typing_extensions import TypeIs
 def foo(a: object) -> TypeIs:  # E: TypeIs must have exactly one type argument
