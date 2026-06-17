@@ -6592,9 +6592,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     return {}, {}
                 if literal(expr) == LITERAL_TYPE:
                     original_type = self.lookup_type(expr)
-                    current_type = self.expr_checker.narrow_type_from_binder(
-                        expr, original_type
-                    )
+                    current_type = self.expr_checker.narrow_type_from_binder(expr, original_type)
                     yes_type, no_type = self.conditional_types_with_intersection(
                         current_type, self.get_isinstance_type(node.args[1]), expr
                     )
@@ -6604,11 +6602,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         and is_subtype(current_type, yes_type, ignore_promotions=True)
                     ):
                         yes_type = current_type
-                    return conditional_types_to_typemaps(
-                        expr,
-                        yes_type,
-                        no_type,
-                    )
+                    return conditional_types_to_typemaps(expr, yes_type, no_type)
             elif refers_to_fullname(node.callee, "builtins.issubclass"):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
