@@ -4175,7 +4175,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     lr_pairs.append((star_lv.expr, rv_list))
                 lr_pairs.extend(zip(right_lvs, right_rvs))
 
+                captured_pairs: list[tuple[Lvalue, Expression]] = []
+
                 for lv, rv in lr_pairs:
+                    if isinstance(rv, NameExpr):
+                        narrowed = self.binder.get(rv)
+
+                        if narrowed is not None:
+                            captured_pairs.append(
+                                (lv, self.temp_node(narrowed, context=rv))
+                            )
+                            continue
+
+                    captured_pairs.append((lv, rv))
+
+                for lv, rv in captured_pairs:
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
