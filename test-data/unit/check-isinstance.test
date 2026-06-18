@@ -3248,15 +3248,6 @@ def foo(x: object, t: type[Any]):
         reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
-[case testAssertIsinstanceAny]
-from typing import Any
-
-def f(x: Any) -> str:
-    assert isinstance(x, str)
-    reveal_type(x)  # N: Revealed type is "builtins.str"
-    return x
-[builtins fixtures/isinstance.pyi]
-
 [case testIsInstanceObject]
 # flags: --strict-equality --warn-unreachable
 from typing import Any

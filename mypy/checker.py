@@ -6594,12 +6594,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     original_type = self.lookup_type(expr)
                     current_type = self.expr_checker.narrow_type_from_binder(expr, original_type)
                     yes_type, no_type = self.conditional_types_with_intersection(
-                        current_type, self.get_isinstance_type(node.args[1]), expr
+                        original_type, self.get_isinstance_type(node.args[1]), expr
                     )
                     if (
                         self.binder.get(expr) is not None
                         and yes_type is not None
-                        and not isinstance(get_proper_type(current_type), AnyType)
+                        and not has_any_type(current_type)
                         and is_subtype(current_type, yes_type, ignore_promotions=True)
                     ):
                         yes_type = current_type
@@ -9352,6 +9352,46 @@ def is_valid_inferred_type(
     elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(InvalidInferredTypes())
+
+
+def has_any_type(typ: Type) -> bool:
+    return _has_any_type(typ, set())
+
+
+def _has_any_type(typ: Type, seen: set[int]) -> bool:
+    if id(typ) in seen:
+        return False
+    seen.add(id(typ))
+    if isinstance(typ, TypeAliasType):
+        return any(_has_any_type(arg, seen) for arg in typ.args)
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, AnyType):
+        return proper_type.type_of_any != TypeOfAny.special_form
+    if isinstance(proper_type, Instance):
+        return any(_has_any_type(arg, seen) for arg in proper_type.args)
+    if isinstance(proper_type, UnionType):
+        return any(_has_any_type(item, seen) for item in proper_type.items)
+    if isinstance(proper_type, TupleType):
+        return any(_has_any_type(item, seen) for item in proper_type.items)
+    if isinstance(proper_type, CallableType):
+        return any(_has_any_type(arg, seen) for arg in proper_type.arg_types) or _has_any_type(
+            proper_type.ret_type, seen
+        )
+    if isinstance(proper_type, TypeType):
+        return _has_any_type(proper_type.item, seen)
+    if isinstance(proper_type, TypeVarType):
+        return any(_has_any_type(value, seen) for value in proper_type.values) or _has_any_type(
+            proper_type.upper_bound, seen
+        )
+    if isinstance(proper_type, TypeVarTupleType):
+        return _has_any_type(proper_type.upper_bound, seen)
+    if isinstance(proper_type, TypedDictType):
+        return any(_has_any_type(item, seen) for item in proper_type.items.values())
+    if isinstance(proper_type, Overloaded):
+        return any(_has_any_type(item, seen) for item in proper_type.items)
+    if isinstance(proper_type, UnpackType):
+        return _has_any_type(proper_type.type, seen)
+    return False
 
 
 class InvalidInferredTypes(BoolTypeQuery):

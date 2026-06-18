@@ -340,7 +340,7 @@ class IPCServer(IPCBase):
             # for AF_UNIX sockets
             return os.path.join(self.sock_directory, self.name)
         else:
-            name = self.sock.getsockname()
+            name: object = self.sock.getsockname()
             assert isinstance(name, str)
             return name
 
