@@ -4182,9 +4182,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         narrowed = self.binder.get(rv)
 
                         if narrowed is not None:
-                            captured_pairs.append(
-                                (lv, self.temp_node(narrowed, context=rv))
-                            )
+                            captured_pairs.append((lv, self.temp_node(narrowed, context=rv)))
                             continue
 
                     captured_pairs.append((lv, rv))
