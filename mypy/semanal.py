@@ -1810,6 +1810,7 @@ class SemanticAnalyzer(
         if (not dec.is_overload or dec.var.is_property) and self.type:
             dec.var.info = self.type
             dec.var.is_initialized_in_class = True
+        dec.func.is_no_type_check = no_type_check
         if no_type_check:
             erase_func_annotations(dec.func)
         if not no_type_check and (self.recurse_into_functions or dec.func.def_or_infer_vars):

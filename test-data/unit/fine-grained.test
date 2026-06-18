@@ -11839,3 +11839,25 @@ def bar() -> str: return "a"
 main:2: note: Revealed type is "None | builtins.int"
 ==
 main:2: note: Revealed type is "None | builtins.str"
+
+[case testNoTypeCheckReprocessedViaDependency]
+# A @no_type_check function reprocessed via a dependency change (without editing
+# its own module) must still have its body skipped. Regression test: the daemon
+# used to re-check the bare FuncDef target, bypassing the @no_type_check guard.
+# flags: --check-untyped-defs
+import a
+[file a.py]
+from typing import no_type_check
+from b import SCALE
+
+@no_type_check
+def f() -> None:
+    factor: int = SCALE
+    bad: int = "not an int"
+[file b.py]
+SCALE: int = 3
+[file b.py.2]
+SCALE: str = ""
+[typing fixtures/typing-medium.pyi]
+[out]
+==
