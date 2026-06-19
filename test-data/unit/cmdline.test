@@ -530,6 +530,35 @@ variable has type "bytes")
     b: bytes = 1
                ^
 
+[case testShadowFileWithNativeParser]
+# cmd: mypy --native-parser --shadow-file source.py shadow.py source.py
+[file source.py]
+x: int = 1
+reveal_type(x)
+[file shadow.py]
+x: str = "y"
+reveal_type(x)
+[out]
+source.py:2: note: Revealed type is "str"
+== Return code: 0
+
+[case testShadowFileWithNativeParserParallel]
+# cmd: mypy --native-parser --num-workers=4 --shadow-file a.py a_shadow.py main.py a.py b.py
+[file main.py]
+import a
+import b
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[out]
+a.py:2: note: Revealed type is "str"
+== Return code: 0
+
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file mypy.ini]

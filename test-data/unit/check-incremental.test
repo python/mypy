@@ -8139,3 +8139,68 @@ reveal_type(test("int"))
 [out]
 [out2]
 tmp/b.py:2: note: Revealed type is "builtins.int"
+
+[case testIncrementalNativeParserShadowFile]
+# flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[rechecked]
+[stale]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+
+[case testIncrementalNativeParserShadowFileChanged]
+# flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[file a_shadow.py.2]
+x: bytes = b"y"
+reveal_type(x)
+[rechecked a]
+[stale a]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.bytes"
+
+[case testIncrementalNativeParserShadowFileIntroduced]
+# flags: --native-parser
+# flags2: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+-- The first run has no shadow file; the second run introduces one for a.py.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py.2]
+x: str = "y"
+reveal_type(x)
+[rechecked a]
+[stale a]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.int"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.str"
