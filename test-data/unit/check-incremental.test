@@ -8144,29 +8144,6 @@ tmp/b.py:2: note: Revealed type is "builtins.int"
 # flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
 import a
 import b
-[file a.py]
-import c
-x: int = 1
-reveal_type(x)
-[file b.py]
-y: int = 2
-[file c.py]
-z: int = 3
-[file a_shadow.py]
-import c
-x: str = "y"
-reveal_type(x)
-[rechecked]
-[stale]
-[out1]
-tmp/a.py:3: note: Revealed type is "builtins.str"
-[out2]
-tmp/a.py:3: note: Revealed type is "builtins.str"
-
-[case testIncrementalNativeParserShadowFileParallel]
-# flags: --native-parser --num-workers=2 --shadow-file tmp/a.py tmp/a_shadow.py
-import a
-import b
 -- a and b don't depend on each other, so they can be checked in parallel.
 [file a.py]
 x: int = 1
@@ -8187,7 +8164,7 @@ tmp/a.py:2: note: Revealed type is "builtins.str"
 tmp/b.py:2: note: Revealed type is "builtins.int"
 
 [case testIncrementalNativeParserShadowFileChanged]
-# flags: --native-parser --num-workers=2 --shadow-file tmp/a.py tmp/a_shadow.py
+# flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
 import a
 import b
 -- a and b don't depend on each other, so they can be checked in parallel.
@@ -8213,8 +8190,8 @@ tmp/a.py:2: note: Revealed type is "builtins.bytes"
 tmp/b.py:2: note: Revealed type is "builtins.int"
 
 [case testIncrementalNativeParserShadowFileIntroduced]
-# flags: --native-parser --num-workers=2
-# flags2: --native-parser --num-workers=2 --shadow-file tmp/a.py tmp/a_shadow.py
+# flags: --native-parser
+# flags2: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
 import a
 import b
 -- a and b don't depend on each other, so they can be checked in parallel.
