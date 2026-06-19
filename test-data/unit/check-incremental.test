@@ -8150,7 +8150,6 @@ x: int = 1
 reveal_type(x)
 [file b.py]
 y: int = 2
-reveal_type(y)
 [file a_shadow.py]
 x: str = "y"
 reveal_type(x)
@@ -8158,10 +8157,8 @@ reveal_type(x)
 [stale]
 [out1]
 tmp/a.py:2: note: Revealed type is "builtins.str"
-tmp/b.py:2: note: Revealed type is "builtins.int"
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.str"
-tmp/b.py:2: note: Revealed type is "builtins.int"
 
 [case testIncrementalNativeParserShadowFileChanged]
 # flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
@@ -8173,7 +8170,6 @@ x: int = 1
 reveal_type(x)
 [file b.py]
 y: int = 2
-reveal_type(y)
 [file a_shadow.py]
 x: str = "y"
 reveal_type(x)
@@ -8184,10 +8180,8 @@ reveal_type(x)
 [stale a]
 [out1]
 tmp/a.py:2: note: Revealed type is "builtins.str"
-tmp/b.py:2: note: Revealed type is "builtins.int"
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.bytes"
-tmp/b.py:2: note: Revealed type is "builtins.int"
 
 [case testIncrementalNativeParserShadowFileIntroduced]
 # flags: --native-parser
@@ -8201,7 +8195,6 @@ x: int = 1
 reveal_type(x)
 [file b.py]
 y: int = 2
-reveal_type(y)
 [file a_shadow.py.2]
 x: str = "y"
 reveal_type(x)
@@ -8209,7 +8202,5 @@ reveal_type(x)
 [stale a]
 [out1]
 tmp/a.py:2: note: Revealed type is "builtins.int"
-tmp/b.py:2: note: Revealed type is "builtins.int"
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.str"
-tmp/b.py:2: note: Revealed type is "builtins.int"
