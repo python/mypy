@@ -4952,6 +4952,17 @@ class SymbolTableNode:
                 self.unfixed = False
         return self._node
 
+    def read_node_no_fixup(self) -> SymbolNode | None:
+        """Return the deserialized node without performing cross-reference fixup.
+
+        This is intended for introspection tools (such as mypy.exportjson) that read
+        cache files in isolation, where no node fixer is available.
+        """
+        if self._node is None and self._node_bytes:
+            self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+            self._node_bytes = b""
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
             self.kind, self._node, self.module_public, self.implicit, self.module_hidden
