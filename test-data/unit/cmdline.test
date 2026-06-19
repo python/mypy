@@ -543,7 +543,7 @@ source.py:2: note: Revealed type is "str"
 == Return code: 0
 
 [case testShadowFileWithNativeParserParallel]
-# cmd: mypy --native-parser --shadow-file a.py a_shadow.py main.py a.py b.py
+# cmd: mypy --native-parser --num-workers=4 --shadow-file a.py a_shadow.py main.py a.py b.py
 [file main.py]
 import a
 import b
