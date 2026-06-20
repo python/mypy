@@ -64,6 +64,7 @@ from mypyc.common import (
     GENERATOR_ATTRIBUTE_PREFIX,
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
@@ -308,7 +309,10 @@ class IRBuilder:
     def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
-        """Transform an expression or a statement.
+        """Transform a sub-expression or a statement.
+
+        NOTE: Use accept_top_level_expr() for top-level expressions so that keep-alives
+              will be flushed correctly.
 
         If can_borrow is true, prefer to generate a borrowed reference.
         Borrowed references are faster since they don't require reference count
@@ -337,6 +341,15 @@ class IRBuilder:
                 except UnsupportedException:
                     pass
                 return None
+
+    def accept_top_level_expr(self, node: Expression, *, coerce: bool = True) -> Value:
+        """Transform a top-level expression to IR."""
+        res = node.accept(self.visitor)
+        if coerce:
+            res = self.coerce(res, self.node_type(node), node.line)
+        self.flush_keep_alives(node.line, scope=KEEP_ALIVE_SHORT_LIVED)
+        self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
+        return res
 
     def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
         self.builder.flush_keep_alives(line, scope=scope)
