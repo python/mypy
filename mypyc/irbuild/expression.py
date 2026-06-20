@@ -252,7 +252,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false(expr.line)
 
-    # First check if this is maybe a final attribute.
+    # First check if this is maybe a final class/module attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
@@ -305,7 +305,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    borrow = can_borrow and builder.can_borrow
+    is_final = builder.is_final_instance_attr_ref(expr)
+    borrow = (can_borrow and builder.can_borrow) or is_final
     return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
 
 

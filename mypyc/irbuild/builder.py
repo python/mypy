@@ -1192,7 +1192,9 @@ class IRBuilder:
         return typ.is_named_tuple or typ.is_newtype or typ.typeddict_type is not None
 
     def get_final_ref(self, expr: MemberExpr) -> tuple[str, Var, bool] | None:
-        """Check if `expr` is a final attribute.
+        """Check if `expr` is a final class or module attribute.
+
+        Return False for instance attributes.
 
         This needs to be done differently for class and module attributes to
         correctly determine fully qualified name. Return a tuple that consists of
@@ -1580,6 +1582,14 @@ class IRBuilder:
             if expr.name in ir.attributes:
                 return expr.name in ir.final_attributes
         return False
+
+    def is_final_instance_attr_ref(self, expr: MemberExpr) -> bool:
+        obj_rtype = self.node_type(expr.expr)
+        return (
+            isinstance(obj_rtype, RInstance)
+            and obj_rtype.class_ir.is_ext_class
+            and any(expr.name in ir.final_attributes for ir in obj_rtype.class_ir.mro)
+        )
 
     def mark_block_unreachable(self) -> None:
         """Mark statements in the innermost block being processed as unreachable.

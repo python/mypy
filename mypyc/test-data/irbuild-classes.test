@@ -3296,6 +3296,7 @@ def g(c):
     r3 :: None
 L0:
     r0 = borrow c.f
+    keep_alive c
     r1 = f(r0)
     r2 = c.x
     r3 = f(r2)
