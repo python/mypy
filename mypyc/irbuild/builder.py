@@ -286,6 +286,7 @@ class IRBuilder:
         self.imports: dict[str, None] = {}
 
         self.can_borrow = False
+        self.expression_depth = 0
 
         # When set, load_globals_dict uses this module instead of self.module_name.
         # Used by generate_attr_defaults_init for cross-module inherited defaults.
@@ -320,6 +321,7 @@ class IRBuilder:
         """
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
+                self.expression_depth += 1
                 old_can_borrow = self.can_borrow
                 self.can_borrow = can_borrow
                 try:
@@ -334,6 +336,9 @@ class IRBuilder:
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
                     self.flush_keep_alives(node.line)
+                self.expression_depth -= 1
+                if self.expression_depth == 0:
+                    self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
                 return res
             else:
                 try:
@@ -341,15 +346,6 @@ class IRBuilder:
                 except UnsupportedException:
                     pass
                 return None
-
-    def accept_top_level_expr(self, node: Expression, *, coerce: bool = True) -> Value:
-        """Transform a top-level expression to IR."""
-        res = node.accept(self.visitor)
-        if coerce:
-            res = self.coerce(res, self.node_type(node), node.line)
-        self.flush_keep_alives(node.line, scope=KEEP_ALIVE_SHORT_LIVED)
-        self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
-        return res
 
     def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
         self.builder.flush_keep_alives(line, scope=scope)

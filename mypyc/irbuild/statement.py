@@ -49,7 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, TEMP_ATTR_NAME
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -161,8 +161,13 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions.
-    builder.accept_top_level_expr(stmt.expr, coerce=False)
+    # ExpressionStmts do not need to be coerced like other Expressions, so
+    # we shouldn't call builder.accept here.
+    builder.expression_depth += 1
+    stmt.expr.accept(builder.visitor)
+    builder.expression_depth -= 1
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_SHORT_LIVED)
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:

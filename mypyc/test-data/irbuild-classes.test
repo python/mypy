@@ -3273,10 +3273,13 @@ class C:
 
 def f(s: str) -> None: pass
 
-def g(c: C) -> None:
+def calls(c: C) -> None:
     f(c.f)
     f(c.x)
     c.f.startswith("a")
+
+def ret(c: C) -> str:
+    return c.f
 [out]
 def C.__init__(self, x):
     self :: __main__.C
@@ -3289,7 +3292,7 @@ def f(s):
     s :: str
 L0:
     return 1
-def g(c):
+def calls(c):
     c :: __main__.C
     r0 :: str
     r1 :: None
@@ -3310,4 +3313,9 @@ L0:
     r7 = truncate r6: i32 to builtins.bool
     keep_alive c
     return 1
-
+def ret(c):
+    c :: __main__.C
+    r0 :: str
+L0:
+    r0 = c.f
+    return r0
