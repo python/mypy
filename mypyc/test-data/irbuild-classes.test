@@ -3262,3 +3262,41 @@ L5:
     r84 = r83 >= 0 :: signed
     r85 = __main__.NonExt :: type
     return 1
+
+[case testFinalAttrBorrowed]
+from typing import Final
+
+class C:
+    def __init__(self, x: str) -> None:
+        self.f: Final = x
+        self.x = x
+
+def f(s: str) -> None: pass
+
+def g(c: C) -> None:
+    f(c.f)
+    f(c.x)
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: str
+L0:
+    self.f = x
+    self.x = x
+    return 1
+def f(s):
+    s :: str
+L0:
+    return 1
+def g(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: None
+    r2 :: str
+    r3 :: None
+L0:
+    r0 = borrow c.f
+    r1 = f(r0)
+    r2 = c.x
+    r3 = f(r2)
+    return 1
