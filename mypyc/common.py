@@ -68,6 +68,10 @@ MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
+# Constant for keeping a (often borrowed) Value alive for a short time (e.g. a few subexpressions),
+# until flush_kee_alives() is called with this value.
+KEEP_ALIVE_SHORT_LIVED: Final = 0
+
 # Runtime C library files that are always included (some ops may bring
 # extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)
 RUNTIME_C_FILES: Final = [

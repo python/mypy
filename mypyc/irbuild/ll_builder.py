@@ -19,6 +19,7 @@ from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     FAST_PREFIX,
     IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -276,7 +277,9 @@ class LowLevelIRBuilder:
         self.error_handlers: list[BasicBlock | None] = [None]
         # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
-        self.keep_alives: list[Value] = []
+        # The second value is the scope/duration of keep alive (KEEP_ALIVE_* constant).
+        # Different values must be kept alive for different durations.
+        self.keep_alives: list[tuple[Value, int]] = []
 
     def set_module(self, module_name: str, module_path: str) -> None:
         """Set the name and path of the current module."""
@@ -314,7 +317,14 @@ class LowLevelIRBuilder:
         self.goto(block)
         self.activate_block(block)
 
-    def keep_alive(self, values: list[Value], line: int, *, steal: bool = False) -> None:
+    def keep_alive(
+        self,
+        values: list[Value],
+        line: int,
+        *,
+        scope: int = KEEP_ALIVE_SHORT_LIVED,
+        steal: bool = False,
+    ) -> None:
         self.add(KeepAlive(values, line, steal=steal))
 
     def load_mem(self, ptr: Value, value_type: RType, *, borrow: bool = False) -> Value:
@@ -367,10 +377,10 @@ class LowLevelIRBuilder:
         """
         return self.args[0]
 
-    def flush_keep_alives(self, line: int) -> None:
-        if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives.copy(), line))
-            self.keep_alives = []
+    def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
+        if any(s == scope for _, s in self.keep_alives):
+            self.add(KeepAlive([v for v, s in self.keep_alives if s == scope], line))
+            self.keep_alives = [(v, s) for v, s in self.keep_alives if s != scope]
 
     def debug_print(self, toprint: str | Value) -> None:
         if isinstance(toprint, str):
@@ -400,7 +410,7 @@ class LowLevelIRBuilder:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
-                self.keep_alives.append(src)
+                self.keep_alives.append((src, KEEP_ALIVE_SHORT_LIVED))
             return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
@@ -817,7 +827,7 @@ class LowLevelIRBuilder:
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.keep_alives.append(obj)
+                self.keep_alives.append((obj, KEEP_ALIVE_SHORT_LIVED))
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
@@ -2281,7 +2291,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.keep_alives.append((arg, KEEP_ALIVE_SHORT_LIVED))
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
@@ -2402,7 +2412,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.keep_alives.append((arg, KEEP_ALIVE_SHORT_LIVED))
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
