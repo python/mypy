@@ -63,6 +63,7 @@ from mypyc.common import (
     EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
     IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
     MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
@@ -337,8 +338,8 @@ class IRBuilder:
                     pass
                 return None
 
-    def flush_keep_alives(self, line: int) -> None:
-        self.builder.flush_keep_alives(line)
+    def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
+        self.builder.flush_keep_alives(line, scope=scope)
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 

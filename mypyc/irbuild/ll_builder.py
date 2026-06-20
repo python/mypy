@@ -20,6 +20,7 @@ from mypyc.common import (
     FAST_PREFIX,
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -815,7 +816,14 @@ class LowLevelIRBuilder:
     # Attribute access
 
     def get_attr(
-        self, obj: Value, attr: str, result_type: RType, line: int, *, borrow: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        result_type: RType,
+        line: int,
+        *,
+        borrow: bool = False,
+        is_final: bool = False,
     ) -> Value:
         """Get a native or Python attribute of an object."""
         if (
@@ -827,7 +835,10 @@ class LowLevelIRBuilder:
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.keep_alives.append((obj, KEEP_ALIVE_SHORT_LIVED))
+                # Final attributes can be borrwed over arbitrary compuation, since they
+                # won't be rebound, as long as we keep the object alive
+                scope = KEEP_ALIVE_SHORT_LIVED if not is_final else KEEP_ALIVE_WHOLE_EXPRESSION
+                self.keep_alives.append((obj, scope))
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)

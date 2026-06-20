@@ -71,6 +71,9 @@ BITMAP_BITS: Final = 32
 # Constant for keeping a (often borrowed) Value alive for a short time (e.g. a few subexpressions),
 # until flush_kee_alives() is called with this value.
 KEEP_ALIVE_SHORT_LIVED: Final = 0
+# Keep value alive until the current top-level expression has been fully evaluated.
+# This allows keeping alive values across function calls and arbitrary computation.
+KEEP_ALIVE_WHOLE_EXPRESSION: Final = 1
 
 # Runtime C library files that are always included (some ops may bring
 # extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)

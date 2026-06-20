@@ -3276,6 +3276,7 @@ def f(s: str) -> None: pass
 def g(c: C) -> None:
     f(c.f)
     f(c.x)
+    c.f.startswith("a")
 [out]
 def C.__init__(self, x):
     self :: __main__.C
@@ -3294,10 +3295,19 @@ def g(c):
     r1 :: None
     r2 :: str
     r3 :: None
+    r4, r5 :: str
+    r6 :: i32
+    r7 :: bool
 L0:
     r0 = borrow c.f
-    keep_alive c
     r1 = f(r0)
+    keep_alive c
     r2 = c.x
     r3 = f(r2)
+    r4 = borrow c.f
+    r5 = 'a'
+    r6 = CPyStr_Startswith(r4, r5)
+    r7 = truncate r6: i32 to builtins.bool
+    keep_alive c
     return 1
+

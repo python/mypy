@@ -307,7 +307,9 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     is_final = builder.is_final_instance_attr_ref(expr)
     borrow = (can_borrow and builder.can_borrow) or is_final
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
+    return builder.builder.get_attr(
+        obj, expr.name, rtype, expr.line, borrow=borrow, is_final=is_final
+    )
 
 
 def check_instance_attribute_access_through_class(
