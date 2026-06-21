@@ -2568,3 +2568,16 @@ def D.foo(self):
     self :: __main__.D
 L0:
     return 2
+
+[case testBorrowedFinalAttribute5]
+from typing import Final
+from librt.vecs import vec
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def g(c: C, n: int) -> str:
+    a = vec[C]([c])
+    return a[n].s + "a"
+[out]
