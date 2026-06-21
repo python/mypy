@@ -117,3 +117,81 @@ L0:
     r1 = 'a'
     r2 = PyUnicode_Concat(r0, r1)
     return r2
+
+[case testFinalAttrExpressionKinds]
+from typing import Final
+
+class C:
+    def __init__(self, s: str, n: int, l: list[str]) -> None:
+        self.f: Final = s
+        self.n: Final = n
+        self.l: Final = l
+        self.s = s
+
+def f() -> C:
+    return C("", 0, [])
+
+def assign(c: C) -> None:
+    a = c.f
+    c.s = c.f
+
+def indexing(c: C) -> str:
+    return c.l[c.n]
+
+def call_eq(c: C) -> bool:
+    return f().f == c.f
+[out]
+def C.__init__(self, s, n, l):
+    self :: __main__.C
+    s :: str
+    n :: int
+    l :: list
+L0:
+    self.f = s
+    self.n = n
+    self.l = l
+    self.s = s
+    return 1
+def f():
+    r0 :: str
+    r1 :: list
+    r2 :: __main__.C
+L0:
+    r0 = ''
+    r1 = PyList_New(0)
+    r2 = C(r0, 0, r1)
+    return r2
+def assign(c):
+    c :: __main__.C
+    r0, a, r1 :: str
+    r2 :: bool
+L0:
+    r0 = c.f
+    a = r0
+    r1 = c.f
+    c.s = r1; r2 = is_error
+    return 1
+def indexing(c):
+    c :: __main__.C
+    r0 :: list
+    r1 :: int
+    r2 :: object
+    r3 :: str
+L0:
+    r0 = borrow c.l
+    r1 = borrow c.n
+    r2 = CPyList_GetItem(r0, r1)
+    r3 = cast(str, r2)
+    keep_alive c, c
+    return r3
+def call_eq(c):
+    c, r0 :: __main__.C
+    r1, r2 :: str
+    r3 :: bool
+L0:
+    r0 = f()
+    r1 = borrow r0.f
+    r2 = borrow c.f
+    r3 = CPyStr_Equal(r1, r2)
+    keep_alive r0, c
+    return r3
