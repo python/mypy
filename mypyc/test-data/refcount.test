@@ -2414,3 +2414,157 @@ L0:
     r0 = borrow c.s
     r1 = C(r0)
     return r1
+
+[case testBorrowedFinalAttribute2]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def g(c: C, n: int) -> str:
+    a = [c]
+    return a[n].s + "a"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def g(c, n):
+    c :: __main__.C
+    n :: int
+    r0 :: list
+    r1 :: ptr
+    a :: list
+    r2 :: object
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    inc_ref c
+    buf_init_item r1, 0, c
+    a = r0
+    r2 = CPyList_GetItemBorrow(a, n)
+    r3 = borrow cast(__main__.C, r2)
+    r4 = r3.s
+    dec_ref a
+    r5 = 'a'
+    r6 = PyUnicode_Concat(r4, r5)
+    dec_ref r4
+    return r6
+
+[case testBorrowedFinalAttribute3]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d = d
+
+class CC:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.f: Final = s
+
+def f() -> str:
+    c = C(D("x"))
+    return c.d.f + "a"
+
+def g(d: D) -> str:
+    c = CC(d)
+    return c.d.f + "a"
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def CC.__init__(self, d):
+    self :: __main__.CC
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    inc_ref s
+    self.f = s
+    return 1
+def f():
+    r0 :: str
+    r1 :: __main__.D
+    r2, c :: __main__.C
+    r3 :: __main__.D
+    r4, r5, r6 :: str
+L0:
+    r0 = 'x'
+    r1 = D(r0)
+    r2 = C(r1)
+    dec_ref r1
+    c = r2
+    r3 = borrow c.d
+    r4 = r3.f
+    dec_ref c
+    r5 = 'a'
+    r6 = PyUnicode_Concat(r4, r5)
+    dec_ref r4
+    return r6
+def g(d):
+    d :: __main__.D
+    r0, c :: __main__.CC
+    r1 :: __main__.D
+    r2, r3, r4 :: str
+L0:
+    r0 = CC(d)
+    c = r0
+    r1 = borrow c.d
+    r2 = borrow r1.f
+    r3 = 'a'
+    r4 = PyUnicode_Concat(r2, r3)
+    dec_ref c
+    return r4
+
+[case testBorrowedFinalAttribute4]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+    def method(self) -> int:
+        return self.d.foo()
+
+class D:
+    def foo(self) -> int:
+        return 1
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def C.method(self):
+    self :: __main__.C
+    r0 :: __main__.D
+    r1 :: int
+L0:
+    r0 = borrow self.d
+    r1 = r0.foo()
+    return r1
+def D.foo(self):
+    self :: __main__.D
+L0:
+    return 2

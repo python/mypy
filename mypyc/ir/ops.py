@@ -898,6 +898,7 @@ class GetAttr(RegisterOp):
         *,
         borrow: bool = False,
         allow_error_value: bool = False,
+        is_final: bool = False,
     ) -> None:
         super().__init__(line)
         self.obj = obj
@@ -912,6 +913,7 @@ class GetAttr(RegisterOp):
         elif attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
+        self.is_final = is_final
 
     def sources(self) -> list[Value]:
         return [self.obj]

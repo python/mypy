@@ -831,7 +831,7 @@ class LowLevelIRBuilder:
             and obj.type.class_ir.is_ext_class
             and obj.type.class_ir.has_attr(attr)
         ):
-            op = GetAttr(obj, attr, line, borrow=borrow)
+            op = GetAttr(obj, attr, line, borrow=borrow, is_final=is_final)
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:

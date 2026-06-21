@@ -58,7 +58,12 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import IS_FREE_THREADED, MAX_SHORT_INT
+from mypyc.common import (
+    IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
+    MAX_SHORT_INT,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -66,7 +71,9 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     CallC,
+    Cast,
     ComparisonOp,
+    GetAttr,
     Integer,
     LoadAddress,
     LoadLiteral,
@@ -306,10 +313,26 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     check_instance_attribute_access_through_class(builder, expr, typ)
 
     is_final = builder.is_final_instance_attr_ref(expr)
-    borrow = (can_borrow and builder.can_borrow) or (is_final and builder.expression_depth > 1)
+    borrow = (can_borrow and builder.can_borrow) or (
+        is_final
+        and builder.expression_depth > 1
+        and borrow_scope(builder, obj) >= KEEP_ALIVE_WHOLE_EXPRESSION
+    )
     return builder.builder.get_attr(
         obj, expr.name, rtype, expr.line, borrow=borrow, is_final=is_final
     )
+
+
+def borrow_scope(builder: IRBuilder, v: Value) -> int:
+    if isinstance(v, GetAttr) and v.is_borrowed:
+        obj_scope = borrow_scope(builder, v.obj)
+        get_attr_scope = KEEP_ALIVE_SHORT_LIVED if not v.is_final else KEEP_ALIVE_WHOLE_EXPRESSION
+        return min(get_attr_scope, obj_scope)
+    elif isinstance(v, Cast) and v.is_borrowed:
+        return borrow_scope(builder, v.src)
+    elif isinstance(v, CallC) and v.function_name == "CPyList_GetItemBorrow":
+        return KEEP_ALIVE_SHORT_LIVED
+    return 999
 
 
 def check_instance_attribute_access_through_class(

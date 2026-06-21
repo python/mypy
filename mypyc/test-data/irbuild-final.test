@@ -195,3 +195,59 @@ L0:
     r3 = CPyStr_Equal(r1, r2)
     keep_alive r0, c
     return r3
+
+[case testFinalAttrExpressionKinds2]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.f: Final = s
+
+def f(c: C) -> str:
+    return c.d.f + "a"
+
+def g(a: list[D], n: int) -> str:
+    return a[n].f + "a"
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    self.f = s
+    return 1
+def f(c):
+    c :: __main__.C
+    r0 :: __main__.D
+    r1, r2, r3 :: str
+L0:
+    r0 = borrow c.d
+    r1 = borrow r0.f
+    r2 = 'a'
+    r3 = PyUnicode_Concat(r1, r2)
+    keep_alive c, r0
+    return r3
+def g(a, n):
+    a :: list
+    n :: int
+    r0 :: object
+    r1 :: __main__.D
+    r2, r3, r4 :: str
+L0:
+    r0 = CPyList_GetItemBorrow(a, n)
+    r1 = borrow cast(__main__.D, r0)
+    r2 = r1.f
+    keep_alive a, n, r0
+    r3 = 'a'
+    r4 = PyUnicode_Concat(r2, r3)
+    return r4
+
