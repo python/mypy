@@ -36,6 +36,7 @@ files = [
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
+    "irbuild-final.test",
     "irbuild-optional.test",
     "irbuild-any.test",
     "irbuild-generics.test",

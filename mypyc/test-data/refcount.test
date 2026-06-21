@@ -2366,3 +2366,51 @@ L0:
     r3 = CPyBytes_Concat(r2, c)
     dec_ref r2
     return r3
+
+[case testBorrowedFinalAttribute]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C, b: bool) -> str:
+    a = c.s if b else "x"
+    return a
+
+def g(c: C) -> C:
+    return C(c.s)
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(c, b):
+    c :: __main__.C
+    b :: bool
+    r0, r1, r2, a :: str
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = borrow c.s
+    inc_ref r0
+    r1 = r0
+    goto L3
+L2:
+    r2 = 'x'
+    inc_ref r2
+    r1 = r2
+L3:
+    a = r1
+    return a
+def g(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: __main__.C
+L0:
+    r0 = borrow c.s
+    r1 = C(r0)
+    return r1

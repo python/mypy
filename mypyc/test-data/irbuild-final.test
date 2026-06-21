@@ -1,0 +1,119 @@
+[case testFinalAttrBorrowed]
+from typing import Final
+
+class C:
+    def __init__(self, x: str) -> None:
+        self.f: Final = x
+        self.x = x
+
+def f(s: str) -> None: pass
+
+def calls(c: C) -> None:
+    f(c.f)
+    f(c.x)
+    c.f.startswith("a")
+
+def ret(c: C) -> str:
+    return c.f
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: str
+L0:
+    self.f = x
+    self.x = x
+    return 1
+def f(s):
+    s :: str
+L0:
+    return 1
+def calls(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: None
+    r2 :: str
+    r3 :: None
+    r4, r5 :: str
+    r6 :: i32
+    r7 :: bool
+L0:
+    r0 = borrow c.f
+    r1 = f(r0)
+    keep_alive c
+    r2 = c.x
+    r3 = f(r2)
+    r4 = borrow c.f
+    r5 = 'a'
+    r6 = CPyStr_Startswith(r4, r5)
+    r7 = truncate r6: i32 to builtins.bool
+    keep_alive c
+    return 1
+def ret(c):
+    c :: __main__.C
+    r0 :: str
+L0:
+    r0 = c.f
+    return r0
+
+[case testInheritedFinalAttrBorrowed]
+from typing import Final
+
+class Base:
+    x: str
+
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+class Deriv(Base):
+    def __init__(self, n: int) -> None:
+        self.n: Final = n
+
+def f(b: Base) -> str:
+    return b.s + "a"
+
+def g(d: Deriv) -> str:
+    return d.s * d.n
+
+def h(d: Deriv) -> str:
+    return d.x + "a"
+[out]
+def Base.__init__(self, s):
+    self :: __main__.Base
+    s :: str
+L0:
+    self.s = s
+    return 1
+def Deriv.__init__(self, n):
+    self :: __main__.Deriv
+    n :: int
+L0:
+    self.n = n
+    return 1
+def f(b):
+    b :: __main__.Base
+    r0, r1, r2 :: str
+L0:
+    r0 = borrow b.s
+    r1 = 'a'
+    r2 = PyUnicode_Concat(r0, r1)
+    keep_alive b
+    return r2
+def g(d):
+    d :: __main__.Deriv
+    r0 :: str
+    r1 :: int
+    r2 :: str
+L0:
+    r0 = borrow d.s
+    r1 = borrow d.n
+    r2 = CPyStr_Multiply(r0, r1)
+    keep_alive d, d
+    return r2
+def h(d):
+    d :: __main__.Deriv
+    r0, r1, r2 :: str
+L0:
+    r0 = d.x
+    r1 = 'a'
+    r2 = PyUnicode_Concat(r0, r1)
+    return r2
