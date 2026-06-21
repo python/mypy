@@ -58,40 +58,10 @@ def f(v: vec[i64], i: i64) -> i64:
 [out]
 def f(v, i):
     v :: vec[i64]
-    i :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: i64
+    i, r0 :: i64
 L0:
-    r0 = v.len
-    r1 = i < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = i + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = i
-L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: i64*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[i64] v, i
+    return r0
 
 [case testVecI64GetItem_32bit]
 # The IR is quite verbose, but it's acceptable since 32-bit targets are not common any more

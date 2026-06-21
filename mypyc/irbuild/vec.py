@@ -52,6 +52,7 @@ from mypyc.ir.rtypes import (
     vec_api_by_item_type,
     vec_item_type_tags,
 )
+from mypyc.primitives.librt_vecs_ops import vec_get_item_borrow_op, vec_get_item_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -318,11 +319,27 @@ def vec_get_item(
 
     We inline this, since it's simple but performance-critical.
     """
+    if can_borrow:
+        desc = vec_get_item_borrow_op
+    else:
+        desc = vec_get_item_op
+    assert isinstance(base.type, RVec)
+    return builder.primitive_op(desc, [base, index], line, type_args=[base.type.item_type])
+
+    # XXX
     # TODO: Support more item types
     # TODO: Support more index types
+    # len_val = vec_len(builder, base)
+    # index = vec_check_and_adjust_index(builder, len_val, index, line)
+    # return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
+
+
+def vec_get_item_lower(
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
+) -> Value:
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
-    return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
+    return vec_get_item_unsafe(builder, base, index, line, can_borrow=False)
 
 
 def vec_get_item_unsafe(
