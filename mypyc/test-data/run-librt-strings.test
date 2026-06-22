@@ -1449,8 +1449,9 @@ from testutil import assertRaises
 
 
 def test_codepoint_classifiers() -> None:
-    # Negative values are not codepoints.
-    for bad in (i32(-1), i32(-113)):
+    # Out-of-range values are not codepoints: negative, just past the maximum
+    # valid code point (0x10FFFF), and the largest i32.
+    for bad in (i32(-1), i32(-113), i32(0x110000), i32(0x7FFFFFFF)):
         assert not isspace(bad)
         assert not isdigit(bad)
         assert not isalnum(bad)
@@ -1485,6 +1486,10 @@ def test_codepoint_classifiers_via_any() -> None:
         assert f(ord(false_input)) is False
         # Negative values are valid i32, just not codepoints.
         assert f(-1) is False
+        # Values within i32 range but past the maximum code point (0x10FFFF)
+        # are not codepoints either.
+        assert f(0x110000) is False
+        assert f(0x7FFFFFFF) is False
         # Inputs outside i32 range raise OverflowError through the wrapper.
         with assertRaises(OverflowError, "codepoint out of i32 range"):
             f(1 << 40)
@@ -1509,8 +1514,9 @@ def _expect(c: str, method: str) -> int:
 
 
 def test_codepoint_case_conversion() -> None:
-    # Negative inputs return unchanged.
-    for bad in (i32(-1), i32(-113)):
+    # Out-of-range inputs return unchanged: negative, just past the maximum
+    # valid code point (0x10FFFF), and the largest i32.
+    for bad in (i32(-1), i32(-113), i32(0x110000), i32(0x7FFFFFFF)):
         assert toupper(bad) == bad
         assert tolower(bad) == bad
     # Agree with str.upper / str.lower across the full Unicode range
@@ -1534,6 +1540,10 @@ def test_codepoint_case_conversion_via_any() -> None:
         assert f(in_cp) == out_cp
         # Negative values are valid i32, returned unchanged.
         assert f(-1) == -1
+        # Values within i32 range but past the maximum code point (0x10FFFF)
+        # are returned unchanged.
+        assert f(0x110000) == 0x110000
+        assert f(0x7FFFFFFF) == 0x7FFFFFFF
         # Inputs outside i32 range raise OverflowError through the wrapper.
         with assertRaises(OverflowError, "codepoint out of i32 range"):
             f(1 << 40)

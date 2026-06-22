@@ -42,9 +42,23 @@ class TestEmitter(unittest.TestCase):
 
     def test_object_annotation(self) -> None:
         assert self.emitter.object_annotation("hello, world", "line;") == " /* 'hello, world' */"
-        assert self.emitter.object_annotation(list(range(30)), "line;") == """\
- /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-         23, 24, 25, 26, 27, 28, 29] */"""
+        assert self.emitter.object_annotation(42, "line;") == " /* 42 */"
+        assert self.emitter.object_annotation((1, "x", None), "line;") == " /* (1, 'x', None) */"
+        # Annotations containing illegal C comment characters are dropped.
+        assert self.emitter.object_annotation("a /* b */ c", "line;") == ""
+
+    def test_object_annotation_frozenset_is_deterministic(self) -> None:
+        assert (
+            self.emitter.object_annotation(frozenset({"self", "cls"}), "line;")
+            == self.emitter.object_annotation(frozenset({"cls", "self"}), "line;")
+            == " /* frozenset({'cls', 'self'}) */"
+        )
+        assert (
+            self.emitter.object_annotation((frozenset({"b", "a"}),), "line;")
+            == self.emitter.object_annotation((frozenset({"a", "b"}),), "line;")
+            == " /* (frozenset({'a', 'b'}),) */"
+        )
+        assert self.emitter.object_annotation(frozenset(), "line;") == " /* frozenset() */"
 
     def test_emit_line(self) -> None:
         emitter = self.emitter
@@ -55,11 +69,9 @@ class TestEmitter(unittest.TestCase):
         assert emitter.fragments == ["line;\n", "a {\n", "    f();\n", "}\n"]
         emitter = Emitter(self.context, {})
         emitter.emit_line("CPyStatics[0];", ann="hello, world")
-        emitter.emit_line("CPyStatics[1];", ann=list(range(30)))
+        emitter.emit_line("CPyStatics[1];", ann=42)
         assert emitter.fragments[0] == "CPyStatics[0]; /* 'hello, world' */\n"
-        assert emitter.fragments[1] == """\
-CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                  21, 22, 23, 24, 25, 26, 27, 28, 29] */\n"""
+        assert emitter.fragments[1] == "CPyStatics[1]; /* 42 */\n"
 
     def test_emit_undefined_value_for_simple_type(self) -> None:
         emitter = self.emitter
