@@ -5345,6 +5345,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # Fall-through to the original frame is handled explicitly in each block.
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
+                # If condition is 'x and y' and body always raises,
+                # suppress false redundant-expr warning (see issue #21533)
+                if isinstance(e, OpExpr) and e.op == "and":
+                    if b.body and all(self.is_noop_for_reachability(s) for s in b.body):
+                        e.right_always = True
                 t = get_proper_type(self.expr_checker.accept(e))
 
                 if isinstance(t, DeletedType):

@@ -4281,3 +4281,27 @@ def func(y: H) -> H:
     else:
         return y
 [builtins fixtures/primitives.pyi]
+
+[case testRedundantExprAndWithRaise]
+# flags: --enable-error-code redundant-expr
+from typing_extensions import TypeIs
+from typing import TypeVar, Sequence, Any
+
+class Cat: ...
+
+T = TypeVar('T')
+MyType = TypeVar('MyType', int, str, Cat)
+
+def _is_seq_of(seq: Sequence[Any], tp: type[T]) -> TypeIs[Sequence[T]]: ...
+
+def main1(a: Sequence[MyType]) -> MyType:
+    if not _is_seq_of(a, Cat) and not _is_seq_of(a, int):
+        raise Exception("unexpected")
+    return a[0]
+
+def main2(a: Sequence[MyType]) -> MyType:
+    if not _is_seq_of(a, Cat):
+        if not _is_seq_of(a, int):
+            raise Exception("unexpected")
+    return a[0]
+[builtins fixtures/exception.pyi]
