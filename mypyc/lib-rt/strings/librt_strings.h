@@ -31,8 +31,9 @@ typedef struct {
 } StringWriterObject;
 
 // Codepoint classification helpers. Inputs are signed i32 for compatibility
-// with mypyc's int32_rprimitive; negative values are non-codepoints and
-// return false. Defined `static inline` so they compile statically into
+// with mypyc's int32_rprimitive; out-of-range values (negative, or past the
+// maximum Unicode code point 0x10FFFF) are non-codepoints and return false.
+// Defined `static inline` so they compile statically into
 // both the librt.strings module and any mypyc-compiled extension that
 // includes this header, avoiding the capsule indirection that would dwarf
 // the work of a single Py_UNICODE_IS* macro call.
@@ -58,12 +59,14 @@ static inline bool LibRTStrings_IsAlpha(int32_t c) {
 // PyUnicode_IsIdentifier on a 1-character string. Aborts via
 // CPyError_OutOfMemory on allocation failure to keep this ERR_NEVER.
 static inline bool LibRTStrings_IsIdentifier(int32_t c) {
-    if (c < 0) return false;
-    if (c < 128) {
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
         return (c >= 'a' && c <= 'z')
             || (c >= 'A' && c <= 'Z')
             || c == '_';
     }
+    // Reject negatives and code points past the Unicode maximum.
+    if ((uint32_t)c > 0x10FFFF) return false;
     PyObject *s = PyUnicode_FromOrdinal((int)c);
     if (s == NULL) {
         CPyError_OutOfMemory();
@@ -101,9 +104,13 @@ static inline int32_t LibRTStrings_ChangeCase_slow(int32_t c, const char *method
 // non-ASCII delegates to str.upper on a 1-character string. Returns the
 // input unchanged when uppercasing expands to multiple codepoints.
 static inline int32_t LibRTStrings_ToUpper(int32_t c) {
-    if (c < 0) return c;
-    if (c >= 'a' && c <= 'z') return c - 32;
-    if (c < 128) return c;
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
+        if (c >= 'a' && c <= 'z') return c - 32;
+        return c;
+    }
+    // Negatives and code points past the Unicode maximum are returned unchanged.
+    if ((uint32_t)c > 0x10FFFF) return c;
     return LibRTStrings_ChangeCase_slow(c, "upper");
 }
 
@@ -111,9 +118,13 @@ static inline int32_t LibRTStrings_ToUpper(int32_t c) {
 // non-ASCII delegates to str.lower on a 1-character string. Returns the
 // input unchanged when lowercasing expands to multiple codepoints.
 static inline int32_t LibRTStrings_ToLower(int32_t c) {
-    if (c < 0) return c;
-    if (c >= 'A' && c <= 'Z') return c + 32;
-    if (c < 128) return c;
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
+        if (c >= 'A' && c <= 'Z') return c + 32;
+        return c;
+    }
+    // Negatives and code points past the Unicode maximum are returned unchanged.
+    if ((uint32_t)c > 0x10FFFF) return c;
     return LibRTStrings_ChangeCase_slow(c, "lower");
 }
 
