@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from collections.abc import Set as AbstractSet
 
-from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
+import mypy.build as build_module
+from mypy.build import (
+    BuildManager,
+    BuildSourceSet,
+    State,
+    SuppressionReason,
+    order_ascc,
+    sorted_components,
+)
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
 from mypy.graph_utils import strongly_connected_components, topsort
+from mypy.main import process_options
 from mypy.modulefinder import SearchPaths
 from mypy.options import Options
 from mypy.plugin import Plugin
@@ -107,6 +118,50 @@ class GraphSuite(Suite):
             stderr=sys.stderr,
         )
         return manager
+
+    def test_fine_grained_cache_preserves_suppression_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "mypy.ini"), "w", encoding="utf-8") as f:
+                f.write("[mypy]\ncache_fine_grained = True\nfollow_imports = skip\n")
+            with open(os.path.join(tmp, "skipped.py"), "w", encoding="utf-8") as f:
+                f.write("def ignored() -> int:\n    return 1\n")
+            with open(os.path.join(tmp, "dep.py"), "w", encoding="utf-8") as f:
+                f.write("import skipped\n\ndef value() -> int:\n    return 1\n")
+            with open(os.path.join(tmp, "main.py"), "w", encoding="utf-8") as f:
+                f.write("import dep\n\ndef value() -> int:\n    return dep.value()\n")
+            with open(os.path.join(tmp, "seed.py"), "w", encoding="utf-8") as f:
+                f.write("import skipped\n")
+
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+
+                def run_mypy(
+                    args: list[str], *, server_options: bool = False
+                ) -> build_module.BuildResult:
+                    sources, options = process_options(args, server_options=server_options)
+                    options.use_builtins_fixtures = True
+                    result = build_module.build(sources=sources, options=options)
+                    assert_equal(result.errors, [])
+                    return result
+
+                result = run_mypy(["dep.py", "main.py"])
+                assert_equal(result.graph["dep"].suppressed, ["skipped"])
+                assert_equal(result.manager.missing_modules["skipped"], SuppressionReason.SKIPPED)
+
+                result = run_mypy(["seed.py", "skipped.py"])
+                assert_equal(result.graph["seed"].dependencies, ["skipped", "builtins"])
+                assert_equal(result.graph["seed"].suppressed, [])
+
+                result = run_mypy(
+                    ["--use-fine-grained-cache", "seed.py", "dep.py", "main.py"],
+                    server_options=True,
+                )
+            finally:
+                os.chdir(old_cwd)
+
+            assert_equal(result.manager.missing_modules["skipped"], SuppressionReason.SKIPPED)
+            assert result.graph["dep"].is_fresh()
 
     def test_sorted_components(self) -> None:
         manager = self._make_manager()
