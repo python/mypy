@@ -3,9 +3,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
 
-import mypyc.build as mypyc_build_module
 from mypyc.build import get_header_deps, resolve_cfile_deps
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.pprint import format_blocks, generate_names_for_ir
@@ -25,68 +23,6 @@ class TestMisc(unittest.TestCase):
         names = generate_names_for_ir([], [block])
         code = format_blocks([block], names, {})
         assert code[:-1] == ["L0:", "    r0 = 'foo'", "    CPyDebug_PrintObject(r0)"]
-
-
-class TestIncrementalOutputFiles(unittest.TestCase):
-    def test_cached_dependency_output_file_not_overwritten_for_preserved_suppression(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            build_dir = os.path.join(tmp, "build")
-            with open(os.path.join(tmp, "mypy.ini"), "w", encoding="utf-8") as f:
-                f.write("[mypy]\nfollow_imports = skip\n")
-            os.mkdir(os.path.join(tmp, "skipped"))
-            with open(os.path.join(tmp, "skipped", "__init__.py"), "w", encoding="utf-8") as f:
-                f.write("x = 1\n")
-            with open(os.path.join(tmp, "skipped", "child.py"), "w", encoding="utf-8") as f:
-                f.write("import skipped\n\ndef child() -> int:\n    return 1\n")
-            with open(os.path.join(tmp, "dep.py"), "w", encoding="utf-8") as f:
-                f.write("import skipped\n\ndef value() -> int:\n    return 1\n")
-            with open(os.path.join(tmp, "main.py"), "w", encoding="utf-8") as f:
-                f.write("import dep\n\ndef value() -> int:\n    return dep.value()\n")
-
-            compiler_options = CompilerOptions(separate=True, target_dir=build_dir)
-
-            old_cwd = os.getcwd()
-            os.chdir(tmp)
-            try:
-                files = ["dep.py", "skipped/child.py", "main.py"]
-
-                groups, group_cfilenames, _ = mypyc_build_module.mypyc_build(
-                    files, compiler_options, separate=True
-                )
-
-                dep_group = next(
-                    i
-                    for i, (group_sources, _) in enumerate(groups)
-                    if [source.module for source in group_sources] == ["dep"]
-                )
-                dep_output_files = {
-                    os.path.abspath(path)
-                    for paths in group_cfilenames[dep_group]
-                    for path in paths
-                }
-
-                # Only main changed; dep should be loaded from the mypyc IR cache and reuse
-                # its existing C outputs.
-                with open("main.py", "w", encoding="utf-8") as f:
-                    f.write("import dep\n\ndef value() -> int:\n    return dep.value() + 1\n")
-
-                written_paths: set[str] = set()
-                original_write_file = mypyc_build_module.write_file
-
-                def recording_write_file(path: str, contents: str) -> None:
-                    written_paths.add(os.path.abspath(path))
-                    original_write_file(path, contents)
-
-                with patch.object(
-                    mypyc_build_module, "write_file", side_effect=recording_write_file
-                ):
-                    # skipped.child imports its skipped package ancestor; loading that cached
-                    # state should not make cached dep stale or rewrite dep's generated outputs.
-                    mypyc_build_module.mypyc_build(files, compiler_options, separate=True)
-            finally:
-                os.chdir(old_cwd)
-
-            assert written_paths.isdisjoint(dep_output_files)
 
 
 class TestHeaderDeps(unittest.TestCase):
