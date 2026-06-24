@@ -210,15 +210,18 @@ def parse_and_typecheck(
 ) -> BuildResult:
     assert options.strict_optional, "strict_optional must be turned on"
     mypyc_plugin = MypycPlugin(options, compiler_options, groups)
-    result = build(
-        sources=sources,
-        options=options,
-        alt_lib_path=alt_lib_path,
-        fscache=fscache,
-        extra_plugins=[mypyc_plugin],
-    )
-    mypyc_plugin.metastore.close()
+    try:
+        result = build(
+            sources=sources,
+            options=options,
+            alt_lib_path=alt_lib_path,
+            fscache=fscache,
+            extra_plugins=[mypyc_plugin],
+        )
+    finally:
+        mypyc_plugin.metastore.close()
     if result.errors:
+        result.manager.metastore.close()
         raise CompileError(result.errors)
     return result
 

@@ -134,6 +134,7 @@ class GraphSuite(Suite):
 
             old_cwd = os.getcwd()
             os.chdir(tmp)
+            results: list[build_module.BuildResult] = []
             try:
 
                 def run_mypy(
@@ -142,6 +143,7 @@ class GraphSuite(Suite):
                     sources, options = process_options(args, server_options=server_options)
                     options.use_builtins_fixtures = True
                     result = build_module.build(sources=sources, options=options)
+                    results.append(result)
                     assert_equal(result.errors, [])
                     return result
 
@@ -157,11 +159,12 @@ class GraphSuite(Suite):
                     ["--use-fine-grained-cache", "seed.py", "dep.py", "main.py"],
                     server_options=True,
                 )
+                assert_equal(result.manager.missing_modules["skipped"], SuppressionReason.SKIPPED)
+                assert result.graph["dep"].is_fresh()
             finally:
+                for result in results:
+                    result.manager.metastore.close()
                 os.chdir(old_cwd)
-
-            assert_equal(result.manager.missing_modules["skipped"], SuppressionReason.SKIPPED)
-            assert result.graph["dep"].is_fresh()
 
     def test_sorted_components(self) -> None:
         manager = self._make_manager()
