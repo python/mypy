@@ -46,11 +46,11 @@ from mypy.traverser import TraverserVisitor
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
+    OVERLOAD_NAMES,
     AnyType,
     CallableType,
     FunctionLike,
     Instance,
-    OVERLOAD_NAMES,
     TupleType,
     Type,
     TypeOfAny,
