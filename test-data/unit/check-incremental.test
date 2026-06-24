@@ -8204,3 +8204,19 @@ reveal_type(x)
 tmp/a.py:2: note: Revealed type is "builtins.int"
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.str"
+
+[case testIncrementalFollowImportsSkipStubWithSkippedRuntimeDependency]
+# flags: --follow-imports=skip
+import pkg.foo
+[file pkg/__init__.py]
+
+[file pkg/foo.pyi]
+from pkg import helper
+
+x = 1
+[file pkg/helper.py]
+y = 2
+[rechecked]
+[stale]
+[out2]
+[out3]
