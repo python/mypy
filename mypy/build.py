@@ -4345,7 +4345,7 @@ def load_graph(
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
-                manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
+                manager.missing_modules.setdefault(dep, SuppressionReason.NOT_FOUND)
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
                 if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:
