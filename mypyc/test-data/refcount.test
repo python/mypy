@@ -1679,39 +1679,11 @@ def C.f(self, x):
     self :: __main__.C
     x :: i64
     r0 :: vec[i64]
-    r1 :: native_int
-    r2 :: bit
-    r3 :: i64
-    r4 :: bit
-    r5 :: bool
-    r6 :: i64
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: i64
+    r1 :: i64
 L0:
     r0 = borrow self.v
-    r1 = r0.len
-    r2 = x < r1 :: unsigned
-    if r2 goto L4 else goto L1 :: bool
-L1:
-    r3 = x + r1
-    r4 = r3 < r1 :: unsigned
-    if r4 goto L3 else goto L2 :: bool
-L2:
-    r5 = raise IndexError
-    unreachable
-L3:
-    r6 = r3
-    goto L5
-L4:
-    r6 = x
-L5:
-    r7 = r0.items
-    r8 = r6 * 8
-    r9 = r7 + r8
-    r10 = load_mem r9 :: i64*
-    return r10
+    r1 = vec_get_item[i64] r0, x
+    return r1
 
 [case testVecI64LenBorrowVec_64bit]
 from librt.vecs import vec
