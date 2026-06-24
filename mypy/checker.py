@@ -3398,9 +3398,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             s.is_final_def
             and s.type
             and not has_no_typevars(s.type)
-            and self.scope.active_class() is not None
+            and (active_class := self.scope.active_class()) is not None
         ):
-            self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
+            # Final[T] instance fields in dataclasses are not class attributes, so
+            # they are allowed to depend on type variables (PEP 591 / dataclass spec).
+            # Only suppress the error when the field is a dataclass instance field
+            # (not explicitly ClassVar).
+            lv = s.lvalues[0] if s.lvalues else None
+            is_dataclass_instance_field = (
+                "dataclass_tag" in active_class.metadata
+                and isinstance(lv, RefExpr)
+                and isinstance(lv.node, Var)
+                and not lv.node.is_classvar
+            )
+            if not is_dataclass_instance_field:
+                self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
         if s.unanalyzed_type and not self.in_checked_function():
             self.msg.annotation_in_unchecked_function(context=s)

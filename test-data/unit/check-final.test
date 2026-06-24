@@ -1322,3 +1322,35 @@ class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testFinalDefiningTypevarsDataclassInstanceField]
+# Regression test for https://github.com/python/mypy/issues/21637
+# Final[T] instance fields in dataclasses must NOT trigger the
+# "cannot depend on type variables" error, because they are instance
+# attributes, not class attributes.
+from dataclasses import dataclass
+from typing import Final, Generic, TypeVar
+
+T = TypeVar("T")
+
+@dataclass(frozen=True)
+class A(Generic[T]):
+    value: Final[T]  # OK — instance field in a dataclass
+
+@dataclass(frozen=True)
+class B(Generic[T]):
+    value: T  # OK — control case without Final
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testFinalDefiningTypevarsNonDataclassStillErrors]
+# Final[T] in a plain (non-dataclass) generic class body must still raise the error.
+from typing import Any, Final, Generic, TypeVar
+
+T = TypeVar("T")
+d: Any
+
+class C(Generic[T]):
+    x: Final[T] = d  # E: Final name declared in class body cannot depend on type variables
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
