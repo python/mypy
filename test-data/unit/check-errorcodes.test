@@ -1098,6 +1098,21 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
+[case testNestedSubscriptWrongArityLineNumber]
+# flags: --python-version 3.12
+def foo() -> dict[
+    str,
+    dict[int, int, int],  # E: "dict" expects 2 type arguments, but 3 given  [type-arg]
+]:
+    return {}
+[builtins fixtures/dict.pyi]
+
+[case testTypeCommentNestedSubscriptWrongArityLineNumber]
+# flags: --python-version 3.12
+x = 0
+y = {}  # type: dict[int, int, int]  # E: "dict" expects 2 type arguments, but 3 given  [type-arg]
+[builtins fixtures/dict.pyi]
+
 [case testSliceInDictBuiltin_no_native_parse]
 # flags: --show-column-numbers
 b: dict[int, x:y]

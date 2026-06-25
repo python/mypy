@@ -323,7 +323,7 @@ def parse_type_comment(
             ignored = None
         assert isinstance(typ, ast3.Expression)
         converted = TypeConverter(
-            errors, line=line, override_column=column, is_evaluated=False
+            errors, line=line, override_column=column, line_offset=line - 1, is_evaluated=False
         ).visit(typ.body)
         return ignored, converted
 
@@ -966,11 +966,16 @@ class ASTConverter:
                             blocker=False,
                         )
                     translated_args: list[Type] = TypeConverter(
-                        self.errors, line=lineno, override_column=n.col_offset
+                        self.errors,
+                        line=lineno,
+                        override_column=n.col_offset,
+                        line_offset=lineno - 1,
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
                     arg_types = cast(list[Type | None], translated_args)
-                return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
+                return_type = TypeConverter(
+                    self.errors, line=lineno, line_offset=lineno - 1
+                ).visit(func_type_ast.returns)
 
                 # add implicit self type
                 in_method_scope = self.class_and_function_stack[-2:] == ["C", "D"]
@@ -1877,11 +1882,13 @@ class TypeConverter:
         errors: Errors | None,
         line: int = -1,
         override_column: int = -1,
+        line_offset: int = 0,
         is_evaluated: bool = True,
     ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
+        self.line_offset = line_offset
         self.node_stack: list[AST] = []
         self.is_evaluated = is_evaluated
 
@@ -1895,6 +1902,10 @@ class TypeConverter:
             return column
         else:
             return self.override_column
+
+    def convert_lineno(self, line: int) -> int:
+        """Map relative line numbers from synthetic parses back to source lines."""
+        return line + self.line_offset
 
     def invalid_type(self, node: AST, note: str | None = None) -> RawExpressionType:
         """Constructs a type representing some expression that normally forms an invalid type.
@@ -2112,12 +2123,13 @@ class TypeConverter:
             result = UnboundType(
                 value.name,
                 params,
-                line=self.line,
+                line=self.convert_lineno(n.lineno),
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
             result.end_column = n.end_col_offset
-            result.end_line = n.end_lineno
+            if n.end_lineno is not None:
+                result.end_line = self.convert_lineno(n.end_lineno)
             return result
         else:
             return self.invalid_type(n)
