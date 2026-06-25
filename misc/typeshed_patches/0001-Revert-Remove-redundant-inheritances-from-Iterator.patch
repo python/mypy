@@ -1,4 +1,4 @@
-From 69791281c2c5e919cea9a77c4a771f79d9e70384 Mon Sep 17 00:00:00 2001
+From d3dabcf7b7aaf0997b59f0a28bb41d17b6098f2c Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -15,7 +15,7 @@ Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
  7 files changed, 34 insertions(+), 34 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/_asyncio.pyi b/mypy/typeshed/stdlib/_asyncio.pyi
-index d663f5d93..f43178e4d 100644
+index 23b690a9c..0ce93a435 100644
 --- a/mypy/typeshed/stdlib/_asyncio.pyi
 +++ b/mypy/typeshed/stdlib/_asyncio.pyi
 @@ -1,6 +1,6 @@
@@ -25,7 +25,7 @@ index d663f5d93..f43178e4d 100644
 +from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable
  from contextvars import Context
  from types import FrameType, GenericAlias
- from typing import Any, Literal, TextIO, TypeVar
+ from typing import Any, Literal, TextIO, TypeAlias, TypeVar
 @@ -11,7 +11,7 @@ _T_co = TypeVar("_T_co", covariant=True)
  _TaskYieldType: TypeAlias = Future[object] | None
  
@@ -36,10 +36,10 @@ index d663f5d93..f43178e4d 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 8acdeadff..5a3bb5908 100644
+index 1808e28e2..9db6f4fc7 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1226,7 +1226,7 @@ class frozenset(AbstractSet[_T_co]):
+@@ -1369,7 +1369,7 @@ class frozenset(AbstractSet[_T_co]):
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
  @disjoint_base
@@ -48,7 +48,7 @@ index 8acdeadff..5a3bb5908 100644
      def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> tuple[int, _T]: ...
-@@ -1413,7 +1413,7 @@ else:
+@@ -1635,7 +1635,7 @@ else:
  exit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -57,16 +57,16 @@ index 8acdeadff..5a3bb5908 100644
      @overload
      def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
      @overload
-@@ -1477,7 +1477,7 @@ license: _sitebuiltins._Printer
- 
+@@ -1706,7 +1706,7 @@ license: _sitebuiltins._Printer
  def locals() -> dict[str, Any]: ...
+ 
  @disjoint_base
 -class map(Generic[_S]):
 +class map(Iterator[_S]):
      # 3.14 adds `strict` argument.
      if sys.version_info >= (3, 14):
          @overload
-@@ -1784,7 +1784,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
+@@ -2022,7 +2022,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
  quit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -75,29 +75,29 @@ index 8acdeadff..5a3bb5908 100644
      @overload
      def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
      @overload
-@@ -1848,7 +1848,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
- @overload
+@@ -2100,7 +2100,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
  def vars(object: Any = ..., /) -> dict[str, Any]: ...
+ 
  @disjoint_base
 -class zip(Generic[_T_co]):
 +class zip(Iterator[_T_co]):
-     if sys.version_info >= (3, 10):
-         @overload
-         def __new__(cls, *, strict: bool = False) -> zip[Any]: ...
+     @overload
+     def __new__(cls, *, strict: bool = False) -> zip[Any]: ...
+     @overload
 diff --git a/mypy/typeshed/stdlib/csv.pyi b/mypy/typeshed/stdlib/csv.pyi
-index 2c8e7109c..4ed0ab1d8 100644
+index f8ab5f000..f3b4286a6 100644
 --- a/mypy/typeshed/stdlib/csv.pyi
 +++ b/mypy/typeshed/stdlib/csv.pyi
-@@ -25,7 +25,7 @@ else:
-     from _csv import _reader as Reader, _writer as Writer
- 
+@@ -21,7 +21,7 @@ if sys.version_info >= (3, 12):
+     from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
+ from _csv import Reader, Writer
  from _typeshed import SupportsWrite
 -from collections.abc import Collection, Iterable, Mapping, Sequence
 +from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
  from types import GenericAlias
  from typing import Any, Generic, Literal, TypeVar, overload
  from typing_extensions import Self
-@@ -73,7 +73,7 @@ class excel(Dialect): ...
+@@ -69,7 +69,7 @@ class excel(Dialect): ...
  class excel_tab(excel): ...
  class unix_dialect(Dialect): ...
  
@@ -107,7 +107,7 @@ index 2c8e7109c..4ed0ab1d8 100644
      restkey: _T | None
      restval: str | Any | None
 diff --git a/mypy/typeshed/stdlib/fileinput.pyi b/mypy/typeshed/stdlib/fileinput.pyi
-index 6778b7648..95164de2f 100644
+index 37783254c..db9c228f5 100644
 --- a/mypy/typeshed/stdlib/fileinput.pyi
 +++ b/mypy/typeshed/stdlib/fileinput.pyi
 @@ -1,8 +1,8 @@
@@ -116,22 +116,22 @@ index 6778b7648..95164de2f 100644
 -from collections.abc import Callable, Iterable
 +from collections.abc import Callable, Iterable, Iterator
  from types import GenericAlias, TracebackType
--from typing import IO, Any, AnyStr, Generic, Literal, Protocol, overload, type_check_only
-+from typing import IO, Any, AnyStr, Literal, Protocol, overload, type_check_only
- from typing_extensions import Self, TypeAlias, deprecated
+-from typing import IO, Any, AnyStr, Generic, Literal, Protocol, TypeAlias, overload, type_check_only
++from typing import IO, Any, AnyStr, Literal, Protocol, TypeAlias, overload, type_check_only
+ from typing_extensions import Self, deprecated
  
  __all__ = [
-@@ -105,7 +105,7 @@ def fileno() -> int: ...
+@@ -74,7 +74,7 @@ def fileno() -> int: ...
  def isfirstline() -> bool: ...
  def isstdin() -> bool: ...
  
 -class FileInput(Generic[AnyStr]):
 +class FileInput(Iterator[AnyStr]):
-     if sys.version_info >= (3, 10):
-         # encoding and errors are added
-         @overload
+     # encoding and errors are added
+     @overload
+     def __init__(
 diff --git a/mypy/typeshed/stdlib/itertools.pyi b/mypy/typeshed/stdlib/itertools.pyi
-index 8a924ad8b..5c2bf7f83 100644
+index d26a4e1da..9d1cd84da 100644
 --- a/mypy/typeshed/stdlib/itertools.pyi
 +++ b/mypy/typeshed/stdlib/itertools.pyi
 @@ -28,7 +28,7 @@ _Predicate: TypeAlias = Callable[[_T], object]
@@ -143,7 +143,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls) -> count[int]: ...
      @overload
-@@ -39,13 +39,13 @@ class count(Generic[_N]):
+@@ -40,13 +40,13 @@ class count(Generic[_N]):
      def __iter__(self) -> Self: ...
  
  @disjoint_base
@@ -159,7 +159,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, object: _T) -> Self: ...
      @overload
-@@ -55,7 +55,7 @@ class repeat(Generic[_T]):
+@@ -57,7 +57,7 @@ class repeat(Generic[_T]):
      def __length_hint__(self) -> int: ...
  
  @disjoint_base
@@ -168,7 +168,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T], func: None = None, *, initial: _T | None = None) -> Self: ...
      @overload
-@@ -64,7 +64,7 @@ class accumulate(Generic[_T]):
+@@ -67,7 +67,7 @@ class accumulate(Generic[_T]):
      def __next__(self) -> _T: ...
  
  @disjoint_base
@@ -177,7 +177,7 @@ index 8a924ad8b..5c2bf7f83 100644
      def __new__(cls, *iterables: Iterable[_T]) -> Self: ...
      def __next__(self) -> _T: ...
      def __iter__(self) -> Self: ...
-@@ -74,25 +74,25 @@ class chain(Generic[_T]):
+@@ -77,25 +77,25 @@ class chain(Generic[_T]):
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
  @disjoint_base
@@ -207,7 +207,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T1], key: None = None) -> groupby[_T1, _T1]: ...
      @overload
-@@ -101,7 +101,7 @@ class groupby(Generic[_T_co, _S_co]):
+@@ -105,7 +105,7 @@ class groupby(Generic[_T_co, _S_co]):
      def __next__(self) -> tuple[_T_co, Iterator[_S_co]]: ...
  
  @disjoint_base
@@ -216,7 +216,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T], stop: int | None, /) -> Self: ...
      @overload
-@@ -110,20 +110,20 @@ class islice(Generic[_T]):
+@@ -115,13 +115,13 @@ class islice(Generic[_T]):
      def __next__(self) -> _T: ...
  
  @disjoint_base
@@ -232,15 +232,16 @@ index 8a924ad8b..5c2bf7f83 100644
      def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> _T: ...
- 
+@@ -129,7 +129,7 @@ class takewhile(Generic[_T]):
  def tee(iterable: Iterable[_T], n: int = 2, /) -> tuple[Iterator[_T], ...]: ...
+ 
  @disjoint_base
 -class zip_longest(Generic[_T_co]):
 +class zip_longest(Iterator[_T_co]):
      # one iterable (fillvalue doesn't matter)
      @overload
      def __new__(cls, iter1: Iterable[_T1], /, *, fillvalue: object = None) -> zip_longest[tuple[_T1]]: ...
-@@ -202,7 +202,7 @@ class zip_longest(Generic[_T_co]):
+@@ -209,7 +209,7 @@ class zip_longest(Generic[_T_co]):
      def __next__(self) -> _T_co: ...
  
  @disjoint_base
@@ -249,7 +250,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iter1: Iterable[_T1], /) -> product[tuple[_T1]]: ...
      @overload
-@@ -288,7 +288,7 @@ class product(Generic[_T_co]):
+@@ -296,7 +296,7 @@ class product(Generic[_T_co]):
      def __next__(self) -> _T_co: ...
  
  @disjoint_base
@@ -258,7 +259,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> permutations[tuple[_T, _T]]: ...
      @overload
-@@ -303,7 +303,7 @@ class permutations(Generic[_T_co]):
+@@ -312,7 +312,7 @@ class permutations(Generic[_T_co]):
      def __next__(self) -> _T_co: ...
  
  @disjoint_base
@@ -267,7 +268,7 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations[tuple[_T, _T]]: ...
      @overload
-@@ -318,7 +318,7 @@ class combinations(Generic[_T_co]):
+@@ -328,7 +328,7 @@ class combinations(Generic[_T_co]):
      def __next__(self) -> _T_co: ...
  
  @disjoint_base
@@ -276,15 +277,15 @@ index 8a924ad8b..5c2bf7f83 100644
      @overload
      def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations_with_replacement[tuple[_T, _T]]: ...
      @overload
-@@ -334,14 +334,14 @@ class combinations_with_replacement(Generic[_T_co]):
+@@ -344,14 +344,14 @@ class combinations_with_replacement(Generic[_T_co]):
+     def __next__(self) -> _T_co: ...
  
- if sys.version_info >= (3, 10):
-     @disjoint_base
--    class pairwise(Generic[_T_co]):
-+    class pairwise(Iterator[_T_co]):
-         def __new__(cls, iterable: Iterable[_T], /) -> pairwise[tuple[_T, _T]]: ...
-         def __iter__(self) -> Self: ...
-         def __next__(self) -> _T_co: ...
+ @disjoint_base
+-class pairwise(Generic[_T_co]):
++class pairwise(Iterator[_T_co]):
+     def __new__(cls, iterable: Iterable[_T], /) -> pairwise[tuple[_T, _T]]: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
  
  if sys.version_info >= (3, 12):
      @disjoint_base
@@ -313,10 +314,10 @@ index b79f9e773..f276372d0 100644
      def __iter__(self) -> Self: ...
      def next(self, timeout: float | None = None) -> _T: ...
 diff --git a/mypy/typeshed/stdlib/sqlite3/__init__.pyi b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-index 04b978b1b..e4604144f 100644
+index 7c033bdf4..7bf020558 100644
 --- a/mypy/typeshed/stdlib/sqlite3/__init__.pyi
 +++ b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-@@ -408,7 +408,7 @@ class Connection:
+@@ -426,7 +426,7 @@ class Connection:
      ) -> Literal[False]: ...
  
  @disjoint_base
@@ -326,5 +327,5 @@ index 04b978b1b..e4604144f 100644
      @property
      def connection(self) -> Connection: ...
 -- 
-2.52.0
+2.54.0
 

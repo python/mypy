@@ -1412,3 +1412,64 @@ def test_isdigit_strings() -> None:
     assert not "\u00e9\u00e8".isdigit()
     assert not "123\u00e9".isdigit()
     assert not "\U0001d7ce!".isdigit()
+
+[case testStrIndexEqLiteralSpecialize]
+from testutil import assertRaises
+
+# The specializer fires on the AST shape `IndexExpr == StrLiteral` (or the
+# symmetric swap, and `!=`). The literal has to be a real source-level
+# string literal (can't be passed in as a parameter), so each test
+# function pins one distinct shape.
+
+def eq_comma(s: str, i: int) -> bool:
+    # Specialized: s[i] == "x".
+    return s[i] == ","
+
+def ne_comma(s: str, i: int) -> bool:
+    # Specialized: s[i] != "x".
+    return s[i] != ","
+
+def comma_eq(s: str, i: int) -> bool:
+    # Specialized: "x" == s[i]. Operand-swap is normalized.
+    return "," == s[i]
+
+def eq_two_chars(s: str, i: int) -> bool:
+    # Not specialized: literal isn't 1 char. Falls through to the generic
+    # str compare, which returns False since s[i] is always 1 codepoint.
+    return s[i] == "ab"
+
+def eq_empty(s: str, i: int) -> bool:
+    # Not specialized: empty literal. Same fall-through.
+    return s[i] == ""
+
+def test_specialized_path() -> None:
+    s = "a,b"  # comma at index 1
+    assert eq_comma(s, 1)
+    assert not eq_comma(s, 0)
+    assert not eq_comma(s, 2)
+    # != inverts.
+    assert ne_comma(s, 0)
+    assert not ne_comma(s, 1)
+    # Literal on the LHS is normalized to the same shape.
+    assert comma_eq(s, 1)
+    assert not comma_eq(s, 0)
+
+def test_negative_index_is_adjusted() -> None:
+    s = "a,b"
+    assert eq_comma(s, -2)        # -2 -> 1 (',')
+    assert not eq_comma(s, -1)    # -1 -> 2 ('b')
+
+def test_non_1char_literal_falls_through() -> None:
+    s = "a,b"
+    # Generic str compare answers False because s[i] has length 1.
+    assert not eq_two_chars(s, 0)
+    assert not eq_two_chars(s, 1)
+    assert not eq_empty(s, 0)
+
+def test_out_of_range_raises_indexerror() -> None:
+    # Bounds-check semantics match the unspecialized s[i] path.
+    s = "a,b"
+    with assertRaises(IndexError):
+        eq_comma(s, 3)
+    with assertRaises(IndexError):
+        eq_comma(s, -4)

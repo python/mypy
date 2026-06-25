@@ -26,6 +26,8 @@ Follow submodule links in the table to a detailed description of each submodule.
      - Description
    * - :doc:`librt.base64 <librt_base64>`
      - Fast Base64 encoding and decoding
+   * - :doc:`librt.random <librt_random>`
+     - Pseudorandom number generation
    * - :doc:`librt.strings <librt_strings>`
      - String and bytes utilities
    * - :doc:`librt.time <librt_time>`

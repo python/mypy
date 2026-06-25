@@ -18,7 +18,22 @@
 #include <Python.h>
 #include "CPy.h"
 
-#define PARSER_INITED(parser) ((parser)->kwtuple != NULL)
+// The kwtuple field doubles as the "parser has been initialized" flag: it is
+// written last (after all other parser fields) and read first. On free-threaded
+// builds the fast paths read it without holding any lock, so the write must be a
+// release store and the reads acquire loads. That way a thread that observes a
+// non-NULL kwtuple is guaranteed to also see the fully-initialized min/max/etc.
+// fields. On GIL builds these are plain accesses with no overhead.
+#ifdef Py_GIL_DISABLED
+#define PARSER_KWTUPLE(parser) _Py_atomic_load_ptr_acquire(&(parser)->kwtuple)
+#define SET_PARSER_KWTUPLE(parser, value) \
+    _Py_atomic_store_ptr_release(&(parser)->kwtuple, (value))
+#else
+#define PARSER_KWTUPLE(parser) ((parser)->kwtuple)
+#define SET_PARSER_KWTUPLE(parser, value) ((parser)->kwtuple = (value))
+#endif
+
+#define PARSER_INITED(parser) (PARSER_KWTUPLE(parser) != NULL)
 
 /* Forward */
 static int
@@ -115,18 +130,20 @@ CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyOb
 /* List of static parsers. */
 static struct CPyArg_Parser *static_arg_parsers = NULL;
 
+#ifdef Py_GIL_DISABLED
+// Serializes one-time initialization of parsers and insertion into the
+// static_arg_parsers list. Only contended the first time a given compiled
+// function is called; once a parser is initialized the fast paths never lock.
+static PyMutex static_arg_parsers_mutex;
+#endif
+
 static int
-parser_init(CPyArg_Parser *parser)
+parser_init_locked(CPyArg_Parser *parser)
 {
     const char * const *keywords;
     const char *format;
     int i, len, min, max, nkw;
     PyObject *kwtuple;
-
-    assert(parser->keywords != NULL);
-    if (PARSER_INITED(parser)) {
-        return 1;
-    }
 
     keywords = parser->keywords;
     /* scan keywords and count the number of positional-only parameters */
@@ -244,12 +261,51 @@ parser_init(CPyArg_Parser *parser)
         PyUnicode_InternInPlace(&str);
         PyTuple_SET_ITEM(kwtuple, i, str);
     }
-    parser->kwtuple = kwtuple;
 
     assert(parser->next == NULL);
     parser->next = static_arg_parsers;
     static_arg_parsers = parser;
+
+    // Publish the parser last: storing kwtuple marks it as initialized, so all
+    // other fields (and the list insertion above) must already be in place. On
+    // free-threaded builds this is a release store paired with the acquire loads
+    // in PARSER_INITED/PARSER_KWTUPLE.
+    SET_PARSER_KWTUPLE(parser, kwtuple);
     return 1;
+}
+
+// Cold path of parser_init: perform the one-time initialization. On
+// free-threaded builds this is serialized so that only one thread builds the
+// parser and inserts it into the static_arg_parsers list.
+static CPy_NOINLINE int
+parser_init_slow(CPyArg_Parser *parser)
+{
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&static_arg_parsers_mutex);
+    // Re-check now that we hold the lock: another thread may have initialized
+    // the parser while we were waiting.
+    if (PARSER_INITED(parser)) {
+        PyMutex_Unlock(&static_arg_parsers_mutex);
+        return 1;
+    }
+    int retval = parser_init_locked(parser);
+    PyMutex_Unlock(&static_arg_parsers_mutex);
+    return retval;
+#else
+    return parser_init_locked(parser);
+#endif
+}
+
+// Hot path: a parser is almost always already initialized, so keep the common
+// case inline and branch out to parser_init_slow only on first use.
+static inline int
+parser_init(CPyArg_Parser *parser)
+{
+    assert(parser->keywords != NULL);
+    if (likely(PARSER_INITED(parser))) {
+        return 1;
+    }
+    return parser_init_slow(parser);
 }
 
 static PyObject*

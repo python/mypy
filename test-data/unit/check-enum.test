@@ -604,8 +604,9 @@ V = Enum('U', **{'a': 1})  # E: Unexpected arguments to Enum()
 W = Enum('W', 'a b')
 W.c  # E: "type[W]" has no attribute "c"
 X = Enum('Something', 'a b')  # E: String argument 1 "Something" to enum.Enum(...) does not match variable name "X"
-reveal_type(X.a)  # N: Revealed type is "Literal[__main__.Something@23.a]?"
-X.asdf  # E: "type[Something@23]" has no attribute "asdf"
+reveal_type(X.a)  # N: Revealed type is "Literal[__main__.X.a]?"
+X.asdf  # E: "type[X]" has no attribute "asdf"
+
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -633,7 +634,7 @@ a = A()
 reveal_type(a.x)
 [builtins fixtures/enum.pyi]
 [out]
-main:7: note: Revealed type is "__main__.A.E@4"
+main:7: note: Revealed type is "__main__.E@4"
 
 [case testFunctionalEnumInClassBody]
 from enum import Enum

@@ -2813,6 +2813,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.check_multiple_inheritance(typ)
                 self.check_metaclass_compatibility(typ)
                 self.check_final_deletable(typ)
+                if typ.typeddict_type:
+                    self.check_typeddict_inheritance(defn)
 
             if defn.decorators:
                 sig: Type = type_object_type(defn.info)
@@ -3218,6 +3220,44 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             explanation = typ.explain_metaclass_conflict()
             if explanation:
                 self.note(explanation, typ, code=codes.METACLASS)
+
+    def check_typeddict_inheritance(self, defn: ClassDef) -> None:
+        """Ensure that the final definition of a TypedDict is compatible with its base classes."""
+        assert defn.info.typeddict_type
+        td = defn.info.typeddict_type
+        data = defn.info.typeddict_data
+        if data is None or not data.ready:
+            return
+        for base, base_items in data.bases:
+            assert base.typeddict_type
+            for field_name, base_type in base_items.items():
+                field_type = td.items[field_name]
+                assert field_type
+                is_readonly = field_name in base.typeddict_type.readonly_keys
+                if is_readonly:
+                    is_compatible = is_subtype(field_type, base_type)
+                else:
+                    is_compatible = is_equivalent(field_type, base_type)
+                if not is_compatible:
+                    source = data.field_sources[field_name]
+                    if source.base is None:
+                        self.fail(
+                            f'Definition of field "{field_name}" incompatible with base class '
+                            f'"{base.name}"',
+                            source.ctx,
+                        )
+                    else:
+                        self.fail(
+                            f'Incompatible definitions of field "{field_name}" in base classes '
+                            f'"{base.name}" and "{source.base.name}"',
+                            source.ctx,
+                        )
+                        if field_name in td.readonly_keys:
+                            self.note(
+                                f'This can be resolved by redeclaring the field "{field_name}" '
+                                f"with a mutually compatible type",
+                                source.ctx,
+                            )
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
@@ -4552,7 +4592,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_lvalue(sub_expr)[0] or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
-                UninhabitedType()
+                UninhabitedType(ambiguous=True)
                 for sub_expr in lvalue.items
             ]
             lvalue_type = TupleType(types, self.named_type("builtins.tuple"))
@@ -5515,7 +5555,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not item.is_type_obj():
                     self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                     return self.default_exception_type(is_star)
-                exc_type = erase_typevars(item.ret_type)
+                exc_type = erase_typevars(item.get_instance_type())
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
@@ -6393,7 +6433,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     ) -> tuple[Type, Type]:
         """
         Narrows the type of `iterable_type` based on the type of `item_type`.
-        For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
+        For now, we only support narrowing unions of TypedDicts, and TypeVars with TypedDict
+        bounds, based on left operand being literal string(s).
         """
         if_types: list[Type] = []
         else_types: list[Type] = []
@@ -6407,16 +6448,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         item_str_literals = try_getting_str_literals_from_type(item_type)
 
         for possible_iterable_type in possible_iterable_types:
-            if item_str_literals and isinstance(possible_iterable_type, TypedDictType):
+            bound = (
+                get_proper_type(possible_iterable_type.upper_bound)
+                if isinstance(possible_iterable_type, TypeVarType)
+                else possible_iterable_type
+            )
+
+            if item_str_literals and isinstance(bound, TypedDictType):
                 for key in item_str_literals:
-                    if key in possible_iterable_type.required_keys:
+                    if key in bound.required_keys:
                         if_types.append(possible_iterable_type)
-                    elif (
-                        key in possible_iterable_type.items or not possible_iterable_type.is_final
+                    elif key in bound.items and isinstance(
+                        get_proper_type(bound.items[key]), UninhabitedType
                     ):
-                        if_types.append(possible_iterable_type)
+                        # If an item is explicitly declared uninhabited, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
+                        else_types.append(possible_iterable_type)
+                    elif key not in bound.items and (bound.is_closed or bound.is_final):
+                        # If an item is missing and the type is closed, we can exclude it from
+                        # if_types; see testOperatorContainsNarrowsTypedDicts_closed
+                        # We also support "final" as a legacy way of expressing "closed" in this
+                        # specific case; see testOperatorContainsNarrowsTypedDicts_final
                         else_types.append(possible_iterable_type)
                     else:
+                        if_types.append(possible_iterable_type)
                         else_types.append(possible_iterable_type)
             else:
                 if_types.append(possible_iterable_type)
@@ -6771,28 +6826,69 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 else_map = {}
 
                 if left_index in narrowable_operand_index_to_hash:
-                    collection_item_type = get_proper_type(builtin_item_type(iterable_type))
-                    if collection_item_type is not None:
-                        if_map, else_map = self.narrow_type_by_identity_equality(
-                            "==",
-                            operands=[operands[left_index], operands[right_index]],
-                            operand_types=[item_type, collection_item_type],
-                            expr_indices=[0, 1],
-                            narrowable_indices={0},
-                        )
-                        if else_map and not (
-                            isinstance(p_typ := get_proper_type(iterable_type), TupleType)
-                            and all(
-                                is_singleton_equality_type(get_proper_type(item))
-                                for item in p_typ.items
+                    p_iterable_type = get_proper_type(iterable_type)
+                    container_item_types = None
+
+                    # Can we statically determine container contents?
+                    if (
+                        isinstance(p_iterable_type, TupleType)
+                        and find_unpack_in_list(p_iterable_type.items) is None
+                    ):
+                        container_item_types = p_iterable_type.items
+                    else:
+                        container_expr = collapse_walrus(operands[right_index])
+                        if isinstance(container_expr, (ListExpr, SetExpr)):
+                            if all(not isinstance(i, StarExpr) for i in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(e) for e in container_expr.items
+                                ]
+                        elif isinstance(container_expr, DictExpr):
+                            if all(k is not None for k, v in container_expr.items):
+                                container_item_types = [
+                                    self.lookup_type(cast(Expression, k))
+                                    for k, v in container_expr.items
+                                ]
+
+                    if container_item_types is not None:
+                        # If we know the exact contents, we can potentially do negative narrowing,
+                        # e.g. `x not in (None,)`
+                        all_if_maps = []
+                        all_else_maps = []
+                        for known_item in container_item_types:
+                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
+                            p_known_item = get_proper_type(known_item)
+                            if is_literal_type_like(p_known_item) or (
+                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
+                            ):
+                                known_item = coerce_to_literal(known_item)
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, known_item],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
                             )
-                        ):
-                            # In general, we can't do negative narrowing, since e.g. the container
-                            # could just be empty. However, we can do negative narrowing for some
-                            # tuples e.g. `x not in (None,)`
+                            all_if_maps.append(if_map)
+                            if is_singleton_equality_type(get_proper_type(known_item)):
+                                all_else_maps.append(else_map)
+                        if_map = reduce_or_conditional_type_maps(all_if_maps)
+                        else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
+                    else:
+                        collection_item_type = get_proper_type(builtin_item_type(p_iterable_type))
+                        if collection_item_type is not None:
+                            if_map, else_map = self.narrow_type_by_identity_equality(
+                                "==",
+                                operands=[operands[left_index], operands[right_index]],
+                                operand_types=[item_type, collection_item_type],
+                                expr_indices=[0, 1],
+                                narrowable_indices={0},
+                            )
+                            # We can't do negative narrowing, since e.g. the container could
+                            # just be empty.
                             else_map = {}
 
                 if right_index in narrowable_operand_index_to_hash:
+                    # E.g. narrows the right operand in `if "key" in typed_dict`
                     if_type, else_type = self.conditional_types_for_iterable(
                         item_type, iterable_type
                     )
@@ -8488,6 +8584,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         except KeyError:
             return None
 
+    def record_fixed_type(self, fixed: TypeInfo | TypeAlias) -> None:
+        pass
+
     def fail(
         self,
         msg: str,
@@ -8535,6 +8634,9 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
         # a fail() message with a note() message or not. Both of those
         # message types are ignored.
         return False
+
+    def is_nested_within_func_scope(self) -> bool:
+        return self._chk.scope.top_level_function() is not None
 
     @property
     def type(self) -> TypeInfo | None:

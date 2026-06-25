@@ -1112,6 +1112,7 @@ reveal_type(t3)  # N: Revealed type is "Any"
 
 T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
 T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
+                                    # N: "TypeAliasType" defined in "typing_extensions" \
                                     # E: Argument 3 to "TypeAliasType" has incompatible type "type[str]"; expected "tuple[TypeVar? | ParamSpec? | TypeVarTuple?, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

@@ -251,11 +251,11 @@ class IRBuilder:
 
         self.visitor = visitor
 
-        # Class body context: tracks ClassVar names defined so far when processing
+        # Class body context: tracks ClassVars defined so far when processing
         # a class body, so that intra-class references (e.g. C = A | B where A is
         # a ClassVar defined earlier in the same class) can be resolved correctly.
         # Without this, mypyc looks up such names in module globals, which fails.
-        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_classvars: dict[Var, None] = {}
         self.class_body_obj: Value | None = None
         self.class_body_ir: ClassIR | None = None
 

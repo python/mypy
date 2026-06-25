@@ -1153,6 +1153,56 @@ read_f64_be(PyObject *module, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(CPyBytes_ReadF64BEUnsafe(data + index));
 }
 
+// Python-level wrappers (`cp_*`) for interpreted callers. The C-side names
+// are prefixed `cp_` to avoid colliding with libc's <ctype.h> isspace etc.
+// The LibRTStrings_Is* helpers themselves are static inline in librt_strings.h
+// so they compile directly into mypyc-emitted code with no capsule
+// indirection.
+
+// Parse a Python int as i32 codepoint. Returns 0 on success and writes
+// the value to *out; returns -1 on error with a Python exception set.
+static int
+cp_parse_i32(PyObject *arg, int32_t *out) {
+    int overflow;
+    long c = PyLong_AsLongAndOverflow(arg, &overflow);
+    if (c == -1 && PyErr_Occurred())
+        return -1;
+    if (overflow != 0 || c < INT32_MIN || c > INT32_MAX) {
+        PyErr_SetString(PyExc_OverflowError,
+                        "codepoint out of i32 range");
+        return -1;
+    }
+    *out = (int32_t)c;
+    return 0;
+}
+
+#define DEFINE_CP_BOOL_WRAPPER(name, fn)                                    \
+    static PyObject*                                                        \
+    cp_##name(PyObject *module, PyObject *arg) {                            \
+        int32_t c;                                                          \
+        if (cp_parse_i32(arg, &c) < 0)                                      \
+            return NULL;                                                    \
+        return PyBool_FromLong(fn(c));                                      \
+    }
+
+DEFINE_CP_BOOL_WRAPPER(isspace, LibRTStrings_IsSpace)
+DEFINE_CP_BOOL_WRAPPER(isdigit, LibRTStrings_IsDigit)
+DEFINE_CP_BOOL_WRAPPER(isalnum, LibRTStrings_IsAlnum)
+DEFINE_CP_BOOL_WRAPPER(isalpha, LibRTStrings_IsAlpha)
+DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
+
+#define DEFINE_CP_I32_WRAPPER(name, fn)                                     \
+    static PyObject*                                                        \
+    cp_##name(PyObject *module, PyObject *arg) {                            \
+        int32_t c;                                                          \
+        if (cp_parse_i32(arg, &c) < 0)                                      \
+            return NULL;                                                    \
+        return PyLong_FromLong((long) fn(c));                               \
+    }
+
+DEFINE_CP_I32_WRAPPER(toupper, LibRTStrings_ToUpper)
+DEFINE_CP_I32_WRAPPER(tolower, LibRTStrings_ToLower)
+
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i16_le", (PyCFunction) write_i16_le, METH_FASTCALL,
      PyDoc_STR("Write a 16-bit signed integer to BytesWriter in little-endian format")
@@ -1213,6 +1263,27 @@ static PyMethodDef librt_strings_module_methods[] = {
     },
     {"read_f64_be", (PyCFunction) read_f64_be, METH_FASTCALL,
      PyDoc_STR("Read a 64-bit float from bytes in big-endian format")
+    },
+    {"isspace", cp_isspace, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is Unicode whitespace.")
+    },
+    {"isdigit", cp_isdigit, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a Unicode digit.")
+    },
+    {"isalnum", cp_isalnum, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is alphanumeric.")
+    },
+    {"isalpha", cp_isalpha, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a Unicode letter.")
+    },
+    {"isidentifier", cp_isidentifier, METH_O,
+     PyDoc_STR("Test whether a codepoint (i32) is a valid identifier start (XID_Start).")
+    },
+    {"toupper", cp_toupper, METH_O,
+     PyDoc_STR("Single-codepoint uppercase mapping for a codepoint (i32). Returns the input unchanged if the Unicode uppercase expands to multiple codepoints (e.g. U+00DF uppercases to \"SS\"); use str.upper() for full Unicode case conversion.")
+    },
+    {"tolower", cp_tolower, METH_O,
+     PyDoc_STR("Single-codepoint lowercase mapping for a codepoint (i32). Returns the input unchanged if the Unicode lowercase expands to multiple codepoints; use str.lower() for full Unicode case conversion.")
     },
     {NULL, NULL, 0, NULL}
 };

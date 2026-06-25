@@ -3,7 +3,6 @@ import enum
 import sys
 import types
 from _typeshed import AnnotationForm, StrPath
-from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
     AsyncGeneratorType,
@@ -25,8 +24,21 @@ from types import (
     TracebackType,
     WrapperDescriptorType,
 )
-from typing import Any, ClassVar, Final, Literal, NamedTuple, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import ParamSpec, Self, TypeAlias, TypeGuard, TypeIs, deprecated, disjoint_base
+from typing import (
+    Any,
+    ClassVar,
+    Final,
+    Literal,
+    NamedTuple,
+    ParamSpec,
+    Protocol,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    overload,
+    type_check_only,
+)
+from typing_extensions import Self, TypeIs, deprecated, disjoint_base
 
 if sys.version_info >= (3, 14):
     from annotationlib import Format
@@ -183,8 +195,8 @@ if sys.version_info >= (3, 14):
 
 modulesbyfile: dict[str, Any]
 
-_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
-_GetMembersPredicateTypeIs: TypeAlias = Callable[[Any], TypeIs[_T]]
+_GetMembersPredicateTypeGuard = Callable[[Any], TypeGuard[_T]]
+_GetMembersPredicateTypeIs = Callable[[Any], TypeIs[_T]]
 _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
 _GetMembersReturn: TypeAlias = list[tuple[str, _T]]
 
@@ -223,6 +235,7 @@ def isgeneratorfunction(obj: Callable[..., Generator[Any, Any, Any]]) -> bool: .
 def isgeneratorfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, GeneratorType[Any, Any, Any]]]: ...
 @overload
 def isgeneratorfunction(obj: object) -> TypeGuard[Callable[..., GeneratorType[Any, Any, Any]]]: ...
+
 @overload
 def iscoroutinefunction(obj: Callable[..., Coroutine[Any, Any, Any]]) -> bool: ...
 @overload
@@ -231,15 +244,18 @@ def iscoroutinefunction(obj: Callable[_P, Awaitable[_T]]) -> TypeGuard[Callable[
 def iscoroutinefunction(obj: Callable[_P, object]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, Any]]]: ...
 @overload
 def iscoroutinefunction(obj: object) -> TypeGuard[Callable[..., CoroutineType[Any, Any, Any]]]: ...
+
 def isgenerator(object: object) -> TypeIs[GeneratorType[Any, Any, Any]]: ...
 def iscoroutine(object: object) -> TypeIs[CoroutineType[Any, Any, Any]]: ...
 def isawaitable(object: object) -> TypeIs[Awaitable[Any]]: ...
+
 @overload
 def isasyncgenfunction(obj: Callable[..., AsyncGenerator[Any, Any]]) -> bool: ...
 @overload
 def isasyncgenfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, AsyncGeneratorType[Any, Any]]]: ...
 @overload
 def isasyncgenfunction(obj: object) -> TypeGuard[Callable[..., AsyncGeneratorType[Any, Any]]]: ...
+
 @type_check_only
 class _SupportsSet(Protocol[_T_contra, _V_contra]):
     def __set__(self, instance: _T_contra, value: _V_contra, /) -> None: ...
@@ -293,7 +309,13 @@ def getblock(lines: list[str]) -> list[str]: ...
 def getblock(lines: tuple[str, ...]) -> tuple[str, ...]: ...
 @overload
 def getblock(lines: Sequence[str]) -> Sequence[str]: ...
-def getdoc(object: object) -> str | None: ...
+
+if sys.version_info >= (3, 15):
+    def getdoc(object: object, *, inherit_class_doc: bool = True, fallback_to_class_doc: bool = True) -> str | None: ...
+
+else:
+    def getdoc(object: object) -> str | None: ...
+
 def getcomments(object: object) -> str | None: ...
 def getfile(object: _SourceObjectType) -> str: ...
 def getmodule(object: object, _filename: str | None = None) -> ModuleType | None: ...
@@ -319,7 +341,7 @@ if sys.version_info >= (3, 14):
         annotation_format: Format = Format.VALUE,  # noqa: Y011
     ) -> Signature: ...
 
-elif sys.version_info >= (3, 10):
+else:
     def signature(
         obj: _IntrospectableCallable,
         *,
@@ -328,9 +350,6 @@ elif sys.version_info >= (3, 10):
         locals: Mapping[str, Any] | None = None,
         eval_str: bool = False,
     ) -> Signature: ...
-
-else:
-    def signature(obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Signature: ...
 
 class _void: ...
 class _empty: ...
@@ -361,7 +380,7 @@ class Signature:
             eval_str: bool = False,
             annotation_format: Format = Format.VALUE,  # noqa: Y011
         ) -> Self: ...
-    elif sys.version_info >= (3, 10):
+    else:
         @classmethod
         def from_callable(
             cls,
@@ -372,9 +391,7 @@ class Signature:
             locals: Mapping[str, Any] | None = None,
             eval_str: bool = False,
         ) -> Self: ...
-    else:
-        @classmethod
-        def from_callable(cls, obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
+
     if sys.version_info >= (3, 14):
         def format(self, *, max_width: int | None = None, quote_annotation_strings: bool = True) -> str: ...
     elif sys.version_info >= (3, 13):
@@ -385,7 +402,7 @@ class Signature:
 
 if sys.version_info >= (3, 14):
     from annotationlib import get_annotations as get_annotations
-elif sys.version_info >= (3, 10):
+else:
     def get_annotations(
         obj: Callable[..., object] | type[object] | ModuleType,  # any callable, class, or module
         *,
@@ -450,14 +467,14 @@ class Parameter:
 
 class BoundArguments:
     __slots__ = ("arguments", "_signature", "__weakref__")
-    arguments: OrderedDict[str, Any]
+    arguments: dict[str, Any]
     @property
     def args(self) -> tuple[Any, ...]: ...
     @property
     def kwargs(self) -> dict[str, Any]: ...
     @property
     def signature(self) -> Signature: ...
-    def __init__(self, signature: Signature, arguments: OrderedDict[str, Any]) -> None: ...
+    def __init__(self, signature: Signature, arguments: dict[str, Any]) -> None: ...
     def apply_defaults(self) -> None: ...
     def __eq__(self, other: object) -> bool: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
@@ -498,7 +515,11 @@ class FullArgSpec(NamedTuple):
     kwonlydefaults: dict[str, Any] | None
     annotations: dict[str, Any]
 
-def getfullargspec(func: object) -> FullArgSpec: ...
+if sys.version_info >= (3, 15):
+    def getfullargspec(func: object, *, annotation_format: Format = Format.VALUE) -> FullArgSpec: ...  # noqa: Y011
+
+else:
+    def getfullargspec(func: object) -> FullArgSpec: ...
 
 class ArgInfo(NamedTuple):
     args: list[str]

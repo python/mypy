@@ -1524,3 +1524,86 @@ def test_multiple_params() -> None:
     # Different parameter name than loop variable
     funcs2 = uses_multiple_params_different_name(["a", "b"], "!")
     assert [f() for f in funcs2] == ["a!", "b!"]
+
+[case testConcurrentFirstCallWithKeywordArgs]
+# Regression test for a free-threading data race in argument parser
+# initialization. The first call to a compiled function with keyword arguments
+# lazily initializes a static CPyArg_Parser and pushes it onto a global list.
+# When many threads race that first call on a free-threaded build, the
+# initialization and list insertion must be synchronized, or the runtime hits
+# a failed assertion (parser->next == NULL) and aborts.
+import sys
+import threading
+
+# A pool of distinct functions, none of which is called before the concurrent
+# test. Each function's first call lazily initializes a static CPyArg_Parser,
+# and the test races that initialization across threads. Keyword arguments
+# force the call through the slow path that runs parser_init. Using many
+# functions gives many independent races per run, so the test reliably triggers
+# the bug on an unfixed free-threaded build instead of depending on a single
+# narrow timing window.
+def g0(a: int, b: int, c: int) -> int: return a + b + c
+def g1(a: int, b: int, c: int) -> int: return a + b + c
+def g2(a: int, b: int, c: int) -> int: return a + b + c
+def g3(a: int, b: int, c: int) -> int: return a + b + c
+def g4(a: int, b: int, c: int) -> int: return a + b + c
+def g5(a: int, b: int, c: int) -> int: return a + b + c
+def g6(a: int, b: int, c: int) -> int: return a + b + c
+def g7(a: int, b: int, c: int) -> int: return a + b + c
+def g8(a: int, b: int, c: int) -> int: return a + b + c
+def g9(a: int, b: int, c: int) -> int: return a + b + c
+def g10(a: int, b: int, c: int) -> int: return a + b + c
+def g11(a: int, b: int, c: int) -> int: return a + b + c
+def g12(a: int, b: int, c: int) -> int: return a + b + c
+def g13(a: int, b: int, c: int) -> int: return a + b + c
+def g14(a: int, b: int, c: int) -> int: return a + b + c
+def g15(a: int, b: int, c: int) -> int: return a + b + c
+def g16(a: int, b: int, c: int) -> int: return a + b + c
+def g17(a: int, b: int, c: int) -> int: return a + b + c
+def g18(a: int, b: int, c: int) -> int: return a + b + c
+def g19(a: int, b: int, c: int) -> int: return a + b + c
+def g20(a: int, b: int, c: int) -> int: return a + b + c
+def g21(a: int, b: int, c: int) -> int: return a + b + c
+def g22(a: int, b: int, c: int) -> int: return a + b + c
+def g23(a: int, b: int, c: int) -> int: return a + b + c
+def g24(a: int, b: int, c: int) -> int: return a + b + c
+def g25(a: int, b: int, c: int) -> int: return a + b + c
+def g26(a: int, b: int, c: int) -> int: return a + b + c
+def g27(a: int, b: int, c: int) -> int: return a + b + c
+def g28(a: int, b: int, c: int) -> int: return a + b + c
+def g29(a: int, b: int, c: int) -> int: return a + b + c
+
+FUNCS = [g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, g14,
+         g15, g16, g17, g18, g19, g20, g21, g22, g23, g24, g25, g26, g27,
+         g28, g29]
+
+def is_gil_disabled() -> bool:
+    return hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+def test_concurrent_first_call() -> None:
+    if not is_gil_disabled():
+        # The race can only happen without the GIL.
+        return
+
+    num_threads = 16
+    barrier = threading.Barrier(num_threads)
+    errors: list[str] = []
+
+    def run() -> None:
+        # Line up all threads, then let them race freely through the list. The
+        # first call to each function lazily initializes its parser, so every
+        # function is a fresh race under real parallel pressure.
+        barrier.wait()
+        try:
+            for fn in FUNCS:
+                assert fn(a=1, b=2, c=3) == 6
+        except BaseException as e:
+            errors.append(repr(e))
+
+    threads = [threading.Thread(target=run) for _ in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, errors

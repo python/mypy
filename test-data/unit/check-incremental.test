@@ -5188,7 +5188,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -6892,7 +6892,7 @@ class C:
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"
+tmp/a.py:3: note: Revealed type is "TypedDict('b.Hidden@5', {'x': builtins.int})"
 
 [case testNoIncrementalCrashOnInvalidEnumMethod]
 import a
@@ -6916,7 +6916,7 @@ class TheClass:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.pyenum@6"
 
 -- Note: do not use _no_parallel unless really needed!
 [case testIncrementalFunctoolsPartial_no_parallel]
@@ -8011,3 +8011,212 @@ x = "hello"
 [builtins fixtures/module.pyi]
 [stale b]
 [rechecked b]
+
+[case testNamedTupleInlineBaseClassNoNameCollision]
+import m
+[file m.py]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)
+reveal_type(b)
+[file m.py.2]
+from lib import A, B
+a: A
+b: B
+reveal_type(a)  # touch
+reveal_type(b)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("Same", [('x', int)])): pass
+class B(NamedTuple("Same", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+[out2]
+tmp/m.py:4: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+tmp/m.py:5: note: Revealed type is "tuple[builtins.str, fallback=lib.B]"
+
+[case testNamedTupleInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import NamedTuple
+class A(NamedTuple("N", [('x', int)])): pass
+class A(NamedTuple("N", [('x', str)])): pass
+[builtins fixtures/tuple.pyi]
+[out]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+[out2]
+tmp/lib.py:3: error: Name "A" already defined on line 2
+tmp/m.py:3: note: Revealed type is "tuple[builtins.int, fallback=lib.A]"
+
+[case testTypedDictInlineBaseClassRedefined]
+import m
+[file m.py]
+from lib import A
+a: A
+reveal_type(a)
+[file m.py.2]
+from lib import A
+a: A  # touch
+reveal_type(a)
+[file lib.py]
+from typing import TypedDict
+class A(TypedDict("TD", {'x': int})):
+    pass
+class A(TypedDict("TD", {'x': str})):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+[out2]
+tmp/lib.py:4: error: Name "A" already defined (possibly by an import)
+tmp/m.py:3: note: Revealed type is "TypedDict('lib.A', {'x': builtins.int})"
+
+[case testNewReturnTypeIncremental]
+import m
+[file m.py]
+from lib import C
+
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file m.py.2]
+from lib import C
+
+# touch
+reveal_type(C().ta)
+x: int = C().ta
+reveal_type(C().ta.x)
+[file lib.py]
+class A:
+    x = "test"
+    def __new__(cls) -> int: ...  # type: ignore
+
+class C:
+    def __init__(self) -> None:
+        self.ta = A
+[out]
+tmp/m.py:3: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:5: note: Revealed type is "builtins.str"
+[out2]
+tmp/m.py:4: note: Revealed type is "def () -> builtins.int"
+tmp/m.py:5: error: Incompatible types in assignment (expression has type "type[A]", variable has type "int")
+tmp/m.py:6: note: Revealed type is "builtins.str"
+
+[case testTypeFormWorksInIncrementalMode]
+import b
+[file a.py]
+from typing import TypeVar
+from typing_extensions import TypeForm
+
+T = TypeVar("T")
+def test(arg: TypeForm[T]) -> T: ...
+
+[file b.py]
+from a import test
+test("int")
+
+[file b.py.2]
+from a import test
+reveal_type(test("int"))
+
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is "builtins.int"
+
+[case testIncrementalNativeParserShadowFile]
+# flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[rechecked]
+[stale]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+
+[case testIncrementalNativeParserShadowFileChanged]
+# flags: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[file a_shadow.py.2]
+x: bytes = b"y"
+reveal_type(x)
+[rechecked a]
+[stale a]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.bytes"
+
+[case testIncrementalNativeParserShadowFileIntroduced]
+# flags: --native-parser
+# flags2: --native-parser --shadow-file tmp/a.py tmp/a_shadow.py
+import a
+import b
+-- a and b don't depend on each other, so they can be checked in parallel.
+-- The first run has no shadow file; the second run introduces one for a.py.
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py.2]
+x: str = "y"
+reveal_type(x)
+[rechecked a]
+[stale a]
+[out1]
+tmp/a.py:2: note: Revealed type is "builtins.int"
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.str"
+
+[case testIncrementalFollowImportsSkipStubWithSkippedRuntimeDependency]
+# flags: --follow-imports=skip
+import pkg.foo
+[file pkg/__init__.py]
+
+[file pkg/foo.pyi]
+from pkg import helper
+
+x = 1
+[file pkg/helper.py]
+y = 2
+[rechecked]
+[stale]
+[out2]
+[out3]

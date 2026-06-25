@@ -29,7 +29,14 @@ static void CPyFunction_dealloc(CPyFunction *m) {
 }
 
 static PyObject* CPyFunction_repr(CPyFunction *op) {
-    return PyUnicode_FromFormat("<function %U at %p>", op->func_name, (void *)op);
+    // Use helper to get name for free threading safety.
+    PyObject *name = CPyFunction_get_name((PyObject *)op, NULL);
+    if (unlikely(name == NULL)) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("<function %U at %p>", name, (void *)op);
+    Py_DECREF(name);
+    return result;
 }
 
 static PyObject* CPyFunction_call(PyObject *func, PyObject *args, PyObject *kw) {
@@ -59,13 +66,15 @@ static PyMemberDef CPyFunction_members[] = {
 PyObject* CPyFunction_get_name(PyObject *op, void *context) {
     (void)context;
     CPyFunction *func = (CPyFunction *)op;
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(op);
     if (unlikely(func->func_name == NULL)) {
         func->func_name = PyUnicode_InternFromString(((PyCFunctionObject *)func)->m_ml->ml_name);
-        if (unlikely(func->func_name == NULL))
-            return NULL;
     }
-    Py_INCREF(func->func_name);
-    return func->func_name;
+    result = func->func_name;
+    Py_XINCREF(result);
+    Py_END_CRITICAL_SECTION();
+    return result;
 }
 
 int CPyFunction_set_name(PyObject *op, PyObject *value, void *context) {
@@ -77,8 +86,13 @@ int CPyFunction_set_name(PyObject *op, PyObject *value, void *context) {
     }
 
     Py_INCREF(value);
-    Py_XDECREF(func->func_name);
+    // Decref outside critical section, since it could run arbitrary code.
+    PyObject *old;
+    Py_BEGIN_CRITICAL_SECTION(op);
+    old = func->func_name;
     func->func_name = value;
+    Py_END_CRITICAL_SECTION();
+    Py_XDECREF(old);
     return 0;
 }
 
@@ -232,12 +246,31 @@ PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *fu
     PyObject *code = NULL, *op = NULL;
     bool set_self = false;
 
+#ifdef Py_GIL_DISABLED
+    // Double-checked locking: the common case (type already created) is a
+    // lock-free atomic load. Only the first-time initialization takes the
+    // mutex, which serializes concurrent creators.
+    if (!_Py_atomic_load_ptr_acquire(&CPyFunctionType)) {
+        static PyMutex type_init_mutex = {0};
+        PyMutex_Lock(&type_init_mutex);
+        if (!CPyFunctionType) {
+            PyTypeObject *type = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
+            if (unlikely(!type)) {
+                PyMutex_Unlock(&type_init_mutex);
+                goto err;
+            }
+            _Py_atomic_store_ptr_release(&CPyFunctionType, type);
+        }
+        PyMutex_Unlock(&type_init_mutex);
+    }
+#else
     if (!CPyFunctionType) {
         CPyFunctionType = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
         if (unlikely(!CPyFunctionType)) {
             goto err;
         }
     }
+#endif
 
     method = CPyMethodDef_New(funcname, func, func_flags, func_doc);
     if (unlikely(!method)) {
