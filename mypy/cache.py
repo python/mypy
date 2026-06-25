@@ -72,7 +72,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 9
+CACHE_VERSION: Final = 11
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
