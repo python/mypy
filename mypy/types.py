@@ -34,7 +34,6 @@ from mypy.cache import (
     EXTRA_ATTRS,
     LIST_GEN,
     LITERAL_NONE,
-    LITERAL_SENTINEL,
     ReadBuffer,
     Tag,
     WriteBuffer,
@@ -3317,12 +3316,7 @@ class LiteralType(ProperType):
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, LITERAL_TYPE)
         self.fallback.write(data)
-        if isinstance(self.value, SentinelValue):
-            write_tag(data, LITERAL_SENTINEL)
-            write_str_bare(data, self.value.fullname)
-            write_str_bare(data, self.value.name)
-        else:
-            write_literal(data, self.value)
+        write_literal(data, self.value)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -3330,10 +3324,7 @@ class LiteralType(ProperType):
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         tag = read_tag(data)
-        if tag == LITERAL_SENTINEL:
-            value = SentinelValue(read_str_bare(data), read_str_bare(data))
-        else:
-            value = read_literal(data, tag)
+        value = read_literal(data, tag)
         ret = LiteralType(value, fallback)
         assert read_tag(data) == END_TAG
         return ret

@@ -1644,7 +1644,9 @@ class Var(SymbolNode):
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
         elif tag != LITERAL_NONE:
-            v.final_value = read_literal(data, tag)
+            val = read_literal(data, tag)
+            assert not isinstance(val, mypy.types.SentinelValue)
+            v.final_value = val
         assert read_tag(data) == END_TAG
         return v
 

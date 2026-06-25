@@ -48,7 +48,10 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Any, Final, TypeAlias as _TypeAlias
+
+if TYPE_CHECKING:
+    from mypy.types import SentinelValue
 
 from librt.internal import (
     ReadBuffer as ReadBuffer,
@@ -329,7 +332,7 @@ RESERVED: Final[Tag] = 254
 END_TAG: Final[Tag] = 255
 
 
-def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
+def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float | SentinelValue:
     if tag == LITERAL_INT:
         return read_int_bare(data)
     elif tag == LITERAL_STR:
@@ -340,12 +343,18 @@ def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
         return True
     elif tag == LITERAL_FLOAT:
         return read_float_bare(data)
+    elif tag == LITERAL_SENTINEL:
+        from mypy.types import SentinelValue as _SentinelValue
+
+        return _SentinelValue(read_str_bare(data), read_str_bare(data))
     assert False, f"Unknown literal tag {tag}"
 
 
 # There is an intentional asymmetry between read and write for literals because
 # None and/or complex values are only allowed in some contexts but not in others.
-def write_literal(data: WriteBuffer, value: int | str | bool | float | complex | None) -> None:
+def write_literal(
+    data: WriteBuffer, value: int | str | bool | float | complex | SentinelValue | None
+) -> None:
     if isinstance(value, bool):
         write_bool(data, value)
     elif isinstance(value, int):
@@ -361,8 +370,12 @@ def write_literal(data: WriteBuffer, value: int | str | bool | float | complex |
         write_tag(data, LITERAL_COMPLEX)
         write_float_bare(data, value.real)
         write_float_bare(data, value.imag)
-    else:
+    elif value is None:
         write_tag(data, LITERAL_NONE)
+    else:
+        write_tag(data, LITERAL_SENTINEL)
+        write_str_bare(data, value.fullname)
+        write_str_bare(data, value.name)
 
 
 def read_int(data: ReadBuffer) -> int:
