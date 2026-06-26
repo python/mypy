@@ -5351,7 +5351,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     isinstance(e, OpExpr)
                     and e.op == "and"
                     and b.body
-                    and all(self.is_noop_for_reachability(stmt) for stmt in b.body) 
+                    and all(self.is_noop_for_reachability(stmt) for stmt in b.body)
                 ):
                     e.suppress_redundant_expr = True
                 t = get_proper_type(self.expr_checker.accept(e))
