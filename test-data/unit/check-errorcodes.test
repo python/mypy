@@ -964,6 +964,29 @@ for y in bad_list:
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testNoRedundantExprForTypeIsAndRaise]
+# flags: --enable-error-code redundant-expr
+from typing import TypeVar, Sequence, Any
+from typing_extensions import TypeIs, Self
+
+class Cat:
+    def foo(self) -> Self:  # type: ignore[empty-body]
+        ...
+
+MyType = TypeVar('MyType', int, str, Cat)
+T = TypeVar('T')
+
+def _is_seq_of(seq: Sequence[Any], tp: type[T]) -> TypeIs[Sequence[T]]:  # type: ignore[empty-body]
+    ...
+
+def main(a: Sequence[MyType]) -> MyType:
+    if not _is_seq_of(a, Cat) and not _is_seq_of(a, int):
+        assert False
+    return a[0]
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
 
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
