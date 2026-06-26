@@ -505,6 +505,14 @@ def bind_self(
         typeargs = infer_type_arguments(
             self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
         )
+        # Validate that inferred types satisfy TypeVar bounds.
+        # If not, fall back to the upper bound (same as pre_validate_solutions in solve.py).
+        from mypy.subtypes import is_subtype as is_subtype_check
+
+        for i, (tv, t) in enumerate(zip(self_vars, typeargs)):
+            if t is not None and isinstance(tv, TypeVarType) and not tv.values:
+                if not is_subtype_check(t, tv.upper_bound):
+                    typeargs[i] = tv.upper_bound
         if (
             is_classmethod
             and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
