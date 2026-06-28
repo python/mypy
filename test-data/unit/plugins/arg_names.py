@@ -26,8 +26,8 @@ class ArgNamesPlugin(Plugin):
             "mod.Class.mystaticmethod",
             "mod.ClassUnfilled.method",
             "mod.ClassStarExpr.method",
-            "mod.Base.method",
-            "mod.Base.myclassmethod",
+            "mod.ClassChild.method",
+            "mod.ClassChild.myclassmethod",
         }:
             return extract_classname_and_set_as_return_type_method
         return None

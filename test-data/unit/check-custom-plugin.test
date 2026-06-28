@@ -617,6 +617,7 @@ reveal_type(var.method(42))  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_hook_defining_class.py
+use_method_hook_defining_class = True
 
 [case testDynamicClassPlugin]
 # flags: --config-file tmp/mypy.ini
