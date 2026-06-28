@@ -839,6 +839,34 @@ def bar() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testUntypedAsyncFunctionAndMethodReturnCoroutine]
+# flags: --show-error-codes
+async def foo():
+    pass
+
+class C:
+    async def method(self):
+        pass
+
+def f(c: C) -> None:
+    a = foo()
+    b = c.method()
+    reveal_type(foo)                # N: Revealed type is "def () -> typing.Coroutine[Any, Any, Any]"
+    reveal_type(a)                  # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await? \
+                                    # N: Revealed type is "typing.Coroutine[Any, Any, Any]"
+    foo()                           # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await?
+    reveal_type(c.method)           # N: Revealed type is "def () -> typing.Coroutine[Any, Any, Any]"
+    reveal_type(b)                  # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await? \
+                                    # N: Revealed type is "typing.Coroutine[Any, Any, Any]"
+    c.method()                      # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await?
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testAsyncForOutsideCoroutine]
 async def g():
     yield 0

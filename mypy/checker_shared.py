@@ -16,6 +16,7 @@ from mypy.nodes import (
     ArgKind,
     Context,
     Expression,
+    FuncBase,
     FuncItem,
     LambdaExpr,
     MypyFile,
@@ -28,6 +29,7 @@ from mypy.nodes import (
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.types import (
     CallableType,
+    FunctionLike,
     Instance,
     LiteralValue,
     Overloaded,
@@ -147,6 +149,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def named_type(self, name: str) -> Instance:
+        raise NotImplementedError
+
+    @abstractmethod
+    def function_type(self, func: FuncBase) -> FunctionLike:
         raise NotImplementedError
 
     @abstractmethod
