@@ -602,6 +602,22 @@ plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
 [builtins fixtures/classmethod.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMethodSignatureHookUsesDefiningClass]
+# flags: --config-file tmp/mypy.ini
+from typing import Any
+
+class Base:
+    def method(self, arg: Any) -> Any: ...
+
+class Derived(Base): ...
+
+var: Derived
+reveal_type(var.method(42))  # N: Revealed type is "builtins.int"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/method_hook_defining_class.py
+
 [case testDynamicClassPlugin]
 # flags: --config-file tmp/mypy.ini
 from mod import declarative_base, Column, Instr

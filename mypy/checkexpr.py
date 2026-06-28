@@ -679,8 +679,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.strfrm_checker.check_str_format_call(e, format_value)
 
     def method_fullname(self, object_type: Type, method_name: str) -> str | None:
-        """Convert a method name to a fully qualified name, based on the type of the object that
-        it is invoked on. Return `None` if the name of `object_type` cannot be determined.
+        """Convert a method name to a fully qualified name, based on the class where the
+        method was defined. Return `None` if the name of `object_type` cannot be determined.
         """
         object_type = get_proper_type(object_type)
 
@@ -694,12 +694,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         type_name = None
         if isinstance(object_type, Instance):
-            type_name = object_type.type.fullname
+            info = object_type.type.get_containing_type_info(method_name)
+            type_name = info.fullname if info is not None else object_type.type.fullname
         elif isinstance(object_type, (TypedDictType, LiteralType)):
             info = object_type.fallback.type.get_containing_type_info(method_name)
             type_name = info.fullname if info is not None else None
         elif isinstance(object_type, TupleType):
-            type_name = tuple_fallback(object_type).type.fullname
+            fallback = tuple_fallback(object_type)
+            info = fallback.type.get_containing_type_info(method_name)
+            type_name = info.fullname if info is not None else fallback.type.fullname
 
         if type_name:
             return f"{type_name}.{method_name}"
