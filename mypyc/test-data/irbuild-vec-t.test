@@ -511,7 +511,7 @@ L0:
     r2 = VecTApi.from_iterable(r1, a, 0)
     return r2
 
-[case testVecTBorrowGetItem]
+[case testVecTBorrowGetItem_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 

@@ -202,7 +202,7 @@ L0:
     r0 = VecFloatApi.slice(v, x, y)
     return r0
 
-[case testVecMiscForLoop]
+[case testVecMiscForLoop_64bit]
 from librt.vecs import vec, remove
 
 from mypy_extensions import i64, i16
