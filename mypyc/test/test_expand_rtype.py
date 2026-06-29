@@ -39,3 +39,10 @@ class TestExpandRType(unittest.TestCase):
 
     def test_vec_expansion(self) -> None:
         assert expand_rtype(RVec(RTypeVar(0)), [str_rprimitive]) == RVec(str_rprimitive)
+
+    def test_nested_expansion(self) -> None:
+        typ = RUnion([RTuple([RVec(RTypeVar(0)), RTypeVar(1)]), RVec(RVec(RTypeVar(0)))])
+        expected = RUnion(
+            [RTuple([RVec(str_rprimitive), int_rprimitive]), RVec(RVec(str_rprimitive))]
+        )
+        assert expand_rtype(typ, [str_rprimitive, int_rprimitive]) == expected
