@@ -315,23 +315,18 @@ def vec_check_and_adjust_index(
 def vec_get_item(
     builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
-    """Generate inlined vec __getitem__ call.
+    """Generate a vec __getitem__ call.
 
-    We inline this, since it's simple but performance-critical.
+    This emits a generic primitive op that is inlined during lowering, since the
+    operation is simple but performance-critical.
     """
+    # TODO: Support more index types
     if can_borrow:
         desc = vec_get_item_borrow_op
     else:
         desc = vec_get_item_op
     assert isinstance(base.type, RVec)
     return builder.primitive_op(desc, [base, index], line, type_args=[base.type.item_type])
-
-    # XXX
-    # TODO: Support more item types
-    # TODO: Support more index types
-    # len_val = vec_len(builder, base)
-    # index = vec_check_and_adjust_index(builder, len_val, index, line)
-    # return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
 
 
 def vec_get_item_lower(
