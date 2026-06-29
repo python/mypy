@@ -52,7 +52,7 @@ from mypyc.ir.rtypes import (
     vec_api_by_item_type,
     vec_item_type_tags,
 )
-from mypyc.primitives.librt_vecs_ops import vec_get_item_borrow_op, vec_get_item_op
+from mypyc.primitives.librt_vecs_ops import vec_get_item_unsafe_borrow_op, vec_get_item_unsafe_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -315,23 +315,13 @@ def vec_check_and_adjust_index(
 def vec_get_item(
     builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
-    """Generate a vec __getitem__ call.
+    """Generate inlined vec __getitem__ call.
 
-    This emits a generic primitive op that is inlined during lowering, since the
-    operation is simple but performance-critical.
+    We inline the length and bounds check, since they are simple but
+    performance-critical. The actual item load is emitted as a generic primitive
+    op that is lowered later.
     """
     # TODO: Support more index types
-    if can_borrow:
-        desc = vec_get_item_borrow_op
-    else:
-        desc = vec_get_item_op
-    assert isinstance(base.type, RVec)
-    return builder.primitive_op(desc, [base, index], line, type_args=[base.type.item_type])
-
-
-def vec_get_item_lower(
-    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
-) -> Value:
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
     return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
@@ -340,7 +330,22 @@ def vec_get_item_lower(
 def vec_get_item_unsafe(
     builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
-    """Get vec item, assuming index is non-negative and within bounds."""
+    """Get vec item, assuming index is non-negative and within bounds.
+
+    This emits a generic primitive op that is inlined during lowering.
+    """
+    assert isinstance(base.type, RVec)
+    if can_borrow:
+        desc = vec_get_item_unsafe_borrow_op
+    else:
+        desc = vec_get_item_unsafe_op
+    return builder.primitive_op(desc, [base, index], line, type_args=[base.type.item_type])
+
+
+def vec_get_item_unsafe_lower(
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
+) -> Value:
+    """Generate the low-level IR for an unsafe vec item load."""
     assert isinstance(base.type, RVec)
     index = as_platform_int(builder, index, line)
     vtype = base.type

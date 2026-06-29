@@ -1038,6 +1038,11 @@ class RTypeVar(RType):
     def __init__(self, id: int) -> None:
         self.id = id
 
+    @property
+    def may_be_immortal(self) -> bool:
+        # RTypeVar must always be substituted before use, so this should never matter.
+        return False
+
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtypevar(self)
 
