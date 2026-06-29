@@ -288,69 +288,37 @@ def f(v: vec[vec[i64]], n: i64) -> i64:
 def f(v, n):
     v :: vec[vec[i64]]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[i64]
-    r10 :: native_int
-    r11 :: bit
-    r12 :: i64
-    r13 :: bit
-    r14 :: bool
-    r15 :: i64
-    r16 :: ptr
-    r17 :: i64
-    r18 :: ptr
-    r19 :: i64
+    r0 :: vec[i64]
+    r1 :: i64
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = borrow load_mem r8 :: vec[i64]*
-    r10 = r9.len
-    r11 = n < r10 :: unsigned
-    if r11 goto L9 else goto L6 :: bool
-L6:
-    r12 = n + r10
-    r13 = r12 < r10 :: unsigned
-    if r13 goto L8 else goto L7 :: bool
-L7:
-    r14 = raise IndexError
-    unreachable
-L8:
-    r15 = r12
-    goto L10
-L9:
-    r15 = n
-L10:
-    r16 = r9.items
-    r17 = r15 * 8
-    r18 = r16 + r17
-    r19 = load_mem r18 :: i64*
-    keep_alive v, r9
-    return r19
+    r0 = vec_get_item_borrow[vec[i64]] v, n
+    r1 = vec_get_item[i64] r0, n
+    keep_alive v, n
+    return r1
+
+[case testVecNestedStrGetItemWithBorrow_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+class C:
+    v: vec[vec[str]]
+
+    def f(self, n: i64) -> str:
+        # The intermediate vec is borrowed, but the result must be owned.
+        return self.v[n][n]
+[out]
+def C.f(self, n):
+    self :: __main__.C
+    n :: i64
+    r0 :: vec[vec[str]]
+    r1 :: vec[str]
+    r2 :: str
+L0:
+    r0 = borrow self.v
+    r1 = vec_get_item_borrow[vec[str]] r0, n
+    r2 = vec_get_item[str] r1, n
+    keep_alive self, r0, n
+    return r2
 
 [case testVecDoublyNestedGetItem_64bit]
 from librt.vecs import vec

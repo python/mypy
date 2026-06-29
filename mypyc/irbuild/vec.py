@@ -339,7 +339,7 @@ def vec_get_item_lower(
 ) -> Value:
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
-    return vec_get_item_unsafe(builder, base, index, line, can_borrow=False)
+    return vec_get_item_unsafe(builder, base, index, line, can_borrow=can_borrow)
 
 
 def vec_get_item_unsafe(
