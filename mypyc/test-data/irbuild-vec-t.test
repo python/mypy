@@ -466,3 +466,31 @@ L0:
     r1 = r0
     r2 = VecTApi.from_iterable(r1, a, 0)
     return r2
+
+[case testVecTBorrowGetItem]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+class A:
+    x: str
+
+def f(v: vec[A], n: i64) -> int:
+    return len(v[n].x)
+[out]
+def f(v, n):
+    v :: vec[__main__.A]
+    n :: i64
+    r0 :: __main__.A
+    r1 :: str
+    r2 :: native_int
+    r3 :: bit
+    r4 :: short_int
+L0:
+    r0 = vec_get_item_borrow[__main__.A] v, n
+    r1 = r0.x
+    keep_alive v, n
+    r2 = CPyStr_Size_size_t(r1)
+    r3 = r2 >= 0 :: signed
+    r4 = r2 << 1
+    return r4
+

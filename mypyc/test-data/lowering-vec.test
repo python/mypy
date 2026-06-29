@@ -50,3 +50,92 @@ L7:
     r11 = <error> :: i64
     return r11
 
+[case testLowerVecNestedGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(i: i64, j: i64) -> str:
+    v = vec[vec[str]]([])
+    return v[i][j]
+[out]
+def f(i, j):
+    i, j :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+    r3 :: ptr
+    v :: vec[vec[str]]
+    r4 :: native_int
+    r5 :: bit
+    r6 :: i64
+    r7 :: bit
+    r8 :: bool
+    r9 :: i64
+    r10 :: ptr
+    r11 :: i64
+    r12 :: ptr
+    r13 :: vec[str]
+    r14 :: native_int
+    r15 :: bit
+    r16 :: i64
+    r17 :: bit
+    r18 :: bool
+    r19 :: i64
+    r20 :: ptr
+    r21 :: i64
+    r22 :: ptr
+    r23, r24 :: str
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecNestedApi.alloc(0, 0, r1, 1)
+    if is_error(r2) goto L12 (error at f:5) else goto L1
+L1:
+    r3 = r2.items
+    v = r2
+    r4 = v.len
+    r5 = i < r4 :: unsigned
+    if r5 goto L5 else goto L2 :: bool
+L2:
+    r6 = i + r4
+    r7 = r6 < r4 :: unsigned
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = raise IndexError
+    unreachable
+L4:
+    r9 = r6
+    goto L6
+L5:
+    r9 = i
+L6:
+    r10 = v.items
+    r11 = r9 * 16
+    r12 = r10 + r11
+    r13 = borrow load_mem r12 :: vec[str]*
+    r14 = r13.len
+    r15 = j < r14 :: unsigned
+    if r15 goto L10 else goto L7 :: bool
+L7:
+    r16 = j + r14
+    r17 = r16 < r14 :: unsigned
+    if r17 goto L9 else goto L8 :: bool
+L8:
+    r18 = raise IndexError
+    unreachable
+L9:
+    r19 = r16
+    goto L11
+L10:
+    r19 = j
+L11:
+    r20 = r13.items
+    r21 = r19 * 8
+    r22 = r20 + r21
+    r23 = load_mem r22 :: builtins.str*
+    dec_ref v
+    return r23
+L12:
+    r24 = <error> :: str
+    return r24
+

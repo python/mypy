@@ -794,6 +794,7 @@ class PrimitiveOp(RegisterOp):
         self.args = args
         self.arg_types = arg_types if arg_types is not None else desc.arg_types
         self.type = return_type if return_type is not None else desc.return_type
+        self.is_borrowed = desc.is_borrowed
         self.type_args = type_args
         self.desc = desc
 
