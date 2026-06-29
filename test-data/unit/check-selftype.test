@@ -749,6 +749,16 @@ def bad(x: str) -> str: ...
 reveal_type(ci.from_item(conv))  # N: Revealed type is "builtins.str"
 ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
 
+[case testListSortSelfTypeOverload]
+xs: list[int | None] = [2, None]
+xs.sort()  # E: Missing named argument "key" for "sort" of "list"
+[2, None].sort()  # E: Missing named argument "key" for "sort" of "list"
+xs.sort(key=lambda x: 0)
+
+ys: list[int] = [2, 1]
+ys.sort()
+[builtins fixtures/list-sort-selftype.pyi]
+
 [case testSelfTypeRestrictedMethodOverloadInit]
 from typing import TypeVar
 from lib import P, C
