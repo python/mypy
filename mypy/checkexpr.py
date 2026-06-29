@@ -3807,7 +3807,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         erased_iterable_type = remove_instance_last_known_values(iterable_type)
                         matches_iterable_item = is_subtype(
                             left_item_type, erased_iterable_type
-                        ) or is_subtype(erased_iterable_type, left_item_type)
+                        ) or (
+                            not is_literal_type_like(left_type)
+                            and is_subtype(erased_iterable_type, left_item_type)
+                        )
                     if not matches_iterable_item:
                         if not container_types:
                             self.msg.unsupported_operand_types("in", left_type, right_type, e)
