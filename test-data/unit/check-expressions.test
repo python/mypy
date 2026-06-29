@@ -412,6 +412,20 @@ class D(Iterable[A]):
     def __iter__(self) -> Iterator[A]: pass
 [builtins fixtures/bool.pyi]
 
+[case testInOperatorWithOverlappingIterableItemType]
+from typing import Iterator
+
+class Number(int): pass
+
+def numbers() -> Iterator[Number]:
+    yield Number()
+
+1 in numbers()
+Number() in numbers()
+'' in numbers()  # E: Unsupported operand types for in ("str" and "Iterator[Number]")
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testNotInOperator]
 from typing import Iterator, Iterable, Any
 a: A

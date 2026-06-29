@@ -3801,7 +3801,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
                 if not encountered_partial_type and not failed_out:
                     iterable_type = UnionType.make_union(iterable_types)
-                    if not is_subtype(left_type, iterable_type):
+                    matches_iterable_item = False
+                    if iterable_types:
+                        left_item_type = remove_instance_last_known_values(left_type)
+                        erased_iterable_type = remove_instance_last_known_values(iterable_type)
+                        matches_iterable_item = is_subtype(
+                            left_item_type, erased_iterable_type
+                        ) or is_subtype(erased_iterable_type, left_item_type)
+                    if not matches_iterable_item:
                         if not container_types:
                             self.msg.unsupported_operand_types("in", left_type, right_type, e)
                         else:
