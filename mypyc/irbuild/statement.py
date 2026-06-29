@@ -1227,7 +1227,15 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
     elif isinstance(target, AssignmentTargetAttr):
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
-            if not cl.is_deletable(target.attr):
+            # Deleting a functools.cached_property is supported: it clears the
+            # cached value (the property descriptor handles the deletion).
+            # Attributes of non-extension classes can always be deleted, since
+            # instances have an ordinary __dict__.
+            if (
+                cl.is_ext_class
+                and not cl.is_deletable(target.attr)
+                and not cl.is_cached_property(target.attr)
+            ):
                 builder.error(f'"{target.attr}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = '

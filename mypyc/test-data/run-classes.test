@@ -6006,3 +6006,311 @@ for _ in range(100):
     check(foo)
 after = sys.getrefcount(foo.obj)
 assert after - init == 0, f"Leaked {after - init} refs"
+
+[case testCachedProperty]
+from functools import cached_property
+from typing import List
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        self.compute_count = 0
+
+    @cached_property
+    def boxed(self) -> List[int]:
+        self.compute_count += 1
+        return [self.x]
+
+    @cached_property
+    def unboxed(self) -> int:
+        self.compute_count += 1
+        return self.x * 2
+
+def test_body_runs_once() -> None:
+    c = C(5)
+    assert c.compute_count == 0
+    l = c.boxed
+    assert l == [5]
+    assert c.boxed is l
+    assert c.boxed is l
+    assert c.compute_count == 1
+    assert c.unboxed == 10
+    assert c.unboxed == 10
+    assert c.compute_count == 2
+
+def test_assignment_overrides_cached_value() -> None:
+    c = C(1)
+    c.unboxed = 42
+    assert c.unboxed == 42
+    c.boxed = [7]
+    assert c.boxed == [7]
+    assert c.compute_count == 0
+    # Assignment also overrides an already cached value
+    c2 = C(1)
+    assert c2.unboxed == 2
+    c2.unboxed = 3
+    assert c2.unboxed == 3
+    assert c2.compute_count == 1
+
+class PreSet(C):
+    def __init__(self) -> None:
+        super().__init__(1)
+        self.unboxed = 100
+
+def test_assignment_in_init() -> None:
+    d = PreSet()
+    assert d.unboxed == 100
+    assert d.compute_count == 0
+
+def test_del_invalidates_cached_value() -> None:
+    c = C(3)
+    assert c.unboxed == 6
+    assert c.compute_count == 1
+    del c.unboxed
+    assert c.unboxed == 6
+    assert c.compute_count == 2
+    del c.unboxed
+    try:
+        # There is no cached value to delete now
+        del c.unboxed
+    except AttributeError:
+        pass
+    else:
+        assert False
+    assert c.unboxed == 6
+    assert c.compute_count == 3
+
+class Base:
+    def __init__(self) -> None:
+        self.count = 0
+
+    @cached_property
+    def prop(self) -> int:
+        self.count += 1
+        return 1
+
+class Sub(Base):
+    @cached_property
+    def prop(self) -> int:
+        self.count += 1
+        return 2
+
+class SubNoOverride(Base):
+    pass
+
+def read_prop(b: Base) -> int:
+    return b.prop
+
+def test_subclass_override() -> None:
+    b = Base()
+    s = Sub()
+    n = SubNoOverride()
+    assert read_prop(b) == 1
+    assert read_prop(s) == 2
+    assert read_prop(n) == 1
+    assert read_prop(b) == 1
+    assert read_prop(s) == 2
+    assert read_prop(n) == 1
+    assert b.count == 1
+    assert s.count == 1
+    assert n.count == 1
+    b.prop = 5
+    assert read_prop(b) == 5 and read_prop(s) == 2
+
+def test_access_from_interpreted_code() -> None:
+    import interp
+    c = C(4)
+    assert interp.read_boxed(c) == [4]
+    assert interp.read_boxed(c) is c.boxed
+    assert c.compute_count == 1
+    interp.write_unboxed(c, 13)
+    assert c.unboxed == 13
+    assert c.compute_count == 1
+    interp.del_unboxed(c)
+    assert c.unboxed == 8
+    assert c.compute_count == 2
+
+[file interp.py]
+def read_boxed(c):
+    return c.boxed
+
+def write_unboxed(c, val):
+    c.unboxed = val
+
+def del_unboxed(c):
+    del c.unboxed
+
+[case testCachedPropertyMultiModule]
+import other
+
+def test_cached_property_in_other_module() -> None:
+    o = other.Other(3)
+    assert o.triple == 9
+    assert o.triple == 9
+    assert o.compute_count == 1
+    o.triple = 4
+    assert o.triple == 4
+    del o.triple
+    assert o.triple == 9
+    assert o.compute_count == 2
+
+[file other.py]
+from functools import cached_property
+
+class Other:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        self.compute_count = 0
+
+    @cached_property
+    def triple(self) -> int:
+        self.compute_count += 1
+        return self.x * 3
+
+[case testCachedPropertyInterpretedSubclass]
+from functools import cached_property
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    def __init__(self) -> None:
+        self.count = 0
+
+    @cached_property
+    def val(self) -> int:
+        self.count += 1
+        return 10
+
+def read_val(o: Open) -> int:
+    return o.val
+
+def write_val(o: Open, val: int) -> None:
+    o.val = val
+
+[file driver.py]
+from functools import cached_property
+from native import Open, read_val, write_val
+
+# Reads of the inherited cached property see cached semantics
+class Sub(Open):
+    pass
+
+s = Sub()
+assert read_val(s) == 10
+assert read_val(s) == 10
+assert s.val == 10
+assert s.count == 1
+write_val(s, 11)
+assert s.val == 11 and read_val(s) == 11
+del s.val
+assert s.val == 10
+assert s.count == 2
+
+# An interpreted cached_property override is respected when reading
+# through the base class
+class SubOverride(Open):
+    @cached_property
+    def val(self) -> int:
+        self.count += 1
+        return 20
+
+o = SubOverride()
+assert read_val(o) == 20
+assert o.val == 20
+assert o.count == 1
+
+[case testCachedPropertyInstanceDict]
+# Where the cached value is stored depends on whether the instance has a
+# __dict__, which differs between a native class and its interpreted subclass.
+from functools import cached_property
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Native:
+    def __init__(self) -> None:
+        self.runs = 0
+
+    @cached_property
+    def val(self) -> int:
+        self.runs += 1
+        return 10
+
+[file driver.py]
+from functools import cached_property
+from native import Native
+
+# A native (compiled) class has no instance __dict__. Its cached_property
+# memoizes into a hidden native slot, so caching works regardless.
+n = Native()
+assert not hasattr(n, "__dict__")
+assert n.val == 10 and n.val == 10
+assert n.runs == 1
+
+# CPython gives an *interpreted* subclass of a native class its own instance
+# __dict__ (a heap subclass of an extension type that lacks one gets a dict
+# added automatically). So a cached_property defined on the interpreted
+# subclass memoizes into that __dict__ with no extra setup, while the
+# inherited native cached_property keeps using the native slot.
+class Sub(Native):
+    def __init__(self) -> None:
+        super().__init__()
+        self.sub_runs = 0
+
+    @cached_property
+    def sub_val(self) -> int:
+        self.sub_runs += 1
+        return 20
+
+s = Sub()
+assert hasattr(s, "__dict__")
+assert "sub_val" not in s.__dict__
+assert s.sub_val == 20 and s.sub_val == 20
+assert s.sub_runs == 1
+assert s.__dict__["sub_val"] == 20      # subclass cached_property -> instance __dict__
+assert s.val == 10 and s.val == 10
+assert s.runs == 1
+assert "val" not in s.__dict__          # inherited native cached_property -> native slot
+
+# A subclass that suppresses the instance __dict__ with __slots__ cannot use a
+# functools.cached_property defined on it: this raises at access time. This is
+# ordinary CPython behaviour and is unaffected by mypyc.
+class Slotted(Native):
+    __slots__ = ()
+
+    @cached_property
+    def slot_val(self) -> int:
+        return 30
+
+assert not hasattr(Slotted(), "__dict__")
+try:
+    Slotted().slot_val
+    assert False, "expected TypeError"
+except TypeError as e:
+    assert "__dict__" in str(e)
+
+[case testCachedPropertyNonNativeClass]
+from functools import cached_property
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __init__(self) -> None:
+        self.count = 0
+
+    @cached_property
+    def val(self) -> int:
+        self.count += 1
+        return 5
+
+def test_non_native_cached_property() -> None:
+    # Non-native classes use functools.cached_property directly
+    assert isinstance(getattr(NonNative, "val"), cached_property)
+    o = NonNative()
+    assert o.val == 5
+    assert o.val == 5
+    assert o.count == 1
+    o.val = 6
+    assert o.val == 6
+    del o.val
+    assert o.val == 5
+    assert o.count == 2

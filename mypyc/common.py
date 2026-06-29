@@ -23,6 +23,8 @@ NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
 TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
+# Prefix of hidden attributes that store values of functools.cached_property properties
+PROPCACHE_PREFIX: Final = "__mypyc_cache__"
 SELF_NAME: Final = "__mypyc_self__"
 MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"

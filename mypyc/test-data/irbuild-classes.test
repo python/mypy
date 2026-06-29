@@ -3244,3 +3244,80 @@ L5:
     r84 = r83 >= 0 :: signed
     r85 = __main__.NonExt :: type
     return 1
+
+[case testCachedProperty]
+from functools import cached_property
+
+class C:
+    @cached_property
+    def prop(self) -> int:
+        return 7
+
+def read(c: C) -> int:
+    return c.prop
+
+def write(c: C, x: int) -> None:
+    c.prop = x
+
+def delete(c: C) -> None:
+    del c.prop
+[out]
+def C.prop(self):
+    self :: __main__.C
+    r0 :: object
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = self.__mypyc_cache__prop
+    if is_error(r0) goto L2 else goto L1
+L1:
+    r1 = unbox(int, r0)
+    return r1
+L2:
+    r2 = box(short_int, 14)
+    self.__mypyc_cache__prop = r2; r3 = is_error
+    return 14
+def C.__mypyc_setter__prop(self, value):
+    self :: __main__.C
+    value :: int
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = box(int, value)
+    self.__mypyc_cache__prop = r0; r1 = is_error
+    return 1
+def read(c):
+    c :: __main__.C
+    r0 :: int
+L0:
+    r0 = c.prop
+    return r0
+def write(c, x):
+    c :: __main__.C
+    x :: int
+    r0 :: bool
+L0:
+    c.prop = x; r0 = is_error
+    return 1
+def delete(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = 'prop'
+    r1 = PyObject_DelAttr(c, r0)
+    r2 = r1 >= 0 :: signed
+    return 1
+
+[case testCachedPropertyUnsupportedInTrait]
+from functools import cached_property
+from mypy_extensions import trait
+
+@trait
+class T:
+    @cached_property
+    def prop(self) -> int:  # E: "functools.cached_property" is unsupported in traits and protocols
+        return 7
+[out]

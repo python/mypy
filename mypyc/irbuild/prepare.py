@@ -43,6 +43,7 @@ from mypy.types import Instance, Type, get_proper_type
 from mypyc.common import (
     FAST_PREFIX,
     MYPYC_DEFAULTS_SETUP,
+    PROPCACHE_PREFIX,
     PROPSET_PREFIX,
     SELF_NAME,
     get_id_from_name,
@@ -75,6 +76,7 @@ from mypyc.irbuild.util import (
     default_attr_name,
     get_func_def,
     get_mypyc_attrs,
+    is_cached_property,
     is_dataclass,
     is_extension_class,
     is_trait,
@@ -326,6 +328,57 @@ def prepare_method_def(
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
+            if ir.is_ext_class and not ir.is_trait and is_cached_property(node):
+                prepare_cached_property(ir, module_name, cdef, mapper, node, decl)
+
+
+def prepare_cached_property(
+    ir: ClassIR,
+    module_name: str,
+    cdef: ClassDef,
+    mapper: Mapper,
+    node: Decorator,
+    getter_decl: FuncDecl,
+) -> None:
+    """Set up declarations for a functools.cached_property in a native class.
+
+    The cached value is stored in a hidden attribute (the "cache slot").
+    The property getter returns the value of the slot if it is defined, and
+    otherwise runs the decorated function and stores the result in the slot
+    (see handle_ext_method). Assigning to the property stores the assigned
+    value directly in the slot via a synthesized setter (the setter IR is
+    generated in transform_class_def).
+    """
+    name = node.name
+    ret_type = getter_decl.sig.ret_type
+    # If a base class already defines this cached property, reuse its cache
+    # slot. Both properties then share the cached value, similar to how
+    # functools.cached_property instances share an instance __dict__ entry.
+    if not is_inherited_cached_property(cdef, name, mapper):
+        # For unboxed property types use a boxed slot, so that an undefined
+        # cache slot is always represented by NULL.
+        slot_type = object_rprimitive if ret_type.is_unboxed else ret_type
+        ir.attributes[PROPCACHE_PREFIX + name] = slot_type
+    sig = FuncSignature(
+        (getter_decl.sig.args[0], RuntimeArg("value", ret_type, pos_only=True)), none_rprimitive
+    )
+    setter_decl = FuncDecl(PROPSET_PREFIX + name, cdef.name, module_name, sig, is_prop_setter=True)
+    ir.method_decls[PROPSET_PREFIX + name] = setter_decl
+
+
+def is_inherited_cached_property(cdef: ClassDef, name: str, mapper: Mapper) -> bool:
+    """Does a native base class already define a cached property with this name?"""
+    for base in cdef.info.mro[1:]:
+        base_ir = mapper.type_to_ir.get(base)
+        if base_ir is not None and base_ir.is_ext_class:
+            sym = base.names.get(name)
+            if (
+                sym is not None
+                and isinstance(sym.node, Decorator)
+                and is_cached_property(sym.node)
+            ):
+                return True
+    return False
 
 
 def prepare_fast_path(

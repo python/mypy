@@ -45,7 +45,11 @@ class AssignmentTargetAttr(AssignmentTarget):
         self.obj = obj
         self.attr = attr
         self.can_borrow = can_borrow
-        if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
+        if (
+            isinstance(obj.type, RInstance)
+            and obj.type.class_ir.is_ext_class
+            and obj.type.class_ir.has_attr(attr)
+        ):
             # Native attribute reference
             self.obj_type: RType = obj.type
             self.type = obj.type.attr_type(attr)

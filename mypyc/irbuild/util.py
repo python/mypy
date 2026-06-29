@@ -65,6 +65,23 @@ def is_trait_decorator(d: Expression) -> bool:
     return isinstance(d, RefExpr) and d.fullname == "mypy_extensions.trait"
 
 
+def is_cached_property(node: Decorator) -> bool:
+    """Is the decorated function a functools.cached_property?
+
+    The semantic analyzer removes the cached_property decorator from
+    Decorator.decorators (it only marks the function as a settable
+    property), so we need to look at the original decorators. Ignore
+    properties that have additional decorators.
+    """
+    return (
+        node.func.is_property
+        and not node.decorators
+        and any(
+            refers_to_fullname(d, "functools.cached_property") for d in node.original_decorators
+        )
+    )
+
+
 def is_trait(cdef: ClassDef) -> bool:
     return any(is_trait_decorator(d) for d in cdef.decorators) or cdef.info.is_protocol
 
