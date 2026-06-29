@@ -119,39 +119,10 @@ def get_item_bool(v: vec[bool], i: i64) -> bool:
 def get_item_bool(v, i):
     v :: vec[bool]
     i :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: bool
+    r0 :: bool
 L0:
-    r0 = v.len
-    r1 = i < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = i + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = i
-L5:
-    r6 = v.items
-    r7 = r5 * 1
-    r8 = r6 + r7
-    r9 = load_mem r8 :: builtins.bool*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[bool] v, i
+    return r0
 
 [case testVecMiscPop]
 from librt.vecs import vec, pop
@@ -264,39 +235,10 @@ def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
 def get_item_nested(v, i):
     v :: vec[vec[i32]]
     i :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[i32]
+    r0 :: vec[i32]
 L0:
-    r0 = v.len
-    r1 = i < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = i + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = i
-L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = load_mem r8 :: vec[i32]*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[vec[i32]] v, i
+    return r0
 
 [case testVecMiscNestedPop_64bit]
 from librt.vecs import vec, pop

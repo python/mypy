@@ -200,39 +200,10 @@ def f(v: vec[vec[str]], n: i64) -> vec[str]:
 def f(v, n):
     v :: vec[vec[str]]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[str]
+    r0 :: vec[str]
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = load_mem r8 :: vec[str]*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[vec[str]] v, n
+    return r0
 
 [case testVecNestedI64GetItem_64bit]
 from librt.vecs import vec
@@ -244,39 +215,10 @@ def f(v: vec[vec[i64]], n: i64) -> vec[i64]:
 def f(v, n):
     v :: vec[vec[i64]]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[i64]
+    r0 :: vec[i64]
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = load_mem r8 :: vec[i64]*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[vec[i64]] v, n
+    return r0
 
 [case testVecNestedI64GetItemWithBorrow_64bit]
 from librt.vecs import vec
@@ -330,39 +272,10 @@ def f(v: vec[vec[vec[str]]], n: i64) -> vec[vec[str]]:
 def f(v, n):
     v :: vec[vec[vec[str]]]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[vec[str]]
+    r0 :: vec[vec[str]]
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = load_mem r8 :: vec[vec[str]]*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[vec[vec[str]]] v, n
+    return r0
 
 [case testVecNestedCreateWithCap_64bit]
 from librt.vecs import vec

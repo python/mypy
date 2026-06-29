@@ -209,39 +209,10 @@ def f(v: vec[str], n: i64) -> str:
 def f(v, n):
     v :: vec[str]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: str
+    r0 :: str
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: builtins.str*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[str] v, n
+    return r0
 
 [case testVecTOptionalGetItem_64bit]
 from librt.vecs import vec
@@ -254,39 +225,10 @@ def f(v: vec[Optional[str]], n: i64) -> Optional[str]:
 def f(v, n):
     v :: vec[str | None]
     n :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
-    r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: union[str, None]
+    r0 :: union[str, None]
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
-L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
-L2:
-    r4 = raise IndexError
-    unreachable
-L3:
-    r5 = r2
-    goto L5
-L4:
-    r5 = n
-L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: union*
-    keep_alive v
-    return r9
+    r0 = vec_get_item[union[str, None]] v, n
+    return r0
 
 [case testNewTPopLast]
 from typing import Tuple

@@ -655,69 +655,39 @@ def inplace(v: vec[i64], n: i64, m: i64) -> None:
 [out]
 def inplace(v, n, m):
     v :: vec[i64]
-    n, m :: i64
-    r0 :: native_int
-    r1 :: bit
-    r2 :: i64
+    n, m, r0, r1 :: i64
+    r2 :: native_int
     r3 :: bit
-    r4 :: bool
-    r5 :: i64
-    r6 :: ptr
+    r4 :: i64
+    r5 :: bit
+    r6 :: bool
     r7 :: i64
     r8 :: ptr
-    r9, r10 :: i64
-    r11 :: native_int
-    r12 :: bit
-    r13 :: i64
-    r14 :: bit
-    r15 :: bool
-    r16 :: i64
-    r17 :: ptr
-    r18 :: i64
-    r19 :: ptr
+    r9 :: i64
+    r10 :: ptr
 L0:
-    r0 = v.len
-    r1 = n < r0 :: unsigned
-    if r1 goto L4 else goto L1 :: bool
+    r0 = vec_get_item[i64] v, n
+    r1 = r0 + m
+    r2 = v.len
+    r3 = n < r2 :: unsigned
+    if r3 goto L4 else goto L1 :: bool
 L1:
-    r2 = n + r0
-    r3 = r2 < r0 :: unsigned
-    if r3 goto L3 else goto L2 :: bool
+    r4 = n + r2
+    r5 = r4 < r2 :: unsigned
+    if r5 goto L3 else goto L2 :: bool
 L2:
-    r4 = raise IndexError
+    r6 = raise IndexError
     unreachable
 L3:
-    r5 = r2
+    r7 = r4
     goto L5
 L4:
-    r5 = n
+    r7 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: i64*
-    keep_alive v
-    r10 = r9 + m
-    r11 = v.len
-    r12 = n < r11 :: unsigned
-    if r12 goto L9 else goto L6 :: bool
-L6:
-    r13 = n + r11
-    r14 = r13 < r11 :: unsigned
-    if r14 goto L8 else goto L7 :: bool
-L7:
-    r15 = raise IndexError
-    unreachable
-L8:
-    r16 = r13
-    goto L10
-L9:
-    r16 = n
-L10:
-    r17 = v.items
-    r18 = r16 * 8
-    r19 = r17 + r18
-    set_mem r19, r10 :: i64*
+    r8 = v.items
+    r9 = r7 * 8
+    r10 = r8 + r9
+    set_mem r10, r1 :: i64*
     keep_alive v
     return 1
 
