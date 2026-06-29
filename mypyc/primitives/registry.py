@@ -41,7 +41,7 @@ from typing import Final, NamedTuple
 
 from mypyc.ir.deps import Dependency
 from mypyc.ir.ops import PrimitiveDescription, StealsDescription
-from mypyc.ir.rtypes import RType
+from mypyc.ir.rtypes import RType, RTypeVar
 
 # Error kind for functions that return negative integer on exception. This
 # is only used for primitives. We translate it away during IR building.
@@ -154,6 +154,7 @@ def method_op(
         is_pure=is_pure,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -204,6 +205,7 @@ def function_op(
         is_pure=False,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -253,6 +255,7 @@ def binary_op(
         is_pure=False,
         experimental=False,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -313,6 +316,7 @@ def custom_primitive_op(
     is_pure: bool = False,
     experimental: bool = False,
     dependencies: list[Dependency] | None = None,
+    type_params: list[RTypeVar] | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op that can't be automatically generated based on the AST.
 
@@ -336,6 +340,7 @@ def custom_primitive_op(
         is_pure=is_pure,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=type_params,
     )
 
 
@@ -380,6 +385,7 @@ def unary_op(
         is_pure=is_pure,
         experimental=False,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc

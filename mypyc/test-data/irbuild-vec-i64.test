@@ -64,11 +64,7 @@ def f(v, i):
     r2 :: i64
     r3 :: bit
     r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: i64
+    r5, r6 :: i64
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -86,15 +82,10 @@ L3:
 L4:
     r5 = i
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: i64*
-    keep_alive v
-    return r9
+    r6 = vec_get_item_unsafe[i64] v, r5
+    return r6
 
 [case testVecI64GetItem_32bit]
-# The IR is quite verbose, but it's acceptable since 32-bit targets are not common any more
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -110,13 +101,7 @@ def f(v, i):
     r3 :: i64
     r4 :: bit
     r5 :: bool
-    r6 :: i64
-    r7, r8 :: bit
-    r9 :: native_int
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: ptr
-    r13 :: i64
+    r6, r7 :: i64
 L0:
     r0 = v.len
     r1 = extend signed r0: native_int to i64
@@ -135,24 +120,8 @@ L3:
 L4:
     r6 = i
 L5:
-    r7 = r6 < 2147483648 :: signed
-    if r7 goto L6 else goto L8 :: bool
-L6:
-    r8 = r6 >= -2147483648 :: signed
-    if r8 goto L7 else goto L8 :: bool
-L7:
-    r9 = truncate r6: i64 to native_int
-    goto L9
-L8:
-    CPyInt32_Overflow()
-    unreachable
-L9:
-    r10 = v.items
-    r11 = r9 * 8
-    r12 = r10 + r11
-    r13 = load_mem r12 :: i64*
-    keep_alive v
-    return r13
+    r7 = vec_get_item_unsafe[i64] v, r6
+    return r7
 
 [case testVecI64Append]
 from librt.vecs import vec, append
@@ -411,7 +380,7 @@ L3:
 L4:
     return r1
 
-[case testVecI64FastComprehensionFromVec]
+[case testVecI64FastComprehensionFromVec_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 from typing import List
@@ -426,14 +395,11 @@ def f(n, v):
     r1 :: vec[i64]
     r2, r3 :: native_int
     r4 :: bit
-    r5 :: ptr
-    r6 :: native_int
+    r5, x, r6 :: i64
     r7 :: ptr
-    r8, x, r9 :: i64
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: ptr
-    r13 :: native_int
+    r8 :: native_int
+    r9 :: ptr
+    r10 :: native_int
 L0:
     r0 = v.len
     r1 = VecI64Api.alloc(r0, r0)
@@ -443,21 +409,17 @@ L1:
     r4 = r2 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = v.items
-    r6 = r2 * 8
-    r7 = r5 + r6
-    r8 = load_mem r7 :: i64*
-    x = r8
-    keep_alive v
-    r9 = x + 1
-    r10 = r1.items
-    r11 = r2 * 8
-    r12 = r10 + r11
-    set_mem r12, r9 :: i64*
+    r5 = vec_get_item_unsafe[i64] v, r2
+    x = r5
+    r6 = x + 1
+    r7 = r1.items
+    r8 = r2 * 8
+    r9 = r7 + r8
+    set_mem r9, r6 :: i64*
     keep_alive r1
 L3:
-    r13 = r2 + 1
-    r2 = r13
+    r10 = r2 + 1
+    r2 = r10
     goto L1
 L4:
     return r1
@@ -499,7 +461,7 @@ L3:
 L4:
     return r1
 
-[case testVecI64ForLoop]
+[case testVecI64ForLoop_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 
@@ -514,11 +476,8 @@ def f(v):
     t :: i64
     r0, r1 :: native_int
     r2 :: bit
-    r3 :: ptr
-    r4 :: native_int
-    r5 :: ptr
-    r6, x, r7 :: i64
-    r8 :: native_int
+    r3, x, r4 :: i64
+    r5 :: native_int
 L0:
     t = 0
     r0 = 0
@@ -527,17 +486,13 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = v.items
-    r4 = r0 * 8
-    r5 = r3 + r4
-    r6 = load_mem r5 :: i64*
-    x = r6
-    keep_alive v
-    r7 = t + 1
-    t = r7
+    r3 = vec_get_item_unsafe[i64] v, r0
+    x = r3
+    r4 = t + 1
+    t = r4
 L3:
-    r8 = r0 + 1
-    r0 = r8
+    r5 = r0 + 1
+    r0 = r5
     goto L1
 L4:
     return t
@@ -601,11 +556,7 @@ def f(v):
     r2 :: i64
     r3 :: bit
     r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: i64
+    r5, r6 :: i64
 L0:
     r0 = v.len
     r1 = 0 < r0 :: unsigned
@@ -623,12 +574,8 @@ L3:
 L4:
     r5 = 0
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: i64*
-    keep_alive v
-    return r9
+    r6 = vec_get_item_unsafe[i64] v, r5
+    return r6
 
 [case testVecI64Slicing_64bit]
 from librt.vecs import vec
@@ -720,20 +667,16 @@ def inplace(v, n, m):
     r2 :: i64
     r3 :: bit
     r4 :: bool
-    r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9, r10 :: i64
-    r11 :: native_int
-    r12 :: bit
+    r5, r6, r7 :: i64
+    r8 :: native_int
+    r9 :: bit
+    r10 :: i64
+    r11 :: bit
+    r12 :: bool
     r13 :: i64
-    r14 :: bit
-    r15 :: bool
-    r16 :: i64
-    r17 :: ptr
-    r18 :: i64
-    r19 :: ptr
+    r14 :: ptr
+    r15 :: i64
+    r16 :: ptr
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -751,32 +694,28 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: i64*
-    keep_alive v
-    r10 = r9 + m
-    r11 = v.len
-    r12 = n < r11 :: unsigned
-    if r12 goto L9 else goto L6 :: bool
+    r6 = vec_get_item_unsafe[i64] v, r5
+    r7 = r6 + m
+    r8 = v.len
+    r9 = n < r8 :: unsigned
+    if r9 goto L9 else goto L6 :: bool
 L6:
-    r13 = n + r11
-    r14 = r13 < r11 :: unsigned
-    if r14 goto L8 else goto L7 :: bool
+    r10 = n + r8
+    r11 = r10 < r8 :: unsigned
+    if r11 goto L8 else goto L7 :: bool
 L7:
-    r15 = raise IndexError
+    r12 = raise IndexError
     unreachable
 L8:
-    r16 = r13
+    r13 = r10
     goto L10
 L9:
-    r16 = n
+    r13 = n
 L10:
-    r17 = v.items
-    r18 = r16 * 8
-    r19 = r17 + r18
-    set_mem r19, r10 :: i64*
+    r14 = v.items
+    r15 = r13 * 8
+    r16 = r14 + r15
+    set_mem r16, r7 :: i64*
     keep_alive v
     return 1
 

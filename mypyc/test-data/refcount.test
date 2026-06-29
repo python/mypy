@@ -1606,12 +1606,9 @@ def f(v):
     t :: i64
     r0, r1 :: native_int
     r2 :: bit
-    r3 :: ptr
-    r4 :: native_int
-    r5 :: ptr
-    r6, s :: str
-    r7 :: None
-    r8 :: native_int
+    r3, s :: str
+    r4 :: None
+    r5 :: native_int
 L0:
     t = 0
     r0 = 0
@@ -1620,16 +1617,13 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = v.items
-    r4 = r0 * 8
-    r5 = r3 + r4
-    r6 = load_mem r5 :: builtins.str*
-    s = r6
-    r7 = g(s)
+    r3 = vec_get_item_unsafe[str] v, r0
+    s = r3
+    r4 = g(s)
     dec_ref s
 L3:
-    r8 = r0 + 1
-    r0 = r8
+    r5 = r0 + 1
+    r0 = r5
     goto L1
 L4:
     return t
@@ -1684,11 +1678,7 @@ def C.f(self, x):
     r3 :: i64
     r4 :: bit
     r5 :: bool
-    r6 :: i64
-    r7 :: ptr
-    r8 :: i64
-    r9 :: ptr
-    r10 :: i64
+    r6, r7 :: i64
 L0:
     r0 = borrow self.v
     r1 = r0.len
@@ -1707,11 +1697,8 @@ L3:
 L4:
     r6 = x
 L5:
-    r7 = r0.items
-    r8 = r6 * 8
-    r9 = r7 + r8
-    r10 = load_mem r9 :: i64*
-    return r10
+    r7 = vec_get_item_unsafe[i64] r0, r6
+    return r7
 
 [case testVecI64LenBorrowVec_64bit]
 from librt.vecs import vec
@@ -1771,10 +1758,7 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: str
+    r6 :: str
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -1792,11 +1776,8 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: builtins.str*
-    return r9
+    r6 = vec_get_item_unsafe[str] v, r5
+    return r6
 
 [case testVecNestedGetItem_64bit]
 from librt.vecs import vec
@@ -1817,10 +1798,7 @@ def f(v, n):
     r6 :: bit
     r7 :: bool
     r8 :: i64
-    r9 :: ptr
-    r10 :: i64
-    r11 :: ptr
-    r12, vv :: vec[str]
+    r9, vv :: vec[str]
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
@@ -1841,12 +1819,9 @@ L3:
 L4:
     r8 = n
 L5:
-    r9 = r2.items
-    r10 = r8 * 16
-    r11 = r9 + r10
-    r12 = load_mem r11 :: vec[str]*
+    r9 = vec_get_item_unsafe[vec[str]] r2, r8
     dec_ref r2
-    vv = r12
+    vv = r9
     dec_ref vv
     return 1
 L6:
@@ -1869,20 +1844,13 @@ def f(v, n, m):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: vec[i64]
-    r10 :: native_int
-    r11 :: bit
-    r12 :: i64
-    r13 :: bit
-    r14 :: bool
-    r15 :: i64
-    r16 :: ptr
-    r17 :: i64
-    r18 :: ptr
-    r19 :: i64
+    r6 :: vec[i64]
+    r7 :: native_int
+    r8 :: bit
+    r9 :: i64
+    r10 :: bit
+    r11 :: bool
+    r12, r13 :: i64
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -1900,31 +1868,25 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 16
-    r8 = r6 + r7
-    r9 = borrow load_mem r8 :: vec[i64]*
-    r10 = r9.len
-    r11 = m < r10 :: unsigned
-    if r11 goto L9 else goto L6 :: bool
+    r6 = vec_get_item_unsafe_borrow[vec[i64]] v, r5
+    r7 = r6.len
+    r8 = m < r7 :: unsigned
+    if r8 goto L9 else goto L6 :: bool
 L6:
-    r12 = m + r10
-    r13 = r12 < r10 :: unsigned
-    if r13 goto L8 else goto L7 :: bool
+    r9 = m + r7
+    r10 = r9 < r7 :: unsigned
+    if r10 goto L8 else goto L7 :: bool
 L7:
-    r14 = raise IndexError
+    r11 = raise IndexError
     unreachable
 L8:
-    r15 = r12
+    r12 = r9
     goto L10
 L9:
-    r15 = m
+    r12 = m
 L10:
-    r16 = r9.items
-    r17 = r15 * 8
-    r18 = r16 + r17
-    r19 = load_mem r18 :: i64*
-    return r19
+    r13 = vec_get_item_unsafe[i64] r6, r12
+    return r13
 
 [case testVecPop]
 from librt.vecs import vec, pop, append
