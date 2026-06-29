@@ -723,8 +723,7 @@ def load_plugins_from_config(
                 snapshot[module_name] = take_module_snapshot(module)
             except Exception:
                 print(
-                    f"Error constructing plugin instance of {plugin_type.__name__}\n",
-                    file=stdout,
+                    f"Error constructing plugin instance of {plugin_type.__name__}\n", file=stdout
                 )
                 raise  # Propagate to display traceback
 
