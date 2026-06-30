@@ -2203,7 +2203,45 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
             return UninhabitedType()
         if is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
             return UninhabitedType()
+        if covers_via_declared_variance(t, s):
+            return UninhabitedType()
         return t
+
+
+def covers_via_declared_variance(item: Type, supertype: Type) -> bool:
+    """Is item covered by supertype when generic arguments follow declared variance?"""
+    item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
+    if not isinstance(item, Instance) or not isinstance(supertype, Instance):
+        return False
+    if not item.type.has_base(supertype.type.fullname):
+        return False
+
+    item = map_instance_to_supertype(item, supertype.type)
+    if len(item.args) != len(supertype.args):
+        return False
+
+    tried_infer = False
+    type_params = zip(item.args, supertype.args, supertype.type.defn.type_vars)
+    for item_arg, supertype_arg, tvar in type_params:
+        if isinstance(tvar, TypeVarType):
+            if tvar.variance == VARIANCE_NOT_READY and not tried_infer:
+                infer_class_variances(supertype.type)
+                tried_infer = True
+            variance = tvar.variance
+        else:
+            variance = COVARIANT
+
+        if variance == COVARIANT or variance == VARIANCE_NOT_READY:
+            if not is_subtype(item_arg, supertype_arg, ignore_promotions=True):
+                return False
+        elif variance == CONTRAVARIANT:
+            if not is_subtype(supertype_arg, item_arg, ignore_promotions=True):
+                return False
+        elif not is_same_type(item_arg, supertype_arg):
+            return False
+
+    return True
 
 
 def covers_at_runtime(item: Type, supertype: Type) -> bool:

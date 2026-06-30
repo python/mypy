@@ -541,6 +541,28 @@ def test(x: List[Any]) -> None:
     g(reveal_type(x))  # N: Revealed type is "builtins.list[builtins.str] | __main__.<subclass of "builtins.list[Any]" and "__main__.A">"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsNegativeNarrowCovariantGenericAny]
+from typing_extensions import TypeIs
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+
+class Box(Generic[T]): ...
+class Source(Generic[T_co]): ...
+
+def is_str_box(x: object) -> TypeIs[Box[str]]: ...
+def is_source(x: object) -> TypeIs[Source[object]]: ...
+
+def keep_invariant(x: Box[Any]) -> None:
+    assert not is_str_box(x)
+    reveal_type(x)  # N: Revealed type is "__main__.Box[Any]"
+
+def narrow_covariant(x: int | Source[Any]) -> None:
+    assert not is_source(x)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsMultipleCondition]
 from typing_extensions import TypeIs
 from typing import Any, List
