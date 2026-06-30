@@ -2572,12 +2572,71 @@ L0:
 [case testBorrowedFinalAttribute5]
 from typing import Final
 from librt.vecs import vec
+from mypy_extensions import i64
 
 class C:
     def __init__(self, s: str) -> None:
         self.s: Final = s
 
-def g(c: C, n: int) -> str:
+def g(c: C, n: i64) -> str:
     a = vec[C]([c])
     return a[n].s + "a"
 [out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def g(c, n):
+    c :: __main__.C
+    n :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[__main__.C]
+    r3, r4 :: ptr
+    a :: vec[__main__.C]
+    r5 :: native_int
+    r6 :: bit
+    r7 :: i64
+    r8 :: bit
+    r9 :: bool
+    r10 :: i64
+    r11 :: __main__.C
+    r12, r13, r14 :: str
+L0:
+    r0 = __main__.C :: type
+    r1 = r0
+    r2 = VecTApi.alloc(1, 1, r1)
+    r3 = r2.items
+    inc_ref c
+    set_mem r3, c :: __main__.C*
+    r4 = r3 + 8
+    a = r2
+    r5 = a.len
+    r6 = n < r5 :: unsigned
+    if r6 goto L4 else goto L1 :: bool
+L1:
+    r7 = n + r5
+    r8 = r7 < r5 :: unsigned
+    if r8 goto L3 else goto L6 :: bool
+L2:
+    r9 = raise IndexError
+    unreachable
+L3:
+    r10 = r7
+    goto L5
+L4:
+    r10 = n
+L5:
+    r11 = vec_get_item_unsafe_borrow[__main__.C] a, r10
+    r12 = r11.s
+    dec_ref a
+    r13 = 'a'
+    r14 = PyUnicode_Concat(r12, r13)
+    dec_ref r12
+    return r14
+L6:
+    dec_ref a
+    goto L2

@@ -310,10 +310,7 @@ class IRBuilder:
     def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
-        """Transform a sub-expression or a statement.
-
-        NOTE: Use accept_top_level_expr() for top-level expressions so that keep-alives
-              will be flushed correctly.
+        """Transform an expression or a statement.
 
         If can_borrow is true, prefer to generate a borrowed reference.
         Borrowed references are faster since they don't require reference count

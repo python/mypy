@@ -78,6 +78,7 @@ from mypyc.ir.ops import (
     LoadAddress,
     LoadLiteral,
     PrimitiveDescription,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -331,6 +332,8 @@ def borrow_scope(builder: IRBuilder, v: Value) -> int:
     elif isinstance(v, Cast) and v.is_borrowed:
         return borrow_scope(builder, v.src)
     elif isinstance(v, CallC) and v.function_name == "CPyList_GetItemBorrow":
+        return KEEP_ALIVE_SHORT_LIVED
+    elif isinstance(v, PrimitiveOp) and v.desc.name == "vec_get_item_unsafe_borrow":
         return KEEP_ALIVE_SHORT_LIVED
     return 999
 
