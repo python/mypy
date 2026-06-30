@@ -2917,3 +2917,20 @@ def g(x: K) -> None:
     assert d is not None
     reveal_type(d)  # N: Revealed type is "tuple[K | list[int], ...] | tuple[*tuple[int | list[int], ...], int]"
 [builtins fixtures/tuple.pyi]
+
+[case testFooBar]
+from typing import Any, Generic, Unpack, TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class Array(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]): ...
+
+Float2D = Array[float, int, int]
+FloatND = Array[float, *tuple[Any, ...]]
+
+def from_2d(a: Float2D) -> FloatND:
+    return a
+
+def into_2d(a: FloatND) -> Float2D:
+    return a
+[builtins fixtures/tuple.pyi]

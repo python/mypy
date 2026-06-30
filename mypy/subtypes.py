@@ -509,18 +509,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
+                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                # print("MMMM", left, right, mapped)
                 if not self.proper_subtype:
                     # Special cases to consider:
                     #   * Plain tuple[Any, ...] instance is a subtype of all tuple types.
                     #   * Foo[*tuple[Any, ...]] (normalized) instance is a subtype of all
                     #     tuples with fallback to Foo (e.g. for variadic NamedTuples).
-                    mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                    if is_erased_instance(mapped):
-                        if (
-                            mapped.type.fullname == "builtins.tuple"
-                            or mapped.type.has_type_var_tuple_type
-                        ):
-                            return True
+                    if is_erased_instance(mapped) and mapped.type.fullname == "builtins.tuple":
+                        return True
+                if is_normalized_instance(mapped):
+                    # print("HHHH", mapped, right.partial_fallback)
+                    if self._is_subtype(mapped, right.partial_fallback):
+                        return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
@@ -822,6 +823,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # doesn't have one, we will fall through to False down the line.
             if self.variadic_tuple_subtype(left, right):
                 return True
+            # print("TTT", left.items, right.items)
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -2384,3 +2386,12 @@ def is_erased_instance(t: Instance) -> bool:
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
     return True
+
+
+def is_normalized_instance(t: Instance) -> bool:
+    if not t.args:
+        return False
+    if not t.type.tuple_type:
+        return False
+    expanded = expand_type_by_instance(t.type.tuple_type, t)
+    return isinstance(expanded, Instance)
