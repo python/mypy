@@ -1696,6 +1696,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if (
                 defn.info
                 and self.is_reverse_op_method(name)
+                and not defn.info.is_protocol
                 and defn not in self.overload_impl_stack
             ):
                 # TODO: we should use decorated signature for this check.
