@@ -618,10 +618,10 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Effectively disables checking of optional
-    types and ``None`` values. With this option, mypy doesn't
-    generally check the use of ``None`` values -- it is treated
-    as compatible with every type.
+    When set to ``false``, this option effectively disables checking
+    of optional types and ``None`` values. With this option, mypy
+    doesn't generally check the use of ``None`` values -- it is
+    treated as compatible with every type.
 
     .. warning::
 
