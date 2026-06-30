@@ -1211,7 +1211,15 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value != NULL) {")
 
     if rtype.is_unboxed:
-        emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
+        # Borrow the unboxed value: emit_inc_ref below takes the single owned
+        # reference, matching the borrowed-then-incref pattern of the other two
+        # branches. Without borrow=True, emit_unbox already creates a new
+        # reference for refcounted unboxed types (e.g. CPyTagged boxed ints,
+        # tuples with refcounted fields), so the emit_inc_ref would double the
+        # reference and leak the stored value on every set via this setter.
+        emitter.emit_unbox(
+            "value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True, borrow=True
+        )
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line("PyObject *tmp = value;")
     else:
