@@ -835,7 +835,7 @@ class LowLevelIRBuilder:
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                # Final attributes can be borrwed over arbitrary compuation, since they
+                # Final attributes can be borrowed over arbitrary computation, since they
                 # won't be rebound, as long as we keep the object alive
                 scope = KEEP_ALIVE_SHORT_LIVED if not is_final else KEEP_ALIVE_WHOLE_EXPRESSION
                 self.keep_alives.append((obj, scope))
