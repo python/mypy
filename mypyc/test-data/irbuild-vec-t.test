@@ -215,10 +215,7 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: str
+    r6 :: str
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -236,12 +233,8 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: builtins.str*
-    keep_alive v
-    return r9
+    r6 = vec_get_item_unsafe[str] v, r5
+    return r6
 
 [case testVecTOptionalGetItem_64bit]
 from librt.vecs import vec
@@ -260,10 +253,7 @@ def f(v, n):
     r3 :: bit
     r4 :: bool
     r5 :: i64
-    r6 :: ptr
-    r7 :: i64
-    r8 :: ptr
-    r9 :: union[str, None]
+    r6 :: union[str, None]
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -281,12 +271,8 @@ L3:
 L4:
     r5 = n
 L5:
-    r6 = v.items
-    r7 = r5 * 8
-    r8 = r6 + r7
-    r9 = load_mem r8 :: union*
-    keep_alive v
-    return r9
+    r6 = vec_get_item_unsafe[union[str, None]] v, r5
+    return r6
 
 [case testNewTPopLast]
 from typing import Tuple
@@ -524,3 +510,52 @@ L0:
     r1 = r0
     r2 = VecTApi.from_iterable(r1, a, 0)
     return r2
+
+[case testVecTBorrowGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+class A:
+    x: str
+
+def f(v: vec[A], n: i64) -> int:
+    return len(v[n].x)
+[out]
+def f(v, n):
+    v :: vec[__main__.A]
+    n :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: __main__.A
+    r7 :: str
+    r8 :: native_int
+    r9 :: bit
+    r10 :: short_int
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = n + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = n
+L5:
+    r6 = vec_get_item_unsafe_borrow[__main__.A] v, r5
+    r7 = r6.x
+    keep_alive v, r5
+    r8 = CPyStr_Size_size_t(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = r8 << 1
+    return r10
