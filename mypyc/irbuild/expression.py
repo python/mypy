@@ -331,9 +331,9 @@ def borrow_scope(builder: IRBuilder, v: Value) -> int:
         return min(get_attr_scope, obj_scope)
     elif isinstance(v, Cast) and v.is_borrowed:
         return borrow_scope(builder, v.src)
-    elif isinstance(v, CallC) and v.function_name == "CPyList_GetItemBorrow":
-        return KEEP_ALIVE_SHORT_LIVED
-    elif isinstance(v, PrimitiveOp) and v.desc.name == "vec_get_item_unsafe_borrow":
+    elif isinstance(v, (CallC, PrimitiveOp)) and v.is_borrowed:
+        # Values borrowed from a C function (e.g. a borrowed list/vec item) may be
+        # invalidated by arbitrary computation, so they are only short-lived.
         return KEEP_ALIVE_SHORT_LIVED
     return 999
 
