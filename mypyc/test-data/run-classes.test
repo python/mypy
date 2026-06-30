@@ -6028,8 +6028,11 @@ import sys
 from native import IntField, TupleField
 
 # A heap-boxed int (>= 2**62) is stored as a refcounted PyObject*, unlike small
-# inline-tagged ints, so an over-incref strands a real reference.
-BIG = 1 << 70
+# inline-tagged ints, so an over-incref strands a real reference. Compute the
+# values at runtime (not as folded literals): on free-threaded builds code
+# constants are immortal, and getrefcount could not observe a leak on them.
+shift = 70
+BIG = 1 << shift
 
 def check_no_leak(make, value) -> None:
     base = sys.getrefcount(value)
@@ -6047,7 +6050,7 @@ check_no_leak(IntField, BIG)
 # Tuple[int, int] is stored as an unboxed RTuple; its boxed-int elements are
 # refcounted, so the setter must not over-incref them either. Use the same int
 # in both slots so each instance holds exactly two references to it.
-ELEM = 1 << 71
+ELEM = 1 << (shift + 1)
 base = sys.getrefcount(ELEM)
 objs = [TupleField((ELEM, ELEM)) for _ in range(100)]
 alive = sys.getrefcount(ELEM)
