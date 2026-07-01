@@ -1065,12 +1065,14 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                     getter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
                 )
             )
-            emitter.emit_line("static int")
-            emitter.emit_line(
-                "{}({} *self, PyObject *value, void *closure);".format(
-                    setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("static int")
+                emitter.emit_line(
+                    "{}({} *self, PyObject *value, void *closure);".format(
+                        setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+                    )
                 )
-            )
 
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1099,11 +1101,15 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr in cl.attributes:
             emitter.emit_line(f'{{"{attr}",')
-            emitter.emit_line(
-                " (getter){}, (setter){},".format(
-                    getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+            if attr in cl.final_attributes:
+                # Final attributes are read-only, so emit a NULL setter.
+                emitter.emit_line(f" (getter){getter_name(cl, attr, emitter.names)}, NULL,")
+            else:
+                emitter.emit_line(
+                    " (getter){}, (setter){},".format(
+                        getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+                    )
                 )
-            )
             emitter.emit_line(" NULL, NULL},")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1129,8 +1135,10 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
             generate_getter(cl, attr, rtype, emitter)
-            emitter.emit_line("")
-            generate_setter(cl, attr, rtype, emitter)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("")
+                generate_setter(cl, attr, rtype, emitter)
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
