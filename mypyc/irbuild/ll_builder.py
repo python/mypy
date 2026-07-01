@@ -251,6 +251,15 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
+class PendingKeepAlive:
+    __slots__ = ("value", "scope", "seq")
+
+    def __init__(self, value: Value, scope: int, seq: int) -> None:
+        self.value = value
+        self.scope = scope
+        self.seq = seq
+
+
 class LowLevelIRBuilder:
     """A "low-level" IR builder class.
 
@@ -279,7 +288,8 @@ class LowLevelIRBuilder:
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
         # The second value is the scope/duration of keep alive (KEEP_ALIVE_* constant).
         # Different values must be kept alive for different durations.
-        self.keep_alives: list[tuple[Value, int]] = []
+        self.keep_alives: list[PendingKeepAlive] = []
+        self.next_keep_alive_seq = 0
 
     def set_module(self, module_name: str, module_path: str) -> None:
         """Set the name and path of the current module."""
@@ -371,9 +381,27 @@ class LowLevelIRBuilder:
         return self.args[0]
 
     def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
-        if any(s == scope for _, s in self.keep_alives):
-            self.add(KeepAlive([v for v, s in self.keep_alives if s == scope], line))
-            self.keep_alives = [(v, s) for v, s in self.keep_alives if s != scope]
+        if any(entry.scope == scope for entry in self.keep_alives):
+            self.add(
+                KeepAlive(
+                    [entry.value for entry in self.keep_alives if entry.scope == scope], line
+                )
+            )
+            self.keep_alives = [entry for entry in self.keep_alives if entry.scope != scope]
+
+    def keep_alive_checkpoint(self) -> int:
+        return self.next_keep_alive_seq
+
+    def flush_keep_alives_since(self, line: int, checkpoint: int) -> None:
+        """Flush keep-alives added after 'checkpoint' without touching earlier ones."""
+        new_keep_alives = [entry for entry in self.keep_alives if entry.seq >= checkpoint]
+        if new_keep_alives:
+            self.add(KeepAlive([entry.value for entry in new_keep_alives], line))
+        self.keep_alives = [entry for entry in self.keep_alives if entry.seq < checkpoint]
+
+    def add_keep_alive(self, value: Value, scope: int) -> None:
+        self.keep_alives.append(PendingKeepAlive(value, scope, self.next_keep_alive_seq))
+        self.next_keep_alive_seq += 1
 
     def debug_print(self, toprint: str | Value) -> None:
         if isinstance(toprint, str):
@@ -403,7 +431,7 @@ class LowLevelIRBuilder:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
-                self.keep_alives.append((src, KEEP_ALIVE_SHORT_LIVED))
+                self.add_keep_alive(src, KEEP_ALIVE_SHORT_LIVED)
             return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
@@ -833,7 +861,7 @@ class LowLevelIRBuilder:
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.keep_alives.append((obj, borrow_scope))
+                self.add_keep_alive(obj, borrow_scope)
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
@@ -2128,18 +2156,22 @@ class LowLevelIRBuilder:
         # it is the right side if the left is false.
         true_body, false_body = (right_body, left_body) if op == "and" else (left_body, right_body)
 
+        left_checkpoint = self.keep_alive_checkpoint()
         left_value = left()
         self.add_bool_branch(left_value, true_body, false_body)
 
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, line)
         self.add(Assign(target, left_coerced, line))
+        self.flush_keep_alives_since(line, left_checkpoint)
         self.goto(next_block)
 
         self.activate_block(right_body)
+        right_checkpoint = self.keep_alive_checkpoint()
         right_value = right()
         right_coerced = self.coerce(right_value, expr_type, line)
         self.add(Assign(target, right_coerced, line))
+        self.flush_keep_alives_since(line, right_checkpoint)
         self.goto(next_block)
 
         self.activate_block(next_block)
@@ -2297,7 +2329,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append((arg, KEEP_ALIVE_SHORT_LIVED))
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
@@ -2418,7 +2450,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append((arg, KEEP_ALIVE_SHORT_LIVED))
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE

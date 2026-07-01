@@ -351,7 +351,7 @@ def vec_get_item_unsafe_lower(
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
     result = vec_load_mem_item(builder, item_addr, vtype.item_type, can_borrow=can_borrow)
-    builder.keep_alives.append((base, KEEP_ALIVE_SHORT_LIVED))
+    builder.add_keep_alive(base, KEEP_ALIVE_SHORT_LIVED)
     return result
 
 

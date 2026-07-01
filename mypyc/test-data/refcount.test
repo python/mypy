@@ -2670,3 +2670,173 @@ L0:
     r2 = PyUnicode_Concat(r0, r1)
     dec_ref r0
     return r2
+
+[case testBorrowedFinalAttributeConditionalMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(b: bool) -> str:
+    return (C("x").s if b else "y") + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(b):
+    b :: bool
+    r0 :: str
+    r1 :: __main__.C
+    r2, r3, r4, r5, r6 :: str
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = 'x'
+    r1 = C(r0)
+    r2 = borrow r1.s
+    inc_ref r2
+    r3 = r2
+    dec_ref r1
+    goto L3
+L2:
+    r4 = 'y'
+    inc_ref r4
+    r3 = r4
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r3, r5)
+    dec_ref r3
+    return r6
+
+[case testBorrowedFinalAttributeAndMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> str:
+    return (s and C("x").s) + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s :: str
+    r0 :: bit
+    r1, r2 :: str
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = CPyStr_IsTrue(s)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    inc_ref s
+    r1 = s
+    goto L3
+L2:
+    r2 = 'x'
+    r3 = C(r2)
+    r4 = borrow r3.s
+    inc_ref r4
+    r1 = r4
+    dec_ref r3
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r1, r5)
+    dec_ref r1
+    return r6
+
+[case testBorrowedFinalAttributeOrMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> str:
+    return (s or C("x").s) + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s :: str
+    r0 :: bit
+    r1, r2 :: str
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = CPyStr_IsTrue(s)
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    inc_ref s
+    r1 = s
+    goto L3
+L2:
+    r2 = 'x'
+    r3 = C(r2)
+    r4 = borrow r3.s
+    inc_ref r4
+    r1 = r4
+    dec_ref r3
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r1, r5)
+    dec_ref r1
+    return r6
+
+[case testBorrowedFinalAttributeChainedComparisonMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> bool:
+    return s == "x" == C("x").s
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s, r0 :: str
+    r1, r2 :: bool
+    r3 :: str
+    r4 :: __main__.C
+    r5 :: str
+    r6 :: bool
+L0:
+    r0 = 'x'
+    r1 = CPyStr_EqualLiteral(s, r0, 1)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = r1
+    goto L3
+L2:
+    r3 = 'x'
+    r4 = C(r3)
+    r5 = borrow r4.s
+    r6 = CPyStr_EqualLiteral(r5, r0, 1)
+    r2 = r6
+    dec_ref r4
+L3:
+    return r2
+

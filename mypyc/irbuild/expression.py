@@ -913,15 +913,19 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     target = Register(expr_type)
 
     builder.activate_block(if_body)
+    true_checkpoint = builder.builder.keep_alive_checkpoint()
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
     builder.add(Assign(target, true_value, expr.line))
+    builder.builder.flush_keep_alives_since(expr.line, true_checkpoint)
     builder.goto(next_block)
 
     builder.activate_block(else_body)
+    false_checkpoint = builder.builder.keep_alive_checkpoint()
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
     builder.add(Assign(target, false_value, expr.line))
+    builder.builder.flush_keep_alives_since(expr.line, false_checkpoint)
     builder.goto(next_block)
 
     builder.activate_block(next_block)
