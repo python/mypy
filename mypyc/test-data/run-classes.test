@@ -2825,6 +2825,46 @@ def test_final_attribute() -> None:
     assert C.b['x'] == 'y'
     assert C.a is C.b
 
+[case testFinalInstanceAttributeCannotBeRebound]
+from typing import Any, Final
+
+from testutil import assertRaises
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final[int] = x
+
+class D(C):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y: Final[int] = y
+
+def rebind_via_any(o: Any, value: int) -> None:
+    o.x = value
+
+def test_rebind_via_any() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        rebind_via_any(c, 2)
+    assert c.x == 1
+
+def test_rebind_via_setattr() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        setattr(c, "x", 3)
+    assert c.x == 1
+
+def test_rebind_inherited_via_setattr() -> None:
+    d = D(1, 2)
+    # Inherited Final attribute can't be modified.
+    with assertRaises(AttributeError):
+        setattr(d, "x", 3)
+    # The subclass's own Final attribute can't be modified either.
+    with assertRaises(AttributeError):
+        setattr(d, "y", 4)
+    assert d.x == 1
+    assert d.y == 2
+
 [case testClassDerivedFromIntEnum]
 from enum import IntEnum, auto
 
