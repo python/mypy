@@ -68,8 +68,8 @@ MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
-# Constant for keeping a (often borrowed) op alive for a short time (e.g. a few subexpressions),
-# until flush_keep_alives() is called.
+# Constant for keeping a (often borrowed) op alive for a short time (a few subexpressions,
+# no arbitrary computation or memory allocations), until flush_keep_alives() is called.
 KEEP_ALIVE_SHORT_LIVED: Final = 0
 # Keep value alive until the current top-level expression has been fully evaluated.
 # This allows keeping alive values across function calls and arbitrary computation.

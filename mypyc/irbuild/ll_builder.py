@@ -317,14 +317,7 @@ class LowLevelIRBuilder:
         self.goto(block)
         self.activate_block(block)
 
-    def keep_alive(
-        self,
-        values: list[Value],
-        line: int,
-        *,
-        scope: int = KEEP_ALIVE_SHORT_LIVED,
-        steal: bool = False,
-    ) -> None:
+    def keep_alive(self, values: list[Value], line: int, *, steal: bool = False) -> None:
         self.add(KeepAlive(values, line, steal=steal))
 
     def load_mem(self, ptr: Value, value_type: RType, *, borrow: bool = False) -> Value:
