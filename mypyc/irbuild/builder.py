@@ -27,6 +27,7 @@ from mypy.nodes import (
     FuncDef,
     IndexExpr,
     IntExpr,
+    LambdaExpr,
     Lvalue,
     MemberExpr,
     MypyFile,
@@ -294,6 +295,9 @@ class IRBuilder:
         # top-level expression. Used to avoid borrowing an attribute over the whole
         # expression when the borrow root could be rebound (and thus freed) partway.
         self.reassigned_in_expr: set[SymbolNode] = set()
+        # Saved expression state for enclosing functions (see enter()/leave()).
+        self.expression_depth_stack: list[int] = []
+        self.reassigned_in_expr_stack: list[set[SymbolNode]] = []
 
         # When set, load_globals_dict uses this module instead of self.module_name.
         # Used by generate_attr_defaults_init for cross-module inherited defaults.
@@ -1360,6 +1364,13 @@ class IRBuilder:
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(ret_type)
+        # A function body is its own top-level expression context, even when the
+        # function (e.g. a lambda) is being generated in the middle of an outer
+        # expression. Save the outer expression state and start fresh.
+        self.expression_depth_stack.append(self.expression_depth)
+        self.reassigned_in_expr_stack.append(self.reassigned_in_expr)
+        self.expression_depth = 0
+        self.reassigned_in_expr = set()
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
@@ -1373,6 +1384,8 @@ class IRBuilder:
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
+        self.expression_depth = self.expression_depth_stack.pop()
+        self.reassigned_in_expr = self.reassigned_in_expr_stack.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
@@ -1758,6 +1771,10 @@ class WalrusTargetCollector(TraverserVisitor):
         if o.target.node is not None:
             self.targets.add(o.target.node)
         super().visit_assignment_expr(o)
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        # A lambda body forms its own expression context, so don't descend into it.
+        pass
 
 
 def find_walrus_targets(expr: Expression) -> set[SymbolNode]:

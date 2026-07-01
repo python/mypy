@@ -6104,3 +6104,43 @@ base = sys.getrefcount(BIG)
 o.v = BIG
 o.v = BIG
 assert sys.getrefcount(BIG) == base, "reassignment leaked refs"
+
+[case testBorrowedFinalAttributeInLambdaAndNestedFunction]
+from typing import Final, Callable
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def make_lambda() -> Callable[[], int]:
+    # The lambda body creates a C, borrows its final attribute, then calls
+    # spend() (which allocates heavily) before reading the borrow.
+    return lambda: use(C(Box(111)).b, spend(Box(0)))
+
+def make_nested() -> Callable[[], int]:
+    def inner() -> int:
+        return use(C(Box(111)).b, spend(Box(0)))
+    return inner
+
+def test_borrowed_final_attribute_in_lambda() -> None:
+    f = make_lambda()
+    for _ in range(1000):
+        assert f() == 111
+
+def test_borrowed_final_attribute_in_nested_function() -> None:
+    g = make_nested()
+    for _ in range(1000):
+        assert g() == 111
