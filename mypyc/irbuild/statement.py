@@ -86,7 +86,12 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
+from mypyc.irbuild.builder import (
+    IRBuilder,
+    create_type_params,
+    find_walrus_targets,
+    int_borrow_friendly_op,
+)
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -164,8 +169,10 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     # ExpressionStmts do not need to be coerced like other Expressions, so
     # we shouldn't call builder.accept here.
     builder.expression_depth += 1
+    builder.reassigned_in_expr = find_walrus_targets(stmt.expr)
     stmt.expr.accept(builder.visitor)
     builder.expression_depth -= 1
+    builder.reassigned_in_expr = set()
     builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_SHORT_LIVED)
     builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
 

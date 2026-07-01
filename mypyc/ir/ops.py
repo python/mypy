@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
-from mypyc.common import PROPSET_PREFIX
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, PROPSET_PREFIX
 from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
@@ -898,7 +898,7 @@ class GetAttr(RegisterOp):
         *,
         borrow: bool = False,
         allow_error_value: bool = False,
-        is_final: bool = False,
+        borrow_scope: int = KEEP_ALIVE_SHORT_LIVED,
     ) -> None:
         super().__init__(line)
         self.obj = obj
@@ -913,7 +913,8 @@ class GetAttr(RegisterOp):
         elif attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
-        self.is_final = is_final
+        # How long a borrowed result of this op stays valid (a KEEP_ALIVE_* constant).
+        self.borrow_scope = borrow_scope
 
     def sources(self) -> list[Value]:
         return [self.obj]

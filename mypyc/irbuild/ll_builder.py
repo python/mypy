@@ -20,7 +20,6 @@ from mypyc.common import (
     FAST_PREFIX,
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
-    KEEP_ALIVE_WHOLE_EXPRESSION,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -823,22 +822,25 @@ class LowLevelIRBuilder:
         line: int,
         *,
         borrow: bool = False,
-        is_final: bool = False,
+        borrow_scope: int = KEEP_ALIVE_SHORT_LIVED,
     ) -> Value:
-        """Get a native or Python attribute of an object."""
+        """Get a native or Python attribute of an object.
+
+        If the result is borrowed, borrow_scope controls how long it stays valid
+        (a KEEP_ALIVE_* constant). The caller is responsible for choosing a scope
+        that is actually safe (e.g. downgrading to short-lived if the borrow root
+        may be rebound during the borrow's live range).
+        """
         if (
             isinstance(obj.type, RInstance)
             and obj.type.class_ir.is_ext_class
             and obj.type.class_ir.has_attr(attr)
         ):
-            op = GetAttr(obj, attr, line, borrow=borrow, is_final=is_final)
+            op = GetAttr(obj, attr, line, borrow=borrow, borrow_scope=borrow_scope)
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                # Final attributes can be borrowed over arbitrary computation, since they
-                # won't be rebound, as long as we keep the object alive
-                scope = KEEP_ALIVE_SHORT_LIVED if not is_final else KEEP_ALIVE_WHOLE_EXPRESSION
-                self.keep_alives.append((obj, scope))
+                self.keep_alives.append((obj, borrow_scope))
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)

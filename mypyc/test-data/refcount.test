@@ -2640,3 +2640,33 @@ L5:
 L6:
     dec_ref a
     goto L2
+
+[case testBorrowedFinalAttributeReassignViaWalrus]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C, d: C) -> str:
+    return c.s + (c := d).s
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(c, d):
+    c, d :: __main__.C
+    r0, r1, r2 :: str
+L0:
+    r0 = c.s
+    inc_ref d
+    c = d
+    dec_ref c
+    r1 = borrow d.s
+    r2 = PyUnicode_Concat(r0, r1)
+    dec_ref r0
+    return r2

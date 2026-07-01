@@ -20,6 +20,7 @@ from mypy.nodes import (
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
+    AssignmentExpr,
     CallExpr,
     Decorator,
     Expression,
@@ -42,6 +43,7 @@ from mypy.nodes import (
     TypeParam,
     Var,
 )
+from mypy.traverser import TraverserVisitor
 from mypy.types import (
     AnyType,
     DeletedType,
@@ -82,6 +84,7 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
+    Cast,
     ComparisonOp,
     GetAttr,
     InitStatic,
@@ -287,6 +290,10 @@ class IRBuilder:
 
         self.can_borrow = False
         self.expression_depth = 0
+        # Symbols (local vars) reassigned via a walrus expression within the current
+        # top-level expression. Used to avoid borrowing an attribute over the whole
+        # expression when the borrow root could be rebound (and thus freed) partway.
+        self.reassigned_in_expr: set[SymbolNode] = set()
 
         # When set, load_globals_dict uses this module instead of self.module_name.
         # Used by generate_attr_defaults_init for cross-module inherited defaults.
@@ -319,6 +326,8 @@ class IRBuilder:
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
                 self.expression_depth += 1
+                if self.expression_depth == 1:
+                    self.reassigned_in_expr = find_walrus_targets(node)
                 old_can_borrow = self.can_borrow
                 self.can_borrow = can_borrow
                 try:
@@ -336,6 +345,7 @@ class IRBuilder:
                 self.expression_depth -= 1
                 if self.expression_depth == 0:
                     self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
+                    self.reassigned_in_expr = set()
                 return res
             else:
                 try:
@@ -1598,6 +1608,32 @@ class IRBuilder:
             and any(expr.name in ir.final_attributes for ir in obj_rtype.class_ir.mro)
         )
 
+    def root_is_reassigned(self, v: Value) -> bool:
+        """Is the root local variable a borrow chain 'v' reads from reassigned this expression?
+
+        A whole-expression borrow of an attribute keeps the borrow root alive only
+        via the register holding it. If that register belongs to a local variable
+        that is rebound (via a walrus assignment) during the same top-level
+        expression, the old value may be freed while the borrow is still live.
+        """
+        if not self.reassigned_in_expr:
+            return False
+        # Peel borrowed links back to the root value the chain reads from.
+        while True:
+            if isinstance(v, GetAttr) and v.is_borrowed:
+                v = v.obj
+            elif isinstance(v, Cast) and v.is_borrowed:
+                v = v.src
+            else:
+                break
+        if not isinstance(v, Register):
+            return False
+        for symbol in self.reassigned_in_expr:
+            target = self.symtables[-1].get(symbol)
+            if isinstance(target, AssignmentTargetRegister) and target.register is v:
+                return True
+        return False
+
     def mark_block_unreachable(self) -> None:
         """Mark statements in the innermost block being processed as unreachable.
 
@@ -1710,6 +1746,29 @@ def get_call_target_fullname(ref: RefExpr) -> str:
         if isinstance(target, Instance):
             return target.type.fullname
     return ref.fullname
+
+
+class WalrusTargetCollector(TraverserVisitor):
+    """Collect the symbols assigned to by walrus expressions in a subtree."""
+
+    def __init__(self) -> None:
+        self.targets: set[SymbolNode] = set()
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        if o.target.node is not None:
+            self.targets.add(o.target.node)
+        super().visit_assignment_expr(o)
+
+
+def find_walrus_targets(expr: Expression) -> set[SymbolNode]:
+    """Return the symbols reassigned via a walrus expression within 'expr'.
+
+    Walrus (':=') is the only way to rebind a variable in the middle of evaluating
+    an expression, so this is the complete set of in-expression reassignments.
+    """
+    collector = WalrusTargetCollector()
+    expr.accept(collector)
+    return collector.targets
 
 
 def create_type_params(

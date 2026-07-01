@@ -250,4 +250,3 @@ L0:
     r3 = 'a'
     r4 = PyUnicode_Concat(r2, r3)
     return r4
-

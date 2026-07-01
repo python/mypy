@@ -314,23 +314,33 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     check_instance_attribute_access_through_class(builder, expr, typ)
 
     is_final = builder.is_final_instance_attr_ref(expr)
-    borrow = (can_borrow and builder.can_borrow) or (
+    scope = KEEP_ALIVE_SHORT_LIVED
+    if (
         is_final
         and builder.expression_depth > 1
-        and borrow_scope(builder, obj) >= KEEP_ALIVE_WHOLE_EXPRESSION
-    )
+        and borrow_scope_of(builder, obj) >= KEEP_ALIVE_WHOLE_EXPRESSION
+        # Don't borrow across the whole expression if the borrow root can be
+        # rebound (via a walrus assignment) while the borrow is still live, since
+        # rebinding could free the object we borrow from.
+        and not builder.root_is_reassigned(obj)
+    ):
+        scope = KEEP_ALIVE_WHOLE_EXPRESSION
+    borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION
     return builder.builder.get_attr(
-        obj, expr.name, rtype, expr.line, borrow=borrow, is_final=is_final
+        obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
     )
 
 
-def borrow_scope(builder: IRBuilder, v: Value) -> int:
+def borrow_scope_of(builder: IRBuilder, v: Value) -> int:
+    """Compute how long an existing borrowed value can safely be kept alive.
+
+    Returns a KEEP_ALIVE_* constant (or a large value if 'v' is not borrowed and
+    thus has no borrowing constraint).
+    """
     if isinstance(v, GetAttr) and v.is_borrowed:
-        obj_scope = borrow_scope(builder, v.obj)
-        get_attr_scope = KEEP_ALIVE_SHORT_LIVED if not v.is_final else KEEP_ALIVE_WHOLE_EXPRESSION
-        return min(get_attr_scope, obj_scope)
+        return min(v.borrow_scope, borrow_scope_of(builder, v.obj))
     elif isinstance(v, Cast) and v.is_borrowed:
-        return borrow_scope(builder, v.src)
+        return borrow_scope_of(builder, v.src)
     elif isinstance(v, (CallC, PrimitiveOp)) and v.is_borrowed:
         # Values borrowed from a C function (e.g. a borrowed list/vec item) may be
         # invalidated by arbitrary computation, so they are only short-lived.
