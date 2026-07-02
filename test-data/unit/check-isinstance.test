@@ -2007,6 +2007,25 @@ def directed_meet(cls0: ClassT, cls1: ClassT) -> ClassT | None:
     return None
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIssubclassAny]
+# flags: --warn-unreachable
+from typing import Any
+
+def f1(x: Any) -> None:
+    if issubclass(x, int):
+        reveal_type(x)  # N: Revealed type is "type[builtins.int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f2(x: Any) -> None:
+    if issubclass(x, list):
+        reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsinstanceTypeArgs]
 # flags: --warn-unreachable
 from typing import Iterable, TypeVar

@@ -8140,7 +8140,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def infer_issubclass_maps(self, node: CallExpr, expr: Expression) -> tuple[TypeMap, TypeMap]:
         """Infer type restrictions for an expression in issubclass call."""
         vartype = self.lookup_type(expr)
-        type = self.get_isinstance_type(node.args[1])
         if isinstance(vartype, TypeVarType):
             vartype = vartype.upper_bound
         vartype = get_proper_type(vartype)
@@ -8156,13 +8155,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             vartype = UnionType(union_list)
         elif isinstance(vartype, TypeType):
             vartype = vartype.item
+        elif isinstance(vartype, AnyType):
+            pass
         elif isinstance(vartype, Instance) and vartype.type.is_metaclass():
             vartype = self.named_type("builtins.object")
         else:
-            # Any other object whose type we don't know precisely
-            # for example, Any or a custom metaclass.
-            return {}, {}  # unknown type
-        yes_type, no_type = self.conditional_types_with_intersection(vartype, type, expr)
+            # Any other object which isn't a type
+            return {}, {}
+
+        issubclass_type = self.get_isinstance_type(node.args[1])
+        yes_type, no_type = self.conditional_types_with_intersection(
+            vartype, issubclass_type, expr
+        )
         yes_map, no_map = conditional_types_to_typemaps(expr, yes_type, no_type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
