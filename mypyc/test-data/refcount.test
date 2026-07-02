@@ -2850,3 +2850,118 @@ class C:
 def f(a: list[C]) -> list[str]:
     return [x.s for x in a]
 [out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(a):
+    a :: list
+    r0 :: native_int
+    r1 :: list
+    r2, r3 :: native_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: __main__.C
+    r7 :: str
+    r8 :: native_int
+L0:
+    r0 = var_object_size a
+    r1 = PyList_New(r0)
+    r2 = 0
+L1:
+    r3 = var_object_size a
+    r4 = r2 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = list_get_item_unsafe a, r2
+    r6 = cast(__main__.C, r5)
+    x = r6
+    r7 = x.s
+    dec_ref x
+    CPyList_SetItemUnsafe(r1, r2, r7)
+L3:
+    r8 = r2 + 1
+    r2 = r8
+    goto L1
+L4:
+    return r1
+
+[case testBorrowedFinalInSetComprehension]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def use(s: str) -> bool:
+    return True
+
+def f(a: list[C]) -> set[C]:
+    return {x for x in a if use(x.d.s)}
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def use(s):
+    s :: str
+L0:
+    return 1
+def f(a):
+    a :: list
+    r0 :: set
+    r1, r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x :: __main__.C
+    r6 :: __main__.D
+    r7 :: str
+    r8 :: bool
+    r9 :: i32
+    r10 :: bit
+    r11 :: native_int
+L0:
+    r0 = PySet_New(0)
+    r1 = 0
+L1:
+    r2 = var_object_size a
+    r3 = r1 < r2 :: signed
+    if r3 goto L2 else goto L5 :: bool
+L2:
+    r4 = list_get_item_unsafe a, r1
+    r5 = cast(__main__.C, r4)
+    x = r5
+    r6 = borrow x.d
+    r7 = borrow r6.s
+    r8 = use(r7)
+    if r8 goto L3 else goto L6 :: bool
+L3:
+    r9 = PySet_Add(r0, x)
+    dec_ref x
+    r10 = r9 >= 0 :: signed
+L4:
+    r11 = r1 + 1
+    r1 = r11
+    goto L1
+L5:
+    return r0
+L6:
+    dec_ref x
+    goto L4
