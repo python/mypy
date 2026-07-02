@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import sysconfig
+from types import ModuleType
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -20,12 +21,13 @@ from mypy.test.helpers import (
     normalize_error_messages,
 )
 
+lxml: ModuleType | None  # lxml is an optional dependency
 try:
     if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         lxml = None
     else:
-        import lxml  # type: ignore[import-untyped]
+        import lxml
 except ImportError:
     lxml = None
 
