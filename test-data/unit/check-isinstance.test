@@ -3377,3 +3377,21 @@ def f2(x: A | None, t: type[A]):
     else:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testTupleSwapAfterIsinstance]
+class Base: pass
+class Sub1(Base): pass
+class Sub2(Base): pass
+
+def f(a: Base, b: Base) -> None:
+    if isinstance(b, Sub1) and isinstance(a, Sub2):
+        t = (b, a)
+
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.Sub1, __main__.Sub2]"
+
+        a, b = t
+
+        reveal_type(a)  # N: Revealed type is "__main__.Sub1"
+        reveal_type(b)  # N: Revealed type is "__main__.Sub2"
+
+[builtins fixtures/isinstancelist.pyi]
