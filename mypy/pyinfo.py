@@ -47,7 +47,10 @@ def getsyspath() -> list[str]:
     )
     stdlib = sysconfig.get_path("stdlib")
     stdlib_ext = os.path.join(stdlib, "lib-dynload")
-    excludes = {stdlib_zip, stdlib, stdlib_ext}
+    # Resolve symlinks: base_exec_prefix / sysconfig paths retain the symlink
+    # form (e.g. Homebrew's /opt/homebrew/opt/python@3.13) while sys.path
+    # entries arrive pre-resolved by Python. See python/mypy#21474.
+    excludes = {os.path.realpath(p) for p in (stdlib_zip, stdlib, stdlib_ext)}
 
     # Drop the first entry of sys.path
     # - If pyinfo.py is executed as a script (in a subprocess), this is the directory
@@ -63,7 +66,7 @@ def getsyspath() -> list[str]:
     offset = 0 if sys.version_info >= (3, 11) and sys.flags.safe_path else 1
 
     abs_sys_path = (os.path.abspath(p) for p in sys.path[offset:])
-    return [p for p in abs_sys_path if p not in excludes]
+    return [p for p in abs_sys_path if os.path.realpath(p) not in excludes]
 
 
 def getsearchdirs() -> tuple[list[str], list[str]]:
