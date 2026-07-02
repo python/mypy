@@ -5984,6 +5984,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # The second pass narrows down the types and type checks bodies.
             unmatched_types: TypeMap = {s.subject: UninhabitedType()}
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
+                case_is_unreachable = self.binder.is_unreachable()
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
                 )
@@ -6036,8 +6037,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             self.accept(b)
                     else:
                         self.accept(b)
-                self.push_type_map(else_map, from_assignment=False)
-                unmatched_types = else_map
+                if not case_is_unreachable:
+                    # Unreachable cases are still checked above, but they shouldn't revive
+                    # subject types that were already handled by earlier cases.
+                    self.push_type_map(else_map, from_assignment=False)
+                    unmatched_types = else_map
 
             if not is_unreachable_map(unmatched_types) and not self.current_node_deferred:
                 for typ in unmatched_types.values():
