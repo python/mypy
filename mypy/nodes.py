@@ -1083,6 +1083,7 @@ FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
     "is_trivial_body",
     "is_trivial_self",
     "is_mypy_only",
+    "is_no_type_check",
 ]
 
 # Abstract status of a function
@@ -1109,6 +1110,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_trivial_self",
         "is_invalid_redefinition",
         "is_mypy_only",
+        "is_no_type_check",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
@@ -1139,6 +1141,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.original_def: None | FuncDef | Var | Decorator = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
+        # Decorated with @typing.no_type_check: the body must never be type-checked.
+        # Stored as a durable flag so it survives fine-grained reprocessing of the
+        # FuncDef target (which bypasses the decorator dispatch in the checker).
+        self.is_no_type_check = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
         self.docstring: str | None = None
         self.deprecated: str | None = None

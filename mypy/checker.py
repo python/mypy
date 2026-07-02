@@ -1332,6 +1332,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.visit_func_def_impl(defn)
 
     def visit_func_def_impl(self, defn: FuncDef) -> None:
+        if defn.is_no_type_check:
+            # @typing.no_type_check: the body must be skipped. The decorator
+            # dispatch (visit_decorator) handles this at the top level, but a
+            # fine-grained reprocess can re-check the bare FuncDef target.
+            return
         with self.tscope.function_scope(defn), self.set_recurse_into_functions():
             self.check_func_item(defn, name=defn.name)
             if not self.can_skip_diagnostics:
