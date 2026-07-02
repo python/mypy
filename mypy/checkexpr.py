@@ -4446,6 +4446,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes
             and left_unreachable
             # don't report an error if it's intentional
+            and not e.suppress_redundant_expr
             and not e.right_always
         ):
             self.msg.redundant_left_operand(e.op, e.left)
