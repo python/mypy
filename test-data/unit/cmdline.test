@@ -952,6 +952,12 @@ pkg.py:1: error: Incompatible types in assignment (expression has type "int", va
 error: --non-interactive is only supported with --install-types
 == Return code: 2
 
+[case testCmdlineInstallTypesFromPylockWithoutInstallTypes]
+# cmd: mypy --install-types-from-pylock pylock.toml -m pkg
+[out]
+error: --install-types-from-pylock is only supported with --install-types
+== Return code: 2
+
 [case testCmdlineNonInteractiveInstallTypesNothingToDo]
 # cmd: mypy --install-types --non-interactive -m pkg
 [file pkg.py]
