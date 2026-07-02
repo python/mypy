@@ -1614,6 +1614,37 @@ reveal_type(g) # N: Revealed type is "typing.Generator[builtins.int, None, None]
 reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testComprehensionIsInstanceImpossibleIntersection]
+# https://github.com/python/mypy/issues/21635
+from typing import List
+
+class X:
+    def f(self) -> int:
+        return 0
+class Y:
+    def f(self) -> str:
+        return ''
+
+xs: List[X] = []
+l: List[Y] = [x for x in xs if isinstance(x, Y)]
+g = (reveal_type(x) for x in xs if isinstance(x, Y))  # N: Revealed type is "Never"
+d = {0: x for x in xs if isinstance(x, Y)}
+reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.int, Never]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testComprehensionIsSubclassImpossibleIntersectionFinal]
+# https://github.com/python/mypy/issues/21635
+from typing import List, Type
+from typing_extensions import final
+
+@final
+class F: ...
+class Other: ...
+
+os: List[Other] = []
+fs: List[F] = [o for o in os if isinstance(o, F)]
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsinstanceInWrongOrderInBooleanOp]
 # flags: --warn-unreachable
 class A:

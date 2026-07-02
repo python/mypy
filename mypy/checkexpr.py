@@ -6040,7 +6040,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
                 # values are only part of the comprehension when all conditions are true
                 true_map, false_map = self.chk.find_isinstance_check(condition)
-                self.chk.push_type_map(true_map)
+                if mypy.checker.is_unreachable_map(true_map):
+                    # The condition can never be true. Unlike statements, the
+                    # left expression is still type checked, so apply the
+                    # impossible narrowing to the binder instead of marking
+                    # the frame unreachable, which would discard it (#21635).
+                    for expr, typ in true_map.items():
+                        self.chk.binder.put(expr, typ)
+                else:
+                    self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
                     if mypy.checker.is_unreachable_map(true_map):
