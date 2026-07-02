@@ -5,10 +5,12 @@ import os
 import tempfile
 import unittest
 from collections.abc import Iterator
+from io import StringIO
 from pathlib import Path
 
-from mypy.config_parser import _find_config_file
+from mypy.config_parser import _find_config_file, parse_config_file
 from mypy.defaults import CONFIG_NAMES, SHARED_CONFIG_NAMES
+from mypy.options import Options
 
 
 @contextlib.contextmanager
@@ -128,3 +130,17 @@ class FindConfigFileSuite(unittest.TestCase):
                 result = _find_config_file()
                 assert result is not None
                 assert Path(result[2]).resolve() == parent_mypy.resolve()
+
+
+class ParseConfigFileSuite(unittest.TestCase):
+    def test_output_option_with_none_default(self) -> None:
+        with tempfile.TemporaryDirectory() as _tmpdir:
+            config = Path(_tmpdir) / "mypy.ini"
+            write_config(config, content="[mypy]\noutput = json\n")
+
+            options = Options()
+            stderr = StringIO()
+            parse_config_file(options, lambda: None, str(config), stderr=stderr)
+
+            assert options.output == "json"
+            assert stderr.getvalue() == ""
