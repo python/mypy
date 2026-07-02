@@ -3377,3 +3377,32 @@ def f2(x: A | None, t: type[A]):
     else:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceNarrowingWithGetattr]
+# flags: --warn-unreachable
+# https://github.com/python/mypy/issues/16590
+from typing import Any, Union
+from typing_extensions import Protocol
+
+class A:
+    def __getattr__(self, name: str) -> Any: ...
+
+class MyProto(Protocol):
+    def method(self) -> int: ...
+
+def with_getattr_any(a: Union[A, MyProto]) -> None:
+    if isinstance(a, A):
+        reveal_type(a)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.MyProto"
+
+class B:
+    def __getattr__(self, name: str) -> str: ...
+
+def with_getattr_str(a: Union[B, MyProto]) -> None:
+    if isinstance(a, B):
+        reveal_type(a)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.MyProto"
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
