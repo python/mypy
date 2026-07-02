@@ -38,14 +38,26 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.rtypes import is_none_rprimitive, is_object_rprimitive, is_optional_type
 
 MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
-    ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"]
+    [
+        "native_class",
+        "allow_interpreted_subclasses",
+        "serializable",
+        "supports_weakref",
+        "free_list_len",
+        "acyclic",
+    ]
 )
 
 DATACLASS_DECORATORS: Final = frozenset(["dataclasses.dataclass", "attr.s", "attr.attrs"])
 
 
 MypycAttr = Literal[
-    "native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"
+    "native_class",
+    "allow_interpreted_subclasses",
+    "serializable",
+    "supports_weakref",
+    "free_list_len",
+    "acyclic",
 ]
 
 
@@ -53,6 +65,7 @@ class MypycAttrs(TypedDict):
     native_class: NotRequired[bool]
     allow_interpreted_subclasses: NotRequired[bool]
     serializable: NotRequired[bool]
+    supports_weakref: NotRequired[bool]
     free_list_len: NotRequired[int]
     acyclic: NotRequired[bool]
 
