@@ -1974,3 +1974,26 @@ async def async_iter(vals: list[int]) -> AsyncIterator[int]:
         yield v
 
 [typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwait]
+from typing import Final
+from testutil import async_val
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the await, which is a
+    # suspension point in the middle of the expression.
+    return c.s + await async_val("hello")
+
+[file driver.py]
+from native import f, C
+from testutil import run_generator
+
+for i in range(50):
+    c = C("value" + str(i))
+    yields, val = run_generator(f(c), inputs=["world"])
+    assert yields == ("hello",), yields
+    assert val == "value" + str(i) + "world", repr(val)

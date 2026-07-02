@@ -322,6 +322,9 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         # Don't borrow across the whole expression if the borrow root can be
         # rebound via a walrus assignment
         and not builder.root_is_reassigned(obj)
+        # Don't borrow across a suspension point (await/yield/yield from), since
+        # the borrow would not survive the suspend (registers aren't spilled).
+        and not builder.expr_has_suspend
     ):
         scope = KEEP_ALIVE_WHOLE_EXPRESSION
     borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION

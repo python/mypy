@@ -21,6 +21,7 @@ from mypy.nodes import (
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
     AssignmentExpr,
+    AwaitExpr,
     CallExpr,
     Decorator,
     Expression,
@@ -43,6 +44,8 @@ from mypy.nodes import (
     TypeInfo,
     TypeParam,
     Var,
+    YieldExpr,
+    YieldFromExpr,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -295,9 +298,15 @@ class IRBuilder:
         # top-level expression. Used to avoid borrowing an attribute over the whole
         # expression when the borrow root could be rebound (and thus freed) partway.
         self.reassigned_in_expr: set[SymbolNode] = set()
+        # Whether the current top-level expression contains a suspension point
+        # (await, yield or yield from). A whole-expression borrow can't span such a
+        # point, since the borrowed value (and its root) live in registers that are
+        # not spilled into the generator environment across the suspend.
+        self.expr_has_suspend = False
         # Saved expression state for enclosing functions (see enter()/leave()).
         self.expression_depth_stack: list[int] = []
         self.reassigned_in_expr_stack: list[set[SymbolNode]] = []
+        self.expr_has_suspend_stack: list[bool] = []
 
         # When set, load_globals_dict uses this module instead of self.module_name.
         # Used by generate_attr_defaults_init for cross-module inherited defaults.
@@ -332,6 +341,7 @@ class IRBuilder:
                 self.expression_depth += 1
                 if self.expression_depth == 1:
                     self.reassigned_in_expr = find_walrus_targets(node)
+                    self.expr_has_suspend = expr_has_suspend(node)
                 old_can_borrow = self.can_borrow
                 self.can_borrow = can_borrow
                 try:
@@ -350,6 +360,7 @@ class IRBuilder:
                 if self.expression_depth == 0:
                     self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
                     self.reassigned_in_expr = set()
+                    self.expr_has_suspend = False
                 return res
             else:
                 try:
@@ -1369,8 +1380,10 @@ class IRBuilder:
         # expression. Save the outer expression state and start fresh.
         self.expression_depth_stack.append(self.expression_depth)
         self.reassigned_in_expr_stack.append(self.reassigned_in_expr)
+        self.expr_has_suspend_stack.append(self.expr_has_suspend)
         self.expression_depth = 0
         self.reassigned_in_expr = set()
+        self.expr_has_suspend = False
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
@@ -1386,6 +1399,7 @@ class IRBuilder:
         self.nonlocal_control.pop()
         self.expression_depth = self.expression_depth_stack.pop()
         self.reassigned_in_expr = self.reassigned_in_expr_stack.pop()
+        self.expr_has_suspend = self.expr_has_suspend_stack.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
@@ -1798,6 +1812,38 @@ def find_walrus_targets(expr: Expression) -> set[SymbolNode]:
     collector = WalrusTargetCollector()
     expr.accept(collector)
     return collector.targets
+
+
+class SuspendDetector(TraverserVisitor):
+    """Detect await/yield/yield from expressions in a subtree."""
+
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_await_expr(self, o: AwaitExpr) -> None:
+        self.found = True
+
+    def visit_yield_expr(self, o: YieldExpr) -> None:
+        self.found = True
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        self.found = True
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        # A lambda body forms its own function (and suspension) context.
+        pass
+
+
+def expr_has_suspend(expr: Expression) -> bool:
+    """Does evaluating 'expr' involve a suspension point (await/yield/yield from)?
+
+    A whole-expression borrow can't safely span a suspension point, since the
+    borrowed value and its borrow root are held in registers that aren't spilled
+    into the generator environment across the suspend.
+    """
+    detector = SuspendDetector()
+    expr.accept(detector)
+    return detector.found
 
 
 def create_type_params(
