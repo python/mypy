@@ -47,6 +47,8 @@ class Iterable(Protocol[T_co]):
 class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
+class Collection(Iterable[T_co]): pass
+
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass # type: ignore[explicit-any]
 
