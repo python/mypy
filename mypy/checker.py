@@ -1825,6 +1825,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         "Consider using the upper bound "
                         f"{format_type(typ.ret_type.upper_bound, self.options)} instead",
                         context=typ.ret_type,
+                        code=TYPE_VAR,
                     )
 
     def check_default_params(self, item: FuncItem, body_is_trivial: bool | None = None) -> None:

@@ -13,6 +13,9 @@ def g() -> U: # E: A function returning TypeVar should receive at least one argu
               # N: Consider using the upper bound "int" instead
     ...
 
+def g2() -> U:  # type: ignore[type-var]
+    ...
+
 V = TypeVar('V', int, str)
 
 def h() -> V:  # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
