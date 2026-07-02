@@ -2755,3 +2755,16 @@ reveal_type(Sneaky(f8, 1, y='').kwargs)  # N: Revealed type is "builtins.dict[bu
 reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
 reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNoCrashOnConcatenateInCallableArg]
+from typing import Callable
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+
+def takes_paramspec(f: Callable[P, object]) -> bool:
+    return False
+
+def run(callback: Callable[[Concatenate[int, ...]], None]) -> None:  # E: Concatenate is only valid as the first argument to Callable
+    takes_paramspec(callback)
+[builtins fixtures/paramspec.pyi]
