@@ -1,0 +1,22 @@
+[case test_assign_to_dunder_class]
+class A:
+    def foo(self):
+        self.__class__ = B  # E: Assignment to '__class__' is unsafe and not allowed
+
+class B:
+    pass
+
+[case test_assign_to_other_dunder_attributes]
+class C:
+    def bar(self):
+        self.__name__ = "NewName"  # OK
+        self.__doc__ = "Test doc"  # OK
+
+class D:
+    pass
+
+[case test_assign_to_regular_attribute]
+class E:
+    x = 1
+    def baz(self):
+        self.x = 2  # OK
