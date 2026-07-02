@@ -2281,6 +2281,18 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
             if member in ("__init__", "__new__", "__mypy-replace"):
                 continue
 
+            # Members synthesized by plugins must not influence variance
+            # inference. attrs, for example, generates ordering methods whose
+            # "other" parameter is typed as the class's own Self[T], plus an
+            # __attrs_attrs__ tuple of (invariant) Attribute[T]; dataclasses
+            # generate __replace__. These mention the type variable only because
+            # they are derived from the user's own declarations -- and those
+            # declarations are not plugin-generated, so they still drive the
+            # inferred variance.
+            sym = info.get(member)
+            if sym is not None and sym.plugin_generated:
+                continue
+
             if isinstance(self_type, TupleType):
                 self_type = mypy.typeops.tuple_fallback(self_type)
             flags = get_member_flags(member, self_type)
