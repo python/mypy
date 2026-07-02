@@ -2840,3 +2840,13 @@ L2:
 L3:
     return r2
 
+[case testBorrowedFinalInListComprehension]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(a: list[C]) -> list[str]:
+    return [x.s for x in a]
+[out]
