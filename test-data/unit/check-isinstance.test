@@ -3377,3 +3377,16 @@ def f2(x: A | None, t: type[A]):
     else:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testNarrowingSelfInClassMethod]
+# flags: --warn-unreachable
+from typing import Self, Union
+
+class Foo:
+    @classmethod
+    def foo(cls, x: Union[Self, float]) -> None:
+        if isinstance(x, cls):
+            reveal_type(x)  # N: Revealed type is "Self`0"
+        else:
+            reveal_type(x)  # N: Revealed type is "builtins.float"
+[builtins fixtures/isinstancelist.pyi]
