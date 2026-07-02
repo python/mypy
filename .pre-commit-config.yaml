@@ -1,35 +1,35 @@
 exclude: '^(mypyc/external/)|(mypy/typeshed/)|misc/typeshed_patches'  # Exclude all vendored code from lints
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 26.1.0
+    rev: 26.3.1
     hooks:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.3
+    rev: v0.15.9
     hooks:
       - id: ruff-check
         args: [--exit-non-zero-on-fix]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.32.1
+    rev: 0.37.1
     hooks:
       - id: check-github-workflows
       - id: check-github-actions
       - id: check-readthedocs
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
       - id: codespell
         args:
           - --ignore-words-list=HAX,Nam,ccompiler,ot,statics,whet,zar
         exclude: ^(mypy/test/|mypy/typeshed/|mypyc/test-data/|test-data/).+$
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: v1.7.12
     hooks:
       - id: actionlint
         args: [
@@ -43,7 +43,7 @@ repos:
           # but the integration only works if shellcheck is installed
           - "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1"
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.5.2
+    rev: v1.23.1
     hooks:
       - id: zizmor
   - repo: local
