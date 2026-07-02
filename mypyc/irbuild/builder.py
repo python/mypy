@@ -1422,6 +1422,18 @@ class IRBuilder:
             self.fn_info = self.fn_infos[-1]
 
     @contextmanager
+    def enter_borrow_scope(self, line: int) -> Iterator[None]:
+        """Enter new borrow scope from which borrows can't leak to outer expressions."""
+        checkpoint = self.builder.keep_alive_checkpoint()
+        old_expression_depth = self.expression_depth
+        self.expression_depth = 0
+        try:
+            yield
+            self.builder.flush_keep_alives_since(line, checkpoint)
+        finally:
+            self.expression_depth = old_expression_depth
+
+    @contextmanager
     def enter_method(
         self,
         class_ir: ClassIR,
