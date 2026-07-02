@@ -1177,6 +1177,12 @@ def define_options(
     )
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
+    add_invertible_flag(
+        "--use-method-hook-defining-class",
+        default=False,
+        help=argparse.SUPPRESS,
+        group=internals_group,
+    )
 
     # Experimental parallel type-checking support.
     internals_group.add_argument(
