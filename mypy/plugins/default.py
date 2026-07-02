@@ -50,8 +50,10 @@ from mypy.plugins.dataclasses import (
 )
 from mypy.plugins.enums import enum_member_callback, enum_name_callback, enum_value_callback
 from mypy.plugins.functools import (
+    functools_lru_cache_callback,
     functools_total_ordering_maker_callback,
     functools_total_ordering_makers,
+    lru_cache_wrapper_call_callback,
     partial_call_callback,
     partial_new_callback,
 )
@@ -103,6 +105,8 @@ class DefaultPlugin(Plugin):
             return create_singledispatch_function_callback
         elif fullname == "functools.partial":
             return partial_new_callback
+        elif fullname == "functools.lru_cache":
+            return functools_lru_cache_callback
         elif fullname == "enum.member":
             return enum_member_callback
         elif fullname == "builtins.len":
@@ -164,6 +168,8 @@ class DefaultPlugin(Plugin):
             return call_singledispatch_function_after_register_argument
         elif fullname == "functools.partial.__call__":
             return partial_call_callback
+        elif fullname == "functools._lru_cache_wrapper.__call__":
+            return lru_cache_wrapper_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
