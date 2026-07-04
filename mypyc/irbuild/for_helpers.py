@@ -28,6 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
+from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -81,7 +82,12 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
 from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.list_ops import (
+    list_append_op,
+    list_get_item_int64_op,
+    list_get_item_unsafe_op,
+    new_list_set_item_op,
+)
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
@@ -866,7 +872,10 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        if not IS_FREE_THREADED:
+            return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        else:
+            return builder.primitive_op(list_get_item_int64_op, [target, index], line)
     elif is_tuple_rprimitive(target.type):
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     elif is_str_rprimitive(target.type):

@@ -243,7 +243,7 @@ L1:
     r2 = r0 < r1 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = list_get_item_unsafe ls, r0
+    r3 = CPyList_GetItemInt64(ls, r0)
     r4 = unbox(int, r3)
     x = r4
     r5 = CPyTagged_Add(y, x)
@@ -899,7 +899,7 @@ L0:
     r6 = r5 >= 0 :: signed
     return 1
 
-[case testForEnumerate]
+[case testForEnumerate_withgil]
 from typing import List, Iterable
 
 def f(a: List[int]) -> None:
@@ -967,7 +967,7 @@ L4:
 L5:
     return 1
 
-[case testForZip]
+[case testForZip_withgil]
 from typing import List, Iterable, Sequence
 
 def f(a: List[int], b: Sequence[bool]) -> None:
