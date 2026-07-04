@@ -777,7 +777,9 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
         base_type, RVec
     )
-    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
+    can_borrow_base = (
+        is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    ) and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
