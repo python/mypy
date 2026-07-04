@@ -2114,7 +2114,7 @@ L0:
     r1 = CPyTagged_Multiply(4, r0)
     return r1
 
-[case testNativeIndex]
+[case testNativeIndex_withgil]
 from typing import List
 class A:
     def __getitem__(self, index: int) -> int: pass
