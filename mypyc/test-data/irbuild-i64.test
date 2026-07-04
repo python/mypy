@@ -1136,7 +1136,7 @@ L0:
     keep_alive d, d
     return r4
 
-[case testBorrowOverI64ListGetItem1]
+[case testBorrowOverI64ListGetItem1_withgil]
 from mypy_extensions import i64
 
 def f(n: i64) -> str:
@@ -1168,7 +1168,38 @@ L0:
     keep_alive a, n, r3
     return r5
 
-[case testBorrowOverI64ListGetItem2]
+[case testBorrowOverI64ListGetItem1_nogil]
+from mypy_extensions import i64
+
+def f(n: i64) -> str:
+    a = [C()]
+    return a[n].s
+
+class C:
+    s: str
+[out]
+def f(n):
+    n :: i64
+    r0 :: __main__.C
+    r1 :: list
+    r2 :: ptr
+    a :: list
+    r3 :: object
+    r4 :: __main__.C
+    r5 :: str
+L0:
+    r0 = C()
+    r1 = PyList_New(1)
+    r2 = list_items r1
+    buf_init_item r2, 0, r0
+    keep_alive r1
+    a = r1
+    r3 = CPyList_GetItemInt64(a, n)
+    r4 = cast(__main__.C, r3)
+    r5 = r4.s
+    return r5
+
+[case testBorrowOverI64ListGetItem2_withgil]
 from typing import List
 from mypy_extensions import i64
 
@@ -1188,6 +1219,31 @@ L0:
     r1 = unbox(i64, r0)
     r2 = r1 == 0
     keep_alive a, n
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+
+[case testBorrowOverI64ListGetItem2_nogil]
+from typing import List
+from mypy_extensions import i64
+
+def f(a: List[i64], n: i64) -> bool:
+    if a[n] == 0:
+        return True
+    return False
+[out]
+def f(a, n):
+    a :: list
+    n :: i64
+    r0 :: object
+    r1 :: i64
+    r2 :: bit
+L0:
+    r0 = CPyList_GetItemInt64(a, n)
+    r1 = unbox(i64, r0)
+    r2 = r1 == 0
     if r2 goto L1 else goto L2 :: bool
 L1:
     return 1

@@ -1310,7 +1310,7 @@ def f():
 L0:
     return 0
 
-[case testBorrowListGetItemKeepAlive]
+[case testBorrowListGetItemKeepAlive_withgil]
 from typing import List
 
 def f() -> str:
