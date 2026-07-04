@@ -148,6 +148,30 @@ static inline VEC vec_from_sequence(PyObject *seq, int64_t cap, const int is_lis
     VEC v = vec_alloc(alloc_size);
     if (VEC_IS_ERROR(v))
         return vec_error();
+#ifdef Py_GIL_DISABLED
+    if (is_list) {
+        // Other threads could be mutating the list concurrently, so use strong references
+        Py_ssize_t actual = 0;
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(seq) && i < n; i++) {
+            PyObject *item = PyList_GetItemRef(seq, i);
+            if (unlikely(item == NULL)) {
+                // Race condition: list shrank between size read and get item
+                VEC_DECREF(v);
+                return vec_error();
+            }
+            ITEM_C_TYPE x = UNBOX_ITEM(item);
+            Py_DECREF(item);
+            if (IS_UNBOX_ERROR(x)) {
+                VEC_DECREF(v);
+                return vec_error();
+            }
+            v.items[actual++] = x;
+        }
+        v.len = actual;
+        return v;
+    }
+    // Tuples are immutable, so fall through to the shared loop below
+#endif
     for (Py_ssize_t i = 0; i < n; i++) {
         PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
         ITEM_C_TYPE x = UNBOX_ITEM(item);
