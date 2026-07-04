@@ -117,6 +117,53 @@ PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index) {
     return result;
 }
 
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        Py_ssize_t size = PyList_GET_SIZE(list);
+        if (n >= 0) {
+            if (n >= size) {
+                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+                return false;
+            }
+        } else {
+            n += size;
+            if (n < 0) {
+                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+                return false;
+            }
+        }
+        // PyList_SET_ITEM doesn't decref the old element, so we do
+        Py_DECREF(PyList_GET_ITEM(list, n));
+        // N.B: Steals reference
+        PyList_SET_ITEM(list, n, value);
+        return true;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return false;
+    }
+}
+
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
+    size_t size = PyList_GET_SIZE(list);
+    if (unlikely((uint64_t)index >= size)) {
+        if (index > 0) {
+            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+            return false;
+        }
+        index += size;
+        if (index < 0) {
+            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+            return false;
+        }
+    }
+    // PyList_SET_ITEM doesn't decref the old element, so we do
+    Py_DECREF(PyList_GET_ITEM(list, index));
+    // N.B: Steals reference
+    PyList_SET_ITEM(list, index, value);
+    return true;
+}
+
 #else /* Py_GIL_DISABLED */
 
 PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index) {
@@ -129,6 +176,20 @@ PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index) {
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
+    }
+}
+
+bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value) {
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        Py_ssize_t size = PyList_GET_SIZE(list);
+        if (n < 0) {
+            n += size;
+        }
+        return PyList_SetItem(list, n, value) >= 0;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return false;
     }
 }
 
@@ -190,53 +251,6 @@ PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index) {
         return NULL;
     }
     return PyList_GET_ITEM(list, index);
-}
-
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        Py_ssize_t size = PyList_GET_SIZE(list);
-        if (n >= 0) {
-            if (n >= size) {
-                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-                return false;
-            }
-        } else {
-            n += size;
-            if (n < 0) {
-                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-                return false;
-            }
-        }
-        // PyList_SET_ITEM doesn't decref the old element, so we do
-        Py_DECREF(PyList_GET_ITEM(list, n));
-        // N.B: Steals reference
-        PyList_SET_ITEM(list, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return false;
-    }
-}
-
-bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
-    size_t size = PyList_GET_SIZE(list);
-    if (unlikely((uint64_t)index >= size)) {
-        if (index > 0) {
-            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-            return false;
-        }
-        index += size;
-        if (index < 0) {
-            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-            return false;
-        }
-    }
-    // PyList_SET_ITEM doesn't decref the old element, so we do
-    Py_DECREF(PyList_GET_ITEM(list, index));
-    // N.B: Steals reference
-    PyList_SET_ITEM(list, index, value);
-    return true;
 }
 
 // This function should only be used to fill in brand new lists.
