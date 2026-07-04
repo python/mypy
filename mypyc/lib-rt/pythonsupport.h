@@ -205,6 +205,25 @@ list_count(PyListObject *self, PyObject *value)
     Py_ssize_t count = 0;
     Py_ssize_t i;
 
+#ifdef Py_GIL_DISABLED
+    for (i = 0; i < PyList_GET_SIZE(self); i++) {
+        PyObject *item = PyList_GetItemRef((PyObject *)self, i);
+        if (unlikely(item == NULL)) {
+            // Race condition: list shrank between size read and get item
+            if (PyErr_ExceptionMatches(PyExc_IndexError)) {
+                PyErr_Clear();
+                break;
+            }
+            return CPY_INT_TAG;
+        }
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp > 0)
+            count++;
+        else if (cmp < 0)
+            return CPY_INT_TAG;
+    }
+#else
     for (i = 0; i < Py_SIZE(self); i++) {
         int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
         if (cmp > 0)
@@ -212,6 +231,7 @@ list_count(PyListObject *self, PyObject *value)
         else if (cmp < 0)
             return CPY_INT_TAG;
     }
+#endif
     return CPyTagged_ShortFromSsize_t(count);
 }
 
