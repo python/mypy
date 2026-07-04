@@ -86,6 +86,9 @@ class TestGenOps(MypycDataSuite):
         if "_withgil" in testcase.name and IS_FREE_THREADED:
             # Test case should only run on a non-free-threaded build.
             return
+        if "_nogil" in testcase.name and not IS_FREE_THREADED:
+            # Test case should only run on a free-threaded build.
+            return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             expected_output = replace_word_size(expected_output)

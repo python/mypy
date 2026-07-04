@@ -58,7 +58,7 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import MAX_SHORT_INT
+from mypyc.common import IS_FREE_THREADED, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -773,7 +773,10 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    # We can borrow safely only if GIL is enabled
+    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
+        base_type, RVec
+    )
     can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
