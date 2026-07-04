@@ -62,6 +62,7 @@ from mypyc.common import (
     BITMAP_BITS,
     EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
+    IS_FREE_THREADED,
     MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
@@ -146,7 +147,12 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
-from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
+from mypyc.primitives.list_ops import (
+    list_get_item_int64_op,
+    list_get_item_unsafe_op,
+    list_pop_last,
+    to_list,
+)
 from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
@@ -893,7 +899,10 @@ class IRBuilder:
             index: Value
             if is_list_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
-                item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+                if not IS_FREE_THREADED:
+                    item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+                else:
+                    item_value = self.primitive_op(list_get_item_int64_op, [rvalue, index], line)
             elif is_tuple_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
                 item_value = self.call_c(tuple_get_item_unsafe_op, [rvalue, index], line)

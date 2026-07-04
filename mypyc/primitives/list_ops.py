@@ -110,7 +110,7 @@ method_op(
 )
 
 # Version with native int index
-method_op(
+list_get_item_int64_op = method_op(
     name="__getitem__",
     arg_types=[list_rprimitive, int64_rprimitive],
     return_type=object_rprimitive,
