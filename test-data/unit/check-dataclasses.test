@@ -2628,6 +2628,31 @@ mlist: list[type[M]] = [cls for cls in alist if issubclass(cls, M)]
 reveal_type(mlist)  # N: Revealed type is "builtins.list[type[__main__.M]]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# Same underlying bug as testDunderReplaceDoesNotBlockAdHocIntersectionNarrowing,
+# but without a list/comprehension: plain issubclass() narrowing in an
+# ordinary if-statement hit the exact same false "impossible intersection"
+# and silently marked the branch as unreachable instead of narrowing (no
+# reveal_type note, and the type error below went unreported).
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
 [case testDunderReplaceHandwrittenStillCheckedForCompatibility]
 # flags: --python-version 3.13
 class A:
