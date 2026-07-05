@@ -7019,6 +7019,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 target_type = operand_types[j]
                 if should_coerce_literals:
                     target_type = coerce_to_literal(target_type)
+                if isinstance(get_proper_type(target_type), AnyType) and not isinstance(
+                    get_proper_type(expr_type), AnyType
+                ):
+                    continue
 
                 # Morally what we want to do is narrow for each branch based on:
                 # `if_type, else_type = conditional_types(expr_type, target)`
