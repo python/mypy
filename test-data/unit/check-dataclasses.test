@@ -2609,6 +2609,40 @@ class Y(X):
 [builtins fixtures/tuple.pyi]
 
 
+[case testDunderReplaceDoesNotBlockAdHocIntersectionNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+alist: list[type[A]] = [B, C]
+mlist: list[type[M]] = [cls for cls in alist if issubclass(cls, M)]
+reveal_type(mlist)  # N: Revealed type is "builtins.list[type[__main__.M]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testDunderReplaceHandwrittenStillCheckedForCompatibility]
+# flags: --python-version 3.13
+class A:
+    def __replace__(self) -> "A":
+        return A()
+
+class M:
+    def __replace__(self) -> "M":
+        return M()
+
+class C(M, A):  # E: Definition of "__replace__" in base class "M" is incompatible with definition in base class "A"
+    pass
+[builtins fixtures/tuple.pyi]
+
+
 [case testFrozenWithFinal]
 from dataclasses import dataclass
 from typing import Final
