@@ -449,7 +449,7 @@ Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/2015
 For best performance, mypy can be compiled to C extension modules using mypyc. This makes
 mypy 3-5x faster than when interpreted with pure Python. We now build and upload mypyc
 accelerated mypy wheels for `win_arm64` and `cp314t-...` to PyPI, making it easy for Windows
-users on ARM and those using the free theading builds for Python 3.14 to realise this speedup
+users on ARM and those using the free threading builds for Python 3.14 to realise this speedup
 -- just `pip install` the latest mypy.
 
 Contributed by Marc Mueller
