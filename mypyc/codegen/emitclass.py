@@ -1171,7 +1171,9 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         # atomically to avoid a use-after-free race with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
         # which is exactly the error/undefined value for a 'PyObject *' field.
-        emitter.emit_line(f"PyObject *retval = CPy_GetAttrRef((PyObject **)&{attr_expr});")
+        emitter.emit_line(
+            f"PyObject *retval = CPy_GetAttrRef((PyObject *)self, (PyObject **)&{attr_expr});"
+        )
         emitter.emit_line("if (unlikely(retval == NULL)) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')

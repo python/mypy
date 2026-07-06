@@ -447,7 +447,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 and not op.is_borrowed
             )
             if use_get_attr_ref:
-                self.emitter.emit_line(f"{dest} = CPy_GetAttrRef((PyObject **)&{attr_expr});")
+                self.emitter.emit_line(
+                    f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
+                )
             else:
                 self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)

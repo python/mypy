@@ -40,25 +40,45 @@ extern "C" {
 
 #ifdef Py_GIL_DISABLED
 // Read a native attribute that is a single reference-counted 'PyObject *' field,
-// returning a new reference (or NULL if the field is NULL/undefined).
+// returning a new reference (or NULL if the field is NULL/undefined). 'self' is
+// the object owning the field, used only by the cold slow path below.
 //
 // On free-threaded builds a plain load followed by an incref races with a
 // concurrent setter that may decref the old value to zero and free it before the
-// incref runs (use-after-free). This mirrors CPython's '_Py_XGetRef': optimistically
-// incref via '_Py_TryIncrefCompare', which re-validates the pointer and backs out
-// if a writer changed it, then retry. This is only used in free-threaded builds;
-// the default (GIL) build keeps the plain load + incref generated inline by mypyc.
-static inline PyObject *CPy_GetAttrRef(PyObject **field) {
-    for (;;) {
-        PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
-        if (v == NULL) {
-            return NULL;
-        }
-        if (_Py_TryIncrefCompare(field, v)) {
-            return v;
-        }
-        // Lost a race with a concurrent writer; retry.
+// incref runs (use-after-free). The fast path mirrors CPython's '_Py_XGetRef':
+// optimistically incref via '_Py_TryIncrefCompare', which re-validates the
+// pointer and backs out if a writer changed it.
+//
+// The slow path (cold) handles a value that has not had maybe-weakref set and is
+// owned by another thread: '_Py_TryIncRefShared' then returns 0 permanently, so a
+// plain retry loop would spin forever. This case arises because 'CPy_InitAttrRef'
+// publishes initializer stores WITHOUT setting maybe-weakref (a measured win for
+// construction-heavy code -- see docs/design/free-threaded-attr-safety.md). We
+// recover exactly as CPython's lock-free dict reader does (Objects/dictobject.c,
+// the 'read_failed' path): take the owning object's critical section and force a
+// cross-thread reference via '_Py_NewRefWithLock', which cannot fail and sets
+// maybe-weakref so subsequent reads take the fast path. QSBR keeps the loaded
+// value alive across this, since setters defer the freeing decref past any
+// quiescent point. This same fallback also covers a transient lost race with a
+// concurrent writer. It is only used in free-threaded builds; the default (GIL)
+// build keeps the plain load + incref generated inline by mypyc.
+static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
+    if (v == NULL) {
+        return NULL;
     }
+    if (_Py_TryIncrefCompare(field, v)) {
+        return v;
+    }
+    // Slow path: value not yet shared (e.g. published by an initializer store
+    // that skipped maybe-weakref), or we lost a race with a concurrent writer.
+    Py_BEGIN_CRITICAL_SECTION(self);
+    v = (PyObject *)_Py_atomic_load_ptr(field);
+    if (v != NULL) {
+        _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
+    }
+    Py_END_CRITICAL_SECTION();
+    return v;
 }
 
 // Reclaim the previous value of a native attribute after it has been replaced.
@@ -106,15 +126,24 @@ static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
 }
 
 // Initialize a native attribute that is known to be previously undefined (NULL),
-// stealing the reference to 'value'. Because there is no old value to reclaim and
-// no other writer can race on a field that is being initialized, a release store
-// is sufficient to publish the pointer; SetMaybeWeakref is still required so that
-// a concurrent reader's try-incref can succeed.
+// stealing the reference to 'value'.
+//
+// Initializer stores only happen while 'self' is still thread-local (the
+// attribute-definedness analysis marks a SetAttr as an initializer only before
+// 'self' can leak -- see mypyc/analysis/attrdefined.py). So there is no old value
+// to reclaim, no competing writer, and the field store is not itself the
+// publication point: 'self' is published later (when it escapes __init__ or is
+// returned), and that publication carries the release barrier making all the
+// construction stores visible. A relaxed store therefore suffices.
+//
+// Unlike CPy_SetAttrRef, this deliberately does NOT call SetMaybeWeakref (its CAS
+// is pure overhead here, ~+2.6ns per fresh store, and construction-heavy code
+// pays it on every attribute of every new object). The cost is moved off this hot
+// path onto CPy_GetAttrRef's cold slow path, which sets maybe-weakref lazily on
+// the first cross-thread read that needs it. See
+// docs/design/free-threaded-attr-safety.md ("Experiment: reader-side fallback").
 static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
-    if (value != NULL) {
-        _PyObject_SetMaybeWeakref(value);
-    }
-    _Py_atomic_store_ptr_release(field, value);
+    _Py_atomic_store_ptr_relaxed(field, value);
 }
 #endif
 
