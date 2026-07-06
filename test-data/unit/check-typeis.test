@@ -1055,4 +1055,3 @@ alist: list[Type[A]] = [B, C]
 mlist: list[Type[M]] = [cls for cls in alist if is_m(cls)]
 reveal_type(mlist)  # N: Revealed type is "builtins.list[type[__main__.M]]"
 [builtins fixtures/isinstancelist.pyi]
-
