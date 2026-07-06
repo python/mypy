@@ -59,7 +59,6 @@ from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035
     Tuple as Tuple,
     Type as Type,
     TypeAlias as TypeAlias,
-    TypedDict as TypedDict,
     TypeGuard as TypeGuard,
     TypeVar as _TypeVar,
     Union as Union,
@@ -71,6 +70,9 @@ from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035
     overload as overload,
     type_check_only,
 )
+
+if sys.version_info >= (3, 14):
+    from _typeshed import EvaluateFunc
 
 # Please keep order the same as at runtime.
 __all__ = [
@@ -143,6 +145,7 @@ __all__ = [
     "override",
     "Protocol",
     "Sentinel",
+    "sentinel",
     "reveal_type",
     "runtime",
     "runtime_checkable",
@@ -231,6 +234,11 @@ def disjoint_base(cls: _TC) -> _TC: ...
 Literal: _SpecialForm
 
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
+
+# Kept as a distinct symbol to `typing.TypedDict` so that type checkers can more easily
+# distinguish between the two on Python 3.14, on which `typing_extensions.TypedDict`
+# exposes `__closed__` and `__extra_items__` but `typing.TypedDict` does not
+TypedDict: _SpecialForm
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 # N.B. Keep this mostly in sync with typing._TypedDict/mypy_extensions._TypedDict
@@ -456,7 +464,6 @@ if sys.version_info >= (3, 13):
         ReadOnly as ReadOnly,
         TypeIs as TypeIs,
         TypeVar as TypeVar,
-        TypeVarTuple as TypeVarTuple,
         get_protocol_members as get_protocol_members,
         is_protocol as is_protocol,
     )
@@ -545,19 +552,58 @@ else:
         def has_default(self) -> bool: ...
         def __typing_prepare_subst__(self, alias: Any, args: Any) -> tuple[Any, ...]: ...
 
+    ReadOnly: _SpecialForm
+    TypeIs: _SpecialForm
+
+if sys.version_info >= (3, 15):
+    from typing import TypeVarTuple as TypeVarTuple
+else:
     @final
     class TypeVarTuple:
         @property
         def __name__(self) -> str: ...
         @property
+        def __bound__(self) -> AnnotationForm | None: ...
+        @property
+        def __covariant__(self) -> bool: ...
+        @property
+        def __contravariant__(self) -> bool: ...
+        @property
+        def __infer_variance__(self) -> bool: ...
+        @property
         def __default__(self) -> AnnotationForm: ...
-        def __init__(self, name: str, *, default: AnnotationForm = ...) -> None: ...
+        if sys.version_info >= (3, 11):
+            def __new__(
+                cls,
+                name: str,
+                *,
+                bound: AnnotationForm | None = None,
+                covariant: bool = False,
+                contravariant: bool = False,
+                infer_variance: bool = False,
+                default: AnnotationForm = ...,
+            ) -> Self: ...
+        else:
+            def __init__(
+                self,
+                name: str,
+                *,
+                bound: AnnotationForm | None = None,
+                covariant: bool = False,
+                contravariant: bool = False,
+                infer_variance: bool = False,
+                default: AnnotationForm = ...,
+            ) -> None: ...
+
         def __iter__(self) -> Any: ...  # Unpack[Self]
         def has_default(self) -> bool: ...
-        def __typing_prepare_subst__(self, alias: Any, args: Any) -> tuple[Any, ...]: ...
+        if sys.version_info >= (3, 11):
+            def __typing_subst__(self, arg: Never, /) -> Never: ...
 
-    ReadOnly: _SpecialForm
-    TypeIs: _SpecialForm
+        def __typing_prepare_subst__(self, alias: Any, args: Any, /) -> tuple[Any, ...]: ...
+        if sys.version_info >= (3, 14):
+            @property
+            def evaluate_default(self) -> EvaluateFunc | None: ...
 
 # TypeAliasType was added in Python 3.12, but had significant changes in 3.14.
 if sys.version_info >= (3, 14):
@@ -680,11 +726,21 @@ else:
     def type_repr(value: object) -> str: ...
 
 # PEP 661
-class Sentinel:
-    def __init__(self, name: str, repr: str | None = None) -> None: ...
-    if sys.version_info >= (3, 14):
-        def __or__(self, other: Any) -> UnionType: ...  # other can be any type form legal for unions
-        def __ror__(self, other: Any) -> UnionType: ...  # other can be any type form legal for unions
-    else:
-        def __or__(self, other: Any) -> _SpecialForm: ...  # other can be any type form legal for unions
-        def __ror__(self, other: Any) -> _SpecialForm: ...  # other can be any type form legal for unions
+if sys.version_info >= (3, 15):
+    from builtins import sentinel as sentinel
+else:
+    class sentinel:
+        def __init__(self, name: str, /, *, repr: str | None = None) -> None: ...
+        __name__: str
+        __module__: str
+        if sys.version_info >= (3, 14):
+            # `other`` can be any type form legal for unions.
+            # `x | x` creates a `sentinel` instance if `x` is a sentinel, not a `UnionType` instance
+            def __or__(self, other: Any) -> UnionType | sentinel: ...
+            def __ror__(self, other: Any) -> UnionType | sentinel: ...
+        else:
+            # other can be any type form legal for unions
+            def __or__(self, other: Any) -> _SpecialForm: ...
+            def __ror__(self, other: Any) -> _SpecialForm: ...
+
+Sentinel = sentinel
