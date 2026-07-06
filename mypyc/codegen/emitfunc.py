@@ -551,6 +551,21 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     op.attr,
                 )
             )
+        elif IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype):
+            # In free-threaded builds, publishing a single reference-counted
+            # 'PyObject *' field must be atomic so a concurrent reader (see
+            # CPy_GetAttrRef) never observes a torn pointer or a freed value.
+            # Both helpers steal the reference to src.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            if op.is_init:
+                # The attribute is known to be previously undefined (NULL), so
+                # there is no old value to reclaim; a release store suffices.
+                self.emitter.emit_line(f"CPy_InitAttrRef((PyObject **)&{attr_expr}, {src});")
+            else:
+                # Atomically swap in the new value and reclaim the old one.
+                self.emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&{attr_expr}, {src});")
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f"{dest} = 1;")
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)

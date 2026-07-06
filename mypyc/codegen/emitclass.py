@@ -1218,6 +1218,30 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
+    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+        # In free-threaded builds, publish the new value atomically via
+        # CPy_SetAttrRef so a concurrent reader (see CPy_GetAttrRef) never sees a
+        # torn pointer or a freed old value. CPy_SetAttrRef steals its value and
+        # reclaims the old one, so we cast/type-check the incoming value, take a
+        # new reference (the setter only borrows 'value'), then hand it over.
+        # A NULL value deletes the attribute (reclaims the old value, stores NULL).
+        if deletable:
+            emitter.emit_line("if (value != NULL) {")
+        if is_same_type(rtype, object_rprimitive):
+            emitter.emit_line("PyObject *tmp = value;")
+        else:
+            emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
+            emitter.emit_lines("if (!tmp)", "    return -1;")
+        emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, tmp);")
+        if deletable:
+            emitter.emit_line("} else {")
+            emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, NULL);")
+            emitter.emit_line("}")
+        emitter.emit_line("return 0;")
+        emitter.emit_line("}")
+        return
+
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
     #       values is benign.

@@ -60,6 +60,62 @@ static inline PyObject *CPy_GetAttrRef(PyObject **field) {
         // Lost a race with a concurrent writer; retry.
     }
 }
+
+// Reclaim the previous value of a native attribute after it has been replaced.
+//
+// The fast path avoids QSBR deferral when the decref provably cannot free the
+// object: immortal objects are never freed, and an object owned by the current
+// thread with a local refcount > 1 stays at refcount >= 1 after a plain local
+// decrement, so no concurrent reader can ever observe a freed header. Only the
+// cases that could actually free (local refcount would reach zero, or the object
+// is owned by another thread) defer the decref via QSBR, which keeps the memory
+// valid until every thread has passed a quiescent point -- long enough for an
+// in-flight reader that loaded the old pointer to finish its try-incref.
+static inline void CPy_DecRefAttrOld(PyObject *op) {
+    if (op == NULL) {
+        return;
+    }
+    uint32_t local = _Py_atomic_load_uint32_relaxed(&op->ob_ref_local);
+    if (local == _Py_IMMORTAL_REFCNT_LOCAL) {
+        return;
+    }
+    if (local > 1 && _Py_IsOwnedByCurrentThread(op)) {
+        // Same as Py_DECREF's owned-thread fast path: only this thread writes
+        // ob_ref_local, and the refcount stays >= 1, so this is race-free.
+        _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, local - 1);
+        return;
+    }
+    _PyObject_XDecRefDelayed(op);
+}
+
+// Set a native attribute that is a single reference-counted 'PyObject *' field,
+// stealing the reference to 'value' (which may be NULL to delete the attribute)
+// and safely reclaiming the previous value.
+//
+// SetMaybeWeakref is required for correctness, not just performance: it lets a
+// concurrent cross-thread reader's shared-refcount CAS in CPy_GetAttrRef succeed
+// instead of failing and spinning (see the "writer must set maybe-weakref"
+// requirement documented on CPython's _Py_XGetRef). The atomic exchange publishes
+// the new pointer and hands back the old one without a writer/writer race.
+static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
+    if (value != NULL) {
+        _PyObject_SetMaybeWeakref(value);
+    }
+    PyObject *old = (PyObject *)_Py_atomic_exchange_ptr(field, value);
+    CPy_DecRefAttrOld(old);
+}
+
+// Initialize a native attribute that is known to be previously undefined (NULL),
+// stealing the reference to 'value'. Because there is no old value to reclaim and
+// no other writer can race on a field that is being initialized, a release store
+// is sufficient to publish the pointer; SetMaybeWeakref is still required so that
+// a concurrent reader's try-incref can succeed.
+static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
+    if (value != NULL) {
+        _PyObject_SetMaybeWeakref(value);
+    }
+    _Py_atomic_store_ptr_release(field, value);
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);
