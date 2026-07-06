@@ -237,7 +237,7 @@ L3:
 L4:
     return 1
 
-[case testUnionType]
+[case testUnionType_withgil]
 from typing import Union
 
 class A:

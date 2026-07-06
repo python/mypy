@@ -1032,7 +1032,7 @@ L4:
     y = r3
     return y
 
-[case testBorrowOverI64Arithmetic]
+[case testBorrowOverI64Arithmetic_withgil]
 from mypy_extensions import i64
 
 def add_simple(c: C) -> i64:
@@ -1084,7 +1084,7 @@ L0:
     keep_alive d, d
     return r4
 
-[case testBorrowOverI64Bitwise]
+[case testBorrowOverI64Bitwise_withgil]
 from mypy_extensions import i64
 
 def bitwise_simple(c: C) -> i64:
@@ -2070,7 +2070,7 @@ L4:
     r6 = CPyFloat_FromTagged(r3)
     return r6
 
-[case testI64IsinstanceNarrowing]
+[case testI64IsinstanceNarrowing_withgil]
 from typing import Union
 from mypy_extensions import i64
 
