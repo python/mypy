@@ -29,6 +29,7 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
@@ -43,7 +44,7 @@ from mypyc.ir.func_ir import (
     FuncIR,
     get_text_signature,
 )
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import RTuple, RType, is_simple_refcounted_pointer, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -1164,6 +1165,21 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     )
     emitter.emit_line("{")
     attr_expr = f"self->{attr_field}"
+
+    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+        # In free-threaded builds, load the attribute and take a new reference
+        # atomically to avoid a use-after-free race with a concurrent setter.
+        # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
+        # which is exactly the error/undefined value for a 'PyObject *' field.
+        emitter.emit_line(f"PyObject *retval = CPy_GetAttrRef((PyObject **)&{attr_expr});")
+        emitter.emit_line("if (unlikely(retval == NULL)) {")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line("return NULL;")
+        emitter.emit_line("}")
+        emitter.emit_line("return retval;")
+        emitter.emit_line("}")
+        return
 
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted

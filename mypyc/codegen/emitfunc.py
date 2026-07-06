@@ -12,7 +12,13 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
-from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
+from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
+    HAVE_IMMORTAL,
+    IS_FREE_THREADED,
+    NATIVE_PREFIX,
+    REG_PREFIX,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
@@ -83,6 +89,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
+    is_simple_refcounted_pointer,
     is_tagged,
 )
 
@@ -427,7 +434,22 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_line(f"{dest} = {attr_expr};")
+            # In free-threaded builds, reading a single reference-counted
+            # 'PyObject *' field and taking a new reference must be done
+            # atomically to avoid a use-after-free race with a concurrent setter.
+            # CPy_GetAttrRef performs the load and incref atomically and returns a
+            # new reference (or NULL if undefined), so no separate inc_ref is
+            # emitted below. Borrowed reads keep the plain load; they are made
+            # safe separately via borrowed-to-owned promotion.
+            use_get_attr_ref = (
+                IS_FREE_THREADED
+                and is_simple_refcounted_pointer(attr_rtype)
+                and not op.is_borrowed
+            )
+            if use_get_attr_ref:
+                self.emitter.emit_line(f"{dest} = CPy_GetAttrRef((PyObject **)&{attr_expr});")
+            else:
+                self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
@@ -458,7 +480,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         )
                     )
 
-            if attr_rtype.is_refcounted and not op.is_borrowed:
+            if attr_rtype.is_refcounted and not op.is_borrowed and not use_get_attr_ref:
                 if not merged_branch and not always_defined:
                     self.emitter.emit_line("} else {")
                 self.emitter.emit_inc_ref(dest, attr_rtype)

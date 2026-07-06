@@ -23,6 +23,10 @@
 #include "internal/pycore_setobject.h"  // _PySet_Update
 #endif
 
+#ifdef Py_GIL_DISABLED
+#include "internal/pycore_object.h"  // _Py_TryIncrefCompare
+#endif
+
 #if CPY_3_12_FEATURES
 #include "internal/pycore_frame.h"
 #endif
@@ -32,6 +36,30 @@ extern "C" {
 #endif
 #if 0
 } // why isn't emacs smart enough to not indent this
+#endif
+
+#ifdef Py_GIL_DISABLED
+// Read a native attribute that is a single reference-counted 'PyObject *' field,
+// returning a new reference (or NULL if the field is NULL/undefined).
+//
+// On free-threaded builds a plain load followed by an incref races with a
+// concurrent setter that may decref the old value to zero and free it before the
+// incref runs (use-after-free). This mirrors CPython's '_Py_XGetRef': optimistically
+// incref via '_Py_TryIncrefCompare', which re-validates the pointer and backs out
+// if a writer changed it, then retry. This is only used in free-threaded builds;
+// the default (GIL) build keeps the plain load + incref generated inline by mypyc.
+static inline PyObject *CPy_GetAttrRef(PyObject **field) {
+    for (;;) {
+        PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
+        if (v == NULL) {
+            return NULL;
+        }
+        if (_Py_TryIncrefCompare(field, v)) {
+            return v;
+        }
+        // Lost a race with a concurrent writer; retry.
+    }
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);
