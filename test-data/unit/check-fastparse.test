@@ -1,8 +1,8 @@
-[case testFastParseSyntaxError]
+[case testFastParseSyntaxError_no_native_parse]
 
 1 +  # E: Invalid syntax
 
-[case testFastParseTypeCommentSyntaxError]
+[case testFastParseTypeCommentSyntaxError_no_native_parse]
 
 x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
@@ -12,13 +12,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
-[case testFastParseFunctionAnnotationSyntaxError]
+[case testFastParseFunctionAnnotationSyntaxError_no_native_parse]
 
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
-[case testFastParseFunctionAnnotationSyntaxErrorSpaces]
+[case testFastParseFunctionAnnotationSyntaxErrorSpaces_no_native_parse]
 
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
@@ -156,7 +156,7 @@ def f(a,        # type: A
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar_no_native_parse]
 
 def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
@@ -206,6 +206,17 @@ def f(a: Foo(int)) -> int:
 [out]
 main:7: error: Invalid type comment or annotation
 main:7: note: Suggestion: use Foo[...] instead of Foo(...)
+
+[case testFasterParseCallWithKeywordArgs]
+
+def Foo(sort: bool) -> type:
+    return int
+
+def f(a: Foo(sort=True)) -> int:
+    pass
+[out]
+main:5: error: Invalid type comment or annotation
+main:5: note: Cannot use a function call in a type annotation
 
 [case testFastParseMatMul]
 
@@ -275,27 +286,27 @@ def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-[case testFastParserDuplicateNames]
+[case testFastParserDuplicateNames_no_native_parse]
 
 def f(x, y, z):
   pass
 
-def g(x, y, x):  # E: Duplicate argument "x" in function definition
+def g(x, y, x):  # E: Duplicate parameter "x" in function definition
   pass
 
-def h(x, y, *x):  # E: Duplicate argument "x" in function definition
+def h(x, y, *x):  # E: Duplicate parameter "x" in function definition
   pass
 
-def i(x, y, *z, **z):  # E: Duplicate argument "z" in function definition
+def i(x, y, *z, **z):  # E: Duplicate parameter "z" in function definition
   pass
 
-def j(x: int, y: int, *, x: int = 3):  # E: Duplicate argument "x" in function definition
+def j(x: int, y: int, *, x: int = 3):  # E: Duplicate parameter "x" in function definition
   pass
 
-def k(*, y, z, y):  # E: Duplicate argument "y" in function definition
+def k(*, y, z, y):  # E: Duplicate parameter "y" in function definition
   pass
 
-lambda x, y, x: ...  # E: Duplicate argument "x" in function definition
+lambda x, y, x: ...  # E: Duplicate parameter "x" in function definition
 
 [case testNoCrashOnImportFromStar]
 from pack import *
@@ -326,7 +337,7 @@ def call() -> str: pass
 [builtins fixtures/module.pyi]
 
 [case testInvalidEscapeSequenceWarningsSuppressed]
-# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# flags: --python-version 3.15
 # Test that SyntaxWarnings for invalid escape sequences are suppressed
 # when parsing potential type expressions containing regex patterns or
 # similar strings. Callable arguments are always potential type expressions.

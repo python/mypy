@@ -41,7 +41,7 @@ from typing import Final, NamedTuple
 
 from mypyc.ir.deps import Dependency
 from mypyc.ir.ops import PrimitiveDescription, StealsDescription
-from mypyc.ir.rtypes import RType
+from mypyc.ir.rtypes import RType, RTypeVar
 
 # Error kind for functions that return negative integer on exception. This
 # is only used for primitives. We translate it away during IR building.
@@ -85,7 +85,11 @@ binary_ops: dict[str, list[PrimitiveDescription]] = {}
 # Primitive ops for unary ops
 unary_ops: dict[str, list[PrimitiveDescription]] = {}
 
+# Mapping of type name to (type, C value variable name).
 builtin_names: dict[str, tuple[RType, str]] = {}
+
+# Mapping of type name to (type, C pointer variable name).
+global_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
@@ -150,6 +154,7 @@ def method_op(
         is_pure=is_pure,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -200,6 +205,7 @@ def function_op(
         is_pure=False,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -249,6 +255,7 @@ def binary_op(
         is_pure=False,
         experimental=False,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -309,6 +316,7 @@ def custom_primitive_op(
     is_pure: bool = False,
     experimental: bool = False,
     dependencies: list[Dependency] | None = None,
+    type_params: list[RTypeVar] | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op that can't be automatically generated based on the AST.
 
@@ -332,6 +340,7 @@ def custom_primitive_op(
         is_pure=is_pure,
         experimental=experimental,
         dependencies=dependencies,
+        type_params=type_params,
     )
 
 
@@ -376,6 +385,7 @@ def unary_op(
         is_pure=is_pure,
         experimental=False,
         dependencies=dependencies,
+        type_params=None,
     )
     ops.append(desc)
     return desc
@@ -387,14 +397,22 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
+def load_global_op(name: str, type: RType, src: str) -> LoadAddressDescription:
+    assert name not in global_names, "already defined: %s" % name
+    global_names[name] = (type, src)
+    return LoadAddressDescription(name, type, src)
+
+
 # Import various modules that set up global state.
 import mypyc.primitives.bytearray_ops
 import mypyc.primitives.bytes_ops
 import mypyc.primitives.dict_ops
 import mypyc.primitives.float_ops
 import mypyc.primitives.int_ops
+import mypyc.primitives.librt_random_ops
 import mypyc.primitives.librt_strings_ops
 import mypyc.primitives.librt_time_ops
+import mypyc.primitives.librt_vecs_ops
 import mypyc.primitives.list_ops
 import mypyc.primitives.misc_ops
 import mypyc.primitives.str_ops

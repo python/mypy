@@ -18,7 +18,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimple.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+testTypedPkgSimple.py:5: note: Revealed type is "tuple[str, ...]"
 
 [case testTypedPkgSimplePackageSearchPath]
 # pkgs: typedpkg
@@ -61,7 +61,7 @@ a = ex([''])
 reveal_type(a)
 [out]
 testTypedPkgStubs.py:3: error: Module "typedpkg" has no attribute "dne"
-testTypedPkgStubs.py:5: note: Revealed type is "builtins.list[builtins.str]"
+testTypedPkgStubs.py:5: note: Revealed type is "list[str]"
 
 [case testStubPrecedence]
 # pkgs: typedpkg, typedpkg-stubs
@@ -70,7 +70,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testStubPrecedence.py:5: note: Revealed type is "builtins.list[builtins.str]"
+testStubPrecedence.py:5: note: Revealed type is "list[str]"
 
 [case testTypedPkgSimpleEditable]
 # pkgs: typedpkg; editable
@@ -79,7 +79,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+testTypedPkgSimpleEditable.py:5: note: Revealed type is "tuple[str, ...]"
 
 [case testTypedPkgNamespaceImportFrom]
 # pkgs: typedpkg, typedpkg_ns_a

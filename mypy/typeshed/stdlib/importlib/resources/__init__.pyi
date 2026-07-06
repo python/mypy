@@ -4,8 +4,8 @@ from collections.abc import Iterator
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import ModuleType
-from typing import Any, BinaryIO, Literal, TextIO
-from typing_extensions import TypeAlias, deprecated
+from typing import Any, BinaryIO, Literal, TextIO, TypeAlias
+from typing_extensions import deprecated
 
 if sys.version_info >= (3, 11):
     from importlib.resources.abc import Traversable
@@ -19,6 +19,7 @@ else:
 
 __all__ = [
     "Package",
+    "ResourceReader",
     "as_file",
     "contents",
     "files",
@@ -29,9 +30,6 @@ __all__ = [
     "read_binary",
     "read_text",
 ]
-
-if sys.version_info >= (3, 10):
-    __all__ += ["ResourceReader"]
 
 if sys.version_info < (3, 13):
     __all__ += ["Resource"]
@@ -64,11 +62,8 @@ else:
     def read_text(package: Package, resource: Resource, encoding: str = "utf-8", errors: str = "strict") -> str: ...
     def path(package: Package, resource: Resource) -> AbstractContextManager[Path, Literal[False]]: ...
     def is_resource(package: Package, name: str) -> bool: ...
-    if sys.version_info >= (3, 11):
-        @deprecated("Deprecated since Python 3.11. Use `files(anchor).iterdir()`.")
-        def contents(package: Package) -> Iterator[str]: ...
-    else:
-        def contents(package: Package) -> Iterator[str]: ...
+    @deprecated("Deprecated since Python 3.11. Use `files(anchor).iterdir()`.")
+    def contents(package: Package) -> Iterator[str]: ...
 
 if sys.version_info >= (3, 11):
     from importlib.resources._common import as_file as as_file
@@ -82,5 +77,5 @@ else:
 
 if sys.version_info >= (3, 11):
     from importlib.resources.abc import ResourceReader as ResourceReader
-elif sys.version_info >= (3, 10):
+else:
     from importlib.abc import ResourceReader as ResourceReader

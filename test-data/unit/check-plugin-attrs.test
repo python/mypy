@@ -1324,6 +1324,47 @@ D(b=17)
 [builtins fixtures/plugin_attrs.pyi]
 
 
+[case testAttrsKwOnlyClassAttributeFalse]
+from attrs import define, field
+@define(kw_only=True)
+class A:
+    a: int = field(kw_only=False)
+    b: int = 1
+A(0)
+A(1, b=3)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassAttributeFalseSubclass]
+from attrs import define, field
+@define(kw_only=True)
+class A:
+    a: int = field(kw_only=False)
+    b: int = 1
+@define(kw_only=True)
+class B(A):
+    c: int = field(kw_only=False)
+    d: int = 3
+
+B(0, 1)
+B(0, 1, b=3, d=4)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassAttributeFalseSubclassOnly]
+from attrs import define, field
+@define
+class A:
+    a: int
+    b: int = field(kw_only=True, default=1)
+@define(kw_only=True)
+class B(A):
+    c: int = field(kw_only=False)
+    d: int = 3
+
+B(0, 1)
+B(0, 1, b=3, d=4)
+[builtins fixtures/plugin_attrs.pyi]
+
+
 [case testAttrsKwOnlySubclass]
 import attr
 @attr.s
@@ -1747,7 +1788,6 @@ NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgs]
-# flags: --python-version 3.10
 import attr
 
 @attr.s(match_args=True, auto_attribs=True)
@@ -1763,7 +1803,6 @@ reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "tuple
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsDefaultCase]
-# flags: --python-version 3.10
 import attr
 
 @attr.s(auto_attribs=True)
@@ -1784,7 +1823,6 @@ reveal_type(t2.__match_args__)  # N: Revealed type is "tuple[Literal['x']?, Lite
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsOverrideExisting]
-# flags: --python-version 3.10
 import attr
 from typing import Final
 
@@ -1806,22 +1844,7 @@ class WithoutMatch:
 reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "tuple[Literal['a']?, Literal['b']?]"
 [builtins fixtures/plugin_attrs.pyi]
 
-[case testAttrsWithMatchArgsOldVersion]
-# flags: --python-version 3.9
-import attr
-
-@attr.s(match_args=True)
-class NoMatchArgs:
-    ...
-
-n: NoMatchArgs
-
-reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
-                               # N: Revealed type is "Any"
-[builtins fixtures/plugin_attrs.pyi]
-
 [case testAttrsMultipleInheritance]
-# flags: --python-version 3.10
 import attr
 
 @attr.s
@@ -2142,7 +2165,6 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testEvolveUnion]
-# flags: --python-version 3.10
 from typing import Generic, TypeVar
 import attrs
 
@@ -2172,7 +2194,6 @@ a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of 
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testEvolveUnionOfTypeVar]
-# flags: --python-version 3.10
 import attrs
 from typing import TypeVar
 

@@ -57,7 +57,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     with open(program_path, "w", encoding="utf8") as file:
         for s in testcase.input:
             file.write(f"{s}\n")
-    args = parse_args(testcase.input[0])
+    args = parse_args(normalize_devnull(testcase.input[0]))
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append("--show-traceback")
     if "--error-summary" not in args:
@@ -151,3 +151,7 @@ def parse_cwd(line: str) -> str | None:
     """
     m = re.match("# cwd: (.*)$", line)
     return m.group(1) if m else None
+
+
+def normalize_devnull(line: str) -> str:
+    return line.replace("/dev/null", os.devnull)

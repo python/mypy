@@ -8,15 +8,16 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Final
 
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 
 
-class ErrorMessage(NamedTuple):
-    value: str
-    code: ErrorCode | None = None
+class ErrorMessage:
+    def __init__(self, value: str, code: ErrorCode | None = None) -> None:
+        self.value: Final = value
+        self.code: Final = code
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
@@ -91,7 +92,6 @@ AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a va
 TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
     "Too many assignment targets for variadic unpack"
 )
-INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
@@ -180,6 +180,8 @@ BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+NO_CYCLIC_DEFAULT: Final = "Cyclic type variable defaults are not supported"
+NO_DEFAULT_AFTER_TYPEVAR_TUPLE: Final = "A type variable with default cannot follow TypeVarTuple"
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"
@@ -303,7 +305,7 @@ FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
     "Condition can't be inferred, unable to merge overloads"
 )
 TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
-    "type ignore with error code is not supported for modules; "
+    "Type ignore with error code is not supported for modules; "
     'use `# mypy: disable-error-code="{}"`',
     codes.SYNTAX,
 )

@@ -226,7 +226,7 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible parameters of signature 2
     pass
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
@@ -271,7 +271,7 @@ from typing import overload
 @overload  # E: Single overload definition, multiple required
 def foo(x: int) -> None: ...
 
-def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     pass
 [builtins fixtures/tuple.pyi]
 
@@ -4756,7 +4756,7 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation does not accept all possible parameters of signature 1
 main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
@@ -5280,33 +5280,24 @@ def lol(x: int, y: int) -> int:
 
 [case testVeryBrokenOverload]
 import lib
-reveal_type(lib.func)
+reveal_type(lib.func)  # N: Revealed type is "Any"
 [file lib.pyi]
-@overload
+@overload  # E: Name "overload" is not defined
 def func(x: int) -> int: ...
 
-def func(x):
+def func(x):  # E: Name "func" already defined on line 1
     return x
-[out]
-tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:4: error: Name "func" already defined on line 1
-main:2: note: Revealed type is "Any"
 
 -- Order of errors is different
 [case testVeryBrokenOverload2]
 
 import lib
-reveal_type(lib.func)
+reveal_type(lib.func)  # N: Revealed type is "Any"
 [file lib.pyi]
-@overload
+@overload  # E: Name "overload" is not defined
 def func(x: int) -> int: ...
-@overload
+@overload  # E: Name "func" already defined on line 1 # E: Name "overload" is not defined
 def func(x: str) -> str: ...
-[out]
-tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:3: error: Name "func" already defined on line 1
-tmp/lib.pyi:3: error: Name "overload" is not defined
-main:3: note: Revealed type is "Any"
 
 [case testLiteralSubtypeOverlap]
 from typing import Literal, overload
@@ -5426,7 +5417,7 @@ def dec_c(f: Callable[..., Any]) -> C:
 def f_c(arg: int) -> None: ...
 @overload
 def f_c(arg: str) -> None: ...
-@dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+@dec_c  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 def f_c(arg): ...
 [builtins fixtures/dict.pyi]
 
@@ -5552,7 +5543,7 @@ reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
 reveal_type(f5(D()))  # N: Revealed type is "__main__.D"
 
 [case testOverloadIfSysVersion]
-# flags: --python-version 3.9
+# flags: --python-version 3.10
 from typing import overload
 import sys
 
@@ -5567,7 +5558,7 @@ class C: ...
 
 @overload
 def f1(g: A) -> A: ...
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     @overload
     def f1(g: B) -> B: ...
 def f1(g): ...
@@ -5578,7 +5569,7 @@ reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
 def f2(g: A) -> A: ...
 @overload
 def f2(g: B) -> B: ...
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
     @overload
     def f2(g: C) -> C: ...
 def f2(g): ...
@@ -6165,7 +6156,7 @@ reveal_type(f3(A()))  # E: No overload variant of "f3" matches argument type "A"
     # N: Revealed type is "Any"
 reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
 
-[case testOverloadIfSplitFunctionDef]
+[case testOverloadIfSplitFunctionDef_no_native_parse]
 # flags: --always-true True --always-false False
 from typing import overload
 

@@ -8,7 +8,7 @@ from unittest import TestCase, skipUnless
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_types
-from mypy.meet import meet_types, narrow_declared_type
+from mypy.meet import is_overlapping_types, meet_types, narrow_declared_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_OPT,
@@ -39,6 +39,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarId,
@@ -144,7 +145,7 @@ class TypesSuite(Suite):
                     "X", "X", TypeVarId(1), [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)
                 )
             ),
-            "X`1",
+            "X",
         )
         assert_equal(
             str(
@@ -157,7 +158,7 @@ class TypesSuite(Suite):
                     AnyType(TypeOfAny.from_omitted_generics),
                 )
             ),
-            "X`1",
+            "X",
         )
 
     def test_generic_function_type(self) -> None:
@@ -222,6 +223,22 @@ class TypesSuite(Suite):
         A.accept(visitor)
         modules = visitor.modules
         assert modules == {"__main__", "builtins"}
+
+    def test_typeddict_type_constructor_signature(self) -> None:
+        typ = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20)
+
+        assert typ.fallback is self.fx.a
+        assert_equal(typ.line, 10)
+        assert_equal(typ.column, 20)
+        assert not typ.is_closed
+
+        closed = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, is_closed=True)
+        assert closed.is_closed
+
+        with self.assertRaises(TypeError):
+            TypedDictType(  # type: ignore[call-arg]
+                {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, True
+            )
 
 
 class TypeOpsSuite(Suite):
@@ -644,6 +661,20 @@ class TypeOpsSuite(Suite):
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
         assert_equal(make_simplified_union(list(reversed(original))), union)
+
+    def test_generic_callable_overlap_is_symmetric(self) -> None:
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        outer_t = TypeVarType("T", "T", TypeVarId(1), [], self.fx.o, any_type)
+        outer_s = TypeVarType("S", "S", TypeVarId(2), [], self.fx.o, any_type)
+        generic_t = TypeVarType("T", "T", TypeVarId(-1), [], self.fx.o, any_type)
+
+        callable_type = CallableType([outer_t], [ARG_POS], [None], outer_s, self.fx.function)
+        generic_identity = CallableType(
+            [generic_t], [ARG_POS], [None], generic_t, self.fx.function, variables=[generic_t]
+        )
+
+        assert is_overlapping_types(callable_type, generic_identity)
+        assert is_overlapping_types(generic_identity, callable_type)
 
     # Helpers
 

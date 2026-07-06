@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Iterator, Sequence, Set as AbstractSet
 from contextlib import contextmanager
-from typing import NamedTuple, overload
+from typing import Final, overload
 
 from mypy_extensions import trait
 
@@ -42,9 +42,10 @@ from mypy.typevars import fill_typevars
 
 # An object that represents either a precise type or a type with an upper bound;
 # it is important for correct type inference with isinstance.
-class TypeRange(NamedTuple):
-    item: Type
-    is_upper_bound: bool  # False => precise type
+class TypeRange:
+    def __init__(self, item: Type, is_upper_bound: bool) -> None:
+        self.item: Final = item
+        self.is_upper_bound: Final = is_upper_bound  # False => precise type
 
 
 @trait
@@ -343,9 +344,14 @@ class CheckerScope:
 
     def current_self_type(self) -> Instance | TupleType | None:
         """Same as active_self_type() but handle functions nested in methods."""
+        if (item := self.current_class()) is not None:
+            return fill_typevars(item)
+        return None
+
+    def current_class(self) -> TypeInfo | None:
         for item in reversed(self.stack):
             if isinstance(item, TypeInfo):
-                return fill_typevars(item)
+                return item
         return None
 
     def is_top_level(self) -> bool:

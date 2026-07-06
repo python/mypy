@@ -36,8 +36,8 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
-    LoadMem,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -63,7 +63,6 @@ from mypyc.ir.rtypes import (
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
-    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -363,7 +362,9 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
     return builder.read(set_ops, gen.line)
 
 
-def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr) -> Value:
+def translate_vec_comprehension(
+    builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr, *, capacity: Value | None = None
+) -> Value:
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         vec_init_item_unsafe(builder.builder, x, y, z, line)
 
@@ -372,7 +373,7 @@ def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: Generat
         builder,
         gen,
         empty_op_llbuilder=lambda length, line: vec_create(
-            builder.builder, vec_type, length, line
+            builder.builder, vec_type, length, line, capacity=capacity
         ),
         set_item_op=set_item,
     )
@@ -380,7 +381,9 @@ def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: Generat
         return val
 
     vec = Register(vec_type)
-    builder.assign(vec, vec_create(builder.builder, vec_type, 0, gen.line), gen.line)
+    builder.assign(
+        vec, vec_create(builder.builder, vec_type, 0, gen.line, capacity=capacity), gen.line
+    )
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
@@ -824,8 +827,9 @@ class ForAsyncIterable(ForGenerator):
         line = self.line
 
         def except_match() -> Value:
-            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
+            return builder.add(
+                LoadGlobal(stop_async_iteration_op.type, stop_async_iteration_op.src, line)
+            )
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
@@ -1141,6 +1145,13 @@ class ForRange(ForGenerator):
         )
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
+    def begin_body(self) -> None:
+        # Update the user-visible loop variable at the start of the body,
+        # after the condition check passes. This ensures the variable isn't
+        # "overshot" when the loop exits (matching CPython semantics).
+        builder = self.builder
+        builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
+
     def gen_step(self) -> None:
         builder = self.builder
         line = self.line
@@ -1163,7 +1174,6 @@ class ForRange(ForGenerator):
                 builder.read(self.index_reg, line), Integer(self.step), "+", line
             )
         builder.assign(self.index_reg, new_val, line)
-        builder.assign(self.index_target, new_val, line)
 
 
 class ForInfiniteCounter(ForGenerator):

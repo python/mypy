@@ -10,16 +10,8 @@ def mac_ver(
     release: str = "", versioninfo: tuple[str, str, str] = ("", "", ""), machine: str = ""
 ) -> tuple[str, tuple[str, str, str], str]: ...
 
-if sys.version_info >= (3, 13):
+if sys.version_info < (3, 15):
     @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
-    def java_ver(
-        release: str = "",
-        vendor: str = "",
-        vminfo: tuple[str, str, str] = ("", "", ""),
-        osinfo: tuple[str, str, str] = ("", "", ""),
-    ) -> tuple[str, str, tuple[str, str, str], tuple[str, str, str]]: ...
-
-else:
     def java_ver(
         release: str = "",
         vendor: str = "",
@@ -57,9 +49,7 @@ if sys.version_info >= (3, 12):
 else:
     @disjoint_base
     class uname_result(_uname_result_base):
-        if sys.version_info >= (3, 10):
-            __match_args__ = ("system", "node", "release", "version", "machine")  # pyright: ignore[reportAssignmentType]
-
+        __match_args__ = ("system", "node", "release", "version", "machine")  # pyright: ignore[reportAssignmentType]
         def __new__(_cls, system: str, node: str, release: str, version: str, machine: str) -> Self: ...
         @property
         def processor(self) -> str: ...
@@ -79,9 +69,7 @@ def python_revision() -> str: ...
 def python_build() -> tuple[str, str]: ...
 def python_compiler() -> str: ...
 def platform(aliased: bool = False, terse: bool = False) -> str: ...
-
-if sys.version_info >= (3, 10):
-    def freedesktop_os_release() -> dict[str, str]: ...
+def freedesktop_os_release() -> dict[str, str]: ...
 
 if sys.version_info >= (3, 13):
     class AndroidVer(NamedTuple):

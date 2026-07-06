@@ -12,8 +12,8 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import Executor
 from contextvars import Context
 from socket import AddressFamily, AddressInfo, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Literal, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import Self, TypeAlias, TypeVarTuple, Unpack, deprecated
+from typing import IO, Any, Literal, Protocol, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Self, TypeVarTuple, Unpack, deprecated
 
 from . import _AwaitableLike, _CoroutineLike
 from .base_events import Server
@@ -205,9 +205,10 @@ class AbstractEventLoop:
         type: int = 0,
         proto: int = 0,
         flags: int = 0,
-    ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
+    ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes]]]: ...
     @abstractmethod
     async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = 0) -> tuple[str, str]: ...
+
     if sys.version_info >= (3, 11):
         @overload
         @abstractmethod
@@ -467,7 +468,7 @@ class AbstractEventLoop:
             ssl_handshake_timeout: float | None = None,
             ssl_shutdown_timeout: float | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
-    elif sys.version_info >= (3, 10):
+    else:
         async def connect_accepted_socket(
             self,
             protocol_factory: Callable[[], _ProtocolT],
@@ -631,18 +632,12 @@ else:
         @abstractmethod
         def new_event_loop(self) -> AbstractEventLoop: ...
         # Child processes handling (Unix only).
-        if sys.version_info >= (3, 12):
-            @abstractmethod
-            @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
-            def get_child_watcher(self) -> AbstractChildWatcher: ...
-            @abstractmethod
-            @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
-            def set_child_watcher(self, watcher: AbstractChildWatcher) -> None: ...
-        else:
-            @abstractmethod
-            def get_child_watcher(self) -> AbstractChildWatcher: ...
-            @abstractmethod
-            def set_child_watcher(self, watcher: AbstractChildWatcher) -> None: ...
+        @abstractmethod
+        @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
+        def get_child_watcher(self) -> AbstractChildWatcher: ...
+        @abstractmethod
+        @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
+        def set_child_watcher(self, watcher: AbstractChildWatcher) -> None: ...
 
     AbstractEventLoopPolicy = _AbstractEventLoopPolicy
 
@@ -661,25 +656,16 @@ else:
 if sys.version_info >= (3, 14):
     def _get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
     def _set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
-    @deprecated("Deprecated since Python 3.14; will be removed in Python 3.16.")
-    def get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
-    @deprecated("Deprecated since Python 3.14; will be removed in Python 3.16.")
-    def set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
 
-else:
-    def get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
-    def set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
-
+@deprecated("Deprecated since Python 3.14; will be removed in Python 3.16.")
+def get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
+@deprecated("Deprecated since Python 3.14; will be removed in Python 3.16.")
+def set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
 def set_event_loop(loop: AbstractEventLoop | None) -> None: ...
 def new_event_loop() -> AbstractEventLoop: ...
 
 if sys.version_info < (3, 14):
-    if sys.version_info >= (3, 12):
-        @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
-        def get_child_watcher() -> AbstractChildWatcher: ...
-        @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
-        def set_child_watcher(watcher: AbstractChildWatcher) -> None: ...
-
-    else:
-        def get_child_watcher() -> AbstractChildWatcher: ...
-        def set_child_watcher(watcher: AbstractChildWatcher) -> None: ...
+    @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
+    def get_child_watcher() -> AbstractChildWatcher: ...
+    @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
+    def set_child_watcher(watcher: AbstractChildWatcher) -> None: ...

@@ -6,6 +6,7 @@ import os
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
@@ -13,13 +14,16 @@ from typing import (
     Final,
     Optional,
     TypeAlias as _TypeAlias,
+    TypedDict,
     TypeGuard,
     TypeVar,
     Union,
     cast,
 )
+from typing_extensions import NotRequired
 
 from librt.internal import (
+    extract_symbol,
     read_float as read_float_bare,
     read_int as read_int_bare,
     read_str as read_str_bare,
@@ -30,17 +34,22 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.cache import (
+    DICT_INT_GEN,
     DICT_STR_GEN,
     DT_SPEC,
     END_TAG,
     LIST_GEN,
     LIST_STR,
     LITERAL_COMPLEX,
+    LITERAL_FALSE,
     LITERAL_NONE,
+    LITERAL_TRUE,
     ReadBuffer,
     Tag,
     WriteBuffer,
     read_bool,
+    read_bytes,
+    read_flags,
     read_int,
     read_int_list,
     read_int_opt,
@@ -52,6 +61,8 @@ from mypy.cache import (
     read_str_opt_list,
     read_tag,
     write_bool,
+    write_bytes,
+    write_flags,
     write_int,
     write_int_list,
     write_int_opt,
@@ -63,6 +74,7 @@ from mypy.cache import (
     write_str_opt_list,
     write_tag,
 )
+from mypy.modules_state import modules_state
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -307,6 +319,128 @@ class SymbolNode(Node):
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
+class ParseError(TypedDict):
+    line: int
+    column: int
+    message: str
+    blocker: NotRequired[bool]
+    code: NotRequired[str]
+
+
+def write_parse_error(data: WriteBuffer, err: ParseError) -> None:
+    write_int(data, err["line"])
+    write_int(data, err["column"])
+    write_str(data, err["message"])
+    if (blocker := err.get("blocker")) is not None:
+        write_bool(data, blocker)
+    else:
+        write_tag(data, LITERAL_NONE)
+    write_str_opt(data, err.get("code"))
+
+
+def read_parse_error(data: ReadBuffer) -> ParseError:
+    err: ParseError = {"line": read_int(data), "column": read_int(data), "message": read_str(data)}
+    tag = read_tag(data)
+    if tag == LITERAL_TRUE:
+        err["blocker"] = True
+    elif tag == LITERAL_FALSE:
+        err["blocker"] = False
+    else:
+        assert tag == LITERAL_NONE
+    if (code := read_str_opt(data)) is not None:
+        err["code"] = code
+    return err
+
+
+class FileRawData:
+    """Raw (binary) data representing parsed, but not deserialized file."""
+
+    __slots__ = (
+        "defs",
+        "imports",
+        "raw_errors",
+        "ignored_lines",
+        "is_partial_stub_package",
+        "uses_template_strings",
+        "source_hash",
+        "mypy_comments",
+    )
+
+    defs: bytes
+    imports: bytes
+    raw_errors: list[ParseError]
+    ignored_lines: dict[int, list[str]]
+    is_partial_stub_package: bool
+    uses_template_strings: bool
+    source_hash: str
+    mypy_comments: list[tuple[int, str]]
+
+    def __init__(
+        self,
+        defs: bytes,
+        imports: bytes,
+        raw_errors: list[ParseError],
+        ignored_lines: dict[int, list[str]],
+        is_partial_stub_package: bool,
+        uses_template_strings: bool,
+        source_hash: str = "",
+        mypy_comments: list[tuple[int, str]] | None = None,
+    ) -> None:
+        self.defs = defs
+        self.imports = imports
+        self.raw_errors = raw_errors
+        self.ignored_lines = ignored_lines
+        self.is_partial_stub_package = is_partial_stub_package
+        self.uses_template_strings = uses_template_strings
+        self.source_hash = source_hash
+        self.mypy_comments = mypy_comments if mypy_comments is not None else []
+
+    def write(self, data: WriteBuffer) -> None:
+        write_bytes(data, self.defs)
+        write_bytes(data, self.imports)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.raw_errors))
+        for err in self.raw_errors:
+            write_parse_error(data, err)
+        write_tag(data, DICT_INT_GEN)
+        write_int_bare(data, len(self.ignored_lines))
+        for line, codes in self.ignored_lines.items():
+            write_int(data, line)
+            write_str_list(data, codes)
+        write_bool(data, self.is_partial_stub_package)
+        write_bool(data, self.uses_template_strings)
+        write_str(data, self.source_hash)
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(self.mypy_comments))
+        for line, text in self.mypy_comments:
+            write_int(data, line)
+            write_str(data, text)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> FileRawData:
+        defs = read_bytes(data)
+        imports = read_bytes(data)
+        assert read_tag(data) == LIST_GEN
+        raw_errors = [read_parse_error(data) for _ in range(read_int_bare(data))]
+        assert read_tag(data) == DICT_INT_GEN
+        ignored_lines = {read_int(data): read_str_list(data) for _ in range(read_int_bare(data))}
+        is_partial_stub_package = read_bool(data)
+        uses_template_strings = read_bool(data)
+        source_hash = read_str(data)
+        assert read_tag(data) == LIST_GEN
+        mypy_comments = [(read_int(data), read_str(data)) for _ in range(read_int_bare(data))]
+        return FileRawData(
+            defs,
+            imports,
+            raw_errors,
+            ignored_lines,
+            is_partial_stub_package,
+            uses_template_strings,
+            source_hash,
+            mypy_comments,
+        )
+
+
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -324,9 +458,11 @@ class MypyFile(SymbolNode):
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
+        "uses_template_strings",
         "plugin_deps",
         "future_import_flags",
         "_is_typeshed_file",
+        "raw_data",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -362,11 +498,15 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package: bool
+    # True if module contains at least one t-string (PEP 750 TemplateStr).
+    uses_template_strings: bool
     # Plugin-created dependencies
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
     _is_typeshed_file: bool | None
+    # For native parser store actual serialized data here.
+    raw_data: FileRawData | None
 
     def __init__(
         self,
@@ -394,15 +534,17 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.uses_template_strings = False
         self.future_import_flags = set()
         self._is_typeshed_file = None
+        self.raw_data = None
 
-    def local_definitions(self) -> Iterator[Definition]:
+    def local_definitions(self, *, impl_only: bool = False) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
 
         This doesn't include imported definitions.
         """
-        return local_definitions(self.names, self.fullname)
+        return local_definitions(self.names, self.fullname, impl_only=impl_only)
 
     @property
     def name(self) -> str:
@@ -585,6 +727,7 @@ class FuncBase(Node):
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "is_type_check_only",  # Uses "@type_check_only"
+        "def_or_infer_vars",
         "_fullname",
     )
 
@@ -605,6 +748,18 @@ class FuncBase(Node):
         self.is_final = False
         self.is_explicit_override = False
         self.is_type_check_only = False
+        # Can this function/method define variables or infer variables defined outside?
+        # In particular, we set this in cases like:
+        #     x = None
+        #     def foo() -> None:
+        #         global x
+        #         x = 1
+        # and
+        #     class C:
+        #         x = None
+        #         def foo(self) -> None:
+        #             self.x = 1
+        self.def_or_infer_vars = False
         # Name with module prefix
         self._fullname = ""
 
@@ -915,7 +1070,11 @@ class FuncItem(FuncBase):
         return self.max_pos
 
     def is_dynamic(self) -> bool:
-        return self.type is None
+        return (
+            self.type is None
+            or isinstance(self.type, mypy.types.CallableType)
+            and self.type.implicit
+        )
 
 
 FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
@@ -948,7 +1107,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
-        "has_self_attr_def",
+        "is_invalid_redefinition",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -987,14 +1146,16 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
-        # Keep track of functions where self attributes are defined.
-        self.has_self_attr_def = False
         # This is needed because for positional-only arguments the name is set to None,
         # but we sometimes still want to show it in error messages.
         if arguments:
             self.original_first_arg: str | None = arguments[0].variable.name
         else:
             self.original_first_arg = None
+        # Whether this function is an invalid redefinition of variable with the same name?
+        # We record this status to avoid multiple (similar but different) errors in case
+        # of partial types etc.
+        self.is_invalid_redefinition = False
 
     @property
     def name(self) -> str:
@@ -1292,6 +1453,7 @@ class Var(SymbolNode):
         "has_explicit_value",
         "allow_incompatible_override",
         "invalid_partial_type",
+        "is_argument",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1352,6 +1514,8 @@ class Var(SymbolNode):
         # If True, this means we didn't manage to infer full type and fall back to
         # something like list[Any]. We may decide to not use such types as context.
         self.invalid_partial_type = False
+        # Is it a variable symbol for a function argument?
+        self.is_argument = False
 
     @property
     def name(self) -> str:
@@ -1415,8 +1579,6 @@ class Var(SymbolNode):
         write_flags(
             data,
             [
-                self.is_self,
-                self.is_cls,
                 self.is_initialized_in_class,
                 self.is_staticmethod,
                 self.is_classmethod,
@@ -1454,8 +1616,6 @@ class Var(SymbolNode):
         v.setter_type = setter_type
         v._fullname = read_str(data)
         (
-            v.is_self,
-            v.is_cls,
             v.is_initialized_in_class,
             v.is_staticmethod,
             v.is_classmethod,
@@ -1475,7 +1635,7 @@ class Var(SymbolNode):
             v.from_module_getattr,
             v.has_explicit_value,
             v.allow_incompatible_override,
-        ) = read_flags(data, num_flags=21)
+        ) = read_flags(data, num_flags=19)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
@@ -2766,6 +2926,29 @@ class DictExpr(Expression):
         return visitor.visit_dict_expr(self)
 
 
+class TemplateStrExpr(Expression):
+    """Template string expression t'...'."""
+
+    __slots__ = ("items",)
+    __match_args__ = ("items",)
+
+    # Each item is either:
+    #   - a StrExpr (literal string segment), or
+    #   - a tuple (value_expr, source_text, conversion, format_spec_expr)
+    #     where conversion is str | None ("r", "s", "a", or None)
+    #     and format_spec_expr is Expression | None
+    items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+
+    def __init__(
+        self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    ) -> None:
+        super().__init__()
+        self.items = items
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_template_str_expr(self)
+
+
 class TupleExpr(Expression):
     """Tuple literal expression (..., ...)
 
@@ -2964,7 +3147,15 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance", "is_new_style")
+    __slots__ = (
+        "_name",
+        "_fullname",
+        "upper_bound",
+        "default",
+        "variance",
+        "is_new_style",
+        "default_depends",
+    )
 
     _name: str
     _fullname: str
@@ -2979,6 +3170,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     # TypeVar(..., contravariant=True) defines a contravariant type
     # variable.
     variance: int
+    # Record instances and type aliases that appear bare/implicit in the default value
+    # of this type variable. This is needed to detect recursive type variable defaults.
+    default_depends: set[TypeInfo | TypeAlias] | None
 
     def __init__(
         self,
@@ -2997,6 +3191,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         self.default = default
         self.variance = variance
         self.is_new_style = is_new_style
+        self.default_depends = None
 
     @property
     def name(self) -> str:
@@ -3474,6 +3669,8 @@ class TypeInfo(SymbolNode):
         "is_type_check_only",
         "deprecated",
         "type_object_type",
+        "default_depends",
+        "typeddict_data",
     )
 
     _fullname: str  # Fully qualified name
@@ -3635,6 +3832,19 @@ class TypeInfo(SymbolNode):
     # appears in runtime context.
     type_object_type: mypy.types.FunctionLike | None
 
+    # Type variables whose defaults depend on defaults of type variables in other classes
+    # and type aliases. We keep track of this to safely handle situations like this one:
+    #     class C[T = D]: ...
+    #     class D[S = C]: ...
+    #     x: C
+    # Since we apply fix_instance() eagerly, inferring a precise type is quite tricky.
+    # Therefore, we infer the type of `x` as `C[D[Any]]` to avoid infinite recursion.
+    # Keys are type variable full names.
+    default_depends: dict[str, set[TypeAlias | TypeInfo]]
+
+    # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+    typeddict_data: TypedDictData | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3696,6 +3906,8 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         self.type_object_type = None
+        self.default_depends = {}
+        self.typeddict_data = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3921,6 +4133,12 @@ class TypeInfo(SymbolNode):
             if cls.fullname == fullname:
                 return True
         return False
+
+    def get_base(self, fullname: str) -> TypeInfo:
+        for cls in self.mro:
+            if cls.fullname == fullname:
+                return cls
+        assert False, f"Missing base {fullname} for {self.fullname}"
 
     def direct_base_classes(self) -> list[TypeInfo]:
         """Return a direct base classes.
@@ -4361,6 +4579,7 @@ class TypeAlias(SymbolNode):
         "eager",
         "tvar_tuple_index",
         "python_3_12_type_alias",
+        "default_depends",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -4393,6 +4612,8 @@ class TypeAlias(SymbolNode):
         self.eager = eager
         self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
+        # This plays the same role as TypeInfo.default_depends attribute.
+        self.default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
                 self.tvar_tuple_index = i
@@ -4623,9 +4844,10 @@ class SymbolTableNode:
     they should be correct.
 
     Attributes:
-        node: AST node of definition. Among others, this can be one of
+        _node: AST node of definition. Among others, this can be one of
             FuncDef, Var, TypeInfo, TypeVarExpr or MypyFile -- or None
-            for cross_ref that hasn't been fixed up yet.
+            for cross_ref that hasn't been fixed up yet. Should not be accessed
+            directly, only via the `node` property.
         kind: Kind of node. Possible values:
                - LDEF: local definition
                - GDEF: global (module-level) definition
@@ -4635,25 +4857,20 @@ class SymbolTableNode:
         module_public: If False, this name won't be imported via
             'from <module> import *'. This has no effect on names within
             classes.
-        module_hidden: If True, the name will be never exported (needed for
+        module_hidden: If True, the name will never be exported (needed for
             stub files)
         cross_ref: For deserialized MypyFile nodes, the referenced module
             name; for other nodes, optionally the name of the referenced object.
         implicit: Was this defined by assignment to self attribute?
         plugin_generated: Was this symbol generated by a plugin?
             (And therefore needs to be removed in aststrip.)
-        no_serialize: Do not serialize this node if True. This is used to prevent
-            keys in the cache that refer to modules on which this file does not
-            depend. Currently this can happen if there is a module not in build
-            used e.g. like this:
-                import a.b.c # type: ignore
-            This will add a submodule symbol to parent module `a` symbol table,
-            but `a.b` is _not_ added as its dependency. Therefore, we should
-            not serialize these symbols as they may not be found during fixup
-            phase, instead they will be re-added during subsequent patch parents
-            phase.
-            TODO: Refactor build.py to make dependency tracking more transparent
-            and/or refactor look-up functions to not require parent patching.
+        no_serialize: Do not serialize this node if True. This is used for internal
+            and/or temporary symbols such as function redefinitions.
+        unfixed: Indicates that this symbol is fresh after deserialization and
+            needs fixup, such as resolving cross-references etc.
+        stored_info: TypeInfo containing this symbol. Normally code accesses this
+            on the `node` attribute, but it may be not ready during deserialization,
+            so we temporarily store info on the symbol itself.
 
     NOTE: No other attributes should be added to this class unless they
     are shared by all node kinds.
@@ -4661,13 +4878,17 @@ class SymbolTableNode:
 
     __slots__ = (
         "kind",
-        "node",
+        "_node",
+        "_node_bytes",
+        "_node_tag",
         "module_public",
         "module_hidden",
         "cross_ref",
         "implicit",
         "plugin_generated",
         "no_serialize",
+        "unfixed",
+        "stored_info",
     )
 
     def __init__(
@@ -4682,13 +4903,17 @@ class SymbolTableNode:
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
-        self.node = node
+        self._node = node
+        self._node_bytes = b""
+        self._node_tag: Tag = 0
         self.module_public = module_public
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref: str | None = None
         self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
+        self.unfixed = False
+        self.stored_info: TypeInfo | None = None
 
     @property
     def fullname(self) -> str | None:
@@ -4707,11 +4932,44 @@ class SymbolTableNode:
         else:
             return None
 
+    @property
+    def node(self) -> SymbolNode | None:
+        if self.unfixed:
+            node_fixer = modules_state.node_fixer
+            assert node_fixer is not None
+            if self.cross_ref is not None:
+                node_fixer.resolve_cross_ref(self)
+            else:
+                if self._node is None:
+                    self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+                    self._node_bytes = b""
+                node = self._node
+                assert node is not None
+                if self.stored_info is not None:
+                    set_info(node, self.stored_info)
+                    self.stored_info = None
+                node.accept(node_fixer)
+                self.unfixed = False
+        return self._node
+
+    def read_node_no_fixup(self) -> SymbolNode | None:
+        """Return the deserialized node without performing cross-reference fixup.
+
+        This is intended for introspection tools (such as mypy.exportjson) that read
+        cache files in isolation, where no node fixer is available.
+        """
+        if self._node is None and self._node_bytes:
+            self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+            self._node_bytes = b""
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
-            self.kind, self.node, self.module_public, self.implicit, self.module_hidden
+            self.kind, self._node, self.module_public, self.implicit, self.module_hidden
         )
         new.cross_ref = self.cross_ref
+        new.unfixed = self.unfixed
+        new.stored_info = self.stored_info
         return new
 
     def __str__(self) -> str:
@@ -4768,10 +5026,13 @@ class SymbolTableNode:
             # This will be fixed up later.
             stnode = SymbolTableNode(kind, None)
             stnode.cross_ref = data["cross_ref"]
+            stnode.unfixed = True
         else:
             assert "node" in data, data
             node = SymbolNode.deserialize(data["node"])
             stnode = SymbolTableNode(kind, node)
+            if not isinstance(node, TypeInfo):
+                stnode.unfixed = True
         if "module_hidden" in data:
             stnode.module_hidden = data["module_hidden"]
         if "module_public" in data:
@@ -4823,9 +5084,16 @@ class SymbolTableNode:
         sym.plugin_generated = read_bool(data)
         cross_ref = read_str_opt(data)
         if cross_ref is None:
-            sym.node = read_symbol(data)
+            tag = read_tag(data)
+            if tag == TYPE_INFO:
+                sym._node = TypeInfo.read(data)
+            else:
+                sym._node_bytes = extract_symbol(data)
+                sym._node_tag = tag
+                sym.unfixed = True
         else:
             sym.cross_ref = cross_ref
+            sym.unfixed = True
         assert read_tag(data) == END_TAG
         return sym
 
@@ -4980,6 +5248,64 @@ class DataclassTransformSpec:
         return ret
 
 
+class TypedDictFieldSource:
+    """Source of a TypedDict field definition, used for forming error messages.
+
+    May be defined directly on the type, or on a base class.
+    """
+
+    __slots__ = ("base", "ctx")
+
+    base: TypeInfo | None
+    ctx: Context
+
+    def __init__(self, base: TypeInfo | None, ctx: Context) -> None:
+        self.base = base
+        self.ctx = ctx
+
+
+class TypedDictData:
+    """Stores information needed for delayed validation of TypedDict inheritance."""
+
+    __slots__ = ("ready", "bases", "field_sources")
+
+    # If False, the type definition referenced a placeholder
+    ready: bool
+
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    field_sources: dict[str, TypedDictFieldSource]
+
+    def __init__(
+        self,
+        ready: bool,
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        field_sources: dict[str, TypedDictFieldSource],
+    ) -> None:
+        self.ready = ready
+        self.bases = bases
+        self.field_sources = field_sources
+
+
+@trait
+class SplittingVisitor:
+    # If True, process function definitions. If False, don't. This is used
+    # for processing module top levels in fine-grained incremental mode.
+    recurse_into_functions: bool
+
+    @contextmanager
+    def set_recurse_into_functions(self) -> Iterator[None]:
+        """Temporarily set recurse_into_functions to True.
+
+        This is used to process top-level functions/methods as a whole.
+        """
+        old_recurse_into_functions = self.recurse_into_functions
+        self.recurse_into_functions = True
+        try:
+            yield
+        finally:
+            self.recurse_into_functions = old_recurse_into_functions
+
+
 def get_flags(node: Node, names: list[str]) -> list[str]:
     return [name for name in names if getattr(node, name)]
 
@@ -4987,20 +5313,6 @@ def get_flags(node: Node, names: list[str]) -> list[str]:
 def set_flags(node: Node, flags: list[str]) -> None:
     for name in flags:
         setattr(node, name, True)
-
-
-def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
-    assert len(flags) <= 26, "This many flags not supported yet"
-    packed = 0
-    for i, flag in enumerate(flags):
-        if flag:
-            packed |= 1 << i
-    write_int(data, packed)
-
-
-def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
-    packed = read_int(data)
-    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -5066,7 +5378,7 @@ def check_arg_kinds(
             is_kw_arg = True
 
 
-def check_arg_names(
+def check_param_names(
     names: Sequence[str | None],
     nodes: list[T],
     fail: Callable[[str, T], None],
@@ -5075,7 +5387,7 @@ def check_arg_names(
     seen_names: set[str | None] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail(f'Duplicate argument "{name}" in {description}', node)
+            fail(f'Duplicate parameter "{name}" in {description}', node)
             break
         seen_names.add(name)
 
@@ -5100,11 +5412,12 @@ def get_func_def(typ: mypy.types.CallableType) -> SymbolNode | None:
 
 
 def local_definitions(
-    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None
+    names: SymbolTable, name_prefix: str, info: TypeInfo | None = None, impl_only: bool = False
 ) -> Iterator[Definition]:
     """Iterate over local definitions (not imported) in a symbol table.
 
-    Recursively iterate over class members and nested classes.
+    Recursively iterate over class members and nested classes. If impl_only is True, do
+    not yield the classes themselves, only methods.
     """
     # TODO: What should the name be? Or maybe remove it?
     for name, symnode in names.items():
@@ -5115,9 +5428,51 @@ def local_definitions(
         fullname = name_prefix + "." + shortname
         node = symnode.node
         if node and node.fullname == fullname:
-            yield fullname, symnode, info
+            yield_node = True
+            if impl_only:
+                if not isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)):
+                    yield_node = False
+                else:
+                    impl = node.func if isinstance(node, Decorator) else node
+                    yield_node = not impl.def_or_infer_vars
+                    # This logic for plugin generated nodes preserves historical behavior.
+                    # On one hand, we generally type-check plugin generated nodes, since
+                    # some 3rd party plugins may rely on this behavior. On the other hand
+                    # we skip nodes generated by mypy itself, these nodes are not added to
+                    # the class AST (only to symbol table) as they often cut corners.
+                    if symnode.plugin_generated and info and node not in info.defn.defs.body:
+                        yield_node = False
+            if isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)) and "@" in fullname:
+                yield_node = False
+            if yield_node:
+                yield fullname, symnode, info
             if isinstance(node, TypeInfo):
-                yield from local_definitions(node.names, fullname, node)
+                yield from local_definitions(node.names, fullname, node, impl_only)
+
+
+def set_info(node: SymbolNode, info: TypeInfo) -> None:
+    """Add `info` attribute to all relevant components of the node."""
+    if isinstance(node, (FuncDef, Var)):
+        node.info = info
+    elif isinstance(node, Decorator):
+        node.var.info = info
+        node.func.info = info
+    elif isinstance(node, OverloadedFuncDef):
+        node.info = info
+        for item in node.items:
+            set_info(item, info)
+        if node.impl:
+            set_info(node.impl, info)
+
+
+def func_scoped_name(name: str, line: int) -> str:
+    """Mangled name to use when storing function-scoped symbols in global symbol tables."""
+    return f"{name}@{line}"
+
+
+def inline_base(name: str, index: int) -> str:
+    """Synthetic name to use when storing inlined base classes in symbol tables."""
+    return f"{name}@base{index + 1}"
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.
@@ -5134,9 +5489,80 @@ TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
+# Tags 160+ are shared with the ast_serialize Rust extension and must be kept in sync.
+EXPR_STMT: Final[Tag] = 160
+CALL_EXPR: Final[Tag] = 161
+NAME_EXPR: Final[Tag] = 162
+STR_EXPR: Final[Tag] = 163
+IMPORT: Final[Tag] = 164
+MEMBER_EXPR: Final[Tag] = 165
+OP_EXPR: Final[Tag] = 166
+INT_EXPR: Final[Tag] = 167
+IF_STMT: Final[Tag] = 168
+ASSIGNMENT_STMT: Final[Tag] = 169
+TUPLE_EXPR: Final[Tag] = 170
+BLOCK: Final[Tag] = 171
+INDEX_EXPR: Final[Tag] = 172
+LIST_EXPR: Final[Tag] = 173
+SET_EXPR: Final[Tag] = 174
+RETURN_STMT: Final[Tag] = 175
+WHILE_STMT: Final[Tag] = 176
+COMPARISON_EXPR: Final[Tag] = 177
+BOOL_OP_EXPR: Final[Tag] = 178
+FUNC_DEF_STMT: Final[Tag] = 179
+PASS_STMT: Final[Tag] = 180
+FLOAT_EXPR: Final[Tag] = 181
+UNARY_EXPR: Final[Tag] = 182
+DICT_EXPR: Final[Tag] = 183
+COMPLEX_EXPR: Final[Tag] = 184
+SLICE_EXPR: Final[Tag] = 185
+TEMP_NODE: Final[Tag] = 186
+RAISE_STMT: Final[Tag] = 187
+BREAK_STMT: Final[Tag] = 188
+CONTINUE_STMT: Final[Tag] = 189
+GENERATOR_EXPR: Final[Tag] = 190
+YIELD_EXPR: Final[Tag] = 191
+YIELD_FROM_EXPR: Final[Tag] = 192
+LIST_COMPREHENSION: Final[Tag] = 193
+SET_COMPREHENSION: Final[Tag] = 194
+DICT_COMPREHENSION: Final[Tag] = 195
+IMPORT_FROM: Final[Tag] = 196
+ASSERT_STMT: Final[Tag] = 197
+FOR_STMT: Final[Tag] = 198
+WITH_STMT: Final[Tag] = 199
+OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
+TRY_STMT: Final[Tag] = 201
+ELLIPSIS_EXPR: Final[Tag] = 202
+CONDITIONAL_EXPR: Final[Tag] = 203
+DEL_STMT: Final[Tag] = 204
+FSTRING_EXPR: Final[Tag] = 205
+FSTRING_INTERPOLATION: Final[Tag] = 206
+LAMBDA_EXPR: Final[Tag] = 207
+ASSIGNMENT_EXPR: Final[Tag] = 208
+STAR_EXPR: Final[Tag] = 209
+BYTES_EXPR: Final[Tag] = 210
+GLOBAL_DECL: Final[Tag] = 211
+NONLOCAL_DECL: Final[Tag] = 212
+AWAIT_EXPR: Final[Tag] = 213
+BIG_INT_EXPR: Final[Tag] = 214
+IMPORT_ALL: Final[Tag] = 215
+MATCH_STMT: Final[Tag] = 216
+AS_PATTERN: Final[Tag] = 217
+OR_PATTERN: Final[Tag] = 218
+VALUE_PATTERN: Final[Tag] = 219
+SINGLETON_PATTERN: Final[Tag] = 220
+SEQUENCE_PATTERN: Final[Tag] = 221
+STARRED_PATTERN: Final[Tag] = 222
+MAPPING_PATTERN: Final[Tag] = 223
+CLASS_PATTERN: Final[Tag] = 224
+TYPE_ALIAS_STMT: Final[Tag] = 225
+IMPORT_METADATA: Final[Tag] = 226
+IMPORTFROM_METADATA: Final[Tag] = 227
+IMPORTALL_METADATA: Final[Tag] = 228
+TSTRING_EXPR: Final[Tag] = 229
 
-def read_symbol(data: ReadBuffer) -> SymbolNode:
-    tag = read_tag(data)
+
+def read_symbol(data: ReadBuffer, tag: Tag) -> SymbolNode:
     # The branches here are ordered manually by type "popularity".
     if tag == VAR:
         return Var.read(data)
@@ -5144,8 +5570,6 @@ def read_symbol(data: ReadBuffer) -> SymbolNode:
         return FuncDef.read(data)
     if tag == DECORATOR:
         return Decorator.read(data)
-    if tag == TYPE_INFO:
-        return TypeInfo.read(data)
     if tag == OVERLOADED_FUNC_DEF:
         return OverloadedFuncDef.read(data)
     if tag == TYPE_VAR_EXPR:

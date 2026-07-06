@@ -78,6 +78,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -89,7 +90,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -388,6 +389,7 @@ class ASTConverter:
         self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
+        self.uses_template_strings = False
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
@@ -875,6 +877,7 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
+        self.uses_template_strings = False
         for ti in mod.type_ignores:
             parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
@@ -887,6 +890,7 @@ class ASTConverter:
         ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
         ret.is_stub = self.is_stub
         ret.path = self.path
+        ret.uses_template_strings = self.uses_template_strings
         return ret
 
     # --- stmt ---
@@ -1111,7 +1115,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
+        check_param_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 
@@ -1145,6 +1149,7 @@ class ASTConverter:
 
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
+        var.is_argument = True
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument
@@ -1685,19 +1690,22 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # TemplateStr(expr* values)
-    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
-        self.fail(
-            ErrorMessage("PEP 750 template strings are not yet supported"),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        e = TempNode(AnyType(TypeOfAny.from_error))
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
+        self.uses_template_strings = True
+        items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
+        for value in n.values:
+            if isinstance(value, ast_Interpolation):  # type: ignore[misc]
+                val_expr = self.visit(value.value)
+                val_expr.set_line(value.lineno, value.col_offset)
+                conversion = None if value.conversion < 0 else chr(value.conversion)
+                format_spec = (
+                    self.visit(value.format_spec) if value.format_spec is not None else None
+                )
+                items.append((val_expr, value.str, conversion, format_spec))
+            else:
+                items.append(self.visit(value))
+        e = TemplateStrExpr(items)
         return self.set_line(e, n)
-
-    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
-    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
-        assert False, "Unreachable"
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
@@ -1950,7 +1958,10 @@ class TypeConverter:
         if not isinstance(self.parent(), ast3.List):
             note = None
             if constructor:
-                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+                if e.keywords:
+                    note = "Cannot use a function call in a type annotation"
+                else:
+                    note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
             self.fail(message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED, e.lineno, e.col_offset)

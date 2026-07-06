@@ -18,7 +18,6 @@ import contextlib
 import gc
 import json
 import os
-import pickle
 import platform
 import re
 import stat
@@ -27,8 +26,10 @@ import sys
 import time
 import types
 from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
+from concurrent.futures import ThreadPoolExecutor, wait
 from heapq import heappop, heappush
 from textwrap import dedent
+from threading import Lock, Thread
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -42,7 +43,6 @@ from typing import (
     final,
 )
 
-from librt.base64 import b64encode
 from librt.internal import (
     cache_version,
     read_bool,
@@ -63,6 +63,7 @@ from mypy.cache import (
     LIST_GEN,
     LITERAL_NONE,
     CacheMeta,
+    CacheMetaEx,
     ErrorTuple,
     JsonValue,
     ReadBuffer,
@@ -71,23 +72,22 @@ from mypy.cache import (
     read_bytes,
     read_int,
     read_int_list,
-    read_int_opt,
     read_str,
     read_str_list,
     read_str_opt,
     write_bytes,
     write_int,
     write_int_list,
-    write_int_opt,
     write_json_value,
     write_str,
     write_str_list,
     write_str_opt,
 )
-from mypy.checker import TypeChecker
+from mypy.checker import DeferredNode, TypeChecker
 from mypy.defaults import (
     WORKER_CONNECTION_TIMEOUT,
     WORKER_DONE_TIMEOUT,
+    WORKER_SHUTDOWN_TIMEOUT,
     WORKER_START_INTERVAL,
     WORKER_START_TIMEOUT,
 )
@@ -107,7 +107,18 @@ from mypy.ipc import (
     send,
 )
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.nodes import (
+    Decorator,
+    FileRawData,
+    FuncDef,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    OverloadedFuncDef,
+    SymbolTable,
+)
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
@@ -115,6 +126,7 @@ from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
+    get_available_threads,
     get_mypy_comments,
     hash_digest,
     hash_digest_bytes,
@@ -133,9 +145,11 @@ if TYPE_CHECKING:
 
 from mypy import errorcodes as codes
 from mypy.config_parser import get_config_module_names, parse_mypy_comments
-from mypy.fixup import fixup_module
+from mypy.fixup import NodeFixer
 from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
+from mypy.known_modules import get_known_modules, reset_known_modules_cache
+from mypy.messages import best_matches, pretty_seq
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
     BuildSource as BuildSource,
@@ -146,14 +160,15 @@ from mypy.modulefinder import (
     SearchPaths,
     compute_search_paths,
 )
+from mypy.modules_state import modules_state
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import parse
+from mypy.parse import load_from_raw, parse
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
+from mypy.stubinfo import stub_distribution_name
 from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
@@ -193,6 +208,10 @@ MODULE_RESOLUTION_URL: Final = (
     "https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules"
 )
 
+# Padding when estimating how much time it will take to process a file. This is to avoid
+# situations where 100 empty __init__.py files cost less than 1 trivial module.
+MIN_SIZE_HINT: Final = 256
+
 
 class SCC:
     """A simple class that represents a strongly connected component (import cycle)."""
@@ -211,17 +230,17 @@ class SCC:
         self.mod_ids = ids
         # Direct dependencies, should be populated by the caller.
         self.deps: set[int] = set(deps) if deps is not None else set()
-        # Direct dependencies that have not been processed yet.
-        # Should be populated by the caller. This set may change during graph
-        # processing, while the above stays constant.
-        self.not_ready_deps: set[int] = set()
+        # Count of direct dependencies that have not been processed yet.
+        # Populated by the caller from len(deps); decremented during graph
+        # processing as each dep completes. self.deps above stays constant.
+        self.not_ready_count: int = 0
         # SCCs that (directly) depend on this SCC. Note this is a list to
         # make processing order more predictable. Dependents will be notified
         # that they may be ready in the order in this list.
         self.direct_dependents: list[int] = []
         # Rough estimate of how much time processing this SCC will take, this
         # is used for more efficient scheduling across multiple build workers.
-        self.size_hint: int = 0
+        self.size_hint: int = MIN_SIZE_HINT
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -260,10 +279,11 @@ class WorkerClient:
             "-m",
             "mypy.build_worker",
             f"--status-file={status_file}",
-            f'--options-data="{options_data}"',
+            f"--options-data={options_data}",
         ]
         # Return early without waiting, caller must call connect() before using the client.
         self.proc = subprocess.Popen(command, env=env)
+        self.connected = False
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
@@ -284,18 +304,19 @@ class WorkerClient:
                     # verify PIDs reliably.
                     assert pid == self.proc.pid, f"PID mismatch: {pid} vs {self.proc.pid}"
                 self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
+                self.connected = True
                 return
             except Exception as exc:
                 last_exception = exc
                 break
-        print("Failed to establish connection with worker:", last_exception)
-        sys.exit(2)
+        print(f"Failed to establish connection with worker: {last_exception}")
 
     def close(self) -> None:
-        self.conn.close()
+        if self.connected:
+            self.conn.close()
         # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
         try:
-            self.proc.wait(timeout=1)
+            self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
             pass
         if os.path.isfile(self.status_file):
@@ -327,7 +348,7 @@ def build(
 
     If a flush_errors callback is provided, all error messages will be
     passed to it and the errors and messages fields of BuildResult and
-    CompileError (respectively) will be empty. Otherwise those fields will
+    CompileError (respectively) will be empty. Otherwise, those fields will
     report any error messages.
 
     Args:
@@ -337,6 +358,9 @@ def build(
         (takes precedence over other directories)
       flush_errors: optional function to flush errors after a file is processed
       fscache: optionally a file-system cacher
+      stdout: Output stream to use instead of `sys.stdout`
+      stderr: Error stream to use instead of `sys.stderr`
+      extra_plugins: Plugins to use in addition to those loaded from config
       worker_env: An environment to start parallel build workers (used for tests)
     """
     # If we were not given a flush_errors, we use one that will populate those
@@ -345,6 +369,7 @@ def build(
 
     # This is mostly for the benefit of tests that use builtins fixtures.
     instance_cache.reset()
+    reset_known_modules_cache()
 
     def default_flush_errors(
         filename: str | None, new_messages: list[str], is_serious: bool
@@ -356,23 +381,42 @@ def build(
     stderr = stderr or sys.stderr
     extra_plugins = extra_plugins or []
 
+    # Create metastore before workers to avoid race conditions.
+    metastore = create_metastore(options, parallel_worker=False)
     workers = []
+    connect_threads = []
+    # A quasi-unique ID for this specific mypy invocation.
+    build_id = os.urandom(4).hex()
+    options_data = None
     if options.num_workers > 0:
-        # TODO: switch to something more efficient than pickle (also in the daemon).
-        pickled_options = pickle.dumps(options.snapshot())
-        options_data = b64encode(pickled_options).decode()
+        os.makedirs(options.cache_dir, exist_ok=True)
+        options_data = os_path_join(options.cache_dir, f".worker_options.{build_id}.data")
+        with open(options_data, "wb") as f:
+            f.write(options.to_bytes())
         workers = [
-            WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
+            WorkerClient(
+                f".mypy_worker.{build_id}.{idx}.json", options_data, worker_env or os.environ
+            )
             for idx in range(options.num_workers)
         ]
         sources_message = SourcesDataMessage(sources=sources)
         buf = WriteBuffer()
         sources_message.write(buf)
         sources_data = buf.getvalue()
+
+        def connect(wc: WorkerClient, data: bytes) -> None:
+            # Start loading sources in each worker as soon as it is up.
+            wc.connect()
+            if not wc.connected:
+                # Caller should detect this and fail gracefully.
+                return
+            wc.conn.write_bytes(data)
+
+        # We don't wait for workers to be ready until they are actually needed.
         for worker in workers:
-            # Start loading graph in each worker as soon as it is up.
-            worker.connect()
-            worker.conn.write_bytes(sources_data)
+            thread = Thread(target=connect, args=(worker, sources_data))
+            thread.start()
+            connect_threads.append(thread)
 
     try:
         result = build_inner(
@@ -385,6 +429,8 @@ def build(
             stderr,
             extra_plugins,
             workers,
+            connect_threads,
+            metastore,
         )
         result.errors = messages
         return result
@@ -398,9 +444,17 @@ def build(
         e.messages = messages
         raise
     finally:
+        # In case of an early crash it is better to wait for workers to become ready, and
+        # shut them down cleanly. Otherwise, they will linger until connection timeout.
+        for thread in connect_threads:
+            thread.join()
+        if options_data is not None:
+            os.unlink(options_data)
         for worker in workers:
+            if not worker.connected:
+                continue
             try:
-                send(worker.conn, SccRequestMessage(scc_id=None, import_errors={}))
+                send(worker.conn, SccRequestMessage(scc_ids=[], import_errors={}, mod_data={}))
             except (OSError, IPCException):
                 pass
         for worker in workers:
@@ -417,9 +471,11 @@ def build_inner(
     stderr: TextIO,
     extra_plugins: Sequence[Plugin],
     workers: list[WorkerClient],
+    connect_threads: list[Thread],
+    metastore: MetadataStore,
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
-        # Run gc less frequently, as otherwise we can spent a large fraction of
+        # Run gc less frequently, as otherwise we can spend a large fraction of
         # cpu in gc. This seems the most reasonable place to tune garbage collection.
         gc.set_threshold(200 * 1000, 30, 30)
 
@@ -437,7 +493,12 @@ def build_inner(
 
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
-    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+    error_formatter = None if options.output is None else OUTPUT_CHOICES.get(options.output)
+    errors = Errors(
+        options,
+        read_source=lambda path: read_py_file(path, cached_read),
+        error_formatter=error_formatter,
+    )
     # Record import errors so that they can be replayed by the workers.
     if workers:
         errors.global_watcher = True
@@ -445,9 +506,6 @@ def build_inner(
 
     # Validate error codes after plugins are loaded.
     options.process_error_codes(error_callback=build_error)
-
-    # Add catch-all .gitignore to cache dir if we created it
-    cache_dir_existed = os.path.isdir(options.cache_dir)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -463,11 +521,12 @@ def build_inner(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
+        error_formatter=error_formatter,
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
         stderr=stderr,
+        metastore=metastore,
     )
     manager.workers = workers
     if manager.verbosity() >= 2:
@@ -475,7 +534,7 @@ def build_inner(
 
     reset_global_state()
     try:
-        graph = dispatch(sources, manager, stdout)
+        graph = dispatch(sources, manager, stdout, connect_threads)
         if not options.fine_grained_incremental:
             type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
@@ -485,9 +544,7 @@ def build_inner(
         warn_unused_configs(options, flush_errors)
         return BuildResult(manager, graph)
     finally:
-        t0 = time.time()
-        manager.metastore.commit()
-        manager.add_stats(cache_commit_time=time.time() - t0)
+        manager.commit()
         manager.log(
             "Build finished in %.3f seconds with %d modules, and %d errors"
             % (
@@ -500,7 +557,7 @@ def build_inner(
         if reports is not None:
             # Finish the HTML or XML reports even if CompileError was raised.
             reports.finish()
-        if not cache_dir_existed and os.path.isdir(options.cache_dir):
+        if os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
             exclude_from_backups(options.cache_dir)
         if os.path.isdir(options.cache_dir):
@@ -510,10 +567,11 @@ def build_inner(
 def warn_unused_configs(
     options: Options, flush_errors: Callable[[str | None, list[str], bool], None]
 ) -> None:
-    if options.warn_unused_configs and options.unused_configs and not options.non_interactive:
+    unused_configs = options.get_unused_configs()
+    if options.warn_unused_configs and unused_configs and not options.non_interactive:
         unused = get_config_module_names(
             options.config_file,
-            [glob for glob in options.per_module_options.keys() if glob in options.unused_configs],
+            [glob for glob in options.per_module_options.keys() if glob in unused_configs],
         )
         flush_errors(
             None, ["{}: note: unused section(s): {}".format(options.config_file, unused)], False
@@ -787,8 +845,11 @@ class BuildManager:
         stderr: TextIO,
         error_formatter: ErrorFormatter | None = None,
         parallel_worker: bool = False,
+        metastore: MetadataStore | None = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
+        # Use in cases where we need to prevent race conditions in stats reporting.
+        self.stats_lock = Lock()
         self.stdout = stdout
         self.stderr = stderr
         self.start_time = time.time()
@@ -802,6 +863,11 @@ class BuildManager:
         self.options = options
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
+        # Share same modules dictionary with the global fixer state.
+        # We need to set allow_missing when doing a fine-grained cache
+        # load because we need to gracefully handle missing modules.
+        modules_state.modules = self.modules
+        modules_state.node_fixer = NodeFixer(self.modules, self.options.use_fine_grained_cache)
         self.import_map: dict[str, set[str]] = {}
         self.missing_modules: dict[str, int] = {}
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
@@ -852,22 +918,24 @@ class BuildManager:
                 continue
             path = self.find_module_cache.find_module(module, fast_path=True)
             if not isinstance(path, str):
-                raise CompileError(
-                    [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
+                build_error(
+                    f'Failed to find builtin module "{module}", perhaps typeshed is broken?'
                 )
             if is_typeshed_file(options.abs_custom_typeshed_dir, path) or is_stub_package_file(
                 path
             ):
                 continue
 
-            raise CompileError(
-                [
-                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
-                    f'note: A user-defined top-level module with name "{module}" is not supported',
-                ]
+            self.errors.set_file(path, module, options)
+            self.error(None, f'This file shadows library module "{module}"', blocker=True)
+            self.note(
+                None, f'A user-defined top-level module with name "{module}" is not supported'
             )
+            self.errors.raise_error()
 
-        self.metastore = create_metastore(options, parallel_worker)
+        if metastore is None:
+            metastore = create_metastore(options, parallel_worker=parallel_worker)
+        self.metastore = metastore
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -895,7 +963,7 @@ class BuildManager:
         # until all the files have been added. This means that a
         # new file can be processed O(n**2) times. This cache
         # avoids most of this redundant work.
-        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
+        self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo], str | None]] = {}
         # Number of times we used GC optimization hack for fresh SCCs.
         self.gc_freeze_cycles = 0
         # Mapping from SCC id to corresponding SCC instance. This is populated
@@ -910,6 +978,8 @@ class BuildManager:
         # Stale SCCs that are queued for processing. Each tuple contains SCC size hint,
         # SCC adding order (tie-breaker), and the SCC itself.
         self.scc_queue: list[tuple[int, int, SCC]] = []
+        # Total size hint for SCCs currently in queue.
+        self.size_in_queue: int = 0
         # SCCs that have been fully processed.
         self.done_sccs: set[int] = set()
         # Parallel build workers, list is empty for in-process type-checking.
@@ -928,16 +998,151 @@ class BuildManager:
         self.import_options: dict[str, bytes] = {}
         # Cache for transitive dependency check (expensive).
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
-        # Resolved paths for each module in build.
-        self.path_by_id: dict[str, str] = {}
+        # Cache for options_snapshot() keyed by the cloned Options. Options is
+        # hashed by identity, and most modules share a handful of distinct
+        # configs, so this collapses ~all calls onto a few entries.
+        self.options_snapshot_cache: dict[Options, tuple[str, str]] = {}
         # Packages for which we know presence or absence of __getattr__().
         self.known_partial_packages: dict[str, bool] = {}
 
     def dump_stats(self) -> None:
         if self.stats_enabled:
-            print("Stats:")
+            lines = ["Stats:"]
             for key, value in sorted(self.stats_summary().items()):
-                print(f"{key + ':':24}{value}")
+                fmt = ".3f" if isinstance(value, float) else "d"
+                lines.append(f"{key + ':':24}{value:{fmt}}")
+            # Call print once so that we don't get a mess in parallel mode.
+            print("\n".join(lines) + "\n\n", end="")
+
+    def parse_all(self, states: list[State], post_parse: bool = True) -> None:
+        """Parse multiple files in parallel (if possible) and compute dependencies.
+
+        If post_parse is False, skip the last step (used when parsing unchanged files
+        that need to be re-checked due to stale dependencies).
+        """
+        if not self.options.native_parser:
+            # Old parser cannot be parallelized.
+            for state in states:
+                state.parse_file()
+            if post_parse:
+                self.post_parse_all(states)
+            return
+
+        parallel_states = []
+        for state in states:
+            if not self.fscache.exists(state.xpath, real_only=True) or (
+                self.shadow_map and self.maybe_swap_for_shadow_path(state.xpath) != state.xpath
+            ):
+                state.source = state.get_source()
+            if state.tree is not None:
+                # The file was already parsed.
+                state.needs_parse = False
+                continue
+            parallel_states.append(state)
+
+        if len(parallel_states) > 1:
+            # This duplicates a bit of logic from State.parse_file(). This is done as an
+            # optimization to parallelize only those parts of the code that can be
+            # parallelized efficiently.
+
+            parallel_parsed_states, parallel_parsed_states_set = self.parse_files_threaded_raw(
+                parallel_states
+            )
+
+            for state in parallel_parsed_states:
+                # New parser only returns serialized ASTs
+                with state.wrap_context():
+                    assert state.tree is not None
+                    raw_data = state.tree.raw_data
+                    if raw_data is not None:
+                        # Apply inline mypy config before deserialization, since
+                        # some options (e.g. implicit_optional) affect how the
+                        # AST is built during deserialization.
+                        state.source_hash = raw_data.source_hash
+                        state.apply_inline_configuration(raw_data.mypy_comments)
+                        state.tree = load_from_raw(
+                            state.xpath,
+                            state.id,
+                            raw_data,
+                            self.errors,
+                            state.options,
+                            imports_only=bool(self.workers),
+                        )
+                    if self.errors.is_blockers():
+                        self.log("Bailing due to parse errors")
+                        self.errors.raise_error()
+
+            for state in parallel_states:
+                assert state.tree is not None
+                if state in parallel_parsed_states_set:
+                    if state.tree.raw_data is not None:
+                        # source_hash was already extracted above, but raw_data
+                        # may have been preserved for workers (imports_only=True).
+                        pass
+                    elif state.source_hash is None:
+                        # At least namespace packages may not have source.
+                        state.get_source()
+                    state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
+                    state.semantic_analysis_pass1()
+                    self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
+                self.modules[state.id] = state.tree
+                if state.tree.raw_data is not None:
+                    state.size_hint = len(state.tree.raw_data.defs) + MIN_SIZE_HINT
+                state.check_blockers()
+                state.setup_errors()
+        elif len(parallel_states) == 1:
+            # Avoid using executor when there is no parallelism.
+            parallel_states[0].parse_file()
+
+        if post_parse:
+            self.post_parse_all(states)
+
+    def parse_files_threaded_raw(self, states: list[State]) -> tuple[list[State], set[State]]:
+        """Parse files in parallel using a thread pool.
+
+        Trees from the new parser are left in raw (serialized) form.
+
+        Return (list, set) of states that were actually parsed (not cached).
+        """
+        futures = []
+        # Use both list and a set to have more predictable order of errors,
+        # while also not sacrificing performance.
+        parallel_parsed_states: list[State] = []
+        parallel_parsed_states_set: set[State] = set()
+        # Use at least --num-workers if specified by user.
+        available_threads = max(get_available_threads(), self.options.num_workers)
+        # Overhead from trying to parallelize (small) blocking portion of
+        # parse_file_inner() results in no visible improvement with more than 8 threads.
+        # TODO: reuse thread pool and/or batch small files in single submit() call.
+        with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
+            for state in states:
+                state.needs_parse = False
+                if state.id not in self.ast_cache:
+                    self.log(f"Parsing {state.xpath} ({state.id})")
+                    ignore_errors = state.ignore_all or state.options.ignore_errors
+                    if ignore_errors:
+                        self.errors.ignored_files.add(state.xpath)
+                    futures.append(executor.submit(state.parse_file_inner, state.source))
+                    parallel_parsed_states.append(state)
+                    parallel_parsed_states_set.add(state)
+                else:
+                    self.log(f"Using cached AST for {state.xpath} ({state.id})")
+                    state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
+                    state.source_hash = source_hash
+
+            for fut in wait(futures).done:
+                fut.result()
+
+        return parallel_parsed_states, parallel_parsed_states_set
+
+    def post_parse_all(self, states: list[State]) -> None:
+        for state in states:
+            state.compute_dependencies()
+            if self.workers and state.tree:
+                # We don't need imports in coordinator process anymore, we parse only to
+                # compute dependencies.
+                state.tree.imports = []
+                del self.ast_cache[state.id]
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -1048,31 +1253,48 @@ class BuildManager:
         return res
 
     def is_module(self, id: str) -> bool:
-        """Is there a file in the file system corresponding to module id?"""
+        """Does the given fullname refer to a module?
+
+        Note: this does not always verify that the module exists and relies on
+        previously executed logic in find_module_and_diagnose().
+        """
+        if id in self.modules:
+            # Micro-optimization, if we already found it, it is definitely a module.
+            return True
+        if id in self.source_set.source_modules:
+            # Special case: if a module is passed on command line, we accept it even
+            # if we would not resolve it using regular mechanisms. This makes behavior
+            # consistent in cases like `mypy foo-stubs`, where stubs are not installed.
+            return True
         return find_module_simple(id, self) is not None
 
     def parse_file(
-        self, id: str, path: str, source: str, ignore_errors: bool, options: Options
+        self,
+        id: str,
+        path: str,
+        source: str | None,
+        options: Options,
+        raw_data: FileRawData | None = None,
     ) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        if ignore_errors:
-            self.errors.ignored_files.add(path)
-        tree = parse(source, path, id, self.errors, options=options)
+        if raw_data:
+            # If possible, deserialize from known binary data instead of parsing from scratch.
+            tree = load_from_raw(path, id, raw_data, self.errors, options)
+        else:
+            tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
-        self.add_stats(
-            files_parsed=1,
-            modules_parsed=int(not tree.is_stub),
-            stubs_parsed=int(tree.is_stub),
-            parse_time=time.time() - t0,
-        )
-
-        if self.errors.is_blockers():
-            self.log("Bailing due to parse errors")
-            self.errors.raise_error()
+        if self.stats_enabled:
+            with self.stats_lock:
+                self.add_stats(
+                    files_parsed=1,
+                    modules_parsed=int(not tree.is_stub),
+                    stubs_parsed=int(tree.is_stub),
+                    parse_time=time.time() - t0,
+                )
         return tree
 
     def load_fine_grained_deps(self, id: str) -> dict[str, set[str]]:
@@ -1091,6 +1313,15 @@ class BuildManager:
     ) -> None:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, self.modules, type_map, options)
+
+    def commit(self) -> None:
+        t0 = time.time()
+        self.metastore.commit()
+        self.add_stats(cache_commit_time=time.time() - t0)
+
+    def commit_module(self, meta_file: str) -> None:
+        """Commit cache writes for a single module (identified by its meta file path)."""
+        self.metastore.commit_path(meta_file)
 
     def verbosity(self) -> int:
         return self.options.verbosity
@@ -1129,67 +1360,159 @@ class BuildManager:
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
 
-    def submit(self, sccs: list[SCC]) -> None:
+    def broadcast(self, message: bytes) -> None:
+        """Broadcast same message to all workers in parallel."""
+        t0 = time.time()
+        threads = []
+        for worker in self.workers:
+            thread = Thread(target=worker.conn.write_bytes, args=(message,))
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+        self.add_stats(broadcast_time=time.time() - t0)
+
+    def wait_ack(self) -> None:
+        """Wait for an ack from all workers."""
+        for idx in range(len(self.workers)):
+            buf = self.receive_worker_message(idx)
+            assert read_tag(buf) == ACK_MESSAGE
+
+    def receive_worker_message(self, idx: int) -> ReadBuffer:
+        """Receive a single message from a worker, with crash diagnostics."""
+        try:
+            return receive(self.workers[idx].conn)
+        except OSError as exc:
+            try:
+                # Give worker process a chance to actually terminate before reporting.
+                exit_code = self.workers[idx].proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
+            except TimeoutError:
+                exit_code = None
+            exit_status = f"exit code {exit_code}" if exit_code is not None else "still running"
+            raise OSError(
+                f"Worker {idx} disconnected before sending data ({exit_status})"
+            ) from exc
+
+    def submit(self, graph: Graph, sccs: list[SCC]) -> None:
         """Submit a stale SCC for processing in current process or parallel workers."""
         if self.workers:
-            self.submit_to_workers(sccs)
+            self.submit_to_workers(graph, sccs)
         else:
             self.scc_queue.extend([(0, 0, scc) for scc in sccs])
 
-    def submit_to_workers(self, sccs: list[SCC] | None = None) -> None:
+    def get_scc_batch(self, max_size_in_batch: int) -> list[SCC]:
+        """Get a batch of SCCs from queue to submit to a worker.
+
+        We batch SCCs to avoid communication overhead, but to avoid
+        long poles, we limit fraction of work per worker.
+        """
+        batch: list[SCC] = []
+        size_in_batch = 0
+        while self.scc_queue and (
+            # Three notes keep in mind here:
+            #   * Heap key is *negative* size (so that larger SCCs appear first).
+            #   * Each batch must have at least one item.
+            #   * Adding another SCC to batch should not exceed maximum allowed size.
+            size_in_batch - self.scc_queue[0][0] <= max_size_in_batch
+            or not batch
+        ):
+            size_key, _, scc = heappop(self.scc_queue)
+            size_in_batch -= size_key
+            self.size_in_queue += size_key
+            batch.append(scc)
+        return batch
+
+    def max_batch_size(self) -> int:
+        batch_frac = 1 / len(self.workers)
+        if sys.platform == "linux":
+            # Linux is good with socket roundtrip latency, so we can use
+            # more fine-grained batches.
+            batch_frac /= 2
+        return int(self.size_in_queue * batch_frac)
+
+    def submit_to_workers(self, graph: Graph, sccs: list[SCC] | None = None) -> None:
         if sccs is not None:
             for scc in sccs:
                 heappush(self.scc_queue, (-scc.size_hint, self.queue_order, scc))
+                self.size_in_queue += scc.size_hint
                 self.queue_order += 1
+        max_size_in_batch = self.max_batch_size()
         while self.scc_queue and self.free_workers:
             idx = self.free_workers.pop()
-            _, _, scc = heappop(self.scc_queue)
+            scc_batch = self.get_scc_batch(max_size_in_batch)
             import_errors = {
                 mod_id: self.errors.recorded[path]
+                for scc in scc_batch
                 for mod_id in scc.mod_ids
-                if (path := self.path_by_id[mod_id]) in self.errors.recorded
+                if (path := graph[mod_id].xpath) in self.errors.recorded
             }
+            t0 = time.time()
             send(
                 self.workers[idx].conn,
-                SccRequestMessage(scc_id=scc.id, import_errors=import_errors),
+                SccRequestMessage(
+                    scc_ids=[scc.id for scc in scc_batch],
+                    import_errors=import_errors,
+                    mod_data={
+                        mod_id: (
+                            # Although workers don't really need to know about details
+                            # of dependencies, they will write cache, so we need to pass
+                            # suppressed_deps_opts() as part of module data.
+                            graph[mod_id].suppressed_deps_opts(),
+                            tree.raw_data if (tree := graph[mod_id].tree) else None,
+                        )
+                        for scc in scc_batch
+                        for mod_id in scc.mod_ids
+                    },
+                ),
             )
+            self.add_stats(scc_requests_sent=1, scc_send_time=time.time() - t0)
 
-    def wait_for_done(
-        self, graph: Graph
-    ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
         """Wait for a stale SCC processing to finish.
 
         Return a tuple three items:
           * processed SCCs
           * whether we have more in the queue
-          * new interface hash and list of errors for each module
+          * new interface hash or list of errors for each module
         The last item is only used for parallel processing.
         """
         if self.workers:
-            return self.wait_for_done_workers()
+            return self.wait_for_done_workers(graph)
         if not self.scc_queue:
             return [], False, {}
         _, _, next_scc = self.scc_queue.pop(0)
         process_stale_scc(graph, next_scc, self)
         return [next_scc], bool(self.scc_queue), {}
 
-    def wait_for_done_workers(self) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    def wait_for_done_workers(
+        self, graph: Graph
+    ) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
         if not self.scc_queue and len(self.free_workers) == len(self.workers):
             return [], False, {}
 
         done_sccs = []
         results = {}
-        for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
-            data = SccResponseMessage.read(receive(self.workers[idx].conn))
-            self.free_workers.add(idx)
-            scc_id = data.scc_id
+        t0 = time.time()
+        ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
+        t1 = time.time()
+        for idx in ready:
+            buf = self.receive_worker_message(idx)
+            assert read_tag(buf) == SCC_RESPONSE_MESSAGE
+            data = SccResponseMessage.read(buf)
+            if not data.is_interface:
+                # Mark worker as free after it finished checking implementation.
+                self.free_workers.add(idx)
             if data.blocker is not None:
                 raise data.blocker
             assert data.result is not None
             results.update(data.result)
-            done_sccs.append(self.scc_by_id[scc_id])
-        self.submit_to_workers()  # advance after some workers are free.
+            if data.is_interface:
+                done_sccs.extend([self.scc_by_id[scc_id] for scc_id in data.scc_ids])
+        self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
+        self.submit_to_workers(graph)  # advance after some workers are free.
         return (
+            # Note that "done" means interface-ready in this context. This is what
+            # the caller should expect.
             done_sccs,
             bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
             results,
@@ -1579,16 +1902,24 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
+def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        # We use this flag in both coordinator and workers to seep up commits,
-        # see mypy.metastore.connect_db() for details.
-        sync_off = options.num_workers > 0 or parallel_worker
-        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options), sync_off=sync_off)
+        mds: MetadataStore = SqliteMetadataStore(
+            _cache_dir_prefix(options),
+            set_journal_mode=not parallel_worker,
+            num_shards=options.sqlite_num_shards,
+        )
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
     return mds
+
+
+def get_meta_ex_name(meta_name: str) -> str:
+    # Convert e.g. foo.bar.meta.ff to foo.bar.meta_ex.ff
+    parts = meta_name.rsplit(".", maxsplit=2)
+    parts[1] = "meta_ex"
+    return ".".join(parts)
 
 
 def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str | None]:
@@ -1632,28 +1963,34 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     return prefix + meta_suffix, prefix + data_suffix, deps_json
 
 
-def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
+def options_snapshot(module: str, manager: BuildManager) -> dict[str, object]:
     """Make compact snapshot of options for a module.
 
     Separately store only the options we may compare individually, and take a hash
     of everything else. If --debug-cache is specified, fall back to full snapshot.
     """
-    platform_opt, values = manager.options.clone_for_module(id).select_options_affecting_cache()
+    cloned = manager.options.clone_for_module(module)
     if manager.options.debug_cache:
         # Build full options snapshot for debugging purposes.
+        platform_opt, values = cloned.select_options_affecting_cache()
         result: dict[str, object] = {"platform": platform_opt}
         for key, val in zip(OPTIONS_AFFECTING_CACHE_NO_PLATFORM, values):
             result[key] = val
         return result
-    # Process most options quickly, since this is performance critical.
-    buf = WriteBuffer()
-    write_json_value(buf, cast(JsonValue, values))
-    return {"platform": platform_opt, "other_options": hash_digest(buf.getvalue())}
+    cache = manager.options_snapshot_cache
+    cached = cache.get(cloned)
+    if cached is None:
+        platform_opt, values = cloned.select_options_affecting_cache()
+        buf = WriteBuffer()
+        write_json_value(buf, cast(JsonValue, values))
+        cached = (platform_opt, hash_digest(buf.getvalue()))
+        cache[cloned] = cached
+    return {"platform": cached[0], "other_options": cached[1]}
 
 
 def find_cache_meta(
     id: str, path: str, manager: BuildManager, skip_validation: bool = False
-) -> CacheMeta | None:
+) -> tuple[CacheMeta, CacheMetaEx] | None:
     """Find cache data for a module.
 
     Args:
@@ -1663,22 +2000,19 @@ def find_cache_meta(
       skip_validation: if True skip any validation steps (used for parallel checking)
 
     Returns:
-      A CacheMeta instance if the cache data was found and appears
+      A CacheMeta/CacheMetaEx instance pair if the cache data was found and appears
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
     meta_file, data_file, _ = get_cache_names(id, path, manager.options)
     if manager.tracing_enabled:
         manager.trace(f"Looking for {id} at {meta_file}")
-    meta: bytes | dict[str, Any] | None
     if manager.stats_enabled:
         t0 = time.time()
     if manager.options.fixed_format_cache:
         meta = _load_ff_file(
             meta_file, manager, log_error_fmt="Could not load cache for {}: ", id=id
         )
-        if meta is None:
-            return None
     else:
         meta = _load_json_file(
             meta_file,
@@ -1686,13 +2020,8 @@ def find_cache_meta(
             log_success=f"Meta {id} ",
             log_error=f"Could not load cache for {id}: ",
         )
-        if meta is None:
-            return None
-        if not isinstance(meta, dict):
-            manager.log(  # type: ignore[unreachable]
-                f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}"
-            )
-            return None
+    if meta is None:
+        return None
     if manager.stats_enabled:
         t1 = time.time()
     if isinstance(meta, bytes):
@@ -1715,7 +2044,11 @@ def find_cache_meta(
             load_meta_time=t2 - t0, load_meta_load_time=t1 - t0, load_meta_from_dict_time=t2 - t1
         )
     if skip_validation:
-        return m
+        # If the caller requested no validation, skip the implementation part of the meta
+        # as well, as a performance optimization. Note: this may return an incomplete meta,
+        # only use if you know what you are doing.
+        assert manager.parallel_worker
+        return m, CacheMetaEx([], [], [], [])
 
     # Ignore cache if generated by an older mypy version.
     if m.version_id != manager.version_id and not manager.options.skip_version_check:
@@ -1763,8 +2096,29 @@ def find_cache_meta(
         manager.log(f"Metadata abandoned for {id}: plugin configuration differs")
         return None
 
+    meta_ex_file = get_meta_ex_name(meta_file)
+    if manager.options.fixed_format_cache:
+        meta_ex = _load_ff_file(
+            meta_ex_file, manager, log_error_fmt="Could not load meta_ex for {}: ", id=id
+        )
+    else:
+        meta_ex = _load_json_file(
+            meta_ex_file,
+            manager,
+            log_success=f"Meta_ex {id} ",
+            log_error=f"Could not load meta_ex for {id}: ",
+        )
+    if meta_ex is None:
+        return None
+    if isinstance(meta_ex, bytes):
+        data_io = ReadBuffer(meta_ex)
+        me = CacheMetaEx.read(data_io)
+    else:
+        me = CacheMetaEx.deserialize(meta_ex)
+    if me is None:
+        return None
     manager.add_stats(fresh_metas=1)
-    return m
+    return m, me
 
 
 def validate_meta(
@@ -2043,9 +2397,8 @@ def write_cache(
         version_id=manager.version_id,
         ignore_all=ignore_all,
         plugin_data=plugin_data,
-        # These two will be filled by the caller.
+        # This one will be filled by the caller.
         dep_hashes=[],
-        error_lines=[],
     )
     return interface_hash, (meta, meta_file)
 
@@ -2067,6 +2420,21 @@ def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> 
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
         manager.log(f"Error writing cache meta file {meta_file}")
+
+
+def write_cache_meta_ex(meta_file: str, meta_ex: CacheMetaEx, manager: BuildManager) -> None:
+    # Write errors cache file
+    meta_ex_file = get_meta_ex_name(meta_file)
+    metastore = manager.metastore
+    if manager.options.fixed_format_cache:
+        data_io = WriteBuffer()
+        meta_ex.write(data_io)
+        meta_bytes = data_io.getvalue()
+    else:
+        # Some generic JSON helpers require top-level to be a dict.
+        meta_bytes = json_dumps(meta_ex.serialize(), manager.options.debug_cache)
+    if not metastore.write(meta_ex_file, meta_bytes):
+        manager.log(f"Error writing meta_ex file {meta_ex_file}")
 
 
 """Dependency manager.
@@ -2355,12 +2723,14 @@ class State:
             ignore_all = True
 
         meta = None
+        meta_ex = None
         interface_hash = b""
         meta_source_hash = None
         if path and source is None and manager.cache_enabled:
-            meta = find_cache_meta(id, path, manager)
+            meta_pair = find_cache_meta(id, path, manager)
             # TODO: Get mtime if not cached.
-            if meta is not None:
+            if meta_pair is not None:
+                meta, meta_ex = meta_pair
                 interface_hash = meta.interface_hash
                 meta_source_hash = meta.hash
         if path and source is None and manager.fscache.isdir(path):
@@ -2373,6 +2743,7 @@ class State:
             manager.add_stats(validate_meta_time=time.time() - t0)
 
         if meta:
+            assert meta_ex is not None
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             dependencies = list(meta.dependencies)
@@ -2382,10 +2753,19 @@ class State:
             priorities = {id: pri for id, pri in zip(all_deps, meta.dep_prios)}
             assert len(all_deps) == len(meta.dep_lines)
             dep_line_map = {id: line for id, line in zip(all_deps, meta.dep_lines)}
+            # Merge CacheMetaEx data into CacheMeta data.
+            for dep in meta_ex.dependencies + meta_ex.suppressed:
+                priorities[dep] = PRI_INDIRECT
+                dep_line_map[dep] = 1
+            dependencies += meta_ex.dependencies
+            meta.dependencies += meta_ex.dependencies
+            suppressed += meta_ex.suppressed
+            meta.suppressed += meta_ex.suppressed
+            meta.dep_hashes += meta_ex.dep_hashes
             assert len(meta.dep_hashes) == len(meta.dependencies)
             dep_hashes = {k: v for (k, v) in zip(meta.dependencies, meta.dep_hashes)}
             # Only copy `error_lines` if the module is not silently imported.
-            error_lines = [] if ignore_all else meta.error_lines
+            error_lines = [] if ignore_all else meta_ex.error_lines
             imports_ignored = meta.imports_ignored
         else:
             dependencies = []
@@ -2432,8 +2812,7 @@ class State:
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine-grained mode.
                 if exist_added_packages(suppressed, manager):
-                    state.parse_file()  # This is safe because the cache is anyway stale.
-                    state.compute_dependencies()
+                    state.needs_parse = True  # This is safe because the cache is anyway stale.
                 # This is an inverse to the situation above. If we had an import like this:
                 #     from pkg import mod
                 # and then mod was deleted, we need to force recompute dependencies, to
@@ -2442,9 +2821,8 @@ class State:
                 #     import pkg
                 #     import pkg.mod
                 if exist_removed_submodules(dependencies, manager):
-                    state.parse_file()  # Same as above, the current state is stale anyway.
-                    state.compute_dependencies()
-            state.size_hint = meta.size
+                    state.needs_parse = True  # Same as above, the current state is stale anyway.
+            state.size_hint = meta.size + MIN_SIZE_HINT
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -2453,16 +2831,17 @@ class State:
                 manager.log(f"Deferring module to fine-grained update {path} ({id})")
                 raise ModuleNotFound
 
-            # Parse the file (and then some) to get the dependencies.
-            state.parse_file(temporary=temporary)
-            state.compute_dependencies()
-            if manager.workers:
-                # We don't need parsed trees in coordinator process, we parse only to
-                # compute dependencies. Keep temporary tree until the caller uses it
-                if not temporary:
-                    state.tree = None
-                    del manager.modules[id]
-                del manager.ast_cache[id]
+            if temporary:
+                # Eagerly parse temporary states, they are needed rarely.
+                state.parse_file(temporary=True)
+                state.compute_dependencies()
+                if state.manager.workers and state.tree:
+                    # We don't need imports in coordinator process anymore, we parse only to
+                    # compute dependencies.
+                    state.tree.imports = []
+                    del state.manager.ast_cache[state.id]
+            else:
+                state.needs_parse = True
 
         return state
 
@@ -2522,6 +2901,11 @@ class State:
         self.add_ancestors()
         self.imports_ignored = imports_ignored
         self.size_hint = size_hint
+        # Pre-computed opaque value of suppressed_deps_opts() used
+        # to minimize amount of data sent to parallel workers.
+        self.known_suppressed_deps_opts: bytes | None = None
+        # An internal flag used by build manager to schedule states for parsing.
+        self.needs_parse = False
 
     def write(self, buf: WriteBuffer) -> None:
         """Serialize State for sending to build worker.
@@ -2619,10 +3003,13 @@ class State:
         that may have changed after initial graph loading. Currently, this is only
         the interface hash.
         """
+        assert self.manager.parallel_worker
         assert self.path is not None
-        self.meta = find_cache_meta(self.id, self.path, self.manager, skip_validation=True)
-        assert self.meta is not None
-        self.interface_hash = self.meta.interface_hash
+        new_meta_pair = find_cache_meta(self.id, self.path, self.manager, skip_validation=True)
+        assert new_meta_pair is not None
+        new_meta, _ = new_meta_pair
+        # Copy relevant information from new meta (which may be incomplete).
+        self.interface_hash = new_meta.interface_hash
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2739,37 +3126,31 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        # We need to set allow_missing when doing a fine-grained cache
-        # load because we need to gracefully handle missing modules.
-        fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
+        # Do initial lightweight pass fixing TypeInfos and module cross-references.
+        assert modules_state.node_fixer is not None
+        modules_state.node_fixer.visit_symbol_table(self.tree.names)
+        type_fixer = modules_state.node_fixer.type_fixer
+        # Eagerly fix shared instances, before they are used by named_type() calls.
+        if instance_cache.str_type is not None:
+            instance_cache.str_type.accept(type_fixer)
+        if instance_cache.function_type is not None:
+            instance_cache.function_type.accept(type_fixer)
+        if instance_cache.int_type is not None:
+            instance_cache.int_type.accept(type_fixer)
+        if instance_cache.bool_type is not None:
+            instance_cache.bool_type.accept(type_fixer)
+        if instance_cache.object_type is not None:
+            instance_cache.object_type.accept(type_fixer)
 
     # Methods for processing modules from source code.
 
-    def parse_file(self, *, temporary: bool = False) -> None:
-        """Parse file and run first pass of semantic analysis.
-
-        Everything done here is local to the file. Don't depend on imported
-        modules in any way. Also record module dependencies based on imports.
-        """
-        if self.tree is not None:
-            # The file was already parsed (in __init__()).
-            return
-
+    def get_source(self) -> str:
+        """Get module source and parse inline mypy configurations."""
         manager = self.manager
-
-        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
-        cached = self.id in manager.ast_cache
-        modules = manager.modules
-        if not cached:
-            manager.log(f"Parsing {self.xpath} ({self.id})")
-        else:
-            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
-
         t0 = time_ref()
 
         with self.wrap_context():
             source = self.source
-            self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
@@ -2783,7 +3164,7 @@ class State:
                     assert ioerr.errno is not None
                     raise CompileError(
                         [
-                            "mypy: error: cannot read file '{}': {}".format(
+                            "mypy: error: Cannot read file '{}': {}".format(
                                 self.path.replace(os.getcwd() + os.sep, ""),
                                 os.strerror(ioerr.errno),
                             )
@@ -2792,11 +3173,11 @@ class State:
                     ) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith(".pyd"):
-                        err = f"{self.path}: error: stubgen does not support .pyd files"
+                        err = f"{self.path}: error: Stubgen does not support .pyd files"
                     else:
-                        err = f"{self.path}: error: cannot decode file: {str(decodeerr)}"
+                        err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
-            elif self.path and self.manager.fscache.isdir(self.path):
+            elif self.path and manager.fscache.isdir(self.path):
                 source = ""
                 self.source_hash = ""
             else:
@@ -2804,34 +3185,90 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.check_for_invalid_options()
 
-            self.size_hint = len(source)
-            if not cached:
-                ignore_errors = self.ignore_all or self.options.ignore_errors
-                self.tree = manager.parse_file(
-                    self.id, self.xpath, source, ignore_errors=ignore_errors, options=self.options
-                )
-            else:
-                # Reuse a cached AST
-                self.tree = manager.ast_cache[self.id][0]
+            self.size_hint = len(source) + MIN_SIZE_HINT
+        self.time_spent_us += time_spent_us(t0)
+        return source
 
+    def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
+        t0 = time_ref()
+        self.tree = self.manager.parse_file(
+            self.id, self.xpath, source, options=self.options, raw_data=raw_data
+        )
         self.time_spent_us += time_spent_us(t0)
 
-        if not cached:
+    def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
+        """Parse file and run first pass of semantic analysis.
+
+        Everything done here is local to the file. Don't depend on imported
+        modules in any way. Logic here should be kept in sync with BuildManager.parse_all().
+        """
+        self.needs_parse = False
+        tree = self.tree
+        if tree is not None:
+            # The file was already parsed.
+            return
+
+        if raw_data is None:
+            source = self.get_source()
+        else:
+            source = ""
+        manager = self.manager
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
+        if self.id not in manager.ast_cache:
+            self.manager.log(f"Parsing {self.xpath} ({self.id})")
+            ignore_errors = self.ignore_all or self.options.ignore_errors
+            if ignore_errors:
+                self.manager.errors.ignored_files.add(self.xpath)
+            with self.wrap_context():
+                manager.errors.set_file(self.xpath, self.id, options=self.options)
+                if raw_data is not None:
+                    # Apply inline mypy config before deserialization, since
+                    # some options (e.g. implicit_optional) affect how the
+                    # AST is built during deserialization.
+                    self.source_hash = raw_data.source_hash
+                    self.apply_inline_configuration(raw_data.mypy_comments)
+                self.parse_file_inner(source, raw_data)
+                assert self.tree is not None
+                # New parser returns serialized trees that need to be de-serialized.
+                if self.tree.raw_data is not None:
+                    assert raw_data is None
+                    self.tree = load_from_raw(
+                        self.xpath,
+                        self.id,
+                        self.tree.raw_data,
+                        manager.errors,
+                        self.options,
+                        imports_only=bool(self.manager.workers),
+                    )
+                if manager.errors.is_blockers():
+                    manager.log("Bailing due to parse errors")
+                    manager.errors.raise_error()
             # Make a copy of any errors produced during parse time so that
             # fine-grained mode can repeat them when the module is
             # reprocessed.
             self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
             self.semantic_analysis_pass1()
         else:
-            self.early_errors = manager.ast_cache[self.id][1]
+            # Reuse a cached AST
+            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
+            self.tree, self.early_errors, source_hash = manager.ast_cache[self.id]
+            self.source_hash = source_hash
 
+        assert self.tree is not None
         if not temporary:
-            modules[self.id] = self.tree
+            manager.modules[self.id] = self.tree
             self.check_blockers()
 
-        manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        manager.ast_cache[self.id] = (self.tree, self.early_errors, self.source_hash)
+        assert self.tree is not None
+        if self.tree.raw_data is not None:
+            # Size of serialized tree is a better proxy for file complexity than
+            # file size, so we use that when possible. Note that we rely on lucky
+            # coincidence that serialized tree size has same order of magnitude as
+            # file size, so we don't need any normalization factor in situations
+            # where parsed and cached files are mixed.
+            self.size_hint = len(self.tree.raw_data.defs) + MIN_SIZE_HINT
         self.setup_errors()
 
     def setup_errors(self) -> None:
@@ -2844,12 +3281,17 @@ class State:
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
+        self.apply_inline_configuration(flags)
+
+    def apply_inline_configuration(self, flags: list[tuple[int, str]] | None) -> None:
+        """Apply inline mypy configuration comments and check for invalid options."""
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
                 self.manager.error(lineno, error)
+        self.check_for_invalid_options()
 
     def check_for_invalid_options(self) -> None:
         if self.options.mypyc and not self.options.strict_bytes:
@@ -2875,13 +3317,14 @@ class State:
         #
         # TODO: This should not be considered as a semantic analysis
         #     pass -- it's an independent pass.
-        analyzer = SemanticAnalyzerPreAnalysis()
-        with self.wrap_context():
-            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        if not options.native_parser:
+            analyzer = SemanticAnalyzerPreAnalysis()
+            with self.wrap_context():
+                analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
-            if not self.options.allow_redefinition_new:
+            if not self.options.allow_redefinition:
                 # Perform some low-key variable renaming when assignments can't
                 # widen inferred types
                 self.tree.accept(LimitedVariableRenameVisitor())
@@ -2929,9 +3372,17 @@ class State:
         self.priorities = {}  # id -> priority
         self.dep_line_map = {}  # id -> line
         self.dep_hashes = {}
+        # We copy imports as defs to (partially) support some legacy mypy plugins,
+        # most notably old NumPy plugin that does some imports patching, see #21323.
+        copied_imports = False
+        if not self.tree.defs and self.tree.raw_data is not None:
+            self.tree.defs = list(self.tree.imports)
+            copied_imports = True
         dep_entries = manager.all_imported_modules_in_file(
             self.tree
         ) + self.manager.plugin.get_additional_deps(self.tree)
+        if copied_imports:
+            self.tree.defs = []
         for pri, id, line in dep_entries:
             self.priorities[id] = min(pri, self.priorities.get(id, PRI_ALL))
             if id == self.id:
@@ -2946,15 +3397,17 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
+        if self.tree.uses_template_strings:
+            self.add_dependency("string.templatelib")
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
-    def type_check_first_pass(self) -> None:
+    def type_check_first_pass(self, recurse_into_functions: bool = True) -> None:
         if self.options.semantic_analysis_only:
             return
         t0 = time_ref()
         with self.wrap_context():
-            self.type_checker().check_first_pass()
+            self.type_checker().check_first_pass(recurse_into_functions=recurse_into_functions)
         self.time_spent_us += time_spent_us(t0)
 
     def type_checker(self) -> TypeChecker:
@@ -2978,12 +3431,19 @@ class State:
         assert len(self.type_checker()._type_maps) == 1
         return self.type_checker()._type_maps[0]
 
-    def type_check_second_pass(self) -> bool:
+    def type_check_second_pass(
+        self,
+        todo: Sequence[DeferredNode] | None = None,
+        recurse_into_functions: bool = True,
+        impl_only: bool = False,
+    ) -> bool:
         if self.options.semantic_analysis_only:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            result = self.type_checker().check_second_pass()
+            result = self.type_checker().check_second_pass(
+                todo=todo, recurse_into_functions=recurse_into_functions, impl_only=impl_only
+            )
         self.time_spent_us += time_spent_us(t0)
         return result
 
@@ -2997,14 +3457,15 @@ class State:
         if manager.errors.is_error_code_enabled(
             codes.POSSIBLY_UNDEFINED
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
-            self.tree.accept(
-                PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules),
-                    self.type_map(),
-                    self.options,
-                    self.tree.names,
+            with self.wrap_context():
+                self.tree.accept(
+                    PossiblyUndefinedVariableVisitor(
+                        MessageBuilder(manager.errors, manager.modules),
+                        self.type_map(),
+                        self.options,
+                        self.tree.names,
+                    )
                 )
-            )
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -3101,6 +3562,8 @@ class State:
     def suppressed_deps_opts(self) -> bytes:
         if not self.suppressed:
             return b""
+        if self.known_suppressed_deps_opts:
+            return self.known_suppressed_deps_opts
         buf = WriteBuffer()
         import_options = self.manager.import_options
         for dep in sorted(self.suppressed):
@@ -3142,8 +3605,9 @@ class State:
             self.id,
             self.path,
             self.tree,
-            list(self.dependencies),
-            list(self.suppressed),
+            # Indirect dependencies are stored separately as part of CacheMetaEx.
+            [dep for dep in self.dependencies if self.priorities.get(dep) != PRI_INDIRECT],
+            [dep for dep in self.suppressed if self.priorities.get(dep) != PRI_INDIRECT],
             self.suppressed_deps_opts(),
             self.imports_ignored,
             dep_prios,
@@ -3210,10 +3674,18 @@ class State:
                 pass
 
     def dependency_priorities(self) -> list[int]:
-        return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies + self.suppressed]
+        return [
+            prio
+            for dep in self.dependencies + self.suppressed
+            if (prio := self.priorities.get(dep, PRI_HIGH)) != PRI_INDIRECT
+        ]
 
     def dependency_lines(self) -> list[int]:
-        return [self.dep_line_map.get(dep, 1) for dep in self.dependencies + self.suppressed]
+        return [
+            self.dep_line_map.get(dep, 1)
+            for dep in self.dependencies + self.suppressed
+            if self.priorities.get(dep) != PRI_INDIRECT
+        ]
 
     def generate_unused_ignore_notes(self) -> None:
         if (
@@ -3224,14 +3696,16 @@ class State:
             if self.meta and self.options.fine_grained_incremental:
                 self.verify_dependencies(suppressed_only=True)
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
+            with self.wrap_context():
+                self.manager.errors.generate_unused_ignore_errors(self.xpath, is_typeshed)
 
     def generate_ignore_without_code_notes(self) -> None:
         if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
             is_typeshed = self.tree is not None and self.tree.is_typeshed_file(self.options)
-            self.manager.errors.generate_ignore_without_code_errors(
-                self.xpath, self.options.warn_unused_ignores, is_typeshed
-            )
+            with self.wrap_context():
+                self.manager.errors.generate_ignore_without_code_errors(
+                    self.xpath, self.options.warn_unused_ignores, is_typeshed
+                )
 
 
 # Module import and diagnostic glue
@@ -3313,19 +3787,6 @@ def find_module_and_diagnose(
 
         ignore_missing_imports = options.ignore_missing_imports
 
-        # Don't honor a global (not per-module) ignore_missing_imports
-        # setting for modules that used to have bundled stubs, as
-        # otherwise updating mypy can silently result in new false
-        # negatives. (Unless there are stubs, but they are incomplete.)
-        global_ignore_missing_imports = manager.options.ignore_missing_imports
-        if (
-            is_module_from_legacy_bundled_package(id)
-            and global_ignore_missing_imports
-            and not options.ignore_missing_imports_per_module
-            and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        ):
-            ignore_missing_imports = False
-
         if skip_diagnose:
             raise ModuleNotFound
         if caller_state:
@@ -3336,7 +3797,7 @@ def find_module_and_diagnose(
             # If we can't find a root source it's always fatal.
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
-            raise CompileError([f"mypy: can't find module '{id}'"])
+            raise CompileError([f'mypy: error: Cannot find module "{id}"'])
         else:
             raise ModuleNotFound
 
@@ -3465,7 +3926,7 @@ def module_not_found(
     )
     if target == "builtins":
         manager.error(
-            line, "Cannot find 'builtins' module. Typeshed appears broken!", blocker=True
+            line, 'Cannot find "builtins" module. Typeshed appears broken!', blocker=True
         )
         errors.raise_error()
     else:
@@ -3481,6 +3942,28 @@ def module_not_found(
         else:
             code = codes.IMPORT
         manager.error(line, msg.format(module=target), code=code)
+
+        if (
+            reason == ModuleNotFoundReason.NOT_FOUND
+            and not errors.prefer_simple_messages()
+            and errors.is_error_code_enabled(code)
+            and line not in errors.ignored_lines.get(caller_state.xpath, {})
+        ):
+            top_level_target = target.split(".")[0]
+            if not top_level_target.startswith("_"):
+                known_modules = get_known_modules(
+                    manager.find_module_cache.stdlib_py_versions, manager.options.python_version
+                )
+                matches = best_matches(top_level_target, known_modules, n=3)
+                matches = [m for m in matches if m.lower() != top_level_target.lower()]
+                if matches:
+                    errors.report(
+                        line,
+                        0,
+                        f'Did you mean {pretty_seq(matches, "or")}?',
+                        severity="note",
+                        code=code,
+                    )
 
         dist = stub_distribution_name(target)
         for note in notes:
@@ -3515,12 +3998,14 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
     # immediately if it's empty or only contains comments.
     # But beware, some package may be the ancestor of many modules,
     # so we'd need to cache the decision.
+    save_import_context = manager.errors.import_context()
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id, manager.options)
     manager.error(None, f'Ancestor package "{id}" ignored', only_once=True)
     manager.note(
         None, "(Using --follow-imports=error, submodule passed on command line)", only_once=True
     )
+    manager.errors.set_import_context(save_import_context)
 
 
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
@@ -3565,7 +4050,12 @@ def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None
 # The driver
 
 
-def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) -> Graph:
+def dispatch(
+    sources: list[BuildSource],
+    manager: BuildManager,
+    stdout: TextIO,
+    connect_threads: list[Thread],
+) -> Graph:
     log_configuration(manager, sources)
 
     t0 = time.time()
@@ -3622,7 +4112,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         dump_graph(graph, stdout)
         return graph
 
-    # Fine grained dependencies that didn't have an associated module in the build
+    # Fine-grained dependencies that didn't have an associated module in the build
     # are serialized separately, so we read them after we load the graph.
     # We need to read them both for running in daemon mode and if we are generating
     # a fine-grained cache (so that we can properly update them incrementally).
@@ -3635,25 +4125,31 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         if fg_deps_meta is not None:
             manager.fg_deps_meta = fg_deps_meta
         elif manager.stats.get("fresh_metas", 0) > 0:
-            # Clear the stats so we don't infinite loop because of positive fresh_metas
+            # Clear the stats, so we don't infinite loop because of positive fresh_metas
             manager.stats.clear()
             # There were some cache files read, but no fine-grained dependencies loaded.
             manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
             manager.cache_enabled = False
             manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager, stdout)
+            return dispatch(sources, manager, stdout, connect_threads)
 
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the
     # graph---we'll handle it all later.
     if not manager.use_fine_grained_cache():
+        # Wait for workers since they may be needed at this point.
+        for thread in connect_threads:
+            thread.join()
+        not_connected = [str(idx) for idx, wc in enumerate(manager.workers) if not wc.connected]
+        if not_connected:
+            raise OSError(f"Cannot connect to build worker(s): {', '.join(not_connected)}")
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
         manager.old_plugins_snapshot = manager.plugins_snapshot
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            # If we are running a daemon or are going to write cache for further fine grained use,
-            # then we need to collect fine grained protocol dependencies.
+            # If we are running a daemon or are going to write cache for further fine-grained use,
+            # then we need to collect fine-grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
             type_state.add_all_protocol_deps(manager.fg_deps)
@@ -3808,6 +4304,7 @@ def load_graph(
         graph[st.id] = st
         new.append(st)
         entry_points.add(bs.module)
+    manager.parse_all([state for state in new if state.needs_parse])
 
     # Note: Running this each time could be slow in the daemon. If it's a problem, we
     # can do more work to maintain this incrementally.
@@ -3815,7 +4312,16 @@ def load_graph(
 
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
+    ready = set(new)
+    # Use list to make syntax error order a bit more stable.
+    not_ready: list[State] = []
     for st in new:
+        if st not in ready:
+            # We have run out of states, parse all we have.
+            assert st in not_ready
+            manager.parse_all(not_ready)
+            ready.update(not_ready)
+            not_ready.clear()
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
         # when they show up as direct dependencies, and there's a
@@ -3839,7 +4345,7 @@ def load_graph(
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
-                manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
+                manager.missing_modules.setdefault(dep, SuppressionReason.NOT_FOUND)
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
                 if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:
@@ -3871,6 +4377,7 @@ def load_graph(
                         newst_path = newst.abspath
 
                         if newst_path in seen_files:
+                            manager.errors.set_file(newst.xpath, newst.id, manager.options)
                             manager.error(
                                 None,
                                 "Source file found twice under different module names: "
@@ -3891,6 +4398,10 @@ def load_graph(
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
+                    if newst.needs_parse:
+                        not_ready.append(newst)
+                    else:
+                        ready.add(newst)
     # There are two things we need to do after the initial load loop. One is up-suppress
     # modules that are back in graph. We need to do this after the loop to cover edge cases
     # like where a namespace package ancestor is shared by a typed and an untyped package.
@@ -3907,7 +4418,6 @@ def load_graph(
             if dep not in graph:
                 st.suppress_dependency(dep)
     manager.plugin.set_modules(manager.modules)
-    manager.path_by_id = {id: graph[id].xpath for id in graph}
     manager.errors.global_watcher = False
     return graph
 
@@ -4040,16 +4550,19 @@ def find_stale_sccs(
 
 def process_graph(graph: Graph, manager: BuildManager) -> None:
     """Process everything in dependency order."""
+    if manager.workers:
+        # Commit any cache writes from graph loading before workers try to read them.
+        manager.commit()
+
     # Broadcast graph to workers before computing SCCs to save a bit of time.
     # TODO: check if we can optimize by sending only part of the graph needed for given SCC.
     # For example only send modules in the SCC and their dependencies.
-    graph_message = GraphMessage(graph=graph, missing_modules=set(manager.missing_modules))
+    graph_message = GraphMessage(graph=graph, missing_modules=manager.missing_modules)
     buf = WriteBuffer()
     graph_message.write(buf)
     graph_data = buf.getvalue()
-    for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
-        worker.conn.write_bytes(graph_data)
+    manager.wait_ack()
+    manager.broadcast(graph_data)
 
     sccs = sorted_components(graph)
     manager.log(
@@ -4067,11 +4580,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     buf = WriteBuffer()
     sccs_message.write(buf)
     sccs_data = buf.getvalue()
-    for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
-        worker.conn.write_bytes(sccs_data)
-    for worker in manager.workers:
-        AckMessage.read(receive(worker.conn))
+    manager.wait_ack()
+    manager.broadcast(sccs_data)
+    manager.wait_ack()
 
     manager.free_workers = set(range(manager.options.num_workers))
 
@@ -4091,7 +4602,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             for scc in stale:
                 for id in scc.mod_ids:
                     graph[id].mark_as_rechecked()
-            manager.submit(stale)
+            manager.submit(graph, stale)
             still_working = True
         # We eagerly walk over fresh SCCs to reach as many stale SCCs as soon
         # as possible. Only when there are no fresh SCCs, we wait on scheduled stale ones.
@@ -4105,19 +4616,26 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # type-checking this is already done and results should be empty here.
             if not manager.workers:
                 assert not results
-            for id, (interface_hash, errors) in results.items():
-                new_hash = bytes.fromhex(interface_hash)
-                if new_hash != graph[id].interface_hash:
-                    graph[id].mark_interface_stale()
-                    graph[id].interface_hash = new_hash
-                manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
+            for id, result in results.items():
+                # Interface and implementation results may be mixed in the same batch
+                # from different workers, process each one accordingly.
+                if result.interface_hash is not None:
+                    new_hash = bytes.fromhex(result.interface_hash)
+                    if new_hash != graph[id].interface_hash:
+                        graph[id].mark_interface_stale()
+                        graph[id].interface_hash = new_hash
+                else:
+                    manager.flush_errors(
+                        manager.errors.simplify_path(graph[id].xpath), result.error_lines, False
+                    )
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
-                scc_by_id[dependent].not_ready_deps.discard(done_scc.id)
-                if not scc_by_id[dependent].not_ready_deps:
-                    not_ready.remove(scc_by_id[dependent])
-                    ready.append(scc_by_id[dependent])
+                dep_scc = scc_by_id[dependent]
+                dep_scc.not_ready_count -= 1
+                if not dep_scc.not_ready_count:
+                    not_ready.remove(dep_scc)
+                    ready.append(dep_scc)
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
 
 
@@ -4184,12 +4702,8 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
-def process_stale_scc(
-    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str] | None = None
-) -> dict[str, tuple[str, list[str]]]:
-    """Process the modules in one SCC from source code."""
-    # First verify if all transitive dependencies are loaded in the current process.
-    t0 = time.time()
+def maybe_load_deps(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+    """Load any missing fresh modules needed to process a stale SCC"""
     missing_sccs = set()
     sccs_to_find = ascc.deps.copy()
     while sccs_to_find:
@@ -4226,8 +4740,6 @@ def process_stale_scc(
             # generation with the freeze()/unfreeze() trick below. This is arguably
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
-            if manager.gc_freeze_cycles > 0:
-                gc.collect()
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
@@ -4242,21 +4754,25 @@ def process_stale_scc(
             gc.unfreeze()
             gc.enable()
 
+
+def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code."""
+    # First verify if all transitive dependencies are loaded in the current process.
+    t0 = time.time()
+    maybe_load_deps(graph, ascc, manager)
     t1 = time.time()
     # Process the SCC in stable order.
     scc = order_ascc_ex(graph, ascc)
 
     t2 = time.time()
     stale = scc
+    # Parse before verify_dependencies so that inline config comments
+    # (e.g. "# mypy: disable-error-code") are applied to options.
+    manager.parse_all([graph[id] for id in stale], post_parse=False)
     for id in stale:
         # Re-generate import errors in case this module was loaded from the cache.
-        # Deserialized states all have meta=None, so the caller should specify
-        # explicitly which of them are from cache.
-        if graph[id].meta or from_cache and id in from_cache:
+        if graph[id].meta:
             graph[id].verify_dependencies(suppressed_only=True)
-        # We may already have parsed the module, or not.
-        # If the former, parse_file() is a no-op.
-        graph[id].parse_file()
     if "typing" in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of
@@ -4290,9 +4806,10 @@ def process_stale_scc(
 
     t4 = time.time()
     # Flush errors, and write cache in two phases: first data files, then meta files.
+    # The two-phase structure is needed because meta.dep_hashes references interface_hash
+    # values from other modules in the SCC, which are updated by write_cache().
     meta_tuples = {}
     errors_by_id = {}
-    formatted_by_id = {}
     for id in stale:
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(graph[id].xpath)
@@ -4301,16 +4818,35 @@ def process_stale_scc(
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
-            formatted_by_id[id] = formatted
-        meta_tuples[id] = graph[id].write_cache()
+        meta_tuple = graph[id].write_cache()
+        meta_tuples[id] = meta_tuple
+        # Commit data file write immediately to avoid holding shard locks across modules.
+        if meta_tuple is not None:
+            manager.commit_module(meta_tuple[1])
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
             continue
         meta, meta_file = meta_tuple
-        meta.dep_hashes = [graph[dep].interface_hash for dep in graph[id].dependencies]
-        meta.error_lines = errors_by_id.get(id, [])
+        state = graph[id]
+        # Indirect dependencies are stored as part of CacheMetaEx below.
+        meta.dep_hashes = [
+            graph[dep].interface_hash
+            for dep in graph[id].dependencies
+            if state.priorities.get(dep) != PRI_INDIRECT
+        ]
         write_cache_meta(meta, manager, meta_file)
+        indirect = [dep for dep in state.dependencies if state.priorities.get(dep) == PRI_INDIRECT]
+        meta_ex = CacheMetaEx(
+            dependencies=indirect,
+            suppressed=[
+                dep for dep in state.suppressed if state.priorities.get(dep) == PRI_INDIRECT
+            ],
+            dep_hashes=[graph[dep].interface_hash for dep in indirect],
+            error_lines=errors_by_id.get(id, []),
+        )
+        write_cache_meta_ex(meta_file, meta_ex, manager)
+        manager.commit_module(meta_file)
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
         load_missing_time=t1 - t0,
@@ -4319,9 +4855,148 @@ def process_stale_scc(
         type_check_time=t4 - t3,
         flush_and_cache_time=time.time() - t4,
     )
+
+
+def process_stale_scc_interface(
+    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str]
+) -> list[tuple[str, ModuleResult, str]]:
+    """Process the modules' interfaces in one SCC from source code."""
+    # First verify if all transitive dependencies are loaded in the current process.
+    t0 = time.time()
+    maybe_load_deps(graph, ascc, manager)
+    t1 = time.time()
+    # Process the SCC in stable order.
+    scc = order_ascc_ex(graph, ascc)
+
+    t2 = time.time()
+    stale = scc
+    for id in stale:
+        # Re-generate import errors in case this module was loaded from the cache.
+        # Deserialized states all have meta=None, so the caller should specify
+        # explicitly which of them are from cache.
+        if id in from_cache:
+            graph[id].verify_dependencies(suppressed_only=True)
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    t3 = time.time()
+    # Track what modules aren't yet done, so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
+    for id in stale:
+        graph[id].type_check_first_pass(recurse_into_functions=False)
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+    while unfinished_modules:
+        for id in stale:
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass(recurse_into_functions=False):
+                unfinished_modules.discard(id)
+
+    t4 = time.time()
+    scc_result = []
+    meta_tuples = {}
+    for id in stale:
+        meta_tuple = graph[id].write_cache()
+        meta_tuples[id] = meta_tuple
+        # Commit data file write immediately to avoid holding shard locks across modules.
+        if meta_tuple is not None:
+            manager.commit_module(meta_tuple[1])
+    for id in stale:
+        meta_tuple = meta_tuples[id]
+        if meta_tuple is None:
+            continue
+        meta, meta_file = meta_tuple
+        state = graph[id]
+        meta.dep_hashes = [
+            graph[dep].interface_hash
+            for dep in state.dependencies
+            if state.priorities.get(dep) != PRI_INDIRECT
+        ]
+        write_cache_meta(meta, manager, meta_file)
+        manager.commit_module(meta_file)
+        scc_result.append((id, ModuleResult(graph[id].interface_hash.hex(), []), meta_file))
+    manager.done_sccs.add(ascc.id)
+    manager.add_stats(
+        load_missing_time=t1 - t0,
+        order_scc_time=t2 - t1,
+        semanal_time=t3 - t2,
+        type_check_time_interface=t4 - t3,
+        flush_and_cache_time=time.time() - t4,
+    )
+    return scc_result
+
+
+def process_stale_scc_implementation(
+    graph: Graph, stale: list[str], manager: BuildManager, meta_files: list[str]
+) -> dict[str, ModuleResult]:
+    """Process implementations (top-level function/method bodies) in an SCC."""
+    t0 = time.time()
+    unfinished_modules = set(stale)
+    for id in stale:
+        checker = graph[id].type_checker()
+        # Optimization: if this is a 3rd party library, or we ignore errors
+        # otherwise in this module, skip the implementations altogether.
+        if checker.can_skip_diagnostics and not checker.options.preserve_asts:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+            continue
+        # We need to reset deferral count after possibly deferring any methods that
+        # are considered part of the top-level (because they define/infer variables).
+        checker.pass_num = 0
+        checker.deferred_nodes.clear()
+        tree = graph[id].tree
+        assert tree is not None
+        todo = []
+        # Passing impl_only will select only "leaf" nodes (not the TypeInfos).
+        for _, node, info in tree.local_definitions(impl_only=True):
+            assert isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator))
+            todo.append(DeferredNode(node.node, info))
+        graph[id].type_check_second_pass(todo=todo, impl_only=True)
+        if not checker.deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].detect_possibly_undefined_vars()
+            graph[id].finish_passes()
+    while unfinished_modules:
+        for id in stale:
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass(impl_only=True):
+                unfinished_modules.discard(id)
+                graph[id].detect_possibly_undefined_vars()
+                graph[id].finish_passes()
+
+    for id in stale:
+        graph[id].generate_unused_ignore_notes()
+        graph[id].generate_ignore_without_code_notes()
+
     scc_result = {}
-    for id in scc:
-        scc_result[id] = graph[id].interface_hash.hex(), formatted_by_id.get(id, [])
+    for id, meta_file in zip(stale, meta_files):
+        state = graph[id]
+        indirect = [dep for dep in state.dependencies if state.priorities.get(dep) == PRI_INDIRECT]
+        meta_ex = CacheMetaEx(
+            dependencies=indirect,
+            suppressed=[
+                dep for dep in state.suppressed if state.priorities.get(dep) == PRI_INDIRECT
+            ],
+            dep_hashes=[graph[dep].interface_hash for dep in indirect],
+            error_lines=[],
+        )
+        if graph[id].xpath not in manager.errors.ignored_files:
+            errors = manager.errors.file_messages(graph[id].xpath)
+            formatted = manager.errors.format_messages(
+                graph[id].xpath, errors, formatter=manager.error_formatter
+            )
+            meta_ex.error_lines = errors
+            write_cache_meta_ex(meta_file, meta_ex, manager)
+            scc_result[id] = ModuleResult(None, formatted)
+        else:
+            # If there are no errors, only write the cache, don't send anything back
+            # to the caller (as a micro-optimization).
+            write_cache_meta_ex(meta_file, meta_ex, manager)
+        manager.commit_module(meta_file)
+
+    manager.add_stats(type_check_time_implementation=time.time() - t0)
     return scc_result
 
 
@@ -4341,9 +5016,10 @@ def prepare_sccs_full(
     for scc in sccs:
         # Remove trivial dependency on itself.
         scc_deps_map[scc].discard(scc)
-        for dep_scc in scc_deps_map[scc]:
+        dep_sccs = scc_deps_map[scc]
+        for dep_scc in dep_sccs:
             scc.deps.add(dep_scc.id)
-            scc.not_ready_deps.add(dep_scc.id)
+        scc.not_ready_count = len(dep_sccs)
     return scc_deps_map
 
 
@@ -4413,18 +5089,33 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
 
 def transitive_dep_hash(scc: SCC, graph: Graph) -> bytes:
     """Compute stable snapshot of transitive import structure for given SCC."""
-    all_direct_deps = sorted(
-        {
-            dep
-            for id in scc.mod_ids
-            for dep in graph[id].dependencies
-            if graph[id].priorities.get(dep) != PRI_INDIRECT
-        }
-    )
+    mod_ids = scc.mod_ids
+    if len(mod_ids) == 1:
+        # Fast path: State.dependencies is already deduped and never contains
+        # self.id, so we can skip the dedupe set and the self-membership check.
+        (only_id,) = mod_ids
+        st = graph[only_id]
+        priorities = st.priorities
+        all_direct_deps = sorted(
+            dep for dep in st.dependencies if priorities.get(dep) != PRI_INDIRECT
+        )
+        buf = WriteBuffer()
+        for dep_id in all_direct_deps:
+            write_str_bare(buf, dep_id)
+            write_bytes_bare(buf, graph[dep_id].trans_dep_hash)
+        return hash_digest_bytes(buf.getvalue())
+    deps_set: set[str] = set()
+    for id in mod_ids:
+        state = graph[id]
+        priorities = state.priorities
+        for dep in state.dependencies:
+            if priorities.get(dep) != PRI_INDIRECT:
+                deps_set.add(dep)
+    all_direct_deps = sorted(deps_set)
     buf = WriteBuffer()
     for dep_id in all_direct_deps:
         write_str_bare(buf, dep_id)
-        if dep_id not in scc.mod_ids:
+        if dep_id not in mod_ids:
             write_bytes_bare(buf, graph[dep_id].trans_dep_hash)
     return hash_digest_bytes(buf.getvalue())
 
@@ -4501,7 +5192,6 @@ class AckMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> AckMessage:
-        assert read_tag(buf) == ACK_MESSAGE
         return AckMessage()
 
     def write(self, buf: WriteBuffer) -> None:
@@ -4510,83 +5200,131 @@ class AckMessage(IPCMessage):
 
 class SccRequestMessage(IPCMessage):
     """
-    A message representing a request to type check an SCC.
+    A message representing a request to type check a batch of SCCs.
 
-    If scc_id is None, then it means that the coordinator requested a shutdown.
+    If scc_ids is empty, then it means that the coordinator requested a shutdown.
     """
 
-    def __init__(self, *, scc_id: int | None, import_errors: dict[str, list[ErrorInfo]]) -> None:
-        self.scc_id = scc_id
+    def __init__(
+        self,
+        *,
+        scc_ids: list[int],
+        import_errors: dict[str, list[ErrorInfo]],
+        mod_data: dict[str, tuple[bytes, FileRawData | None]],
+    ) -> None:
+        self.scc_ids = scc_ids
         self.import_errors = import_errors
+        self.mod_data = mod_data
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccRequestMessage:
-        assert read_tag(buf) == SCC_REQUEST_MESSAGE
         return SccRequestMessage(
-            scc_id=read_int_opt(buf),
+            scc_ids=read_int_list(buf),
             import_errors={
                 read_str(buf): [ErrorInfo.read(buf) for _ in range(read_int_bare(buf))]
+                for _ in range(read_int_bare(buf))
+            },
+            mod_data={
+                read_str_bare(buf): (
+                    read_bytes(buf),
+                    FileRawData.read(buf) if read_bool(buf) else None,
+                )
                 for _ in range(read_int_bare(buf))
             },
         )
 
     def write(self, buf: WriteBuffer) -> None:
         write_tag(buf, SCC_REQUEST_MESSAGE)
-        write_int_opt(buf, self.scc_id)
+        write_int_list(buf, self.scc_ids)
         write_int_bare(buf, len(self.import_errors))
         for path, errors in self.import_errors.items():
             write_str(buf, path)
             write_int_bare(buf, len(errors))
             for error in errors:
                 error.write(buf)
+        write_int_bare(buf, len(self.mod_data))
+        for mod, (suppressed_deps_opts, raw_data) in self.mod_data.items():
+            write_str_bare(buf, mod)
+            write_bytes(buf, suppressed_deps_opts)
+            if raw_data is None:
+                write_bool(buf, False)
+            else:
+                write_bool(buf, True)
+                raw_data.write(buf)
+
+
+class ModuleResult:
+    """A simple class representing the result of type-checking phase for a single module.
+
+    Non-None interface hash signifies this is a result of checking the interface
+    of the module, otherwise this is a result of checking the implementation (which
+    includes errors encountered during both phases).
+    """
+
+    def __init__(self, interface_hash: str | None, error_lines: list[str]) -> None:
+        self.interface_hash = interface_hash
+        self.error_lines = error_lines
+
+    @classmethod
+    def read(cls, buf: ReadBuffer) -> ModuleResult:
+        return ModuleResult(read_str_opt(buf), read_str_list(buf))
+
+    def write(self, buf: WriteBuffer) -> None:
+        write_str_opt(buf, self.interface_hash)
+        write_str_list(buf, self.error_lines)
 
 
 class SccResponseMessage(IPCMessage):
     """
-    A message representing a result of type checking an SCC.
+    A message representing a result of type checking a batch of SCCs.
 
     Only one of `result` or `blocker` can be non-None. The latter means there was
-    a blocking error while type checking the SCC.
+    a blocking error while type checking the SCCs. The `is_interface` flag indicates
+    whether this is a result for interface or implementation phase of type-checking.
     """
 
     def __init__(
         self,
         *,
-        scc_id: int,
-        result: dict[str, tuple[str, list[str]]] | None = None,
+        scc_ids: list[int],
+        is_interface: bool,
+        result: dict[str, ModuleResult] | None = None,
         blocker: CompileError | None = None,
     ) -> None:
         if result is not None:
             assert blocker is None
         if blocker is not None:
             assert result is None
-        self.scc_id = scc_id
+        self.scc_ids = scc_ids
+        self.is_interface = is_interface
         self.result = result
         self.blocker = blocker
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccResponseMessage:
-        assert read_tag(buf) == SCC_RESPONSE_MESSAGE
-        scc_id = read_int(buf)
+        scc_ids = read_int_list(buf)
+        is_interface = read_bool(buf)
         tag = read_tag(buf)
         if tag == LITERAL_NONE:
             return SccResponseMessage(
-                scc_id=scc_id,
+                scc_ids=scc_ids,
+                is_interface=is_interface,
                 blocker=CompileError(read_str_list(buf), read_bool(buf), read_str_opt(buf)),
             )
         else:
             assert tag == DICT_STR_GEN
             return SccResponseMessage(
-                scc_id=scc_id,
+                scc_ids=scc_ids,
+                is_interface=is_interface,
                 result={
-                    read_str_bare(buf): (read_str(buf), read_str_list(buf))
-                    for _ in range(read_int_bare(buf))
+                    read_str_bare(buf): ModuleResult.read(buf) for _ in range(read_int_bare(buf))
                 },
             )
 
     def write(self, buf: WriteBuffer) -> None:
         write_tag(buf, SCC_RESPONSE_MESSAGE)
-        write_int(buf, self.scc_id)
+        write_int_list(buf, self.scc_ids)
+        write_bool(buf, self.is_interface)
         if self.result is None:
             assert self.blocker is not None
             write_tag(buf, LITERAL_NONE)
@@ -4598,9 +5336,7 @@ class SccResponseMessage(IPCMessage):
             write_int_bare(buf, len(self.result))
             for mod_id in sorted(self.result):
                 write_str_bare(buf, mod_id)
-                hex_hash, errs = self.result[mod_id]
-                write_str(buf, hex_hash)
-                write_str_list(buf, errs)
+                self.result[mod_id].write(buf)
 
 
 class SourcesDataMessage(IPCMessage):
@@ -4611,7 +5347,6 @@ class SourcesDataMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SourcesDataMessage:
-        assert read_tag(buf) == SOURCES_DATA_MESSAGE
         sources = [
             BuildSource(
                 read_str_opt(buf),
@@ -4643,7 +5378,6 @@ class SccsDataMessage(IPCMessage):
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccsDataMessage:
-        assert read_tag(buf) == SCCS_DATA_MESSAGE
         sccs = [
             SCC(set(read_str_list(buf)), read_int(buf), read_int_list(buf))
             for _ in range(read_int_bare(buf))
@@ -4662,7 +5396,7 @@ class SccsDataMessage(IPCMessage):
 class GraphMessage(IPCMessage):
     """A message wrapping the build graph computed by the coordinator."""
 
-    def __init__(self, *, graph: Graph, missing_modules: set[str]) -> None:
+    def __init__(self, *, graph: Graph, missing_modules: dict[str, int]) -> None:
         self.graph = graph
         self.missing_modules = missing_modules
         # Send this data separately as it will be lost during state serialization.
@@ -4671,9 +5405,8 @@ class GraphMessage(IPCMessage):
     @classmethod
     def read(cls, buf: ReadBuffer, manager: BuildManager | None = None) -> GraphMessage:
         assert manager is not None
-        assert read_tag(buf) == GRAPH_MESSAGE
         graph = {read_str_bare(buf): State.read(buf, manager) for _ in range(read_int_bare(buf))}
-        missing_modules = {read_str_bare(buf) for _ in range(read_int_bare(buf))}
+        missing_modules = {read_str_bare(buf): read_int(buf) for _ in range(read_int_bare(buf))}
         message = GraphMessage(graph=graph, missing_modules=missing_modules)
         message.from_cache = {read_str_bare(buf) for _ in range(read_int_bare(buf))}
         return message
@@ -4685,8 +5418,9 @@ class GraphMessage(IPCMessage):
             write_str_bare(buf, mod_id)
             state.write(buf)
         write_int_bare(buf, len(self.missing_modules))
-        for module in self.missing_modules:
+        for module, reason in self.missing_modules.items():
             write_str_bare(buf, module)
+            write_int(buf, reason)
         write_int_bare(buf, len(self.from_cache))
         for module in self.from_cache:
             write_str_bare(buf, module)

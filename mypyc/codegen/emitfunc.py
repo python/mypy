@@ -86,10 +86,26 @@ from mypyc.ir.rtypes import (
     is_tagged,
 )
 
+VEC_ITEMS_C_TYPE: Final = {
+    "VecI64": "int64_t *",
+    "VecI32": "int32_t *",
+    "VecI16": "int16_t *",
+    "VecU8": "uint8_t *",
+    "VecFloat": "double *",
+    "VecBool": "char *",
+    "VecT": "PyObject **",
+    "VecNested": "VecNestedBufItem *",
+    "VecNestedBufItem": "void *",
+}
+
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
-    args = ", ".join(emitter.ctype(arg.type) for arg in fn.args) or "void"
-    ret = emitter.ctype(fn.ret_type)
+    return native_function_type_from_decl(fn.decl, emitter)
+
+
+def native_function_type_from_decl(decl: FuncDecl, emitter: Emitter) -> str:
+    args = ", ".join(emitter.ctype(arg.type) for arg in decl.sig.args) or "void"
+    ret = emitter.ctype(decl.sig.ret_type)
     return f"{ret} (*)({args})"
 
 
@@ -344,6 +360,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         classes, and *(obj + attr_offset) for attributes defined by traits. We also
         insert all necessary C casts here.
         """
+        # The struct cast below needs the defining group's __native.h
+        # included by the consuming .c file. Record both the receiver
+        # and declaring classes as cross-group deps.
+        self.emitter.register_group_dep(op.class_type.class_ir)
+        self.emitter.register_group_dep(decl_cl)
         cast = f"({op.class_type.struct_name(self.emitter.names)} *)"
         if decl_cl.is_trait and op.class_type.class_ir.is_trait:
             # For pure trait access find the offset first, offsets
@@ -384,8 +405,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
-            # Properties are essentially methods, so use vtable access for them.
-            if cl.is_method_final(op.attr):
+            # Properties are essentially methods, so use vtable access for them
+            # (except for non-ext classes, which have no vtable — see emit_method_call).
+            if not cl.is_ext_class or cl.is_method_final(op.attr):
                 self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
             else:
                 version = "_TRAIT" if cl.is_trait else ""
@@ -484,7 +506,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if cl.get_method(op.attr):
+        if op.is_propset:
             # Again, use vtable access for properties...
             assert not op.is_init and op.error_kind == ERR_FALSE, "%s %d %d %s" % (
                 op.attr,
@@ -552,7 +574,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
@@ -579,26 +601,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op_obj.type
         assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
-        method = rtype.class_ir.get_method(name)
-        assert method is not None
+        # Use method_decl (not get_method) because under separate compilation the
+        # FuncIR body may live in a different group — only its declaration is
+        # visible here, and a decl is all we need to emit a direct C call
+        # (the symbol resolves through that group's exports table).
+        method_decl = rtype.class_ir.method_decl(name)
 
-        # Can we call the method directly, bypassing vtable?
-        is_direct = class_ir.is_method_final(name)
+        # Can we call the method directly, bypassing vtable? Non-extension classes
+        # don't have a vtable (compute_vtable is skipped for them), so the only
+        # way to dispatch is a direct C call.
+        is_direct = not class_ir.is_ext_class or class_ir.is_method_final(name)
 
         # The first argument gets omitted for static methods and
         # turned into the class for class methods
         obj_args = (
             []
-            if method.decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
+            if method_decl.kind == FUNC_STATICMETHOD
+            else [f"(PyObject *)Py_TYPE({obj})"] if method_decl.kind == FUNC_CLASSMETHOD else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
-        mtype = native_function_type(method, self.emitter)
+        mtype = native_function_type_from_decl(method_decl, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
         if is_direct:
             # Directly call method, without going through the vtable.
-            lib = self.emitter.get_group_prefix(method.decl)
-            self.emit_line(f"{dest}{lib}{NATIVE_PREFIX}{method.cname(self.names)}({args});")
+            self.emit_line(f"{dest}{self.emitter.native_function_call(method_decl)}({args});")
         else:
             # Call using vtable.
             method_idx = rtype.method_index(name)
@@ -785,7 +811,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
@@ -809,16 +835,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: support tuple type
         assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
+        # Use offsetof to avoid undefined behavior when src is NULL
+        # (e.g., vec buf pointer for empty vecs). The &((T*)p)->field
+        # pattern is UB when p is NULL, which GCC -O3 can exploit.
         self.emit_line(
-            "{} = ({})&(({} *){})->{};".format(
-                dest, op.type._ctype, op.src_type.name, src, op.field
+            "{} = ({})((CPyPtr){} + offsetof({}, {}));".format(
+                dest, op.type._ctype, src, op.src_type.name, op.field
             )
         )
 
     def visit_set_element(self, op: SetElement) -> None:
         dest = self.reg(op)
-        item = self.reg(op.item)
         field = op.field
+        item = self.set_element_item(op.src.type, field, self.reg(op.item))
         if isinstance(op.src, Undef):
             # First assignment to an undefined struct is trivial.
             self.emit_line(f"{dest}.{field} = {item};")
@@ -831,7 +860,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # TODO: Support tuples (or use RStruct for tuples)?
             src = self.reg(op.src)
             src_type = op.src.type
-            assert isinstance(src_type, RStruct), src_type
+            assert isinstance(src_type, (RStruct, RVec)), src_type
             init_items = []
             for n in src_type.names:
                 if n != field:
@@ -839,6 +868,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 else:
                     init_items.append(item)
             self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
+
+    def set_element_item(self, src_type: RType, field: str, item: str) -> str:
+        if field == "items" and src_type._ctype in VEC_ITEMS_C_TYPE:
+            return f"({VEC_ITEMS_C_TYPE[src_type._ctype]}){item}"
+        return item
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type

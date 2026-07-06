@@ -45,7 +45,6 @@ from mypyc.ir.ops import (
     ComparisonOp,
     GetAttr,
     Integer,
-    LoadAddress,
     LoadLiteral,
     Register,
     Return,
@@ -85,7 +84,6 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
 from mypyc.primitives.misc_ops import register_function
-from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
@@ -540,7 +538,11 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # children.
     if class_ir.allow_interpreted_subclasses:
         f = gen_glue(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
-        class_ir.glue_methods[(class_ir, name)] = f
+        # Use func_ir.decl.name (unique) rather than fdef.name, because for properties
+        # the getter and setter share the same fdef.name but have distinct decl names
+        # (e.g. "prop" vs "__mypyc_setter__prop"). Using fdef.name would cause the
+        # setter's glue to overwrite the getter's glue in the shadow vtable.
+        class_ir.glue_methods[(class_ir, func_ir.decl.name)] = f
         builder.functions.append(f)
 
     if fdef.name == "__getattr__":
@@ -653,8 +655,9 @@ def gen_glue(
     """
     if fdef.is_property:
         return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
-    else:
-        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
+    if do_py_ops and target.name.startswith(PROPSET_PREFIX):
+        return gen_glue_property_setter(builder, base_sig, target, cls, base, fdef.line)
+    return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -846,6 +849,56 @@ def gen_glue_property(
     )
 
 
+def gen_glue_property_setter(
+    builder: IRBuilder, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR, line: int
+) -> FuncIR:
+    """Generate a shadow glue method for a property setter.
+
+    For interpreted subclasses, property setters can't be called via the
+    internal __mypyc_setter__<name> method. Instead, use Python's setattr
+    to set the property via the standard descriptor protocol.
+    """
+    builder.enter()
+    builder.ret_types[-1] = sig.ret_type
+
+    rt_args = list(sig.args)
+    rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+
+    arg_info = get_args(builder, rt_args, line)
+    args = arg_info.args
+
+    self_arg = args[0]
+    value_arg = args[1]
+
+    # Extract the property name from "__mypyc_setter__<name>"
+    assert target.name.startswith(PROPSET_PREFIX)
+    prop_name = target.name[len(PROPSET_PREFIX) :]
+
+    builder.primitive_op(
+        py_setattr_op,
+        [
+            self_arg,
+            builder.load_str(prop_name),
+            builder.coerce(value_arg, object_rprimitive, line),
+        ],
+        line,
+    )
+    retval = builder.coerce(builder.none(), sig.ret_type, line)
+    builder.add(Return(retval))
+
+    arg_regs, _, blocks, return_type, _ = builder.leave()
+    return FuncIR(
+        FuncDecl(
+            target.name + "__" + base.name + "_glue",
+            cls.name,
+            builder.module_name,
+            FuncSignature(rt_args, return_type),
+        ),
+        arg_regs,
+        blocks,
+    )
+
+
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     """Given a FuncDef, return the target for the instance of its callable class.
 
@@ -880,9 +933,8 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
-    elif typ.fullname in builtin_names:
-        builtin_addr_type, src = builtin_names[typ.fullname]
-        class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+    elif builtin := builder.load_builtin(typ.fullname, line):
+        class_obj = builtin
     elif isinstance(unbounded_type, UnboundType):
         path_parts = unbounded_type.name.split(".")
         class_obj = builder.load_global_str(path_parts[0], line)
@@ -958,8 +1010,8 @@ def gen_calls_to_correct_impl(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
 
-    typ, src = builtin_names["builtins.int"]
-    int_type_obj = builder.add(LoadAddress(typ, src, line))
+    int_type_obj = builder.load_builtin("builtins.int", line)
+    assert int_type_obj
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
 
     native_call, non_native_call = BasicBlock(), BasicBlock()

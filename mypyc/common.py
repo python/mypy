@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.machinery
 import sys
 import sysconfig
 from typing import Any, Final
@@ -23,6 +24,7 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
@@ -67,7 +69,7 @@ BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
 # Runtime C library files that are always included (some ops may bring
-# extra dependencies via mypyc.ir.SourceDep)
+# extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)
 RUNTIME_C_FILES: Final = [
     "init.c",
     "getargs.c",
@@ -96,6 +98,11 @@ HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 # Are we running on a free-threaded build (GIL disabled)? This implies that
 # we are on Python 3.13 or later.
 IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+# The file extension suffix for C extension modules on the current platform
+# (e.g. ".cpython-312-x86_64-linux-gnu.so" or ".pyd").
+_EXT_SUFFIXES: Final = importlib.machinery.EXTENSION_SUFFIXES
+EXT_SUFFIX: Final = _EXT_SUFFIXES[0] if _EXT_SUFFIXES else ".so"
 
 
 JsonDict = dict[str, Any]

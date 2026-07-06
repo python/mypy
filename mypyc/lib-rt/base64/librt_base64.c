@@ -240,39 +240,21 @@ b64decode_handle_invalid_input(
         return PyErr_NoMemory();
     }
 
-    // Copy base64 characters and some padding to the new buffer
+    int pad_chars = 0;
+    // Copy base64 characters to the new buffer. Ignore padding to conform to RFC 4648 section 3.3.
     for (size_t i = 0; i < srclen; i++) {
         char c = src[i];
         if (is_valid_base64_char(c, false)) {
             newbuf[newbuf_len++] = c;
+            pad_chars = 0;
         } else if (c == '=') {
-            // Copy a necessary amount of padding
-            int remainder = newbuf_len % 4;
-            if (remainder == 0) {
-                // No padding needed
-                break;
-            }
-            int numpad = 4 - remainder;
-            // Check that there is at least the required amount padding (CPython ignores
-            // extra padding)
-            while (numpad > 0) {
-                if (i == srclen || src[i] != '=') {
-                    break;
-                }
-                newbuf[newbuf_len++] = '=';
-                i++;
-                numpad--;
-                // Skip non-base64 alphabet characters within padding
-                while (i < srclen && !is_valid_base64_char(src[i], true)) {
-                    i++;
-                }
-            }
-            break;
+            pad_chars++;
         }
     }
 
+    int quad_pos = newbuf_len % 4;
     // Stdlib always performs a non-strict padding check
-    if (newbuf_len % 4 != 0) {
+    if (quad_pos != 0 && quad_pos + pad_chars < 4) {
         if (freesrc) {
             PyMem_Free((void *)src);
         }
@@ -280,6 +262,15 @@ b64decode_handle_invalid_input(
         PyMem_Free(newbuf);
         PyErr_SetString(PyExc_ValueError, "Incorrect padding");
         return NULL;
+    }
+
+    if (quad_pos != 0) {
+        // Add padding at the end to make the input length a multiple of 4. We know that this padding
+        // is present in src because otherwise we would report the "Incorrect padding" error above.
+        while (quad_pos < 4) {
+            newbuf[newbuf_len++] = '=';
+            quad_pos++;
+        }
     }
 
     size_t outlen = max_out;

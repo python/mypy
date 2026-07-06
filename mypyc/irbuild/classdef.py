@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Final
 
 from mypy.nodes import (
+    ARG_POS,
     EXCLUDED_ENUM_ATTRIBUTES,
     TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
@@ -21,15 +22,15 @@ from mypy.nodes import (
     NameExpr,
     OverloadedFuncDef,
     PassStmt,
-    RefExpr,
     StrExpr,
     TempNode,
     TypeInfo,
     TypeParam,
+    Var,
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
-from mypyc.common import PROPSET_PREFIX
+from mypyc.common import MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -48,15 +49,7 @@ from mypyc.ir.ops import (
     TupleSet,
     Value,
 )
-from mypyc.ir.rtypes import (
-    RType,
-    bool_rprimitive,
-    dict_rprimitive,
-    is_none_rprimitive,
-    is_object_rprimitive,
-    is_optional_type,
-    object_rprimitive,
-)
+from mypyc.ir.rtypes import RType, bool_rprimitive, dict_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, create_type_params
 from mypyc.irbuild.function import (
     gen_property_getter_ir,
@@ -66,7 +59,13 @@ from mypyc.irbuild.function import (
     load_type,
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
-from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
+from mypyc.irbuild.util import (
+    dataclass_type,
+    default_attr_name,
+    get_func_def,
+    is_constant,
+    is_dataclass_decorator,
+)
 from mypyc.primitives.dict_ops import dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import (
     iter_op,
@@ -80,6 +79,7 @@ from mypyc.primitives.misc_ops import (
     import_op,
     not_implemented_op,
     py_calc_meta_op,
+    py_init_subclass_op,
     pytype_from_template_op,
     type_object_op,
 )
@@ -136,6 +136,13 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     else:
         cls_builder = NonExtClassBuilder(builder, cdef)
 
+    # Set up class body context so that intra-class ClassVar references
+    # (e.g. C = A | B where A is defined earlier in the same class) can be
+    # resolved from the class being built instead of module globals.
+    builder.class_body_classvars = {}
+    builder.class_body_obj = cls_builder.class_body_obj()
+    builder.class_body_ir = ir
+
     for stmt in cdef.defs.body:
         if (
             isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef))
@@ -178,12 +185,21 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
             cls_builder.add_attr(lvalue, stmt)
+            # Track this ClassVar so subsequent class body statements can reference it.
+            if is_class_var(lvalue) or stmt.is_final_def:
+                assert isinstance(lvalue.node, Var), lvalue.node
+                builder.class_body_classvars[lvalue.node] = None
 
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
+
+    # Clear class body context (nested classes are rejected above, so no need to save/restore).
+    builder.class_body_classvars = {}
+    builder.class_body_obj = None
+    builder.class_body_ir = None
 
     # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():
@@ -231,11 +247,22 @@ class ClassBuilder:
     def finalize(self, ir: ClassIR) -> None:
         """Perform any final operations to complete the class IR"""
 
+    def class_body_obj(self) -> Value | None:
+        """Return the object to use for loading class attributes during class body init.
+
+        For extension classes, this is the type object. For non-extension classes,
+        this is the class dict. Returns None if not applicable.
+        """
+        return None
+
 
 class NonExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         self.non_ext = self.create_non_ext_info()
+
+    def class_body_obj(self) -> Value | None:
+        return self.non_ext.dict
 
     def create_non_ext_info(self) -> NonExtClassInfo:
         non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
@@ -290,11 +317,10 @@ class ExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
-        self.type_obj: Value | None = allocate_class(builder, cdef)
+        self.type_obj: Value = allocate_class(builder, cdef)
 
-    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
-        """Controls whether to skip generating a default for an attribute."""
-        return False
+    def class_body_obj(self) -> Value | None:
+        return self.type_obj
 
     def add_method(self, fdef: FuncDef) -> None:
         handle_ext_method(self.builder, self.cdef, fdef)
@@ -315,11 +341,21 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
-        attrs_with_defaults, default_assignments = find_attr_initializers(
-            self.builder, self.cdef, self.skip_attr_default
-        )
-        ir.attrs_with_defaults.update(attrs_with_defaults)
-        generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
+        # Call __init_subclass__ after class attributes have been set
+        self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
+
+        # Under separate compilation, prepare.py pre-registers the decl iff
+        # the class has its own default attribute assignments to emit, so we
+        # can skip the body walk entirely when it isn't present. Without
+        # separate compilation, find_attr_initializers walks the MRO so that
+        # inherited defaults are reflected in ir.attrs_with_defaults (relied
+        # on by the attribute-definedness analysis), so we always run it.
+        if not self.builder.options.separate or MYPYC_DEFAULTS_SETUP in ir.method_decls:
+            attrs_with_defaults, default_assignments = find_attr_initializers(
+                self.builder, self.cdef
+            )
+            ir.attrs_with_defaults.update(attrs_with_defaults)
+            generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
         create_ne_from_eq(self.builder, self.cdef)
 
 
@@ -346,9 +382,6 @@ class DataClassBuilder(ExtClassBuilder):
             self.builder.call_c(dict_new_op, [], self.cdef.line),
             self.builder.add(LoadAddress(type_object_op.type, type_object_op.src, self.cdef.line)),
         )
-
-    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
-        return stmt.type is not None
 
     def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         # We populate __annotations__ because dataclasses uses it to determine
@@ -411,9 +444,6 @@ class AttrsClassBuilder(DataClassBuilder):
     """
 
     add_annotations_to_dict = False
-
-    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
-        return True
 
     def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         if isinstance(stmt.rvalue, CallExpr):
@@ -587,11 +617,11 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
         if cdef.info.typeddict_type is not None:
-            # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
+            # The metaclass for class-based TypedDict is typing._TypedDictMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "_TypedDictMeta", cdef.line)
         elif cdef.info.is_named_tuple:
-            # In Python 3.9, the metaclass for class-based NamedTuple is typing.NamedTupleMeta.
+            # The metaclass for class-based NamedTuple is typing.NamedTupleMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "NamedTupleMeta", cdef.line)
 
@@ -708,107 +738,122 @@ def add_non_ext_class_attr(
 
 
 def find_attr_initializers(
-    builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
-) -> tuple[set[str], list[AssignmentStmt]]:
+    builder: IRBuilder, cdef: ClassDef
+) -> tuple[set[str], list[tuple[AssignmentStmt, str]]]:
     """Find initializers of attributes in a class body.
 
-    If provided, the skip arg should be a callable which will return whether
-    to skip generating a default for an attribute.  It will be passed the name of
-    the attribute and the corresponding AssignmentStmt.
+    Under separate compilation, only this class's own body is walked, and
+    generate_attr_defaults_init emits a runtime call to the parent's
+    __mypyc_defaults_setup so inherited defaults are produced by chaining,
+    not by inlining. Walking the MRO here would break under separate=True
+    with mypy's incremental cache: a base class loaded from the cache has
+    an empty ClassDef.defs.body (mypy/nodes.py::ClassDef.serialize doesn't
+    serialize the class body), so inherited assignments would be silently
+    dropped and the subclass's __mypyc_defaults_setup would leave inherited
+    slots in the "undefined" state at runtime.
+
+    Without separate compilation, all modules are parsed in the same pass
+    and the MRO walk is safe; we keep the original inline-all behavior
+    there as an optimization (no chain call needed for instance creation).
     """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return set(), []
 
-    attrs_with_defaults = set()
+    cls_type = dataclass_type(cdef)
+    attrs_with_defaults: set[str] = set()
+    default_assignments: list[tuple[AssignmentStmt, str]] = []
 
-    # Pull out all assignments in classes in the mro so we can initialize them
     # TODO: Support nested statements
-    default_assignments = []
-    for info in reversed(cdef.info.mro):
-        if info not in builder.mapper.type_to_ir:
+    if builder.options.separate:
+        infos: list[TypeInfo] = [cdef.info]
+    else:
+        infos = list(reversed(cdef.info.mro))
+
+    for info in infos:
+        info_ir = builder.mapper.type_to_ir.get(info)
+        if info_ir is None:
             continue
         for stmt in info.defn.defs.body:
-            if (
-                isinstance(stmt, AssignmentStmt)
-                and isinstance(stmt.lvalues[0], NameExpr)
-                and not is_class_var(stmt.lvalues[0])
-                and not isinstance(stmt.rvalue, TempNode)
-            ):
-                name = stmt.lvalues[0].name
-                if name == "__slots__":
-                    continue
-
-                if name == "__deletable__":
-                    check_deletable_declaration(builder, cls, stmt.line)
-                    continue
-
-                if skip is not None and skip(name, stmt):
-                    continue
-
-                attr_type = cls.attr_type(name)
-
-                # If the attribute is initialized to None and type isn't optional,
-                # doesn't initialize it to anything (special case for "# type:" comments).
-                if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == "builtins.None":
-                    if (
-                        not is_optional_type(attr_type)
-                        and not is_object_rprimitive(attr_type)
-                        and not is_none_rprimitive(attr_type)
-                    ):
-                        continue
-
-                attrs_with_defaults.add(name)
-                default_assignments.append(stmt)
+            if not isinstance(stmt, AssignmentStmt):
+                continue
+            name = default_attr_name(stmt, info_ir, cls_type)
+            if name is None:
+                continue
+            attrs_with_defaults.add(name)
+            default_assignments.append((stmt, info.module_name))
 
     return attrs_with_defaults, default_assignments
 
 
 def generate_attr_defaults_init(
-    builder: IRBuilder, cdef: ClassDef, default_assignments: list[AssignmentStmt]
+    builder: IRBuilder, cdef: ClassDef, default_assignments: list[tuple[AssignmentStmt, str]]
 ) -> None:
-    """Generate an initialization method for default attr values (from class vars)."""
-    if not default_assignments:
-        return
+    """Generate an initialization method for default attr values (from class vars).
+
+    Under separate compilation, the emitted __mypyc_defaults_setup chains to
+    the nearest ancestor that has the method (Python __init__ style), then
+    sets only this class's own defaults; inherited defaults are produced by
+    the chain at runtime. The ancestor lookup uses cls.mro[1:] and relies on
+    prepare.py having registered the FuncDecl on every class that needs one
+    before any IR build runs. IR build within a compilation group proceeds
+    in filename order, so this class may be IR-built before its base, and a
+    method_decls lookup that depended on the base having been IR-built first
+    would miss. Without separate compilation, find_attr_initializers has
+    already collected the full MRO's defaults into default_assignments, so
+    we inline them all as before.
+    """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return
 
-    with builder.enter_method(cls, "__mypyc_defaults_setup", bool_rprimitive):
+    parent_with_defaults: ClassIR | None = None
+    if builder.options.separate:
+        for ancestor in cls.mro[1:]:
+            if MYPYC_DEFAULTS_SETUP in ancestor.method_decls:
+                parent_with_defaults = ancestor
+                break
+
+    if not default_assignments and parent_with_defaults is None:
+        return
+
+    with builder.enter_method(cls, MYPYC_DEFAULTS_SETUP, bool_rprimitive):
         self_var = builder.self()
-        for stmt in default_assignments:
+
+        # Chain to parent's setup so inherited defaults run first; propagate
+        # its False return so a parent default that raised still aborts
+        # instance creation rather than being silently swallowed here.
+        if parent_with_defaults is not None:
+            decl = parent_with_defaults.method_decl(MYPYC_DEFAULTS_SETUP)
+            parent_ok = builder.builder.call(decl, [self_var], [ARG_POS], [None], cdef.line)
+            fail_block, continue_block = BasicBlock(), BasicBlock()
+            builder.add(Branch(parent_ok, continue_block, fail_block, Branch.BOOL))
+            builder.activate_block(fail_block)
+            builder.add(Return(builder.false()))
+            builder.activate_block(continue_block)
+
+        for stmt, origin_module in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr), lvalue
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning("Unsupported default attribute value", stmt.rvalue.line)
 
             attr_type = cls.attr_type(lvalue.name)
-            val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            # When the default comes from a parent in a different module,
+            # set the globals lookup module so NameExpr references resolve
+            # against the correct module's globals dict.
+            builder.globals_lookup_module = (
+                origin_module if origin_module != builder.module_name else None
+            )
+            try:
+                val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            finally:
+                builder.globals_lookup_module = None
             init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
             init.mark_as_initializer()
             builder.add(init)
 
         builder.add(Return(builder.true()))
-
-
-def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
-    for attr in cl.deletable:
-        if attr not in cl.attributes:
-            if not cl.has_attr(attr):
-                builder.error(f'Attribute "{attr}" not defined', line)
-                continue
-            for base in cl.mro:
-                if attr in base.property_types:
-                    builder.error(f'Cannot make property "{attr}" deletable', line)
-                    break
-            else:
-                _, base = cl.attr_details(attr)
-                builder.error(
-                    ('Attribute "{}" not defined in "{}" ' + '(defined in "{}")').format(
-                        attr, cl.name, base.name
-                    ),
-                    line,
-                )
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -820,12 +865,10 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method."""
-    func_ir = cls.get_method("__eq__")
-    assert func_ir
-    eq_sig = func_ir.decl.sig
+    eq_sig = cls.method_sig("__eq__")
     strict_typing = builder.options.strict_dunders_typing
     with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
-        rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
+        rhs_type = eq_sig.args[1].type
         rhs_arg = builder.add_argument("rhs", rhs_type)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
 

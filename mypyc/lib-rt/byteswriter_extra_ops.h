@@ -1,12 +1,12 @@
 #ifndef BYTESWRITER_EXTRA_OPS_H
 #define BYTESWRITER_EXTRA_OPS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
-#include <stdint.h>
 #include <Python.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-#include "strings/librt_strings.h"
+#include "mypyc_util.h"
+#include "strings/librt_strings_api.h"
 #include "strings/librt_strings_common.h"
 
 // BytesWriter: Length and capacity
@@ -283,7 +283,5 @@ CPyBytes_ReadF64BE(PyObject *bytes_obj, int64_t index) {
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadF64BEUnsafe(data + index);
 }
-
-#endif // MYPYC_EXPERIMENTAL
 
 #endif

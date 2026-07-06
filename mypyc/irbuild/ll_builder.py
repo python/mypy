@@ -185,7 +185,9 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    builtin_names,
     function_ops,
+    global_names,
     method_call_ops,
     unary_ops,
 )
@@ -204,6 +206,7 @@ from mypyc.primitives.tuple_ops import (
     new_tuple_with_length_op,
     sequence_tuple_op,
 )
+from mypyc.rt_expandtype import expand_rtype
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
@@ -323,8 +326,18 @@ class LowLevelIRBuilder:
     def get_element(self, reg: Value, field: str) -> Value:
         return self.add(GetElement(reg, field))
 
-    def load_address(self, name: str, rtype: RType) -> Value:
-        return self.add(LoadAddress(rtype, name))
+    def load_address(self, name: str, rtype: RType, line: int = -1) -> Value:
+        return self.add(LoadAddress(rtype, name, line))
+
+    def load_global(self, name: str, rtype: RType, line: int) -> Value:
+        return self.add(LoadGlobal(rtype, name, line))
+
+    def load_builtin(self, name: str, line: int) -> Value | None:
+        if builtin := builtin_names.get(name):
+            return self.load_address(builtin[1], builtin[0], line)
+        if glob := global_names.get(name):
+            return self.load_global(glob[1], glob[0], line)
+        return None
 
     def load_struct_field(
         self, ptr: Value, struct: RStruct, field: str, *, borrow: bool = False
@@ -2322,6 +2335,7 @@ class LowLevelIRBuilder:
         args: list[Value],
         line: int,
         result_type: RType | None = None,
+        type_args: list[RType] | None = None,
     ) -> Value:
         """Add a primitive op."""
         # Does this primitive map into calling a Python C API
@@ -2351,10 +2365,20 @@ class LowLevelIRBuilder:
         # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
 
+        # Evaluate argument and return types for generic primitives
+        return_type = None
+        if desc.type_params is not None:
+            assert type_args is not None, "Generic primitive op requires explicit type arguments"
+            assert len(type_args) == len(desc.type_params)
+            arg_types = [expand_rtype(arg_type, type_args) for arg_type in desc.arg_types]
+            return_type = expand_rtype(desc.return_type, type_args)
+        else:
+            arg_types = desc.arg_types
+
         coerced = []
         # Coerce fixed number arguments
-        for i in range(min(len(args), len(desc.arg_types))):
-            formal_type = desc.arg_types[i]
+        for i in range(min(len(args), len(arg_types))):
+            formal_type = arg_types[i]
             arg = args[i]
             assert formal_type is not None  # TODO
             arg = self.coerce(arg, formal_type, line)
@@ -2362,7 +2386,16 @@ class LowLevelIRBuilder:
         assert desc.ordering is None
         assert desc.var_arg_type is None
         assert not desc.extra_int_constants
-        target = self.add(PrimitiveOp(coerced, desc, line=line))
+        target = self.add(
+            PrimitiveOp(
+                coerced,
+                desc,
+                line=line,
+                arg_types=arg_types,
+                return_type=return_type,
+                type_args=type_args,
+            )
+        )
         if desc.is_borrowed:
             # If the result is borrowed, force the arguments to be
             # kept alive afterwards, as otherwise the result might be

@@ -47,6 +47,7 @@ typedef struct mypyc_interned_str_struct {
     PyObject *endswith;
     PyObject *get_type_hints;
     PyObject *keys;
+    PyObject *lower;
     PyObject *items;
     PyObject *join;
     PyObject *register_;
@@ -58,6 +59,7 @@ typedef struct mypyc_interned_str_struct {
     PyObject *throw_;
     PyObject *translate;
     PyObject *update;
+    PyObject *upper;
     PyObject *values;
 } mypyc_interned_str_struct;
 

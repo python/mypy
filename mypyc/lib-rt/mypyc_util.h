@@ -160,6 +160,7 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
 #define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
 #define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
+#define CPY_3_15_FEATURES (PY_VERSION_HEX >= 0x030f0000)
 
 #if CPY_3_12_FEATURES
 
