@@ -177,6 +177,10 @@ BLACKLIST: Final = [
     "/_vendored_packages/",
 ]
 
+# The subset of BLACKLIST entries that filter out vendor directories.
+# Separated so they can be selectively re-enabled via --include-vendor.
+VENDOR_BLACKLIST: Final = ["/vendored/", "/vendor/", "/_vendor/", "/_vendored_packages/"]
+
 # These methods are expected to always return a non-trivial value.
 METHODS_WITH_RETURN_VALUE: Final = {
     "__ne__",
@@ -215,6 +219,7 @@ class Options:
         quiet: bool,
         export_less: bool,
         include_docstrings: bool,
+        include_vendor: bool = False,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -235,6 +240,7 @@ class Options:
         self.quiet = quiet
         self.export_less = export_less
         self.include_docstrings = include_docstrings
+        self.include_vendor = include_vendor
 
 
 class StubSource:
@@ -1556,9 +1562,16 @@ def get_qualified_name(o: Expression) -> str:
         return ERROR_MARKER
 
 
-def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:
+def remove_blacklisted_modules(
+    modules: list[StubSource], include_vendor: bool = False
+) -> list[StubSource]:
+    active_blacklist = (
+        [e for e in BLACKLIST if e not in VENDOR_BLACKLIST] if include_vendor else BLACKLIST
+    )
     return [
-        module for module in modules if module.path is None or not is_blacklisted_path(module.path)
+        module
+        for module in modules
+        if module.path is None or not is_blacklisted_path(module.path, active_blacklist)
     ]
 
 
@@ -1573,8 +1586,8 @@ def split_pyc_from_py(modules: list[StubSource]) -> tuple[list[StubSource], list
     return pyc_modules, py_modules
 
 
-def is_blacklisted_path(path: str) -> bool:
-    return any(substr in (normalize_path_separators(path) + "\n") for substr in BLACKLIST)
+def is_blacklisted_path(path: str, blacklist: list[str] = list(BLACKLIST)) -> bool:
+    return any(substr in (normalize_path_separators(path) + "\n") for substr in blacklist)
 
 
 def normalize_path_separators(path: str) -> str:
@@ -1608,7 +1621,7 @@ def collect_build_targets(
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
-    py_modules = remove_blacklisted_modules(py_modules)
+    py_modules = remove_blacklisted_modules(py_modules, include_vendor=options.include_vendor)
     pyc_mod, py_mod = split_pyc_from_py(py_modules)
     return py_mod, pyc_mod, c_modules
 
@@ -1960,6 +1973,11 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="include existing docstrings with the stubs",
     )
+    parser.add_argument(
+        "--include-vendor",
+        action="store_true",
+        help="generate stubs for vendor/vendored directories (skipped by default)",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")
     parser.add_argument("-q", "--quiet", action="store_true", help="show fewer messages")
     parser.add_argument(
@@ -2046,6 +2064,7 @@ def parse_options(args: list[str]) -> Options:
         quiet=ns.quiet,
         export_less=ns.export_less,
         include_docstrings=ns.include_docstrings,
+        include_vendor=ns.include_vendor,
     )
 
 
