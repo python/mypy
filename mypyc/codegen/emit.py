@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pprint
 import sys
-import textwrap
 from collections.abc import Callable
 from typing import Final
 
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.literals import Literals
+from mypyc.codegen.literals import Literals, literal_sort_key
 from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
@@ -237,24 +235,16 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string representation.
+        """Build a C comment with a literal value's string representation.
 
-        If the comment exceeds the line length limit, it's wrapped into a
-        multiline string (with the extra lines indented to be aligned with
-        the first line's comment).
+        This is a debugging aid that makes generated C easier to read.
 
-        If it contains illegal characters, an empty string is returned."""
-        line_width = self._indent + len(line)
-        formatted = pprint.pformat(obj, compact=True, indent=1, width=max(90 - line_width, 20))
-        if any(x in formatted for x in ("/*", "*/", "\0")):
+        If it contains illegal characters or is too long, return an empty string.
+        """
+        formatted = stable_literal_repr(obj)
+        if any(x in formatted for x in ("/*", "*/", "\0")) or len(formatted) >= 256:
             return ""
-
-        if "\n" in formatted:
-            first_line, rest = formatted.split("\n", maxsplit=1)
-            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
-            return f" /* {first_line}\n{comment_continued} */"
-        else:
-            return f" /* {formatted} */"
+        return f" /* {formatted} */"
 
     def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
@@ -1486,3 +1476,21 @@ def native_function_doc_initializer(func: FuncIR) -> str:
         return "NULL"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def stable_literal_repr(obj: object) -> str:
+    """Return a single-line repr of a literal value.
+
+    Behaves like repr() for most values, but renders frozenset members in a
+    deterministic order (frozenset iteration order is hash-seed dependent).
+    """
+    if isinstance(obj, frozenset):
+        if not obj:
+            return "frozenset()"
+        items = ", ".join(stable_literal_repr(item) for item in sorted(obj, key=literal_sort_key))
+        return "frozenset({" + items + "})"
+    elif isinstance(obj, tuple):
+        if len(obj) == 1:
+            return "(" + stable_literal_repr(obj[0]) + ",)"
+        return "(" + ", ".join(stable_literal_repr(item) for item in obj) + ")"
+    return repr(obj)

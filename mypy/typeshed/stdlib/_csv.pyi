@@ -2,8 +2,8 @@ import csv
 import sys
 from _typeshed import SupportsWrite
 from collections.abc import Iterable
-from typing import Any, Final, Literal, type_check_only
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing import Any, Final, Literal, TypeAlias
+from typing_extensions import Self, disjoint_base
 
 __version__: Final[str]
 
@@ -47,47 +47,24 @@ class Dialect:
         strict: bool = False,
     ) -> Self: ...
 
-if sys.version_info >= (3, 10):
-    # This class calls itself _csv.reader.
-    @disjoint_base
-    class Reader:
-        @property
-        def dialect(self) -> Dialect: ...
-        line_num: int
-        def __iter__(self) -> Self: ...
-        def __next__(self) -> list[str]: ...
+# This class calls itself _csv.reader.
+@disjoint_base
+class Reader:
+    @property
+    def dialect(self) -> Dialect: ...
+    line_num: int
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> list[str]: ...
 
-    # This class calls itself _csv.writer.
-    @disjoint_base
-    class Writer:
-        @property
-        def dialect(self) -> Dialect: ...
-        if sys.version_info >= (3, 13):
-            def writerow(self, row: Iterable[Any], /) -> Any: ...
-            def writerows(self, rows: Iterable[Iterable[Any]], /) -> None: ...
-        else:
-            def writerow(self, row: Iterable[Any]) -> Any: ...
-            def writerows(self, rows: Iterable[Iterable[Any]]) -> None: ...
-
-    # For the return types below.
-    # These aliases can be removed when typeshed drops support for 3.9.
-    _reader = Reader
-    _writer = Writer
-else:
-    # This class is not exposed. It calls itself _csv.reader.
-    @type_check_only
-    class _reader:
-        @property
-        def dialect(self) -> Dialect: ...
-        line_num: int
-        def __iter__(self) -> Self: ...
-        def __next__(self) -> list[str]: ...
-
-    # This class is not exposed. It calls itself _csv.writer.
-    @type_check_only
-    class _writer:
-        @property
-        def dialect(self) -> Dialect: ...
+# This class calls itself _csv.writer.
+@disjoint_base
+class Writer:
+    @property
+    def dialect(self) -> Dialect: ...
+    if sys.version_info >= (3, 13):
+        def writerow(self, row: Iterable[Any], /) -> Any: ...
+        def writerows(self, rows: Iterable[Iterable[Any]], /) -> None: ...
+    else:
         def writerow(self, row: Iterable[Any]) -> Any: ...
         def writerows(self, rows: Iterable[Iterable[Any]]) -> None: ...
 
@@ -104,7 +81,7 @@ def writer(
     lineterminator: str = "\r\n",
     quoting: _QuotingType = 0,
     strict: bool = False,
-) -> _writer: ...
+) -> Writer: ...
 def reader(
     iterable: Iterable[str],
     /,
@@ -118,7 +95,7 @@ def reader(
     lineterminator: str = "\r\n",
     quoting: _QuotingType = 0,
     strict: bool = False,
-) -> _reader: ...
+) -> Reader: ...
 def register_dialect(
     name: str,
     /,

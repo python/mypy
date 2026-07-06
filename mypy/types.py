@@ -3688,11 +3688,12 @@ class TypeType(ProperType):
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_TYPE)
         self.item.write(data)
+        write_bool(data, self.is_type_form)
         write_tag(data, END_TAG)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> Type:
-        ret = TypeType.make_normalized(read_type(data))
+        ret = TypeType.make_normalized(read_type(data), is_type_form=read_bool(data))
         assert read_tag(data) == END_TAG
         return ret
 

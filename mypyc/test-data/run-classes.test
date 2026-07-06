@@ -1113,6 +1113,24 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testClassVarDoesNotShadowMethodGlobal]
+from typing import ClassVar
+from testutil import assertRaises
+
+class E(Exception):
+    pass
+
+class C:
+    E: ClassVar[type[E]] = E
+
+    def m(self, b: bytes) -> None:
+        if not b:
+            raise E()
+
+def test_class_var_does_not_shadow_method_global() -> None:
+    with assertRaises(E):
+        C().m(b"")
+
 [case testInitSubclassWithClassVar]
 from typing import ClassVar
 
@@ -2806,6 +2824,46 @@ def test_final_attribute() -> None:
     assert C.a['x'] == 'y'
     assert C.b['x'] == 'y'
     assert C.a is C.b
+
+[case testFinalInstanceAttributeCannotBeRebound]
+from typing import Any, Final
+
+from testutil import assertRaises
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final[int] = x
+
+class D(C):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y: Final[int] = y
+
+def rebind_via_any(o: Any, value: int) -> None:
+    o.x = value
+
+def test_rebind_via_any() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        rebind_via_any(c, 2)
+    assert c.x == 1
+
+def test_rebind_via_setattr() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        setattr(c, "x", 3)
+    assert c.x == 1
+
+def test_rebind_inherited_via_setattr() -> None:
+    d = D(1, 2)
+    # Inherited Final attribute can't be modified.
+    with assertRaises(AttributeError):
+        setattr(d, "x", 3)
+    # The subclass's own Final attribute can't be modified either.
+    with assertRaises(AttributeError):
+        setattr(d, "y", 4)
+    assert d.x == 1
+    assert d.y == 2
 
 [case testClassDerivedFromIntEnum]
 from enum import IntEnum, auto
@@ -5988,3 +6046,61 @@ for _ in range(100):
     check(foo)
 after = sys.getrefcount(foo.obj)
 assert after - init == 0, f"Leaked {after - init} refs"
+
+[case testNativeAttrSetterRefcountLeak]
+# Setting a native attribute from interpreted code goes through the generated
+# getset descriptor setter. For refcounted unboxed types (heap-boxed ints,
+# tuples with refcounted items) the setter must take exactly one reference to
+# the stored value, not two.
+from dataclasses import dataclass
+from typing import Tuple
+
+@dataclass
+class IntField:
+    v: int
+
+@dataclass
+class TupleField:
+    v: Tuple[int, int]
+
+[file driver.py]
+import sys
+from native import IntField, TupleField
+
+# A heap-boxed int (>= 2**62) is stored as a refcounted PyObject*, unlike small
+# inline-tagged ints, so an over-incref strands a real reference. Compute the
+# values at runtime (not as folded literals): on free-threaded builds code
+# constants are immortal, and getrefcount could not observe a leak on them.
+shift = 70
+BIG = 1 << shift
+
+def check_no_leak(make, value) -> None:
+    base = sys.getrefcount(value)
+    objs = [make(value) for _ in range(100)]
+    alive = sys.getrefcount(value)
+    # Each live instance must hold exactly one reference to the field value.
+    assert alive - base == 100, f"expected 100 live refs, got {alive - base}"
+    del objs
+    after = sys.getrefcount(value)
+    assert after == base, f"leaked {after - base} refs"
+
+# The dataclass-generated __init__ stores self.v = v via the descriptor setter.
+check_no_leak(IntField, BIG)
+
+# Tuple[int, int] is stored as an unboxed RTuple; its boxed-int elements are
+# refcounted, so the setter must not over-incref them either. Use the same int
+# in both slots so each instance holds exactly two references to it.
+ELEM = 1 << (shift + 1)
+base = sys.getrefcount(ELEM)
+objs = [TupleField((ELEM, ELEM)) for _ in range(100)]
+alive = sys.getrefcount(ELEM)
+assert alive - base == 200, f"expected 200 live refs, got {alive - base}"
+del objs
+assert sys.getrefcount(ELEM) == base, f"tuple field leaked {sys.getrefcount(ELEM) - base} refs"
+
+# Re-assigning through the setter must release the previous value too.
+o = IntField(BIG)
+base = sys.getrefcount(BIG)
+o.v = BIG
+o.v = BIG
+assert sys.getrefcount(BIG) == base, "reassignment leaked refs"

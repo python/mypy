@@ -1246,6 +1246,39 @@ import native
 
 [rechecked other_a]
 
+-- Test that importing a skipped module does not force rechecks.
+[case testIncrementalCompilationFollowImportsSkip]
+from other_dep import f
+assert f() == 1
+
+[file other_dep.py]
+import skipped
+
+def f() -> int:
+    return 1
+
+def g() -> int:
+    return 2
+
+# Files under "skipped" are not typechecked because of the "--follow_imports = skip" option.
+[file skipped/__init__.py]
+x = 1
+
+[file skipped/other_child.py]
+import skipped
+
+def child() -> int:
+    return 1
+
+[file native.py.2]
+from other_dep import g
+assert g() == 2
+
+[file driver.py]
+import native
+
+[rechecked native]
+
 [case testSeparateCompilationWithUndefinedAttribute]
 from other_a import A
 

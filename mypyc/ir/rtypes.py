@@ -152,6 +152,9 @@ class RTypeVisitor(Generic[T]):
     def visit_rinstance(self, typ: RInstance, /) -> T:
         raise NotImplementedError
 
+    def visit_rtypevar(self, typ: RTypeVar, /) -> T:
+        raise RuntimeError("RTypeVar should not be encountered here")
+
     @abstractmethod
     def visit_rvec(self, typ: RVec, /) -> T:
         raise NotImplementedError
@@ -747,6 +750,12 @@ class TupleNameVisitor(RTypeVisitor[str]):
     def visit_rvoid(self, t: RVoid) -> str:
         assert False, "rvoid in tuple?"
 
+    def visit_rtypevar(self, typ: RTypeVar) -> str:
+        # We need to return something to support generic RTuples, etc. Make sure
+        # the return value is invalid C so that generic RTuples must be expanded
+        # before they can be used in IR.
+        return f"!RTypeVar {typ.id} invalid!"
+
 
 @final
 class RTuple(RType):
@@ -1011,6 +1020,50 @@ class RInstance(RType):
 
     def serialize(self) -> str:
         return self.name
+
+
+@final
+class RTypeVar(RType):
+    """Type variable type used for generic primitive ops.
+
+    This allows having generic primitive operations like vec get item, which is
+    parametrized by the vec item type.
+
+    These types are not valid in any other context outside PrimitiveDescription,
+    and they will always be substituted during the construction of a PrimitiveOp.
+
+    NOTE: This is not related to mypy's TypeVarType!
+    """
+
+    def __init__(self, id: int) -> None:
+        self.id = id
+
+    @property
+    def may_be_immortal(self) -> bool:
+        # RTypeVar must always be substituted before use, so this should never matter.
+        return False
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        return visitor.visit_rtypevar(self)
+
+    def __str__(self) -> str:
+        return f"<RTypeVar {self.id}>"
+
+    def __repr__(self) -> str:
+        return f"<RTypeVar {self.id}>"
+
+    def __eq__(self, other: object) -> TypeGuard[RTypeVar]:
+        return isinstance(other, RTypeVar) and other.id == self.id
+
+    def __hash__(self) -> int:
+        return self.id ^ 12345
+
+    def serialize(self) -> JsonDict:
+        return {".class": "RTypeVar", "id": self.id}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTypeVar:
+        return RTypeVar(data["id"])
 
 
 @final

@@ -26,6 +26,7 @@ from mypy.nodes import (
     TempNode,
     TypeInfo,
     TypeParam,
+    Var,
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
@@ -186,7 +187,8 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             cls_builder.add_attr(lvalue, stmt)
             # Track this ClassVar so subsequent class body statements can reference it.
             if is_class_var(lvalue) or stmt.is_final_def:
-                builder.class_body_classvars[lvalue.name] = None
+                assert isinstance(lvalue.node, Var), lvalue.node
+                builder.class_body_classvars[lvalue.node] = None
 
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore

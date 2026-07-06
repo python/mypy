@@ -1065,12 +1065,14 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                     getter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
                 )
             )
-            emitter.emit_line("static int")
-            emitter.emit_line(
-                "{}({} *self, PyObject *value, void *closure);".format(
-                    setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("static int")
+                emitter.emit_line(
+                    "{}({} *self, PyObject *value, void *closure);".format(
+                        setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+                    )
                 )
-            )
 
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1099,11 +1101,15 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr in cl.attributes:
             emitter.emit_line(f'{{"{attr}",')
-            emitter.emit_line(
-                " (getter){}, (setter){},".format(
-                    getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+            if attr in cl.final_attributes:
+                # Final attributes are read-only, so emit a NULL setter.
+                emitter.emit_line(f" (getter){getter_name(cl, attr, emitter.names)}, NULL,")
+            else:
+                emitter.emit_line(
+                    " (getter){}, (setter){},".format(
+                        getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+                    )
                 )
-            )
             emitter.emit_line(" NULL, NULL},")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1129,8 +1135,10 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
             generate_getter(cl, attr, rtype, emitter)
-            emitter.emit_line("")
-            generate_setter(cl, attr, rtype, emitter)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("")
+                generate_setter(cl, attr, rtype, emitter)
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
@@ -1211,7 +1219,15 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value != NULL) {")
 
     if rtype.is_unboxed:
-        emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
+        # Borrow the unboxed value: emit_inc_ref below takes the single owned
+        # reference, matching the borrowed-then-incref pattern of the other two
+        # branches. Without borrow=True, emit_unbox already creates a new
+        # reference for refcounted unboxed types (e.g. CPyTagged boxed ints,
+        # tuples with refcounted fields), so the emit_inc_ref would double the
+        # reference and leak the stored value on every set via this setter.
+        emitter.emit_unbox(
+            "value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True, borrow=True
+        )
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line("PyObject *tmp = value;")
     else:

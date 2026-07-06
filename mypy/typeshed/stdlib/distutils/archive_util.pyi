@@ -23,6 +23,7 @@ def make_archive(
     owner: str | None = None,
     group: str | None = None,
 ) -> str: ...
+
 def make_tarball(
     base_name: str,
     base_dir: StrPath,

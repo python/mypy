@@ -5,6 +5,7 @@ from _typeshed import ReadableBuffer, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
 from importlib import _bootstrap_external
+from importlib._abc import Loader as Loader
 from importlib.machinery import ModuleSpec
 from io import BufferedReader
 from typing import IO, Any, Literal, Protocol, overload, runtime_checkable
@@ -24,17 +25,6 @@ if sys.version_info >= (3, 11):
 
     if sys.version_info < (3, 12):
         __all__ += ["Finder", "ResourceReader", "Traversable", "TraversableResources"]
-
-if sys.version_info >= (3, 10):
-    from importlib._abc import Loader as Loader
-else:
-    class Loader(metaclass=ABCMeta):
-        def load_module(self, fullname: str) -> types.ModuleType: ...
-        def module_repr(self, module: types.ModuleType) -> str: ...
-        def create_module(self, spec: ModuleSpec) -> types.ModuleType | None: ...
-        # Not defined on the actual class for backwards-compatibility reasons,
-        # but expected in new code.
-        def exec_module(self, module: types.ModuleType) -> None: ...
 
 if sys.version_info < (3, 12):
     @deprecated("Deprecated since Python 3.3; removed in Python 3.12. Use `MetaPathFinder` or `PathEntryFinder` instead.")
@@ -67,47 +57,28 @@ class SourceLoader(_bootstrap_external.SourceLoader, ResourceLoader, ExecutionLo
     def get_source(self, fullname: str) -> str | None: ...
     def path_stats(self, path: str) -> Mapping[str, Any]: ...
 
-# The base classes differ starting in 3.10:
-if sys.version_info >= (3, 10):
-    # Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
-    class MetaPathFinder(metaclass=ABCMeta):
-        if sys.version_info < (3, 12):
-            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `MetaPathFinder.find_spec()` instead.")
-            def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
-
-        def invalidate_caches(self) -> None: ...
-        # Not defined on the actual class, but expected to exist.
-        def find_spec(
-            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ..., /
-        ) -> ModuleSpec | None: ...
-
-    class PathEntryFinder(metaclass=ABCMeta):
-        if sys.version_info < (3, 12):
-            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `PathEntryFinder.find_spec()` instead.")
-            def find_module(self, fullname: str) -> Loader | None: ...
-            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
-            def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[str]]: ...
-
-        def invalidate_caches(self) -> None: ...
-        # Not defined on the actual class, but expected to exist.
-        def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
-
-else:
-    # Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
-    class MetaPathFinder(Finder):
+# Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
+class MetaPathFinder(metaclass=ABCMeta):
+    if sys.version_info < (3, 12):
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `MetaPathFinder.find_spec()` instead.")
         def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
-        def invalidate_caches(self) -> None: ...
-        # Not defined on the actual class, but expected to exist.
-        def find_spec(
-            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ..., /
-        ) -> ModuleSpec | None: ...
 
-    class PathEntryFinder(Finder):
+    def invalidate_caches(self) -> None: ...
+    # Not defined on the actual class, but expected to exist.
+    def find_spec(
+        self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ..., /
+    ) -> ModuleSpec | None: ...
+
+class PathEntryFinder(metaclass=ABCMeta):
+    if sys.version_info < (3, 12):
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `PathEntryFinder.find_spec()` instead.")
         def find_module(self, fullname: str) -> Loader | None: ...
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
         def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[str]]: ...
-        def invalidate_caches(self) -> None: ...
-        # Not defined on the actual class, but expected to exist.
-        def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
+
+    def invalidate_caches(self) -> None: ...
+    # Not defined on the actual class, but expected to exist.
+    def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
 
 class FileLoader(_bootstrap_external.FileLoader, ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
@@ -123,13 +94,8 @@ if sys.version_info < (3, 11):
         def open_resource(self, resource: str) -> IO[bytes]: ...
         @abstractmethod
         def resource_path(self, resource: str) -> str: ...
-        if sys.version_info >= (3, 10):
-            @abstractmethod
-            def is_resource(self, path: str) -> bool: ...
-        else:
-            @abstractmethod
-            def is_resource(self, name: str) -> bool: ...
-
+        @abstractmethod
+        def is_resource(self, path: str) -> bool: ...
         @abstractmethod
         def contents(self) -> Iterator[str]: ...
 
@@ -141,6 +107,7 @@ if sys.version_info < (3, 11):
         def is_file(self) -> bool: ...
         @abstractmethod
         def iterdir(self) -> Iterator[Traversable]: ...
+
         if sys.version_info >= (3, 11):
             @abstractmethod
             def joinpath(self, *descendants: str) -> Traversable: ...
@@ -157,15 +124,11 @@ if sys.version_info < (3, 11):
         @overload
         @abstractmethod
         def open(self, mode: Literal["rb"]) -> IO[bytes]: ...
+
         @property
         @abstractmethod
         def name(self) -> str: ...
-        if sys.version_info >= (3, 10):
-            def __truediv__(self, child: str, /) -> Traversable: ...
-        else:
-            @abstractmethod
-            def __truediv__(self, child: str, /) -> Traversable: ...
-
+        def __truediv__(self, child: str, /) -> Traversable: ...
         @abstractmethod
         def read_bytes(self) -> bytes: ...
         @abstractmethod

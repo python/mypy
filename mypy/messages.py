@@ -970,8 +970,9 @@ class MessageBuilder:
             msg = "Too many positional arguments"
         else:
             msg = "Too many positional arguments" + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG_MISC)
         self.maybe_note_about_special_args(callee, context)
+        self.note_defined_here(callee, context, code=codes.CALL_ARG_MISC)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
@@ -1018,7 +1019,9 @@ class MessageBuilder:
         )
         self.note_defined_here(callee, context)
 
-    def note_defined_here(self, callee: CallableType, context: Context) -> None:
+    def note_defined_here(
+        self, callee: CallableType, context: Context, code: ErrorCode = codes.CALL_ARG
+    ) -> None:
         module = find_defining_module(self.modules, callee)
         if (
             module
@@ -1031,7 +1034,7 @@ class MessageBuilder:
                 fname = "Called function"
             else:
                 fname = fname.split(" of ")[0]  # use short method names in the note
-            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=code)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(

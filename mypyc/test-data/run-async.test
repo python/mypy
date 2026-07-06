@@ -1416,12 +1416,15 @@ def run(x: object) -> object: ...
 
 [case testAsyncIntrospection]
 import asyncio
+import gc
 import inspect
 import sys
 import weakref
 
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
+
+from testutil import is_gil_disabled
 
 def identity(val: int) -> int:
     return val
@@ -1588,6 +1591,37 @@ def test_nested() -> None:
     assert not is_coroutine(nested_wrapped)
     assert is_coroutine(nested_wrapped_async)
     assert asyncio.run(nested_wrapped_async()) == 4
+
+def test_async_function_wrapper_code_refcount() -> None:
+    if is_gil_disabled():
+        # On free-threaded builds the code object might be immortal, so the ref count test doesn't work.
+        return
+    code = getattr(identity_async, "__code__")
+    getrefcount = getattr(sys, "getrefcount")
+    # getrefcount sees the local code variable plus the wrapper-owned reference.
+    assert getrefcount(code) == 2, getrefcount(code)
+
+def test_nested_async_function_wrapper_code_refcount() -> None:
+    if is_gil_disabled():
+        # On free-threaded builds the code object might be immortal, so the ref count test doesn't work.
+        return
+    def make_nested() -> Any:
+        async def nested_refcounted() -> int:
+            return 1
+
+        return nested_refcounted
+
+    getrefcount = getattr(sys, "getrefcount")
+    fn = make_nested()
+    code = getattr(fn, "__code__")
+    before = getrefcount(code)
+    assert asyncio.run(fn()) == 1
+
+    del fn
+    gc.collect()
+    after = getrefcount(code)
+    assert before == after + 1, (before, after)
+    assert after == 1, after
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...

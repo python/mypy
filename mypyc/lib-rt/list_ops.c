@@ -301,6 +301,8 @@ PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
 }
 
 // Return -2 or error, -1 if not found, or index of first match otherwise.
+//
+// The caller must hold a critical section on the list.
 static Py_ssize_t _CPyList_Find(PyObject *list, PyObject *obj) {
     Py_ssize_t i;
     for (i = 0; i < Py_SIZE(list); i++) {
@@ -320,27 +322,35 @@ static Py_ssize_t _CPyList_Find(PyObject *list, PyObject *obj) {
 }
 
 int CPyList_Remove(PyObject *list, PyObject *obj) {
+    int retval;
+    Py_BEGIN_CRITICAL_SECTION(list);
     Py_ssize_t index = _CPyList_Find(list, obj);
     if (index == -2) {
-        return -1;
-    }
-    if (index == -1) {
+        retval = -1;
+    } else if (index == -1) {
         PyErr_SetString(PyExc_ValueError, "list.remove(x): x not in list");
-        return -1;
+        retval = -1;
+    } else {
+        retval = PyList_SetSlice(list, index, index + 1, NULL);
     }
-    return PyList_SetSlice(list, index, index + 1, NULL);
+    Py_END_CRITICAL_SECTION();
+    return retval;
 }
 
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
+    CPyTagged retval;
+    Py_BEGIN_CRITICAL_SECTION(list);
     Py_ssize_t index = _CPyList_Find(list, obj);
     if (index == -2) {
-        return CPY_INT_TAG;
-    }
-    if (index == -1) {
+        retval = CPY_INT_TAG;
+    } else if (index == -1) {
         PyErr_SetString(PyExc_ValueError, "value is not in list");
-        return CPY_INT_TAG;
+        retval = CPY_INT_TAG;
+    } else {
+        retval = index << 1;
     }
-    return index << 1;
+    Py_END_CRITICAL_SECTION();
+    return retval;
 }
 
 PyObject *CPySequence_Sort(PyObject *seq) {

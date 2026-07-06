@@ -145,6 +145,8 @@ class ClassIR:
         )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Final attributes defined in the class (not inherited)
+        self.final_attributes: set[str] = set()
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -396,6 +398,7 @@ class ClassIR:
             "ctor": self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "final_attributes": sorted(self.final_attributes),
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -456,6 +459,7 @@ class ClassIR:
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.final_attributes = set(data["final_attributes"])
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]
