@@ -592,6 +592,28 @@ L0:
     dec_ref d
     return 1
 
+[case testBorrowListObjectWithLiteralIndex_nogil]
+from typing import cast
+
+def f() -> str:
+    o = cast(object, [])
+    return cast(list[str], o)[0]
+[out]
+def f():
+    r0 :: list
+    o :: object
+    r1 :: list
+    r2 :: object
+    r3 :: str
+L0:
+    r0 = PyList_New(0)
+    o = r0
+    r1 = borrow cast(list, o)
+    r2 = CPyList_GetItemShort(r1, 0)
+    r3 = cast(str, r2)
+    dec_ref o
+    return r3
+
 [case testUnaryBranchSpecialCase]
 def f(x: bool) -> int:
     if x:
@@ -1178,7 +1200,7 @@ L0:
     r2 = cast(str, r1)
     return r2
 
-[case testBorrowListGetItem2]
+[case testBorrowListGetItem2_withgil]
 from typing import List
 
 def attr_before_index(x: C) -> str:
@@ -1228,6 +1250,58 @@ L0:
     r2 = r1.n
     return r2
 
+[case testBorrowListGetItem2_nogil]
+from typing import List
+
+def attr_before_index(x: C) -> str:
+    return x.a[x.n]
+
+def attr_after_index(a: List[C], i: int) -> int:
+    return a[i].n
+
+def attr_after_index_literal(a: List[C]) -> int:
+    return a[0].n
+
+class C:
+    a: List[str]
+    n: int
+[out]
+def attr_before_index(x):
+    x :: __main__.C
+    r0 :: list
+    r1 :: int
+    r2 :: object
+    r3 :: str
+L0:
+    r0 = borrow x.a
+    r1 = borrow x.n
+    r2 = CPyList_GetItem(r0, r1)
+    r3 = cast(str, r2)
+    return r3
+def attr_after_index(a, i):
+    a :: list
+    i :: int
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItem(a, i)
+    r1 = cast(__main__.C, r0)
+    r2 = r1.n
+    dec_ref r1
+    return r2
+def attr_after_index_literal(a):
+    a :: list
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItemShort(a, 0)
+    r1 = cast(__main__.C, r0)
+    r2 = r1.n
+    dec_ref r1
+    return r2
+
 [case testCannotBorrowListGetItem]
 from typing import List
 
@@ -1257,7 +1331,7 @@ def f():
 L0:
     return 0
 
-[case testBorrowListGetItemKeepAlive]
+[case testBorrowListGetItemKeepAlive_withgil]
 from typing import List
 
 def f() -> str:

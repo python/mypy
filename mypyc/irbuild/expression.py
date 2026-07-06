@@ -58,7 +58,7 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import MAX_SHORT_INT
+from mypyc.common import IS_FREE_THREADED, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -773,8 +773,14 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
-    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
+    # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
+    # performance, so we'll do unsafe borrowing.
+    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
+        base_type, RVec
+    )
+    can_borrow_base = (
+        is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    ) and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
@@ -796,7 +802,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index, can_borrow=can_borrow)
+    index_reg = builder.accept(expr.index, can_borrow=can_borrow or can_borrow_base)
     return builder.builder.get_item(
         base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
     )

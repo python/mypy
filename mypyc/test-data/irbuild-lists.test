@@ -26,7 +26,7 @@ L0:
     r1 = cast(list, r0)
     return r1
 
-[case testListOfListGet2]
+[case testListOfListGet2_withgil]
 from typing import List
 def f(x: List[List[int]]) -> int:
     return x[0][1]
@@ -43,6 +43,24 @@ L0:
     r2 = CPyList_GetItemShort(r1, 2)
     r3 = unbox(int, r2)
     keep_alive x, r0
+    return r3
+
+[case testListOfListGet2_nogil]
+from typing import List
+def f(x: List[List[int]]) -> int:
+    return x[0][1]
+[out]
+def f(x):
+    x :: list
+    r0 :: object
+    r1 :: list
+    r2 :: object
+    r3 :: int
+L0:
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = cast(list, r0)
+    r2 = CPyList_GetItemShort(r1, 2)
+    r3 = unbox(int, r2)
     return r3
 
 [case testListSet]

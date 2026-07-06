@@ -1287,7 +1287,7 @@ L0:
     r2 = r1.x
     return r2
 
-[case testBorrowResultOfCustomGetItemInIfStatement]
+[case testBorrowResultOfCustomGetItemInIfStatement_withgil]
 from typing import List
 
 class C:

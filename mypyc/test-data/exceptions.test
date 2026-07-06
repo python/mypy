@@ -98,7 +98,7 @@ L6:
     r5 = <error> :: int
     return r5
 
-[case testListSum]
+[case testListSum_withgil]
 from typing import List
 def sum(a: List[int], l: int) -> int:
     sum = 0
