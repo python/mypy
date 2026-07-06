@@ -773,7 +773,8 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    # We can borrow safely only if GIL is enabled
+    # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
+    # performance, so we'll do unsafe borrowing.
     can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
         base_type, RVec
     )
