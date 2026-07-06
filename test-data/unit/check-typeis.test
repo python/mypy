@@ -542,17 +542,20 @@ def test(x: List[Any]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsNegativeNarrowCovariantGenericAny]
-from typing_extensions import TypeIs
+from typing_extensions import Never, TypeIs
 from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
 
 class Box(Generic[T]): ...
 class Source(Generic[T_co]): ...
+class Sink(Generic[T_contra]): ...
 
 def is_str_box(x: object) -> TypeIs[Box[str]]: ...
 def is_source(x: object) -> TypeIs[Source[object]]: ...
+def is_sink(x: object) -> TypeIs[Sink[Never]]: ...
 
 def keep_invariant(x: Box[Any]) -> None:
     assert not is_str_box(x)
@@ -560,6 +563,10 @@ def keep_invariant(x: Box[Any]) -> None:
 
 def narrow_covariant(x: int | Source[Any]) -> None:
     assert not is_source(x)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def narrow_contravariant(x: int | Sink[Any]) -> None:
+    assert not is_sink(x)
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
