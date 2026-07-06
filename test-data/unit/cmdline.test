@@ -117,7 +117,7 @@ sub.pkg contains __init__.py but is not a valid Python package name
 [file a.py]
 # coding: uft-8
 [out]
-a.py: error: cannot decode file: unknown encoding: uft-8
+a.py: error: Cannot decode file: unknown encoding: uft-8
 == Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
@@ -315,7 +315,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 \[tool.mypy]
 python_version = 3.10
 [out]
-pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.9 or higher). You may need to put quotes around your Python version
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.10 or higher). You may need to put quotes around your Python version
 == Return code: 0
 
 [case testPythonVersionTooOld10]
@@ -327,13 +327,13 @@ python_version = 1.0
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionTooOld38]
+[case testPythonVersionTooOld39]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.8
+python_version = 3.9
 [out]
-mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+mypy.ini: [mypy]: python_version: Python 3.9 is not supported (must be 3.10 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew40]
@@ -356,31 +356,31 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
 mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
-[case testPythonVersionAccepted39]
+[case testPythonVersionAccepted310]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.9
+python_version = 3.10
 [out]
 
-[case testPythonVersionAccepted314]
+[case testPythonVersionAccepted315]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.14
+python_version = 3.15
 [out]
 
 [case testPythonVersionFallback]
 # cmd: mypy main.py
 [file main.py]
 import sys
-if sys.version_info < (3, 10):  # Update here when bumping the min Python version!
+if sys.version_info < (3, 11):  # Update here when bumping the min Python version!
     reveal_type("good")
 [file mypy.ini]
 \[mypy]
-python_version = 3.8
+python_version = 3.9
 [out]
-mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+mypy.ini: [mypy]: python_version: Python 3.9 is not supported (must be 3.10 or higher)
 main.py:3: note: Revealed type is "Literal['good']?"
 == Return code: 0
 
@@ -416,7 +416,7 @@ int_pow.py:11: note: Revealed type is "Any"
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
-mypy: error: cannot read file 'nope.py': No such file or directory
+mypy: error: Cannot read file 'nope.py': No such file or directory
 == Return code: 2
 
 [case testModulesAndPackages]
@@ -530,6 +530,35 @@ variable has type "bytes")
     b: bytes = 1
                ^
 
+[case testShadowFileWithNativeParser]
+# cmd: mypy --native-parser --shadow-file source.py shadow.py source.py
+[file source.py]
+x: int = 1
+reveal_type(x)
+[file shadow.py]
+x: str = "y"
+reveal_type(x)
+[out]
+source.py:2: note: Revealed type is "str"
+== Return code: 0
+
+[case testShadowFileWithNativeParserParallel]
+# cmd: mypy --native-parser --num-workers=4 --shadow-file a.py a_shadow.py main.py a.py b.py
+[file main.py]
+import a
+import b
+[file a.py]
+x: int = 1
+reveal_type(x)
+[file b.py]
+y: int = 2
+[file a_shadow.py]
+x: str = "y"
+reveal_type(x)
+[out]
+a.py:2: note: Revealed type is "str"
+== Return code: 0
+
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file mypy.ini]
@@ -591,6 +620,14 @@ import d
 import b.c
 import d
 
+[case testPackageRootMultipleParallel]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py --num-workers=2
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
 [case testCacheMap]
 -- This just checks that a valid --cache-map triple is accepted.
 -- (Errors are too verbose to check.)
@@ -630,7 +667,7 @@ c.py:1: error: Name "fail" is not defined
 \[mypy]
 files = config.py
 [out]
-mypy: error: cannot read file 'override.py': No such file or directory
+mypy: error: Cannot read file 'override.py': No such file or directory
 == Return code: 2
 
 [case testErrorSummaryOnSuccess]
@@ -687,7 +724,7 @@ Found 2 errors in 2 files (checked 2 source files)
 [case testErrorSummaryOnBadUsage]
 # cmd: mypy --error-summary missing.py
 [out]
-mypy: error: cannot read file 'missing.py': No such file or directory
+mypy: error: Cannot read file 'missing.py': No such file or directory
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
@@ -763,7 +800,7 @@ imp.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#miss
 [file a.pyd]
 # coding: uft-8
 [out]
-a.pyd: error: stubgen does not support .pyd files
+a.pyd: error: Stubgen does not support .pyd files
 == Return code: 2
 
 [case testDuplicateModules]
@@ -989,6 +1026,17 @@ b
 [out]
 b/bpkg.py:1: error: "int" not callable
 
+[case testCmdlineExcludeGitignoreWithGitInfoExclude]
+# cmd: mypy --exclude-gitignore .
+[file .git/info/exclude]
+abc
+[file abc/apkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
 [case testCmdlineCfgExclude]
 # cmd: mypy .
 [file mypy.ini]
@@ -1054,8 +1102,8 @@ except ValueError:
 from typing import *
 sys.path = path
 [out]
-mypy: "typing.py" shadows library module "typing"
-note: A user-defined top-level module with name "typing" is not supported
+typing.py: error: This file shadows library module "typing"
+typing.py: note: A user-defined top-level module with name "typing" is not supported
 == Return code: 2
 
 [case testCustomTypeshedDirWithRelativePathDoesNotCrash]
@@ -1072,7 +1120,7 @@ note: A user-defined top-level module with name "typing" is not supported
 [file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/VERSIONS]
 [out]
-Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+mypy: error: Failed to find builtin module "mypy_extensions", perhaps typeshed is broken?
 == Return code: 2
 
 [case testCustomTypeshedDirFilePassedExplicitly]
@@ -1247,3 +1295,29 @@ class CodecKey(NamedTuple):
 \[mypy-importlib.*]
 follow_imports = skip
 follow_imports_for_stubs = True
+
+[case testParallelRunWithSyntaxError]
+# cmd: mypy a.py --num-workers=2 --pretty
+[file a.py]
+1 2
+[out]
+a.py:1: error: Simple statements must be separated by newlines or semicolons
+    1 2
+       ^
+== Return code: 2
+
+[case testCannotDisableCacheInParallelMode]
+# cmd: mypy --cache-dir=/dev/null --num-workers=2 a.py
+[file a.py]
+pass
+[out]
+error: Cache must be enabled in parallel mode
+== Return code: 2
+
+[case testCheckingStubPackagesWorksInParallelMode]
+# cmd: mypy foo-stubs --num-workers=4
+[file foo-stubs/__init__.pyi]
+[file foo-stubs/api/__init__.pyi]
+from foo.api import bar as bar
+[file foo-stubs/api/bar.pyi]
+[out]

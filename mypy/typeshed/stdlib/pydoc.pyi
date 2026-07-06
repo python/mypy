@@ -1,12 +1,12 @@
 import sys
-from _typeshed import OptExcInfo, SupportsWrite, Unused
+from _typeshed import OptExcInfo, StrPath, SupportsWrite, Unused
 from abc import abstractmethod
 from builtins import list as _list  # "list" conflicts with method name
 from collections.abc import Callable, Container, Mapping, MutableMapping
 from reprlib import Repr
 from types import MethodType, ModuleType, TracebackType
-from typing import IO, Any, AnyStr, Final, NoReturn, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import TypeGuard, deprecated
+from typing import IO, Any, AnyStr, Final, NoReturn, Protocol, TypeGuard, TypeVar, overload, type_check_only
+from typing_extensions import deprecated
 
 __all__ = ["help"]
 
@@ -32,14 +32,8 @@ def stripid(text: str) -> str: ...
 def allmethods(cl: type) -> MutableMapping[str, MethodType]: ...
 def visiblename(name: str, all: Container[str] | None = None, obj: object = None) -> bool: ...
 def classify_class_attrs(object: object) -> list[tuple[str, str, type, str]]: ...
-
-if sys.version_info >= (3, 13):
-    @deprecated("Deprecated since Python 3.13.")
-    def ispackage(path: str) -> bool: ...  # undocumented
-
-else:
-    def ispackage(path: str) -> bool: ...  # undocumented
-
+@deprecated("Deprecated since Python 3.13.")
+def ispackage(path: StrPath) -> bool: ...  # undocumented
 def source_synopsis(file: IO[AnyStr]) -> AnyStr | None: ...
 def synopsis(filename: str, cache: MutableMapping[str, tuple[int, str]] = {}) -> str | None: ...
 
@@ -62,6 +56,9 @@ def safeimport(path: str, forceload: bool = ..., cache: MutableMapping[str, Modu
 
 class Doc:
     PYTHONDOCS: str
+    if sys.version_info >= (3, 15):
+        STDLIB_DIR: str
+
     def document(self, object: object, name: str | None = None, *args: Any) -> str: ...
     def fail(self, object: object, name: str | None = None, *args: Any) -> NoReturn: ...
     @abstractmethod
@@ -76,7 +73,10 @@ class Doc:
     def docproperty(self, object: object, name: str | None = None, *args: Any) -> str: ...
     @abstractmethod
     def docdata(self, object: object, name: str | None = None, *args: Any) -> str: ...
-    def getdocloc(self, object: object, basedir: str = ...) -> str | None: ...
+    if sys.version_info >= (3, 15):
+        def getdocloc(self, object: object, basedir: str | None = None) -> str | None: ...
+    else:
+        def getdocloc(self, object: object, basedir: str = ...) -> str | None: ...
 
 class HTMLRepr(Repr):
     def __init__(self) -> None: ...

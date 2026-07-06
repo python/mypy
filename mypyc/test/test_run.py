@@ -81,6 +81,7 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-librt-time.test",
+    "run-librt-random.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",
@@ -102,7 +103,7 @@ from mypyc.build import mypycify
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
                            multi_file={}, opt_level='{}', install_librt={},
-                           experimental_features={}),
+                           experimental_features={}, depends_on_librt_internal={}),
 )
 """
 
@@ -233,6 +234,10 @@ class TestRun(MypycDataSuite):
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
         options.per_module_options["unchecked.*"] = {"follow_imports": "error"}
+        # Avoid checking modules/packages named 'skipped', to provide a way
+        # to test interacting with code ignored by follow_imports=skip.
+        options.per_module_options["skipped"] = {"follow_imports": "skip"}
+        options.per_module_options["skipped.*"] = {"follow_imports": "skip"}
 
         source = build.BuildSource("native.py", "native", None)
         sources = [source]
@@ -278,6 +283,7 @@ class TestRun(MypycDataSuite):
         librt = has_test_name_tag(testcase.name, "librt")
         # Enable experimental features (local librt build also includes experimental features)
         experimental_features = has_test_name_tag(testcase.name, "experimental")
+        result = None
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
@@ -298,7 +304,13 @@ class TestRun(MypycDataSuite):
             ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
-            deps = sorted(dep.path for dep in collect_source_dependencies(ir))
+            deps = sorted(
+                (
+                    (dep.path, dep.include_dirs, dep.internal)
+                    for dep in collect_source_dependencies(ir)
+                ),
+                key=lambda tup: tup[0],
+            )
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"
@@ -307,7 +319,8 @@ class TestRun(MypycDataSuite):
                 print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, "Compile error"
         finally:
-            result.manager.metastore.close()
+            if result is not None:
+                result.manager.metastore.close()
 
         # Check that serialization works on this IR. (Only on the first
         # step because the returned ir only includes updated code.)
@@ -329,6 +342,7 @@ class TestRun(MypycDataSuite):
                     opt_level,
                     False,  # install_librt - use cached version instead
                     experimental_features,
+                    librt_internal,
                 )
             )
 

@@ -80,6 +80,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    is_unannotated_any,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
@@ -370,9 +371,7 @@ def attr_class_maker_callback_impl(
     _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
     if slots:
         _add_slots(ctx, attributes)
-    if match_args and ctx.api.options.python_version[:2] >= (3, 10):
-        # `.__match_args__` is only added for python3.10+, but the argument
-        # exists for earlier versions as well.
+    if match_args:
         _add_match_args(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
@@ -734,7 +733,7 @@ def _parse_converter(
         ):
             converter_type = converter_expr.node.type
         elif isinstance(converter_expr.node, TypeInfo):
-            converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
+            converter_type = type_object_type(converter_expr.node)
     elif (
         isinstance(converter_expr, IndexExpr)
         and isinstance(converter_expr.analyzed, TypeApplication)
@@ -742,7 +741,7 @@ def _parse_converter(
         and isinstance(converter_expr.base.node, TypeInfo)
     ):
         # The converter is a generic type.
-        converter_type = type_object_type(converter_expr.base.node, ctx.api.named_type)
+        converter_type = type_object_type(converter_expr.base.node)
         if isinstance(converter_type, CallableType):
             converter_type = apply_generic_arguments(
                 converter_type,
@@ -898,13 +897,7 @@ def _add_init(
             if isinstance(sym_node, Var) and sym_node.is_final:
                 sym_node.final_set_in_init = True
     args = pos_args + kw_only_args
-    if all(
-        # We use getattr rather than instance checks because the variable.type
-        # might be wrapped into a Union or some other type, but even non-Any
-        # types reliably track the fact that the argument was not annotated.
-        getattr(arg.variable.type, "type_of_any", None) == TypeOfAny.unannotated
-        for arg in args
-    ):
+    if all(arg.variable.type and is_unannotated_any(arg.variable.type) for arg in args):
         # This workaround makes --disallow-incomplete-defs usable with attrs,
         # but is definitely suboptimal as a long-term solution.
         # See https://github.com/python/mypy/issues/5954 for discussion.

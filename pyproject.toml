@@ -5,14 +5,17 @@ requires = [
     # self-typechecking :/
     "setuptools >= 77.0.3",
     # the following is from mypy-requirements.txt/setup.py
-    "typing_extensions>=4.6.0",
+    "typing_extensions>=4.6.0; python_version<'3.15'",
+    "typing_extensions>=4.14.0; python_version>='3.15'",
     "mypy_extensions>=1.0.0",
     "pathspec>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
-    "librt>=0.8.0; platform_python_implementation != 'PyPy'",
+    "librt>=0.12.0; platform_python_implementation != 'PyPy'",
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
+    # required to work around a mypyc import bug
+    "ast-serialize>=0.6.0,<1.0.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -43,28 +46,30 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Software Development",
   "Typing :: Typed",
 ]
 requires-python = ">=3.10"
 dependencies = [
   # When changing this, also update build-system.requires and mypy-requirements.txt
-  "typing_extensions>=4.6.0",
+  "typing_extensions>=4.6.0; python_version<'3.15'",
+  "typing_extensions>=4.14.0; python_version>='3.15'",
   "mypy_extensions>=1.0.0",
   "pathspec>=1.0.0",
   "tomli>=1.1.0; python_version<'3.11'",
-  "librt>=0.8.0; platform_python_implementation != 'PyPy'",
+  "librt>=0.12.0; platform_python_implementation != 'PyPy'",
+  "ast-serialize>=0.6.0,<1.0.0",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dmypy = ["psutil>=4.0"]
 mypyc = ["setuptools>=50"]
-python2 = []
 reports = ["lxml"]
 install-types = ["pip"]
 faster-cache = ["orjson"]
-native-parser = ["ast-serialize>=0.1.1,<1.0.0"]
+native-parser = []
 
 [project.urls]
 Homepage = "https://www.mypy-lang.org/"

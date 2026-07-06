@@ -7,8 +7,8 @@ from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Final, Protocol, overload, type_check_only
-from typing_extensions import Self, TypeAlias, deprecated
+from typing import Any, Final, Protocol, TypeAlias, overload, type_check_only
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "SMTPException",
@@ -65,6 +65,7 @@ class SMTPAuthenticationError(SMTPResponseException): ...
 
 def quoteaddr(addrstring: str) -> str: ...
 def quotedata(data: str) -> str: ...
+
 @type_check_only
 class _AuthObject(Protocol):
     @overload
@@ -121,10 +122,12 @@ class SMTP:
     user: str
     password: str
     def auth(self, mechanism: str, authobject: _AuthObject, *, initial_response_ok: bool = True) -> _Reply: ...
+
     @overload
     def auth_cram_md5(self, challenge: None = None) -> None: ...
     @overload
     def auth_cram_md5(self, challenge: ReadableBuffer) -> str: ...
+
     def auth_plain(self, challenge: ReadableBuffer | None = None) -> str: ...
     def auth_login(self, challenge: ReadableBuffer | None = None) -> str: ...
     def login(self, user: str, password: str, *, initial_response_ok: bool = True) -> _Reply: ...
@@ -203,6 +206,7 @@ class SMTP_SSL(SMTP):
             source_address: _SourceAddress | None = None,
             context: None = None,
         ) -> None: ...
+
         keyfile: StrOrBytesPath | None
         certfile: StrOrBytesPath | None
 

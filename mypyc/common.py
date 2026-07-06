@@ -24,6 +24,7 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
@@ -68,7 +69,7 @@ BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
 # Runtime C library files that are always included (some ops may bring
-# extra dependencies via mypyc.ir.SourceDep)
+# extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)
 RUNTIME_C_FILES: Final = [
     "init.c",
     "getargs.c",

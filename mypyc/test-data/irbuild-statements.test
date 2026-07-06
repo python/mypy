@@ -381,15 +381,17 @@ def f3(x: int, y: int) -> Tuple[int, int]:
     return (x, y)
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
-    r2 :: tuple[int, int]
+    x, y, r0, r1, r2, r3 :: int
+    r4 :: tuple[int, int]
 L0:
     r0 = y
     r1 = x
     x = r0
     y = r1
-    r2 = (x, y)
-    return r2
+    r2 = x
+    r3 = y
+    r4 = (r2, r3)
+    return r4
 def f2(x, y, z):
     x :: int
     y :: str
@@ -399,8 +401,10 @@ def f2(x, y, z):
     r2 :: float
     a :: int
     b :: str
-    c :: float
-    r3 :: tuple[float, str, int]
+    c, r3 :: float
+    r4 :: str
+    r5 :: int
+    r6 :: tuple[float, str, int]
 L0:
     r0 = x
     r1 = y
@@ -408,18 +412,23 @@ L0:
     a = r0
     b = r1
     c = r2
-    r3 = (c, b, a)
-    return r3
+    r3 = c
+    r4 = b
+    r5 = a
+    r6 = (r3, r4, r5)
+    return r6
 def f3(x, y):
-    x, y, r0, r1 :: int
-    r2 :: tuple[int, int]
+    x, y, r0, r1, r2, r3 :: int
+    r4 :: tuple[int, int]
 L0:
     r0 = y
     r1 = x
     x = r0
     y = r1
-    r2 = (x, y)
-    return r2
+    r2 = x
+    r3 = y
+    r4 = (r2, r3)
+    return r4
 
 [case testMultipleAssignmentBasicUnpacking]
 from typing import Tuple, Any

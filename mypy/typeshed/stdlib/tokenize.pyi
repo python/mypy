@@ -3,8 +3,8 @@ from _typeshed import FileDescriptorOrPath
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
 from token import *
-from typing import Any, Final, NamedTuple, TextIO, type_check_only
-from typing_extensions import TypeAlias, disjoint_base
+from typing import Any, Final, NamedTuple, TextIO, TypeAlias, type_check_only
+from typing_extensions import disjoint_base
 
 if sys.version_info < (3, 12):
     # Avoid double assignment to Final name by imports, which pyright objects to.
@@ -71,6 +71,7 @@ __all__ = [
     "SEMI",
     "SLASH",
     "SLASHEQUAL",
+    "SOFT_KEYWORD",
     "STAR",
     "STAREQUAL",
     "STRING",
@@ -88,9 +89,6 @@ __all__ = [
 ]
 if sys.version_info < (3, 13):
     __all__ += ["ASYNC", "AWAIT"]
-
-if sys.version_info >= (3, 10):
-    __all__ += ["SOFT_KEYWORD"]
 
 if sys.version_info >= (3, 12):
     __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START", "EXACT_TOKEN_TYPES"]
@@ -151,8 +149,8 @@ class Untokenizer:
 # Returns str, unless the ENCODING token is present, in which case it returns bytes.
 def untokenize(iterable: Iterable[_Token]) -> str | Any: ...
 def detect_encoding(readline: Callable[[], bytes | bytearray]) -> tuple[str, Sequence[bytes]]: ...
-def tokenize(readline: Callable[[], bytes | bytearray]) -> Generator[TokenInfo, None, None]: ...
-def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...
+def tokenize(readline: Callable[[], bytes | bytearray]) -> Generator[TokenInfo]: ...
+def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo]: ...
 def open(filename: FileDescriptorOrPath) -> TextIO: ...
 def group(*choices: str) -> str: ...  # undocumented
 def any(*choices: str) -> str: ...  # undocumented

@@ -19,19 +19,22 @@ from librt import base64
 from librt.internal import ReadBuffer
 
 from mypy.cache import CacheMeta
+from mypy.defaults import SQLITE_NUM_SHARDS
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.util import json_dumps, json_loads
 
 
-def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
+def make_cache(input_dir: str, sqlite: bool, num_shards: int = SQLITE_NUM_SHARDS) -> MetadataStore:
     if sqlite:
-        return SqliteMetadataStore(input_dir)
+        return SqliteMetadataStore(input_dir, num_shards=num_shards)
     else:
         return FilesystemMetadataStore(input_dir)
 
 
-def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
-    cache = make_cache(cache_dir, sqlite)
+def apply_diff(
+    cache_dir: str, diff_file: str, sqlite: bool = False, num_shards: int = SQLITE_NUM_SHARDS
+) -> None:
+    cache = make_cache(cache_dir, sqlite, num_shards=num_shards)
     with open(diff_file, "rb") as f:
         diff = json_loads(f.read())
 
@@ -63,11 +66,14 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
+    parser.add_argument(
+        "--num-shards", type=int, default=SQLITE_NUM_SHARDS, help=argparse.SUPPRESS
+    )
     parser.add_argument("cache_dir", help="Directory for the cache")
     parser.add_argument("diff", help="Cache diff file")
     args = parser.parse_args()
 
-    apply_diff(args.cache_dir, args.diff, args.sqlite)
+    apply_diff(args.cache_dir, args.diff, args.sqlite, num_shards=args.num_shards)
 
 
 if __name__ == "__main__":

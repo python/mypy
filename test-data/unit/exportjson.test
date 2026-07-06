@@ -321,3 +321,36 @@ from typing_extensions import Final
     "ignore_all": false,
     "plugin_data": null
 }
+{
+    "id": "types",
+    "path": ...,
+    "mtime": ...,
+    "size": 372,
+    "hash": "7542ae4787693f5598d0e8fc9efe396bd6f9af0c",
+    "data_mtime": ...,
+    "dependencies": [
+        "typing",
+        "builtins"
+    ],
+    "suppressed": [],
+    "options": {
+        "other_options": "<hash>",
+        "platform": ...
+    },
+    "dep_prios": [
+        5,
+        5
+    ],
+    "dep_lines": [
+        1,
+        1
+    ],
+    "dep_hashes": [
+        "<hash>",
+        "<hash>"
+    ],
+    "interface_hash": "<hash>",
+    "version_id": ...,
+    "ignore_all": true,
+    "plugin_data": null
+}

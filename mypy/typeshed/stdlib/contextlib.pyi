@@ -4,10 +4,11 @@ from _typeshed import FileDescriptorOrPath, Unused
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable, type_check_only
-from typing_extensions import ParamSpec, Self, TypeAlias
+from typing import Any, Generic, ParamSpec, Protocol, TypeAlias, TypeVar, overload, runtime_checkable, type_check_only
+from typing_extensions import Self
 
 __all__ = [
+    "aclosing",
     "contextmanager",
     "closing",
     "AbstractContextManager",
@@ -21,9 +22,6 @@ __all__ = [
     "asynccontextmanager",
     "nullcontext",
 ]
-
-if sys.version_info >= (3, 10):
-    __all__ += ["aclosing"]
 
 if sys.version_info >= (3, 11):
     __all__ += ["chdir"]
@@ -88,31 +86,23 @@ class _GeneratorContextManager(
 
 def contextmanager(func: Callable[_P, Iterator[_T_co]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
 
-if sys.version_info >= (3, 10):
-    _AF = TypeVar("_AF", bound=Callable[..., Awaitable[Any]])
+_AF = TypeVar("_AF", bound=Callable[..., Awaitable[Any]])
 
-    class AsyncContextDecorator:
-        def _recreate_cm(self) -> Self: ...
-        def __call__(self, func: _AF) -> _AF: ...
+class AsyncContextDecorator:
+    def _recreate_cm(self) -> Self: ...
+    def __call__(self, func: _AF) -> _AF: ...
 
-    class _AsyncGeneratorContextManager(
-        _GeneratorContextManagerBase[AsyncGenerator[_T_co, _SendT_contra]],
-        AbstractAsyncContextManager[_T_co, bool | None],
-        AsyncContextDecorator,
-    ):
-        async def __aexit__(
-            self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-        ) -> bool | None: ...
-
-else:
-    class _AsyncGeneratorContextManager(
-        _GeneratorContextManagerBase[AsyncGenerator[_T_co, _SendT_contra]], AbstractAsyncContextManager[_T_co, bool | None]
-    ):
-        async def __aexit__(
-            self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-        ) -> bool | None: ...
+class _AsyncGeneratorContextManager(
+    _GeneratorContextManagerBase[AsyncGenerator[_T_co, _SendT_contra]],
+    AbstractAsyncContextManager[_T_co, bool | None],
+    AsyncContextDecorator,
+):
+    async def __aexit__(
+        self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+    ) -> bool | None: ...
 
 def asynccontextmanager(func: Callable[_P, AsyncIterator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
+
 @type_check_only
 class _SupportsClose(Protocol):
     def close(self) -> object: ...
@@ -123,16 +113,15 @@ class closing(AbstractContextManager[_SupportsCloseT, None]):
     def __init__(self, thing: _SupportsCloseT) -> None: ...
     def __exit__(self, *exc_info: Unused) -> None: ...
 
-if sys.version_info >= (3, 10):
-    @type_check_only
-    class _SupportsAclose(Protocol):
-        def aclose(self) -> Awaitable[object]: ...
+@type_check_only
+class _SupportsAclose(Protocol):
+    def aclose(self) -> Awaitable[object]: ...
 
-    _SupportsAcloseT = TypeVar("_SupportsAcloseT", bound=_SupportsAclose)
+_SupportsAcloseT = TypeVar("_SupportsAcloseT", bound=_SupportsAclose)
 
-    class aclosing(AbstractAsyncContextManager[_SupportsAcloseT, None]):
-        def __init__(self, thing: _SupportsAcloseT) -> None: ...
-        async def __aexit__(self, *exc_info: Unused) -> None: ...
+class aclosing(AbstractAsyncContextManager[_SupportsAcloseT, None]):
+    def __init__(self, thing: _SupportsAcloseT) -> None: ...
+    async def __aexit__(self, *exc_info: Unused) -> None: ...
 
 class suppress(AbstractContextManager[None, bool]):
     def __init__(self, *exceptions: type[BaseException]) -> None: ...
@@ -165,9 +154,15 @@ class _BaseExitStack(Generic[_ExitT_co]):
     def callback(self, callback: Callable[_P, _T], /, *args: _P.args, **kwds: _P.kwargs) -> Callable[_P, _T]: ...
     def pop_all(self) -> Self: ...
 
-# In reality this is a subclass of `AbstractContextManager`;
-# see #7961 for why we don't do that in the stub
-class ExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
+# this class is to avoid putting `metaclass=abc.ABCMeta` on the implementations directly, as this would make them
+# appear explicitly abstract to some tools. this is due to the implementations not subclassing `AbstractContextManager`
+#  see note on the subclasses
+@type_check_only
+class _BaseExitStackAbstract(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta): ...
+
+# In reality this is a subclass of `AbstractContextManager`, but we can't provide `Self` as the argument for `__enter__`
+#  https://discuss.python.org/t/self-as-typevar-default/90939
+class ExitStack(_BaseExitStackAbstract[_ExitT_co]):
     def close(self) -> None: ...
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -179,9 +174,9 @@ _ExitCoroFunc: TypeAlias = Callable[
 ]
 _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any, Any] | _ExitCoroFunc)
 
-# In reality this is a subclass of `AbstractAsyncContextManager`;
-# see #7961 for why we don't do that in the stub
-class AsyncExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
+# In reality this is a subclass of `AbstractContextManager`, but we can't provide `Self` as the argument for `__enter__`
+#  https://discuss.python.org/t/self-as-typevar-default/90939
+class AsyncExitStack(_BaseExitStackAbstract[_ExitT_co]):
     async def enter_async_context(self, cm: AbstractAsyncContextManager[_T, _ExitT_co]) -> _T: ...
     def push_async_exit(self, exit: _ACM_EF) -> _ACM_EF: ...
     def push_async_callback(
@@ -193,27 +188,18 @@ class AsyncExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None, /
     ) -> _ExitT_co: ...
 
-if sys.version_info >= (3, 10):
-    class nullcontext(AbstractContextManager[_T, None], AbstractAsyncContextManager[_T, None]):
-        enter_result: _T
-        @overload
-        def __init__(self: nullcontext[None]) -> None: ...
-        @overload
-        def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
-        def __enter__(self) -> _T: ...
-        def __exit__(self, *exctype: Unused) -> None: ...
-        async def __aenter__(self) -> _T: ...
-        async def __aexit__(self, *exctype: Unused) -> None: ...
+class nullcontext(AbstractContextManager[_T, None], AbstractAsyncContextManager[_T, None]):
+    enter_result: _T
 
-else:
-    class nullcontext(AbstractContextManager[_T, None]):
-        enter_result: _T
-        @overload
-        def __init__(self: nullcontext[None]) -> None: ...
-        @overload
-        def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
-        def __enter__(self) -> _T: ...
-        def __exit__(self, *exctype: Unused) -> None: ...
+    @overload
+    def __init__(self: nullcontext[None]) -> None: ...
+    @overload
+    def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+
+    def __enter__(self) -> _T: ...
+    def __exit__(self, *exctype: Unused) -> None: ...
+    async def __aenter__(self) -> _T: ...
+    async def __aexit__(self, *exctype: Unused) -> None: ...
 
 if sys.version_info >= (3, 11):
     _T_fd_or_any_path = TypeVar("_T_fd_or_any_path", bound=FileDescriptorOrPath)

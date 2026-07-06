@@ -32,6 +32,7 @@ def parse(
 def parse_multipart(
     fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = "utf-8", errors: str = "replace", separator: str = "&"
 ) -> dict[str, list[Any]]: ...
+
 @type_check_only
 class _Environ(Protocol):
     def __getitem__(self, k: str, /) -> str: ...

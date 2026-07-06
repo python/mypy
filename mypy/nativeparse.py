@@ -1,4 +1,3 @@
-# mypy: allow-redefinition-new, local-partial-types
 """Python parser that directly constructs a native AST (when compiled).
 
 Use a Rust extension to generate a serialized AST, and deserialize the AST directly
@@ -20,9 +19,10 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-from typing import Any, Final, cast
+import time
+from typing import Final, cast
 
-import ast_serialize  # type: ignore[import-untyped, import-not-found, unused-ignore]
+import ast_serialize
 from librt.internal import (
     read_float as read_float_bare,
     read_int as read_int_bare,
@@ -101,6 +101,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     OverloadPart,
+    ParseError,
     PassStmt,
     RaiseStmt,
     RefExpr,
@@ -166,56 +167,60 @@ _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 
 class State:
-    def __init__(self, options: Options) -> None:
+    def __init__(self, options: Options, is_stub: bool = False) -> None:
         self.options = options
-        self.errors: list[dict[str, Any]] = []
+        self.is_stub = is_stub
+        self.errors: list[ParseError] = []
         self.num_funcs = 0
 
     def add_error(
-        self,
-        message: str,
-        line: int,
-        column: int,
-        *,
-        blocker: bool = False,
-        code: str | None = None,
+        self, message: str, line: int, column: int, *, blocker: bool = False, code: str
     ) -> None:
-        """Report an error at a specific location.
-
-        Args:
-            message: Error message to display
-            line: Line number where error occurred
-            column: Column number where error occurred
-            blocker: If True, this error blocks further analysis
-            code: Error code for categorization
-        """
+        """Report an error at a specific location."""
         self.errors.append(
             {"line": line, "column": column, "message": message, "blocker": blocker, "code": code}
         )
 
+    def check_min_version(
+        self,
+        feature: str,
+        min_version: tuple[int, int],
+        line: int,
+        column: int,
+        *,
+        enforce_in_stubs: bool = False,
+    ) -> None:
+        """Report a non blocker syntax error if the target Python feature is older than min_version."""
+        if self.is_stub and not enforce_in_stubs:
+            return
+        if self.options.python_version < min_version:
+            curr = self.options.python_version
+            self.add_error(
+                f"{feature}: requires Python {min_version[0]}.{min_version[1]} or newer "
+                f"(current target: Python {curr[0]}.{curr[1]})",
+                line,
+                column,
+                blocker=False,
+                code="syntax",
+            )
+
 
 def native_parse(
-    filename: str, options: Options, skip_function_bodies: bool = False, imports_only: bool = False
-) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+    filename: str,
+    options: Options,
+    source: str | bytes | None = None,
+    skip_function_bodies: bool = False,
+) -> tuple[MypyFile, list[ParseError], TypeIgnores]:
     """Parse a Python file using the native Rust-based parser.
 
-    Uses the ast_serialize Rust extension to parse Python code and deserialize
-    the resulting AST directly into mypy's native AST representation.
+    Return (MypyFile, errors, type_ignores).
 
-    Args:
-        filename: Path to the Python source file to parse
-        options: Mypy options affecting parsing behavior (e.g., Python version)
-        skip_function_bodies: If True, many function and method bodies are omitted from
-            the AST, useful for parsing stubs or extracting signatures without full
-            implementation details
-        imports_only: If True create an empty MypyFile with actual serialized defs
-            stored in binary_data.
+    The returned tree is empty with actual serialized data stored in `raw_data`
+    attribute. Use read_statements() and/or deserialize_imports() to de-serialize.
 
-    Returns:
-        A tuple containing:
-        - MypyFile: The parsed AST as a mypy AST node
-        - list[dict[str, Any]]: List of parse errors and deserialization errors
-        - TypeIgnores: List of (line_number, ignored_codes) tuples for type: ignore comments
+    The caller should set these additional attributes on the returned MypyFile:
+      - ignored_lines: dict of type ignore comments (from the TypeIgnores return value)
+      - is_stub: whether the file is a .pyi stub
     """
     # If the path is a directory, return empty AST (matching fastparse behavior)
     # This can happen for packages that only contain .pyc files without source
@@ -224,30 +229,29 @@ def native_parse(
         node.path = filename
         return node, [], []
 
-    b, errors, ignores, import_bytes, is_partial_package, uses_template_strings = (
-        parse_to_binary_ast(filename, options, skip_function_bodies)
-    )
-    data = ReadBuffer(b)
-    n = read_int(data)
-    state = State(options)
-    if imports_only:
-        defs = []
-    else:
-        defs = read_statements(state, data, n)
-
-    imports = deserialize_imports(import_bytes)
-
-    node = MypyFile(defs, imports)
+    (
+        b,
+        errors,
+        ignores,
+        import_bytes,
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
+    ) = parse_to_binary_ast(filename, options, source, skip_function_bodies)
+    node = MypyFile([], [])
     node.path = filename
-    node.is_partial_stub_package = is_partial_package
-    if imports_only:
-        node.raw_data = FileRawData(
-            b, import_bytes, errors, dict(ignores), is_partial_package, uses_template_strings
-        )
-    node.uses_template_strings = uses_template_strings
-    # Merge deserialization errors with parsing errors
-    all_errors = errors + state.errors
-    return node, all_errors, ignores
+    node.raw_data = FileRawData(
+        b,
+        import_bytes,
+        errors,
+        dict(ignores),
+        is_partial_package,
+        uses_template_strings,
+        source_hash,
+        mypy_comments,
+    )
+    return node, errors, ignores
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -271,31 +275,158 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
 
 
 def parse_to_binary_ast(
-    filename: str, options: Options, skip_function_bodies: bool = False
-) -> tuple[bytes, list[dict[str, Any]], TypeIgnores, bytes, bool, bool]:
+    filename: str,
+    options: Options,
+    source: str | bytes | None = None,
+    skip_function_bodies: bool = False,
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
+    # This is a horrible hack to work around a mypyc bug where imported
+    # module may be not ready in a thread sometimes.
+    t0 = time.time()
+    while ast_serialize is None:
+        time.sleep(0.0001)  # type: ignore[unreachable]
+        if time.time() - t0 > 10.0:
+            raise ImportError("Cannot import ast_serialize")
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
+        source,
         skip_function_bodies=skip_function_bodies,
         python_version=options.python_version,
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
+        cache_version=3,
     )
     return (
         ast_bytes,
-        cast("list[dict[str, Any]]", errors),
+        errors,
         ignores,
         import_bytes,
         ast_data["is_partial_package"],
         ast_data["uses_template_strings"],
+        ast_data["source_hash"],
+        ast_data["mypy_comments"],
     )
 
 
 def read_statement(state: State, data: ReadBuffer) -> Statement:
+    # Branches ordered by frequency (based on mypy self-check)
     tag = read_tag(data)
     stmt: Statement
-    if tag == nodes.FUNC_DEF_STMT:
+    if tag == nodes.ASSIGNMENT_STMT:
+        lvalues = read_expression_list(state, data)
+        rvalue = read_expression(state, data)
+        has_type = read_bool(data)
+        if has_type:
+            type_annotation = read_type(state, data)
+        else:
+            type_annotation = None
+        new_syntax = read_bool(data)
+        a = AssignmentStmt(lvalues, rvalue, type=type_annotation, new_syntax=new_syntax)
+        read_loc(data, a)
+        # If rvalue is TempNode, copy location from AssignmentStmt
+        if isinstance(rvalue, TempNode):
+            set_line_column_range(rvalue, a)
+        expect_end_tag(data)
+        return a
+    elif tag == nodes.EXPR_STMT:
+        es = ExpressionStmt(read_expression(state, data))
+        set_line_column_range(es, es.expr)
+        expect_end_tag(data)
+        return es
+    elif tag == nodes.IF_STMT:
+        expr = read_expression(state, data)
+        body = read_block(state, data)
+
+        num_elif = read_int(data)
+        elif_exprs = []
+        elif_bodies = []
+        for i in range(num_elif):
+            elif_exprs.append(read_expression(state, data))
+            elif_bodies.append(read_block(state, data))
+
+        has_else = read_bool(data)
+        if has_else:
+            else_body = read_block(state, data)
+        else:
+            else_body = None
+
+        # Normalize elif into nested if/else statements
+        # Build from the bottom up, starting with the final else body
+        current_else = else_body
+
+        for elif_expr, elif_body in reversed(list(zip(elif_exprs, elif_bodies))):
+            elif_stmt = IfStmt([elif_expr], [elif_body], current_else)
+            elif_stmt.line = elif_expr.line
+            elif_stmt.column = elif_expr.column
+            if current_else is not None:
+                elif_stmt.end_line = current_else.end_line
+                elif_stmt.end_column = current_else.end_column
+            else:
+                elif_stmt.end_line = elif_body.end_line
+                elif_stmt.end_column = elif_body.end_column
+
+            current_else = Block([elif_stmt])
+            set_line_column_range(current_else, elif_stmt)
+
+        if_stmt = IfStmt([expr], [body], current_else)
+        read_loc(data, if_stmt)
+        expect_end_tag(data)
+        return if_stmt
+    elif tag == nodes.RETURN_STMT:
+        has_value = read_bool(data)
+        if has_value:
+            value = read_expression(state, data)
+        else:
+            value = None
+        stmt = ReturnStmt(value)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.FUNC_DEF_STMT:
         return read_func_def(state, data)
+    elif tag == nodes.IMPORT_FROM:
+        relative = read_int(data)
+        module_id = read_str(data)  # Empty string for "from . import x"
+        n = read_int(data)
+        names = []
+        for _ in range(n):
+            name = read_str(data)
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+            names.append((name, asname))
+
+        stmt = ImportFrom(module_id, relative, names)
+        _read_and_set_import_metadata(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.FOR_STMT:
+        index = read_expression(state, data)
+        expr = read_expression(state, data)
+        body = read_block(state, data)
+        else_body = read_optional_block(state, data)
+        is_async = read_bool(data)
+        stmt = ForStmt(index, expr, body, else_body)
+        stmt.is_async = is_async
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.ASSERT_STMT:
+        test = read_expression(state, data)
+        has_msg = read_bool(data)
+        if has_msg:
+            msg = read_expression(state, data)
+        else:
+            msg = None
+        stmt = AssertStmt(test, msg)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.CLASS_DEF:
+        return read_class_def(state, data)
     elif tag == nodes.DECORATOR:
         expect_tag(data, LIST_GEN)
         n_decorators = read_int_bare(data)
@@ -316,91 +447,19 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         # TODO: Adjust funcdef location to start after decorator?
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.EXPR_STMT:
-        es = ExpressionStmt(read_expression(state, data))
-        set_line_column_range(es, es.expr)
-        expect_end_tag(data)
-        return es
-    elif tag == nodes.ASSIGNMENT_STMT:
-        lvalues = read_expression_list(state, data)
-        rvalue = read_expression(state, data)
-        has_type = read_bool(data)
-        if has_type:
-            type_annotation = read_type(state, data)
-        else:
-            type_annotation = None
-        new_syntax = read_bool(data)
-        a = AssignmentStmt(lvalues, rvalue, type=type_annotation, new_syntax=new_syntax)
-        read_loc(data, a)
-        # If rvalue is TempNode, copy location from AssignmentStmt
-        if isinstance(rvalue, TempNode):
-            set_line_column_range(rvalue, a)
-        expect_end_tag(data)
-        return a
-    elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
-        # Read operator string
-        op = read_str(data)
-        # Read lvalue (target)
-        lvalue = read_expression(state, data)
-        # Read rvalue (value)
-        rvalue = read_expression(state, data)
-        stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.IF_STMT:
-        # Read the main if condition and body
-        expr = read_expression(state, data)
-        body = read_block(state, data)
-
-        # Read elif clauses
-        num_elif = read_int(data)
-        elif_exprs = []
-        elif_bodies = []
-        for i in range(num_elif):
-            elif_exprs.append(read_expression(state, data))
-            elif_bodies.append(read_block(state, data))
-
-        has_else = read_bool(data)
-        if has_else:
-            else_body = read_block(state, data)
-        else:
-            else_body = None
-
-        # Normalize elif into nested if/else statements
-        # Build from the bottom up, starting with the final else body
-        current_else = else_body
-
-        # Process elif clauses in reverse order
-        for i in range(len(elif_exprs) - 1, -1, -1):
-            elif_stmt = IfStmt([elif_exprs[i]], [elif_bodies[i]], current_else)
-            # Set location from the elif expression
-            elif_stmt.line = elif_exprs[i].line
-            elif_stmt.column = elif_exprs[i].column
-            # Set end location based on what follows
-            if current_else is not None:
-                elif_stmt.end_line = current_else.end_line
-                elif_stmt.end_column = current_else.end_column
+    elif tag == nodes.IMPORT:
+        n = read_int(data)
+        ids = []
+        for _ in range(n):
+            name = read_str(data)
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
             else:
-                elif_stmt.end_line = elif_bodies[i].end_line
-                elif_stmt.end_column = elif_bodies[i].end_column
-
-            # Wrap in a Block to become the else clause for the outer if
-            current_else = Block([elif_stmt])
-            set_line_column_range(current_else, elif_stmt)
-
-        if_stmt = IfStmt([expr], [body], current_else)
-        read_loc(data, if_stmt)
-        expect_end_tag(data)
-        return if_stmt
-    elif tag == nodes.RETURN_STMT:
-        has_value = read_bool(data)
-        if has_value:
-            value = read_expression(state, data)
-        else:
-            value = None
-        stmt = ReturnStmt(value)
-        read_loc(data, stmt)
+                asname = None
+            ids.append((name, asname))
+        stmt = Import(ids)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.RAISE_STMT:
@@ -418,33 +477,21 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.ASSERT_STMT:
-        test = read_expression(state, data)
-        has_msg = read_bool(data)
-        if has_msg:
-            msg = read_expression(state, data)
-        else:
-            msg = None
-        stmt = AssertStmt(test, msg)
+    elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
+        op = read_str(data)
+        lvalue = read_expression(state, data)
+        rvalue = read_expression(state, data)
+        stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.WHILE_STMT:
-        expr = read_expression(state, data)
-        body = read_block(state, data)
-        else_body = read_optional_block(state, data)
-        stmt = WhileStmt(expr, body, else_body)
+    elif tag == nodes.PASS_STMT:
+        stmt = PassStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.FOR_STMT:
-        index = read_expression(state, data)
-        expr = read_expression(state, data)
-        body = read_block(state, data)
-        else_body = read_optional_block(state, data)
-        is_async = read_bool(data)
-        stmt = ForStmt(index, expr, body, else_body)
-        stmt.is_async = is_async
+    elif tag == nodes.CONTINUE_STMT:
+        stmt = ContinueStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -468,71 +515,43 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.PASS_STMT:
-        stmt = PassStmt()
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
+    elif tag == nodes.TRY_STMT:
+        return read_try_stmt(state, data)
     elif tag == nodes.BREAK_STMT:
         stmt = BreakStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.CONTINUE_STMT:
-        stmt = ContinueStmt()
+    elif tag == nodes.WHILE_STMT:
+        expr = read_expression(state, data)
+        body = read_block(state, data)
+        else_body = read_optional_block(state, data)
+        stmt = WhileStmt(expr, body, else_body)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.IMPORT:
-        n = read_int(data)
-        ids = []
-        for _ in range(n):
-            name = read_str(data)
-            has_asname = read_bool(data)
-            if has_asname:
-                asname = read_str(data)
-            else:
-                asname = None
-            ids.append((name, asname))
-        stmt = Import(ids)
+    elif tag == nodes.DEL_STMT:
+        expr = read_expression(state, data)
+        stmt = DelStmt(expr)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.IMPORT_FROM:
-        relative = read_int(data)
-        module_id = read_str(data)  # Empty string for "from . import x"
-        n = read_int(data)
-        names = []
-        for _ in range(n):
-            name = read_str(data)
-            has_asname = read_bool(data)
-            if has_asname:
-                asname = read_str(data)
-            else:
-                asname = None
-            names.append((name, asname))
-
-        stmt = ImportFrom(module_id, relative, names)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
+    elif tag == nodes.TYPE_ALIAS_STMT:
+        return read_type_alias_stmt(state, data)
     elif tag == nodes.IMPORT_ALL:
         module_id = read_str(data)  # Empty string for "from . import *"
         relative = read_int(data)
 
         stmt = ImportAll(module_id, relative)
-        read_loc(data, stmt)
+        _read_and_set_import_metadata(data, stmt)
         expect_end_tag(data)
         return stmt
-    elif tag == nodes.CLASS_DEF:
-        return read_class_def(state, data)
-    elif tag == nodes.TYPE_ALIAS_STMT:
-        return read_type_alias_stmt(state, data)
-    elif tag == nodes.TRY_STMT:
-        return read_try_stmt(state, data)
-    elif tag == nodes.DEL_STMT:
-        expr = read_expression(state, data)
-        stmt = DelStmt(expr)
+    elif tag == nodes.NONLOCAL_DECL:
+        n = read_int(data)
+        decl_names = []
+        for _ in range(n):
+            decl_names.append(read_str(data))
+        stmt = NonlocalDecl(decl_names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -542,15 +561,6 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
         for _ in range(n):
             decl_names.append(read_str(data))
         stmt = GlobalDecl(decl_names)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
-    elif tag == nodes.NONLOCAL_DECL:
-        n = read_int(data)
-        decl_names = []
-        for _ in range(n):
-            decl_names.append(read_str(data))
-        stmt = NonlocalDecl(decl_names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -580,10 +590,9 @@ def read_statement(state: State, data: ReadBuffer) -> Statement:
 
 
 def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], bool]:
-    """Read function/lambda parameters from the buffer.
+    """Read function/lambda parameters.
 
-    Returns:
-        A tuple of (arguments list, has_annotations flag)
+    Return (parameters, has_annotations).
     """
     expect_tag(data, LIST_GEN)
     n_args = read_int_bare(data)
@@ -606,7 +615,6 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
             default = None
         pos_only = read_bool(data)
 
-        # Apply implicit_optional if enabled and default is None
         if state.options.implicit_optional and ann is not None:
             optional = isinstance(default, NameExpr) and default.name == "None"
             if isinstance(ann, UnboundType):
@@ -621,6 +629,13 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         arguments.append(arg)
 
     return arguments, has_ann
+
+
+def check_type_param_defaults(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    if any(p.default is not None for p in type_params):
+        state.check_min_version("Type parameter defaults", (3, 13), line, column)
 
 
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
@@ -696,6 +711,11 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     if is_async:
         func_def.is_coroutine = True
     read_loc(data, func_def)
+    if type_params:
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
+        )
+        check_type_param_defaults(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -722,7 +742,6 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
     else:
         type_params = None
 
-    # Keywords (all keyword arguments including metaclass)
     expect_tag(data, DICT_STR_GEN)
     n_keywords = read_int_bare(data)
     keywords = []
@@ -731,21 +750,24 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         value = read_expression(state, data)
         keywords.append((key, value))
 
-    # Extract metaclass from keywords if present
     metaclass = dict(keywords).get("metaclass") if keywords else None
-    # Remove metaclass from keywords since it's passed as a separate field
-    filtered_keywords = [(k, v) for k, v in keywords if k != "metaclass"] if keywords else None
 
     class_def = ClassDef(
         name,
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
         metaclass=metaclass,
-        keywords=filtered_keywords,
+        # Note we keep metaclass in keywords as well, to match the old parser.
+        keywords=keywords if keywords else None,
         type_args=type_params,
     )
     class_def.decorators = decorators
     read_loc(data, class_def)
+    if type_params:
+        state.check_min_version(
+            "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
+        )
+        check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     return class_def
 
@@ -800,6 +822,8 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
 
     stmt = TypeAliasStmt(name, type_params, lambda_expr)
     read_loc(data, stmt)
+    state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
+    check_type_param_defaults(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
@@ -823,6 +847,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
         if has_name:
             var_name = read_str(data)
             var_expr = NameExpr(var_name)
+            read_loc(data, var_expr)
             vars_list.append(var_expr)
         else:
             vars_list.append(None)
@@ -844,12 +869,16 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     else:
         finally_body = None
 
-    # Read is_star flag (for except* in Python 3.11+)
+    # except* (Python 3.11+)
     is_star = read_bool(data)
 
     stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
     stmt.is_star = is_star
     read_loc(data, stmt)
+    if is_star:
+        state.check_min_version("Exception groups", (3, 11), stmt.line, stmt.column)
+        if state.options.python_version < (3, 11):
+            stmt.is_star = False
     expect_end_tag(data)
     return stmt
 
@@ -862,7 +891,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         n = read_int_bare(data)
         args = tuple(read_type(state, data) for i in range(n))
         empty_tuple_index = read_bool(data)
-        # Read optional original_str_expr
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_expr = None
@@ -870,7 +898,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             original_str_expr = read_str_bare(data)
         else:
             assert False, f"Unexpected tag for original_str_expr: {t}"
-        # Read optional original_str_fallback
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_fallback = None
@@ -889,13 +916,10 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return unbound
     elif tag == types.UNION_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
-        # Read uses_pep604_syntax flag
         uses_pep604_syntax = read_bool(data)
-        # Read optional original_str_expr
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_expr = None
@@ -903,7 +927,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             original_str_expr = read_str_bare(data)
         else:
             assert False, f"Unexpected tag for original_str_expr: {t}"
-        # Read optional original_str_fallback
         t = read_tag(data)
         if t == LITERAL_NONE:
             original_str_fallback = None
@@ -919,7 +942,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return union
     elif tag == types.LIST_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
@@ -928,7 +950,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return type_list
     elif tag == types.TUPLE_TYPE:
-        # Read items list
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
         items = [read_type(state, data) for i in range(n)]
@@ -958,7 +979,6 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         expect_end_tag(data)
         return typeddict_type
     elif tag == types.ELLIPSIS_TYPE:
-        # EllipsisType has no attributes
         ellipsis_type = EllipsisType()
         read_loc(data, ellipsis_type)
         expect_end_tag(data)
@@ -966,6 +986,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.RAW_EXPRESSION_TYPE:
         type_name = read_str(data)
         value: types.LiteralValue | str | None
+        note: str | None = None
         if type_name == "builtins.bool":
             value = read_bool(data)
         elif type_name == "builtins.int":
@@ -980,9 +1001,11 @@ def read_type(state: State, data: ReadBuffer) -> Type:
             tag = read_tag(data)
             assert tag == LITERAL_NONE, f"Expected LITERAL_NONE for invalid type, got {tag}"
             value = None
+            # Read optional note (cache_version >= 2)
+            note = read_str_opt(data)
         else:
             assert False, f"Unsupported RawExpressionType: {type_name}"
-        raw_type = RawExpressionType(value, type_name)
+        raw_type = RawExpressionType(value, type_name, note=note)
         read_loc(data, raw_type)
         expect_end_tag(data)
         return raw_type
@@ -991,6 +1014,8 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
+        if from_star_syntax:
+            state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
     elif tag == types.CALL_TYPE:
@@ -1000,31 +1025,23 @@ def read_type(state: State, data: ReadBuffer) -> Type:
 
 
 def stringify_type_name(typ: Type) -> str | None:
-    """Extract qualified name from a type (for Arg constructor detection)."""
     if isinstance(typ, UnboundType):
         return typ.name
     return None
 
 
 def extract_arg_name(typ: Type) -> str | None:
-    """Extract argument name from a type (for Arg name parameter)."""
     if isinstance(typ, RawExpressionType) and typ.base_type_name == "builtins.str":
         return typ.literal_value  # type: ignore[return-value]
     elif isinstance(typ, UnboundType):
-        # String literals in type context are parsed as UnboundType (forward references)
-        # For Arg names, these are typically simple names without dots
         if typ.name == "None":
             return None
-        # Return the name as-is (it's the argument name)
         return typ.name
     return None  # Invalid, but let validation handle it
 
 
 def read_call_type(state: State, data: ReadBuffer) -> Type:
-    """Read Call in type context - check if it's an Arg/DefaultArg/VarArg/KwArg constructor.
-
-    This performs validation and error reporting similar to mypy/fastparse.py.
-    """
+    """Read Call in type context (Arg/DefaultArg/VarArg/KwArg constructor)."""
     callee_type = read_type(state, data)
 
     # Read positional arguments
@@ -1047,16 +1064,13 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
         kw_value = read_type(state, data)
         kwargs.append((kw_name, kw_value))
 
-    # Try to detect Arg/DefaultArg/VarArg/KwArg pattern
     constructor = stringify_type_name(callee_type)
 
-    # We'll read location before processing errors so we can report them correctly
     invalid = AnyType(TypeOfAny.from_error)
     read_loc(data, invalid)
     expect_end_tag(data)
 
     if not constructor:
-        # ARG_CONSTRUCTOR_NAME_EXPECTED
         state.add_error(
             message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED.value,
             invalid.line,
@@ -1082,7 +1096,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
             name = extract_arg_name(arg)
             name_set_from_positional = True
         else:
-            # ARG_CONSTRUCTOR_TOO_MANY_ARGS
             state.add_error(
                 message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS.value,
                 invalid.line,
@@ -1094,7 +1107,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     # Process keyword arguments
     for kw_name, kw_value in kwargs:
         if kw_name == "name":
-            # MULTIPLE_VALUES_FOR_NAME_KWARG
             if name is not None and name_set_from_positional:
                 state.add_error(
                     message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor).value,
@@ -1105,7 +1117,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 )
             name = extract_arg_name(kw_value)
         elif kw_name == "type":
-            # MULTIPLE_VALUES_FOR_TYPE_KWARG
             if typ is not default_type and typ_set_from_positional:
                 state.add_error(
                     message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor).value,
@@ -1116,7 +1127,6 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 )
             typ = kw_value
         else:
-            # ARG_CONSTRUCTOR_UNEXPECTED_ARG
             state.add_error(
                 message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(kw_name).value,
                 invalid.line,
@@ -1125,14 +1135,12 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
                 code="misc",
             )
 
-    # Create CallableArgument
     call_arg = CallableArgument(typ, name, constructor)
     set_line_column_range(call_arg, invalid)
     return call_arg
 
 
 def read_pattern(state: State, data: ReadBuffer) -> Pattern:
-    """Read a pattern node from the buffer."""
     tag = read_tag(data)
     if tag == nodes.AS_PATTERN:
         has_pattern = read_bool(data)
@@ -1183,7 +1191,6 @@ def read_pattern(state: State, data: ReadBuffer) -> Pattern:
         expect_end_tag(data)
         return sequence_pattern
     elif tag == nodes.STARRED_PATTERN:
-        # Read optional capture name
         has_name = read_bool(data)
         if has_name:
             name_str = read_str(data)
@@ -1283,9 +1290,28 @@ unary_ops: Final = ["~", "not", "+", "-"]
 
 
 def read_expression(state: State, data: ReadBuffer) -> Expression:
+    # Branches ordered by frequency (based on mypy self-check)
     tag = read_tag(data)
     expr: Expression
-    if tag == nodes.CALL_EXPR:
+    if tag == nodes.NAME_EXPR:
+        s = read_str(data)
+        ne = NameExpr(s)
+        read_loc(data, ne)
+        expect_end_tag(data)
+        return ne
+    elif tag == nodes.MEMBER_EXPR:
+        e = read_expression(state, data)
+        attr = read_str(data)
+        m = MemberExpr(e, attr)
+        # Check if this is a super() call - if so, convert to SuperExpr
+        if isinstance(e, CallExpr) and isinstance(e.callee, NameExpr) and e.callee.name == "super":
+            result: Expression = SuperExpr(attr, e)
+        else:
+            result = m
+        read_loc(data, result)
+        expect_end_tag(data)
+        return result
+    elif tag == nodes.CALL_EXPR:
         callee = read_expression(state, data)
         args = read_expression_list(state, data)
         # Read argument kinds
@@ -1308,41 +1334,34 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         read_loc(data, ce)
         expect_end_tag(data)
         return ce
-    elif tag == nodes.NAME_EXPR:
-        s = read_str(data)
-        ne = NameExpr(s)
-        read_loc(data, ne)
-        expect_end_tag(data)
-        return ne
-    elif tag == nodes.MEMBER_EXPR:
-        e = read_expression(state, data)
-        attr = read_str(data)
-        m = MemberExpr(e, attr)
-        # Check if this is a super() call - if so, convert to SuperExpr
-        if isinstance(e, CallExpr) and isinstance(e.callee, NameExpr) and e.callee.name == "super":
-            result: Expression = SuperExpr(attr, e)
-        else:
-            result = m
-        read_loc(data, result)
-        expect_end_tag(data)
-        return result
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
         read_loc(data, se)
         expect_end_tag(data)
         return se
+    elif tag == nodes.COMPARISON_EXPR:
+        left = read_expression(state, data)
+        expect_tag(data, LIST_INT)
+        n_ops = read_int_bare(data)
+        ops = [cmp_ops[read_int_bare(data)] for _ in range(n_ops)]
+        comparators = read_expression_list(state, data)
+        assert len(ops) == len(comparators)
+        expr = ComparisonExpr(ops, [left] + comparators)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
     elif tag == nodes.INT_EXPR:
         ie = IntExpr(read_int(data))
         read_loc(data, ie)
         expect_end_tag(data)
         return ie
-    elif tag == nodes.FLOAT_EXPR:
-        expect_tag(data, LITERAL_FLOAT)
-        value = read_float_bare(data)
-        fe = FloatExpr(value)
-        read_loc(data, fe)
+    elif tag == nodes.INDEX_EXPR:
+        base = read_expression(state, data)
+        index = read_expression(state, data)
+        expr = IndexExpr(base, index)
+        read_loc(data, expr)
         expect_end_tag(data)
-        return fe
+        return expr
     elif tag == nodes.LIST_EXPR:
         items = read_expression_list(state, data)
         expr = ListExpr(items)
@@ -1355,58 +1374,27 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         read_loc(data, t)
         expect_end_tag(data)
         return t
-    elif tag == nodes.SET_EXPR:
-        items = read_expression_list(state, data)
-        expr = SetExpr(items)
-        read_loc(data, expr)
+    elif tag == nodes.BOOL_OP_EXPR:
+        op = bool_ops[read_int(data)]
+        values = read_expression_list(state, data)
+        # Convert list of values to nested OpExpr nodes
+        # E.g., [a, b, c] with "and" becomes OpExpr("and", a, OpExpr("and", b, c))
+        # This matches the old parser behavior, on which we may implicitly rely.
+        assert len(values) >= 2
+        result = last = values[-1]
+        for val in values[-2::-1]:
+            result = OpExpr(op, val, result)
+            result.line = val.line
+            result.column = val.column
+            result.end_line = last.end_line
+            result.end_column = last.end_column
+        read_loc(data, result)
         expect_end_tag(data)
-        return expr
-    elif tag == nodes.GENERATOR_EXPR:
-        expr = read_generator_expr(state, data)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.LIST_COMPREHENSION:
-        generator = read_generator_expr(state, data)
-        expr = ListComprehension(generator)
-        read_loc(data, expr)
-        # Also copy location to the inner generator
-        set_line_column_range(generator, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.SET_COMPREHENSION:
-        generator = read_generator_expr(state, data)
-        expr = SetComprehension(generator)
-        read_loc(data, expr)
-        # Also copy location to the inner generator
-        set_line_column_range(generator, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.DICT_COMPREHENSION:
-        key = read_expression(state, data)
-        value = read_expression(state, data)
-        n_generators = read_int(data)
-        indices = [read_expression(state, data) for _ in range(n_generators)]
-        sequences = [read_expression(state, data) for _ in range(n_generators)]
-        condlists = [read_expression_list(state, data) for _ in range(n_generators)]
-        is_async = [read_bool(data) for _ in range(n_generators)]
-        expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.YIELD_EXPR:
-        has_value = read_bool(data)
-        if has_value:
-            value = read_expression(state, data)
-        else:
-            value = None
-        expr = YieldExpr(value)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.YIELD_FROM_EXPR:
-        value = read_expression(state, data)
-        expr = YieldFromExpr(value)
+        return result
+    elif tag == nodes.UNARY_EXPR:
+        op = unary_ops[read_int(data)]
+        operand = read_expression(state, data)
+        expr = UnaryExpr(op, operand)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
@@ -1422,103 +1410,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         o.end_column = right.end_column
         expect_end_tag(data)
         return o
-    elif tag == nodes.INDEX_EXPR:
-        base = read_expression(state, data)
-        index = read_expression(state, data)
-        expr = IndexExpr(base, index)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.BOOL_OP_EXPR:
-        op = bool_ops[read_int(data)]
-        values = read_expression_list(state, data)
-        # Convert list of values to nested OpExpr nodes
-        # E.g., [a, b, c] with "and" becomes OpExpr("and", OpExpr("and", a, b), c)
-        assert len(values) >= 2
-        result = values[0]
-        for val in values[1:]:
-            result = OpExpr(op, result, val)
-            result.line = values[0].line
-            result.column = values[0].column
-            result.end_line = val.end_line
-            result.end_column = val.end_column
-        read_loc(data, result)
-        expect_end_tag(data)
-        return result
-    elif tag == nodes.COMPARISON_EXPR:
-        left = read_expression(state, data)
-        expect_tag(data, LIST_INT)
-        n_ops = read_int_bare(data)
-        ops = [cmp_ops[read_int_bare(data)] for _ in range(n_ops)]
-        comparators = read_expression_list(state, data)
-        assert len(ops) == len(comparators)
-        expr = ComparisonExpr(ops, [left] + comparators)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.UNARY_EXPR:
-        op = unary_ops[read_int(data)]
-        operand = read_expression(state, data)
-        expr = UnaryExpr(op, operand)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.DICT_EXPR:
-        expect_tag(data, LIST_GEN)
-        n_keys = read_int_bare(data)
-        keys: list[Expression | None] = []
-        for _ in range(n_keys):
-            has_key = read_bool(data)
-            if has_key:
-                keys.append(read_expression(state, data))
-            else:
-                keys.append(None)
-        values = read_expression_list(state, data)
-        # Zip keys and values into items
-        items = list(zip(keys, values))
-        expr = DictExpr(items)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.COMPLEX_EXPR:
-        expect_tag(data, LITERAL_FLOAT)
-        real = read_float_bare(data)
-        expect_tag(data, LITERAL_FLOAT)
-        imag = read_float_bare(data)
-        value = complex(real, imag)
-        expr = ComplexExpr(value)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.SLICE_EXPR:
-        has_begin = read_bool(data)
-        begin_index = read_expression(state, data) if has_begin else None
-        has_end = read_bool(data)
-        end_index = read_expression(state, data) if has_end else None
-        has_stride = read_bool(data)
-        stride = read_expression(state, data) if has_stride else None
-        expr = SliceExpr(begin_index, end_index, stride)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.TEMP_NODE:
-        # TempNode with no attributes
-        temp = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
-        expect_end_tag(data)
-        return temp
-    elif tag == nodes.ELLIPSIS_EXPR:
-        expr = EllipsisExpr()
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
-    elif tag == nodes.CONDITIONAL_EXPR:
-        if_expr = read_expression(state, data)
-        cond = read_expression(state, data)
-        else_expr = read_expression(state, data)
-        expr = ConditionalExpr(cond, if_expr, else_expr)
-        read_loc(data, expr)
-        expect_end_tag(data)
-        return expr
     elif tag == nodes.FSTRING_EXPR:
         # F-strings are converted into nodes representing "".join([...]), to match
         # pre-existing behavior.
@@ -1534,7 +1425,79 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(state, data, fitems)
+        expr = build_fstring_join(data, fitems)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.LIST_COMPREHENSION:
+        generator = read_generator_expr(state, data)
+        expr = ListComprehension(generator)
+        read_loc(data, expr)
+        set_line_column_range(generator, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.DICT_EXPR:
+        expect_tag(data, LIST_GEN)
+        n_keys = read_int_bare(data)
+        keys: list[Expression | None] = []
+        for _ in range(n_keys):
+            has_key = read_bool(data)
+            if has_key:
+                keys.append(read_expression(state, data))
+            else:
+                keys.append(None)
+        values = read_expression_list(state, data)
+        items = list(zip(keys, values))
+        expr = DictExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.TEMP_NODE:
+        temp = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
+        expect_end_tag(data)
+        return temp
+    elif tag == nodes.CONDITIONAL_EXPR:
+        if_expr = read_expression(state, data)
+        cond = read_expression(state, data)
+        else_expr = read_expression(state, data)
+        expr = ConditionalExpr(cond, if_expr, else_expr)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.SLICE_EXPR:
+        has_begin = read_bool(data)
+        begin_index = read_expression(state, data) if has_begin else None
+        has_end = read_bool(data)
+        end_index = read_expression(state, data) if has_end else None
+        has_stride = read_bool(data)
+        stride = read_expression(state, data) if has_stride else None
+        expr = SliceExpr(begin_index, end_index, stride)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.GENERATOR_EXPR:
+        expr = read_generator_expr(state, data)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.YIELD_EXPR:
+        has_value = read_bool(data)
+        if has_value:
+            value = read_expression(state, data)
+        else:
+            value = None
+        expr = YieldExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.SET_EXPR:
+        items = read_expression_list(state, data)
+        expr = SetExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.ELLIPSIS_EXPR:
+        expr = EllipsisExpr()
+        read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.TSTRING_EXPR:
@@ -1560,6 +1523,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 titems.append(s)
         expr = TemplateStrExpr(titems)
         read_loc(data, expr)
+        state.check_min_version(
+            "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
+        )
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:
@@ -1585,36 +1551,70 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
-    elif tag == nodes.NAMED_EXPR:
+    elif tag == nodes.DICT_COMPREHENSION:
+        key = read_expression(state, data)
+        value = read_expression(state, data)
+        n_generators = read_int(data)
+        indices = [read_expression(state, data) for _ in range(n_generators)]
+        sequences = [read_expression(state, data) for _ in range(n_generators)]
+        condlists = [read_expression_list(state, data) for _ in range(n_generators)]
+        is_async = [read_bool(data) for _ in range(n_generators)]
+        expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.SET_COMPREHENSION:
+        generator = read_generator_expr(state, data)
+        expr = SetComprehension(generator)
+        read_loc(data, expr)
+        set_line_column_range(generator, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.BYTES_EXPR:
+        value = read_str(data)
+        expr = BytesExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
-        # AssignmentExpr expects target to be a NameExpr
-        if not isinstance(target, NameExpr):
-            # In case target is not a NameExpr, we need to handle this
-            # For now, we'll assert since the grammar should ensure it's a NameExpr
-            assert isinstance(
-                target, NameExpr
-            ), f"Expected NameExpr for target, got {type(target)}"
+        assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
+    elif tag == nodes.FLOAT_EXPR:
+        expect_tag(data, LITERAL_FLOAT)
+        value = read_float_bare(data)
+        fe = FloatExpr(value)
+        read_loc(data, fe)
+        expect_end_tag(data)
+        return fe
     elif tag == nodes.STAR_EXPR:
         wrapped_expr = read_expression(state, data)
         expr = StarExpr(wrapped_expr)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
-    elif tag == nodes.BYTES_EXPR:
-        # Read bytes literal as string
-        value = read_str(data)
-        expr = BytesExpr(value)
+    elif tag == nodes.YIELD_FROM_EXPR:
+        value = read_expression(state, data)
+        expr = YieldFromExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.AWAIT_EXPR:
         value = read_expression(state, data)
         expr = AwaitExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.COMPLEX_EXPR:
+        expect_tag(data, LITERAL_FLOAT)
+        real = read_float_bare(data)
+        expect_tag(data, LITERAL_FLOAT)
+        imag = read_float_bare(data)
+        expr = ComplexExpr(complex(real, imag))
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
@@ -1629,20 +1629,15 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
 
 
 def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
-    items = []
     n = read_int(data)
-    items = [read_fstring_item(state, data) for i in range(n)]
-    return build_fstring_join(state, data, items)
+    items = [read_fstring_item(state, data) for _ in range(n)]
+    return build_fstring_join(data, items)
 
 
-def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+    items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
-        read_loc(data, expr)
-        return expr
-    if all(isinstance(item, StrExpr) for item in items):
-        s = "".join([cast(StrExpr, item).value for item in items])
-        expr = StrExpr(s)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
@@ -1654,6 +1649,22 @@ def build_fstring_join(state: State, data: ReadBuffer, items: list[Expression]) 
     set_line_column(str_expr, call)
     set_line_column(member, call)
     return call
+
+
+def collapse_consecutive_str_items(items: list[Expression]) -> list[Expression]:
+    if len(items) <= 1:
+        return items
+    last = items[0]
+    new_items = [last]
+    for item in items[1:]:
+        if isinstance(last, StrExpr) and isinstance(item, StrExpr):
+            last.value += item.value
+            last.end_line = item.end_line
+            last.end_column = item.end_column
+        else:
+            new_items.append(item)
+            last = item
+    return new_items
 
 
 def read_fstring_item(state: State, data: ReadBuffer) -> Expression:
@@ -1853,10 +1864,7 @@ def get_executable_if_block_with_overloads(
 def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Statement]:
     """Merge consecutive function overloads into OverloadedFuncDef nodes.
 
-    This function processes a list of statements and combines function overloads
-    (marked with @overload decorator) that have the same name into a single
-    OverloadedFuncDef node. It also handles conditional overloads (overloads
-    inside if statements) when the condition can be evaluated.
+    Also handles conditional overloads (overloads inside if statements).
     """
     ret: list[Statement] = []
     current_overload: list[OverloadPart] = []
@@ -2002,14 +2010,7 @@ def fix_function_overloads(state: State, stmts: list[Statement]) -> list[Stateme
 
 
 def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
-    """Deserialize import metadata from bytes into mypy AST nodes.
-
-    Args:
-        import_bytes: Serialized import metadata from the Rust parser
-
-    Returns:
-        List of Import and ImportFrom AST nodes with location and metadata
-    """
+    """Deserialize import metadata from bytes into mypy AST nodes."""
     if not import_bytes:
         return []
 
@@ -2074,12 +2075,6 @@ def deserialize_imports(import_bytes: bytes) -> list[ImportBase]:
 
 
 def _read_and_set_import_metadata(data: ReadBuffer, stmt: Import | ImportFrom | ImportAll) -> None:
-    """Read location and metadata flags from buffer and set them on the import statement.
-
-    Args:
-        data: Buffer containing serialized data
-        stmt: Import, ImportFrom, or ImportAll statement to populate with location and metadata
-    """
     read_loc(data, stmt)
 
     # Metadata flags as a single integer bitfield

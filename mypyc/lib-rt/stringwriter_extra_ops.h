@@ -1,14 +1,12 @@
 #ifndef STRINGWRITER_EXTRA_OPS_H
 #define STRINGWRITER_EXTRA_OPS_H
 
-#ifdef MYPYC_EXPERIMENTAL
-
+#include <Python.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <Python.h>
 
 #include "mypyc_util.h"
-#include "strings/librt_strings.h"
+#include "strings/librt_strings_api.h"
 
 static inline CPyTagged
 CPyStringWriter_Len(PyObject *obj) {
@@ -73,7 +71,5 @@ static inline int32_t CPyStringWriter_GetItem(PyObject *obj, int64_t index) {
         return (int32_t)val;
     }
 }
-
-#endif // MYPYC_EXPERIMENTAL
 
 #endif

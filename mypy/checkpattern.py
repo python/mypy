@@ -378,9 +378,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             # tuples, so we instead try to narrow the entire type.
             # TODO: use more precise narrowing when possible (e.g. for identical shapes).
             new_tuple_type = TupleType(new_inner_types, current_type.partial_fallback)
-            new_type, rest_type = self.chk.conditional_types_with_intersection(
+            new_type, _ = self.chk.conditional_types_with_intersection(
                 new_tuple_type, [get_type_range(current_type)], o, default=new_tuple_type
             )
+            if (
+                star_position is not None
+                and required_patterns <= len(inner_types) - 1
+                and all(is_uninhabited(rest) for rest in rest_inner_types)
+            ):
+                rest_type = UninhabitedType()
         else:
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
@@ -460,7 +466,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             # so we only restore the type of the star item.
             res = []
             for i, t in enumerate(types):
-                if i != star_pos:
+                if i != star_pos or is_uninhabited(t):
                     res.append(t)
                 else:
                     res.append(UnpackType(self.chk.named_generic_type("builtins.tuple", [t])))

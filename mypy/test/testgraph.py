@@ -117,6 +117,7 @@ class GraphSuite(Suite):
             "c": State.new_state("c", None, "import b, d", manager),
             "builtins": State.new_state("builtins", None, "", manager),
         }
+        manager.parse_all(list(graph.values()))
         res = [scc.mod_ids for scc in sorted_components(graph)]
         assert_equal(res, [{"builtins"}, {"d"}, {"c", "b"}, {"a"}])
 
@@ -129,6 +130,7 @@ class GraphSuite(Suite):
             "c": State.new_state("c", None, "import b, d", manager),
             "builtins": State.new_state("builtins", None, "", manager),
         }
+        manager.parse_all(list(graph.values()))
         res = [scc.mod_ids for scc in sorted_components(graph)]
         assert_equal(res, [{"builtins"}, {"a", "d", "c", "b"}])
         ascc = res[1]

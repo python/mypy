@@ -590,9 +590,15 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         PyObject *yo = CPyTagged_AsObject(y);
         PyObject *result = PyNumber_TrueDivide(xo, yo);
         if (result == NULL) {
+            Py_DECREF(xo);
+            Py_DECREF(yo);
             return CPY_FLOAT_ERROR;
         }
-        return PyFloat_AsDouble(result);
+        double value = PyFloat_AsDouble(result);
+        Py_DECREF(xo);
+        Py_DECREF(yo);
+        Py_DECREF(result);
+        return value;
     }
     return 1.0;
 }

@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    RTypeVar,
     RUnion,
     RVec,
     RVoid,
@@ -703,7 +704,7 @@ class PrimitiveDescription:
         self,
         name: str,
         arg_types: list[RType],
-        return_type: RType,  # TODO: What about generic?
+        return_type: RType,
         var_arg_type: RType | None,
         truncated_type: RType | None,
         c_function_name: str | None,
@@ -716,6 +717,7 @@ class PrimitiveDescription:
         is_pure: bool,
         experimental: bool,
         dependencies: list[Dependency] | None,
+        type_params: list[RTypeVar] | None,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -749,6 +751,7 @@ class PrimitiveDescription:
         # If this flag is set, the primitive has native integer types and must
         # be matched using more complex rules.
         self.is_ambiguous = any(has_fixed_width_int(t) for t in arg_types)
+        self.type_params = None if not type_params else type_params
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
@@ -776,11 +779,23 @@ class PrimitiveOp(RegisterOp):
     code paths for short and long representations.
     """
 
-    def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+    def __init__(
+        self,
+        args: list[Value],
+        desc: PrimitiveDescription,
+        line: int = -1,
+        *,
+        arg_types: list[RType] | None = None,
+        return_type: RType | None = None,
+        type_args: list[RType] | None = None,
+    ) -> None:
         self.error_kind = desc.error_kind
         super().__init__(line)
         self.args = args
-        self.type = desc.return_type
+        self.arg_types = arg_types if arg_types is not None else desc.arg_types
+        self.type = return_type if return_type is not None else desc.return_type
+        self.is_borrowed = desc.is_borrowed
+        self.type_args = type_args
         self.desc = desc
 
     def sources(self) -> list[Value]:
