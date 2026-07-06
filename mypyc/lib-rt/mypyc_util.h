@@ -156,6 +156,10 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
+static inline int CPyTagged_IsNegative(CPyTagged x) {
+    return ((Py_ssize_t)x) < 0;
+}
+
 // Are we targeting Python 3.X or newer?
 #define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
