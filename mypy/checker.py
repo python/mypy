@@ -6662,15 +6662,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             return {expr: TypeGuardedType(type_guard)}, {}
                         else:
                             assert type_is is not None
-                            return conditional_types_to_typemaps(
-                                expr,
-                                *self.conditional_types_with_intersection(
-                                    self.lookup_type(expr),
-                                    [TypeRange(type_is, is_upper_bound=False)],
-                                    expr,
-                                    consider_runtime_isinstance=False,
-                                ),
-                            )
+                            return self.conditional_types_for_type_is(expr, type_is)
         elif isinstance(node, ComparisonExpr):
             return self.comparison_type_narrowing_helper(node)
         elif isinstance(node, AssignmentExpr):
@@ -8167,6 +8159,47 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         yes_map, no_map = conditional_types_to_typemaps(expr, yes_type, no_type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    def conditional_types_for_type_is(
+        self, expr: Expression, type_is: Type
+    ) -> tuple[TypeMap, TypeMap]:
+        """Infer type restrictions for an expression narrowed by a TypeIs guard.
+
+        This mirrors infer_issubclass_maps: when both the current type of
+        `expr` and the guarded `type_is` are `type[...]` objects (as opposed
+        to plain instances), we must unwrap the `TypeType` layer before
+        attempting to compute an ad-hoc intersection, then rewrap the
+        result. Without this, a guard such as `TypeIs[type[M]]` applied to
+        an expression of type `type[A]` never reaches the ad-hoc
+        intersection logic in `conditional_types_with_intersection` (which
+        only handles plain `Instance`/`NoneType` operands), and the checked
+        type silently collapses to `Never` instead of `type[<subclass of
+        "A" and "M">]`, the same result `issubclass()` narrowing produces.
+        """
+        vartype = self.lookup_type(expr)
+        if isinstance(vartype, TypeVarType):
+            vartype = vartype.upper_bound
+        vartype = get_proper_type(vartype)
+        proper_type_is = get_proper_type(type_is)
+        if isinstance(vartype, TypeType) and isinstance(proper_type_is, TypeType):
+            yes_type, no_type = self.conditional_types_with_intersection(
+                vartype.item,
+                [TypeRange(proper_type_is.item, is_upper_bound=False)],
+                expr,
+                consider_runtime_isinstance=False,
+            )
+            yes_map, no_map = conditional_types_to_typemaps(expr, yes_type, no_type)
+            yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
+            return yes_map, no_map
+        return conditional_types_to_typemaps(
+            expr,
+            *self.conditional_types_with_intersection(
+                vartype,
+                [TypeRange(type_is, is_upper_bound=False)],
+                expr,
+                consider_runtime_isinstance=False,
+            ),
+        )
 
     @overload
     def conditional_types_with_intersection(
