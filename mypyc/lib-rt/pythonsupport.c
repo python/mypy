@@ -5,6 +5,40 @@
 
 #include "pythonsupport.h"
 
+#ifdef Py_GIL_DISABLED
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). Reached only
+// when the inline fast-path try-incref fails: the value has not had maybe-weakref
+// set (e.g. published by an initializer store that skipped it) and is owned by
+// another thread, or we lost a race with a concurrent writer. Take the owning
+// object's critical section and force a cross-thread reference via
+// _Py_NewRefWithLock, which cannot fail and sets maybe-weakref so subsequent
+// reads take the fast path. Kept out-of-line so the inline fast path stays small.
+//
+// The inline fast path only handled the owned-by-this-thread / immortal case
+// (_Py_TryIncrefFast). Here we first retry the full try-incref-compare: reload the
+// pointer (it may have changed since the inline load) and attempt the cross-thread
+// shared-refcount CAS with pointer re-validation. Only if that also fails -- the
+// value has no shared refcount yet and is owned by another thread -- do we fall
+// into the critical section and force a cross-thread reference.
+__attribute__((noinline))
+PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
+    if (v == NULL) {
+        return NULL;
+    }
+    if (_Py_TryIncrefCompare(field, v)) {
+        return v;
+    }
+    Py_BEGIN_CRITICAL_SECTION(self);
+    v = (PyObject *)_Py_atomic_load_ptr(field);
+    if (v != NULL) {
+        _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
+    }
+    Py_END_CRITICAL_SECTION();
+    return v;
+}
+#endif
+
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
 PyObject*

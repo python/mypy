@@ -62,23 +62,23 @@ extern "C" {
 // quiescent point. This same fallback also covers a transient lost race with a
 // concurrent writer. It is only used in free-threaded builds; the default (GIL)
 // build keeps the plain load + incref generated inline by mypyc.
+// Cold slow path of CPy_GetAttrRef, kept out-of-line (see pythonsupport.c) so the
+// inline fast path stays small enough for the compiler to inline at call sites.
+PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field);
+
 static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
     PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
     if (v == NULL) {
         return NULL;
     }
-    if (_Py_TryIncrefCompare(field, v)) {
+    // Hot case only: object is owned by this thread or immortal (no CAS, no loop).
+    // Everything else -- the cross-thread shared-refcount CAS, the pointer
+    // re-validation, and the not-yet-shared critical-section fallback -- lives in
+    // the out-of-line slow path to keep this body small enough to inline.
+    if (_Py_TryIncrefFast(v)) {
         return v;
     }
-    // Slow path: value not yet shared (e.g. published by an initializer store
-    // that skipped maybe-weakref), or we lost a race with a concurrent writer.
-    Py_BEGIN_CRITICAL_SECTION(self);
-    v = (PyObject *)_Py_atomic_load_ptr(field);
-    if (v != NULL) {
-        _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
-    }
-    Py_END_CRITICAL_SECTION();
-    return v;
+    return CPy_GetAttrRefSlow(self, field);
 }
 
 // Reclaim the previous value of a native attribute after it has been replaced.
