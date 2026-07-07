@@ -61,6 +61,7 @@ files = [
     "irbuild-librt-strings.test",
     "irbuild-librt-random.test",
     "irbuild-base64.test",
+    "irbuild-threading.test",
     "irbuild-time.test",
     "irbuild-match.test",
 ]

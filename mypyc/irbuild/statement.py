@@ -80,6 +80,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
+    lock_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -115,6 +116,7 @@ from mypyc.primitives.exc_ops import (
     restore_exc_info_op,
 )
 from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
@@ -1108,6 +1110,10 @@ def transform_with(
     al = "a" if is_async else ""
 
     mgr_v = builder.accept(expr)
+
+    if not is_async and mgr_v.type == lock_rprimitive:
+        transform_with_lock(builder, mgr_v, target, body, line)
+        return
     is_native = isinstance(mgr_v.type, RInstance)
     if is_native:
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
@@ -1177,6 +1183,32 @@ def transform_with(
         finally_body,
         line,
     )
+
+
+def transform_with_lock(
+    builder: IRBuilder, mgr_v: Value, target: Lvalue | None, body: GenFunc, line: int
+) -> None:
+    """Optimized 'with' for librt.threading.Lock.
+
+    Generate a simple try/finally with direct acquire/release calls.
+    Lock.__exit__ never suppresses exceptions, so we don't need the
+    full PEP 343 try/except/finally machinery.
+    """
+    # __enter__: acquire the lock
+    value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
+
+    mgr = builder.maybe_spill(mgr_v)
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), value, line)
+        body()
+
+    def finally_body() -> None:
+        # __exit__: release the lock (ignoring exception info)
+        builder.primitive_op(lock_release_op, [builder.read(mgr, line)], line)
+
+    transform_try_finally_stmt(builder, try_body, finally_body, line)
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:

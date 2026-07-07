@@ -41,7 +41,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
-from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_VECS, Dependency
+from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_THREADING, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -550,12 +550,19 @@ KNOWN_NATIVE_TYPES: Final = {
 } | {
     "librt.random.Random": RPrimitive(
         "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
-    )
+    ),
+    "librt.threading.Lock": RPrimitive(
+        "librt.threading.Lock",
+        is_unboxed=False,
+        is_refcounted=True,
+        dependencies=(LIBRT_THREADING,),
+    ),
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 random_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.random.Random"]
+lock_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.threading.Lock"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
