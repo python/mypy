@@ -2278,7 +2278,7 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         self_type = fill_typevars(info)
         for member in all_non_object_members(info):
             # __mypy-replace is an implementation detail of the dataclass plugin
-            if member in ("__init__", "__new__", "__mypy-replace"):
+            if member in {"__init__", "__new__", "__replace__", "__mypy-replace"}:
                 continue
 
             if isinstance(self_type, TupleType):
