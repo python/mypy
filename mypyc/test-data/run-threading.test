@@ -54,7 +54,7 @@ def test_contention() -> None:
 
 def test_cross_thread_release() -> None:
     # threading.Lock is unowned: a lock acquired on one thread may be
-    # released from another. A thread blocked in acquire() must then wake up.
+    # released from another, after which another thread can acquire it.
     import threading
     lock = Lock()
     assert lock.acquire()
@@ -71,7 +71,7 @@ def test_cross_thread_release() -> None:
     t = threading.Thread(target=releaser)
     t.start()
     started.wait()
-    # Blocks until releaser releases the lock on the other thread.
+    # This may block until releaser releases the lock on the other thread.
     assert lock.acquire()
     t.join()
     assert released.is_set()

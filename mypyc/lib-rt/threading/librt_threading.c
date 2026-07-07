@@ -125,9 +125,10 @@ typedef struct {
     // This backend is only selected when the GIL is enabled, so this flag is a
     // plain int relying on the GIL for serialization: it is only ever touched
     // with the GIL held (the blocking sem_wait drops the GIL, but the flag
-    // store happens after the GIL is reacquired). CPython keeps the same flag
-    // as a plain `char` in its _thread lock wrapper (Modules/_threadmodule.c)
-    // for exactly this purpose.
+    // store happens after the GIL is reacquired). This mirrors the old
+    // PyThread_type_lock wrapper bookkeeping used by CPython 3.12 and earlier,
+    // where _thread lock kept a plain `char locked` for sanity checks and
+    // locked().
     int locked;
 } LockObject;
 
@@ -451,7 +452,8 @@ Lock_is_locked(LockObject *self)
     return result;
 #elif defined(LOCK_BACKEND_SEM)
     // The flag is GIL-serialized (see the struct comment); locked() is a
-    // plain read, matching CPython's _thread lock.
+    // plain read, matching the old CPython _thread lock bookkeeping described
+    // above.
     return self->locked != 0;
 #else  // pthread mutex + condvar fallback
     // `locked` is only ever accessed under `mut`; take it for a clean read.

@@ -13,7 +13,7 @@ function_op(
     dependencies=[LIBRT_THREADING],
 )
 
-# Lock.acquire() -- blocking acquire, always returns True
+# Lock.acquire() -- blocking acquire, returns True unless it raises
 lock_acquire_op = method_op(
     name="acquire",
     arg_types=[lock_rprimitive],
