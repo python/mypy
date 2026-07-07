@@ -556,7 +556,7 @@ static PyObject *
 Lock_release(LockObject *self, PyObject *Py_UNUSED(ignored))
 {
     if (Lock_release_impl(self) < 0) {
-        PyErr_SetString(PyExc_RuntimeError, "release unlocked lock");
+        PyErr_SetString(PyExc_RuntimeError, "cannot release an unlocked lock");
         return NULL;
     }
     Py_RETURN_NONE;
