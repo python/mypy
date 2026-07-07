@@ -1997,3 +1997,44 @@ for i in range(50):
     yields, val = run_generator(f(c), inputs=["world"])
     assert yields == ("hello",), yields
     assert val == "value" + str(i) + "world", repr(val)
+
+[case testBorrowedFinalAttrAcrossAsyncComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+class AsyncRange:
+    def __init__(self, n: int) -> None:
+        self.n = n
+        self.i = 0
+
+    def __aiter__(self) -> "AsyncRange":
+        return self
+
+    async def __anext__(self) -> str:
+        if self.i >= self.n:
+            raise StopAsyncIteration
+        i = self.i
+        self.i += 1
+        # Suspend in the middle of iteration.
+        await asyncio.sleep(0)
+        return "item" + str(i)
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the async comprehension,
+    # which suspends via an implicit await on __anext__ that isn't represented as
+    # an AwaitExpr node in the AST.
+    return c.s + "".join([x async for x in AsyncRange(3)])
+
+async def test_async_comprehension_borrow() -> None:
+    for i in range(50):
+        c = C("value" + str(i))
+        assert await f(c) == "value" + str(i) + "item0item1item2"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]

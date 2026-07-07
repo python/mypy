@@ -24,8 +24,10 @@ from mypy.nodes import (
     AwaitExpr,
     CallExpr,
     Decorator,
+    DictionaryComprehension,
     Expression,
     FuncDef,
+    GeneratorExpr,
     IndexExpr,
     IntExpr,
     LambdaExpr,
@@ -1828,6 +1830,19 @@ class SuspendDetector(TraverserVisitor):
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
         self.found = True
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> None:
+        # An 'async for' clause suspends via an implicit await on __anext__ that
+        # isn't represented as an AwaitExpr node in the AST (list/set comprehensions
+        # delegate to a GeneratorExpr, so they are covered here too).
+        if any(o.is_async):
+            self.found = True
+        super().visit_generator_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        if any(o.is_async):
+            self.found = True
+        super().visit_dictionary_comprehension(o)
 
     def visit_lambda_expr(self, o: LambdaExpr) -> None:
         # A lambda body forms its own function (and suspension) context.
