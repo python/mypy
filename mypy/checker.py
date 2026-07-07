@@ -3133,21 +3133,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             x: A[int] = C()
             x.foo  # ...runtime type is (str) -> None, while static type is (int) -> None
         """
-        if name in ("__init__", "__new__", "__init_subclass__"):
+        if name in {"__init__", "__new__", "__init_subclass__", "__replace__"}:
             # __init__ and friends can be incompatible -- it's a special case.
             return
         first = base1.names[name]
         second = base2.names[name]
-        if name == "__replace__" and first.plugin_generated and second.plugin_generated:
-            # Plugin-synthesized __replace__ methods (e.g. those added by the
-            # @dataclass plugin on Python 3.13+ to support copy.replace())
-            # return Self and are regenerated fresh for every concrete
-            # subclass, so they can safely differ across unrelated bases --
-            # same reasoning as __init__ and friends above. We only skip this
-            # for methods a plugin generated, not ones the user wrote by
-            # hand, so real incompatible __replace__ overrides are still
-            # caught.
-            return
         # Specify current_class explicitly as this function is called after leaving the class.
         first_type, _ = self.node_type_from_base(name, base1, ctx, current_class=ctx)
         second_type, _ = self.node_type_from_base(name, base2, ctx, current_class=ctx)
