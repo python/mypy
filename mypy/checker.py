@@ -3133,7 +3133,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             x: A[int] = C()
             x.foo  # ...runtime type is (str) -> None, while static type is (int) -> None
         """
-        if name in ("__init__", "__new__", "__init_subclass__"):
+        if name in {"__init__", "__new__", "__init_subclass__", "__replace__"}:
             # __init__ and friends can be incompatible -- it's a special case.
             return
         first = base1.names[name]

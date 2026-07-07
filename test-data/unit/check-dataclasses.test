@@ -2609,6 +2609,27 @@ class Y(X):
 [builtins fixtures/tuple.pyi]
 
 
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
+
 [case testFrozenWithFinal]
 from dataclasses import dataclass
 from typing import Final
