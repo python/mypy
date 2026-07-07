@@ -334,7 +334,7 @@ L3:
 L4:
     return r1
 
-[case testVecI64FastComprehensionFromList]
+[case testVecI64FastComprehensionFromList_nogil]
 from librt.vecs import vec
 from mypy_extensions import i64
 from typing import List
@@ -364,7 +364,7 @@ L1:
     r4 = r2 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = list_get_item_unsafe l, r2
+    r5 = CPyList_GetItemInt64(l, r2)
     r6 = unbox(i64, r5)
     x = r6
     r7 = x + 1

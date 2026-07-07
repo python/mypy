@@ -218,7 +218,7 @@ L5:
 L6:
     return 1
 
-[case testForList]
+[case testForList_withgil]
 from typing import List
 
 def f(ls: List[int]) -> int:
@@ -244,6 +244,43 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = list_get_item_unsafe ls, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = CPyTagged_Add(y, x)
+    y = r5
+L3:
+    r6 = r0 + 1
+    r0 = r6
+    goto L1
+L4:
+    return y
+
+[case testForList_nogil]
+from typing import List
+
+def f(ls: List[int]) -> int:
+    y = 0
+    for x in ls:
+        y = y + x
+    return y
+[out]
+def f(ls):
+    ls :: list
+    y :: int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x, r5 :: int
+    r6 :: native_int
+L0:
+    y = 0
+    r0 = 0
+L1:
+    r1 = var_object_size ls
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = CPyList_GetItemInt64(ls, r0)
     r4 = unbox(int, r3)
     x = r4
     r5 = CPyTagged_Add(y, x)
@@ -899,7 +936,7 @@ L0:
     r6 = r5 >= 0 :: signed
     return 1
 
-[case testForEnumerate]
+[case testForEnumerate_withgil]
 from typing import List, Iterable
 
 def f(a: List[int]) -> None:
@@ -967,7 +1004,7 @@ L4:
 L5:
     return 1
 
-[case testForZip]
+[case testForZip_withgil]
 from typing import List, Iterable, Sequence
 
 def f(a: List[int], b: Sequence[bool]) -> None:

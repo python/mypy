@@ -379,7 +379,7 @@ L0:
     r2 = r1 >= 0 :: signed
     return 1
 
-[case testListBuiltFromGenerator]
+[case testListBuiltFromGenerator_withgil]
 from typing import List
 def f(source: List[int]) -> None:
     a = list(x + 1 for x in source)
@@ -448,7 +448,7 @@ L8:
     b = r11
     return 1
 
-[case testGeneratorNext]
+[case testGeneratorNext_withgil]
 from typing import List, Optional
 
 def test(x: List[int]) -> None:
@@ -489,7 +489,7 @@ L5:
     res = r6
     return 1
 
-[case testSimplifyListUnion]
+[case testSimplifyListUnion_withgil]
 from typing import List, Union, Optional
 
 def narrow(a: Union[List[str], List[bytes], int]) -> int:
@@ -923,7 +923,7 @@ L10:
     a = r3
     return 1
 
-[case testListBuiltFromStars]
+[case testListBuiltFromStars_withgil]
 from typing import Final
 
 abc: Final = "abc"
