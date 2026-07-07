@@ -279,9 +279,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
     #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
     can_borrow = builder.is_native_attr_ref(expr) and (
-        not IS_FREE_THREADED
-        or isinstance(rtype, RVec)
-        or builder.is_final_native_attr_ref(expr)
+        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
     )
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
