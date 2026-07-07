@@ -274,9 +274,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     rtype = builder.node_type(expr)
     # Borrowing a native attribute read is unsafe on free-threaded builds, since another
-    # thread could concurrently reassign the attribute and free the old value. Two cases are
-    # still safe: Final attributes are read-only at runtime, so they can never be reassigned;
-    # and vec-typed attributes require manual synchronization, so we borrow them like before.
+    # thread could concurrently reassign the attribute and free the old value. We still borrow
+    # in two cases:
+    #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
+    #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
     can_borrow = builder.is_native_attr_ref(expr) and (
         not IS_FREE_THREADED
         or isinstance(rtype, RVec)
