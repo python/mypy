@@ -2,6 +2,265 @@
 
 ## Next Release
 
+## Mypy 2.2 (Unreleased)
+
+We've just uploaded mypy 2.2.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### Support for Closed TypedDicts (PEP 728)
+
+Mypy now supports closed TypedDicts as specified in PEP 728. A closed TypedDict cannot have extra
+keys beyond those explicitly defined. This allows the type checker to determine that certain
+operations are safe when they otherwise wouldn't be due to the potential presence of unknown keys.
+
+You can use the `closed` keyword argument with `TypedDict`:
+
+```python
+HasName = TypedDict("HasName", {"name": str})
+HasOnlyName = TypedDict("HasOnlyName", {"name": str}, closed=True)
+Movie = TypedDict("Movie", {"name": str, "year": int})
+
+movie: Movie = {"name": "Nimona", "year": 2023}
+has_name: HasName = movie  # OK: HasName is open (default)
+has_only_name: HasOnlyName = movie  # Error: HasOnlyName is closed and Movie has extra "year" key
+```
+
+Closed TypedDicts enable more precise type checking because the type checker knows exactly which
+keys are present. This is particularly useful when working with TypedDict unions or when you want
+to ensure that a TypedDict conforms to an exact shape.
+
+The `closed` keyword also enables safe type narrowing with `in` checks:
+
+```python
+Book = TypedDict('Book', {'book': str}, closed=True)
+DVD = TypedDict('DVD', {'dvd': str}, closed=True)
+type Inventory = Book | DVD
+
+def print_type(inventory: Inventory) -> None:
+    if "book" in inventory:
+        # Type is narrowed to Book here - safe because DVD is closed
+        print(inventory["book"])
+    else:
+        # Type is narrowed to DVD here
+        print(inventory["dvd"])
+```
+
+The `closed` keyword is also supported in class-based syntax:
+
+```python
+class HasOnlyName(TypedDict, closed=True):
+    name: str
+```
+
+Note that closed TypedDicts are structural types, so a closed TypedDict is assignable to an open
+TypedDict with the same keys, but not vice versa.
+
+Contributed by Alice (PR [21382](https://github.com/python/mypy/pull/21382)).
+
+### Complete Support for Type Variable Defaults (PEP 696)
+
+Mypy now has complete support for type variable defaults as specified in PEP 696. This allows you to
+specify default values for type parameters in generic classes, functions, and type aliases.
+
+```python
+T = TypeVar("T", default=int)  # This means that if no type is specified T = int
+
+@dataclass
+class Box(Generic[T]):
+    value: T | None = None
+
+reveal_type(Box())                      # type is Box[int]
+reveal_type(Box(value="Hello World!"))  # type is Box[str]
+```
+
+Type variable defaults work with all forms of generics, including classes, functions, and the new
+type alias syntax introduced in Python 3.12. This release completes the implementation by fixing
+various edge cases involving recursive defaults, dependencies between type variables, and interactions
+with variadic generics.
+
+Contributed by Ivan Levkivskyi (PRs [21491](https://github.com/python/mypy/pull/21491),
+[21526](https://github.com/python/mypy/pull/21526), [21544](https://github.com/python/mypy/pull/21544)).
+
+### Respect Explicit Return Type of `__new__()`
+
+Mypy now respects explicitly annotated return types in `__new__()` methods. Previously, mypy would
+always assume that `__new__()` returns an instance of the current class, ignoring explicit annotations.
+
+With this change, if you explicitly annotate a return type that differs from the implicit type, mypy
+will use the explicit annotation:
+
+```python
+class Factory:
+    def __new__(cls) -> Product:
+        return Product()
+
+reveal_type(Factory())  # Revealed type is "Product", not "Factory"
+```
+
+Note that mypy still gives an error at the definition site if the explicit annotation is not a
+subtype of the current class, since this is technically not type-safe.
+
+For backwards compatibility, there are two exceptions:
+- If the return type is `Any`, mypy will still use the current class as the return type.
+- If the explicit return type comes from a superclass and is a supertype of the implicit return type,
+  mypy will use the implicit (more specific) type:
+
+```python
+class Base:
+    def __new__(cls): ...
+
+class Derived(Base): ...
+reveal_type(Derived())  # Still "Derived", not "Base"
+```
+
+This fixes several long-standing issues where explicit `__new__()` return types were ignored.
+
+Contributed by Ivan Levkivskyi (PR [21441](https://github.com/python/mypy/pull/21441)).
+
+### TypeForm Support No Longer Experimental
+
+Support for `TypeForm` is no longer experimental. `TypeForm` (introduced in Python 3.14) allows you
+to annotate parameters that accept type expressions, providing better type checking for functions
+that work with types as values.
+
+```python
+from typing import TypeForm
+
+def make_list(tp: TypeForm[T]) -> list[T]:
+    ...
+
+# Correctly typed as list[int]
+int_list = make_list(int)
+```
+
+`TypeForm` support was previously reverted from mypy 2.1 due to a performance regression, but this
+has now been mitigated.
+
+Contributed by Ivan Levkivskyi and Jelle Zijlstra (PRs [21591](https://github.com/python/mypy/pull/21591),
+[21459](https://github.com/python/mypy/pull/21459)).
+
+### Experimental WASM Wheel for Python 3.14
+
+Mypy now ships an experimental WebAssembly (WASM) wheel for Python 3.14. This allows mypy to run
+in WASM environments such as Pyodide and browser-based Python implementations.
+
+The WASM wheel is considered experimental and may have limitations compared to native builds. Please
+report any issues you encounter when using mypy in WASM environments.
+
+Contributed by Ivan Levkivskyi (PR [21671](https://github.com/python/mypy/pull/21671)).
+
+### Mypyc Free-threading Improvements
+
+- Make function wrappers thread-safe on free-threaded builds (Jukka Lehtosalo, PR [21620](https://github.com/python/mypy/pull/21620))
+- Make list remove and index thread-safe on free-threaded builds (Jukka Lehtosalo, PR [21614](https://github.com/python/mypy/pull/21614))
+- Fix dict iteration memory safety on free-threaded builds (Jukka Lehtosalo, PR [21617](https://github.com/python/mypy/pull/21617))
+- Make some dict primitives thread-safe on free-threading builds (Jukka Lehtosalo, PR [21616](https://github.com/python/mypy/pull/21616))
+- Fix free-threading race condition in argument parsing (Jukka Lehtosalo, PR [21613](https://github.com/python/mypy/pull/21613))
+- Document free threading and other doc updates (Jukka Lehtosalo, PR [21494](https://github.com/python/mypy/pull/21494))
+
+### `librt.strings` Updates
+
+- Add `librt.strings.toupper` and `librt.strings.tolower` codepoint primitives (Vaggelis Danias, PR [21553](https://github.com/python/mypy/pull/21553))
+- Add `librt.strings.isidentifier` codepoint primitive (Vaggelis Danias, PR [21522](https://github.com/python/mypy/pull/21522))
+- Add `librt.strings.isalpha` codepoint primitive (Vaggelis Danias, PR [21521](https://github.com/python/mypy/pull/21521))
+- Add `librt.strings.isalnum` codepoint primitive (Vaggelis Danias, PR [21509](https://github.com/python/mypy/pull/21509))
+- Add `librt.strings.isdigit` codepoint primitive (Vaggelis Danias, PR [21504](https://github.com/python/mypy/pull/21504))
+- Add `librt.strings.isspace` char primitive (Vaggelis Danias, PR [21462](https://github.com/python/mypy/pull/21462))
+
+### Mypyc Improvements
+
+- Fix name lookup when class var and module var have the same name (Jukka Lehtosalo, PR [21594](https://github.com/python/mypy/pull/21594))
+- Report file and line number on uncaught exceptions (Jukka Lehtosalo, PR [21584](https://github.com/python/mypy/pull/21584))
+- Use `other` arg instead of `self` for RHS type (Ryan Heard, PR [21569](https://github.com/python/mypy/pull/21569))
+- Use `method_sig` to get the method signature (Ryan Heard, PR [21567](https://github.com/python/mypy/pull/21567))
+- Preserve inherited attribute defaults under `separate=True` (Jo, PR [21547](https://github.com/python/mypy/pull/21547))
+- Fix missing cross-group header deps in incremental builds (Jo, PR [21490](https://github.com/python/mypy/pull/21490))
+- Fix cross-group call to inherited `__mypyc_defaults_setup` (Jo, PR [21481](https://github.com/python/mypy/pull/21481))
+- Fix non-deterministic class struct layout under `separate=True` (Vaggelis Danias, PR [21530](https://github.com/python/mypy/pull/21530))
+- Specialize `s[i] == 'x'` to a codepoint int compare (Vaggelis Danias, PR [21579](https://github.com/python/mypy/pull/21579))
+- Fix reference leak in mypyc bytes concatenation (Colinxu2020, PR [21469](https://github.com/python/mypy/pull/21469))
+
+### Fixes to Crashes
+
+- Fix crash on invalid recursive variadic alias (Ivan Levkivskyi, PR [21572](https://github.com/python/mypy/pull/21572))
+- Fix crashes on variadic unpacking in synthetic types (Ivan Levkivskyi, PR [21555](https://github.com/python/mypy/pull/21555))
+- Fix crash on unhandled meet variadic tuple vs instance (Ivan Levkivskyi, PR [21558](https://github.com/python/mypy/pull/21558))
+- Fix crash on deferred generic class nested in function (Ivan Levkivskyi, PR [21557](https://github.com/python/mypy/pull/21557))
+- Fix crash in new-style type alias with variadic unpack (Ivan Levkivskyi, PR [21551](https://github.com/python/mypy/pull/21551))
+- Fix various crashes on recursive type variable defaults (Ivan Levkivskyi, PR [21491](https://github.com/python/mypy/pull/21491))
+- Fix crash for empty `Annotated` type application (Rayan Salhab, PR [21503](https://github.com/python/mypy/pull/21503))
+- Fix crash on `Unpack` used without arguments in class bases (Sai Asish Y, PR [21470](https://github.com/python/mypy/pull/21470))
+
+### Performance Improvements
+
+- Memoize the options snapshot (Kevin Kannammalil, PR [21354](https://github.com/python/mypy/pull/21354))
+- Don't include `not_ready_deps` tracking as relating to mypy internals (Kevin Kannammalil, PR [21389](https://github.com/python/mypy/pull/21389))
+- Speed up transitive dependency hash for singleton SCCs (Kevin Kannammalil, PR [21390](https://github.com/python/mypy/pull/21390))
+- Optimize typeform checks (Jelle Zijlstra, PR [21459](https://github.com/python/mypy/pull/21459))
+
+### Improvements to the Native Parser
+
+- Support `--shadow-file` with `--native-parser` (Jukka Lehtosalo, PR [21623](https://github.com/python/mypy/pull/21623))
+- Add Python version checks to native parser (Kevin Kannammalil, PR [21539](https://github.com/python/mypy/pull/21539))
+- Allow nativeparse to parse source code directly (bzoracler, PR [21260](https://github.com/python/mypy/pull/21260))
+
+### Other Notable Fixes and Improvements
+
+- Add function definition notes for `too many positional arguments` errors (Kevin Kannammalil, PR [21410](https://github.com/python/mypy/pull/21410))
+- Fix the exportjson tool (.ff cache to .json conversion) (Jukka Lehtosalo, PR [21628](https://github.com/python/mypy/pull/21628))
+- Support floats in JSON in fixed-format cache (Ivan Levkivskyi, PR [21603](https://github.com/python/mypy/pull/21603))
+- Update `TypedDictType.__init__` signature to preserve backward compat (Jukka Lehtosalo, PR [21590](https://github.com/python/mypy/pull/21590))
+- Fix constructor calls for union-bounded `TypeVar`s (Jingchen Ye, PR [21571](https://github.com/python/mypy/pull/21571))
+- Fix `TypedDict` indexing with literal keys in comprehensions (Jingchen Ye, PR [21556](https://github.com/python/mypy/pull/21556))
+- Correctly handle empty tuple index when unpacked (Ivan Levkivskyi, PR [21545](https://github.com/python/mypy/pull/21545))
+- Support protocol checks for self-types in tuple types (Ivan Levkivskyi, PR [21535](https://github.com/python/mypy/pull/21535))
+- Fix edge cases in variadic tuple subclasses (Ivan Levkivskyi, PR [21518](https://github.com/python/mypy/pull/21518))
+- Special-case constructor for tuple types (Ivan Levkivskyi, PR [21502](https://github.com/python/mypy/pull/21502))
+- Fix false positive "Expected TypedDict key to be string literal" for `Union[TypedDict, dict[K, V]]` (Zakir Jiwani, PR [21511](https://github.com/python/mypy/pull/21511))
+- Use explicit `Never` for type inference (Ivan Levkivskyi, PR [21497](https://github.com/python/mypy/pull/21497))
+- Narrow membership in statically known containers (Shantanu, PR [21461](https://github.com/python/mypy/pull/21461))
+- Improve negative narrowing for membership checks on tuples (Shantanu, PR [21456](https://github.com/python/mypy/pull/21456))
+- Analyze `TypedDict` decorators (Pranav Manglik, PR [21267](https://github.com/python/mypy/pull/21267))
+- Start testing Python 3.15 (Marc Mueller, PR [21439](https://github.com/python/mypy/pull/21439))
+- Improved handling of `NamedTuple`, `TypedDict`, `Enum`, and regular classes nested in functions (Ivan Levkivskyi, PR [21478](https://github.com/python/mypy/pull/21478))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=616424285beccaa76f90e87e1e922b1dc68710ca+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+- Adam Turner
+- alicederyn
+- bzoracler
+- Colinxu2020
+- georgesittas
+- Ivan Levkivskyi
+- Jelle Zijlstra
+- Jingchen Ye
+- Jukka Lehtosalo
+- Kevin Kannammalil
+- lphuc2250gma
+- Marc Mueller
+- Pranav Manglik
+- Rayan Salhab
+- Ryan Heard
+- Sai Asish Y
+- Shantanu
+- sobolevn
+- Vaggelis Danias
+- Victor Letichevsky
+- Zakir Jiwani
+
+I'd also like to thank my employer, Dropbox, for supporting mypy development.
+
 ## Mypy 2.1
 
 We’ve just uploaded mypy 2.1.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
