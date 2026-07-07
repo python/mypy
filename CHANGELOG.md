@@ -67,6 +67,8 @@ Contributed by Alice (PR [21382](https://github.com/python/mypy/pull/21382)).
 Mypy now has complete support for type variable defaults as specified in PEP 696. This allows you to
 specify default values for type parameters in generic classes, functions, and type aliases.
 
+Traditional syntax (Python 3.11 and earlier):
+
 ```python
 T = TypeVar("T", default=int)  # This means that if no type is specified T = int
 
@@ -78,10 +80,20 @@ reveal_type(Box())                      # type is Box[int]
 reveal_type(Box(value="Hello World!"))  # type is Box[str]
 ```
 
-Type variable defaults work with all forms of generics, including classes, functions, and the new
-type alias syntax introduced in Python 3.12. This release completes the implementation by fixing
-various edge cases involving recursive defaults, dependencies between type variables, and interactions
-with variadic generics.
+New syntax (Python 3.12+):
+
+```python
+class Box[T = int]:
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+reveal_type(Box())                      # type is Box[int]
+reveal_type(Box(value="Hello World!"))  # type is Box[str]
+```
+
+Type variable defaults work with all forms of generics, including classes, functions, and type aliases.
+This release completes the implementation by fixing various edge cases involving recursive defaults,
+dependencies between type variables, and interactions with variadic generics.
 
 Contributed by Ivan Levkivskyi (PRs [21491](https://github.com/python/mypy/pull/21491),
 [21526](https://github.com/python/mypy/pull/21526), [21544](https://github.com/python/mypy/pull/21544)).
@@ -99,7 +111,7 @@ class Factory:
     def __new__(cls) -> Product:
         return Product()
 
-reveal_type(Factory())  # Revealed type is "Product", not "Factory"
+reveal_type(Factory())  # type is Product, not Factory
 ```
 
 Note that mypy still gives an error at the definition site if the explicit annotation is not a
@@ -111,11 +123,17 @@ For backwards compatibility, there are two exceptions:
   mypy will use the implicit (more specific) type:
 
 ```python
-class Base:
-    def __new__(cls): ...
+class A:
+    def __new__(cls) -> A: ...
 
-class Derived(Base): ...
-reveal_type(Derived())  # Still "Derived", not "Base"
+reveal_type(A())  # type is A
+
+class B:
+    def __new__(cls) -> B:
+        return cls()
+
+class C(B): ...
+reveal_type(C())  # type is C
 ```
 
 This fixes several long-standing issues where explicit `__new__()` return types were ignored.
@@ -141,7 +159,7 @@ int_list = make_list(int)
 `TypeForm` support was previously reverted from mypy 2.1 due to a performance regression, but this
 has now been mitigated.
 
-Contributed by Ivan Levkivskyi and Jelle Zijlstra (PRs [21591](https://github.com/python/mypy/pull/21591),
+Contributed by Ivan Levkivskyi and Jelle Zijlstra (PRs [21262](https://github.com/python/mypy/pull/21262), [21591](https://github.com/python/mypy/pull/21591),
 [21459](https://github.com/python/mypy/pull/21459)).
 
 ### Experimental WASM Wheel for Python 3.14
