@@ -655,7 +655,7 @@ Lock_acquire_blocking_internal(PyObject *self, char blocking) {
 static char
 Lock_release_internal(PyObject *self) {
     if (Lock_release_impl((LockObject *)self) < 0) {
-        PyErr_SetString(PyExc_RuntimeError, "release unlocked lock");
+        PyErr_SetString(PyExc_RuntimeError, "cannot release an unlocked lock");
         return 2;
     }
     return 0;
