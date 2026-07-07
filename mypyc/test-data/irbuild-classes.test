@@ -1258,7 +1258,7 @@ L0:
     keep_alive d
     return r1
 
-[case testBorrowAttribute_nogil]
+[case testCannotBorrowAttribute_nogil]
 def f(d: D) -> int:
     return d.c.x
 

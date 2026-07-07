@@ -1004,39 +1004,58 @@ L0:
     return r1
 
 [case testBorrowAttribute_nogil]
+from typing import Final
+
 def g() -> int:
-    d = D()
+    d = D(C(1))
     return d.c.x
 
 def f(d: D) -> int:
     return d.c.x
 
 class C:
-    x: int
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
 class D:
-    c: C
+    def __init__(self, c: C) -> None:
+        self.c: Final = c
 [out]
 def g():
-    r0, d :: __main__.D
-    r1 :: __main__.C
-    r2 :: int
+    r0 :: __main__.C
+    r1, d :: __main__.D
+    r2 :: __main__.C
+    r3 :: int
 L0:
-    r0 = D()
-    d = r0
-    r1 = d.c
+    r0 = C(2)
+    r1 = D(r0)
+    dec_ref r0
+    d = r1
+    r2 = borrow d.c
+    r3 = r2.x
     dec_ref d
-    r2 = r1.x
-    dec_ref r1
-    return r2
+    return r3
 def f(d):
     d :: __main__.D
     r0 :: __main__.C
     r1 :: int
 L0:
-    r0 = d.c
+    r0 = borrow d.c
     r1 = r0.x
-    dec_ref r0
     return r1
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    inc_ref x :: int
+    self.x = x
+    return 1
+def D.__init__(self, c):
+    self :: __main__.D
+    c :: __main__.C
+L0:
+    inc_ref c
+    self.c = c
+    return 1
 
 [case testBorrowAttributeTwice_withgil]
 def f(e: E) -> int:
