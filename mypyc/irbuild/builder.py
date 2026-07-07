@@ -1565,6 +1565,22 @@ class IRBuilder:
             and any(expr.name in ir.attributes for ir in obj_rtype.class_ir.mro)
         )
 
+    def is_final_native_attr_ref(self, expr: MemberExpr) -> bool:
+        """Is expr a direct reference to a Final native (struct) attribute of an instance?
+
+        A Final attribute is read-only at runtime (it has no setter), so it can never be
+        reassigned after construction. This makes it safe to borrow even on free-threaded
+        builds, since no concurrent store can invalidate the borrowed reference.
+        """
+        obj_rtype = self.node_type(expr.expr)
+        if not (isinstance(obj_rtype, RInstance) and obj_rtype.class_ir.is_ext_class):
+            return False
+        # Find the class that defines the attribute and check whether it's Final there.
+        for ir in obj_rtype.class_ir.mro:
+            if expr.name in ir.attributes:
+                return expr.name in ir.final_attributes
+        return False
+
     def mark_block_unreachable(self) -> None:
         """Mark statements in the innermost block being processed as unreachable.
 

@@ -272,9 +272,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    can_borrow = builder.is_native_attr_ref(expr)
-    obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+    # Borrowing a native attribute read is unsafe on free-threaded builds, since another
+    # thread could concurrently reassign the attribute and free the old value. We still borrow
+    # in two cases:
+    #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
+    #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
+    can_borrow = builder.is_native_attr_ref(expr) and (
+        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
+    )
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
     if (
         is_object_rprimitive(obj.type)

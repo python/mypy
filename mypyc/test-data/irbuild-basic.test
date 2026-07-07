@@ -2063,7 +2063,7 @@ L7:
 L8:
     return r10
 
-[case testProperty]
+[case testProperty_withgil]
 class PropertyHolder:
     @property
     def value(self) -> int:

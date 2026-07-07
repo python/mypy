@@ -651,7 +651,7 @@ L0:
     r4 = (r2, r3)
     return r4
 
-[case testDecomposeTuple]
+[case testDecomposeTuple_withgil]
 from typing import Tuple
 
 class C:
@@ -970,7 +970,7 @@ L0:
     dec_ref r4
     return r5
 
-[case testBorrowAttribute]
+[case testBorrowAttribute_withgil]
 def g() -> int:
     d = D()
     return d.c.x
@@ -1003,7 +1003,99 @@ L0:
     r1 = r0.x
     return r1
 
-[case testBorrowAttributeTwice]
+[case testBorrowAttribute_nogil]
+from typing import Final
+
+def g() -> int:
+    d = D(C(1))
+    return d.c.x
+
+def f(d: D) -> int:
+    return d.c.x
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+class D:
+    def __init__(self, c: C) -> None:
+        self.c: Final = c
+[out]
+def g():
+    r0 :: __main__.C
+    r1, d :: __main__.D
+    r2 :: __main__.C
+    r3 :: int
+L0:
+    r0 = C(2)
+    r1 = D(r0)
+    dec_ref r0
+    d = r1
+    r2 = borrow d.c
+    r3 = r2.x
+    dec_ref d
+    return r3
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    return r1
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    inc_ref x :: int
+    self.x = x
+    return 1
+def D.__init__(self, c):
+    self :: __main__.D
+    c :: __main__.C
+L0:
+    inc_ref c
+    self.c = c
+    return 1
+
+[case testBorrowInheritedFinalAttribute_nogil]
+from typing import Final
+
+def f(d: D) -> int:
+    return d.c.x
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+class C(B):
+    pass
+class D:
+    def __init__(self, c: C) -> None:
+        self.c: Final = c
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    return r1
+def B.__init__(self, x):
+    self :: __main__.B
+    x :: int
+L0:
+    inc_ref x :: int
+    self.x = x
+    return 1
+def D.__init__(self, c):
+    self :: __main__.D
+    c :: __main__.C
+L0:
+    inc_ref c
+    self.c = c
+    return 1
+
+[case testBorrowAttributeTwice_withgil]
 def f(e: E) -> int:
     return e.d.c.x
 
@@ -1025,7 +1117,7 @@ L0:
     r2 = r1.x
     return r2
 
-[case testBorrowAttributeIsNone]
+[case testBorrowAttributeIsNone_withgil]
 from typing import Optional
 
 def f(c: C) -> bool:
@@ -1058,7 +1150,7 @@ L0:
     r2 = r0 == r1
     return r2
 
-[case testBorrowAttributeNarrowOptional]
+[case testBorrowAttributeNarrowOptional_withgil]
 from typing import Optional
 
 def f(c: C) -> bool:
@@ -1093,7 +1185,7 @@ L1:
 L2:
     return 0
 
-[case testBorrowLenArgument]
+[case testBorrowLenArgument_withgil]
 from typing import List
 
 def f(x: C) -> int:
@@ -1113,7 +1205,7 @@ L0:
     r2 = r1 << 1
     return r2
 
-[case testBorrowIsinstanceArgument]
+[case testBorrowIsinstanceArgument_withgil]
 from typing import List
 
 def f(x: C) -> bool:
@@ -1152,7 +1244,7 @@ L1:
 L2:
     return 1
 
-[case testBorrowListGetItem1]
+[case testBorrowListGetItem1_withgil]
 from typing import List
 
 def literal_index(x: C) -> str:
@@ -1197,6 +1289,57 @@ def lvar_index(x, n):
 L0:
     r0 = borrow x.a
     r1 = CPyList_GetItem(r0, n)
+    r2 = cast(str, r1)
+    return r2
+
+[case testBorrowListGetItem1_nogil]
+from typing import List
+
+def literal_index(x: C) -> str:
+    return x.a[0]
+
+def negative_index(x: C) -> str:
+    return x.a[-1]
+
+def lvar_index(x: C, n: int) -> str:
+    return x.a[n]
+
+class C:
+    a: List[str]
+
+[out]
+def literal_index(x):
+    x :: __main__.C
+    r0 :: list
+    r1 :: object
+    r2 :: str
+L0:
+    r0 = x.a
+    r1 = CPyList_GetItemShort(r0, 0)
+    dec_ref r0
+    r2 = cast(str, r1)
+    return r2
+def negative_index(x):
+    x :: __main__.C
+    r0 :: list
+    r1 :: object
+    r2 :: str
+L0:
+    r0 = x.a
+    r1 = CPyList_GetItemShort(r0, -2)
+    dec_ref r0
+    r2 = cast(str, r1)
+    return r2
+def lvar_index(x, n):
+    x :: __main__.C
+    n :: int
+    r0 :: list
+    r1 :: object
+    r2 :: str
+L0:
+    r0 = x.a
+    r1 = CPyList_GetItem(r0, n)
+    dec_ref r0
     r2 = cast(str, r1)
     return r2
 
@@ -1273,9 +1416,11 @@ def attr_before_index(x):
     r2 :: object
     r3 :: str
 L0:
-    r0 = borrow x.a
-    r1 = borrow x.n
+    r0 = x.a
+    r1 = x.n
     r2 = CPyList_GetItem(r0, r1)
+    dec_ref r0
+    dec_ref r1 :: int
     r3 = cast(str, r2)
     return r3
 def attr_after_index(a, i):
@@ -1361,7 +1506,7 @@ L0:
     dec_ref a
     return r5
 
-[case testBorrowSetAttrObject]
+[case testBorrowSetAttrObject_withgil]
 from typing import Optional
 
 def f(x: Optional[C]) -> None:
@@ -1401,7 +1546,7 @@ L0:
     r0.b = 0; r1 = is_error
     return 1
 
-[case testBorrowIntEquality]
+[case testBorrowIntEquality_withgil]
 def add(c: C) -> bool:
     return c.x == c.y
 
@@ -1419,7 +1564,7 @@ L0:
     r2 = int_eq r0, r1
     return r2
 
-[case testBorrowIntLessThan]
+[case testBorrowIntLessThan_withgil]
 def add(c: C) -> bool:
     return c.x < c.y
 
@@ -1437,7 +1582,7 @@ L0:
     r2 = int_lt r0, r1
     return r2
 
-[case testBorrowIntCompareFinal]
+[case testBorrowIntCompareFinal_withgil]
 from typing import Final
 
 X: Final = 10
@@ -1457,7 +1602,7 @@ L0:
     r1 = int_eq r0, 20
     return r1
 
-[case testBorrowIntArithmetic]
+[case testBorrowIntArithmetic_withgil]
 def add(c: C) -> int:
     return c.x + c.y
 
@@ -1485,7 +1630,39 @@ L0:
     r2 = CPyTagged_Subtract(r0, r1)
     return r2
 
-[case testBorrowIntComparisonInIf]
+[case testBorrowIntArithmetic_nogil]
+def add(c: C) -> int:
+    return c.x + c.y
+
+def sub(c: C) -> int:
+    return c.x - c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c):
+    c :: __main__.C
+    r0, r1, r2 :: int
+L0:
+    r0 = c.x
+    r1 = c.y
+    r2 = CPyTagged_Add(r0, r1)
+    dec_ref r0 :: int
+    dec_ref r1 :: int
+    return r2
+def sub(c):
+    c :: __main__.C
+    r0, r1, r2 :: int
+L0:
+    r0 = c.x
+    r1 = c.y
+    r2 = CPyTagged_Subtract(r0, r1)
+    dec_ref r0 :: int
+    dec_ref r1 :: int
+    return r2
+
+[case testBorrowIntComparisonInIf_withgil]
 def add(c: C, n: int) -> bool:
     if c.x == c.y:
         return True
@@ -1509,7 +1686,7 @@ L1:
 L2:
     return 0
 
-[case testBorrowIntInPlaceOp]
+[case testBorrowIntInPlaceOp_withgil]
 def add(c: C, n: int) -> None:
     c.x += n
 
