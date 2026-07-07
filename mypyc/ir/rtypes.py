@@ -556,7 +556,7 @@ KNOWN_NATIVE_TYPES: Final = {
         is_unboxed=False,
         is_refcounted=True,
         dependencies=(LIBRT_THREADING,),
-    )
+    ),
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]

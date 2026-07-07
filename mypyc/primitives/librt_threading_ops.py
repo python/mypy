@@ -10,7 +10,6 @@ function_op(
     return_type=lock_rprimitive,
     c_function_name="LibRTThreading_Lock_new_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_THREADING],
 )
 
@@ -21,7 +20,6 @@ lock_acquire_op = method_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTThreading_Lock_acquire_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_THREADING],
 )
 
@@ -32,7 +30,6 @@ method_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTThreading_Lock_acquire_blocking_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_THREADING],
 )
 
@@ -43,7 +40,6 @@ lock_release_op = method_op(
     return_type=none_rprimitive,
     c_function_name="LibRTThreading_Lock_release_internal",
     error_kind=ERR_MAGIC,
-    experimental=True,
     dependencies=[LIBRT_THREADING],
 )
 
@@ -54,6 +50,5 @@ method_op(
     return_type=bool_rprimitive,
     c_function_name="LibRTThreading_Lock_locked_internal",
     error_kind=ERR_NEVER,
-    experimental=True,
     dependencies=[LIBRT_THREADING],
 )

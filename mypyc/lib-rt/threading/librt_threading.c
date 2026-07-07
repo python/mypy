@@ -87,8 +87,6 @@
 //    unlocked on the same thread that locked it.
 //
 
-#ifdef MYPYC_EXPERIMENTAL
-
 // ---------- Platform-specific lock state ----------
 
 #if defined(LOCK_BACKEND_PYMUTEX)
@@ -667,13 +665,9 @@ Lock_locked_internal(PyObject *self) {
     return (char)Lock_is_locked((LockObject *)self);
 }
 
-#endif  // MYPYC_EXPERIMENTAL
-
 static PyMethodDef librt_threading_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 threading_abi_version(void) {
@@ -685,12 +679,9 @@ threading_api_version(void) {
     return LIBRT_THREADING_API_VERSION;
 }
 
-#endif
-
 static int
 librt_threading_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     if (PyType_Ready(&LockType) < 0) {
         return -1;
     }
@@ -713,7 +704,6 @@ librt_threading_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif  // MYPYC_EXPERIMENTAL
     return 0;
 }
 

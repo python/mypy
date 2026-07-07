@@ -116,6 +116,7 @@ from mypyc.primitives.exc_ops import (
     restore_exc_info_op,
 )
 from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
@@ -128,7 +129,6 @@ from mypyc.primitives.misc_ops import (
     type_op,
     yield_from_except_op,
 )
-from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 
 from .match import MatchVisitor
 

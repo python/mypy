@@ -1,6 +1,6 @@
 # Test cases for librt.threading (compile and run)
 
-[case testLockBasics_librt_experimental]
+[case testLockBasics_librt]
 from typing import Any
 from testutil import assertRaises
 from librt.threading import Lock

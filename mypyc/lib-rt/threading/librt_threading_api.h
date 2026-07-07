@@ -6,8 +6,6 @@
 int
 import_librt_threading(void);
 
-#ifdef MYPYC_EXPERIMENTAL
-
 extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 
 #define LibRTThreading_ABIVersion (*(int (*)(void)) LibRTThreading_API[0])
@@ -18,7 +16,5 @@ extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 #define LibRTThreading_Lock_release_internal (*(char (*)(PyObject *self)) LibRTThreading_API[5])
 #define LibRTThreading_Lock_locked_internal (*(char (*)(PyObject *self)) LibRTThreading_API[6])
 #define LibRTThreading_Lock_acquire_blocking_internal (*(char (*)(PyObject *self, char blocking)) LibRTThreading_API[7])
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_THREADING_API_H

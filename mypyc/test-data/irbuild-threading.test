@@ -1,4 +1,4 @@
-[case testLockBasics_experimental]
+[case testLockBasics]
 from librt.threading import Lock
 
 def lock_create() -> Lock:
@@ -37,7 +37,7 @@ L0:
     r0 = LibRTThreading_Lock_locked_internal(lk)
     return r0
 
-[case testLockAcquireRelease_experimental]
+[case testLockAcquireRelease]
 from librt.threading import Lock
 
 def acquire_release() -> None:
@@ -56,7 +56,7 @@ L0:
     r2 = LibRTThreading_Lock_release_internal(lk)
     return 1
 
-[case testLockAcquireBlocking_experimental]
+[case testLockAcquireBlocking]
 from librt.threading import Lock
 
 def lock_acquire_blocking(lk: Lock, b: bool) -> bool:
@@ -69,7 +69,7 @@ L0:
     r0 = LibRTThreading_Lock_acquire_blocking_internal(lk, b)
     return r0
 
-[case testLockWith_experimental]
+[case testLockWith]
 from librt.threading import Lock
 
 def with_lock(lk: Lock) -> None:
@@ -113,22 +113,3 @@ L10:
     unreachable
 L11:
     return 1
-
-[case testLockExperimentalDisabled]
-from librt.threading import Lock
-
-def create_lock() -> Lock:
-    return Lock()
-[out]
-def create_lock():
-    r0 :: dict
-    r1 :: str
-    r2, r3 :: object
-    r4 :: librt.threading.Lock
-L0:
-    r0 = __main__.globals :: static
-    r1 = 'Lock'
-    r2 = CPyDict_GetItem(r0, r1)
-    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
-    r4 = cast(librt.threading.Lock, r3)
-    return r4

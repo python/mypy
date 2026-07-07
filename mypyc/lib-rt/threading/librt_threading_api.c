@@ -1,17 +1,10 @@
 #include "librt_threading_api.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 void *LibRTThreading_API[LIBRT_THREADING_API_LEN] = {0};
-
-#endif
 
 int
 import_librt_threading(void)
 {
-#ifndef MYPYC_EXPERIMENTAL
-    return 0;
-#else
     PyObject *mod = PyImport_ImportModule("librt.threading");
     if (mod == NULL)
         return -1;
@@ -47,5 +40,4 @@ import_librt_threading(void)
     // entries, so this copy is safe.
     memcpy(LibRTThreading_API, capsule, sizeof(LibRTThreading_API));
     return 0;
-#endif
 }
