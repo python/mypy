@@ -45,25 +45,21 @@ extern "C" {
 //
 // On free-threaded builds a plain load followed by an incref races with a
 // concurrent setter that may decref the old value to zero and free it before the
-// incref runs (use-after-free). The fast path mirrors CPython's '_Py_XGetRef':
-// optimistically incref via '_Py_TryIncrefCompare', which re-validates the
-// pointer and backs out if a writer changed it.
+// incref runs (use-after-free). This mirrors CPython's '_Py_XGetRef':
+// optimistically incref, re-validating the pointer and backing out if a writer
+// changed it.
 //
-// The slow path (cold) handles a value that has not had maybe-weakref set and is
-// owned by another thread: '_Py_TryIncRefShared' then returns 0 permanently, so a
-// plain retry loop would spin forever. This case arises because 'CPy_InitAttrRef'
-// publishes initializer stores WITHOUT setting maybe-weakref (a measured win for
-// construction-heavy code -- see docs/design/free-threaded-attr-safety.md). We
-// recover exactly as CPython's lock-free dict reader does (Objects/dictobject.c,
-// the 'read_failed' path): take the owning object's critical section and force a
-// cross-thread reference via '_Py_NewRefWithLock', which cannot fail and sets
-// maybe-weakref so subsequent reads take the fast path. QSBR keeps the loaded
-// value alive across this, since setters defer the freeing decref past any
-// quiescent point. This same fallback also covers a transient lost race with a
-// concurrent writer. It is only used in free-threaded builds; the default (GIL)
-// build keeps the plain load + incref generated inline by mypyc.
-// Cold slow path of CPy_GetAttrRef, kept out-of-line (see pythonsupport.c) so the
-// inline fast path stays small enough for the compiler to inline at call sites.
+// Only the hot case is inlined here: an incref of a value owned by this thread or
+// immortal, via '_Py_TryIncrefFast' (no CAS, no loop). Everything colder --
+// '_Py_TryIncrefCompare's cross-thread shared-refcount CAS + pointer
+// re-validation, and the critical-section fallback -- lives out-of-line in
+// 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call site's fast path
+// small enough to inline, which is measurably faster than letting the compiler
+// auto-out-line the whole helper (that merges every read site's branch history
+// into one shared copy and mispredicts). See
+// docs/design/free-threaded-attr-safety.md ("Experiment: inline only the reader
+// fast path"). It is only used in free-threaded builds; the default (GIL) build
+// keeps the plain load + incref generated inline by mypyc.
 PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field);
 
 static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
@@ -71,14 +67,35 @@ static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
     if (v == NULL) {
         return NULL;
     }
-    // Hot case only: object is owned by this thread or immortal (no CAS, no loop).
-    // Everything else -- the cross-thread shared-refcount CAS, the pointer
-    // re-validation, and the not-yet-shared critical-section fallback -- lives in
-    // the out-of-line slow path to keep this body small enough to inline.
     if (_Py_TryIncrefFast(v)) {
         return v;
     }
     return CPy_GetAttrRefSlow(self, field);
+}
+
+// Read a native attribute that is a single reference-counted 'PyObject *' field
+// AND is Final (assigned once during construction, never rebound -- mypyc emits no
+// setter for it), returning a new reference (or NULL if undefined).
+//
+// A Final attribute has no concurrent writer after 'self' is published, so the
+// use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
+// holds a strong reference for the object's whole lifetime, and any thread reading
+// it necessarily holds 'self', which keeps the value alive. So the try-incref +
+// pointer re-validation + critical-section fallback are all unnecessary here -- a
+// plain load + Py_INCREF is safe. A cross-thread Py_INCREF is an unconditional
+// atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
+// maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
+// reader reached 'self' through a synchronization edge (self's own publication)
+// that already ordered the construction stores before it, exactly as with
+// CPy_InitAttrRef's relaxed store. Relaxed keeps it TSan-clean at zero cost (plain
+// mov/ldr). See docs/design/free-threaded-attr-safety.md ("Optimization: Final
+// attributes skip the safe read path").
+static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_relaxed(field);
+    if (v != NULL) {
+        Py_INCREF(v);
+    }
+    return v;
 }
 
 // Reclaim the previous value of a native attribute after it has been replaced.

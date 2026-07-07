@@ -439,14 +439,23 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # atomically to avoid a use-after-free race with a concurrent setter.
             # CPy_GetAttrRef performs the load and incref atomically and returns a
             # new reference (or NULL if undefined), so no separate inc_ref is
-            # emitted below. Borrowed reads keep the plain load; they are made
-            # safe separately via borrowed-to-owned promotion.
+            # emitted below. Borrowed reads keep the plain load; they are only
+            # emitted for attributes that are safe to borrow on free-threaded builds
+            # (Final and vec attrs -- see transform_member_expr in irbuild).
+            #
+            # Final attributes are never rebound (no setter), so there is no
+            # concurrent writer and no use-after-free window: an owned read is a
+            # plain load + incref (via the cheaper CPy_GetAttrRefFinal), and a
+            # borrowed read stays a plain borrow (handled by the else branch), since
+            # the value lives as long as its container.
             use_get_attr_ref = (
                 IS_FREE_THREADED
                 and is_simple_refcounted_pointer(attr_rtype)
                 and not op.is_borrowed
             )
-            if use_get_attr_ref:
+            if use_get_attr_ref and cl.is_final_attr(op.attr):
+                self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
+            elif use_get_attr_ref:
                 self.emitter.emit_line(
                     f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
                 )
