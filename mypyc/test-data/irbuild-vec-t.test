@@ -569,4 +569,3 @@ L5:
     r9 = r8 >= 0 :: signed
     r10 = r8 << 1
     return r10
-
