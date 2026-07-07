@@ -215,18 +215,9 @@ Lock_acquire_impl(LockObject *self, int blocking)
     // `srw` only guards `locked` and the condition variable; it is held just
     // long enough to inspect/flip the flag, never across the user's critical
     // section. This is what lets a different thread call release().
-    if (!blocking) {
-        AcquireSRWLockExclusive(&self->srw);
-        if (!self->locked) {
-            self->locked = 1;
-            ReleaseSRWLockExclusive(&self->srw);
-            return 1;
-        }
-        ReleaseSRWLockExclusive(&self->srw);
-        return 0;
-    }
-
-    // Fast path: grab the lock without releasing the GIL if it is free.
+    //
+    // Fast path: grab the lock without releasing the GIL if it is free. This is
+    // also the whole story in the non-blocking case.
     AcquireSRWLockExclusive(&self->srw);
     if (!self->locked) {
         self->locked = 1;
@@ -234,6 +225,9 @@ Lock_acquire_impl(LockObject *self, int blocking)
         return 1;
     }
     ReleaseSRWLockExclusive(&self->srw);
+    if (!blocking) {
+        return 0;
+    }
 
     // Slow path: wait for the lock to be released, with the GIL dropped so
     // other Python threads can run (and release the lock).
@@ -254,20 +248,10 @@ Lock_acquire_impl(LockObject *self, int blocking)
     // another thread consumed via sem_wait, so cross-thread release is
     // directly well-defined. `locked` is advisory bookkeeping for locked()
     // and for guarding against releasing an unheld lock.
-    if (!blocking) {
-        int status;
-        do {
-            status = sem_trywait(&self->sem);
-        } while (status == -1 && errno == EINTR);
-        if (status == 0) {
-            self->locked = 1;
-            return 1;
-        }
-        return 0;  // EAGAIN: already held
-    }
-
-    // Fast path: try non-blocking acquire first to avoid GIL release/reacquire
-    // overhead in the common uncontended case.
+    //
+    // Fast path: try a non-blocking acquire first to avoid GIL release/reacquire
+    // overhead in the common uncontended case. This is also the whole story in
+    // the non-blocking case.
     {
         int status;
         do {
@@ -277,6 +261,9 @@ Lock_acquire_impl(LockObject *self, int blocking)
             self->locked = 1;
             return 1;
         }
+    }
+    if (!blocking) {
+        return 0;  // EAGAIN: already held
     }
 
     // Slow path: block with the GIL dropped so other Python threads can run
@@ -312,18 +299,9 @@ Lock_acquire_impl(LockObject *self, int blocking)
     // `mut` only guards `locked` and the condition variable; it is held just
     // long enough to inspect/flip the flag, never across the user's critical
     // section. This is what lets a different thread call release().
-    if (!blocking) {
-        pthread_mutex_lock(&self->mut);
-        if (!self->locked) {
-            self->locked = 1;
-            pthread_mutex_unlock(&self->mut);
-            return 1;
-        }
-        pthread_mutex_unlock(&self->mut);
-        return 0;
-    }
-
-    // Fast path: grab the lock without releasing the GIL if it is free.
+    //
+    // Fast path: grab the lock without releasing the GIL if it is free. This is
+    // also the whole story in the non-blocking case.
     pthread_mutex_lock(&self->mut);
     if (!self->locked) {
         self->locked = 1;
@@ -331,6 +309,9 @@ Lock_acquire_impl(LockObject *self, int blocking)
         return 1;
     }
     pthread_mutex_unlock(&self->mut);
+    if (!blocking) {
+        return 0;
+    }
 
     // Slow path: wait for the lock to be released, with the GIL dropped so
     // other Python threads can run (and release the lock). If we wake but do
