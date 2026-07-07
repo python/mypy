@@ -2,7 +2,7 @@
 
 ## Next Release
 
-## Mypy 2.2 (Unreleased)
+## Mypy 2.2
 
 We've just uploaded mypy 2.2.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features, performance
