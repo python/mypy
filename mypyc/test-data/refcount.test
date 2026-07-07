@@ -1057,6 +1057,44 @@ L0:
     self.c = c
     return 1
 
+[case testBorrowInheritedFinalAttribute_nogil]
+from typing import Final
+
+def f(d: D) -> int:
+    return d.c.x
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+class C(B):
+    pass
+class D:
+    def __init__(self, c: C) -> None:
+        self.c: Final = c
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    return r1
+def B.__init__(self, x):
+    self :: __main__.B
+    x :: int
+L0:
+    inc_ref x :: int
+    self.x = x
+    return 1
+def D.__init__(self, c):
+    self :: __main__.D
+    c :: __main__.C
+L0:
+    inc_ref c
+    self.c = c
+    return 1
+
 [case testBorrowAttributeTwice_withgil]
 def f(e: E) -> int:
     return e.d.c.x
