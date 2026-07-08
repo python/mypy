@@ -20,7 +20,7 @@
 // shared-refcount CAS with pointer re-validation. Only if that also fails -- the
 // value has no shared refcount yet and is owned by another thread -- do we fall
 // into the critical section and force a cross-thread reference.
-__attribute__((noinline))
+CPy_NOINLINE
 PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field) {
     PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
     if (v == NULL) {
