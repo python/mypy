@@ -401,6 +401,37 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 cast = f"({decl_cl.struct_name(self.emitter.names)} *)"
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
+    def emit_load_attr_take_ref(
+        self, dest: str, obj: str, op: GetAttr, cl: ClassIR, attr_rtype: RType, attr_expr: str
+    ) -> bool:
+        """Emit the load of a native attribute into 'dest', taking a new reference.
+
+        On free-threaded builds, reading a single reference-counted 'PyObject *' field
+        and taking a new reference must be done atomically to avoid a use-after-free
+        race with a concurrent setter. CPy_GetAttrRef performs the load and incref
+        atomically and returns a new reference (or NULL if undefined), so callers must
+        NOT emit a separate inc_ref. Return True in that case so the caller can skip it.
+
+        Final attributes are never rebound (no setter), so there is no concurrent writer
+        and no use-after-free window; an owned read uses the cheaper CPy_GetAttrRefFinal
+        (a plain load + incref). Borrowed reads keep the plain load: they are only emitted
+        for attributes safe to borrow on free-threaded builds (Final and vec attrs -- see
+        transform_member_expr in irbuild), whose values live as long as their container.
+        The default (GIL) build always takes the plain-load path and increfs separately.
+        """
+        use_get_attr_ref = (
+            IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype) and not op.is_borrowed
+        )
+        if use_get_attr_ref and cl.is_final_attr(op.attr):
+            self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
+        elif use_get_attr_ref:
+            self.emitter.emit_line(
+                f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
+            )
+        else:
+            self.emitter.emit_line(f"{dest} = {attr_expr};")
+        return use_get_attr_ref
+
     def visit_get_attr(self, op: GetAttr) -> None:
         if op.allow_error_value:
             self.get_attr_with_allow_error_value(op)
@@ -434,33 +465,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            # In free-threaded builds, reading a single reference-counted
-            # 'PyObject *' field and taking a new reference must be done
-            # atomically to avoid a use-after-free race with a concurrent setter.
-            # CPy_GetAttrRef performs the load and incref atomically and returns a
-            # new reference (or NULL if undefined), so no separate inc_ref is
-            # emitted below. Borrowed reads keep the plain load; they are only
-            # emitted for attributes that are safe to borrow on free-threaded builds
-            # (Final and vec attrs -- see transform_member_expr in irbuild).
-            #
-            # Final attributes are never rebound (no setter), so there is no
-            # concurrent writer and no use-after-free window: an owned read is a
-            # plain load + incref (via the cheaper CPy_GetAttrRefFinal), and a
-            # borrowed read stays a plain borrow (handled by the else branch), since
-            # the value lives as long as its container.
-            use_get_attr_ref = (
-                IS_FREE_THREADED
-                and is_simple_refcounted_pointer(attr_rtype)
-                and not op.is_borrowed
+            use_get_attr_ref = self.emit_load_attr_take_ref(
+                dest, obj, op, cl, attr_rtype, attr_expr
             )
-            if use_get_attr_ref and cl.is_final_attr(op.attr):
-                self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
-            elif use_get_attr_ref:
-                self.emitter.emit_line(
-                    f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
-                )
-            else:
-                self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
@@ -513,16 +520,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
 
-        # Direct struct access without NULL check
         attr_expr = self.get_attr_expr(obj, op, decl_cl)
-        self.emitter.emit_line(f"{dest} = {attr_expr};")
-
-        # Only emit inc_ref if not NULL
-        if attr_rtype.is_refcounted and not op.is_borrowed:
-            check = self.error_value_check(op, "!=")
-            self.emitter.emit_line(f"if ({check}) {{")
-            self.emitter.emit_inc_ref(dest, attr_rtype)
-            self.emitter.emit_line("}")
+        # On free-threaded builds this takes a new reference atomically (see
+        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL when the field is
+        # undefined, which is precisely the error value here, so the "NULL without
+        # AttributeError" behavior is preserved (this op has error_kind ERR_NEVER).
+        # is_simple_refcounted_pointer excludes tuples/vecs, so error_value_check's
+        # special cases only matter on the plain-load path (where no ref was taken).
+        if not self.emit_load_attr_take_ref(dest, obj, op, cl, attr_rtype, attr_expr):
+            # Only emit inc_ref if not NULL
+            if attr_rtype.is_refcounted and not op.is_borrowed:
+                check = self.error_value_check(op, "!=")
+                self.emitter.emit_line(f"if ({check}) {{")
+                self.emitter.emit_inc_ref(dest, attr_rtype)
+                self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
