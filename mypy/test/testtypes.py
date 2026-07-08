@@ -230,14 +230,21 @@ class TypesSuite(Suite):
         assert typ.fallback is self.fx.a
         assert_equal(typ.line, 10)
         assert_equal(typ.column, 20)
+        assert typ.extra_items is None
         assert not typ.is_closed
 
-        closed = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, is_closed=True)
+        closed = TypedDictType(
+            {"x": self.fx.o}, {"x"}, set(), self.fx.a, extra_items=UninhabitedType()
+        )
         assert closed.is_closed
+
+        extra = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, extra_items=self.fx.b)
+        assert not extra.is_closed
+        assert extra.extra_items is self.fx.b
 
         with self.assertRaises(TypeError):
             TypedDictType(  # type: ignore[call-arg]
-                {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, True
+                {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, UninhabitedType()
             )
 
 

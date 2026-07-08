@@ -500,7 +500,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         items = tuple((key, snapshot_type(item_type)) for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
         readonly = tuple(sorted(typ.readonly_keys))
-        return ("TypedDictType", items, required, readonly, typ.is_closed)
+        extra_items = snapshot_optional_type(typ.extra_items)
+        return ("TypedDictType", items, required, readonly, extra_items, typ.extra_items_readonly)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
         return ("LiteralType", snapshot_type(typ.fallback), typ.value)

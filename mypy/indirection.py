@@ -153,6 +153,8 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
 
     def visit_typeddict_type(self, t: types.TypedDictType) -> None:
         self._visit_type_list(list(t.items.values()))
+        if t.extra_items is not None:
+            self._visit(t.extra_items)
         self._visit(t.fallback)
 
     def visit_literal_type(self, t: types.LiteralType) -> None:

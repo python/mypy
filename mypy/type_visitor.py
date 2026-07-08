@@ -288,7 +288,8 @@ class TypeTranslator(TypeVisitor[Type]):
             cast(Any, t.fallback.accept(self)),
             t.line,
             t.column,
-            is_closed=t.is_closed,
+            extra_items=t.extra_items.accept(self) if t.extra_items is not None else None,
+            extra_items_readonly=t.extra_items_readonly,
         )
         self.set_cached(t, result)
         return result
@@ -432,7 +433,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> T:
-        return self.query_types(t.items.values())
+        extra = [t.extra_items] if t.extra_items is not None else []
+        return self.query_types(list(t.items.values()) + extra)
 
     def visit_raw_expression_type(self, t: RawExpressionType, /) -> T:
         return self.strategy([])
@@ -572,7 +574,8 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> bool:
-        return self.query_types(list(t.items.values()))
+        extra = [t.extra_items] if t.extra_items is not None else []
+        return self.query_types(list(t.items.values()) + extra)
 
     def visit_raw_expression_type(self, t: RawExpressionType, /) -> bool:
         return self.default

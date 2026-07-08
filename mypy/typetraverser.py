@@ -106,6 +106,8 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> None:
         self.traverse_types(t.items.values())
+        if t.extra_items is not None:
+            t.extra_items.accept(self)
         t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType, /) -> None:

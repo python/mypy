@@ -518,6 +518,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         for value_type in typ.items.values():
             value_type.accept(self)
+        if typ.extra_items is not None:
+            typ.extra_items.accept(self)
         typ.fallback.accept(self)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:

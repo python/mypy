@@ -313,6 +313,8 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.items:
             for it in tdt.items.values():
                 it.accept(self)
+        if tdt.extra_items is not None:
+            tdt.extra_items.accept(self)
         if tdt.fallback is not None:
             if tdt.fallback.type_ref is not None:
                 if (

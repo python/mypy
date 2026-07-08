@@ -348,9 +348,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 kwargs[name] = type
         if not kwargs and extra_items is not None:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
-        # TODO: when PEP 728 `extra_items` is implemented, pass extra_items below.
-        is_closed = extra_items is None
-        return TypedDictType(kwargs, required_names, set(), dict_type, is_closed=is_closed)
+        # TODO: when PEP 728 `extra_items` is supported at use sites, pass the actual
+        # extra_items type below instead of only distinguishing closed from open.
+        return TypedDictType(
+            kwargs,
+            required_names,
+            set(),
+            dict_type,
+            extra_items=UninhabitedType() if extra_items is None else None,
+        )
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
@@ -558,7 +564,12 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return cached
         fallback = t.fallback.accept(self)
         assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-        result = t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        extra_items = t.extra_items.accept(self) if t.extra_items is not None else None
+        result = t.copy_modified(
+            item_types=self.expand_types(t.items.values()),
+            fallback=fallback,
+            extra_items=extra_items,
+        )
         self.set_cached(t, result)
         return result
 

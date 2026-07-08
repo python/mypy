@@ -1377,9 +1377,16 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             #       elsewhere so this shouldn't be unsafe.
             for item_name, template_item_type, actual_item_type in template.zip(actual):
                 res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
+            if template.extra_items is not None and actual.extra_items is not None:
+                res.extend(
+                    infer_constraints(template.extra_items, actual.extra_items, self.direction)
+                )
             return res
         elif isinstance(actual, AnyType):
-            return self.infer_against_any(template.items.values(), actual)
+            values: list[Type] = list(template.items.values())
+            if template.extra_items is not None:
+                values.append(template.extra_items)
+            return self.infer_against_any(values, actual)
         else:
             return []
 

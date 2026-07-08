@@ -53,6 +53,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
+    UninhabitedType,
     get_proper_type,
 )
 
@@ -785,7 +786,12 @@ class TypedDictAnalyzer:
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         typeddict_type = TypedDictType(
-            item_types, required_keys, readonly_keys, fallback, is_closed=is_closed
+            item_types,
+            required_keys,
+            readonly_keys,
+            fallback,
+            # closed=True is represented as extra_items=Never (PEP 728).
+            extra_items=UninhabitedType() if is_closed else None,
         )
         any_placeholder = has_placeholder(typeddict_type)
         if typeddict_data:

@@ -1186,8 +1186,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
             fallback = self.s.create_anonymous_fallback()
             required_keys = self.s.required_keys | t.required_keys
+            # TODO: generalize to a proper pseudo-item meet once non-Never
+            # extra_items types are supported (PEP 728).
             return TypedDictType(
-                items, required_keys, readonly_keys, fallback, is_closed=is_closed
+                items,
+                required_keys,
+                readonly_keys,
+                fallback,
+                extra_items=UninhabitedType() if is_closed else None,
             )
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t

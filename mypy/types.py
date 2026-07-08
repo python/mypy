@@ -2988,12 +2988,11 @@ class TupleType(ProperType):
 class TypedDictItem(NamedTuple):
     """Type, mutability and requiredness of an item in a TypedDict.
 
-    If typ is `None`, the item comes from a missing item in an open TypedDict, and
-    the type should be treated as if it were a `builtins.object`. (Missing items in
-    closed TypedDicts will have an uninhabited type.)
-
-    TODO: pass a `builtins.object` instead of None when TypedDictType gains a
-    proper extra_items field.
+    If typ is `None`, the item comes from a missing item in a default-open
+    TypedDict (one with neither `closed=True` nor `extra_items=` given), and
+    the type should be treated as if it were a `builtins.object`. (Missing
+    items in TypedDicts with `extra_items=` set will have that type; in
+    closed TypedDicts it is an uninhabited type.)
     """
 
     typ: Type | None
@@ -3022,6 +3021,13 @@ class TypedDictType(ProperType):
     (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous. This
     is similar to how named tuples work.
 
+    The PEP 728 pseudo-item is stored in `extra_items` (with any ReadOnly[]
+    qualifier stripped into `extra_items_readonly`, mirroring how named items
+    are stored). `extra_items` is None for a default-open TypedDict; a closed
+    TypedDict (`closed=True`) stores an uninhabited type, per the PEP's
+    `closed=True` == `extra_items=Never` equivalence. `extra_items_readonly`
+    is only meaningful when `extra_items` is not None.
+
     TODO: The fallback structure is perhaps overly complicated.
     """
 
@@ -3029,7 +3035,8 @@ class TypedDictType(ProperType):
         "items",
         "required_keys",
         "readonly_keys",
-        "is_closed",
+        "extra_items",
+        "extra_items_readonly",
         "fallback",
         "extra_items_from",
         "to_be_mutated",
@@ -3038,6 +3045,8 @@ class TypedDictType(ProperType):
     items: dict[str, Type]  # item_name -> item_type
     required_keys: set[str]
     readonly_keys: set[str]
+    extra_items: Type | None
+    extra_items_readonly: bool
     fallback: Instance
 
     extra_items_from: list[ProperType]  # only used during semantic analysis
@@ -3052,18 +3061,27 @@ class TypedDictType(ProperType):
         line: int = -1,
         column: int = -1,
         *,
-        is_closed: bool = False,
+        extra_items: Type | None = None,
+        extra_items_readonly: bool = False,
     ) -> None:
         super().__init__(line, column)
         self.items = items
         self.required_keys = required_keys
         self.readonly_keys = readonly_keys
-        self.is_closed = is_closed
+        self.extra_items = extra_items
+        self.extra_items_readonly = extra_items_readonly
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
         self.to_be_mutated = False
+
+    @property
+    def is_closed(self) -> bool:
+        """Whether no extra items are allowed (PEP 728 closed=True or extra_items=Never)."""
+        return self.extra_items is not None and isinstance(
+            get_proper_type(self.extra_items), UninhabitedType
+        )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
@@ -3075,7 +3093,8 @@ class TypedDictType(ProperType):
                 self.fallback,
                 frozenset(self.required_keys),
                 frozenset(self.readonly_keys),
-                self.is_closed,
+                self.extra_items,
+                self.extra_items_readonly,
             )
         )
 
@@ -3093,7 +3112,8 @@ class TypedDictType(ProperType):
             and self.fallback == other.fallback
             and self.required_keys == other.required_keys
             and self.readonly_keys == other.readonly_keys
-            and self.is_closed == other.is_closed
+            and self.extra_items == other.extra_items
+            and self.extra_items_readonly == other.extra_items_readonly
         )
 
     def serialize(self) -> JsonDict:
@@ -3103,7 +3123,8 @@ class TypedDictType(ProperType):
             "required_keys": sorted(self.required_keys),
             "readonly_keys": sorted(self.readonly_keys),
             "fallback": self.fallback.serialize(),
-            "is_closed": self.is_closed,
+            "extra_items": self.extra_items.serialize() if self.extra_items is not None else None,
+            "extra_items_readonly": self.extra_items_readonly,
         }
 
     @classmethod
@@ -3114,7 +3135,10 @@ class TypedDictType(ProperType):
             set(data["required_keys"]),
             set(data["readonly_keys"]),
             Instance.deserialize(data["fallback"]),
-            is_closed=bool(data["is_closed"]),
+            extra_items=(
+                deserialize_type(data["extra_items"]) if data["extra_items"] is not None else None
+            ),
+            extra_items_readonly=bool(data["extra_items_readonly"]),
         )
 
     def write(self, data: WriteBuffer) -> None:
@@ -3123,7 +3147,8 @@ class TypedDictType(ProperType):
         write_type_map(data, self.items)
         write_str_list(data, sorted(self.required_keys))
         write_str_list(data, sorted(self.readonly_keys))
-        write_bool(data, self.is_closed)
+        write_type_opt(data, self.extra_items)
+        write_bool(data, self.extra_items_readonly)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -3135,7 +3160,8 @@ class TypedDictType(ProperType):
             set(read_str_list(data)),
             set(read_str_list(data)),
             fallback,
-            is_closed=read_bool(data),
+            extra_items=read_type_opt(data),
+            extra_items_readonly=read_bool(data),
         )
         assert read_tag(data) == END_TAG
         return ret
@@ -3161,7 +3187,8 @@ class TypedDictType(ProperType):
         item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
         readonly_keys: set[str] | None = None,
-        is_closed: bool | None = None,
+        extra_items: Bogus[Type | None] = _dummy,
+        extra_items_readonly: Bogus[bool] = _dummy,
     ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
@@ -3173,8 +3200,10 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         if readonly_keys is None:
             readonly_keys = self.readonly_keys
-        if is_closed is None:
-            is_closed = self.is_closed
+        if extra_items is _dummy:
+            extra_items = self.extra_items
+        if extra_items_readonly is _dummy:
+            extra_items_readonly = self.extra_items_readonly
         if item_names is not None:
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
@@ -3185,7 +3214,8 @@ class TypedDictType(ProperType):
             fallback,
             self.line,
             self.column,
-            is_closed=is_closed,
+            extra_items=extra_items,
+            extra_items_readonly=extra_items_readonly,
         )
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
@@ -3198,16 +3228,14 @@ class TypedDictType(ProperType):
     def item(self, item_name: str) -> TypedDictItem:
         item_type = self.items.get(item_name)
         if item_type is not None:
-            is_required = item_name in self.required_keys
-            is_readonly = item_name in self.readonly_keys
-        elif self.is_closed:
-            item_type = UninhabitedType()
-            is_required = False
-            is_readonly = False
-        else:
-            is_required = False
-            is_readonly = True
-        return TypedDictItem(item_type, is_required, is_readonly)
+            return TypedDictItem(
+                item_type, item_name in self.required_keys, item_name in self.readonly_keys
+            )
+        if self.extra_items is not None:
+            # The PEP 728 pseudo-item: extra items are always non-required.
+            return TypedDictItem(self.extra_items, False, self.extra_items_readonly)
+        # Default-open TypedDicts implicitly allow NotRequired[ReadOnly[object]] items.
+        return TypedDictItem(None, False, True)
 
     def zipall(self, right: TypedDictType) -> Iterable[tuple[str, TypedDictItem, TypedDictItem]]:
         left = self
@@ -4058,7 +4086,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             + "}"
         )
         if t.is_closed:
+            # closed=True is preferred over the equivalent extra_items=Never (PEP 728).
             s += ", closed=True"
+        elif t.extra_items is not None:
+            extra = t.extra_items.accept(self)
+            if t.extra_items_readonly:
+                extra = f"ReadOnly[{extra}]"
+            s += f", extra_items={extra}"
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:

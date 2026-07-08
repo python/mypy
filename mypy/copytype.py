@@ -109,7 +109,12 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(
             t,
             TypedDictType(
-                t.items, t.required_keys, t.readonly_keys, t.fallback, is_closed=t.is_closed
+                t.items,
+                t.required_keys,
+                t.readonly_keys,
+                t.fallback,
+                extra_items=t.extra_items,
+                extra_items_readonly=t.extra_items_readonly,
             ),
         )
 

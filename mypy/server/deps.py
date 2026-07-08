@@ -1092,6 +1092,8 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         triggers = []
         for item in typ.items.values():
             triggers.extend(self.get_type_triggers(item))
+        if typ.extra_items is not None:
+            triggers.extend(self.get_type_triggers(typ.extra_items))
         triggers.extend(self.get_type_triggers(typ.fallback))
         return triggers
 
