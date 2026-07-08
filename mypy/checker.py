@@ -8129,7 +8129,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        return function_type(func, self.named_type("builtins.function"))
+        typ = function_type(func, self.named_type("builtins.function"))
+        if (
+            isinstance(func, FuncItem)
+            and func.is_coroutine
+            and not func.is_async_generator
+            and func.type is None
+            and isinstance(typ, CallableType)
+        ):
+            any_type = AnyType(TypeOfAny.special_form)
+            ret_type = self.named_generic_type(
+                "typing.Coroutine", [any_type, any_type, typ.ret_type]
+            )
+            return typ.copy_modified(ret_type=ret_type)
+        return typ
 
     def push_type_map(self, type_map: TypeMap, *, from_assignment: bool = True) -> None:
         if is_unreachable_map(type_map):
