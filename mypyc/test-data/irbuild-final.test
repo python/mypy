@@ -196,7 +196,7 @@ L0:
     keep_alive r0, c
     return r3
 
-[case testFinalAttrExpressionKinds2]
+[case testFinalAttrExpressionKinds2_withgil]
 from typing import Final
 
 class C:
